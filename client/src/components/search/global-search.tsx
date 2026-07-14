@@ -85,47 +85,25 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     localStorage.setItem('recentSearches', JSON.stringify(updated));
   };
 
-  // Search API call (debounced)
+  // Search API call — CRMX-013: ranked, typo-tolerant global search.
   const { data: results = [], isLoading } = useQuery<SearchResult[]>({
     queryKey: ['/api/search', searchQuery],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
-
-      // In production, this would call a real search API
-      // For now, we'll return mock results based on localStorage data
-
-      const mockResults: SearchResult[] = [];
-
-      // Search quotes
-      const quotesStr = localStorage.getItem('quotes');
-      if (quotesStr) {
-        try {
-          const quotes = JSON.parse(quotesStr);
-          quotes
-            .filter(
-              (q: any) =>
-                q.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                q.proposalNumber?.toLowerCase().includes(searchQuery.toLowerCase()),
-            )
-            .slice(0, 3)
-            .forEach((q: any) => {
-              mockResults.push({
-                id: q.id,
-                type: 'quote',
-                title: q.title || q.proposalNumber,
-                subtitle: q.customerName,
-                metadata: `$${q.totalAmount || 0}`,
-                url: `/quotes/${q.id}`,
-              });
-            });
-        } catch {
-          // Ignore errors
-        }
-      }
-
-      return mockResults;
+      const res = await apiRequest(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const items: any[] = Array.isArray(res) ? res : (res?.results ?? []);
+      // The API returns results already ordered by relevance; preserve that order.
+      return items.map((r) => ({
+        id: r.id,
+        type: r.type,
+        title: r.title,
+        subtitle: r.subtitle,
+        metadata: r.metadata,
+        url: r.url,
+      })) as SearchResult[];
     },
     enabled: searchQuery.length >= 2,
+    staleTime: 15_000,
   });
 
   // Group results by type

@@ -384,6 +384,35 @@ app.use((req: any, res, next) => {
       serverLog.warn({ err: error as Error }, 'Failed to initialize cron jobs');
     }
 
+    // CRMX-008: start the durable workflow-automation sweeper (resumes delayed
+    // executions + reclaims any queued executions stranded by a restart).
+    try {
+      const { startWorkflowRuntime } = await import('./services/workflow-runtime');
+      startWorkflowRuntime();
+      serverLog.info('Workflow runtime sweeper started');
+    } catch (error) {
+      serverLog.warn({ err: error as Error }, 'Failed to start workflow runtime sweeper');
+    }
+
+    // CRMX-011: start the web-form submission processor (captures → leads:
+    // dedup, scoring, routing, form.submitted workflow trigger).
+    try {
+      const { startWebFormProcessor } = await import('./services/web-form-processor');
+      startWebFormProcessor();
+      serverLog.info('Web-form submission processor started');
+    } catch (error) {
+      serverLog.warn({ err: error as Error }, 'Failed to start web-form processor');
+    }
+
+    // CRMX-009: start the email sequence (drip) scheduler.
+    try {
+      const { startEmailSequenceScheduler } = await import('./services/email-sequence-scheduler');
+      startEmailSequenceScheduler();
+      serverLog.info('Email sequence scheduler started');
+    } catch (error) {
+      serverLog.warn({ err: error as Error }, 'Failed to start email sequence scheduler');
+    }
+
     // Initialize email monitors for all enabled tenants
     try {
       const { startAllEmailMonitors } = await import('./services/email-monitor-service');

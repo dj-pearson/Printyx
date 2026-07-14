@@ -10,12 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { CrmIndexShell, type CrmViewRenderProps } from '@/components/crm/CrmIndexShell';
 import { CrmDataTable } from '@/components/crm/CrmDataTable';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -52,8 +47,7 @@ export default function CrmCompaniesPage() {
   });
 
   const createCompanyMutation = useMutation({
-    mutationFn: (data: CreateCompanyForm) =>
-      apiRequest('/api/companies', 'POST', data),
+    mutationFn: (data: CreateCompanyForm) => apiRequest('/api/companies', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
       setShowCreateDialog(false);
@@ -65,14 +59,20 @@ export default function CrmCompaniesPage() {
     },
   });
 
-  const renderTable = useCallback((props: CrmViewRenderProps) => (
-    <CrmDataTable
-      objectType="companies"
-      search={props.search}
-      activeFilters={props.activeFilters}
-      sortConfig={props.sortConfig}
-    />
-  ), []);
+  const renderTable = useCallback(
+    (props: CrmViewRenderProps) => (
+      <CrmDataTable
+        objectType="companies"
+        search={props.search}
+        activeFilters={props.activeFilters}
+        sortConfig={props.sortConfig}
+        columnConfig={props.columnConfig}
+        onColumnConfigChange={props.onColumnConfigChange}
+        columnsPersist={props.columnsPersist}
+      />
+    ),
+    [],
+  );
 
   return (
     <MainLayout>
@@ -88,14 +88,19 @@ export default function CrmCompaniesPage() {
             <DialogTitle>Create New Company</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => createCompanyMutation.mutate(data))} className="space-y-4">
+            <form
+              onSubmit={form.handleSubmit((data) => createCompanyMutation.mutate(data))}
+              className="space-y-4"
+            >
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Company Name</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -107,7 +112,9 @@ export default function CrmCompaniesPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Industry</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
@@ -117,7 +124,9 @@ export default function CrmCompaniesPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Website</FormLabel>
-                      <FormControl><Input {...field} placeholder="https://" /></FormControl>
+                      <FormControl>
+                        <Input {...field} placeholder="https://" />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
@@ -129,7 +138,9 @@ export default function CrmCompaniesPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>City</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
@@ -139,13 +150,17 @@ export default function CrmCompaniesPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>State</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+                  Cancel
+                </Button>
                 <Button type="submit" disabled={createCompanyMutation.isPending}>
                   {createCompanyMutation.isPending ? 'Creating...' : 'Create Company'}
                 </Button>

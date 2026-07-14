@@ -7,7 +7,19 @@ const log = createModuleLogger('routes-workflow-automation');
 
 const router = express.Router();
 
-// Advanced Workflow Automation API Routes
+/**
+ * @deprecated CRMX-008. This router is NOT registered (see server/routes-registry.ts,
+ * which mounts `server/routes/workflow-automation-routes.ts`). Its handlers return
+ * hardcoded mock data — including the fabricated `exec-<timestamp>` execution ids
+ * this story's audit flagged. The REAL implementation is:
+ *   - server/routes/workflow-automation-routes.ts  (registered CRUD + execute/cancel/dispatch/tick)
+ *   - server/services/workflow-execution-service.ts (durable step executor)
+ *   - server/services/workflow-runtime.ts           (event dispatch + enrollment + sweeper)
+ * Do not build on this file; it is retained only until its last string reference in
+ * server/fix-data-consistency.ts is cleaned up.
+ */
+
+// Advanced Workflow Automation API Routes (LEGACY MOCK — see @deprecated note above)
 
 // Get workflow automation dashboard
 router.get('/api/workflow-automation/dashboard', async (req: any, res) => {

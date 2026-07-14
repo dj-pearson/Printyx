@@ -9077,3 +9077,30 @@ export const userNotifications = pgTable('user_notifications', {
 export const insertUserNotificationSchema = createInsertSchema(userNotifications);
 export type UserNotification = typeof userNotifications.$inferSelect;
 export type InsertUserNotification = typeof userNotifications.$inferInsert;
+
+// CRMX-011: Web forms builder + landing-page lead capture
+export {
+  webForms,
+  webFormSubmissions,
+  insertWebFormSchema,
+  insertWebFormSubmissionSchema,
+} from './web-forms-schema';
+export type {
+  WebForm,
+  WebFormSubmission,
+  InsertWebForm,
+  InsertWebFormSubmission,
+  WebFormField,
+  WebFormSettings,
+} from './web-forms-schema';
+
+// CRMX-009: Email sequence / drip enrollments
+export {
+  emailSequenceEnrollments,
+  insertEmailSequenceEnrollmentSchema,
+} from './email-sequence-schema';
+export type {
+  EmailSequenceEnrollment,
+  InsertEmailSequenceEnrollment,
+  SequenceStepHistoryEntry,
+} from './email-sequence-schema';

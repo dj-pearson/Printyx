@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   index,
+  uniqueIndex,
   jsonb,
   pgTable,
   timestamp,
@@ -282,9 +283,16 @@ export const workflowExecutions = pgTable(
     tenantId: varchar('tenant_id').notNull(),
     status: executionStatusEnum('status').notNull().default('queued'),
     initiatedBy: varchar('initiated_by'), // User ID or "system"
-    context: jsonb('context'), // Execution context data
+    context: jsonb('context'), // Execution context data (incl. `_runtime` cursor for resume)
     result: jsonb('result'), // Final execution result
     error: text('error'), // Error details if failed
+    // CRMX-008: idempotency key — a caller-supplied token unique per
+    // (tenant, workflow) that de-dupes enrollments so the same trigger event
+    // never enrolls a workflow twice. NULL for manual runs (NULLs don't collide).
+    dedupeKey: varchar('dedupe_key'),
+    // CRMX-008: when a `wait_delay` step pauses an execution, this is the wall
+    // time the durable sweeper may resume it. NULL unless status = 'paused'.
+    resumeAt: timestamp('resume_at'),
     startedAt: timestamp('started_at'),
     completedAt: timestamp('completed_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -294,6 +302,12 @@ export const workflowExecutions = pgTable(
     tenantIdx: index('workflow_executions_tenant_idx').on(table.tenantId),
     statusIdx: index('workflow_executions_status_idx').on(table.status),
     createdAtIdx: index('workflow_executions_created_at_idx').on(table.createdAt),
+    // Partial unique — idempotent enrollment (NULL dedupe_key rows are exempt).
+    dedupeUnique: uniqueIndex('workflow_executions_dedupe_unique')
+      .on(table.tenantId, table.workflowId, table.dedupeKey)
+      .where(sql`${table.dedupeKey} IS NOT NULL`),
+    // Sweeper lookup for durably-paused executions whose delay has elapsed.
+    resumeAtIdx: index('workflow_executions_resume_at_idx').on(table.resumeAt),
   }),
 );
 

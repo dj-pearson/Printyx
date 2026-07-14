@@ -230,6 +230,10 @@ const BillingAnalytics = React.lazy(() => import('@/pages/BillingAnalytics'));
 const VendorManagement = React.lazy(() => import('@/pages/VendorManagement'));
 const CustomerNumberSettings = React.lazy(() => import('@/pages/CustomerNumberSettings'));
 const CustomFieldsSettings = React.lazy(() => import('@/pages/CustomFieldsSettings'));
+const WebFormsPage = React.lazy(() => import('@/pages/marketing/WebFormsPage'));
+const WebFormBuilder = React.lazy(() => import('@/pages/marketing/WebFormBuilder'));
+const EmailSequencesPage = React.lazy(() => import('@/pages/marketing/EmailSequencesPage'));
+const HostedFormPage = React.lazy(() => import('@/pages/HostedFormPage'));
 const FinancialForecasting = React.lazy(() => import('@/pages/FinancialForecasting'));
 const FinancialIntelligenceDashboard = React.lazy(
   () => import('@/pages/FinancialIntelligenceDashboard'),
@@ -290,6 +294,7 @@ const PredictiveAnalytics = React.lazy(() => import('@/pages/PredictiveAnalytics
 const ERPIntegration = React.lazy(() => import('@/pages/ERPIntegration'));
 const ServiceHub = React.lazy(() => import('@/pages/ServiceHub'));
 const ApolloLeadEnrichment = React.lazy(() => import('@/pages/ApolloLeadEnrichment'));
+const GettingStarted = React.lazy(() => import('@/pages/GettingStarted'));
 const OnboardingDashboard = React.lazy(() => import('@/pages/OnboardingDashboard'));
 const SetupWizard = React.lazy(() => import('@/pages/SetupWizard'));
 const OnboardingDetails = React.lazy(() => import('@/pages/OnboardingDetails'));
@@ -460,6 +465,15 @@ function Router() {
         </React.Suspense>
       );
     }
+  }
+
+  // CRMX-011: public hosted/embeddable web form (/f/:token) — no auth, no shell.
+  if (pathname.startsWith('/f/')) {
+    return (
+      <React.Suspense fallback={null}>
+        <HostedFormPage />
+      </React.Suspense>
+    );
   }
 
   if (isLoading) {
@@ -867,6 +881,9 @@ function Router() {
                 <Route path="/settings" component={Settings} />
                 <Route path="/settings/api-keys" component={ApiKeyManagement} />
                 <Route path="/settings/custom-fields" component={CustomFieldsSettings} />
+                <Route path="/marketing/forms/:id" component={WebFormBuilder} />
+                <Route path="/marketing/forms" component={WebFormsPage} />
+                <Route path="/marketing/sequences" component={EmailSequencesPage} />
                 <Route path="/monitoring-clients">
                   {() => (
                     <ProtectedRoute
@@ -1161,6 +1178,7 @@ function Router() {
                 <Route path="/privacy" component={PrivacyPolicy} />
                 <Route path="/terms" component={TermsAndConditions} />
                 <Route path="/accessibility" component={AccessibilityStatement} />
+                <Route path="/getting-started" component={GettingStarted} />
                 <Route path="/setup-wizard" component={SetupWizard} />
                 <Route path="/onboarding" component={OnboardingDashboard} />
                 <Route path="/onboarding/new" component={EnhancedOnboardingForm} />

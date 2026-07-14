@@ -139,6 +139,9 @@ await serve(
       functionName = 'integrations';
     } else if (functionName === 'public' && subPath[0] === 'calculator') {
       functionName = 'public-calculator';
+    } else if (functionName === 'public' && subPath[0] === 'forms') {
+      // CRMX-011: unauthenticated web-form capture (/api/public/forms/*).
+      functionName = 'public-forms';
     }
 
     if (!functionName || !functions[functionName]) {

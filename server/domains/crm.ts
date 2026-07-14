@@ -19,3 +19,5 @@ export { registerCsvImportRoutes } from '../routes-csv-import';
 export { default as signupCrmRoutes } from '../routes-signup-crm';
 export { default as universalSearchRoutes } from '../routes-universal-search';
 export { default as businessRecordsRoutes } from '../routes-business-records';
+export { default as webFormsRoutes } from '../routes-web-forms';
+export { default as emailSequencesRoutes } from '../routes-email-sequences';

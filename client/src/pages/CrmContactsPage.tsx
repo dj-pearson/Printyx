@@ -10,12 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { CrmIndexShell, type CrmViewRenderProps } from '@/components/crm/CrmIndexShell';
 import { CrmDataTable } from '@/components/crm/CrmDataTable';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -53,8 +48,7 @@ export default function CrmContactsPage() {
   });
 
   const createContactMutation = useMutation({
-    mutationFn: (data: CreateContactForm) =>
-      apiRequest('/api/company-contacts', 'POST', data),
+    mutationFn: (data: CreateContactForm) => apiRequest('/api/company-contacts', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/company-contacts'] });
       setShowCreateDialog(false);
@@ -66,14 +60,20 @@ export default function CrmContactsPage() {
     },
   });
 
-  const renderTable = useCallback((props: CrmViewRenderProps) => (
-    <CrmDataTable
-      objectType="contacts"
-      search={props.search}
-      activeFilters={props.activeFilters}
-      sortConfig={props.sortConfig}
-    />
-  ), []);
+  const renderTable = useCallback(
+    (props: CrmViewRenderProps) => (
+      <CrmDataTable
+        objectType="contacts"
+        search={props.search}
+        activeFilters={props.activeFilters}
+        sortConfig={props.sortConfig}
+        columnConfig={props.columnConfig}
+        onColumnConfigChange={props.onColumnConfigChange}
+        columnsPersist={props.columnsPersist}
+      />
+    ),
+    [],
+  );
 
   return (
     <MainLayout>
@@ -89,7 +89,10 @@ export default function CrmContactsPage() {
             <DialogTitle>Create New Contact</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => createContactMutation.mutate(data))} className="space-y-4">
+            <form
+              onSubmit={form.handleSubmit((data) => createContactMutation.mutate(data))}
+              className="space-y-4"
+            >
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -97,7 +100,9 @@ export default function CrmContactsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>First Name</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -108,7 +113,9 @@ export default function CrmContactsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Last Name</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -120,7 +127,9 @@ export default function CrmContactsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
-                    <FormControl><Input {...field} type="email" /></FormControl>
+                    <FormControl>
+                      <Input {...field} type="email" />
+                    </FormControl>
                   </FormItem>
                 )}
               />
@@ -131,7 +140,9 @@ export default function CrmContactsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Phone</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
@@ -141,13 +152,17 @@ export default function CrmContactsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Job Title</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+                  Cancel
+                </Button>
                 <Button type="submit" disabled={createContactMutation.isPending}>
                   {createContactMutation.isPending ? 'Creating...' : 'Create Contact'}
                 </Button>

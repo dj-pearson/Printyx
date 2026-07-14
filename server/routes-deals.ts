@@ -243,6 +243,28 @@ router.put('/api/deals/:id', async (req: any, res) => {
       return res.status(404).json({ message: 'Deal not found' });
     }
 
+    // CRMX-008: fire the deal.stage_changed trigger when the stage moved.
+    // Non-fatal; dedupe by deal + new stage so a repeated PUT doesn't re-enroll.
+    if (updateData.stageId) {
+      try {
+        const { dispatchWorkflowEvent } = await import('./services/workflow-runtime');
+        await dispatchWorkflowEvent(
+          tenantId,
+          `deal.stage_changed`,
+          {
+            dealId: deal.id,
+            recordId: deal.id,
+            stageId: (deal as any).stageId ?? updateData.stageId,
+            status: (deal as any).status,
+            amount: (deal as any).amount,
+          },
+          { dedupeKey: `stage:${deal.id}:${updateData.stageId}`, initiatedBy: userId },
+        );
+      } catch (e) {
+        log.warn('deal.stage_changed workflow dispatch failed (non-fatal):', e as Error);
+      }
+    }
+
     res.json(deal);
   } catch (error) {
     log.error('Error updating deal:', error);

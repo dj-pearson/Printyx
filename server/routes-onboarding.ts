@@ -24,6 +24,7 @@ import {
   businessRecords,
   quotes,
   quoteLineItems,
+  onboardingProgress,
 } from '@shared/schema';
 import { storage } from './storage';
 import { ObjectStorageService } from './objectStorage';
@@ -931,6 +932,95 @@ export function registerOnboardingRoutes(app: Express): void {
     } catch (error) {
       log.error('Error saving wizard state:', error);
       res.status(500).json({ message: 'Failed to save wizard state' });
+    }
+  });
+
+  // CRMX-014: durable, per-tenant + per-user "Getting Started" checklist state
+  // (resumable across restarts, unlike the in-memory wizard-state above).
+  const GETTING_STARTED_FLOW = 'getting_started';
+
+  app.get('/api/onboarding/getting-started', async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId || !tenantId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const [row] = await db
+        .select()
+        .from(onboardingProgress)
+        .where(
+          and(
+            eq(onboardingProgress.tenantId, tenantId),
+            eq(onboardingProgress.userId, userId),
+            eq(onboardingProgress.flowType, GETTING_STARTED_FLOW),
+          ),
+        )
+        .limit(1);
+      res.json({
+        completedSteps: (row?.completedSteps as string[]) ?? [],
+        isComplete: row?.isComplete ?? false,
+      });
+    } catch (error) {
+      log.error('Error fetching getting-started state:', error);
+      res.status(500).json({ message: 'Failed to fetch getting-started state' });
+    }
+  });
+
+  app.post('/api/onboarding/getting-started', async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId || !tenantId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const bodySchema = z.object({
+        completedSteps: z.array(z.string()),
+        isComplete: z.boolean().optional(),
+      });
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: 'Validation failed', errors: parsed.error.errors });
+      }
+      const completedSteps = Array.from(new Set(parsed.data.completedSteps));
+      const isComplete = parsed.data.isComplete ?? false;
+
+      const [existing] = await db
+        .select({ id: onboardingProgress.id })
+        .from(onboardingProgress)
+        .where(
+          and(
+            eq(onboardingProgress.tenantId, tenantId),
+            eq(onboardingProgress.userId, userId),
+            eq(onboardingProgress.flowType, GETTING_STARTED_FLOW),
+          ),
+        )
+        .limit(1);
+
+      if (existing) {
+        await db
+          .update(onboardingProgress)
+          .set({
+            completedSteps,
+            isComplete,
+            completedAt: isComplete ? new Date() : null,
+            updatedAt: new Date(),
+          })
+          .where(eq(onboardingProgress.id, existing.id));
+      } else {
+        await db.insert(onboardingProgress).values({
+          tenantId,
+          userId,
+          flowType: GETTING_STARTED_FLOW,
+          completedSteps,
+          isComplete,
+          completedAt: isComplete ? new Date() : null,
+        });
+      }
+      res.json({ completedSteps, isComplete });
+    } catch (error) {
+      log.error('Error saving getting-started state:', error);
+      res.status(500).json({ message: 'Failed to save getting-started state' });
     }
   });
 }

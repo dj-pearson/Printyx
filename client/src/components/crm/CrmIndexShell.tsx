@@ -52,6 +52,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useSavedViews, type SavedViewData } from '@/hooks/useSavedViews';
 import { getCrmObjectConfig, type CrmObjectType } from '@/lib/crm-object-registry';
+import { FirstRunTip } from '@/components/onboarding/FirstRunTip';
 import { cn } from '@/lib/utils';
 
 interface CrmIndexShellProps {
@@ -73,6 +74,12 @@ export interface CrmViewRenderProps {
   activeFilters: Record<string, any>;
   sortConfig: { field: string; direction: 'asc' | 'desc' } | null;
   activeView: SavedViewData | null;
+  /** CRMX-012: resolved column config for the active view (null ⇒ defaults). */
+  columnConfig: SavedViewData['columnConfig'];
+  /** CRMX-012: persist a new column config (to the active view when present). */
+  onColumnConfigChange: (config: NonNullable<SavedViewData['columnConfig']>) => void;
+  /** CRMX-012: whether column changes persist (an active view exists). */
+  columnsPersist: boolean;
 }
 
 export function CrmIndexShell({
@@ -87,15 +94,23 @@ export function CrmIndexShell({
   const [, setLocation] = useLocation();
 
   // ─── URL State ──────────────────────────────────────────────────
-  const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-  const initialViewMode = (urlParams.get('mode') as 'table' | 'board') || (config.hasBoardView ? 'board' : 'table');
+  const urlParams = new URLSearchParams(
+    typeof window !== 'undefined' ? window.location.search : '',
+  );
+  const initialViewMode =
+    (urlParams.get('mode') as 'table' | 'board') || (config.hasBoardView ? 'board' : 'table');
   const initialViewId = urlParams.get('view') || undefined;
 
   const [viewMode, setViewMode] = useState<'table' | 'board'>(initialViewMode);
   const [search, setSearch] = useState('');
   const [activeViewId, setActiveViewId] = useState<string | undefined>(initialViewId);
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
-  const [activeSortConfig, setActiveSortConfig] = useState<{ field: string; direction: 'asc' | 'desc' } | null>(null);
+  const [activeSortConfig, setActiveSortConfig] = useState<{
+    field: string;
+    direction: 'asc' | 'desc';
+  } | null>(null);
+  // CRMX-012: session-local column override (until saved / view switch).
+  const [localColumnConfig, setLocalColumnConfig] = useState<SavedViewData['columnConfig']>(null);
   const [isModified, setIsModified] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveViewName, setSaveViewName] = useState('');
@@ -133,9 +148,31 @@ export function CrmIndexShell({
           : {},
       );
       setActiveSortConfig(activeView.sortConfig ?? null);
+      setLocalColumnConfig(null); // adopt the view's own column set
       setIsModified(false);
     }
   }, [activeView?.id]);
+
+  // CRMX-012: resolved column config + persistence. Local override wins until a
+  // view switch; changes persist to the active saved view when one exists.
+  const resolvedColumnConfig = localColumnConfig ?? activeView?.columnConfig ?? null;
+  const handleColumnConfigChange = useCallback(
+    async (config: NonNullable<SavedViewData['columnConfig']>) => {
+      setLocalColumnConfig(config);
+      if (activeView) {
+        try {
+          await updateView.mutateAsync({ id: activeView.id, columnConfig: config });
+        } catch {
+          toast({
+            title: 'Could not save columns',
+            description: 'Your column changes are applied for this session only.',
+            variant: 'destructive',
+          });
+        }
+      }
+    },
+    [activeView, updateView, toast],
+  );
 
   // ─── URL Sync ───────────────────────────────────────────────────
   useEffect(() => {
@@ -154,24 +191,27 @@ export function CrmIndexShell({
     setIsModified(false);
   }, []);
 
-  const handleSaveView = useCallback(async (mode: 'save' | 'save_as') => {
-    if (mode === 'save' && activeView) {
-      const filterDef = Object.entries(activeFilters).map(([field, value]) => ({
-        field,
-        operator: 'eq',
-        value,
-      }));
-      await updateView.mutateAsync({
-        id: activeView.id,
-        filterDefinition: filterDef.length > 0 ? filterDef : null,
-        sortConfig: activeSortConfig,
-      });
-      setIsModified(false);
-      toast({ title: 'View saved', description: `"${activeView.name}" has been updated.` });
-    } else {
-      setShowSaveDialog(true);
-    }
-  }, [activeView, activeFilters, activeSortConfig, updateView, toast]);
+  const handleSaveView = useCallback(
+    async (mode: 'save' | 'save_as') => {
+      if (mode === 'save' && activeView) {
+        const filterDef = Object.entries(activeFilters).map(([field, value]) => ({
+          field,
+          operator: 'eq',
+          value,
+        }));
+        await updateView.mutateAsync({
+          id: activeView.id,
+          filterDefinition: filterDef.length > 0 ? filterDef : null,
+          sortConfig: activeSortConfig,
+        });
+        setIsModified(false);
+        toast({ title: 'View saved', description: `"${activeView.name}" has been updated.` });
+      } else {
+        setShowSaveDialog(true);
+      }
+    },
+    [activeView, activeFilters, activeSortConfig, updateView, toast],
+  );
 
   const handleSaveNewView = useCallback(async () => {
     if (!saveViewName.trim()) return;
@@ -185,35 +225,60 @@ export function CrmIndexShell({
       objectType,
       filterDefinition: filterDef.length > 0 ? filterDef : undefined,
       sortConfig: activeSortConfig ?? undefined,
+      // CRMX-012: carry the current column customization into the new view.
+      columnConfig: localColumnConfig ?? activeView?.columnConfig ?? undefined,
       visibility: saveVisibility,
     });
     setActiveViewId(result.id);
     setShowSaveDialog(false);
     setSaveViewName('');
+    setLocalColumnConfig(null);
     setIsModified(false);
     toast({ title: 'View created', description: `"${saveViewName}" has been saved.` });
-  }, [saveViewName, objectType, activeFilters, activeSortConfig, saveVisibility, createView, toast]);
+  }, [
+    saveViewName,
+    objectType,
+    activeFilters,
+    activeSortConfig,
+    localColumnConfig,
+    activeView,
+    saveVisibility,
+    createView,
+    toast,
+  ]);
 
-  const handleDeleteView = useCallback(async (viewId: string) => {
-    await deleteView.mutateAsync(viewId);
-    if (activeViewId === viewId) {
-      setActiveViewId(defaultView?.id);
-    }
-    toast({ title: 'View deleted' });
-  }, [deleteView, activeViewId, defaultView, toast]);
+  const handleDeleteView = useCallback(
+    async (viewId: string) => {
+      await deleteView.mutateAsync(viewId);
+      if (activeViewId === viewId) {
+        setActiveViewId(defaultView?.id);
+      }
+      toast({ title: 'View deleted' });
+    },
+    [deleteView, activeViewId, defaultView, toast],
+  );
 
-  const handleCloneView = useCallback(async (viewId: string) => {
-    await cloneView.mutateAsync({ id: viewId });
-    toast({ title: 'View cloned' });
-  }, [cloneView, toast]);
+  const handleCloneView = useCallback(
+    async (viewId: string) => {
+      await cloneView.mutateAsync({ id: viewId });
+      toast({ title: 'View cloned' });
+    },
+    [cloneView, toast],
+  );
 
-  const handlePinView = useCallback(async (viewId: string) => {
-    await pinView.mutateAsync(viewId);
-  }, [pinView]);
+  const handlePinView = useCallback(
+    async (viewId: string) => {
+      await pinView.mutateAsync(viewId);
+    },
+    [pinView],
+  );
 
-  const handleUnpinView = useCallback(async (viewId: string) => {
-    await unpinView.mutateAsync(viewId);
-  }, [unpinView]);
+  const handleUnpinView = useCallback(
+    async (viewId: string) => {
+      await unpinView.mutateAsync(viewId);
+    },
+    [unpinView],
+  );
 
   const handleFilterChange = useCallback((field: string, value: any) => {
     setActiveFilters((prev) => {
@@ -250,6 +315,9 @@ export function CrmIndexShell({
     activeFilters,
     sortConfig: activeSortConfig,
     activeView,
+    columnConfig: resolvedColumnConfig,
+    onColumnConfigChange: handleColumnConfigChange,
+    columnsPersist: Boolean(activeView),
   };
 
   const activeFilterCount = Object.keys(activeFilters).length;
@@ -328,11 +396,15 @@ export function CrmIndexShell({
           {pinnedViews.map((view) => (
             <div key={view.id} className="flex items-center shrink-0">
               <Button
-                variant={activeViewId === view.id || (!activeViewId && view.isDefault) ? 'secondary' : 'ghost'}
+                variant={
+                  activeViewId === view.id || (!activeViewId && view.isDefault)
+                    ? 'secondary'
+                    : 'ghost'
+                }
                 size="sm"
                 className={cn(
                   'h-7 px-3 text-xs rounded-b-none border-b-2',
-                  (activeViewId === view.id || (!activeViewId && view.isDefault))
+                  activeViewId === view.id || (!activeViewId && view.isDefault)
                     ? 'border-b-primary font-medium'
                     : 'border-b-transparent',
                 )}
@@ -347,7 +419,11 @@ export function CrmIndexShell({
               {/* View tab context menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 w-5 p-0 opacity-0 group-hover:opacity-100 hover:opacity-100">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-5 p-0 opacity-0 group-hover:opacity-100 hover:opacity-100"
+                  >
                     <MoreHorizontal className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -377,7 +453,11 @@ export function CrmIndexShell({
           {/* Add View Button */}
           <DropdownMenu open={showAddViewDropdown} onOpenChange={setShowAddViewDropdown}>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground shrink-0"
+              >
                 <Plus className="h-3 w-3 mr-1" /> Add view
               </Button>
             </DropdownMenuTrigger>
@@ -398,13 +478,17 @@ export function CrmIndexShell({
                   </DropdownMenuItem>
                 ))
               ) : (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground">All views are pinned</div>
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  All views are pinned
+                </div>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => {
-                setShowSaveDialog(true);
-                setShowAddViewDropdown(false);
-              }}>
+              <DropdownMenuItem
+                onClick={() => {
+                  setShowSaveDialog(true);
+                  setShowAddViewDropdown(false);
+                }}
+              >
                 <Plus className="h-4 w-4 mr-2" /> Create new view
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -430,9 +514,7 @@ export function CrmIndexShell({
                     Save as new view
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleResetView}>
-                    Reset to saved
-                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleResetView}>Reset to saved</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -448,7 +530,9 @@ export function CrmIndexShell({
             <Select
               key={filter.field}
               value={activeFilters[filter.field] ?? ''}
-              onValueChange={(value) => handleFilterChange(filter.field, value === '__all__' ? undefined : value)}
+              onValueChange={(value) =>
+                handleFilterChange(filter.field, value === '__all__' ? undefined : value)
+              }
             >
               <SelectTrigger className="h-7 w-auto min-w-[100px] text-xs">
                 <SelectValue placeholder={filter.label} />
@@ -484,6 +568,24 @@ export function CrmIndexShell({
 
       {/* ─── Content Area ─────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto">
+        {/* CRMX-014: first-visit coach mark for core CRM pages. */}
+        <div className="px-3 pt-3">
+          <FirstRunTip
+            tipKey={`crm-index-${objectType}`}
+            title={`Welcome to your ${config.labelPlural}`}
+          >
+            Switch between Table and Board views, save filtered views, and customize columns from
+            the toolbar. New here?{' '}
+            <button
+              type="button"
+              className="underline font-medium"
+              onClick={() => setLocation('/getting-started')}
+            >
+              Open the getting-started guide
+            </button>
+            .
+          </FirstRunTip>
+        </div>
         {viewMode === 'table' && renderTable?.(viewRenderProps)}
         {viewMode === 'board' && renderBoard?.(viewRenderProps)}
         {viewMode === 'table' && !renderTable && (
