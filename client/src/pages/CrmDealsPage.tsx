@@ -128,6 +128,9 @@ export default function CrmDealsPage() {
         search={props.search}
         activeFilters={props.activeFilters}
         sortConfig={props.sortConfig}
+        columnConfig={props.columnConfig}
+        onColumnConfigChange={props.onColumnConfigChange}
+        columnsPersist={props.columnsPersist}
       />
     ),
     [],

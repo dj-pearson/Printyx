@@ -9,7 +9,20 @@ import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { getCrmObjectConfig, type CrmObjectType, type CrmFieldDef } from '@/lib/crm-object-registry';
+import {
+  getCrmObjectConfig,
+  type CrmObjectType,
+  type CrmFieldDef,
+} from '@/lib/crm-object-registry';
+import { useCustomFields, type CustomFieldObjectType } from '@/hooks/useCustomFields';
+import {
+  buildColumnCatalog,
+  resolveVisibleColumns,
+  buildWorkingColumnConfig,
+  type ColumnConfigEntry,
+  type TableFieldDef,
+} from '@/lib/crm-columns';
+import { ColumnPicker } from '@/components/crm/ColumnPicker';
 import {
   Table,
   TableBody,
@@ -28,7 +41,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, Eye, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  MoreHorizontal,
+  Eye,
+  Edit,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CrmDataTableProps {
@@ -40,7 +63,20 @@ interface CrmDataTableProps {
   /** Selected record IDs for bulk operations */
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  /** CRMX-012: persisted column config for the active saved view. */
+  columnConfig?: ColumnConfigEntry[] | null;
+  /** CRMX-012: called when the user changes columns (parent persists it). */
+  onColumnConfigChange?: (config: ColumnConfigEntry[]) => void;
+  /** CRMX-012: whether column changes persist to a saved view. */
+  columnsPersist?: boolean;
 }
+
+const CUSTOM_FIELD_OBJECT_TYPES: CustomFieldObjectType[] = [
+  'deals',
+  'leads',
+  'contacts',
+  'companies',
+];
 
 export function CrmDataTable({
   objectType,
@@ -50,8 +86,18 @@ export function CrmDataTable({
   onSortChange,
   selectedIds,
   onSelectionChange,
+  columnConfig,
+  onColumnConfigChange,
+  columnsPersist = true,
 }: CrmDataTableProps) {
   const config = getCrmObjectConfig(objectType);
+  // CRMX-012: custom fields (CRMX-004) join the column catalog for supported objects.
+  const customFieldObjectType = CUSTOM_FIELD_OBJECT_TYPES.includes(
+    objectType as CustomFieldObjectType,
+  )
+    ? (objectType as CustomFieldObjectType)
+    : undefined;
+  const { fields: customFieldDefs } = useCustomFields(customFieldObjectType);
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -65,10 +111,30 @@ export function CrmDataTable({
   const sortDir = sortConfig?.direction ?? localSortDir;
 
   // Build query parameters
-  const queryKey = useMemo(() => [
-    config.apiEndpoint,
-    { page, pageSize, search, sortBy: sortField, sortOrder: sortDir, ...activeFilters, recordType: config.recordType },
-  ], [config.apiEndpoint, page, pageSize, search, sortField, sortDir, activeFilters, config.recordType]);
+  const queryKey = useMemo(
+    () => [
+      config.apiEndpoint,
+      {
+        page,
+        pageSize,
+        search,
+        sortBy: sortField,
+        sortOrder: sortDir,
+        ...activeFilters,
+        recordType: config.recordType,
+      },
+    ],
+    [
+      config.apiEndpoint,
+      page,
+      pageSize,
+      search,
+      sortField,
+      sortDir,
+      activeFilters,
+      config.recordType,
+    ],
+  );
 
   const { data, isLoading } = useQuery({
     queryKey,
@@ -88,7 +154,7 @@ export function CrmDataTable({
       }
       const result = await apiRequest(`${config.apiEndpoint}?${params}`);
       // Normalize response format
-      const records = Array.isArray(result) ? result : result?.records ?? result?.data ?? [];
+      const records = Array.isArray(result) ? result : (result?.records ?? result?.data ?? []);
       const total = result?.pagination?.total ?? result?.total ?? records.length;
       return { records, total };
     },
@@ -102,12 +168,15 @@ export function CrmDataTable({
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
 
   // Column sort handler
-  const handleSort = useCallback((field: string) => {
-    const newDir = sortField === field && sortDir === 'asc' ? 'desc' : 'asc';
-    setLocalSortField(field);
-    setLocalSortDir(newDir);
-    onSortChange?.({ field, direction: newDir });
-  }, [sortField, sortDir, onSortChange]);
+  const handleSort = useCallback(
+    (field: string) => {
+      const newDir = sortField === field && sortDir === 'asc' ? 'desc' : 'asc';
+      setLocalSortField(field);
+      setLocalSortDir(newDir);
+      onSortChange?.({ field, direction: newDir });
+    },
+    [sortField, sortDir, onSortChange],
+  );
 
   // Selection handlers
   const allOnPageSelected = records.length > 0 && records.every((r: any) => selectedIds?.has(r.id));
@@ -125,16 +194,19 @@ export function CrmDataTable({
     }
   }, [records, selectedIds, allOnPageSelected, onSelectionChange]);
 
-  const handleSelectRow = useCallback((id: string) => {
-    if (!onSelectionChange) return;
-    const newIds = new Set(selectedIds);
-    if (newIds.has(id)) newIds.delete(id);
-    else newIds.add(id);
-    onSelectionChange(newIds);
-  }, [selectedIds, onSelectionChange]);
+  const handleSelectRow = useCallback(
+    (id: string) => {
+      if (!onSelectionChange) return;
+      const newIds = new Set(selectedIds);
+      if (newIds.has(id)) newIds.delete(id);
+      else newIds.add(id);
+      onSelectionChange(newIds);
+    },
+    [selectedIds, onSelectionChange],
+  );
 
   // Cell rendering
-  const renderCell = useCallback((field: CrmFieldDef, value: any) => {
+  const renderCell = useCallback((field: TableFieldDef, value: any) => {
     if (value === null || value === undefined) {
       return <span className="text-muted-foreground text-xs">-</span>;
     }
@@ -143,7 +215,10 @@ export function CrmDataTable({
       case 'currency':
         return (
           <span className="font-medium tabular-nums">
-            ${typeof value === 'number' ? value.toLocaleString('en-US', { minimumFractionDigits: 0 }) : value}
+            $
+            {typeof value === 'number'
+              ? value.toLocaleString('en-US', { minimumFractionDigits: 0 })
+              : value}
           </span>
         );
       case 'date':
@@ -155,21 +230,44 @@ export function CrmDataTable({
       case 'badge':
         return (
           <Badge variant="secondary" className="text-[10px] font-normal">
-            {typeof value === 'string' ? value.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : String(value)}
+            {typeof value === 'string'
+              ? value.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+              : String(value)}
           </Badge>
         );
       case 'email':
-        return <a href={`mailto:${value}`} className="text-xs text-blue-600 hover:underline">{value}</a>;
+        return (
+          <a href={`mailto:${value}`} className="text-xs text-blue-600 hover:underline">
+            {value}
+          </a>
+        );
       case 'phone':
         return <span className="text-xs tabular-nums">{value}</span>;
       case 'number':
-        return <span className="text-xs tabular-nums">{typeof value === 'number' ? value.toLocaleString() : value}</span>;
+        return (
+          <span className="text-xs tabular-nums">
+            {typeof value === 'number' ? value.toLocaleString() : value}
+          </span>
+        );
       default:
         return <span className="text-xs truncate max-w-[200px] block">{String(value)}</span>;
     }
   }, []);
 
-  const visibleFields = config.fields.filter((f) => config.defaultColumns.includes(f.field));
+  // CRMX-012: resolve the rendered columns from the catalog (registry + custom
+  // fields) and the active view's persisted columnConfig (or object defaults).
+  const catalog = useMemo(
+    () => buildColumnCatalog(config.fields, customFieldDefs),
+    [config.fields, customFieldDefs],
+  );
+  const visibleFields = useMemo(
+    () => resolveVisibleColumns(catalog, columnConfig, config.defaultColumns),
+    [catalog, columnConfig, config.defaultColumns],
+  );
+  const workingColumnConfig = useMemo(
+    () => buildWorkingColumnConfig(catalog, columnConfig, config.defaultColumns),
+    [catalog, columnConfig, config.defaultColumns],
+  );
 
   if (isLoading && records.length === 0) {
     return (
@@ -183,6 +281,15 @@ export function CrmDataTable({
 
   return (
     <div className="flex flex-col h-full">
+      {onColumnConfigChange && (
+        <div className="flex items-center justify-end px-2 py-1.5 border-b bg-background">
+          <ColumnPicker
+            workingConfig={workingColumnConfig}
+            onChange={onColumnConfigChange}
+            persists={columnsPersist}
+          />
+        </div>
+      )}
       <div className="flex-1 overflow-auto">
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
@@ -199,18 +306,25 @@ export function CrmDataTable({
               {visibleFields.map((field) => (
                 <TableHead
                   key={field.field}
-                  className={cn('text-xs', field.width, field.sortable && 'cursor-pointer select-none')}
+                  className={cn(
+                    'text-xs',
+                    field.width,
+                    field.sortable && 'cursor-pointer select-none',
+                  )}
                   onClick={() => field.sortable && handleSort(field.field)}
                 >
                   <div className="flex items-center gap-1">
                     {field.label}
-                    {field.sortable && (
-                      sortField === field.field ? (
-                        sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                    {field.sortable &&
+                      (sortField === field.field ? (
+                        sortDir === 'asc' ? (
+                          <ArrowUp className="h-3 w-3" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3" />
+                        )
                       ) : (
                         <ArrowUpDown className="h-3 w-3 opacity-30" />
-                      )
-                    )}
+                      ))}
                   </div>
                 </TableHead>
               ))}
@@ -220,7 +334,10 @@ export function CrmDataTable({
           <TableBody>
             {records.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={visibleFields.length + 2} className="h-32 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={visibleFields.length + 2}
+                  className="h-32 text-center text-muted-foreground"
+                >
                   No {config.labelPlural.toLowerCase()} found
                 </TableCell>
               </TableRow>
@@ -244,7 +361,12 @@ export function CrmDataTable({
                   )}
                   {visibleFields.map((field) => (
                     <TableCell key={field.field} className={field.width}>
-                      {renderCell(field, record[field.field])}
+                      {renderCell(
+                        field,
+                        field.customKey
+                          ? record.customFields?.[field.customKey]
+                          : record[field.field],
+                      )}
                     </TableCell>
                   ))}
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -255,10 +377,14 @@ export function CrmDataTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setLocation(`${config.detailPath}/${record.id}`)}>
+                        <DropdownMenuItem
+                          onClick={() => setLocation(`${config.detailPath}/${record.id}`)}
+                        >
                           <Eye className="h-4 w-4 mr-2" /> View
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setLocation(`${config.detailPath}/${record.id}?edit=true`)}>
+                        <DropdownMenuItem
+                          onClick={() => setLocation(`${config.detailPath}/${record.id}?edit=true`)}
+                        >
                           <Edit className="h-4 w-4 mr-2" /> Edit
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -275,7 +401,8 @@ export function CrmDataTable({
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-2 border-t bg-background">
           <span className="text-xs text-muted-foreground">
-            Showing {((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalRecords)} of {totalRecords}
+            Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalRecords)} of{' '}
+            {totalRecords}
           </span>
           <div className="flex items-center gap-1">
             <Button

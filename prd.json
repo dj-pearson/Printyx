@@ -10380,9 +10380,9 @@
         "No `any`; TanStack loading/error states."
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "category": "crm-ux",
-      "notes": "[UX/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: customizable columns essentially absent though saved_views.columnConfig column already exists."
+      "notes": "[UX/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: customizable columns essentially absent though saved_views.columnConfig column already exists. [CRMX-012 COMPLETE 2026-07-14] Column picker (show/hide + up/down reorder) on all 4 CRM list views (deals/leads/contacts/companies). New client/src/lib/crm-columns.ts = pure helpers (buildColumnCatalog merges registry fields + CRMX-004 custom fields as cf_<key> columns; resolveVisibleColumns; buildWorkingColumnConfig; toggle/move). New client/src/components/crm/ColumnPicker.tsx = popover UI. CrmDataTable renders from resolved config (custom-field cells read record.customFields[key]) + shows the picker toolbar. CrmIndexShell owns persistence: resolvedColumnConfig = localOverride ?? activeView.columnConfig; onColumnConfigChange persists to the active saved view via updateView (PUT /api/saved-views/:id already accepts columnConfig) and carries into save-as; switching views adopts that view's own column set (AC#3). Defaults to object defaultColumns when no config (AC#4). No new any; loading via existing skeleton; column changes without an active view are session-local with a toast. Static: tsc 0-new (baseline 2), prettier clean."
     },
     {
       "id": "CRMX-013",
