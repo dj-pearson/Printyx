@@ -10,12 +10,7 @@ import MainLayout from '@/components/layout/main-layout';
 import { CrmIndexShell, type CrmViewRenderProps } from '@/components/crm/CrmIndexShell';
 import { EnhancedPipelineBoard } from '@/components/crm/EnhancedPipelineBoard';
 import { CrmDataTable } from '@/components/crm/CrmDataTable';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,6 +32,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { CustomFieldsSection } from '@/components/custom-fields/CustomFieldsSection';
 
 const createLeadSchema = z.object({
   companyName: z.string().min(1, 'Company name is required'),
@@ -55,6 +51,7 @@ export default function CrmLeadsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [customFields, setCustomFields] = useState<Record<string, unknown>>({});
 
   const form = useForm<CreateLeadForm>({
     resolver: zodResolver(createLeadSchema),
@@ -71,11 +68,13 @@ export default function CrmLeadsPage() {
         recordType: 'lead',
         status: 'new',
         estimatedAmount: data.estimatedAmount ? parseFloat(data.estimatedAmount) : undefined,
+        customFields,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
       setShowCreateDialog(false);
       form.reset();
+      setCustomFields({});
       toast({ title: 'Lead created successfully' });
     },
     onError: () => {
@@ -83,22 +82,28 @@ export default function CrmLeadsPage() {
     },
   });
 
-  const renderTable = useCallback((props: CrmViewRenderProps) => (
-    <CrmDataTable
-      objectType="leads"
-      search={props.search}
-      activeFilters={props.activeFilters}
-      sortConfig={props.sortConfig}
-    />
-  ), []);
+  const renderTable = useCallback(
+    (props: CrmViewRenderProps) => (
+      <CrmDataTable
+        objectType="leads"
+        search={props.search}
+        activeFilters={props.activeFilters}
+        sortConfig={props.sortConfig}
+      />
+    ),
+    [],
+  );
 
-  const renderBoard = useCallback((props: CrmViewRenderProps) => (
-    <EnhancedPipelineBoard
-      objectType="leads"
-      search={props.search}
-      activeFilters={props.activeFilters}
-    />
-  ), []);
+  const renderBoard = useCallback(
+    (props: CrmViewRenderProps) => (
+      <EnhancedPipelineBoard
+        objectType="leads"
+        search={props.search}
+        activeFilters={props.activeFilters}
+      />
+    ),
+    [],
+  );
 
   return (
     <MainLayout>
@@ -115,14 +120,19 @@ export default function CrmLeadsPage() {
             <DialogTitle>Create New Lead</DialogTitle>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => createLeadMutation.mutate(data))} className="space-y-4">
+            <form
+              onSubmit={form.handleSubmit((data) => createLeadMutation.mutate(data))}
+              className="space-y-4"
+            >
               <FormField
                 control={form.control}
                 name="companyName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Company Name</FormLabel>
-                    <FormControl><Input {...field} placeholder="Enter company name" /></FormControl>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter company name" />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -134,7 +144,9 @@ export default function CrmLeadsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Contact Name</FormLabel>
-                      <FormControl><Input {...field} placeholder="Full name" /></FormControl>
+                      <FormControl>
+                        <Input {...field} placeholder="Full name" />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
@@ -144,7 +156,9 @@ export default function CrmLeadsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Email</FormLabel>
-                      <FormControl><Input {...field} type="email" placeholder="email@company.com" /></FormControl>
+                      <FormControl>
+                        <Input {...field} type="email" placeholder="email@company.com" />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
@@ -157,7 +171,11 @@ export default function CrmLeadsPage() {
                     <FormItem>
                       <FormLabel>Lead Source</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select source" /></SelectTrigger></FormControl>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select source" />
+                          </SelectTrigger>
+                        </FormControl>
                         <SelectContent>
                           <SelectItem value="website">Website</SelectItem>
                           <SelectItem value="referral">Referral</SelectItem>
@@ -176,7 +194,11 @@ export default function CrmLeadsPage() {
                     <FormItem>
                       <FormLabel>Priority</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
                         <SelectContent>
                           <SelectItem value="low">Low</SelectItem>
                           <SelectItem value="medium">Medium</SelectItem>
@@ -194,7 +216,9 @@ export default function CrmLeadsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Estimated Value</FormLabel>
-                    <FormControl><Input {...field} type="number" placeholder="0.00" /></FormControl>
+                    <FormControl>
+                      <Input {...field} type="number" placeholder="0.00" />
+                    </FormControl>
                   </FormItem>
                 )}
               />
@@ -204,12 +228,23 @@ export default function CrmLeadsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Notes</FormLabel>
-                    <FormControl><Textarea {...field} rows={3} /></FormControl>
+                    <FormControl>
+                      <Textarea {...field} rows={3} />
+                    </FormControl>
                   </FormItem>
                 )}
               />
+
+              <CustomFieldsSection
+                objectType="leads"
+                values={customFields}
+                onChange={setCustomFields}
+              />
+
               <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
+                  Cancel
+                </Button>
                 <Button type="submit" disabled={createLeadMutation.isPending}>
                   {createLeadMutation.isPending ? 'Creating...' : 'Create Lead'}
                 </Button>

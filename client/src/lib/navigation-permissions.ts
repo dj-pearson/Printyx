@@ -144,6 +144,10 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['sales.lead.view_own', 'sales.lead.create'],
     minLevel: 2,
   },
+  // CRMX-004: custom-field management is a manager+ configuration task.
+  '/settings/custom-fields': {
+    minLevel: 4,
+  },
   '/contacts': {
     requiredPermissions: ['sales.customer.view_own', 'sales.customer.view_location'],
   },

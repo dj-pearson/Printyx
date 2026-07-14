@@ -13,6 +13,25 @@ import { storage } from './storage';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { insertDealSchema, insertDealStageSchema } from '@shared/schema';
 import { createModuleLogger } from './lib/logger';
+import { validateCustomFieldValues } from './routes-custom-fields';
+
+/** Run custom-field validation, converting the thrown 400 into a response. */
+async function resolveCustomFields(
+  res: any,
+  tenantId: string,
+  objectType: 'deals',
+  raw: unknown,
+): Promise<Record<string, unknown> | undefined> {
+  try {
+    return await validateCustomFieldValues(tenantId, objectType, raw as any);
+  } catch (e: any) {
+    if (e?.status === 400) {
+      res.status(400).json({ message: e.message, details: e.details });
+      return undefined;
+    }
+    throw e;
+  }
+}
 const log = createModuleLogger('routes-deals');
 
 const router = Router();
@@ -168,6 +187,11 @@ router.post('/api/deals', async (req: any, res) => {
       probability: 25, // Default probability for new deals
     };
 
+    // CRMX-004: validate + attach custom field values.
+    const cf = await resolveCustomFields(res, tenantId, 'deals', req.body.customFields);
+    if (res.headersSent) return; // validation returned a 400
+    (dealData as any).customFields = cf ?? {};
+
     const deal = await storage.createDeal(dealData);
     res.status(201).json(deal);
   } catch (error) {
@@ -205,6 +229,13 @@ router.put('/api/deals/:id', async (req: any, res) => {
     const updateData = { ...req.body };
     if (updateData.expectedCloseDate && typeof updateData.expectedCloseDate === 'string') {
       updateData.expectedCloseDate = new Date(updateData.expectedCloseDate);
+    }
+
+    // CRMX-004: validate custom fields on update (only if provided).
+    if (updateData.customFields !== undefined) {
+      const cf = await resolveCustomFields(res, tenantId, 'deals', updateData.customFields);
+      if (res.headersSent) return;
+      updateData.customFields = cf ?? {};
     }
 
     const deal = await storage.updateDeal(dealId, updateData, tenantId);

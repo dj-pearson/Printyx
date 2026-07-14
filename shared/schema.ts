@@ -1271,6 +1271,9 @@ export const companyContacts = pgTable('company_contacts', {
   otherState: varchar('other_state'),
   otherZip: varchar('other_zip'),
 
+  // CRMX-003/004: user-defined custom field values, keyed by custom_field_definitions.key.
+  customFields: jsonb('custom_fields').$type<Record<string, unknown>>(),
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -1293,6 +1296,8 @@ export const businessRecords = pgTable(
     migrationStatus: varchar('migration_status'), // pending, in_progress, completed, failed
     lastSyncDate: timestamp('last_sync_date'), // For incremental syncing
     externalData: jsonb('external_data'), // Store additional platform-specific fields as JSON
+    // CRMX-003/004: user-defined custom field values, keyed by custom_field_definitions.key.
+    customFields: jsonb('custom_fields').$type<Record<string, unknown>>(),
 
     // Record Type & Status - Controls entire business relationship lifecycle
     recordType: varchar('record_type').notNull().default('lead'), // lead, customer, former_customer
@@ -2503,6 +2508,9 @@ export const deals = pgTable(
     // Deal Status
     status: varchar('status').notNull().default('open'), // open, won, lost, on_hold
     lostReason: varchar('lost_reason'), // reason if status is "lost"
+
+    // CRMX-003/004: user-defined custom field values, keyed by custom_field_definitions.key.
+    customFields: jsonb('custom_fields').$type<Record<string, unknown>>(),
 
     // Tracking
     lastActivityDate: timestamp('last_activity_date'),

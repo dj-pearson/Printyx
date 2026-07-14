@@ -20,6 +20,7 @@ import {
   identifierParamSchema,
 } from './lib/crm-validation';
 import { createModuleLogger } from './lib/logger';
+import { validateCustomFieldValues } from './routes-custom-fields';
 const log = createModuleLogger('routes-business-records');
 
 const router = Router();
@@ -290,6 +291,16 @@ router.post('/api/business-records', requireAuth, async (req: Request, res: Resp
 
     const customerSince = data.recordType === 'customer' ? new Date() : undefined;
 
+    // CRMX-004: validate + attach custom field values (business_records = leads/companies object).
+    let customFields: Record<string, unknown> = {};
+    try {
+      customFields = await validateCustomFieldValues(tenantId, 'leads', req.body.customFields);
+    } catch (e: any) {
+      if (e?.status === 400)
+        return res.status(400).json({ message: e.message, details: e.details });
+      throw e;
+    }
+
     const [newRecord] = await db
       .insert(businessRecords)
       .values({
@@ -301,6 +312,7 @@ router.post('/api/business-records', requireAuth, async (req: Request, res: Resp
         urlSlug,
         customerNumber,
         customerSince,
+        customFields,
       })
       .returning();
 
@@ -357,8 +369,23 @@ router.patch(
         });
       }
 
+      // CRMX-004: validate custom fields on update (only if provided).
+      let cfPatch: { customFields?: Record<string, unknown> } = {};
+      if (req.body.customFields !== undefined) {
+        try {
+          cfPatch = {
+            customFields: await validateCustomFieldValues(tenantId, 'leads', req.body.customFields),
+          };
+        } catch (e: any) {
+          if (e?.status === 400)
+            return res.status(400).json({ message: e.message, details: e.details });
+          throw e;
+        }
+      }
+
       const updateData = {
         ...validation.data,
+        ...cfPatch,
         updatedAt: new Date(),
       };
 

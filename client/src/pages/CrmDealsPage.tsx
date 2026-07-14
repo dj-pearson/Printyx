@@ -36,6 +36,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { getCrmObjectConfig } from '@/lib/crm-object-registry';
+import { CustomFieldsSection } from '@/components/custom-fields/CustomFieldsSection';
 
 const createDealSchema = z.object({
   title: z.string().min(1, 'Deal name is required'),
@@ -57,6 +58,7 @@ export default function CrmDealsPage() {
   const [, setLocation] = useLocation();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string | undefined>();
+  const [customFields, setCustomFields] = useState<Record<string, unknown>>({});
   const config = getCrmObjectConfig('deals');
 
   const form = useForm<CreateDealForm>({
@@ -84,11 +86,13 @@ export default function CrmDealsPage() {
         ...data,
         value: data.value ? parseFloat(data.value) : 0,
         probability: parseInt(data.probability, 10),
+        customFields,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       setShowCreateDialog(false);
       form.reset();
+      setCustomFields({});
       toast({ title: 'Deal created successfully' });
     },
     onError: () => {
@@ -268,6 +272,13 @@ export default function CrmDealsPage() {
                   </FormItem>
                 )}
               />
+
+              <CustomFieldsSection
+                objectType="deals"
+                values={customFields}
+                onChange={setCustomFields}
+              />
+
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
                   Cancel

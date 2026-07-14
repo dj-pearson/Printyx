@@ -235,6 +235,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },
       { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
       { title: 'Commission Management', path: '/commission-management', icon: DollarSign },
+      { title: 'Custom Fields', path: '/settings/custom-fields', icon: Settings },
     ],
   },
 

@@ -229,6 +229,7 @@ const BillingRules = React.lazy(() => import('@/pages/BillingRules'));
 const BillingAnalytics = React.lazy(() => import('@/pages/BillingAnalytics'));
 const VendorManagement = React.lazy(() => import('@/pages/VendorManagement'));
 const CustomerNumberSettings = React.lazy(() => import('@/pages/CustomerNumberSettings'));
+const CustomFieldsSettings = React.lazy(() => import('@/pages/CustomFieldsSettings'));
 const FinancialForecasting = React.lazy(() => import('@/pages/FinancialForecasting'));
 const FinancialIntelligenceDashboard = React.lazy(
   () => import('@/pages/FinancialIntelligenceDashboard'),
@@ -865,6 +866,7 @@ function Router() {
                 <Route path="/tenant-setup" component={TenantSetup} />
                 <Route path="/settings" component={Settings} />
                 <Route path="/settings/api-keys" component={ApiKeyManagement} />
+                <Route path="/settings/custom-fields" component={CustomFieldsSettings} />
                 <Route path="/monitoring-clients">
                   {() => (
                     <ProtectedRoute

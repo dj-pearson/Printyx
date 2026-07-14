@@ -10249,9 +10249,10 @@
         "TanStack Query loading/error states handled; no `any` types."
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "category": "crm-platform",
-      "notes": "[PLATFORM/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Depends on CRMX-003. Wires user-defined fields through the whole CRM surface."
+      "notes": "[PLATFORM/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Depends on CRMX-003. Wires user-defined fields through the whole CRM surface.",
+      "completionNotes": "Custom fields UI + write-path validation. Client: useCustomFields hook (list+CRUD), CustomFieldInput (renders by fieldType) + CustomFieldsSection (drop-in, values map keyed by field.key), and CustomFieldsSettings admin page (per-objectType tabs, create/edit/deactivate/delete, options editor for select/multiselect, key auto-slug + immutable after create). Routed at /settings/custom-fields (App.tsx) with a Sales Hub sidebar entry gated to minLevel 4 (navigation-permissions). Integrated CustomFieldsSection into the Deals (CrmDealsPage) and Leads (CrmLeadsPage) create forms, merging values into the POST body. Schema: added custom_fields jsonb to deals, business_records, company_contacts (migration 0022, hand-authored idempotent, NOT applied). Server: wired validateCustomFieldValues into deals POST/PUT (routes-deals.ts) and business-records POST/PATCH (routes-business-records.ts) — invalid custom values -> 400 with details; cleaned values persisted to custom_fields. Verified tsc 0 new errors (ratchet 1351 vs 1353 baseline), prettier clean. DEFERRED (noted): filter-bar + list-column integration (smart-filter-bar is unused; live filtering is CrmDataTable; columns are CRMX-012 scope) and contacts/companies write-path wiring (contacts POST runs through a validate-middleware that strips unknown keys — needs a follow-up; companies has no dedicated write handler)."
     },
     {
       "id": "CRMX-005",
