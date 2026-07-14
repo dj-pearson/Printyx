@@ -10395,9 +10395,9 @@
         "Recent/most-relevant items surfaced first; deep links preserved."
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "category": "crm-ux",
-      "notes": "[UX/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: search is ILIKE, not ranked full-text."
+      "notes": "[UX/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: search is ILIKE, not ranked full-text. [CRMX-013 COMPLETE 2026-07-14] Ranked, typo-tolerant global search via pg_trgm. drizzle/functions/global-search.sql = fault-tolerant RPC (each of 8 entities scanned in its own BEGIN/EXCEPTION block so raw-SQL/drift tables service_tickets/invoices are skipped, never failing search) using similarity() ranking + % trigram-match (typo tolerance) + ILIKE fallback; tenant-scoped by param. Migration 0026 = pg_trgm extension + GIN gin_trgm_ops indexes on the Drizzle-verified columns (business_records/company_contacts/deals/proposals/product_models). Edge fn supabase/functions/search/index.ts rewritten: calls global_search RPC, returns FLAT relevance-ordered SearchResult[] {id,type,title,subtitle,metadata,url,path}, falls back to unranked ILIKE over verified tables if the RPC is not yet installed (no regression pre-migration). Fixed the ⌘K palette: client/src/components/search/global-search.tsx was MOCK (localStorage) — now calls /api/search and renders real ranked results; command-palette.tsx already expected this flat array (path alias added so it navigates). Covers customers/leads/contacts/deals/quotes/service/products/invoices; deep links per type. DEFERRED: per-entity RBAC filtering (auth + tenant-scoping enforced; role-level entity hiding is a follow-up, matching prior behavior). Apply: run migration 0026 + \\i drizzle/functions/global-search.sql. Static: tsc 0-new (baseline 2; edge fn is Deno), prettier clean."
     },
     {
       "id": "CRMX-014",
