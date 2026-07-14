@@ -10,6 +10,8 @@ export { registerCustomerRoutes } from '../routes-customers';
 export { registerBusinessRecordRoutes } from '../routes-business-records';
 export { registerCrmGoalRoutes } from '../routes-crm-goals';
 export { registerSavedViewsRoutes } from '../routes-saved-views';
+export { registerCustomFieldsRoutes } from '../routes-custom-fields';
+export { registerCrmNotesRoutes } from '../routes-crm-notes';
 export { registerCrmBulkRoutes } from '../routes-crm-bulk';
 export { registerBulkOperationsRoutes } from '../routes-bulk-operations';
 export { registerRecordLayoutRoutes } from '../routes-record-layout';

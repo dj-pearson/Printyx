@@ -176,8 +176,15 @@ export default function PredictiveAnalytics() {
         title="Predictive Analytics"
         description="AI-powered forecasting and predictive insights for your business"
       >
-        <div className="text-center">
-          <p className="text-gray-600">No analytics data available</p>
+        {/* CRMX-001: honest preview state — this page previously relied on a
+            mock endpoint. No fabricated metrics are shown. */}
+        <div className="max-w-md mx-auto text-center border border-dashed rounded-lg p-10 mt-8">
+          <p className="font-semibold text-gray-900">Predictive Analytics is in preview</p>
+          <p className="text-sm text-gray-500 mt-2">
+            Forecasting models aren't connected to your data yet, so no metrics are shown. Live,
+            data-backed AI is available today on the Churn Risk, Lead Scoring, and Sales Pipeline
+            Forecasting pages.
+          </p>
         </div>
       </MainLayout>
     );

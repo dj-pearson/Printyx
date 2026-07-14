@@ -115,11 +115,16 @@ router.get(
       let crmGoalsData: any[] = [];
 
       try {
-        // Get deals data
+        // Get deals data. CRMX-005: join the canonical pipeline stage (via
+        // legacy_stage_id) to pull per-stage default probability + forecast inclusion.
         const dealsResult = await db.execute(sql`
-          SELECT id, title, amount, probability, status, expected_close_date, tenant_id 
-          FROM deals 
-          WHERE tenant_id = ${tenantId} AND status NOT IN ('won', 'lost')
+          SELECT d.id, d.title, d.amount, d.probability, d.status, d.expected_close_date, d.tenant_id,
+                 ps.default_probability AS stage_probability,
+                 ps.include_in_forecast AS stage_include
+          FROM deals d
+          LEFT JOIN pipeline_stages ps
+            ON ps.legacy_stage_id = d.stage_id AND ps.tenant_id = d.tenant_id
+          WHERE d.tenant_id = ${tenantId} AND d.status NOT IN ('won', 'lost')
         `);
         dealsData = dealsResult.rows || [];
 
@@ -156,16 +161,20 @@ router.get(
         throw error;
       }
 
-      // Transform data with type and default probabilities
-      const transformedDeals = dealsData.map((deal) => ({
-        id: deal.id,
-        title: deal.title || `Deal ${deal.id}`,
-        value: parseFloat(deal.amount?.toString() || '0'),
-        probability: deal.probability || 50,
-        expectedCloseDate: deal.expected_close_date || new Date().toISOString(),
-        status: deal.status || 'open',
-        type: 'deal',
-      }));
+      // Transform data with type and default probabilities. CRMX-005: prefer the
+      // deal's own probability, else the canonical stage's default; drop deals in
+      // stages explicitly excluded from the forecast (stage_include === false).
+      const transformedDeals = dealsData
+        .filter((deal) => deal.stage_include !== false)
+        .map((deal) => ({
+          id: deal.id,
+          title: deal.title || `Deal ${deal.id}`,
+          value: parseFloat(deal.amount?.toString() || '0'),
+          probability: deal.probability ?? deal.stage_probability ?? 50,
+          expectedCloseDate: deal.expected_close_date || new Date().toISOString(),
+          status: deal.status || 'open',
+          type: 'deal',
+        }));
 
       const transformedQuotes = quotesData.map((quote) => ({
         id: quote.id,

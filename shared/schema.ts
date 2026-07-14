@@ -281,6 +281,44 @@ export type {
   InsertRecordLayoutConfig,
 } from './crm-views-schema';
 
+// Re-export custom fields schema (CRMX-003)
+export {
+  customFieldDefinitions,
+  customFieldObjectTypeEnum,
+  customFieldTypeEnum,
+  insertCustomFieldDefinitionSchema,
+  updateCustomFieldDefinitionSchema,
+  CUSTOM_FIELD_OBJECT_TYPES,
+  CUSTOM_FIELD_TYPES,
+} from './custom-fields-schema';
+
+export type {
+  CustomFieldDefinition,
+  InsertCustomFieldDefinition,
+  CustomFieldObjectType,
+  CustomFieldType,
+} from './custom-fields-schema';
+
+// Re-export CRM notes + associations schema (CRMX-006)
+export {
+  crmNotes,
+  crmAssociations,
+  insertCrmNoteSchema,
+  updateCrmNoteSchema,
+  insertCrmAssociationSchema,
+  CRM_RECORD_TYPES,
+  CRM_ASSOCIABLE_TYPES,
+} from './crm-associations-schema';
+
+export type {
+  CrmNote,
+  InsertCrmNote,
+  CrmAssociation,
+  InsertCrmAssociation,
+  CrmRecordType,
+  CrmAssociableType,
+} from './crm-associations-schema';
+
 // Re-export product pricing schemas
 export {
   companyPricingSettings,
@@ -1148,6 +1186,11 @@ export const userCustomerAssignments = pgTable('user_customer_assignments', {
 });
 
 // Companies - Core business entity that replaces the customer concept
+/**
+ * @deprecated Company of record is `business_records` (see docs/crm-canonical-model.md, CRMX-002).
+ * Migration to fold this table's extra columns onto business_records is CRMX-007. Do not bind new
+ * CRM screens here.
+ */
 export const companies = pgTable('companies', {
   id: varchar('id')
     .primaryKey()
@@ -1248,6 +1291,9 @@ export const companyContacts = pgTable('company_contacts', {
   otherState: varchar('other_state'),
   otherZip: varchar('other_zip'),
 
+  // CRMX-003/004: user-defined custom field values, keyed by custom_field_definitions.key.
+  customFields: jsonb('custom_fields').$type<Record<string, unknown>>(),
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -1270,6 +1316,8 @@ export const businessRecords = pgTable(
     migrationStatus: varchar('migration_status'), // pending, in_progress, completed, failed
     lastSyncDate: timestamp('last_sync_date'), // For incremental syncing
     externalData: jsonb('external_data'), // Store additional platform-specific fields as JSON
+    // CRMX-003/004: user-defined custom field values, keyed by custom_field_definitions.key.
+    customFields: jsonb('custom_fields').$type<Record<string, unknown>>(),
 
     // Record Type & Status - Controls entire business relationship lifecycle
     recordType: varchar('record_type').notNull().default('lead'), // lead, customer, former_customer
@@ -1415,6 +1463,11 @@ export const leads = businessRecords; // Alias for existing code
 export const customers = businessRecords; // Alias for existing code
 
 // Enhanced Contact Management (Salesforce-style individual contacts)
+/**
+ * @deprecated Canonical contact is `companyContacts` (see docs/crm-canonical-model.md, CRMX-002).
+ * This is a Salesforce-sync staging model, NOT a CRM contact of record — no user-facing UI.
+ * Fold useful fields into companyContacts and repoint sync services (CRMX-007).
+ */
 export const enhancedContacts = pgTable('enhanced_contacts', {
   id: varchar('id')
     .primaryKey()
@@ -1499,6 +1552,11 @@ export const enhancedContacts = pgTable('enhanced_contacts', {
 });
 
 // Sales Opportunities (Salesforce-style deal management)
+/**
+ * @deprecated Canonical pipeline is `deals` + `pipelineStages`/`pipelineTemplates`
+ * (see docs/crm-canonical-model.md, CRMX-002). Keep only as a Salesforce-sync staging object via
+ * /api/opportunities/convert-to-deal — do not build a second pipeline here (CRMX-005).
+ */
 export const opportunities = pgTable(
   'opportunities',
   {
@@ -2208,6 +2266,10 @@ export const vendors = pgTable('vendors', {
 // REMOVED: Old leadActivities table - now using unified businessRecordActivities
 
 // Additional contacts at a company (beyond primary contact)
+/**
+ * @deprecated Thin legacy clone of the contact model. Canonical is `companyContacts`
+ * (see docs/crm-canonical-model.md, CRMX-002). Migrate rows and drop (CRMX-007).
+ */
 export const leadContacts = pgTable('lead_contacts', {
   id: varchar('id')
     .primaryKey()
@@ -2339,6 +2401,10 @@ export const leadActivities = businessRecordActivities; // Alias for existing co
 export const customerActivities = businessRecordActivities; // Alias for existing code
 
 // Customer Contacts (exact clone of leadContacts structure)
+/**
+ * @deprecated Thin legacy clone of the contact model. Canonical is `companyContacts`
+ * (see docs/crm-canonical-model.md, CRMX-002). Migrate rows and drop (CRMX-007).
+ */
 export const customerContacts = pgTable('customer_contacts', {
   id: varchar('id')
     .primaryKey()
@@ -2387,6 +2453,11 @@ export type InsertCustomerRelatedRecord = typeof customerRelatedRecords.$inferIn
 // Create insert schemas for validation - these are defined later in the file with proper omit clauses
 
 // Deal Pipeline Stages Configuration - Customizable sales stages
+/**
+ * @deprecated Legacy stage config. Canonical is `pipelineStages`/`pipelineTemplates` in
+ * shared/pipeline-configuration-schema.ts (see docs/crm-canonical-model.md, CRMX-002). The kanban
+ * still binds here today; CRMX-005 rebinds deals.stageId onto pipelineStages and back-fills this.
+ */
 export const dealStages = pgTable('deal_stages', {
   id: varchar('id')
     .primaryKey()
@@ -2458,6 +2529,9 @@ export const deals = pgTable(
     status: varchar('status').notNull().default('open'), // open, won, lost, on_hold
     lostReason: varchar('lost_reason'), // reason if status is "lost"
 
+    // CRMX-003/004: user-defined custom field values, keyed by custom_field_definitions.key.
+    customFields: jsonb('custom_fields').$type<Record<string, unknown>>(),
+
     // Tracking
     lastActivityDate: timestamp('last_activity_date'),
     nextFollowUpDate: timestamp('next_follow_up_date'),
@@ -2480,6 +2554,11 @@ export const deals = pgTable(
 );
 
 // Deal Activities - Track all interactions and updates
+/**
+ * @deprecated Deal-scoped activities should fold into the unified `businessRecordActivities`
+ * timeline via the polymorphic association layer (see docs/crm-canonical-model.md, CRMX-002;
+ * implemented by CRMX-006).
+ */
 export const dealActivities = pgTable('deal_activities', {
   id: varchar('id')
     .primaryKey()

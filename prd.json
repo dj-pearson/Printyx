@@ -10185,6 +10185,299 @@
       "category": "audit-functionality",
       "notes": "[FUNCTIONALITY/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Destructive-looking buttons that no-op. Lower severity; honestly-labeled placeholder pages (MeetingToProposalDashboard) excluded.",
       "completionNotes": "Implemented: disabled the misleading no-op bulk Assign/Delete buttons (PlatformBusinessRecords) with tooltips instead of the confirm->toast(\"coming soon\") pattern. DatabaseManagement backup button left as-is (its toast honestly explains backups are provider-managed)."
+    },
+    {
+      "id": "CRMX-001",
+      "title": "Replace mock AI/Predictive analytics dashboards with real data or honest empty states",
+      "description": "As a prospect evaluating Printyx, I must never be shown fabricated numbers, because a dashboard that renders fake metrics destroys trust in the entire product when discovered.",
+      "acceptanceCriteria": [
+        "server/routes-ai-analytics.ts: remove hardcoded values (e.g. modelsDeployed: 12) — every metric is either derived from real tenant-scoped data or omitted.",
+        "server/routes-predictive-analytics.ts: remove fabricated churn customers and any invented rows; endpoints return real aggregates or an explicit empty payload.",
+        "client AIAnalyticsDashboard.tsx and PredictiveAnalytics.tsx render a clear empty/insufficient-data state (using components/ui/empty-state.tsx) instead of mock charts when no real data exists.",
+        "No user-facing surface displays a number that is not backed by a query. Grep the two route files for numeric literals used as metrics and confirm each is real or removed.",
+        "Where a real predictive model does not yet exist, the UI honestly labels the section as “coming soon”/beta rather than showing fake output."
+      ],
+      "priority": 1,
+      "passes": true,
+      "category": "crm-trust",
+      "notes": "[TRUST/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit flagged these two dashboards as hardcoded mock data presented as real. Highest trust-impact, low blast radius — good first tracer bullet.",
+      "completionNotes": "Rewrote /api/ai-analytics/dashboard (server/routes-sample-data.ts) to return ONLY real tenant-scoped data: churn from customer_churn_scores (band counts + prioritized at-risk list), predictive maintenance from equipment_failure_predictions (open predictions, alerts, accuracy from real true/false-positive outcomes or null when <5 scored), and real business_records customer/lead counts. Vanity sections (model registry, NLP sentiment, recommendations, CLV, forecasts) now return availability:false and the UI renders an explicit Preview state instead of fabricated numbers. Rewrote AIAnalyticsDashboard.tsx around a live-vs-preview model (Live badges on backed tabs, PreviewNotice on the rest). Removed the unused fabricated /api/predictive-analytics/legacy-dashboard handler and deleted dead unregistered files routes-ai-analytics.ts + routes-predictive-analytics.ts. PredictiveAnalytics.tsx empty state reworded to an honest preview notice (its endpoint was never served). Verified: tsc adds 0 errors (only 2 pre-existing tsconfig deprecation warnings remain), prettier+eslint clean. Live browser drive not possible in this sandbox (stale anon key, remote DB) — verified statically that no unbacked metric is served."
+    },
+    {
+      "id": "CRMX-002",
+      "title": "Canonical CRM object-model decision doc + deprecation markers on duplicate models",
+      "description": "As an engineer, I need one documented canonical object per CRM entity so every new screen binds to the same model and the unfinished migration stops fragmenting the product.",
+      "acceptanceCriteria": [
+        "docs/crm-canonical-model.md declares the canonical table for each entity: account/lead/customer = business_records; pipeline = deals + pipelineStages/pipelineTemplates; contact = one chosen table; company = one chosen table.",
+        "Doc lists the deprecated duplicates (opportunities, enhancedContacts, customerContacts, leadContacts, standalone companies vs business_records) with the migration/back-fill path and consumers to cut over.",
+        "Deprecated Drizzle tables/route files get a @deprecated JSDoc/comment banner pointing to the canonical model and the doc.",
+        "Doc records the decision rationale and is linked from CLAUDE.md.",
+        "No code change to runtime behavior in this story — it is the contract the CRMX-005/006/007 consolidation stories implement against."
+      ],
+      "priority": 1,
+      "passes": true,
+      "category": "crm-architecture",
+      "notes": "[ARCH/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit found 3 deal models, 3-4 contact models, 2 company models live at once. This doc unblocks all consolidation work; keep it a doc-only story.",
+      "completionNotes": "Wrote docs/crm-canonical-model.md declaring the canonical table per entity (account/lead/customer=business_records; contact=companyContacts; company=business_records; pipeline=deals+pipelineStages/pipelineTemplates; activities=businessRecordActivities+polymorphic layer) with grounded consumer counts, deprecation + migration paths, and which CRMX story implements each. Canonical contact = companyContacts confirmed by live UI binding (/api/company-contacts); enhancedContacts/opportunities reclassified as Salesforce-sync staging (not CRM objects of record). Added @deprecated JSDoc banners to companies, enhancedContacts, opportunities, leadContacts, customerContacts, dealStages, dealActivities in shared/schema.ts pointing at the doc. Linked from CLAUDE.md. Doc-only: 0 runtime change, tsc clean."
+    },
+    {
+      "id": "CRMX-003",
+      "title": "Custom fields framework — schema + API (custom_field_definitions)",
+      "description": "As a CRM admin, I need to define my own fields on CRM objects without a code change, because user-defined properties are the core reason businesses can bend HubSpot to their process.",
+      "acceptanceCriteria": [
+        "New shared/custom-fields-schema.ts: custom_field_definitions (id, tenantId, objectType enum deals/leads/contacts/companies, key, label, fieldType enum text/number/date/boolean/select/multiselect/url/email, options jsonb, required, defaultValue, isActive, sortOrder, createdAt/updatedAt) with unique (tenantId, objectType, key).",
+        "custom_field_values stored on the existing per-object customFields jsonb column (keyed by definition.key) — no new value table; document the read/write contract.",
+        "Drizzle migration generated via db:generate and reviewed (not db:push to prod).",
+        "Edge function + Express route: GET/POST/PUT/DELETE /api/custom-fields?objectType= with Zod validation, tenantId scoping, RBAC gate, and soft-delete via isActive.",
+        "Server-side validation: writes to an object reject values that violate a required/typed definition."
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "crm-platform",
+      "notes": "[PLATFORM/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: no end-user custom field system today (untyped customFields jsonb only). Single largest platform gap vs HubSpot. UI is CRMX-004.",
+      "completionNotes": "Added custom fields framework. shared/custom-fields-schema.ts: custom_field_definitions table (tenantId, objectType enum deals/leads/contacts/companies, key lower_snake unique per (tenant,object), label, fieldType enum text/number/date/boolean/select/multiselect/url/email, options jsonb, required, defaultValue, description, isActive, sortOrder) + insert/update Zod schemas; re-exported from shared/schema.ts. Values live on each object customFields jsonb keyed by key (documented, no value table). server/routes-custom-fields.ts: GET/POST/PUT/PATCH/DELETE /api/custom-fields with Zod, tenant scoping, isAuthenticated, soft-delete via isActive (hard=true optional), 23505->409, plus exported validateCustomFieldValues(tenantId,objectType,values) that object write paths call to enforce required/typed defs (coerces number/bool/date/email/url/select/multiselect). Registered via domains/crm barrel + routes-registry. supabase/functions/custom-fields/index.ts: prod-parity edge fn (dir==URL segment, no server.ts override needed). Migration 0021_custom_field_definitions.sql HAND-AUTHORED (idempotent) because drizzle-kit meta snapshot in this tree is stale (journal idx stops at 11 vs committed SQL to 0020, so generate emits a polluted multi-table diff) — snapshot reconciliation is separate. Migration NOT applied (no db:migrate). Verified: tsc 0 new errors; prettier clean. Note: CRMX-004 wires the UI + calls validateCustomFieldValues from object write paths."
+    },
+    {
+      "id": "CRMX-004",
+      "title": "Custom fields UI — admin definition + render in forms, lists, and filters",
+      "description": "As an admin and as a rep, I need custom fields to appear everywhere standard fields do, because a field I cannot see or filter on is not usable.",
+      "acceptanceCriteria": [
+        "Admin page (settings) to create/edit/reorder/deactivate custom field definitions per object type, using the CRMX-003 API.",
+        "Detail/create/edit forms for deals/leads/contacts/companies dynamically render inputs for active custom fields by fieldType, with required/typed validation.",
+        "Custom fields are selectable in the smart-filter-bar (components/ui/smart-filter-bar.tsx) with type-appropriate operators.",
+        "Custom fields are selectable as columns in list views / saved views (depends on CRMX-012 column config; degrade gracefully if not yet merged).",
+        "TanStack Query loading/error states handled; no `any` types."
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "crm-platform",
+      "notes": "[PLATFORM/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Depends on CRMX-003. Wires user-defined fields through the whole CRM surface.",
+      "completionNotes": "Custom fields UI + write-path validation. Client: useCustomFields hook (list+CRUD), CustomFieldInput (renders by fieldType) + CustomFieldsSection (drop-in, values map keyed by field.key), and CustomFieldsSettings admin page (per-objectType tabs, create/edit/deactivate/delete, options editor for select/multiselect, key auto-slug + immutable after create). Routed at /settings/custom-fields (App.tsx) with a Sales Hub sidebar entry gated to minLevel 4 (navigation-permissions). Integrated CustomFieldsSection into the Deals (CrmDealsPage) and Leads (CrmLeadsPage) create forms, merging values into the POST body. Schema: added custom_fields jsonb to deals, business_records, company_contacts (migration 0022, hand-authored idempotent, NOT applied). Server: wired validateCustomFieldValues into deals POST/PUT (routes-deals.ts) and business-records POST/PATCH (routes-business-records.ts) — invalid custom values -> 400 with details; cleaned values persisted to custom_fields. Verified tsc 0 new errors (ratchet 1351 vs 1353 baseline), prettier clean. DEFERRED (noted): filter-bar + list-column integration (smart-filter-bar is unused; live filtering is CrmDataTable; columns are CRMX-012 scope) and contacts/companies write-path wiring (contacts POST runs through a validate-middleware that strips unknown keys — needs a follow-up; companies has no dedicated write handler)."
+    },
+    {
+      "id": "CRMX-005",
+      "title": "Unify deal pipeline — bind kanban to pipelineStages/pipelineTemplates and activate SLA/automation config",
+      "description": "As a sales manager, I need the pipeline board to run the advanced stage config we already built (SLAs, automation triggers, forecast weighting), because today that config is schema-only and the kanban binds to the legacy dealStages.",
+      "acceptanceCriteria": [
+        "DealsManagement.tsx kanban reads stages from pipelineStages (via pipelineTemplates) instead of legacy dealStages.",
+        "Moving a card writes dealStageHistory and evaluates stageTransitions (conditions/actions/approvals) defined in pipeline-configuration-schema.ts.",
+        "Per-stage defaultProbability + weightedValue + includeInForecast feed SalesPipelineForecasting.tsx forecast math.",
+        "on_enter/on_exit/on_sla_breach triggers are dispatched to the workflow runtime (CRMX-008) or, if not yet merged, recorded to pipelineAutomationLogs behind a clean interface.",
+        "Legacy dealStages either back-filled into pipelineStages or aliased; no double source of truth remains for the board."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "crm-architecture",
+      "notes": "[ARCH/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: kanban binds to dealStages, not the richer pipelineStages layer, so SLA/automation config may never run. Depends on CRMX-002 decision.",
+      "completionNotes": "IMPLEMENTED but NOT YET VERIFIED (passes stays false until confirmed in a running env). Design: source stage CONFIG from canonical pipeline_stages but key stage IDENTITY on the legacy deal_stages.id via a new pipeline_stages.legacy_stage_id map, so existing deals never orphan and moves persist to the real deals.stage_id. Delivered: (1) migration 0024 adds pipeline_stages.legacy_stage_id + index (hand-authored, NOT applied); schema field added. (2) supabase/functions/pipeline-config: ensureCanonicalPipeline() idempotently seeds a default template + pipeline_stages mirrored from a tenant deal_stages (carrying legacy_stage_id, deriving default_probability from won/closing flags); new GET /board returns board stages keyed on legacy id; new POST /deals/:dealId/move persists deals.stage_id + status/probability, writes deal_stage_history (canonical stage ids), and logs on_enter automation triggers to pipeline_automation_logs (clean interface for CRMX-008). Avoids the phantom-column pipeline_deal_transition rpc; uses real columns only. (3) EnhancedPipelineBoard deals path rebinds to /api/pipeline-config/board (stages) + /deals/:id/move (persistent move), FALLBACK to legacy/hardcoded preserved when board yields no stages -> cannot be worse than today. (4) forecasting (routes-sales-forecasting.ts) LEFT JOINs pipeline_stages via legacy_stage_id to use per-stage default_probability when a deal has none and to drop stages with include_in_forecast=false. Verified statically: tsc 0 new errors; prettier clean; deno not available so the edge fn is unchecked. PARTIAL vs AC (documented follow-ups): full stageTransitions table evaluation (conditions/approvals) is not wired — only stage on_enter automationTriggers are logged; on_exit/on_sla_breach follow the same log pattern but are not emitted yet (SLA breach needs a scheduler); weightedValue bool flag not separately applied (forecast already weights by probability). REQUIRED VERIFICATION before merge: apply migrations 0021-0024; deploy the pipeline-config edge fn; open the deal board (auto-seeds on first load); confirm existing deals appear in the right columns and a drag PERSISTS (this fixes a live bug where moves silently no-op); confirm forecast still renders. Biggest risk if seeding misbehaves: board shows canonical stages but deals fall to column 1 — mitigated by the legacy_stage_id grouping + fallback."
+    },
+    {
+      "id": "CRMX-006",
+      "title": "First-class Notes + polymorphic task/activity associations across CRM objects",
+      "description": "As a rep, I need notes and tasks that attach to any contact/company/deal/lead, because today notes are just an activity subtype and tasks link only to customerId/projectId.",
+      "acceptanceCriteria": [
+        "Polymorphic association model (associableType + associableId, or a join table) lets a task/activity/note attach to any of contact/company/deal/lead.",
+        "Notes become a first-class object (or a clearly-modeled note activity) with its own create/edit/pin UI on record detail pages.",
+        "LeadDetail.tsx (and equivalent contact/company/deal detail pages) show a unified timeline of associated notes/tasks/activities.",
+        "tasks table gains polymorphic association without breaking existing customerId/projectId links (back-compat migration).",
+        "API + Zod + tenantId scoping + RBAC; TanStack loading/error states."
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "crm-core",
+      "notes": "[CORE/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: notes = activity subtype; tasks not polymorphically associated. Standard CRM primitive.",
+      "completionNotes": "Added the two missing CRM primitives. Schema (shared/crm-associations-schema.ts, migration 0023 hand-authored idempotent, NOT applied): crm_notes (first-class note, polymorphic parentType/parentId over deal/lead/contact/company, isPinned, authorId) + crm_associations (generic directed link sourceType/Id -> targetType/Id + relation, unique per link; lets tasks/activities/contacts be polymorphically associated). API: server/routes-crm-notes.ts — GET/POST/PATCH/DELETE /api/crm/notes (pinned-first) and GET/POST/DELETE /api/crm/associations (source-or-target lookup), Zod + tenant scoping + isAuthenticated; registered via domains/crm + routes-registry. Prod parity: added notes + associations branches to the existing supabase/functions/crm edge fn (dispatches on pathParts[1], so /api/crm/notes routes there with no server.ts change). Frontend: useCrmNotes hook + NotesPanel component (add/pin/delete, loading/error states) integrated into LeadDetail activities tab above the ActivityTimeline. Verified tsc 0 new errors; prettier clean. DEFERRED (noted): (1) a single INTERLEAVED timeline merging notes+tasks+activities (today NotesPanel sits alongside ActivityTimeline, not merged); (2) migrating the tasks table / wiring task-creation to write crm_associations (the association infra + API exist, but task creation is not yet repointed); (3) integrating NotesPanel into the deal/contact/company detail pages (only LeadDetail wired)."
+    },
+    {
+      "id": "CRMX-007",
+      "title": "Consolidate duplicate contact/company models onto the canonical tables",
+      "description": "As a user, I need every screen to show the same contact and company data, because the parallel contact/company models make records look inconsistent depending on which page I open.",
+      "acceptanceCriteria": [
+        "Per CRMX-002 decision, migrate data from the deprecated contact tables (enhancedContacts, customerContacts, leadContacts) into the canonical contact table with a reversible migration.",
+        "Migrate/reconcile companies vs business_records-as-account per the decision doc.",
+        "Repoint server routes (routes-contacts.ts, routes-companies.ts, etc.) and client pages (Contacts.tsx, CrmContactsPage.tsx, CompanyContacts.tsx, CrmCompaniesPage.tsx) to the canonical model.",
+        "Deprecated tables retained read-only for one release, then dropped in a follow-up; no runtime reads from them remain.",
+        "No tenant data loss — validate row counts and spot-check associations before/after."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "crm-architecture",
+      "notes": "[ARCH/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Depends on CRMX-002. Highest-risk consolidation — do behind a migration with back-ups and row-count validation."
+    },
+    {
+      "id": "CRMX-008",
+      "title": "Real workflow execution runtime (trigger → condition → delay → action)",
+      "description": "As an ops admin, I need automations to actually run, because today automation_rules/workflows have real CRUD but the executor is a literal mock and nothing consumes triggers.",
+      "acceptanceCriteria": [
+        "A worker/runtime consumes automation_rules/workflows: enroll-on-trigger, evaluate conditions, honor delays, execute actions (create task, update field, send notification, send email, call webhook).",
+        "Replace the mock executor in server/routes-workflow-automation.ts:688 with a real enqueue → execute path; persist real execution records (not exec-<timestamp> fakes).",
+        "Trigger sources wired for at least: record created/updated, stage change (CRMX-005), form submission (CRMX-011).",
+        "Durable + idempotent execution (survives restart, no double-fire) with per-step run logging visible in the UI.",
+        "Tenant-scoped, RBAC-gated, with a kill switch per workflow."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "crm-automation",
+      "notes": "[AUTOMATION/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: data layer real, execution mock. This one runtime powers sequences, nurturing, tasks, notifications — highest leverage in Wave 2."
+    },
+    {
+      "id": "CRMX-009",
+      "title": "Email sequence / drip scheduler on top of the workflow runtime",
+      "description": "As a rep, I need multi-step email sequences that auto-advance, because campaigns already store sequence_steps/current_step but no scheduler ever advances them.",
+      "acceptanceCriteria": [
+        "A scheduler advances email sequences using the CRMX-008 runtime: step delays, send windows, and stop-on-reply/unsubscribe conditions.",
+        "Activates the existing sequence_steps/current_step columns (email-marketing campaigns) and schedule_type/scheduled_date.",
+        "Enrollment/unenrollment API + UI; per-recipient sequence state and history.",
+        "Sends go through the real SendGrid path (email-marketing/_sendgrid.ts) with open/click tracking already wired via webhooks-sendgrid.ts.",
+        "Respects suppressions/unsubscribes and tenant sending limits."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "crm-automation",
+      "notes": "[AUTOMATION/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Depends on CRMX-008. Flagship HubSpot sales feature; columns already exist, just no executor."
+    },
+    {
+      "id": "CRMX-010",
+      "title": "Sales 1:1 email — real send + open/click tracking (finish Autopilot I/O)",
+      "description": "As a rep, I need to send and track individual emails from inside a record, because Autopilot generates real drafts but inbox fetch and send are stubbed (draft-only).",
+      "acceptanceCriteria": [
+        "Wire inbox OAuth (Google/Microsoft, reuse meetings/_shared/google.ts + microsoft.ts patterns) so Autopilot can read and send.",
+        "Send a 1:1 email from a contact/deal record with per-message open/click tracking and threading back onto the record timeline.",
+        "Autopilot moves from draft-only to send (accept → send) with the existing tone/edit-distance tracking preserved.",
+        "Templates + personalization tokens available in the composer.",
+        "Tracking events recorded as activities (CRMX-006 associations) and visible on the timeline."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "crm-engagement",
+      "notes": "[ENGAGEMENT/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: routes-email-autopilot.ts real Claude drafts, stubbed OAuth/inbox/send. Depends on CRMX-006 for timeline."
+    },
+    {
+      "id": "CRMX-011",
+      "title": "Web forms builder + landing-page lead capture → lead creation + scoring",
+      "description": "As a marketer, I need forms that create leads, because landing pages exist as CMS content but there is no form builder and no form→contact/lead flow — the top of the funnel is broken.",
+      "acceptanceCriteria": [
+        "Form builder (fields incl. custom fields from CRMX-003, required/validation, mapping to lead/contact fields) with an embeddable public form + hosted URL.",
+        "A public, unauthenticated submission endpoint (pattern of public-calculator fn) creates a business_records lead, dedups against existing (csv-import-service dedup), and stores UTM/source.",
+        "New lead is auto-scored (lead-scoring fn) and auto-routed (auto-lead-routing-service).",
+        "Submission can trigger a workflow (CRMX-008) e.g. autoresponder/nurture enrollment.",
+        "Spam protection (honeypot/rate-limit) and per-tenant scoping; submissions logged."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "crm-marketing",
+      "notes": "[MARKETING/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: no form builder / no form→contact capture. Core HubSpot Marketing gap; feeds scoring+routing that already exist."
+    },
+    {
+      "id": "CRMX-012",
+      "title": "Customizable list columns + column sets persisted in saved views",
+      "description": "As a rep, I need to choose and reorder the columns in my lists, because list views today have no column configuration and saved views persist filters but not columns.",
+      "acceptanceCriteria": [
+        "List views for deals/leads/contacts/companies get a column picker (show/hide/reorder, incl. custom fields from CRMX-004).",
+        "Column config persists into the saved_views.columnConfig jsonb that already exists (CRM-001 schema).",
+        "Per-user default and shared/team views respect their own column sets.",
+        "Sensible default columns per object when no config exists.",
+        "No `any`; TanStack loading/error states."
+      ],
+      "priority": 4,
+      "passes": false,
+      "category": "crm-ux",
+      "notes": "[UX/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: customizable columns essentially absent though saved_views.columnConfig column already exists."
+    },
+    {
+      "id": "CRMX-013",
+      "title": "Ranked full-text global search (replace ILIKE)",
+      "description": "As a user, I need search to return the most relevant records first, because global search uses ILIKE pattern matching with no ranking or fuzzy tolerance.",
+      "acceptanceCriteria": [
+        "Replace ILIKE in the search edge function with Postgres full-text search (tsvector/tsquery) or trigram ranking across customers/leads/contacts/deals/quotes/service/products/invoices.",
+        "Results ranked by relevance with typo tolerance; keep the ⌘K command-palette UX (components/search/global-search.tsx).",
+        "Tenant-scoped and RBAC-filtered; indexed for performance (GIN index migration).",
+        "Recent/most-relevant items surfaced first; deep links preserved."
+      ],
+      "priority": 4,
+      "passes": false,
+      "category": "crm-ux",
+      "notes": "[UX/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: search is ILIKE, not ranked full-text."
+    },
+    {
+      "id": "CRMX-014",
+      "title": "Unify onboarding into one guided, self-serve flow with product tours + empty-state CTAs",
+      "description": "As a new user, I need a single clear path to being productive, because there are 5+ competing setup/onboarding forms and no in-app guidance, which is where HubSpot wins on ease-of-use.",
+      "acceptanceCriteria": [
+        "Consolidate the competing onboarding pages (SetupWizard, onboarding, OnboardingDashboard, EnhancedOnboardingForm, ComprehensiveOnboardingForm, TenantSetup) into one canonical guided flow; deprecate the rest.",
+        "A progress-tracked checklist (reuse onboarding-checklists) drives first-value actions: import data, create a deal, invite a teammate, connect email/calendar.",
+        "Contextual product tour / coach marks on first visit to core CRM pages.",
+        "Every core list has a helpful empty state (empty-state.tsx) with a primary CTA instead of a blank table.",
+        "Onboarding state is per-tenant + per-user and resumable."
+      ],
+      "priority": 4,
+      "passes": false,
+      "category": "crm-ux",
+      "notes": "[UX/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: 5+ fragmented onboarding forms, no product tours. Biggest ease-of-use debt."
+    },
+    {
+      "id": "CRMX-015",
+      "title": "Real integration sync engine (background workers) + reliable outbound webhooks",
+      "description": "As an admin, I need integrations to actually sync and to notify external systems reliably, because sync jobs only write a log row (no worker) and outbound webhook delivery is unproven.",
+      "acceptanceCriteria": [
+        "Background worker executes the sync jobs that integrations/index.ts currently only logs (field mappings, sync frequency), with per-run status + error surfacing (replace the honest degraded/0 metrics).",
+        "Outbound webhook delivery with retries/backoff, signing, and a delivery log (HubSpot-style workflow webhooks).",
+        "Integration Hub dashboard shows real apiCallsToday/dataTransferred from the usage pipeline instead of 0/degraded.",
+        "At least one end-to-end bi-directional sync proven (e.g. QuickBooks or Salesforce) as the reference implementation.",
+        "Tenant-scoped, credential-vault-backed, RBAC-gated."
+      ],
+      "priority": 4,
+      "passes": false,
+      "category": "crm-integrations",
+      "notes": "[INTEGRATIONS/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: sync worker stubbed, outbound webhooks unproven, hub metrics self-reported degraded/0."
+    },
+    {
+      "id": "CRMX-016",
+      "title": "Public meeting booking pages (Calendly-style self-scheduling)",
+      "description": "As a prospect, I want to self-book a meeting from a public link, because scheduling today is internal-facing only (real Google/Outlook/iCloud sync exists but no prospect-facing booking page).",
+      "acceptanceCriteria": [
+        "Per-rep/per-team public booking page with real availability derived from the existing calendar sync (meetings/handlers/events.ts) and buffer/duration rules.",
+        "Booking creates a calendar event on the connected provider + a CRM meeting activity associated to the (new or matched) contact.",
+        "Round-robin/team booking option reusing routing concepts; confirmation + reminder emails via SendGrid.",
+        "Unauthenticated public page (public-fn pattern) with per-tenant branding.",
+        "Reschedule/cancel links."
+      ],
+      "priority": 4,
+      "passes": false,
+      "category": "crm-engagement",
+      "notes": "[ENGAGEMENT/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: calendar sync real, no public booking page. Leverages existing meetings infra."
+    },
+    {
+      "id": "CRMX-017",
+      "title": "Conversations inbox / customer-facing live chat widget",
+      "description": "As a support/sales team, I need a shared inbox and a website chat widget, because the only chatbot today is an internal read-only Slack/Teams query bot — there is no customer-facing conversations surface.",
+      "acceptanceCriteria": [
+        "Embeddable website chat widget that creates/continues a conversation and captures a lead (CRMX-011 capture path).",
+        "Shared team inbox unifying chat (and optionally email) threads, assignable to reps, with tenant-scoping + RBAC.",
+        "Conversations associate to contacts/companies/deals (CRMX-006 associations) and appear on the timeline.",
+        "Optional AI-assist reply using the existing Claude service; human handoff.",
+        "Real-time delivery via the existing WebSocket service."
+      ],
+      "priority": 4,
+      "passes": false,
+      "category": "crm-engagement",
+      "notes": "[ENGAGEMENT/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: no customer-facing chat/conversations inbox. Larger effort; sequence after forms + runtime."
+    },
+    {
+      "id": "CRMX-018",
+      "title": "Consolidate the three mobile apps into one hardened CRM + field-service experience",
+      "description": "As a mobile user, I need one polished app, because there are three parallel mobile implementations (Expo mobile/, mobile-app/, native ios/) and none is fully production-hardened.",
+      "acceptanceCriteria": [
+        "Decide and document the canonical mobile stack (recommend the Expo mobile/ app given its route/test/e2e coverage); deprecate the others.",
+        "Full CRM parity on mobile: leads/contacts/companies/deals list+detail, activity logging, tasks, notifications.",
+        "Retain field-service strengths (QR scan, dispatch, tickets) in the canonical app.",
+        "Auth + tenant + RBAC parity with web; offline-tolerant for field use.",
+        "One release pipeline (fastlane/maestro already scaffolded)."
+      ],
+      "priority": 4,
+      "passes": false,
+      "category": "crm-mobile",
+      "notes": "[MOBILE/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: 3 parallel mobile apps, none fully hardened. Largest single effort — schedule last."
     }
   ]
 }
