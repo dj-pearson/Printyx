@@ -10215,9 +10215,10 @@
         "No code change to runtime behavior in this story — it is the contract the CRMX-005/006/007 consolidation stories implement against."
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "category": "crm-architecture",
-      "notes": "[ARCH/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit found 3 deal models, 3-4 contact models, 2 company models live at once. This doc unblocks all consolidation work; keep it a doc-only story."
+      "notes": "[ARCH/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit found 3 deal models, 3-4 contact models, 2 company models live at once. This doc unblocks all consolidation work; keep it a doc-only story.",
+      "completionNotes": "Wrote docs/crm-canonical-model.md declaring the canonical table per entity (account/lead/customer=business_records; contact=companyContacts; company=business_records; pipeline=deals+pipelineStages/pipelineTemplates; activities=businessRecordActivities+polymorphic layer) with grounded consumer counts, deprecation + migration paths, and which CRMX story implements each. Canonical contact = companyContacts confirmed by live UI binding (/api/company-contacts); enhancedContacts/opportunities reclassified as Salesforce-sync staging (not CRM objects of record). Added @deprecated JSDoc banners to companies, enhancedContacts, opportunities, leadContacts, customerContacts, dealStages, dealActivities in shared/schema.ts pointing at the doc. Linked from CLAUDE.md. Doc-only: 0 runtime change, tsc clean."
     },
     {
       "id": "CRMX-003",

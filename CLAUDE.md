@@ -74,13 +74,13 @@ await db.query.customers.findMany();
 
 **Never define `requireAuth` locally.** Import from centralized locations.
 
-| Middleware | Import From | Use Case |
-|---|---|---|
-| `requireAuth` | `./replitAuth` or `./auth-setup` | Standard (JWT + session fallback) |
-| `requireSupabaseAuth` | `./middleware/supabase-auth` | Strict JWT only |
-| `protectedRoute` | `./middleware/supabase-auth` | JWT + Auth + Tenant context (recommended) |
-| `platformAdminRoute` | `./middleware/supabase-auth` | Platform admin only |
-| `requirePermission` | `./middleware/enhanced-rbac-middleware` | RBAC checks |
+| Middleware            | Import From                             | Use Case                                  |
+| --------------------- | --------------------------------------- | ----------------------------------------- |
+| `requireAuth`         | `./replitAuth` or `./auth-setup`        | Standard (JWT + session fallback)         |
+| `requireSupabaseAuth` | `./middleware/supabase-auth`            | Strict JWT only                           |
+| `protectedRoute`      | `./middleware/supabase-auth`            | JWT + Auth + Tenant context (recommended) |
+| `platformAdminRoute`  | `./middleware/supabase-auth`            | Platform admin only                       |
+| `requirePermission`   | `./middleware/enhanced-rbac-middleware` | RBAC checks                               |
 
 ```typescript
 import { requireAuth } from '../replitAuth';
@@ -105,6 +105,8 @@ app.get('/leads', requirePermission(['sales.lead.view_own', 'sales.lead.view_tea
 ### Unified Business Records
 
 Leads and customers share `business_records`. Status field determines state. Lead-to-customer conversion = status update (preserves history).
+
+**Canonical CRM object model:** the CRM is mid-migration with duplicate models per entity. The canonical table for each entity (contact = `companyContacts`, company/account = `business_records`, pipeline = `deals` + `pipelineStages`/`pipelineTemplates`) and the deprecated duplicates + migration path are recorded in `docs/crm-canonical-model.md` (CRMX-002). Deprecated tables carry `@deprecated` banners. Bind new CRM work to the canonical tables only.
 
 ## Database
 
@@ -169,27 +171,31 @@ DELETE /api/[resource]/:id
 
 ## Quick Reference
 
-| Task | Where |
-|---|---|
-| Add API endpoint | `server/routes-*.ts` + register in `server/routes.ts` |
-| Add page | `client/src/pages/*.tsx` + route in `client/src/App.tsx` |
-| Add schema | `shared/schema.ts` or new `shared/*-schema.ts` |
-| User/tenant ID | `getUserId` / `getTenantId` from `../utils/auth-helpers` |
-| RBAC | `server/middleware/enhanced-rbac-middleware.ts` |
-| Query scoping | `server/middleware/hierarchical-query-builder.ts` |
+| Task             | Where                                                    |
+| ---------------- | -------------------------------------------------------- |
+| Add API endpoint | `server/routes-*.ts` + register in `server/routes.ts`    |
+| Add page         | `client/src/pages/*.tsx` + route in `client/src/App.tsx` |
+| Add schema       | `shared/schema.ts` or new `shared/*-schema.ts`           |
+| User/tenant ID   | `getUserId` / `getTenantId` from `../utils/auth-helpers` |
+| RBAC             | `server/middleware/enhanced-rbac-middleware.ts`          |
+| Query scoping    | `server/middleware/hierarchical-query-builder.ts`        |
 
 ## Feature Modules
 
 ### Address Book Manager (ABK-###)
+
 Multi-vendor MFP address book import/edit/export. Source PRD: `tasks/prd-address-book-manager.md`.
+
 - Schema: `shared/address-book-schema.ts` · Types: `shared/address-book-types.ts`
 - Edge function: `supabase/functions/address-books/index.ts`
 - Credential vault (AES-256-GCM): `server/services/address-book/credential-vault.ts` (env: `ADDRESS_BOOK_MASTER_KEY`)
 
 ### Platform Admin Blog System (US-BLOG-###)
+
 Fully autonomous content marketing platform for Printyx's marketing site. Source PRD: `blog-system-prd.json`. Merge tool: `scripts/merge-blog-prd.mjs`.
 
 **Layout:**
+
 - `shared/blog-schema.ts` — 15 Drizzle tables; re-exported from `shared/schema.ts`
 - `supabase/functions/_shared/blog/` — adapters + helpers shared across edge functions
   - `audit-log.ts` — `writeAuditLog(admin, withRequestContext(req, entry))` — every mutating blog endpoint MUST use this
@@ -211,6 +217,7 @@ Fully autonomous content marketing platform for Printyx's marketing site. Source
 **Permissions:** `blog.post.{view,edit,publish,delete}`, `blog.{brand_voice,style_guide}.edit`, `blog.distribution.publish`, `blog.analytics.view`, `blog.refresh.manage`, `blog.agent.toggle`. Granted by default to PLATFORM_ADMIN (all 10) and COMPANY_ADMIN (editorial subset; no destructive or kill-switch perms).
 
 **Patterns established for new blog edge functions:**
+
 1. Auth: `createSupabaseClient(req)` → `auth.getUser(jwt)`. Permission gate via the role-string + `app_metadata.permissions[]` hybrid (e.g., `'blog.brand_voice.edit'`).
 2. Tenant: read from `app_metadata.tenantId` with fallbacks; never trust query params.
 3. DB writes: use `createSupabaseServiceClient()` (bypasses RLS). Filter every query by `tenant_id`.
@@ -225,6 +232,7 @@ Fully autonomous content marketing platform for Printyx's marketing site. Source
 Before committing: `npm run check && npm run build && npm run format:write && npm run lint`.
 
 Common mistakes:
+
 1. Missing `tenantId` filter (security)
 2. Skipping Zod validation
 3. Defining `requireAuth` locally instead of importing
