@@ -98,6 +98,10 @@ export default function ServiceHub() {
         customerId: t.customerId || t.customerId || '',
         equipmentId: t.equipmentId || t.equipmentId || null,
         assignedTo: t.assignedTo || t.assignedTo || null,
+        // Real column is assigned_technician_id/assignedTechnicianId; the page's
+        // filters read `technicianId`, so normalize it here (was undefined for
+        // every real ticket, making them all read as "unassigned").
+        technicianId: t.assignedTechnicianId || t.assigned_technician_id || t.technicianId || null,
         createdAt: t.createdAt || t.createdAt || '',
         updatedAt: t.updatedAt || t.updatedAt || '',
         scheduledDate: t.scheduled_date || t.scheduledDate || null,

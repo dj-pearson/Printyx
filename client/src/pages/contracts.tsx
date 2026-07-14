@@ -89,7 +89,6 @@ export default function Contracts() {
     monthlyBase: '',
     blackRate: '',
     colorRate: '',
-    terms: '',
   });
 
   // Fetch active/accepted quotes for building contracts
@@ -154,6 +153,9 @@ export default function Contracts() {
       if (!customerId) {
         throw new Error('No customer ID available.');
       }
+      // NOTE: the real `contracts` table has no sourceQuoteId or terms column —
+      // sending them was a silent no-op. Bind only to real columns. (Persisting a
+      // quote->contract link would need a schema migration; tracked separately.)
       const payload: any = {
         customerId,
         startDate: contractForm.startDate,
@@ -162,8 +164,6 @@ export default function Contracts() {
         blackRate: contractForm.blackRate ? Number(contractForm.blackRate) : undefined,
         colorRate: contractForm.colorRate ? Number(contractForm.colorRate) : undefined,
         status: 'active',
-        sourceQuoteId: selectedQuoteId || undefined,
-        terms: contractForm.terms,
       };
       return await apiRequest('/api/contracts', 'POST', payload);
     },
@@ -463,11 +463,6 @@ export default function Contracts() {
                           }
                         />
                       </div>
-                      <Input
-                        placeholder="Terms & conditions"
-                        value={contractForm.terms}
-                        onChange={(e) => setContractForm((p) => ({ ...p, terms: e.target.value }))}
-                      />
                       <div className="flex justify-end gap-2 pt-2 col-span-full">
                         <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                           Cancel

@@ -50,8 +50,6 @@ import {
   CheckCircle,
   AlertCircle,
   Activity,
-  Wrench,
-  Award,
 } from 'lucide-react';
 
 // Types
@@ -414,19 +412,6 @@ export default function TechnicianManagement() {
                               <SelectItem value="offline">Offline</SelectItem>
                             </SelectContent>
                           </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="employeeId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Employee ID (optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Auto-generated if blank" {...field} />
-                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
