@@ -81,6 +81,7 @@ import {
   X,
   Bot,
   MessageSquare,
+  Mail,
   Search,
   Mic,
   Video,
@@ -223,6 +224,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     children: [
       { title: 'Leads', path: '/leads-management', icon: UserPlus },
       { title: 'Web Forms', path: '/marketing/forms', icon: FileText },
+      { title: 'Email Sequences', path: '/marketing/sequences', icon: Mail },
       { title: 'Prospects', path: '/prospects', icon: Users },
       { title: 'Customers', path: '/customers', icon: UserCheck },
       { title: 'Contacts', path: '/contacts', icon: Users },

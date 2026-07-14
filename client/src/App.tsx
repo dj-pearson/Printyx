@@ -232,6 +232,7 @@ const CustomerNumberSettings = React.lazy(() => import('@/pages/CustomerNumberSe
 const CustomFieldsSettings = React.lazy(() => import('@/pages/CustomFieldsSettings'));
 const WebFormsPage = React.lazy(() => import('@/pages/marketing/WebFormsPage'));
 const WebFormBuilder = React.lazy(() => import('@/pages/marketing/WebFormBuilder'));
+const EmailSequencesPage = React.lazy(() => import('@/pages/marketing/EmailSequencesPage'));
 const HostedFormPage = React.lazy(() => import('@/pages/HostedFormPage'));
 const FinancialForecasting = React.lazy(() => import('@/pages/FinancialForecasting'));
 const FinancialIntelligenceDashboard = React.lazy(
@@ -881,6 +882,7 @@ function Router() {
                 <Route path="/settings/custom-fields" component={CustomFieldsSettings} />
                 <Route path="/marketing/forms/:id" component={WebFormBuilder} />
                 <Route path="/marketing/forms" component={WebFormsPage} />
+                <Route path="/marketing/sequences" component={EmailSequencesPage} />
                 <Route path="/monitoring-clients">
                   {() => (
                     <ProtectedRoute
