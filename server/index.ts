@@ -384,6 +384,16 @@ app.use((req: any, res, next) => {
       serverLog.warn({ err: error as Error }, 'Failed to initialize cron jobs');
     }
 
+    // CRMX-008: start the durable workflow-automation sweeper (resumes delayed
+    // executions + reclaims any queued executions stranded by a restart).
+    try {
+      const { startWorkflowRuntime } = await import('./services/workflow-runtime');
+      startWorkflowRuntime();
+      serverLog.info('Workflow runtime sweeper started');
+    } catch (error) {
+      serverLog.warn({ err: error as Error }, 'Failed to start workflow runtime sweeper');
+    }
+
     // Initialize email monitors for all enabled tenants
     try {
       const { startAllEmailMonitors } = await import('./services/email-monitor-service');

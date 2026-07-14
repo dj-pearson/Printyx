@@ -325,6 +325,27 @@ router.post('/api/business-records', requireAuth, async (req: Request, res: Resp
       createdBy: userId,
     });
 
+    // CRMX-008: fire the record.created trigger into the workflow runtime.
+    // Wrapped so automation can never fail the create. Idempotent per record.
+    try {
+      const { dispatchWorkflowEvent } = await import('./services/workflow-runtime');
+      await dispatchWorkflowEvent(
+        tenantId,
+        `record.created`,
+        {
+          recordId: newRecord.id,
+          businessRecordId: newRecord.id,
+          recordType: newRecord.recordType,
+          companyName: newRecord.companyName,
+          status: newRecord.status,
+          ownerId: newRecord.ownerId,
+        },
+        { dedupeKey: `created:${newRecord.id}`, initiatedBy: userId },
+      );
+    } catch (e) {
+      log.warn('record.created workflow dispatch failed (non-fatal):', e as Error);
+    }
+
     res.status(201).json(newRecord);
   } catch (error) {
     log.error('Error creating business record:', error);
@@ -403,6 +424,31 @@ router.patch(
         description: `Record updated`,
         createdBy: userId,
       });
+
+      // CRMX-008: fire the record.updated trigger. Non-fatal; dedupe by the
+      // update timestamp so a retry of the same request doesn't re-enroll.
+      try {
+        const { dispatchWorkflowEvent } = await import('./services/workflow-runtime');
+        await dispatchWorkflowEvent(
+          tenantId,
+          `record.updated`,
+          {
+            recordId: updated.id,
+            businessRecordId: updated.id,
+            recordType: updated.recordType,
+            companyName: updated.companyName,
+            status: updated.status,
+            ownerId: updated.ownerId,
+            changedFields: Object.keys(validation.data),
+          },
+          {
+            dedupeKey: `updated:${updated.id}:${updateData.updatedAt.getTime()}`,
+            initiatedBy: userId,
+          },
+        );
+      } catch (e) {
+        log.warn('record.updated workflow dispatch failed (non-fatal):', e as Error);
+      }
 
       res.json(updated);
     } catch (error) {

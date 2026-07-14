@@ -415,6 +415,13 @@ router.post('/workflows/:id/execute', async (req: Request, res: Response) => {
       eventData: { userId: user.id, userEmail: user.email },
     });
 
+    // CRMX-008: actually run it. Best-effort inline kick; the durable sweeper is
+    // the backstop and executeWorkflow claims the row atomically (no double-fire).
+    const { executeWorkflow } = await import('../services/workflow-execution-service');
+    void executeWorkflow(execution.id).catch((e) =>
+      log.error('Inline workflow execution kick failed:', e),
+    );
+
     res.json(execution);
   } catch (error) {
     log.error('Execute workflow error:', error);
@@ -493,6 +500,78 @@ router.get('/executions', async (req: Request, res: Response) => {
   } catch (error) {
     log.error('Get tenant executions error:', error);
     res.status(500).json({ error: 'Failed to fetch executions' });
+  }
+});
+
+// POST /api/executions/:id/cancel - Kill switch for an in-flight execution
+router.post('/executions/:id/cancel', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const execution = await storage.getWorkflowExecution(req.params.id);
+    if (!execution || execution.tenantId !== user.tenantId) {
+      return res.status(404).json({ error: 'Execution not found' });
+    }
+    if (['completed', 'failed', 'cancelled'].includes(execution.status)) {
+      return res.status(400).json({ error: `Execution already ${execution.status}` });
+    }
+
+    const { cancelExecution } = await import('../services/workflow-runtime');
+    const cancelled = await cancelExecution(execution.id, user.tenantId, user.id);
+    if (!cancelled) {
+      return res.status(409).json({ error: 'Execution could not be cancelled (state changed)' });
+    }
+    res.json({ success: true, status: 'cancelled' });
+  } catch (error) {
+    log.error('Cancel execution error:', error);
+    res.status(500).json({ error: 'Failed to cancel execution' });
+  }
+});
+
+// POST /api/workflow-events/dispatch - Fire a business event into the runtime.
+// The generic seam trigger sources call; also usable for testing automations.
+router.post('/workflow-events/dispatch', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const { eventName, payload, dedupeKey } = req.body || {};
+    if (!eventName || typeof eventName !== 'string') {
+      return res.status(400).json({ error: 'eventName is required' });
+    }
+    const { dispatchWorkflowEvent } = await import('../services/workflow-runtime');
+    const enrolled = await dispatchWorkflowEvent(
+      user.tenantId,
+      eventName,
+      (payload as Record<string, any>) || {},
+      { dedupeKey, initiatedBy: user.id },
+    );
+    res.json({ eventName, enrolled });
+  } catch (error) {
+    log.error('Dispatch workflow event error:', error);
+    res.status(500).json({ error: 'Failed to dispatch workflow event' });
+  }
+});
+
+// POST /api/workflow-runtime/tick - Manually run one durable sweeper pass.
+router.post('/workflow-runtime/tick', async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const { tickWorkflowRuntime } = await import('../services/workflow-runtime');
+    const result = await tickWorkflowRuntime();
+    res.json(result);
+  } catch (error) {
+    log.error('Workflow runtime tick error:', error);
+    res.status(500).json({ error: 'Failed to run workflow runtime tick' });
   }
 });
 
