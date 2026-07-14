@@ -281,6 +281,24 @@ export type {
   InsertRecordLayoutConfig,
 } from './crm-views-schema';
 
+// Re-export custom fields schema (CRMX-003)
+export {
+  customFieldDefinitions,
+  customFieldObjectTypeEnum,
+  customFieldTypeEnum,
+  insertCustomFieldDefinitionSchema,
+  updateCustomFieldDefinitionSchema,
+  CUSTOM_FIELD_OBJECT_TYPES,
+  CUSTOM_FIELD_TYPES,
+} from './custom-fields-schema';
+
+export type {
+  CustomFieldDefinition,
+  InsertCustomFieldDefinition,
+  CustomFieldObjectType,
+  CustomFieldType,
+} from './custom-fields-schema';
+
 // Re-export product pricing schemas
 export {
   companyPricingSettings,

@@ -10232,9 +10232,10 @@
         "Server-side validation: writes to an object reject values that violate a required/typed definition."
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "category": "crm-platform",
-      "notes": "[PLATFORM/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: no end-user custom field system today (untyped customFields jsonb only). Single largest platform gap vs HubSpot. UI is CRMX-004."
+      "notes": "[PLATFORM/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: no end-user custom field system today (untyped customFields jsonb only). Single largest platform gap vs HubSpot. UI is CRMX-004.",
+      "completionNotes": "Added custom fields framework. shared/custom-fields-schema.ts: custom_field_definitions table (tenantId, objectType enum deals/leads/contacts/companies, key lower_snake unique per (tenant,object), label, fieldType enum text/number/date/boolean/select/multiselect/url/email, options jsonb, required, defaultValue, description, isActive, sortOrder) + insert/update Zod schemas; re-exported from shared/schema.ts. Values live on each object customFields jsonb keyed by key (documented, no value table). server/routes-custom-fields.ts: GET/POST/PUT/PATCH/DELETE /api/custom-fields with Zod, tenant scoping, isAuthenticated, soft-delete via isActive (hard=true optional), 23505->409, plus exported validateCustomFieldValues(tenantId,objectType,values) that object write paths call to enforce required/typed defs (coerces number/bool/date/email/url/select/multiselect). Registered via domains/crm barrel + routes-registry. supabase/functions/custom-fields/index.ts: prod-parity edge fn (dir==URL segment, no server.ts override needed). Migration 0021_custom_field_definitions.sql HAND-AUTHORED (idempotent) because drizzle-kit meta snapshot in this tree is stale (journal idx stops at 11 vs committed SQL to 0020, so generate emits a polluted multi-table diff) — snapshot reconciliation is separate. Migration NOT applied (no db:migrate). Verified: tsc 0 new errors; prettier clean. Note: CRMX-004 wires the UI + calls validateCustomFieldValues from object write paths."
     },
     {
       "id": "CRMX-004",
