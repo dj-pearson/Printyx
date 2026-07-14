@@ -10478,6 +10478,276 @@
       "passes": false,
       "category": "crm-mobile",
       "notes": "[MOBILE/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: 3 parallel mobile apps, none fully hardened. Largest single effort — schedule last."
+    },
+    {
+      "id": "AUDIT-001",
+      "title": "[SECURITY/CRITICAL] Cross-tenant IDOR — JWT tenant claim must win over x-tenant-id header in core-CRM edge functions",
+      "description": "As a platform operator, I need every production edge function to derive tenant scope from the verified JWT (app_metadata.tenantId) and reject a mismatched x-tenant-id header, so that an authenticated user of any tenant cannot read or write another tenant's data by spoofing the header.",
+      "acceptanceCriteria": [
+        "In supabase/functions/{customers,deals,leads,quotes,opportunities,contacts,companies,business-records,admin}/index.ts, replace the inline resolver that reads req.headers.get('x-tenant-id') FIRST with the shared resolveTenantId/requireAuth from supabase/functions/_shared/auth.ts (JWT app_metadata first; header only as a fallback AND only when it equals the JWT tenant or the caller is a platform admin)",
+        "Grep the whole supabase/functions tree for \"req.headers.get('x-tenant-id') ||\" and confirm no handler orders the header before the JWT claim (12 files match today; 9 are genuine offenders, the 3 blog/monitoring ones already order app_metadata first)",
+        "Add a regression test (or edge smoke test) proving a JWT for tenant A + header x-tenant-id: tenantB returns 403, not tenant B's rows",
+        "Mirror the Express reference behavior in server/middleware/tenancy.ts validateTenantHeader (403 TENANT_ACCESS_DENIED unless platform admin)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Found by security audit 2026-07-14. Systemic cross-tenant read+write on the core CRM in PRODUCTION (frontend calls edge fns directly). Service-role client bypasses RLS, so the header value is the only scoping. Correct reference impls already exist: _shared/auth.ts resolveTenantId (lines ~92-130) and server/middleware/tenancy.ts (lines 55-170). admin/index.ts:121 and customers/index.ts:30 are representative offenders.",
+      "category": "security"
+    },
+    {
+      "id": "AUDIT-002",
+      "title": "[SECURITY/HIGH] Remove or gate unauthenticated service-role endpoints (db-check, mobile-logs)",
+      "description": "As a platform operator, I need diagnostic and log-sink edge functions to require authentication, so that anonymous callers cannot enumerate the database schema or inject arbitrary rows through the RLS-bypassing service-role client.",
+      "acceptanceCriteria": [
+        "supabase/functions/db-check/index.ts: delete the function OR gate it behind requireAuth + platform-admin; never return information_schema.tables or sample rows via the service-role client without auth",
+        "supabase/functions/mobile-logs/index.ts: require the mobile app JWT (or a signed device token), derive tenant_id from it, cap entries.length and per-entry size, and add basic rate limiting",
+        "Confirm no other edge function calls createSupabaseServiceClient() before any auth.getUser check (grep supabase/functions for createSupabaseServiceClient and verify each has an auth gate or is intentionally public: signup, public-calculator, share-link)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Found by security audit 2026-07-14. db-check (index.ts:5-46) discloses full public schema + tasks/projects sample rows with no JWT. mobile-logs (index.ts:16-70) allows anonymous unbounded inserts into mobile_app_logs (log poisoning + storage DoS + audit-signal spoofing).",
+      "category": "security"
+    },
+    {
+      "id": "AUDIT-003",
+      "title": "[SECURITY/MEDIUM] Harden root-admin raw SQL executor with a read-only DB role instead of regex parsing",
+      "description": "As a platform operator, I need the root-admin SQL console to be safe by construction rather than by a home-grown keyword/semicolon regex, so that a crafted query using escaped quotes or dollar-quoting cannot slip past the filter.",
+      "acceptanceCriteria": [
+        "server/routes-root-admin.ts (~lines 483-508): run the submitted query inside a read-only transaction (SET TRANSACTION READ ONLY) using a dedicated low-privilege DB role with SELECT-only grants",
+        "Remove reliance on the .replace(/'[^']*'/g,'') literal-stripping regex as the sole safety gate (it does not handle '' escapes or $$ dollar-quoting)",
+        "Add a test that a query with a dollar-quoted or escaped-quote payload cannot execute a second statement or a write",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Found by security audit 2026-07-14. Defense-in-depth: route is already requireRootAdmin-gated and SELECT-only, so this hardens rather than fixes an external break.",
+      "category": "security"
+    },
+    {
+      "id": "AUDIT-004",
+      "title": "[PERF/HIGH] Eliminate the edge-router per-response double JSON parse + recursive date walk",
+      "description": "As a platform operator, I need the edge dispatcher to stop buffering, JSON.parsing, recursively walking, and re-stringifying every response body, so that the platform-wide CPU/memory tax on 100% of prod JSON traffic is removed and large list responses stop paying an O(payload)-twice cost.",
+      "acceptanceCriteria": [
+        "supabase/functions/server.ts (lines 172-182 + recursive walker 19-38): stop unconditionally doing const body = await response.json(); normalizeDates(body); re-stringify on every response",
+        "Gate date normalization to only the callers that need it (e.g. iOS User-Agent/header), or move it into the specific handlers/PostgREST that emit PG timestamps",
+        "At minimum, skip normalization for bodies over a size threshold and add a cheap length/charAt prefilter before running PG_TIMESTAMP_RE.test on every string value",
+        "Verify streaming responses are no longer buffered by the router",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found by performance audit 2026-07-14. Highest-leverage single change: every prod response currently pays this. Confirm no handler depends on the router mutating its dates before changing the default.",
+      "category": "performance"
+    },
+    {
+      "id": "AUDIT-005",
+      "title": "[PERF/HIGH] Cut two serialized auth round-trips per request (local JWT verify + role cache)",
+      "description": "As a platform operator, I need edge functions to avoid an HTTP round-trip to GoTrue (auth.getUser) plus a second role-lookup query on every request, so that per-request latency across the whole platform drops.",
+      "acceptanceCriteria": [
+        "Verify the JWT signature locally in supabase/functions/_shared/auth.ts (jose + GoTrue JWKS/secret) using claims already in the token, instead of calling supabase.auth.getUser(jwt) on every request; OR cache getUser results by token-hash with a short TTL",
+        "For functions that additionally query users->roles for gating (e.g. platform-analytics/index.ts:70-86, platform-cs/index.ts:32-43, deployment-readiness/index.ts:53-57), cache the role row by token-hash/user-id with a short TTL",
+        "Confirm platform-admin / role-level gates still hold after the change (add/keep a test)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found by performance audit 2026-07-14. Two serialized network hops on every prod request in ~212 functions. Local verification must still honor token revocation expectations — document the TTL tradeoff.",
+      "category": "performance"
+    },
+    {
+      "id": "AUDIT-006",
+      "title": "[PERF/HIGH] Replace full-table scans with SQL aggregates + pagination in analytics, billing, AP/AR",
+      "description": "As a platform operator, I need dashboard and ledger endpoints to compute counts/sums in Postgres and paginate list results, so that they stop fetching entire tables into JS (which also silently truncates at PostgREST's 1000-row cap and produces wrong numbers as data grows).",
+      "acceptanceCriteria": [
+        "platform-analytics/index.ts: replace select('*') + JS reduce/filter (helpers ~100-114 used at 121-129, 441, 537-543, 627-633, 685-688, 761-763) with { count: 'exact', head: true } for counts, narrowed selects for sums, or a Postgres RPC/view; run the independent fetches in revenue-metrics (121-129) and churn-analysis (737-763) via Promise.all",
+        "billing/index.ts (141-186): compute revenue/outstanding/overdue/MRR via SQL aggregates/RPC instead of loading every invoice row for the tenant",
+        "account-payable/index.ts (132-141) and account-receivable/index.ts (150-160): add .range() pagination (frontend already handles { data, total }); compute /summary buckets with filtered aggregate queries instead of fetching all rows",
+        "platform-cs/index.ts (75-82) and platform-analytics health-trends (627-657): average overall_score with a SQL avg() rather than fetching every health-score row",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found by performance audit 2026-07-14. These are the biggest data-volume time bombs as tenants grow, and the 1000-row cap makes the metrics wrong (not just slow). platform-cs already does head-count Promise.all correctly — mirror that pattern.",
+      "category": "performance"
+    },
+    {
+      "id": "AUDIT-007",
+      "title": "[PERF/HIGH] Fix backend N+1 query fan-out across dashboards and list endpoints",
+      "description": "As a platform operator, I need list/dashboard endpoints to batch their per-row lookups into single grouped/IN queries, so that response time stops scaling linearly with fleet/team/pipeline size and the connection pool stops being hammered.",
+      "acceptanceCriteria": [
+        "server/routes-remote-monitoring.ts (29-52, 450): replace 2-queries-per-device with one DISTINCT ON (device_id) latest-metrics query + one grouped 24h aggregate via inArray(deviceId, ids)",
+        "server/routes-technician-management.ts (92-118): replace 2 count queries per technician with a single GROUP BY technicianId using count(*) FILTER (WHERE ...)",
+        "server/routes-root-admin.ts (317-333, and enrich loops at 165/398/608/741): select roles.name/level and tenants.name in the existing joined base query and delete the per-row enrichment lookups",
+        "server/routes-service-dispatch.ts (699-729): collect all part numbers and do one inArray(partNumber, all) query for batch-check-parts",
+        "server/routes-address-books.ts (218-227): replace per-book count with one GROUP BY bookId over inArray(bookId, ...)",
+        "server/routes-today-dashboard.ts (137-148): add a limit and push the stale (>7 days) predicate into SQL",
+        "server/routes-chatbot.ts (313-326): replace up-to-50 per-rep proposal scans with one GROUP BY assignedTo count(*)/max(updatedAt) over inArray(assignedTo, repIds)",
+        "server/routes-predictive-maintenance-hub.ts (40,61,117): batch per-unit metrics with inArray(serialNumber, [...]) and paginate the equipment base query",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found by performance audit 2026-07-14. Grouped here because they share one fix pattern (batch with GROUP BY / inArray). Also add limits to unbounded storage.ts list methods (getEquipment :2871, getContracts :2883, getServiceTickets :2895, getMeterReadings :2957, getInvoices :2997) called on request paths (e.g. routes-workflow-mobile.ts:2059-2060 loads the whole equipment table to find one row).",
+      "category": "performance"
+    },
+    {
+      "id": "AUDIT-008",
+      "title": "[PERF/HIGH] Fix N+1 writes and loop-invariant re-fetches in invoice/meter billing generation",
+      "description": "As a platform operator, I need billing runs to bulk-insert invoices and hoist loop-invariant reads, so that a run over hundreds of meter readings does not take minutes and does not re-read/re-write the same customer balance N times (a race hazard).",
+      "acceptanceCriteria": [
+        "supabase/functions/billing/handlers/generate-invoices.ts (152-173): replace per-reading insert(...).single() + meter_readings.update(...) inside the for loop with a bulk insert([...]) and a batched update per invoice-id group (or an RPC)",
+        "server/routes-workflow-mobile.ts (2154-2224): hoist getContractTieredRatesByContract and the customer fetch out of the loop (they are loop-invariant for a contract), batch-insert invoices, and apply one summed balance update instead of N sequential updates",
+        "Confirm produced invoice amounts/totals are unchanged by the batching (test against a known set of readings)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found by performance audit 2026-07-14. The reads are already batched in generate-invoices.ts (60-88); only the writes are N+1. The mobile path does 5 sequential queries per reading incl. an invariant tieredRates re-fetch.",
+      "category": "performance"
+    },
+    {
+      "id": "AUDIT-009",
+      "title": "[PERF/HIGH] Add missing indexes on 10 hot tables (tenant/status/created_at + FK columns)",
+      "description": "As a platform operator, I need composite indexes on the hottest multi-tenant tables, so that the most common list/join/aggregate queries stop doing sequential scans that get slower with every row added.",
+      "acceptanceCriteria": [
+        "Add Drizzle index blocks + a generated migration for: proposal_line_items (proposal_id, line_number) and (tenant_id); proposals (tenant_id, proposal_type, status) and (tenant_id, created_at DESC); audit_logs (tenant_id, timestamp DESC) and (tenant_id, resource, resource_id); invoices (tenant_id, invoice_status), (tenant_id, customer_id), (external_customer_id); equipment (tenant_id, customer_id) and (tenant_id, equipment_status); contracts (tenant_id, customer_id) and (tenant_id, status)",
+        "Also index: accounts_payable (tenant_id, status, due_date); accounts_receivable (tenant_id, status, due_date); business_record_activities (business_record_id, created_at DESC) and (tenant_id); users (tenant_id); inventory_items (tenant_id)",
+        "Verify against the live DB with pg_indexes which of these already exist before generating the migration (journal reportedly stops at 0009 — but the schema files define NO indexes for these 10 tables, so new index blocks are required, not just applying pending migrations)",
+        "npm run db:generate produces the migration SQL; review it; do not db:push to production",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found by performance/index audit 2026-07-14. business_records, service_tickets, meter_readings, signature_requests, blog_audit_log ARE already indexed (baseline 0000) — do not duplicate. proposals is the live quotes table (proposal_type='quote'); its only index today is proposals_share_token_key (pending migration 0017).",
+      "category": "performance"
+    },
+    {
+      "id": "AUDIT-010",
+      "title": "[PERF/MEDIUM] Remove RBAC middleware write-on-read and upsert the permission cache",
+      "description": "As a platform operator, I need the permission cache to not issue a blocking UPDATE on the hottest request path and to stop inserting duplicate rows, so that authorized requests don't pay a write and permission_cache doesn't bloat until cleanup.",
+      "acceptanceCriteria": [
+        "server/middleware/enhanced-rbac-middleware.ts (~134): make the cacheHits increment fire-and-forget (or drop it) instead of awaiting a db.update on every L2 cache hit",
+        "setCachedPermissions (~164): upsert on (userId, orgContext, tenantId) instead of always INSERTing a new row",
+        "Confirm permission decisions are unchanged (existing L1/L2 cache behavior preserved)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Found by performance audit 2026-07-14. Otherwise the middleware is well-cached (L1 memory + L2 table); this is the one hot-path write.",
+      "category": "performance"
+    },
+    {
+      "id": "AUDIT-011",
+      "title": "[DATA-CONTRACT/HIGH] Fix invoices camelCase-vs-snake_case response-shape mismatch on billing pages",
+      "description": "As a billing user, I need invoice lists to render the number, customer, amount and due date, so that the billing pages don't show blank numbers, $NaN totals, and Invalid Date against the production billing edge function which returns raw snake_case rows.",
+      "acceptanceCriteria": [
+        "client/src/pages/AdvancedBillingEngine.tsx (1230,1237,1577,1596,1608) and client/src/pages/Invoices.tsx (224,267): read invoice_number/total_amount/due_date/invoice_status/balance_due (or normalize once at the query boundary) instead of raw invoice.invoiceNumber/totalAmount/dueDate that only exist in the mock shape",
+        "Prefer a single normalizeInvoice() at the useQuery boundary (mirror the defensive dual-casing already in client/src/pages/Billing.tsx:93-97) so every consumer reads consistent keys",
+        "Verify against the billing edge fn response shape (supabase/functions/billing) documented in CLAUDE.md: total_amount/amount_paid/balance_due/invoice_status/paid_date",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found by route/response-shape audit 2026-07-14. Same failure class as QuoteView/ESignatureIntegration/PlatformCustomerSuccess. Billing.tsx is already defensive; AdvancedBillingEngine.tsx and Invoices.tsx are not.",
+      "category": "data-contract"
+    },
+    {
+      "id": "AUDIT-012",
+      "title": "[ROUTE/HIGH] Fix leases edge fn pathParts[1] off-by-one after server.ts strip, and sweep other offenders",
+      "description": "As a platform operator, I need edge functions to read the resource segment from the path the way the dispatcher actually delivers it, so that routes don't resolve to the wrong (or undefined) sub-resource in production.",
+      "acceptanceCriteria": [
+        "supabase/functions/leases/index.ts (~67): server.ts strips the function-name segment before invoking the handler, so const customerId = pathParts[1] is off-by-one — switch to normalizePath(pathname, 'leases') and read from pathParts[0] (or the correct index)",
+        "Grep supabase/functions for pathParts[1] and verify each remaining hit against the stripped path shape; fix the genuinely off-by-one ones (integrations fn is a known non-migrated case tracked elsewhere — note, don't duplicate)",
+        "Smoke-test the leases endpoints against the stripped path shape",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found by route audit 2026-07-14. Same bug class documented in CLAUDE.md for the edge router (strips function name; read resource from pathParts[0]).",
+      "category": "route-parity"
+    },
+    {
+      "id": "AUDIT-013",
+      "title": "[UI/CRITICAL] Fix phantom-shape CRUD pages (TechnicianManagement SQL-breaking, Contracts, ServiceHub)",
+      "description": "As a user, I need technician, contract, and service-ticket pages to read and write the real table columns, so that lists aren't blank, creates don't silently drop fields, and the technician endpoint doesn't throw a SQL error.",
+      "acceptanceCriteria": [
+        "client/src/pages/TechnicianManagement.tsx: rebind the Technician interface (58-79) and form schema (90-103) to the real technicians columns (firstName/lastName not name, skills not specialties, isActive boolean not status string, currentLocation, isAvailable boolean); AND fix server/routes-technician-management.ts GET (66-89) which db.select()s nonexistent columns and throws a SQL error (not just blanks)",
+        "client/src/pages/Contracts.tsx: remove phantom create-payload keys sourceQuoteId and terms (157-168) that the contracts table has no columns for (or add the columns via migration if genuinely needed)",
+        "client/src/pages/ServiceHub.tsx (197-206): read customerId/equipmentId/assignedTechnicianId (join for names) instead of the phantom ticket.customerName/equipmentModel/technicianId that break the filters and show blank cells",
+        "Grep for sibling pages built on the same phantom shapes before closing",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Found by frontend phantom-shape audit 2026-07-14. TechnicianManagement is worst: the Express GET itself selects columns that don't exist, so the page 500s rather than rendering blanks. Same recipe as the BATCH 7-12 phantom-shape fixes in CLAUDE.md. PurchaseOrders/BasicTaskManagement/inventory/CustomerNumberSettings were checked and are clean.",
+      "category": "frontend"
+    },
+    {
+      "id": "AUDIT-014",
+      "title": "[UI/HIGH] Fix broken navigation targets that land on the NotFound page",
+      "description": "As a user, I need drill-through links, customer-portal cards, and knowledge-base editor redirects to point at registered routes, so that clicking them doesn't dump me on the 404 page.",
+      "acceptanceCriteria": [
+        "Fix /admin/purchase-orders references (registered route is /purchase-orders) in: client/src/components/dashboard/BreachDetectionTiles.tsx, client/src/components/ModularDashboard.tsx, client/src/pages/Contracts.tsx, client/src/pages/PurchaseOrders.tsx",
+        "Register the 5 customer-portal sub-routes in client/src/App.tsx (or change the CustomerDashboard.tsx / ServiceRequestForm.tsx targets): /customer-portal/service-requests, /meter-readings, /supplies, /payments, /notifications",
+        "Fix knowledge-base article routes: ArticleEditor.tsx post-save redirect to /admin/knowledge-base/article/${id} and KnowledgeBaseAdmin.tsx Links (registered routes are /admin/knowledge-base/new and /edit/:id); and KnowledgeBaseAdminDashboard.tsx /admin/knowledge-base/article-editor",
+        "Re-grep for setLocation/navigate/href literals whose prefix isn't in App.tsx's 295 registered routes",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found by frontend navigation audit 2026-07-14. There IS a NotFound catch-all (App.tsx:1169) so these render the 404 page, not a blank screen. Sidebar hrefs all resolve correctly — only in-page navigation is broken. ~4 path families, ~11 references.",
+      "category": "frontend"
+    },
+    {
+      "id": "AUDIT-015",
+      "title": "[UI/HIGH] Replace masquerading mock data with real endpoints on 5 routed pages",
+      "description": "As a user, I need routed dashboards to show my tenant's real data, so that I'm not making decisions off hardcoded fixtures that look live.",
+      "acceptanceCriteria": [
+        "client/src/pages/AIEmployeeDashboard.tsx (/ai-employees, 96/156/209-210): wire useQuery to /api/ai-employees instead of useState(mockEmployees/mockAnalytics); AND fix server/routes/ai-employee-routes.ts (12-16) which stubs auth with mock-user-id/mock-tenant-id",
+        "client/src/pages/ConversationalAIDashboard.tsx (/conversational-ai-dashboard, 84/101/128/163-167/193): back messages/conversations/capabilities with real endpoints or gate the page as coming-soon; remove generateMockResponse setTimeout",
+        "client/src/pages/AISearchKnowledgeDashboard.tsx (/ai-search, 174-346): call the real knowledge/search API instead of unconditionally building mockEntities/mockAnalytics/mockResults",
+        "client/src/pages/ServiceDispatchOptimization.tsx (/service-dispatch): back mockMetrics/mockTechnicians/mockRoutes/mockAlerts with real data or gate coming-soon (currently shows fake techs, NYC coords, invented alerts)",
+        "client/src/pages/MobileOptimization.tsx (/mobile-optimization, 55-71): implement the missing /api/mobile/devices endpoint (no handler exists → device chart always mock) and remove the || mockMetrics/|| mockDeviceBreakdown fallbacks once real",
+        "For any page that legitimately has no backend yet, gate it behind an explicit coming-soon state rather than rendering fixtures as if real",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found by frontend mock-data audit 2026-07-14. These 5 are ROUTED and show fabricated numbers to users as real. GPT5Dashboard/SoftwareProducts sampleData are legit (mutation demo / CSV template) — do not touch.",
+      "category": "frontend"
+    },
+    {
+      "id": "AUDIT-016",
+      "title": "[UI/MEDIUM] Resolve dead unrouted mock dashboards (delete or wire)",
+      "description": "As a maintainer, I need dead mock-only dashboards that aren't routed or imported anywhere to be either removed or properly wired, so that they don't rot into false 'existing feature' signal.",
+      "acceptanceCriteria": [
+        "Decide per page (delete vs wire to a real endpoint): client/src/pages/AIDocumentationDashboard.tsx (server GET /api/documents in ai-documentation-routes.ts also returns mock), MeetingSchedulingDashboard.tsx, MeetingTranscriptionDashboard.tsx, AdvancedWorkflowsDashboard.tsx",
+        "None of these are registered in App.tsx or imported by any live page — confirm before deleting",
+        "If kept, register the route and wire the real backend; if deleted, remove the file and any dangling imports",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Found by frontend mock-data audit 2026-07-14. Distinguish MeetingTranscriptionDashboard.tsx (dead) from the routed MeetingTranscription.tsx (/meeting-transcription) — verify the routed one separately.",
+      "category": "frontend"
+    },
+    {
+      "id": "AUDIT-017",
+      "title": "[CONFIG/HIGH] Document required env vars and make critical integrations fail loud in production",
+      "description": "As a platform operator, I need every required environment variable documented and critical integrations to error (not silently simulate) when their config is missing in production, so that a missing key surfaces at deploy time instead of silently disabling a feature that looks healthy.",
+      "acceptanceCriteria": [
+        "Add the 12 undocumented-but-required vars to the appropriate .env.example files: ANTHROPIC_API_KEY, SENDGRID_API_KEY (+RESEND_API_KEY), INTERNAL_CRON_TOKEN, BACKUP_GCS_BUCKET, SALESFORCE_WEBHOOK_SECRET, MICROSOFT_WEBHOOK_SECRET, QUICKBOOKS_WEBHOOK_TOKEN, ADDRESS_BOOK_MASTER_KEY/PRINTYX_CREDENTIAL_VAULT_KEY, TWILIO_ACCOUNT_SID/AUTH_TOKEN/FROM_NUMBER",
+        "In production (NODE_ENV=production), make these fail loud via server/config/env-validation.ts (mirror the existing hard-error pattern used for STRIPE_WEBHOOK_SECRET at env-validation.ts:174) rather than falling back to simulation: email-service.ts:185 (SendGrid sim), sms-service.ts:147-159 (Twilio sim), ai-email-parser-service.ts:11 (Claude stub)",
+        "Ensure webhook handlers (webhook-service.ts:219/241/317) reject/log clearly when their secret is unset instead of appearing connected while dropping updates",
+        "Ensure INTERNAL_CRON_TOKEN absence is a startup error (cron-auth.ts:62) so scheduled jobs don't silently 401",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found by env-var audit 2026-07-14. STRIPE_WEBHOOK_SECRET and DATAFORSEO_LOGIN/PASSWORD are already documented + fail loud — use as the template. RESEND_API_KEY (email-service.ts:215) is a variable-name trap vs the documented SEO_RESEND_API_KEY.",
+      "category": "config"
     }
   ]
 }
