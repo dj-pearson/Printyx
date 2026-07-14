@@ -222,6 +222,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
     children: [
       { title: 'Leads', path: '/leads-management', icon: UserPlus },
+      { title: 'Web Forms', path: '/marketing/forms', icon: FileText },
       { title: 'Prospects', path: '/prospects', icon: Users },
       { title: 'Customers', path: '/customers', icon: UserCheck },
       { title: 'Contacts', path: '/contacts', icon: Users },

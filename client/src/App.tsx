@@ -230,6 +230,9 @@ const BillingAnalytics = React.lazy(() => import('@/pages/BillingAnalytics'));
 const VendorManagement = React.lazy(() => import('@/pages/VendorManagement'));
 const CustomerNumberSettings = React.lazy(() => import('@/pages/CustomerNumberSettings'));
 const CustomFieldsSettings = React.lazy(() => import('@/pages/CustomFieldsSettings'));
+const WebFormsPage = React.lazy(() => import('@/pages/marketing/WebFormsPage'));
+const WebFormBuilder = React.lazy(() => import('@/pages/marketing/WebFormBuilder'));
+const HostedFormPage = React.lazy(() => import('@/pages/HostedFormPage'));
 const FinancialForecasting = React.lazy(() => import('@/pages/FinancialForecasting'));
 const FinancialIntelligenceDashboard = React.lazy(
   () => import('@/pages/FinancialIntelligenceDashboard'),
@@ -460,6 +463,15 @@ function Router() {
         </React.Suspense>
       );
     }
+  }
+
+  // CRMX-011: public hosted/embeddable web form (/f/:token) — no auth, no shell.
+  if (pathname.startsWith('/f/')) {
+    return (
+      <React.Suspense fallback={null}>
+        <HostedFormPage />
+      </React.Suspense>
+    );
   }
 
   if (isLoading) {
@@ -867,6 +879,8 @@ function Router() {
                 <Route path="/settings" component={Settings} />
                 <Route path="/settings/api-keys" component={ApiKeyManagement} />
                 <Route path="/settings/custom-fields" component={CustomFieldsSettings} />
+                <Route path="/marketing/forms/:id" component={WebFormBuilder} />
+                <Route path="/marketing/forms" component={WebFormsPage} />
                 <Route path="/monitoring-clients">
                   {() => (
                     <ProtectedRoute
