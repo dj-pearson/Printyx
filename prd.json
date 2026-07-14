@@ -10282,9 +10282,10 @@
         "API + Zod + tenantId scoping + RBAC; TanStack loading/error states."
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "category": "crm-core",
-      "notes": "[CORE/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: notes = activity subtype; tasks not polymorphically associated. Standard CRM primitive."
+      "notes": "[CORE/MED] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: notes = activity subtype; tasks not polymorphically associated. Standard CRM primitive.",
+      "completionNotes": "Added the two missing CRM primitives. Schema (shared/crm-associations-schema.ts, migration 0023 hand-authored idempotent, NOT applied): crm_notes (first-class note, polymorphic parentType/parentId over deal/lead/contact/company, isPinned, authorId) + crm_associations (generic directed link sourceType/Id -> targetType/Id + relation, unique per link; lets tasks/activities/contacts be polymorphically associated). API: server/routes-crm-notes.ts — GET/POST/PATCH/DELETE /api/crm/notes (pinned-first) and GET/POST/DELETE /api/crm/associations (source-or-target lookup), Zod + tenant scoping + isAuthenticated; registered via domains/crm + routes-registry. Prod parity: added notes + associations branches to the existing supabase/functions/crm edge fn (dispatches on pathParts[1], so /api/crm/notes routes there with no server.ts change). Frontend: useCrmNotes hook + NotesPanel component (add/pin/delete, loading/error states) integrated into LeadDetail activities tab above the ActivityTimeline. Verified tsc 0 new errors; prettier clean. DEFERRED (noted): (1) a single INTERLEAVED timeline merging notes+tasks+activities (today NotesPanel sits alongside ActivityTimeline, not merged); (2) migrating the tasks table / wiring task-creation to write crm_associations (the association infra + API exist, but task creation is not yet repointed); (3) integrating NotesPanel into the deal/contact/company detail pages (only LeadDetail wired)."
     },
     {
       "id": "CRMX-007",

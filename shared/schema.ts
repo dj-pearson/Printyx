@@ -299,6 +299,26 @@ export type {
   CustomFieldType,
 } from './custom-fields-schema';
 
+// Re-export CRM notes + associations schema (CRMX-006)
+export {
+  crmNotes,
+  crmAssociations,
+  insertCrmNoteSchema,
+  updateCrmNoteSchema,
+  insertCrmAssociationSchema,
+  CRM_RECORD_TYPES,
+  CRM_ASSOCIABLE_TYPES,
+} from './crm-associations-schema';
+
+export type {
+  CrmNote,
+  InsertCrmNote,
+  CrmAssociation,
+  InsertCrmAssociation,
+  CrmRecordType,
+  CrmAssociableType,
+} from './crm-associations-schema';
+
 // Re-export product pricing schemas
 export {
   companyPricingSettings,

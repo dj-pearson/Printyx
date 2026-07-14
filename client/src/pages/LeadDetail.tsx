@@ -27,6 +27,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { ActivityForm } from '@/components/forms/ActivityForms';
 import { ActivityTimeline } from '@/components/ActivityTimeline';
+import { NotesPanel } from '@/components/crm/NotesPanel';
 import { ContactManager } from '@/components/ContactManager';
 import { LeadProposals } from '@/components/leads/LeadProposals';
 import { LeadQuotes } from '@/components/leads/LeadQuotes';
@@ -1847,6 +1848,7 @@ export default function LeadDetailHubspot() {
                       </Button>
                     </div>
                   </div>
+                  <NotesPanel parentType="lead" parentId={id} />
                   <ActivityTimeline businessRecordId={id} />
                 </div>
               </TabsContent>

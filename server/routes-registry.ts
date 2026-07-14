@@ -55,6 +55,7 @@ import {
   registerCrmGoalRoutes,
   registerSavedViewsRoutes,
   registerCustomFieldsRoutes,
+  registerCrmNotesRoutes,
   registerCrmBulkRoutes,
   registerBulkOperationsRoutes,
   registerRecordLayoutRoutes,
@@ -429,6 +430,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerCrmGoalRoutes(app);
   registerSavedViewsRoutes(app);
   registerCustomFieldsRoutes(app);
+  registerCrmNotesRoutes(app);
   registerDealTagRoutes(app);
   registerCrmBulkRoutes(app);
   registerBulkOperationsRoutes(app);
