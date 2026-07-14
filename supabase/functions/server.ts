@@ -142,6 +142,9 @@ await serve(
     } else if (functionName === 'public' && subPath[0] === 'forms') {
       // CRMX-011: unauthenticated web-form capture (/api/public/forms/*).
       functionName = 'public-forms';
+    } else if (functionName === 'public' && subPath[0] === 'booking') {
+      // CRMX-016: unauthenticated Calendly-style booking pages (/api/public/booking/*).
+      functionName = 'public-booking';
     }
 
     if (!functionName || !functions[functionName]) {

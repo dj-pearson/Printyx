@@ -234,6 +234,10 @@ const WebFormsPage = React.lazy(() => import('@/pages/marketing/WebFormsPage'));
 const WebFormBuilder = React.lazy(() => import('@/pages/marketing/WebFormBuilder'));
 const EmailSequencesPage = React.lazy(() => import('@/pages/marketing/EmailSequencesPage'));
 const HostedFormPage = React.lazy(() => import('@/pages/HostedFormPage'));
+// CRMX-016: public booking pages (no auth) + admin manager.
+const PublicBooking = React.lazy(() => import('@/pages/PublicBooking'));
+const BookingManage = React.lazy(() => import('@/pages/BookingManage'));
+const BookingPages = React.lazy(() => import('@/pages/BookingPages'));
 const FinancialForecasting = React.lazy(() => import('@/pages/FinancialForecasting'));
 const FinancialIntelligenceDashboard = React.lazy(
   () => import('@/pages/FinancialIntelligenceDashboard'),

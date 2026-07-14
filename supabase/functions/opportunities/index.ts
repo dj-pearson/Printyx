@@ -51,18 +51,35 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized' }, 401, req);
     }
 
-    // Resolve tenant ID: x-tenant-id header → app_metadata → user_metadata → DB lookup
-    let tenantId =
-      req.headers.get('x-tenant-id') ||
+    // Resolve tenant ID from the verified JWT (canonical). The x-tenant-id header
+    // is only a fallback and must NEVER override the JWT tenant — otherwise any
+    // authenticated user can read/write another tenant by spoofing the header.
+    const jwtTenantId =
       (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
       (user.user_metadata?.tenantId as string) ||
       (user.user_metadata?.tenant_id as string);
+    const headerTenantId = req.headers.get('x-tenant-id') || undefined;
+    const isPlatformAdmin =
+      user.app_metadata?.isPlatformAdmin === true || user.app_metadata?.role === 'platform_admin';
+    if (headerTenantId && jwtTenantId && headerTenantId !== jwtTenantId && !isPlatformAdmin) {
+      return createCorsResponse(
+        { error: 'Tenant access denied', code: 'TENANT_ACCESS_DENIED' },
+        403,
+        req,
+      );
+    }
+    let tenantId = jwtTenantId || headerTenantId;
 
     if (!tenantId) {
       // Fallback: look up tenant from public.users
       const admin2 = createSupabaseServiceClient();
-      const { data: dbUser } = await admin2.from('users').select('tenant_id').eq('id', user.id).limit(1).maybeSingle();
+      const { data: dbUser } = await admin2
+        .from('users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .limit(1)
+        .maybeSingle();
       tenantId = dbUser?.tenant_id;
     }
 
@@ -90,7 +107,10 @@ export default async function handler(req: Request) {
 
       let query = admin
         .from('deals')
-        .select('*, deal_stage:deal_stages!stage_id(id, name, color, is_won_stage, is_closing_stage)', { count: 'exact' })
+        .select(
+          '*, deal_stage:deal_stages!stage_id(id, name, color, is_won_stage, is_closing_stage)',
+          { count: 'exact' },
+        )
         .eq('tenant_id', tenantId)
         .order('expected_close_date', { ascending: true, nullsFirst: false })
         .range(offset, offset + limit - 1);
@@ -118,7 +138,9 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(`title.ilike.%${search}%,company_name.ilike.%${search}%,primary_contact_name.ilike.%${search}%`);
+        query = query.or(
+          `title.ilike.%${search}%,company_name.ilike.%${search}%,primary_contact_name.ilike.%${search}%`,
+        );
       }
 
       const { data: deals, error, count } = await query;
@@ -138,7 +160,9 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && opportunityId) {
       const { data: deal, error } = await admin
         .from('deals')
-        .select('*, deal_stage:deal_stages!stage_id(id, name, color, is_won_stage, is_closing_stage)')
+        .select(
+          '*, deal_stage:deal_stages!stage_id(id, name, color, is_won_stage, is_closing_stage)',
+        )
         .eq('id', opportunityId)
         .eq('tenant_id', tenantId)
         .single();
@@ -158,13 +182,16 @@ export default async function handler(req: Request) {
       const dealData = {
         tenant_id: tenantId,
         title: body.opportunityName || body.opportunity_name || body.title,
-        customer_id: body.accountId || body.account_id || body.customerId || body.customer_id || null,
-        company_name: body.accountName || body.account_name || body.companyName || body.company_name || null,
+        customer_id:
+          body.accountId || body.account_id || body.customerId || body.customer_id || null,
+        company_name:
+          body.accountName || body.account_name || body.companyName || body.company_name || null,
         amount: body.amount || 0,
         probability: body.probability || 10,
         expected_close_date: body.closeDate || body.close_date || body.expectedCloseDate || null,
         source: body.leadSource || body.lead_source || body.source || null,
-        deal_type: body.opportunityType || body.opportunity_type || body.dealType || body.deal_type || null,
+        deal_type:
+          body.opportunityType || body.opportunity_type || body.dealType || body.deal_type || null,
         status: 'open',
         owner_id: body.ownerId || body.owner_id || user.id,
         description: body.description || null,
@@ -175,11 +202,7 @@ export default async function handler(req: Request) {
         updated_at: new Date().toISOString(),
       };
 
-      const { data: deal, error } = await admin
-        .from('deals')
-        .insert(dealData)
-        .select()
-        .single();
+      const { data: deal, error } = await admin.from('deals').insert(dealData).select().single();
 
       if (error) {
         console.error('Error creating opportunity (deal):', error);

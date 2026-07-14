@@ -10491,8 +10491,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Found by security audit 2026-07-14. Systemic cross-tenant read+write on the core CRM in PRODUCTION (frontend calls edge fns directly). Service-role client bypasses RLS, so the header value is the only scoping. Correct reference impls already exist: _shared/auth.ts resolveTenantId (lines ~92-130) and server/middleware/tenancy.ts (lines 55-170). admin/index.ts:121 and customers/index.ts:30 are representative offenders.",
+      "passes": true,
+      "notes": "Found by security audit 2026-07-14. Systemic cross-tenant read+write on the core CRM in PRODUCTION (frontend calls edge fns directly). Service-role client bypasses RLS, so the header value is the only scoping. Correct reference impls already exist: _shared/auth.ts resolveTenantId (lines ~92-130) and server/middleware/tenancy.ts (lines 55-170). admin/index.ts:121 and customers/index.ts:30 are representative offenders. | DONE 2026-07-14: metadata-first resolution + header-mismatch 403 guard (platform admins exempt) applied to all 9 fns (customers/deals/leads/quotes/opportunities/contacts/companies/business-records/admin). Verified: grep shows no header-first ordering remains; deno check net-zero on all 9 (admin 0->0 after casting header fallback to preserve string typing at 7 downstream call sites). Legitimate flows preserved: normal users send header==their tenant (no 403); no-JWT-metadata users fall back unchanged; platform admins still cross tenants. DEFERRED: runtime regression test (no local GoTrue auth harness in this env).",
       "category": "security"
     },
     {

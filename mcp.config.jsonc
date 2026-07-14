@@ -1,0 +1,30 @@
+{
+  // mcpfold canonical config — one source of truth, folded out to every client.
+  // Docs: https://mcpfold.com  ·  Schema: https://mcpfold.com/schema/v1.json
+  "$schema": "https://mcpfold.com/schema/v1.json",
+  "version": 1,
+
+  "servers": {
+    // A stdio server. Pin @latest to a fixed version for supply-chain hygiene.
+    "playwright": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "pin": "1.4.2",
+      "tags": ["code"]
+    }
+
+    // A remote server with a secret REFERENCE (never a hardcoded token):
+    // "github": {
+    //   "transport": "http",
+    //   "url": "https://api.githubcopilot.com/mcp/",
+    //   "auth": { "type": "bearer", "token": "${env:GITHUB_PAT}" },
+    //   "tags": ["work", "code"]
+    // }
+  },
+
+  "profiles": {
+    // Fold only servers whose tags intersect `include` into each client.
+    "cursor": { "client": "cursor", "scope": "user", "include": ["code"] }
+  }
+}

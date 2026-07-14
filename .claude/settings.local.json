@@ -128,7 +128,13 @@
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npm run check)",
       "Bash([ -s \"$f\" ])",
       "Bash(git grep *)",
-      "Bash(python -c \"import json;json.load\\(open\\('prd.json'\\)\\);print\\('prd.json valid'\\)\")"
+      "Bash(python -c \"import json;json.load\\(open\\('prd.json'\\)\\);print\\('prd.json valid'\\)\")",
+      "PowerShell(Get-Item prd.json | Select-Object Length; \\(Get-Content prd.json -Raw | ConvertFrom-Json\\).stories.Count)",
+      "PowerShell($p = Get-Content prd.json -Raw | ConvertFrom-Json; $p.PSObject.Properties.Name; if \\($p.userStories\\) { $p.userStories.Count })",
+      "PowerShell($p = Get-Content prd.json -Raw | ConvertFrom-Json; $p.project; $p.branchName; $s = $p.userStories[0]; $s | ConvertTo-Json -Depth 5; \"---PENDING COUNT---\"; \\($p.userStories | Where-Object { -not $_.passes }\\).Count; \"---PENDING IDS---\"; \\($p.userStories | Where-Object { -not $_.passes } | ForEach-Object { $_.id }\\) -join ', ')",
+      "Bash(grep -rhoP 'CREATE TABLE \\(IF NOT EXISTS \\)?\"?\\([a-zA-Z0-9_]+\\)\"?' drizzle/migrations/*.sql | sed -E 's/CREATE TABLE \\(IF NOT EXISTS \\)?\"?//; s/\"$//' | sort -u > /c/Users/dpearson/AppData/Local/Temp/claude/C--Users-dpearson-Documents-Printyx/287ffd5c-0554-4282-9b33-a50c574d75da/scratchpad/migration_tables.txt && wc -l /c/Users/dpearson/AppData/Local/Temp/claude/C--Users-dpearson-Documents-Printyx/287ffd5c-0554-4282-9b33-a50c574d75da/scratchpad/migration_tables.txt)",
+      "Bash(grep -rhoP \"pgTable\\\\\\(\\\\s*['\\\\\"]\\([a-zA-Z0-9_]+\\)['\\\\\"]\" shared/*.ts | grep -oP \"\\(?<=['\\\\\"]\\)[a-zA-Z0-9_]+\" | sort -u > /c/Users/dpearson/AppData/Local/Temp/claude/C--Users-dpearson-Documents-Printyx/287ffd5c-0554-4282-9b33-a50c574d75da/scratchpad/schema_tables.txt && wc -l /c/Users/dpearson/AppData/Local/Temp/claude/C--Users-dpearson-Documents-Printyx/287ffd5c-0554-4282-9b33-a50c574d75da/scratchpad/schema_tables.txt)",
+      "Bash(python -)"
     ],
     "deny": [],
     "ask": []

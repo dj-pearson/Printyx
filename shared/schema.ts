@@ -9012,6 +9012,8 @@ export * from './blog-serp-monitor-schema';
 export * from './blog-content-platform-schema';
 // Blog platform API (webhooks, public API, backup/export, widget, compliance — US-BLOG-079,080,081,083,084)
 export * from './blog-platform-api-schema';
+// Public meeting booking pages (Calendly-style self-scheduling — CRMX-016)
+export * from './booking-schema';
 
 // ============================================================================
 // MOBILE APP LOGS (cross-tenant diagnostic data)

@@ -21,13 +21,25 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized' }, 401, req);
     }
 
-    // Resolve tenant ID: x-tenant-id header → app_metadata → user_metadata → DB lookup
-    let tenantId =
-      req.headers.get('x-tenant-id') ||
+    // Resolve tenant ID from the verified JWT (canonical). The x-tenant-id header
+    // is only a fallback and must NEVER override the JWT tenant — otherwise any
+    // authenticated user can read/write another tenant by spoofing the header.
+    const jwtTenantId =
       (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
       (user.user_metadata?.tenantId as string) ||
       (user.user_metadata?.tenant_id as string);
+    const headerTenantId = req.headers.get('x-tenant-id') || undefined;
+    const isPlatformAdmin =
+      user.app_metadata?.isPlatformAdmin === true || user.app_metadata?.role === 'platform_admin';
+    if (headerTenantId && jwtTenantId && headerTenantId !== jwtTenantId && !isPlatformAdmin) {
+      return createCorsResponse(
+        { error: 'Tenant access denied', code: 'TENANT_ACCESS_DENIED' },
+        403,
+        req,
+      );
+    }
+    let tenantId = jwtTenantId || headerTenantId;
 
     if (!tenantId) {
       // Fallback: look up tenant from public.users

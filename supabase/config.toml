@@ -30,3 +30,10 @@ verify_jwt = true
 # runtime in sync. The handler itself performs no token verification.
 verify_jwt = false
 
+[functions.public-booking]
+# CRMX-016: public Calendly-style meeting booking pages. Prospect-facing and
+# anonymous — no JWT. Same rationale as public-calculator above: the handler
+# performs no token check; the companion booking-pages fn (admin CRUD) is
+# authenticated normally.
+verify_jwt = false
+

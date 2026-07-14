@@ -81,13 +81,25 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    // Resolve tenant ID: x-tenant-id header → app_metadata → user_metadata → DB lookup
-    let tenantId =
-      req.headers.get('x-tenant-id') ||
+    // Resolve tenant ID from the verified JWT (canonical). The x-tenant-id header
+    // is only a fallback and must NEVER override the JWT tenant — otherwise any
+    // authenticated user can read/write another tenant by spoofing the header.
+    const jwtTenantId =
       (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
       (user.user_metadata?.tenantId as string) ||
       (user.user_metadata?.tenant_id as string);
+    const headerTenantId = req.headers.get('x-tenant-id') || undefined;
+    const isPlatformAdmin =
+      user.app_metadata?.isPlatformAdmin === true || user.app_metadata?.role === 'platform_admin';
+    if (headerTenantId && jwtTenantId && headerTenantId !== jwtTenantId && !isPlatformAdmin) {
+      return createCorsResponse(
+        { error: 'Tenant access denied', code: 'TENANT_ACCESS_DENIED' },
+        403,
+        req,
+      );
+    }
+    let tenantId = jwtTenantId || headerTenantId;
 
     if (!tenantId) {
       // Fallback: look up tenant from public.users
@@ -371,7 +383,8 @@ export default async function handler(req: Request) {
         phone: body.phone,
         email: body.email || body.primaryContactEmail || body.primary_contact_email,
         website: body.website,
-        billing_address: body.address || body.addressLine1 || body.address_line1 || body.billing_address,
+        billing_address:
+          body.address || body.addressLine1 || body.address_line1 || body.billing_address,
         billing_city: body.city || body.billing_city,
         billing_state: body.state || body.billing_state,
         billing_zip: body.postalCode || body.postal_code || body.zip || body.billing_zip,
@@ -397,8 +410,14 @@ export default async function handler(req: Request) {
       }
 
       // Create primary contact if contact info was provided
-      const contactFirstName = body.primaryContactName?.split(' ')[0] || body.primary_contact_name?.split(' ')[0] || body.contactName?.split(' ')[0];
-      const contactLastName = body.primaryContactName?.split(' ').slice(1).join(' ') || body.primary_contact_name?.split(' ').slice(1).join(' ') || body.contactName?.split(' ').slice(1).join(' ');
+      const contactFirstName =
+        body.primaryContactName?.split(' ')[0] ||
+        body.primary_contact_name?.split(' ')[0] ||
+        body.contactName?.split(' ')[0];
+      const contactLastName =
+        body.primaryContactName?.split(' ').slice(1).join(' ') ||
+        body.primary_contact_name?.split(' ').slice(1).join(' ') ||
+        body.contactName?.split(' ').slice(1).join(' ');
 
       if (contactFirstName) {
         await admin.from('company_contacts').insert({
@@ -454,10 +473,13 @@ export default async function handler(req: Request) {
       if (body.website) updateData.website = body.website;
       if (body.industry) updateData.industry = body.industry;
       if (body.status || body.lead_status) updateData.activity = body.status || body.lead_status;
-      if (body.recordType || body.record_type) updateData.business_record_type = body.recordType || body.record_type;
+      if (body.recordType || body.record_type)
+        updateData.business_record_type = body.recordType || body.record_type;
       if (body.city || body.billing_city) updateData.billing_city = body.city || body.billing_city;
-      if (body.state || body.billing_state) updateData.billing_state = body.state || body.billing_state;
-      if (body.address || body.billing_address) updateData.billing_address = body.address || body.billing_address;
+      if (body.state || body.billing_state)
+        updateData.billing_state = body.state || body.billing_state;
+      if (body.address || body.billing_address)
+        updateData.billing_address = body.address || body.billing_address;
       if (body.postalCode || body.postal_code || body.billing_zip) {
         updateData.billing_zip = body.postalCode || body.postal_code || body.billing_zip;
       }
