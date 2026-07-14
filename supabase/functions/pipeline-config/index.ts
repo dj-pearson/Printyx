@@ -18,7 +18,10 @@
  *     PUT    /pipeline-config/stages/:id                 — update
  *     DELETE /pipeline-config/stages/:id                 — delete (guards against in-use)
  *
- *   Deal transitions (2):
+ *   Deal transitions (3):
+ *     POST   /pipeline-config/deals/:dealId/move         — CRMX-005 board move: persist
+ *                                                          stage_id + history + record
+ *                                                          on_exit/on_enter/transition automation
  *     POST   /pipeline-config/deals/:dealId/transition   — move stage + log + automation
  *     GET    /pipeline-config/deals/:dealId/history      — transition log
  *
@@ -641,7 +644,7 @@ export default async function handler(req: Request) {
         });
       }
 
-      const { stages } = await ensureCanonicalPipeline(db, ctx.tenantId, ctx.userId);
+      const { template, stages } = await ensureCanonicalPipeline(db, ctx.tenantId, ctx.userId);
       // deno-lint-ignore no-explicit-any
       const resolve = (legacyId: string | null | undefined) =>
         (stages as any[]).find((s) => (s.legacy_stage_id ?? s.id) === legacyId);
@@ -703,25 +706,22 @@ export default async function handler(req: Request) {
         was_automatic: false,
       });
 
-      // Log on_enter automation triggers (interface for the CRMX-008 runtime).
-      // deno-lint-ignore no-explicit-any
-      const triggers: any[] = Array.isArray(toStage?.automation_triggers)
-        ? toStage.automation_triggers
-        : [];
-      for (const t of triggers.filter((t) => t?.triggerType === 'on_enter')) {
-        await db.from('pipeline_automation_logs').insert({
-          tenant_id: ctx.tenantId,
-          deal_id: dealId,
-          stage_id: toStage?.id ?? null,
-          trigger_type: 'on_enter',
-          action_type: t?.actionType ?? 'unknown',
-          action_config: t,
-          status: 'skipped',
-          result_data: { note: 'Queued for workflow runtime (CRMX-008); not yet executed' },
-        });
-      }
+      // CRMX-005: record on_exit + on_enter stage automation triggers AND evaluate
+      // the stageTransitions rules (conditions / actions / approvals) for this
+      // from→to move. All are written to pipeline_automation_logs behind the clean
+      // interface the CRMX-008 runtime consumes — nothing is executed here.
+      const automations = await recordStageMoveAutomations(db, {
+        tenantId: ctx.tenantId,
+        dealId,
+        deal,
+        fromStage,
+        toStage,
+        pipelineTemplateId: template?.id ?? null,
+        log,
+        requestId,
+      });
 
-      return jsonResponse(updated, 200, req, requestId);
+      return jsonResponse({ ...updated, automations }, 200, req, requestId);
     }
 
     // ─── POST /deals/:dealId/transition ─────────────────────────────────────
@@ -1003,4 +1003,223 @@ async function markAutomation(
       error_message: errorMessage ?? null,
     })
     .eq('id', id);
+}
+
+// ─── CRMX-005: stage-move automation recorder ──────────────────────────────────
+//
+// When a deal moves from→to, three kinds of configured automation apply:
+//   1. on_exit triggers on the stage being LEFT (fromStage.automation_triggers)
+//   2. on_enter triggers on the stage being ENTERED (toStage.automation_triggers)
+//   3. stage_transitions rules matching this from→to pair — their conditions are
+//      evaluated against the deal, and matching transitions contribute
+//      onTransitionActions plus any approval requirement.
+//
+// on_sla_breach is intentionally NOT handled here: it is time-based (a stage
+// dwelling past its SLA), so it belongs to a scheduled sweep, not the move path.
+//
+// Everything is written to pipeline_automation_logs with status='skipped' and a
+// note — the clean interface the CRMX-008 workflow runtime drains and executes.
+// Recording never fails the move: individual insert errors are swallowed.
+
+interface RecordStageMoveInput {
+  tenantId: string;
+  dealId: string;
+  // deno-lint-ignore no-explicit-any
+  deal: any;
+  // deno-lint-ignore no-explicit-any
+  fromStage: any;
+  // deno-lint-ignore no-explicit-any
+  toStage: any;
+  pipelineTemplateId: string | null;
+  // deno-lint-ignore no-explicit-any
+  log: any;
+  requestId: string;
+}
+
+interface RecordStageMoveResult {
+  onExit: number;
+  onEnter: number;
+  transitionsMatched: number;
+  transitionActions: number;
+  approvalRequired: boolean;
+}
+
+const QUEUED_NOTE = 'Queued for workflow runtime (CRMX-008); not yet executed';
+
+async function recordStageMoveAutomations(
+  db: DB,
+  input: RecordStageMoveInput,
+): Promise<RecordStageMoveResult> {
+  const result: RecordStageMoveResult = {
+    onExit: 0,
+    onEnter: 0,
+    transitionsMatched: 0,
+    transitionActions: 0,
+    approvalRequired: false,
+  };
+
+  // deno-lint-ignore no-explicit-any
+  const recordLog = async (row: Record<string, any>) => {
+    try {
+      const { error } = await db.from('pipeline_automation_logs').insert(row);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      input.log.warn({ requestId: input.requestId, err: String(err) }, 'automation_record_failed');
+      return false;
+    }
+  };
+
+  // deno-lint-ignore no-explicit-any
+  const triggersOf = (stage: any): any[] =>
+    Array.isArray(stage?.automation_triggers) ? stage.automation_triggers : [];
+
+  // 1. on_exit triggers on the stage being left.
+  for (const t of triggersOf(input.fromStage).filter(
+    (t) => t?.triggerType === 'on_exit' && t?.isActive !== false,
+  )) {
+    const ok = await recordLog({
+      tenant_id: input.tenantId,
+      deal_id: input.dealId,
+      stage_id: input.fromStage?.id ?? null,
+      trigger_type: 'on_exit',
+      action_type: t?.actionType ?? 'unknown',
+      action_config: t,
+      status: 'skipped',
+      result_data: { note: QUEUED_NOTE },
+    });
+    if (ok) result.onExit++;
+  }
+
+  // 2. on_enter triggers on the stage being entered.
+  for (const t of triggersOf(input.toStage).filter(
+    (t) => t?.triggerType === 'on_enter' && t?.isActive !== false,
+  )) {
+    const ok = await recordLog({
+      tenant_id: input.tenantId,
+      deal_id: input.dealId,
+      stage_id: input.toStage?.id ?? null,
+      trigger_type: 'on_enter',
+      action_type: t?.actionType ?? 'unknown',
+      action_config: t,
+      status: 'skipped',
+      result_data: { note: QUEUED_NOTE },
+    });
+    if (ok) result.onEnter++;
+  }
+
+  // 3. stage_transitions rules for this from→to pair.
+  if (input.pipelineTemplateId && input.fromStage?.id && input.toStage?.id) {
+    const { data: transitions, error } = await db
+      .from('stage_transitions')
+      .select('*')
+      .eq('tenant_id', input.tenantId)
+      .eq('pipeline_template_id', input.pipelineTemplateId)
+      .eq('from_stage_id', input.fromStage.id)
+      .eq('to_stage_id', input.toStage.id)
+      .eq('is_active', true);
+
+    if (error) {
+      input.log.warn({ requestId: input.requestId, err: error }, 'stage_transitions_fetch_failed');
+    }
+
+    for (const tr of transitions ?? []) {
+      // deno-lint-ignore no-explicit-any
+      const conditions: any[] = Array.isArray(tr.automatic_conditions)
+        ? tr.automatic_conditions
+        : [];
+      if (conditions.length && !evaluateConditions(input.deal, conditions)) {
+        continue; // conditions not met — this transition rule does not apply
+      }
+      result.transitionsMatched++;
+
+      if (tr.requires_approval) {
+        result.approvalRequired = true;
+        const ok = await recordLog({
+          tenant_id: input.tenantId,
+          deal_id: input.dealId,
+          stage_id: input.toStage?.id ?? null,
+          trigger_type: 'on_transition',
+          action_type: 'approval_required',
+          action_config: { transitionId: tr.id, approvalRoleId: tr.approval_role_id ?? null },
+          status: 'skipped',
+          result_data: {
+            note: 'Transition requires approval; recorded for the approval workflow (CRMX-008)',
+          },
+        });
+        if (ok) result.transitionActions++;
+      }
+
+      // deno-lint-ignore no-explicit-any
+      const actions: any[] = Array.isArray(tr.on_transition_actions)
+        ? tr.on_transition_actions
+        : [];
+      for (const a of actions) {
+        const ok = await recordLog({
+          tenant_id: input.tenantId,
+          deal_id: input.dealId,
+          stage_id: input.toStage?.id ?? null,
+          trigger_type: 'on_transition',
+          action_type: a?.actionType ?? 'unknown',
+          action_config: a,
+          status: 'skipped',
+          result_data: { note: QUEUED_NOTE, transitionId: tr.id },
+        });
+        if (ok) result.transitionActions++;
+      }
+    }
+  }
+
+  return result;
+}
+
+// Evaluate an array of {field, operator, value, logicalOperator} conditions
+// against a deal row. Conditions chain left→right with each condition's own
+// logicalOperator ('AND' default | 'OR') joining it to the running result.
+// deno-lint-ignore no-explicit-any
+function evaluateConditions(deal: any, conditions: any[]): boolean {
+  let acc: boolean | null = null;
+  for (const cond of conditions) {
+    const outcome = evaluateCondition(deal, cond);
+    if (acc === null) {
+      acc = outcome;
+    } else if ((cond?.logicalOperator ?? 'AND') === 'OR') {
+      acc = acc || outcome;
+    } else {
+      acc = acc && outcome;
+    }
+  }
+  return acc ?? true;
+}
+
+// deno-lint-ignore no-explicit-any
+function evaluateCondition(deal: any, cond: any): boolean {
+  const actual = deal?.[cond?.field];
+  const expected = cond?.value;
+  switch (String(cond?.operator ?? 'equals')) {
+    case 'equals':
+      return actual == expected;
+    case 'not_equals':
+      return actual != expected;
+    case 'greater_than':
+      return Number(actual) > Number(expected);
+    case 'less_than':
+      return Number(actual) < Number(expected);
+    case 'gte':
+      return Number(actual) >= Number(expected);
+    case 'lte':
+      return Number(actual) <= Number(expected);
+    case 'contains':
+      return String(actual ?? '')
+        .toLowerCase()
+        .includes(String(expected ?? '').toLowerCase());
+    case 'in':
+      return Array.isArray(expected) && expected.includes(actual);
+    case 'is_empty':
+      return actual == null || actual === '';
+    case 'is_not_empty':
+      return actual != null && actual !== '';
+    default:
+      return false;
+  }
 }
