@@ -55,8 +55,16 @@ import {
 } from 'lucide-react';
 
 // Types
+// NOTE: `name`, `specialties`, `status`, `location`, `availability` are friendly
+// aliases the technician-management route bridges to the real lean `technicians`
+// columns (firstName/lastName, skills, isActive, currentLocation, isAvailable) in
+// BOTH directions, so the page keeps using them. `userId` is the real NOT NULL FK
+// to users and is required on create. Removed fields that map to NO column
+// (skillLevel/emergencyContact/hireDate/lastTrainingDate/performanceRating) — they
+// were silently dropped by the server and rendered blank.
 interface Technician {
   id: string;
+  userId: string;
   name: string;
   email: string;
   phone: string;
@@ -65,13 +73,8 @@ interface Technician {
   status: 'active' | 'inactive' | 'on_leave';
   location: string;
   availability: 'available' | 'busy' | 'offline';
-  skillLevel: 'junior' | 'senior' | 'expert';
   hourlyRate: number;
-  emergencyContact: string;
   employeeId: string;
-  hireDate: string;
-  lastTrainingDate: string;
-  performanceRating: number;
   activeTickets: number;
   completedThisMonth: number;
   createdAt: string;
@@ -88,6 +91,7 @@ interface DashboardStats {
 
 // Form schema
 const technicianSchema = z.object({
+  userId: z.string().min(1, 'Linked user is required'),
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(1, 'Phone is required'),
@@ -96,9 +100,7 @@ const technicianSchema = z.object({
   status: z.enum(['active', 'inactive', 'on_leave']),
   location: z.string().min(1, 'Location is required'),
   availability: z.enum(['available', 'busy', 'offline']),
-  skillLevel: z.enum(['junior', 'senior', 'expert']),
   hourlyRate: z.number().min(0, 'Hourly rate must be positive'),
-  emergencyContact: z.string().min(1, 'Emergency contact is required'),
   employeeId: z.string().optional(),
 });
 
@@ -172,6 +174,7 @@ export default function TechnicianManagement() {
   const form = useForm<TechnicianFormData>({
     resolver: zodResolver(technicianSchema),
     defaultValues: {
+      userId: '',
       name: '',
       email: '',
       phone: '',
@@ -180,9 +183,7 @@ export default function TechnicianManagement() {
       status: 'active',
       location: '',
       availability: 'available',
-      skillLevel: 'junior',
       hourlyRate: 25,
-      emergencyContact: '',
       employeeId: '',
     },
   });
@@ -228,19 +229,6 @@ export default function TechnicianManagement() {
         return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getSkillLevelIcon = (level: string) => {
-    switch (level) {
-      case 'junior':
-        return <Users className="h-4 w-4" />;
-      case 'senior':
-        return <Wrench className="h-4 w-4" />;
-      case 'expert':
-        return <Award className="h-4 w-4" />;
-      default:
-        return <Users className="h-4 w-4" />;
     }
   };
 
@@ -432,22 +420,13 @@ export default function TechnicianManagement() {
                     />
                     <FormField
                       control={form.control}
-                      name="skillLevel"
+                      name="employeeId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Skill Level</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select skill level" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="junior">Junior</SelectItem>
-                              <SelectItem value="senior">Senior</SelectItem>
-                              <SelectItem value="expert">Expert</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Employee ID (optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Auto-generated if blank" {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -487,12 +466,15 @@ export default function TechnicianManagement() {
 
                   <FormField
                     control={form.control}
-                    name="emergencyContact"
+                    name="userId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Emergency Contact</FormLabel>
+                        <FormLabel>Linked User ID</FormLabel>
                         <FormControl>
-                          <Input placeholder="Emergency contact information" {...field} />
+                          <Input
+                            placeholder="User account UUID this technician maps to"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -614,7 +596,7 @@ export default function TechnicianManagement() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100">
-                      {getSkillLevelIcon(technician.skillLevel)}
+                      <Users className="h-4 w-4 text-blue-600" />
                     </div>
                     <div>
                       <h3 className="font-semibold">{technician.name}</h3>
@@ -670,9 +652,6 @@ export default function TechnicianManagement() {
                   <div className="flex justify-between text-sm">
                     <span>
                       Rate: <strong>${technician.hourlyRate}/hr</strong>
-                    </span>
-                    <span>
-                      Level: <strong className="capitalize">{technician.skillLevel}</strong>
                     </span>
                   </div>
                 </div>

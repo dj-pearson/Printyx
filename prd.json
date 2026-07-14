@@ -10506,8 +10506,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Found by security audit 2026-07-14. db-check (index.ts:5-46) discloses full public schema + tasks/projects sample rows with no JWT. mobile-logs (index.ts:16-70) allows anonymous unbounded inserts into mobile_app_logs (log poisoning + storage DoS + audit-signal spoofing).",
+      "passes": true,
+      "notes": "Found by security audit 2026-07-14. db-check (index.ts:5-46) discloses full public schema + tasks/projects sample rows with no JWT. mobile-logs (index.ts:16-70) allows anonymous unbounded inserts into mobile_app_logs (log poisoning + storage DoS + audit-signal spoofing). | DONE 2026-07-14: (1) DELETED supabase/functions/db-check (zero frontend/mobile callers; the dispatcher auto-loads dirs via Deno.readDir so no registration change needed) — schema+sample-row leak gone. (2) HARDENED mobile-logs: bounded batch to MAX_ENTRIES=200, clamped message(8000)/data(16000B)/device_id/session_id/platform/app_version/level/screen to column limits, sanitized unserializable data; response reports dropped count. Did NOT hard-require a JWT: this endpoint exists to log when auth is broken (error-boundary + mobile-logger callers) and mobile_app_logs has no tenant_id column to scope to — so bounding is the correct DoS mitigation. DEFERRED: true per-device rate limiting (needs a shared store, stateless edge fn cant do it alone). (3) Swept all edge fns for createSupabaseServiceClient-before-auth: remaining 3 (client-metrics=x-api-key gated, mobile-auth=login, public-forms=opaque-token+honeypot) are intentional-public and scoped — no other db-check-style exposure. deno check net-zero on mobile-logs.",
       "category": "security"
     },
     {

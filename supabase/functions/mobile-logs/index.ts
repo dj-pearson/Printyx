@@ -9,10 +9,44 @@
  * Body: { deviceId, sessionId, platform, appVersion, entries: LogEntry[] }
  *
  * No authentication required — logging should work even when auth is broken.
+ * Because it is unauthenticated and writes via the service-role client, every
+ * input is bounded/sanitized below to prevent unbounded-insert storage DoS and
+ * to keep values within the mobile_app_logs column limits. (Per-device rate
+ * limiting would need a shared store and is tracked as a follow-up.)
  */
 
 import { getCorsHeaders, handleCors } from '/app/functions/_shared/cors.ts';
 import { createSupabaseServiceClient } from '/app/functions/_shared/supabase.ts';
+
+// Bounds — an anonymous caller must not be able to inject an unbounded batch.
+const MAX_ENTRIES = 200; // max log rows accepted per request
+const MAX_MESSAGE_LEN = 8000; // chars; column is `text` but keep it sane
+const MAX_DATA_BYTES = 16000; // serialized `data` jsonb cap
+const MAX_DEVICE_ID = 100; // device_id varchar(100)
+const MAX_SESSION_ID = 100; // session_id varchar(100)
+const MAX_PLATFORM = 20; // platform varchar(20)
+const MAX_APP_VERSION = 20; // app_version varchar(20)
+const MAX_LEVEL = 10; // level varchar(10)
+const MAX_SCREEN = 100; // screen varchar(100)
+
+function clampStr(value: unknown, max: number): string | null {
+  if (value === null || value === undefined) return null;
+  const s = String(value);
+  return s.length > max ? s.slice(0, max) : s;
+}
+
+function clampData(value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  try {
+    const serialized = JSON.stringify(value);
+    if (serialized.length > MAX_DATA_BYTES) {
+      return { _truncated: true, preview: serialized.slice(0, 500) };
+    }
+    return value;
+  } catch {
+    return { _unserializable: true };
+  }
+}
 
 export default async function handler(req: Request): Promise<Response> {
   // Handle CORS preflight
@@ -38,9 +72,20 @@ export default async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ received: 0 }), { status: 200, headers: jsonHeaders });
     }
 
+    // Bound the batch: an anonymous caller must not inject an unbounded number
+    // of rows. Accept at most MAX_ENTRIES and report how many were dropped.
+    const dropped = Math.max(0, entries.length - MAX_ENTRIES);
+    const boundedEntries = entries.slice(0, MAX_ENTRIES);
+
+    // Clamp the shared (per-batch) fields to their column limits.
+    const deviceIdClamped = clampStr(deviceId, MAX_DEVICE_ID);
+    const sessionIdClamped = clampStr(sessionId, MAX_SESSION_ID);
+    const platformClamped = clampStr(platform, MAX_PLATFORM);
+    const appVersionClamped = clampStr(appVersion, MAX_APP_VERSION);
+
     // Write each entry to console for server log visibility
-    const tag = `[mobile:${platform || '?'}:${deviceId?.slice(0, 12) || '?'}]`;
-    for (const entry of entries) {
+    const tag = `[mobile:${platformClamped || '?'}:${deviceIdClamped?.slice(0, 12) || '?'}]`;
+    for (const entry of boundedEntries) {
       const level = (entry.level || 'info').toUpperCase().padEnd(5);
       const screen = entry.screen ? `[${entry.screen}]` : '';
       const dataStr = entry.data ? ` ${JSON.stringify(entry.data)}` : '';
@@ -48,21 +93,23 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     console.log(
-      `${tag} Received ${entries.length} log entries (session: ${sessionId?.slice(0, 8)}, v${appVersion})`,
+      `${tag} Received ${boundedEntries.length} log entries` +
+        (dropped > 0 ? ` (dropped ${dropped} over cap)` : '') +
+        ` (session: ${sessionIdClamped?.slice(0, 8)}, v${appVersionClamped})`,
     );
 
     // Persist to mobile_app_logs table (fire-and-forget, don't break logging if DB fails)
     try {
       const supabase = createSupabaseServiceClient();
-      const rows = entries.map((entry: any) => ({
-        device_id: deviceId || null,
-        session_id: sessionId || null,
-        platform: platform || null,
-        app_version: appVersion || null,
-        level: entry.level || 'info',
-        message: String(entry.message || ''),
-        screen: entry.screen || null,
-        data: entry.data || null,
+      const rows = boundedEntries.map((entry: any) => ({
+        device_id: deviceIdClamped,
+        session_id: sessionIdClamped,
+        platform: platformClamped,
+        app_version: appVersionClamped,
+        level: clampStr(entry.level, MAX_LEVEL) || 'info',
+        message: clampStr(entry.message, MAX_MESSAGE_LEN) || '',
+        screen: clampStr(entry.screen, MAX_SCREEN),
+        data: clampData(entry.data),
         log_timestamp: entry.timestamp ? new Date(entry.timestamp).toISOString() : null,
       }));
 
@@ -75,7 +122,7 @@ export default async function handler(req: Request): Promise<Response> {
       console.error(`${tag} DB persist failed (non-fatal):`, dbErr.message);
     }
 
-    return new Response(JSON.stringify({ received: entries.length }), {
+    return new Response(JSON.stringify({ received: boundedEntries.length, dropped }), {
       status: 200,
       headers: jsonHeaders,
     });
