@@ -9093,3 +9093,14 @@ export type {
   WebFormField,
   WebFormSettings,
 } from './web-forms-schema';
+
+// CRMX-009: Email sequence / drip enrollments
+export {
+  emailSequenceEnrollments,
+  insertEmailSequenceEnrollmentSchema,
+} from './email-sequence-schema';
+export type {
+  EmailSequenceEnrollment,
+  InsertEmailSequenceEnrollment,
+  SequenceStepHistoryEntry,
+} from './email-sequence-schema';
