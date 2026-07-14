@@ -23,6 +23,7 @@ import {
   type TableFieldDef,
 } from '@/lib/crm-columns';
 import { ColumnPicker } from '@/components/crm/ColumnPicker';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   Table,
   TableBody,
@@ -51,6 +52,7 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Rocket,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -334,11 +336,30 @@ export function CrmDataTable({
           <TableBody>
             {records.length === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={visibleFields.length + 2}
-                  className="h-32 text-center text-muted-foreground"
-                >
-                  No {config.labelPlural.toLowerCase()} found
+                <TableCell colSpan={visibleFields.length + 2} className="p-0">
+                  {/* CRMX-014: helpful empty state with a primary CTA. */}
+                  <EmptyState
+                    title={
+                      search || Object.keys(activeFilters).length > 0
+                        ? `No ${config.labelPlural.toLowerCase()} match your filters`
+                        : `No ${config.labelPlural.toLowerCase()} yet`
+                    }
+                    description={
+                      search || Object.keys(activeFilters).length > 0
+                        ? 'Try adjusting your search or filters.'
+                        : `Get started by importing data or following the setup guide.`
+                    }
+                    type={search || Object.keys(activeFilters).length > 0 ? 'search' : 'default'}
+                    action={
+                      search || Object.keys(activeFilters).length > 0
+                        ? undefined
+                        : {
+                            label: 'Getting started guide',
+                            onClick: () => setLocation('/getting-started'),
+                            icon: Rocket,
+                          }
+                    }
+                  />
                 </TableCell>
               </TableRow>
             ) : (

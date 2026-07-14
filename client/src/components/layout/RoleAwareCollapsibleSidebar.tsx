@@ -127,6 +127,12 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     path: '/',
     matchPatterns: ['/dashboard*'],
   },
+  {
+    id: 'getting-started',
+    title: 'Getting Started',
+    icon: Rocket,
+    path: '/getting-started',
+  },
 
   // Platform Management (merged: Platform Admin Hub + Tenant & Org + User & Access + System Ops + Platform Features)
   {

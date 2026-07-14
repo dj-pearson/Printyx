@@ -294,6 +294,7 @@ const PredictiveAnalytics = React.lazy(() => import('@/pages/PredictiveAnalytics
 const ERPIntegration = React.lazy(() => import('@/pages/ERPIntegration'));
 const ServiceHub = React.lazy(() => import('@/pages/ServiceHub'));
 const ApolloLeadEnrichment = React.lazy(() => import('@/pages/ApolloLeadEnrichment'));
+const GettingStarted = React.lazy(() => import('@/pages/GettingStarted'));
 const OnboardingDashboard = React.lazy(() => import('@/pages/OnboardingDashboard'));
 const SetupWizard = React.lazy(() => import('@/pages/SetupWizard'));
 const OnboardingDetails = React.lazy(() => import('@/pages/OnboardingDetails'));
@@ -1177,6 +1178,7 @@ function Router() {
                 <Route path="/privacy" component={PrivacyPolicy} />
                 <Route path="/terms" component={TermsAndConditions} />
                 <Route path="/accessibility" component={AccessibilityStatement} />
+                <Route path="/getting-started" component={GettingStarted} />
                 <Route path="/setup-wizard" component={SetupWizard} />
                 <Route path="/onboarding" component={OnboardingDashboard} />
                 <Route path="/onboarding/new" component={EnhancedOnboardingForm} />

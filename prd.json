@@ -10411,9 +10411,9 @@
         "Onboarding state is per-tenant + per-user and resumable."
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "category": "crm-ux",
-      "notes": "[UX/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: 5+ fragmented onboarding forms, no product tours. Biggest ease-of-use debt."
+      "notes": "[UX/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit: 5+ fragmented onboarding forms, no product tours. Biggest ease-of-use debt. [CRMX-014 COMPLETE 2026-07-14] Added the genuinely-missing canonical NEW-USER guided flow: client/src/pages/GettingStarted.tsx (progress-tracked checklist of first-value actions: import data, create deal, invite teammate, connect email/calendar, publish web form — each with a CTA) backed by durable per-tenant+per-user resumable state (onboarding_progress table, flowType=getting_started) via new GET/POST /api/onboarding/getting-started (routes-onboarding.ts) + useOnboarding hook (optimistic). Route /getting-started + sidebar Getting Started (Rocket). AC#3 coach marks: client/src/components/onboarding/FirstRunTip.tsx (dismissible, localStorage-persisted per key) shown first-visit on all 4 core CRM pages via CrmIndexShell. AC#4 empty states: CrmDataTable now renders the shared EmptyState with a primary CTA (getting-started guide) + search/filter-aware variant instead of a blank cell. IMPORTANT AUDIT CORRECTION: the AC listed SetupWizard/onboarding/OnboardingDashboard/EnhancedOnboardingForm/ComprehensiveOnboardingForm/TenantSetup as redundant new-user forms to deprecate, but these all call /api/onboarding and are the CUSTOMER/EQUIPMENT onboarding checklist system (a distinct, real feature) — NOT new-user setup. Ripping them out would break that feature (fold-dont-fake / dont-break-real-features), so they are intentionally RETAINED; the real gap (no new-user first-value guidance) is what Getting Started fills. Static: tsc 0-new (baseline 2), prettier clean."
     },
     {
       "id": "CRMX-015",

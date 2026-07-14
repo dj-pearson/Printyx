@@ -52,6 +52,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useSavedViews, type SavedViewData } from '@/hooks/useSavedViews';
 import { getCrmObjectConfig, type CrmObjectType } from '@/lib/crm-object-registry';
+import { FirstRunTip } from '@/components/onboarding/FirstRunTip';
 import { cn } from '@/lib/utils';
 
 interface CrmIndexShellProps {
@@ -567,6 +568,24 @@ export function CrmIndexShell({
 
       {/* ─── Content Area ─────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto">
+        {/* CRMX-014: first-visit coach mark for core CRM pages. */}
+        <div className="px-3 pt-3">
+          <FirstRunTip
+            tipKey={`crm-index-${objectType}`}
+            title={`Welcome to your ${config.labelPlural}`}
+          >
+            Switch between Table and Board views, save filtered views, and customize columns from
+            the toolbar. New here?{' '}
+            <button
+              type="button"
+              className="underline font-medium"
+              onClick={() => setLocation('/getting-started')}
+            >
+              Open the getting-started guide
+            </button>
+            .
+          </FirstRunTip>
+        </div>
         {viewMode === 'table' && renderTable?.(viewRenderProps)}
         {viewMode === 'board' && renderBoard?.(viewRenderProps)}
         {viewMode === 'table' && !renderTable && (
