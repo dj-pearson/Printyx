@@ -6,12 +6,42 @@ import { eq, or, and, sql } from 'drizzle-orm';
 import { isAuthenticated } from '../replitAuth';
 import { createApolloClientForTenant } from '../apollo-client';
 import { apolloStorage } from '../apollo-storage';
-import crypto from 'crypto';
 import { createModuleLogger } from '../lib/logger';
 import { getUserId, getTenantId } from '../utils/auth-helpers';
+import { createExtensionApiKey, verifyExtensionApiKey } from '../lib/extension-api-key-store';
 const log = createModuleLogger('chrome-extension-routes');
 
 const router = express.Router();
+
+/**
+ * PA-044: authenticate an extension request by its stored API key.
+ *
+ * Accepts the key via the `x-api-key` header or `Authorization: Bearer`. On a
+ * valid key it populates req.user (tenantId/id) so downstream handlers work the
+ * same as session auth; otherwise it falls through to `isAuthenticated` so the
+ * existing session-based flow keeps working.
+ */
+async function authenticateExtension(
+  req: any,
+  res: express.Response,
+  next: express.NextFunction,
+): Promise<void> {
+  const header = req.headers['x-api-key'] || req.headers['authorization'];
+  const key = typeof header === 'string' ? header.replace(/^Bearer\s+/i, '').trim() : undefined;
+
+  if (key && key.startsWith('pyx_ext_')) {
+    const record = await verifyExtensionApiKey(key);
+    if (!record) {
+      res.status(401).json({ error: 'Invalid or expired API key', code: 'UNAUTHORIZED' });
+      return;
+    }
+    req.user = { ...(req.user ?? {}), id: record.userId, tenantId: record.tenantId };
+    next();
+    return;
+  }
+
+  return isAuthenticated(req, res, next);
+}
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -203,7 +233,7 @@ async function checkDuplicateRecord(
  * 4. Create business_record with enriched data
  * 5. Return created record with enrichment metadata
  */
-router.post('/leads/quick-import', isAuthenticated, async (req: any, res) => {
+router.post('/leads/quick-import', authenticateExtension, async (req: any, res) => {
   try {
     const tenantId = req.user.tenantId;
     const userId = req.user.claims?.sub || req.user.id;
@@ -401,7 +431,7 @@ router.post('/leads/quick-import', isAuthenticated, async (req: any, res) => {
  * Check if lead already exists before importing
  * Query params: linkedinUrl, email, name, company
  */
-router.get('/leads/check-duplicate', isAuthenticated, async (req: any, res) => {
+router.get('/leads/check-duplicate', authenticateExtension, async (req: any, res) => {
   try {
     const tenantId = req.user.tenantId;
 
@@ -461,24 +491,18 @@ router.post('/auth/generate-key', isAuthenticated, async (req: any, res) => {
       return res.status(403).json({ error: 'No tenant ID or user ID found' });
     }
 
-    // Generate a secure random API key
-    const apiKey = `pyx_ext_${crypto.randomBytes(32).toString('hex')}`;
-
-    // TODO: Store API key in database (create extension_api_keys table)
-    // For now, we'll return it and rely on session-based auth
-    // In production, you should:
-    // 1. Create a table for API keys
-    // 2. Hash the API key before storing
-    // 3. Associate with user/tenant
-    // 4. Add expiration date
-    // 5. Track usage
+    // PA-044: persist only the hash + a non-secret lookup prefix, with a
+    // 1-year expiry. The plaintext key is returned once and never stored.
+    const { key: apiKey, expiresAt } = await createExtensionApiKey(tenantId, userId, {
+      name: 'Chrome extension',
+    });
 
     return res.json({
       success: true,
       apiKey,
       tenantId,
       userId,
-      expiresAt: null, // TODO: Add expiration
+      expiresAt: expiresAt.toISOString(),
       message: 'API key generated successfully. Keep this secure!',
       warning: 'This key will only be shown once. Store it securely in the Chrome extension.',
     });
@@ -496,18 +520,24 @@ router.post('/auth/generate-key', isAuthenticated, async (req: any, res) => {
  *
  * Health check endpoint for extension to verify API connectivity
  */
-router.get('/health', isAuthenticated, async (req: any, res) => {
+router.get('/health', authenticateExtension, async (req: any, res) => {
   const tenantId = req.user.tenantId;
   const userId = req.user.claims?.sub || req.user.id;
 
-  // Check Apollo.io integration status
+  // Check Apollo.io + ZoomInfo integration status (PA-044: derive the ZoomInfo
+  // capability from a stored credential instead of a hardcoded stub).
   let apolloConfigured = false;
+  let zoominfoConfigured = false;
   try {
     const { storage } = await import('../storage');
-    const credential = await storage.getIntegrationCredentialByProvider(tenantId, 'apollo');
-    apolloConfigured = !!(credential && credential.apiKey && credential.status === 'active');
+    const [apollo, zoominfo] = await Promise.all([
+      storage.getIntegrationCredentialByProvider(tenantId, 'apollo'),
+      storage.getIntegrationCredentialByProvider(tenantId, 'zoominfo'),
+    ]);
+    apolloConfigured = !!(apollo && apollo.apiKey && apollo.status === 'active');
+    zoominfoConfigured = !!(zoominfo && zoominfo.apiKey && zoominfo.status === 'active');
   } catch (error) {
-    // Apollo not configured
+    // Integrations not configured
   }
 
   return res.json({
@@ -519,7 +549,7 @@ router.get('/health', isAuthenticated, async (req: any, res) => {
     },
     integrations: {
       apollo: apolloConfigured,
-      zoominfo: false, // TODO: Check ZoomInfo when implemented
+      zoominfo: zoominfoConfigured,
     },
     features: {
       quickImport: true,

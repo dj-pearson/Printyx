@@ -92,6 +92,13 @@
       "when": 1783925568690,
       "tag": "0021_cr029_trigram_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783925568700,
+      "tag": "0022_extension_api_keys",
+      "breakpoints": true
     }
   ]
 }
