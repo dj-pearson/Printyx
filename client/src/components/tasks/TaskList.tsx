@@ -362,7 +362,10 @@ export default function TaskList({ className }: TaskListProps) {
                             {task.title}
                           </h4>
                           {task.isAiGenerated && (
-                            <Brain className="h-4 w-4 text-blue-600" title="AI Generated Task" />
+                            <Brain
+                              className="h-4 w-4 text-blue-600"
+                              aria-label="AI Generated Task"
+                            />
                           )}
                         </div>
 
