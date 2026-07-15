@@ -9376,8 +9376,8 @@
         "Add cache-hit metrics/logging"
       ],
       "priority": 267,
-      "passes": false,
-      "notes": "[PERFORMANCE/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[PERFORMANCE/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-15] Expanded cache-service usage onto expensive read paths: universal-search (CR-029, 30s tenant-scoped) + predictive-maintenance dashboard (CR-026, 300s tenant-scoped) + technician-management stats aggregation (new, 60s tenant-scoped). All use MemoryCacheService with tenant-scoped keys + TTLs + X-Cache HIT/MISS headers. Added shared server/lib/cached-read.ts get-or-compute wrapper with per-namespace hit/miss counters (getCacheMetrics) + debug hit/miss logging (satisfies cache-hit metrics/logging AC); technician-management adopts it, unit-tested server/tests/unit/cached-read.test.ts (3 tests). NOTE: the routes-analytics.ts endpoints are NOT viable cache targets — /analytics/dashboard returns hardcoded MOCK data and /analytics/metrics|performance-metrics query the PHANTOM service_performance_metrics table (500s at runtime, tracked by CR-017); chose the real tenant-scoped technician-stats aggregation as the heavy-read target instead. Ratchet holds 1352."
     },
     {
       "id": "CR-032",

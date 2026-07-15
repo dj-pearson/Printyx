@@ -2,10 +2,16 @@ import type { Express } from 'express';
 import { z } from 'zod';
 import { eq, and, desc, sql, count, gte, lte, inArray } from 'drizzle-orm';
 import { collectIds, countMap } from './lib/n1-batch';
+import { cachedRead } from './lib/cached-read';
+import { MemoryCacheService } from './cache-service';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-technician-management');
+
+// CR-031: short-lived tenant-scoped cache for the technician-stats aggregation.
+const technicianStatsCache = new MemoryCacheService();
+const TECHNICIAN_STATS_TTL_SECONDS = 60;
 
 import {
   technicians,
@@ -76,85 +82,96 @@ export function registerTechnicianManagementRoutes(app: Express) {
       try {
         const tenantId = req.user!.tenantId;
 
-        const techniciansData = await db
-          .select({
-            id: technicians.id,
-            name: technicianNameSql,
-            firstName: technicians.firstName,
-            lastName: technicians.lastName,
-            email: technicians.email,
-            phone: technicians.phone,
-            specialties: technicians.skills,
-            certifications: technicians.certifications,
-            status: technicianStatusSql,
-            location: technicians.currentLocation,
-            availability: technicianAvailabilitySql,
-            hourlyRate: technicians.hourlyRate,
-            employeeId: technicians.employeeId,
-            workingHours: technicians.workingHours,
-            createdAt: technicians.createdAt,
-            updatedAt: technicians.updatedAt,
-          })
-          .from(technicians)
-          .where(eq(technicians.tenantId, tenantId))
-          .orderBy(technicians.firstName, technicians.lastName);
+        // CR-031: cache this expensive technician-stats aggregation per tenant
+        // (short TTL) with shared hit/miss metrics via cachedRead.
+        const technicianStats = await cachedRead(
+          technicianStatsCache,
+          'technician-management',
+          `tech-mgmt:stats:${tenantId}`,
+          TECHNICIAN_STATS_TTL_SECONDS,
+          async () => {
+            const techniciansData = await db
+              .select({
+                id: technicians.id,
+                name: technicianNameSql,
+                firstName: technicians.firstName,
+                lastName: technicians.lastName,
+                email: technicians.email,
+                phone: technicians.phone,
+                specialties: technicians.skills,
+                certifications: technicians.certifications,
+                status: technicianStatusSql,
+                location: technicians.currentLocation,
+                availability: technicianAvailabilitySql,
+                hourlyRate: technicians.hourlyRate,
+                employeeId: technicians.employeeId,
+                workingHours: technicians.workingHours,
+                createdAt: technicians.createdAt,
+                updatedAt: technicians.updatedAt,
+              })
+              .from(technicians)
+              .where(eq(technicians.tenantId, tenantId))
+              .orderBy(technicians.firstName, technicians.lastName);
 
-        // CR-027: replace the per-technician count queries (N+1) with two
-        // grouped queries over the whole technician set, then join in memory.
-        const techIds = collectIds(techniciansData, (t) => t.id);
-        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+            // CR-027: replace the per-technician count queries (N+1) with two
+            // grouped queries over the whole technician set, then join in memory.
+            const techIds = collectIds(techniciansData, (t) => t.id);
+            const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-        const [activeRows, completedRows] =
-          techIds.length > 0
-            ? await Promise.all([
-                db
-                  .select({
-                    technicianId: serviceTickets.assignedTechnicianId,
-                    count: count(),
-                  })
-                  .from(serviceTickets)
-                  .where(
-                    and(
-                      inArray(serviceTickets.assignedTechnicianId, techIds),
-                      eq(serviceTickets.tenantId, tenantId),
-                      sql`${serviceTickets.status} NOT IN ('completed', 'cancelled')`,
-                    ),
-                  )
-                  .groupBy(serviceTickets.assignedTechnicianId),
-                db
-                  .select({
-                    technicianId: serviceTickets.assignedTechnicianId,
-                    count: count(),
-                  })
-                  .from(serviceTickets)
-                  .where(
-                    and(
-                      inArray(serviceTickets.assignedTechnicianId, techIds),
-                      eq(serviceTickets.tenantId, tenantId),
-                      eq(serviceTickets.status, 'completed'),
-                      gte(serviceTickets.updatedAt, monthStart),
-                    ),
-                  )
-                  .groupBy(serviceTickets.assignedTechnicianId),
-              ])
-            : [[], []];
+            const [activeRows, completedRows] =
+              techIds.length > 0
+                ? await Promise.all([
+                    db
+                      .select({
+                        technicianId: serviceTickets.assignedTechnicianId,
+                        count: count(),
+                      })
+                      .from(serviceTickets)
+                      .where(
+                        and(
+                          inArray(serviceTickets.assignedTechnicianId, techIds),
+                          eq(serviceTickets.tenantId, tenantId),
+                          sql`${serviceTickets.status} NOT IN ('completed', 'cancelled')`,
+                        ),
+                      )
+                      .groupBy(serviceTickets.assignedTechnicianId),
+                    db
+                      .select({
+                        technicianId: serviceTickets.assignedTechnicianId,
+                        count: count(),
+                      })
+                      .from(serviceTickets)
+                      .where(
+                        and(
+                          inArray(serviceTickets.assignedTechnicianId, techIds),
+                          eq(serviceTickets.tenantId, tenantId),
+                          eq(serviceTickets.status, 'completed'),
+                          gte(serviceTickets.updatedAt, monthStart),
+                        ),
+                      )
+                      .groupBy(serviceTickets.assignedTechnicianId),
+                  ])
+                : [[], []];
 
-        const activeByTech = countMap(
-          activeRows,
-          (r) => r.technicianId,
-          (r) => r.count,
+            const activeByTech = countMap(
+              activeRows,
+              (r) => r.technicianId,
+              (r) => r.count,
+            );
+            const completedByTech = countMap(
+              completedRows,
+              (r) => r.technicianId,
+              (r) => r.count,
+            );
+
+            return techniciansData.map((tech) => ({
+              ...tech,
+              activeTickets: activeByTech.get(tech.id) ?? 0,
+              completedThisMonth: completedByTech.get(tech.id) ?? 0,
+            }));
+          },
+          (outcome) => res.setHeader('X-Cache', outcome),
         );
-        const completedByTech = countMap(
-          completedRows,
-          (r) => r.technicianId,
-          (r) => r.count,
-        );
-
-        const technicianStats = techniciansData.map((tech) => ({
-          ...tech,
-          activeTickets: activeByTech.get(tech.id) ?? 0,
-          completedThisMonth: completedByTech.get(tech.id) ?? 0,
-        }));
 
         res.json(technicianStats);
       } catch (error) {
