@@ -156,7 +156,7 @@ export function TaskBoardView({ groupedTasks, onInlineEdit, teamMembers }: TaskB
       <div className="flex gap-3 sm:gap-4 md:gap-6 overflow-x-auto pb-6 min-h-[600px] -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory md:snap-none">
         {statusColumns.map((column) => {
           const tasks = tasksByStatus[column.id] || [];
-          const isOverLimit = column.limit && tasks.length > column.limit;
+          const isOverLimit = Boolean(column.limit && tasks.length > column.limit);
 
           return (
             <DroppableColumn

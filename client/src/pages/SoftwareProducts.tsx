@@ -1839,7 +1839,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         <FormItem>
                           <FormLabel>Vendor</FormLabel>
                           <FormControl>
-                            <Input placeholder="Microsoft" {...field} />
+                            <Input placeholder="Microsoft" {...field} value={field.value ?? ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

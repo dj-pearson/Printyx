@@ -68,6 +68,10 @@ export default function BillingRules() {
           createdAt: rule.createdAt || rule.createdAt || '',
           updatedAt: rule.updatedAt || rule.updatedAt || '',
         })),
+        // CR-034: surface pagination the API returns (was dropped → always undefined)
+        pagination: response?.pagination as
+          | { total?: number; page?: number; limit?: number }
+          | undefined,
       };
     },
   });

@@ -161,7 +161,9 @@ export default function ProfessionalServices() {
   };
 
   // Get unique categories from services
-  const categories = Array.from(new Set(services.map((s) => s.category).filter(Boolean)));
+  const categories = Array.from(
+    new Set(services.map((s) => s.category).filter((v): v is string => Boolean(v))),
+  );
 
   // Filter services by search and category
   const filteredServices = services.filter((service) => {
