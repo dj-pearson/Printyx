@@ -13,7 +13,7 @@ import {
   createStripeClient,
   createMicrosoftGraphClient,
 } from './oauth-config';
-import crypto from 'crypto';
+import { verifyStripeSignature, verifyHmacSignature } from './webhook-signatures';
 
 export interface WebhookPayload {
   provider: string;
@@ -38,10 +38,11 @@ export class WebhookService {
     provider: string,
     payload: any,
     headers: Record<string, string>,
+    rawBody?: string | Buffer,
   ): Promise<WebhookProcessingResult> {
     try {
-      // Verify webhook signature based on provider
-      const isValid = await this.verifyWebhookSignature(provider, payload, headers);
+      // Verify webhook signature based on provider (PA-018: HMAC over raw bytes).
+      const isValid = await this.verifyWebhookSignature(provider, payload, headers, rawBody);
       if (!isValid) {
         return {
           success: false,
@@ -209,10 +210,19 @@ export class WebhookService {
     provider: string,
     payload: any,
     headers: Record<string, string>,
+    rawBody?: string | Buffer,
   ): Promise<boolean> {
+    // PA-018: HMAC must be computed over the raw request bytes the provider
+    // signed. Fall back to the serialized payload only when the raw body was
+    // not captured (provider-specific endpoints using express.json()).
+    const body: string | Buffer = rawBody ?? JSON.stringify(payload);
     switch (provider) {
       case 'stripe':
-        return this.verifyStripeSignature(payload, headers['stripe-signature']);
+        return verifyStripeSignature(
+          body,
+          headers['stripe-signature'],
+          process.env.STRIPE_WEBHOOK_SECRET,
+        );
 
       case 'salesforce': {
         // Validate Salesforce webhook using shared secret in custom header
@@ -226,14 +236,7 @@ export class WebhookService {
           log.warn('Salesforce webhook missing signature header');
           return false;
         }
-        const expectedSfSig = crypto
-          .createHmac('sha256', sfSecret)
-          .update(JSON.stringify(payload))
-          .digest('hex');
-        return crypto.timingSafeEqual(
-          Buffer.from(sfSignature),
-          Buffer.from(expectedSfSig),
-        );
+        return verifyHmacSignature(body, sfSignature, sfSecret, 'hex');
       }
 
       case 'microsoft-calendar': {
@@ -256,42 +259,10 @@ export class WebhookService {
         return this.verifyGoogleSignature(payload, headers);
 
       case 'quickbooks':
-        return this.verifyQuickBooksSignature(payload, headers['intuit-signature']);
+        return this.verifyQuickBooksSignature(headers['intuit-signature'], body);
 
       default:
         return false;
-    }
-  }
-
-  /**
-   * Verify Stripe webhook signature
-   */
-  private static verifyStripeSignature(payload: any, signature: string): boolean {
-    if (!signature) return false;
-
-    const secret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!secret) return false;
-
-    try {
-      const elements = signature.split(',');
-      const signatureHash = elements.find((el) => el.startsWith('v1='))?.split('=')[1];
-      const timestamp = elements.find((el) => el.startsWith('t='))?.split('=')[1];
-
-      if (!signatureHash || !timestamp) return false;
-
-      const payloadString = JSON.stringify(payload);
-      const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(`${timestamp}.${payloadString}`)
-        .digest('hex');
-
-      return crypto.timingSafeEqual(
-        Buffer.from(signatureHash, 'hex'),
-        Buffer.from(expectedSignature, 'hex'),
-      );
-    } catch (error) {
-      log.error('Stripe signature verification error:', error);
-      return false;
     }
   }
 
@@ -311,19 +282,14 @@ export class WebhookService {
   /**
    * Verify QuickBooks webhook signature
    */
-  private static verifyQuickBooksSignature(payload: any, signature: string): boolean {
-    if (!signature) return false;
-
-    const secret = process.env.QUICKBOOKS_WEBHOOK_TOKEN;
-    if (!secret) return false;
-
+  private static verifyQuickBooksSignature(signature: string, rawBody: string | Buffer): boolean {
     try {
-      const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(JSON.stringify(payload))
-        .digest('base64');
-
-      return signature === expectedSignature;
+      return verifyHmacSignature(
+        rawBody,
+        signature,
+        process.env.QUICKBOOKS_WEBHOOK_TOKEN,
+        'base64',
+      );
     } catch (error) {
       log.error('QuickBooks signature verification error:', error);
       return false;

@@ -10126,9 +10126,9 @@
         "Test with a Stripe-format signature fixture that passes only against raw-body HMAC."
       ],
       "priority": 320,
-      "passes": false,
+      "passes": true,
       "category": "audit-security",
-      "notes": "[SECURITY/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/integrations/webhook-service.ts:230,275 use JSON.stringify(payload); real signatures are over raw bytes so it can never validate. Fails-closed today (rejects all), but is a latent bypass if any caller treats false as \"skip\". Primary Stripe path (stripe-service.ts) correctly uses constructEvent."
+      "notes": "[SECURITY/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/integrations/webhook-service.ts:230,275 use JSON.stringify(payload); real signatures are over raw bytes so it can never validate. Fails-closed today (rejects all), but is a latent bypass if any caller treats false as \"skip\". Primary Stripe path (stripe-service.ts) correctly uses constructEvent. [DONE 2026-07-15] Extracted pure raw-body verifiers to server/integrations/webhook-signatures.ts (verifyStripeSignature over `${t}.${rawBody}`, verifyHmacSignature hex/base64 for Salesforce/QuickBooks, safeCompare). webhook-service.verifyWebhookSignature now takes rawBody and HMACs the raw bytes (falls back to JSON.stringify(payload) only when raw body absent — the express.json provider-specific endpoints); processWebhook threads rawBody; the generic /api/webhooks/:provider route (rawBodyParser → req.body is a Buffer) passes req.body as rawBody and parses a copy for routing/logging only. Removed now-unused crypto import. Unit test server/tests/unit/webhook-signatures.test.ts (8) uses a Stripe-format fixture with non-canonical JSON formatting: PASSES against raw-body HMAC, FAILS against JSON.stringify(JSON.parse(raw)) — proving the fix. Microsoft(clientState)/Google(channel token) paths unaffected. Ratchet holds 1352."
     },
     {
       "id": "PA-029",
