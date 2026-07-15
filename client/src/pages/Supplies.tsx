@@ -149,7 +149,9 @@ export default function Supplies() {
   };
 
   // Get unique categories from supplies for filtering
-  const categories = Array.from(new Set(supplies.map((s) => s.productType).filter(Boolean)));
+  const categories = Array.from(
+    new Set(supplies.map((s) => s.productType).filter((v): v is string => Boolean(v))),
+  );
 
   // Filter supplies by search and category
   const filteredSupplies = supplies.filter((supply) => {

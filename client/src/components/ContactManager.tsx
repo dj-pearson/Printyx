@@ -248,7 +248,7 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
     }
   };
 
-  const formatDate = (date: string) => {
+  const formatDate = (date: string | null | undefined) => {
     if (!date) return 'Never';
     return format(new Date(date), 'MMM dd, yyyy');
   };

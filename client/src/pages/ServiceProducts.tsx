@@ -114,7 +114,9 @@ export default function ServiceProducts() {
   };
 
   // Get unique service types from services
-  const serviceTypes = Array.from(new Set(services.map((s) => s.serviceType).filter(Boolean)));
+  const serviceTypes = Array.from(
+    new Set(services.map((s) => s.serviceType).filter((v): v is string => Boolean(v))),
+  );
 
   // Filter services by search and service type
   const filteredServices = services.filter((service) => {

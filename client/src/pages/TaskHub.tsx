@@ -108,7 +108,7 @@ export default function TaskHub() {
     >
       <ErrorBoundary level="page">
         <div className="space-y-6">
-          <ContextualHelp page="task-hub" />
+          <ContextualHelp page="task-management" />
           <KpiSummaryBar className="mb-4" />
           <PageAlerts
             categories={['business', 'performance']}

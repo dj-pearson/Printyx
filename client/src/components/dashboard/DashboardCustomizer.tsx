@@ -74,12 +74,12 @@ export function DashboardCustomizer() {
   const [layoutName, setLayoutName] = useState('');
 
   // Fetch available widgets
-  const { data: widgetsData } = useQuery({
+  const { data: widgetsData } = useQuery<{ data: Widget[] }>({
     queryKey: ['/api/dashboard/widgets'],
   });
 
   // Fetch current layout
-  const { data: layoutData } = useQuery({
+  const { data: layoutData } = useQuery<{ data: Layout }>({
     queryKey: ['/api/dashboard/layout'],
   });
 

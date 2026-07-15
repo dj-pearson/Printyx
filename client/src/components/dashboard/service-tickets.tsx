@@ -94,7 +94,7 @@ export default function ServiceTickets() {
                   <p className="font-medium text-gray-900">{ticket.title}</p>
                   <p className="text-sm text-gray-600">
                     Customer: {ticket.customerId} • Created:{' '}
-                    {new Date(ticket.createdAt).toLocaleDateString()}
+                    {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : ''}
                   </p>
                 </div>
               </div>
@@ -107,7 +107,7 @@ export default function ServiceTickets() {
                   {ticket.priority}
                 </Badge>
                 <p className="text-sm text-gray-500">
-                  {new Date(ticket.createdAt).toLocaleDateString()}
+                  {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : ''}
                 </p>
               </div>
             </div>

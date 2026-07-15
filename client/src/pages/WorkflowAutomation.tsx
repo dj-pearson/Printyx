@@ -332,7 +332,7 @@ export default function WorkflowAutomation() {
       },
     }),
     staleTime: 2 * 60 * 1000, // 2 minutes - workflows don't change that frequently
-    cacheTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 5 * 60 * 1000, // 5 minutes cache (TanStack Query v5 renamed cacheTime → gcTime)
     refetchInterval: 60 * 1000, // Standardized to 1 minute polling
     refetchIntervalInBackground: false, // Save resources when tab not active
     refetchOnWindowFocus: false, // Prevent excessive refetches

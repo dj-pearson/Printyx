@@ -219,8 +219,9 @@ export function CsvImportWizard({
       return await apiRequest(`/api/import/jobs/${importJobId}`);
     },
     enabled: !!importJobId,
-    refetchInterval: (data) => {
-      if (data?.status === 'processing') return 1000;
+    refetchInterval: (query) => {
+      // TanStack Query v5: the callback receives the Query, not the data.
+      if (query.state.data?.status === 'processing') return 1000;
       return false;
     },
   });
@@ -905,7 +906,7 @@ export function CsvImportWizard({
                 <p className="text-muted-foreground">
                   {importJob?.validRows} records will be imported
                 </p>
-                <Button onClick={() => executeMutation.mutate()}>Start Import</Button>
+                <Button onClick={() => executeMutation.mutate({})}>Start Import</Button>
               </div>
             )}
           </div>
