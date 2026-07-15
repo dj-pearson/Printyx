@@ -11,12 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { apiRequest } from '@/lib/queryClient';
-import {
-  type ServiceTicket,
-  type Technician,
-  type InsertServiceTicket,
-  insertServiceTicketSchema,
-} from '@shared/schema';
+import { type ServiceTicket, type Technician, insertServiceTicketSchema } from '@shared/schema';
 import {
   Select,
   SelectContent,
@@ -60,12 +55,23 @@ import { useMobileDetection } from '@/hooks/useExternalIntegrations';
 import { MobileServiceDispatch } from '@/components/mobile/MobileServiceDispatch';
 import { CustomerEquipmentProfile } from '@/components/CustomerEquipmentProfile';
 
+// CR-034: the /api/service-tickets list is enriched with display/join fields
+// (customer name, equipment model, assigned technician) beyond the raw
+// serviceTickets columns. Type them as optional so reads compile and stay
+// faithful to runtime (undefined when the backend returns raw rows).
+interface ServiceTicketRow extends ServiceTicket {
+  customerName?: string;
+  equipmentModel?: string;
+  assignedTechnician?: string;
+  technicianId?: string;
+}
+
 export default function ServiceHub() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
   const [showPhoneInCreator, setShowPhoneInCreator] = useState(false);
   const [showTechWorkflow, setShowTechWorkflow] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<ServiceTicketRow | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -86,7 +92,7 @@ export default function ServiceHub() {
     data: tickets = [],
     isLoading: ticketsLoading,
     refetch,
-  } = useQuery<ServiceTicket[]>({
+  } = useQuery<ServiceTicketRow[]>({
     queryKey: ['/api/service-tickets'],
     enabled: isAuthenticated,
     queryFn: async () => {
@@ -194,7 +200,7 @@ export default function ServiceHub() {
   };
 
   // Enhanced filtering with multiple criteria
-  const filteredTickets = tickets.filter((ticket: ServiceTicket) => {
+  const filteredTickets = tickets.filter((ticket: ServiceTicketRow) => {
     const matchesSearch =
       ticket.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -207,7 +213,7 @@ export default function ServiceHub() {
   });
 
   // Intelligent routing suggestions
-  const getIntelligentRoutingSuggestions = (ticket: ServiceTicket) => {
+  const getIntelligentRoutingSuggestions = (ticket: ServiceTicketRow) => {
     // Simulate AI-powered routing based on technician skills, location, and workload
     const suggestions = [
       {
@@ -493,11 +499,11 @@ export default function ServiceHub() {
                 <CardContent>
                   <div className="space-y-3">
                     {tickets
-                      .filter((t: ServiceTicket) =>
+                      .filter((t: ServiceTicketRow) =>
                         ['assigned', 'en_route', 'on_site', 'in_progress'].includes(t.status || ''),
                       )
                       .slice(0, 5)
-                      .map((ticket: ServiceTicket) => (
+                      .map((ticket: ServiceTicketRow) => (
                         <div
                           key={ticket.id}
                           className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg space-y-2 sm:space-y-0"
@@ -704,7 +710,7 @@ export default function ServiceHub() {
                 </div>
 
                 <div className="space-y-3">
-                  {filteredTickets.map((ticket: ServiceTicket) => (
+                  {filteredTickets.map((ticket: ServiceTicketRow) => (
                     <Card key={ticket.id}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
@@ -732,7 +738,9 @@ export default function ServiceHub() {
                               </span>
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
-                                {new Date(ticket.createdAt).toLocaleDateString()}
+                                {ticket.createdAt
+                                  ? new Date(ticket.createdAt).toLocaleDateString()
+                                  : ''}
                               </span>
                             </div>
                           </div>
@@ -792,7 +800,7 @@ export default function ServiceHub() {
                         .filter((t: any) =>
                           ['en_route', 'on_site', 'in_progress'].includes(t.status),
                         )
-                        .map((ticket: ServiceTicket) => (
+                        .map((ticket: ServiceTicketRow) => (
                           <div
                             key={ticket.id}
                             className="flex items-center justify-between p-3 border rounded-lg"
@@ -804,7 +812,7 @@ export default function ServiceHub() {
                               <p className="text-sm text-gray-600">
                                 #{ticket.id.slice(0, 8)} - {ticket.customerName}
                               </p>
-                              <Badge size="sm" variant={getStatusBadgeVariant(ticket.status)}>
+                              <Badge variant={getStatusBadgeVariant(ticket.status)}>
                                 {ticket.status?.replace('_', ' ')}
                               </Badge>
                             </div>
