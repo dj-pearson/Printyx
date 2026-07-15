@@ -10,11 +10,23 @@ import {
   serviceTickets,
   clientCollectedMetrics,
 } from '../shared/schema';
-import { eq, and, sql, desc, gte, lt } from 'drizzle-orm';
+import { eq, and, sql, desc, gte, lt, inArray } from 'drizzle-orm';
 import { predictiveServiceDispatchService } from './services/predictive-service-dispatch-service';
+import { MemoryCacheService } from './cache-service';
+import {
+  computeEquipmentHealth,
+  selectAiCandidates,
+  groupMetricsBySerial,
+} from './lib/predictive-maintenance';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = Router();
+
+// CR-026: bound the work this CRITICAL dashboard does per request.
+const PREDICTIVE_EQUIPMENT_LIMIT = 200; // devices processed per dashboard load
+const PREDICTIVE_MAX_AI_ANALYSES = 10; // synchronous AI calls per request (highest-risk only)
+const PREDICTIVE_DASHBOARD_TTL_SECONDS = 300; // 5 min cache for this expensive read
+const predictiveDashboardCache = new MemoryCacheService();
 
 /**
  * UNIFIED PREDICTIVE MAINTENANCE HUB
@@ -36,7 +48,16 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Get all active equipment with health analysis
+    // CR-026: serve this expensive dashboard from a short-lived tenant cache.
+    const cacheKey = `predmaint:dashboard:${tenantId}`;
+    const cachedDashboard = await predictiveDashboardCache.get(cacheKey);
+    if (cachedDashboard) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cachedDashboard);
+    }
+
+    // Get active equipment with health analysis. CR-026: bound the set so a
+    // large fleet cannot make this dashboard scan/score unbounded rows.
     const equipmentList = await db
       .select({
         equipmentId: equipment.id,
@@ -55,125 +76,64 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
       .from(equipment)
       .leftJoin(businessRecords, eq(equipment.customerId, businessRecords.id))
       .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')))
-      .orderBy(equipment.nextServiceDueDate);
+      .orderBy(equipment.nextServiceDueDate)
+      .limit(PREDICTIVE_EQUIPMENT_LIMIT);
 
-    // Calculate health metrics for each equipment
-    const equipmentHealth = await Promise.all(
-      equipmentList.map(async (item) => {
-        const now = new Date();
-        const lastService = item.lastServiceDate ? new Date(item.lastServiceDate) : null;
-        const nextDue = item.nextServiceDue
-          ? new Date(item.nextServiceDue)
-          : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-
-        const daysSinceService = lastService
-          ? Math.floor((now.getTime() - lastService.getTime()) / (1000 * 60 * 60 * 24))
-          : 9999;
-
-        const daysUntilDue = Math.floor(
-          (nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-        );
-
-        // Calculate health score (0-100)
-        let healthScore = 100;
-
-        if (daysUntilDue < 0) {
-          healthScore -= Math.min(50, Math.abs(daysUntilDue) * 2);
-        }
-
-        if (daysSinceService > 180) {
-          healthScore -= Math.min(30, (daysSinceService - 180) / 10);
-        }
-
-        const meterReading = item.meterReading || 0;
-        const recommendedPages = 50000;
-        if (meterReading > recommendedPages) {
-          healthScore -= Math.min(20, ((meterReading - recommendedPages) / recommendedPages) * 20);
-        }
-
-        healthScore = Math.max(0, Math.min(100, Math.round(healthScore)));
-
-        // Determine urgency
-        let urgency: 'overdue' | 'urgent' | 'soon' | 'scheduled';
-        let riskLevel: 'critical' | 'high' | 'medium' | 'low';
-
-        if (daysUntilDue <= 0) {
-          urgency = 'overdue';
-          riskLevel = 'critical';
-        } else if (daysUntilDue <= 7) {
-          urgency = 'urgent';
-          riskLevel = 'high';
-        } else if (daysUntilDue <= 30) {
-          urgency = 'soon';
-          riskLevel = 'medium';
-        } else {
-          urgency = 'scheduled';
-          riskLevel = 'low';
-        }
-
-        // Get AI prediction if metrics available
-        let aiPrediction = null;
-        try {
-          const recentMetrics = await db.query.clientCollectedMetrics.findMany({
+    // CR-026: batch the recent-metrics lookup into ONE set-based query (was one
+    // query per device) and group by serial in memory.
+    const serialNumbers = Array.from(
+      new Set(equipmentList.map((e) => e.serialNumber).filter((s): s is string => Boolean(s))),
+    );
+    const metricRows =
+      serialNumbers.length > 0
+        ? await db.query.clientCollectedMetrics.findMany({
             where: and(
-              eq(clientCollectedMetrics.serialNumber, item.serialNumber || ''),
+              inArray(clientCollectedMetrics.serialNumber, serialNumbers),
               eq(clientCollectedMetrics.tenantId, parseInt(tenantId)),
               gte(clientCollectedMetrics.collectionTimestamp, thirtyDaysAgo),
             ),
             orderBy: [desc(clientCollectedMetrics.collectionTimestamp)],
-            limit: 10,
+          })
+        : [];
+    const metricsBySerial = groupMetricsBySerial(metricRows);
+
+    // Deterministic health for every device (pure, synchronous).
+    const now = new Date();
+    const baseHealth = equipmentList.map((item) => computeEquipmentHealth(item, now));
+
+    // CR-026: run the expensive AI analysis only for a bounded set of the
+    // highest-risk devices that actually have metrics — not once per row.
+    const aiCandidates = selectAiCandidates(
+      baseHealth,
+      (serial) => (metricsBySerial.get(serial)?.length ?? 0) > 0,
+      PREDICTIVE_MAX_AI_ANALYSES,
+    );
+
+    const aiById = new Map<string, unknown>();
+    await Promise.all(
+      aiCandidates.map(async (health) => {
+        try {
+          const recentMetrics = (metricsBySerial.get(health.serialNumber) ?? []).slice(0, 10);
+          if (recentMetrics.length === 0) return;
+          const analysis = await (predictiveServiceDispatchService as any).analyzeDeviceHealth(
+            recentMetrics,
+            tenantId,
+          );
+          aiById.set(health.equipmentId, {
+            failureRisk: analysis.predictedFailureRisk || 0,
+            daysUntilFailure: analysis.daysUntilPredictedFailure,
+            recommendations: analysis.recommendations || [],
           });
-
-          if (recentMetrics.length > 0) {
-            const analysis = await (predictiveServiceDispatchService as any).analyzeDeviceHealth(
-              recentMetrics,
-              tenantId,
-            );
-            aiPrediction = {
-              failureRisk: analysis.predictedFailureRisk || 0,
-              daysUntilFailure: analysis.daysUntilPredictedFailure,
-              recommendations: analysis.recommendations || [],
-            };
-          }
         } catch (error) {
-          log.error(`AI prediction failed for ${item.serialNumber}:`, error);
+          log.error(`AI prediction failed for ${health.serialNumber}:`, error);
         }
-
-        const estimatedIssues: string[] = [];
-        if (healthScore < 40) {
-          estimatedIssues.push('High risk of failure');
-        } else if (healthScore < 60) {
-          estimatedIssues.push('Preventive maintenance recommended');
-        } else if (healthScore < 80) {
-          estimatedIssues.push('Minor adjustments may be needed');
-        }
-
-        if (daysUntilDue < 0) {
-          estimatedIssues.push(`${Math.abs(daysUntilDue)} days overdue`);
-        }
-
-        return {
-          equipmentId: item.equipmentId,
-          serialNumber: item.serialNumber || 'N/A',
-          make: item.make || 'Unknown',
-          model: item.model || 'Unknown',
-          customerName: item.customerName || 'Unknown Customer',
-          customerId: item.customerId,
-          location: item.location || 'Unknown',
-          lastServiceDate: item.lastServiceDate,
-          daysSinceService,
-          nextServiceDue: nextDue.toISOString(),
-          daysUntilDue,
-          healthScore,
-          meterReading,
-          recommendedPages,
-          urgency,
-          riskLevel,
-          estimatedIssues: estimatedIssues.length > 0 ? estimatedIssues : undefined,
-          aiPrediction,
-        };
       }),
     );
+
+    const equipmentHealth = baseHealth.map((health) => ({
+      ...health,
+      aiPrediction: aiById.get(health.equipmentId) ?? null,
+    }));
 
     // Calculate summary statistics
     const overdueCount = equipmentHealth.filter((i) => i.urgency === 'overdue').length;
@@ -207,7 +167,7 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
         ? ((downtimePreventedHours / totalPossibleDowntime) * 100).toFixed(2)
         : '0.00';
 
-    res.json({
+    const payload = {
       success: true,
       overview: {
         totalEquipment: equipmentHealth.length,
@@ -225,7 +185,12 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
         period: '30 days',
       },
       equipment: equipmentHealth,
-    });
+    };
+
+    // CR-026: cache the assembled dashboard (tenant-scoped, short TTL).
+    await predictiveDashboardCache.set(cacheKey, payload, PREDICTIVE_DASHBOARD_TTL_SECONDS);
+    res.setHeader('X-Cache', 'MISS');
+    res.json(payload);
   } catch (error) {
     log.error('[PREDICTIVE MAINTENANCE HUB] Error:', error);
     res.status(500).json({

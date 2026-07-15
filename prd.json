@@ -9307,8 +9307,8 @@
         "Cache results via server/cache-service.ts"
       ],
       "priority": 262,
-      "passes": false,
-      "notes": "[PERFORMANCE/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[PERFORMANCE/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-15] All 4 ACs on /api/predictive-maintenance/dashboard (routes-predictive-maintenance-hub.ts): (AC1) per-equipment clientCollectedMetrics.findMany (N+1) -> ONE inArray(serialNumber IN ...) query grouped by serial (groupMetricsBySerial). (AC2) per-row synchronous AI analyzeDeviceHealth moved out of the unbounded map: health is computed synchronously for all devices (pure computeEquipmentHealth), then AI runs ONLY for a bounded set (selectAiCandidates: has-metrics + lowest-health, capped at PREDICTIVE_MAX_AI_ANALYSES=10) via one Promise.all. (AC3) equipment set bounded with .limit(PREDICTIVE_EQUIPMENT_LIMIT=200), ordered by nextServiceDueDate (soonest-due first). (AC4) whole dashboard cached per tenant via MemoryCacheService (predmaint:dashboard:tenantId, 300s TTL) + X-Cache header. Pure helpers server/lib/predictive-maintenance.ts unit-tested (8 tests incl. exact health-score parity with the old inline logic). Query count: was 1 + N metrics + N AI -> now 2 queries + <=10 AI. Ratchet holds 1352."
     },
     {
       "id": "CR-027",
