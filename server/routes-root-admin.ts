@@ -4,6 +4,7 @@ import { db } from './db';
 import { users, roles, tenants, activityReports, auditLogs } from '../shared/schema';
 import { rbacAuditLog } from './enhanced-rbac-schema';
 import { eq, desc, sql, count, and, gte, lte, like, inArray } from 'drizzle-orm';
+import { collectIds, indexBy } from './lib/n1-batch';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
@@ -314,35 +315,41 @@ router.get('/users', requireRootAdmin, async (req, res) => {
 
     const userList = await query.orderBy(desc(users.lastLoginAt)).limit(100);
 
-    // Enrich with role and tenant information
-    const enrichedUsers = await Promise.all(
-      userList.map(async (user) => {
-        const role = user.roleId
-          ? await db
-              .select({ name: roles.name, level: roles.level })
-              .from(roles)
-              .where(eq(roles.id, user.roleId))
-              .limit(1)
-          : null;
+    // CR-027: replace per-user role/tenant lookups (up to 200 queries) with
+    // two batched IN (...) queries + in-memory joins.
+    const roleIds = collectIds(userList, (u) => u.roleId);
+    const tenantIds = collectIds(userList, (u) => u.tenantId);
 
-        const tenant = user.tenantId
-          ? await db
-              .select({ name: tenants.name })
-              .from(tenants)
-              .where(eq(tenants.id, user.tenantId))
-              .limit(1)
-          : null;
+    const [roleRows, tenantRows] = await Promise.all([
+      roleIds.length > 0
+        ? db
+            .select({ id: roles.id, name: roles.name, level: roles.level })
+            .from(roles)
+            .where(inArray(roles.id, roleIds))
+        : Promise.resolve([]),
+      tenantIds.length > 0
+        ? db
+            .select({ id: tenants.id, name: tenants.name })
+            .from(tenants)
+            .where(inArray(tenants.id, tenantIds))
+        : Promise.resolve([]),
+    ]);
 
-        return {
-          ...user,
-          role: role?.[0]?.name || 'No Role',
-          roleLevel: role?.[0]?.level || 1,
-          tenant: tenant?.[0]?.name || 'No Tenant',
-          department: 'General', // Would be added to schema
-          location: 'Main Office', // Would be added to schema
-        };
-      }),
-    );
+    const roleById = indexBy(roleRows, (r) => r.id);
+    const tenantById = indexBy(tenantRows, (t) => t.id);
+
+    const enrichedUsers = userList.map((user) => {
+      const role = user.roleId ? roleById.get(user.roleId) : undefined;
+      const tenant = user.tenantId ? tenantById.get(user.tenantId) : undefined;
+      return {
+        ...user,
+        role: role?.name || 'No Role',
+        roleLevel: role?.level || 1,
+        tenant: tenant?.name || 'No Tenant',
+        department: 'General', // Would be added to schema
+        location: 'Main Office', // Would be added to schema
+      };
+    });
 
     res.json(enrichedUsers);
   } catch (error) {

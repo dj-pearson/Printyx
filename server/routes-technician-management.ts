@@ -1,6 +1,7 @@
 import type { Express } from 'express';
 import { z } from 'zod';
-import { eq, and, desc, sql, count, gte, lte } from 'drizzle-orm';
+import { eq, and, desc, sql, count, gte, lte, inArray } from 'drizzle-orm';
+import { collectIds, countMap } from './lib/n1-batch';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { createModuleLogger } from './lib/logger';
@@ -98,42 +99,62 @@ export function registerTechnicianManagementRoutes(app: Express) {
           .where(eq(technicians.tenantId, tenantId))
           .orderBy(technicians.firstName, technicians.lastName);
 
-        // Get active ticket counts for each technician
-        const technicianStats = await Promise.all(
-          techniciansData.map(async (tech) => {
-            const activeTickets = await db
-              .select({ count: count() })
-              .from(serviceTickets)
-              .where(
-                and(
-                  eq(serviceTickets.assignedTechnicianId, tech.id),
-                  eq(serviceTickets.tenantId, tenantId),
-                  sql`${serviceTickets.status} NOT IN ('completed', 'cancelled')`,
-                ),
-              );
+        // CR-027: replace the per-technician count queries (N+1) with two
+        // grouped queries over the whole technician set, then join in memory.
+        const techIds = collectIds(techniciansData, (t) => t.id);
+        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-            const completedThisMonth = await db
-              .select({ count: count() })
-              .from(serviceTickets)
-              .where(
-                and(
-                  eq(serviceTickets.assignedTechnicianId, tech.id),
-                  eq(serviceTickets.tenantId, tenantId),
-                  eq(serviceTickets.status, 'completed'),
-                  gte(
-                    serviceTickets.updatedAt,
-                    new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                  ),
-                ),
-              );
+        const [activeRows, completedRows] =
+          techIds.length > 0
+            ? await Promise.all([
+                db
+                  .select({
+                    technicianId: serviceTickets.assignedTechnicianId,
+                    count: count(),
+                  })
+                  .from(serviceTickets)
+                  .where(
+                    and(
+                      inArray(serviceTickets.assignedTechnicianId, techIds),
+                      eq(serviceTickets.tenantId, tenantId),
+                      sql`${serviceTickets.status} NOT IN ('completed', 'cancelled')`,
+                    ),
+                  )
+                  .groupBy(serviceTickets.assignedTechnicianId),
+                db
+                  .select({
+                    technicianId: serviceTickets.assignedTechnicianId,
+                    count: count(),
+                  })
+                  .from(serviceTickets)
+                  .where(
+                    and(
+                      inArray(serviceTickets.assignedTechnicianId, techIds),
+                      eq(serviceTickets.tenantId, tenantId),
+                      eq(serviceTickets.status, 'completed'),
+                      gte(serviceTickets.updatedAt, monthStart),
+                    ),
+                  )
+                  .groupBy(serviceTickets.assignedTechnicianId),
+              ])
+            : [[], []];
 
-            return {
-              ...tech,
-              activeTickets: activeTickets[0]?.count || 0,
-              completedThisMonth: completedThisMonth[0]?.count || 0,
-            };
-          }),
+        const activeByTech = countMap(
+          activeRows,
+          (r) => r.technicianId,
+          (r) => r.count,
         );
+        const completedByTech = countMap(
+          completedRows,
+          (r) => r.technicianId,
+          (r) => r.count,
+        );
+
+        const technicianStats = techniciansData.map((tech) => ({
+          ...tech,
+          activeTickets: activeByTech.get(tech.id) ?? 0,
+          completedThisMonth: completedByTech.get(tech.id) ?? 0,
+        }));
 
         res.json(technicianStats);
       } catch (error) {

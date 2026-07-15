@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from './db';
-import { eq, and, gte, lte, desc, sql, isNull, or } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, sql, isNull, or, inArray } from 'drizzle-orm';
+import { collectIds, indexBy } from './lib/n1-batch';
 import { businessRecordActivities, businessRecords, deals } from '@shared/schema';
 import { leadScoreCalculations } from '@shared/lead-scoring-schema';
 import type { Request, Response } from 'express';
@@ -111,27 +112,31 @@ export function registerTodayDashboardRoutes(app: Router) {
         .orderBy(desc(leadScoreCalculations.totalScore))
         .limit(10);
 
-      // Enrich leads with business record data
-      const enrichedHotLeads = await Promise.all(
-        hotLeads.map(async (lead) => {
-          const businessRecord = lead.leadId
-            ? await db.query.businessRecords?.findFirst({
-                where: eq(businessRecords.id, lead.leadId),
-              })
-            : null;
+      // CR-027: batch the per-lead business-record lookup (N+1) into one
+      // IN (...) query, then join in memory.
+      const leadBusinessIds = collectIds(hotLeads, (lead) => lead.leadId);
+      const businessRecordRows =
+        leadBusinessIds.length > 0
+          ? await db.query.businessRecords.findMany({
+              where: inArray(businessRecords.id, leadBusinessIds),
+            })
+          : [];
+      const businessRecordById = indexBy(businessRecordRows, (r) => r.id);
 
-          return {
-            id: lead.leadId || lead.id,
-            companyName: businessRecord?.companyName || 'Unknown',
-            contactName: businessRecord?.primaryContactName,
-            estimatedValue: businessRecord?.estimatedDealValue || 0,
-            score: lead.totalScore,
-            status: businessRecord?.status || 'lead',
-            lastContact: businessRecord?.lastContactDate,
-            reason: `${lead.leadGrade || 'A'} grade lead - ${lead.qualificationStatus || 'qualified'}`,
-          };
-        }),
-      );
+      const enrichedHotLeads = hotLeads.map((lead) => {
+        const businessRecord = lead.leadId ? businessRecordById.get(lead.leadId) : undefined;
+
+        return {
+          id: lead.leadId || lead.id,
+          companyName: businessRecord?.companyName || 'Unknown',
+          contactName: businessRecord?.primaryContactName,
+          estimatedValue: businessRecord?.estimatedDealValue || 0,
+          score: lead.totalScore,
+          status: businessRecord?.status || 'lead',
+          lastContact: businessRecord?.lastContactDate,
+          reason: `${lead.leadGrade || 'A'} grade lead - ${lead.qualificationStatus || 'qualified'}`,
+        };
+      });
 
       // Fetch pipeline alerts (stalled deals)
       const allDeals =

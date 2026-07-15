@@ -9322,8 +9322,8 @@
         "Record before/after query counts"
       ],
       "priority": 263,
-      "passes": false,
-      "notes": "[PERFORMANCE/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[PERFORMANCE/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-15] Fixed all 4 N+1 clusters via shared pure helpers server/lib/n1-batch.ts (collectIds/indexBy/countMap), unit-tested (server/tests/unit/n1-batch.test.ts). (1) technician-management: per-tech 2 count queries -> 2 groupBy(assignedTechnicianId) queries (was 1+2N -> 3). (2) remote-monitoring equipment-status: per-device latest+daily metric queries -> DISTINCT ON(device_id) for latest + one inArray daily query grouped in JS (was 1+2N -> 3). (3) root-admin users: per-user role+tenant lookups (up to 200) -> 2 inArray queries (was 1+2N -> 3). (4) today-dashboard hot leads: per-lead businessRecords.findFirst -> one inArray findMany (was 1+N -> 2). Ratchet holds 1352."
     },
     {
       "id": "CR-028",

@@ -1,5 +1,6 @@
 import express from 'express';
-import { desc, eq, and, sql, asc, gte, lte, count } from 'drizzle-orm';
+import { desc, eq, and, sql, asc, gte, lte, count, inArray } from 'drizzle-orm';
+import { collectIds } from './lib/n1-batch';
 import { db } from './db';
 import { requireAuth } from './replitAuth';
 import { deviceRegistrations, deviceMetrics } from '../shared/manufacturer-integration-schema';
@@ -25,190 +26,208 @@ router.get('/api/remote-monitoring/equipment-status', async (req: any, res) => {
       .from(deviceRegistrations)
       .where(eq(deviceRegistrations.tenantId, tenantId));
 
-    // Get latest metrics for each device
-    const equipmentStatus = await Promise.all(
-      devices.map(async (device) => {
-        // Get the most recent metrics for this device
-        const latestMetrics = await db
-          .select()
+    // CR-027: replace the per-device latest-metric + daily-metric queries
+    // (N+1: 2 queries per device) with two batched queries over all devices.
+    const deviceIds = collectIds(devices, (d) => d.id);
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Latest metric row per device via DISTINCT ON (device_id).
+    const latestByDevice = new Map<string, typeof deviceMetrics.$inferSelect>();
+    // Ordered daily metrics per device for first/last impression delta.
+    const dailyByDevice = new Map<string, Array<typeof deviceMetrics.$inferSelect>>();
+
+    if (deviceIds.length > 0) {
+      const [latestRows, dailyRows] = await Promise.all([
+        db
+          .selectDistinctOn([deviceMetrics.deviceId])
           .from(deviceMetrics)
-          .where(eq(deviceMetrics.deviceId, device.id))
-          .orderBy(desc(deviceMetrics.collectionTimestamp))
-          .limit(1);
-
-        const metrics = latestMetrics[0];
-
-        // Get metrics from last 24 hours to calculate daily totals
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const dailyMetrics = await db
+          .where(inArray(deviceMetrics.deviceId, deviceIds))
+          .orderBy(deviceMetrics.deviceId, desc(deviceMetrics.collectionTimestamp)),
+        db
           .select()
           .from(deviceMetrics)
           .where(
             and(
-              eq(deviceMetrics.deviceId, device.id),
+              inArray(deviceMetrics.deviceId, deviceIds),
               gte(deviceMetrics.collectionTimestamp, oneDayAgo),
             ),
           )
-          .orderBy(asc(deviceMetrics.collectionTimestamp));
+          .orderBy(deviceMetrics.deviceId, asc(deviceMetrics.collectionTimestamp)),
+      ]);
 
-        // Calculate daily page count from meter readings
-        let dailyPageCount = 0;
-        if (dailyMetrics.length >= 2) {
-          const firstReading = dailyMetrics[0].totalImpressions || 0;
-          const lastReading = dailyMetrics[dailyMetrics.length - 1].totalImpressions || 0;
-          dailyPageCount = lastReading - firstReading;
-        }
+      for (const row of latestRows) {
+        if (row.deviceId) latestByDevice.set(row.deviceId, row);
+      }
+      for (const row of dailyRows) {
+        if (!row.deviceId) continue;
+        const list = dailyByDevice.get(row.deviceId);
+        if (list) list.push(row);
+        else dailyByDevice.set(row.deviceId, [row]);
+      }
+    }
 
-        // Determine connection status based on last seen
-        const lastSeenDate = device.lastSeen ? new Date(device.lastSeen) : null;
-        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        const connectionStatus =
-          lastSeenDate && lastSeenDate > tenMinutesAgo ? 'connected' : 'disconnected';
+    const equipmentStatus = devices.map((device) => {
+      // Most recent metrics for this device (from the batched DISTINCT ON).
+      const metrics = latestByDevice.get(device.id);
 
-        // Parse toner and paper levels from metrics
-        const tonerLevels = (metrics?.tonerLevels as Record<string, number>) || {};
-        const paperLevels = (metrics?.paperLevels as Record<string, number>) || {};
+      // Daily page count from first/last impression readings in the last 24h.
+      const dailyMetrics = dailyByDevice.get(device.id) ?? [];
+      let dailyPageCount = 0;
+      if (dailyMetrics.length >= 2) {
+        const firstReading = dailyMetrics[0].totalImpressions || 0;
+        const lastReading = dailyMetrics[dailyMetrics.length - 1].totalImpressions || 0;
+        dailyPageCount = lastReading - firstReading;
+      }
 
-        // Calculate error count from error codes
-        const errorCodes = metrics?.errorCodes || [];
-        const errorCount = errorCodes.length;
+      // Determine connection status based on last seen
+      const lastSeenDate = device.lastSeen ? new Date(device.lastSeen) : null;
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const connectionStatus =
+        lastSeenDate && lastSeenDate > tenMinutesAgo ? 'connected' : 'disconnected';
 
-        // Build alerts based on current conditions
-        const alerts: any[] = [];
+      // Parse toner and paper levels from metrics
+      const tonerLevels = (metrics?.tonerLevels as Record<string, number>) || {};
+      const paperLevels = (metrics?.paperLevels as Record<string, number>) || {};
 
-        // Check toner levels for alerts
-        Object.entries(tonerLevels).forEach(([color, level]) => {
-          if (level < 10) {
-            alerts.push({
-              id: `alert-toner-${color}-${device.id}`,
-              type: 'supply_critical',
-              severity: 'high',
-              message: `${color.charAt(0).toUpperCase() + color.slice(1)} toner critically low (${level}%) - immediate replacement needed`,
-              timestamp: new Date(),
-              acknowledged: false,
-            });
-          } else if (level < 25) {
-            alerts.push({
-              id: `alert-toner-${color}-${device.id}`,
-              type: 'supply_low',
-              severity: 'medium',
-              message: `${color.charAt(0).toUpperCase() + color.slice(1)} toner at ${level}% - consider ordering replacement`,
-              timestamp: new Date(),
-              acknowledged: false,
-            });
-          }
-        });
+      // Calculate error count from error codes
+      const errorCodes = metrics?.errorCodes || [];
+      const errorCount = errorCodes.length;
 
-        // Check paper levels
-        Object.entries(paperLevels).forEach(([tray, level]) => {
-          if (level === 0) {
-            alerts.push({
-              id: `alert-paper-${tray}-${device.id}`,
-              type: 'paper_empty',
-              severity: 'medium',
-              message: `${tray} is empty - refill required`,
-              timestamp: new Date(),
-              acknowledged: false,
-            });
-          } else if (level < 20) {
-            alerts.push({
-              id: `alert-paper-${tray}-${device.id}`,
-              type: 'paper_low',
-              severity: 'low',
-              message: `${tray} is low (${level}%)`,
-              timestamp: new Date(),
-              acknowledged: false,
-            });
-          }
-        });
+      // Build alerts based on current conditions
+      const alerts: any[] = [];
 
-        // Connection lost alert
-        if (connectionStatus === 'disconnected' && lastSeenDate) {
-          const hoursOffline = Math.floor((Date.now() - lastSeenDate.getTime()) / (60 * 60 * 1000));
+      // Check toner levels for alerts
+      Object.entries(tonerLevels).forEach(([color, level]) => {
+        if (level < 10) {
           alerts.push({
-            id: `alert-connection-${device.id}`,
-            type: 'connection_lost',
-            severity: hoursOffline > 8 ? 'critical' : 'high',
-            message: `Equipment offline for ${hoursOffline}+ hours - network connectivity issue`,
-            timestamp: lastSeenDate,
+            id: `alert-toner-${color}-${device.id}`,
+            type: 'supply_critical',
+            severity: 'high',
+            message: `${color.charAt(0).toUpperCase() + color.slice(1)} toner critically low (${level}%) - immediate replacement needed`,
+            timestamp: new Date(),
+            acknowledged: false,
+          });
+        } else if (level < 25) {
+          alerts.push({
+            id: `alert-toner-${color}-${device.id}`,
+            type: 'supply_low',
+            severity: 'medium',
+            message: `${color.charAt(0).toUpperCase() + color.slice(1)} toner at ${level}% - consider ordering replacement`,
+            timestamp: new Date(),
             acknowledged: false,
           });
         }
+      });
 
-        // Determine overall status
-        let status = 'operational';
-        if (connectionStatus === 'disconnected') {
-          status = 'offline';
-        } else if (alerts.some((a) => a.severity === 'critical' || a.severity === 'high')) {
-          status = 'warning';
-        } else if (device.status === 'error') {
-          status = 'critical';
-        } else if (device.status === 'maintenance') {
-          status = 'maintenance';
+      // Check paper levels
+      Object.entries(paperLevels).forEach(([tray, level]) => {
+        if (level === 0) {
+          alerts.push({
+            id: `alert-paper-${tray}-${device.id}`,
+            type: 'paper_empty',
+            severity: 'medium',
+            message: `${tray} is empty - refill required`,
+            timestamp: new Date(),
+            acknowledged: false,
+          });
+        } else if (level < 20) {
+          alerts.push({
+            id: `alert-paper-${tray}-${device.id}`,
+            type: 'paper_low',
+            severity: 'low',
+            message: `${tray} is low (${level}%)`,
+            timestamp: new Date(),
+            acknowledged: false,
+          });
         }
+      });
 
-        return {
-          equipmentId: device.id,
-          serialNumber: device.serialNumber || 'N/A',
-          model: device.model || 'Unknown Model',
-          location: {
-            customerName: device.location || 'Unknown Location',
-            address: device.department || '',
-            floor: '',
-            coordinates: null,
-          },
+      // Connection lost alert
+      if (connectionStatus === 'disconnected' && lastSeenDate) {
+        const hoursOffline = Math.floor((Date.now() - lastSeenDate.getTime()) / (60 * 60 * 1000));
+        alerts.push({
+          id: `alert-connection-${device.id}`,
+          type: 'connection_lost',
+          severity: hoursOffline > 8 ? 'critical' : 'high',
+          message: `Equipment offline for ${hoursOffline}+ hours - network connectivity issue`,
+          timestamp: lastSeenDate,
+          acknowledged: false,
+        });
+      }
 
-          // Current operational status
-          status,
-          connectionStatus,
-          lastPing: device.lastSeen,
-          uptime: metrics?.uptime ? Number(metrics.uptime) : 0,
+      // Determine overall status
+      let status = 'operational';
+      if (connectionStatus === 'disconnected') {
+        status = 'offline';
+      } else if (alerts.some((a) => a.severity === 'critical' || a.severity === 'high')) {
+        status = 'warning';
+      } else if (device.status === 'error') {
+        status = 'critical';
+      } else if (device.status === 'maintenance') {
+        status = 'maintenance';
+      }
 
-          // Real-time metrics
-          currentMetrics: {
-            pagesPerMinute: 0, // Would need real-time calculation
-            tonerLevels,
-            paperLevels,
-            temperature: null, // Not stored in current schema
-            humidity: null,
-            errorCount,
-            jamCount: 0, // Would need specific error code parsing
-            lastJobCompleted: metrics?.collectionTimestamp || null,
-          },
+      return {
+        equipmentId: device.id,
+        serialNumber: device.serialNumber || 'N/A',
+        model: device.model || 'Unknown Model',
+        location: {
+          customerName: device.location || 'Unknown Location',
+          address: device.department || '',
+          floor: '',
+          coordinates: null,
+        },
 
-          // Performance metrics
-          performance: {
-            dailyPageCount,
-            weeklyPageCount: 0, // Would need week range query
-            monthlyPageCount: 0, // Would need month range query
-            utilizationRate: metrics?.uptime ? Number(metrics.uptime) : 0,
-            efficiency: 0,
-            averageJobSize: 0,
-            peakUsageHour: 0,
-          },
+        // Current operational status
+        status,
+        connectionStatus,
+        lastPing: device.lastSeen,
+        uptime: metrics?.uptime ? Number(metrics.uptime) : 0,
 
-          // Maintenance status (would need separate maintenance tracking table)
-          maintenance: {
-            nextScheduled: null,
-            lastCompleted: null,
-            maintenanceScore: 0,
-            predictiveAlerts: [],
-          },
+        // Real-time metrics
+        currentMetrics: {
+          pagesPerMinute: 0, // Would need real-time calculation
+          tonerLevels,
+          paperLevels,
+          temperature: null, // Not stored in current schema
+          humidity: null,
+          errorCount,
+          jamCount: 0, // Would need specific error code parsing
+          lastJobCompleted: metrics?.collectionTimestamp || null,
+        },
 
-          alerts,
+        // Performance metrics
+        performance: {
+          dailyPageCount,
+          weeklyPageCount: 0, // Would need week range query
+          monthlyPageCount: 0, // Would need month range query
+          utilizationRate: metrics?.uptime ? Number(metrics.uptime) : 0,
+          efficiency: 0,
+          averageJobSize: 0,
+          peakUsageHour: 0,
+        },
 
-          // Environmental data (not stored in current schema)
-          environmental: {
-            powerConsumption: 0,
-            energyEfficiency: 'N/A',
-            carbonFootprint: 0,
-            sleepModeActive: false,
-            autoSleepEnabled: false,
-          },
-        };
-      }),
-    );
+        // Maintenance status (would need separate maintenance tracking table)
+        maintenance: {
+          nextScheduled: null,
+          lastCompleted: null,
+          maintenanceScore: 0,
+          predictiveAlerts: [],
+        },
+
+        alerts,
+
+        // Environmental data (not stored in current schema)
+        environmental: {
+          powerConsumption: 0,
+          energyEfficiency: 'N/A',
+          carbonFootprint: 0,
+          sleepModeActive: false,
+          autoSleepEnabled: false,
+        },
+      };
+    });
 
     res.json(equipmentStatus);
   } catch (error) {
