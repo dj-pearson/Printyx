@@ -308,9 +308,9 @@ export default function CustomersPage() {
 
   // ─── Quick Filter Tabs ──────────────────────────────────────────────────
 
-  const quickFilterTabs: QuickFilterTab[] = useMemo(
+  const quickFilterTabs = useMemo<QuickFilterTab[]>(
     () => [
-      { key: 'all', label: 'All', filter: {}, count: stats?.total },
+      { key: 'all', label: 'All', filter: {} as Record<string, string>, count: stats?.total },
       {
         key: 'active',
         label: 'Active',

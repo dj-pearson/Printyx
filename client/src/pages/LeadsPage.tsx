@@ -311,9 +311,9 @@ export default function LeadsPage() {
 
   // ─── Quick Filter Tabs ──────────────────────────────────────────────────
 
-  const quickFilterTabs: QuickFilterTab[] = useMemo(
+  const quickFilterTabs = useMemo<QuickFilterTab[]>(
     () => [
-      { key: 'all', label: 'All', filter: {}, count: stats?.total },
+      { key: 'all', label: 'All', filter: {} as Record<string, string>, count: stats?.total },
       { key: 'new', label: 'New', filter: { status: 'new' }, count: stats?.newCount },
       {
         key: 'contacted',
