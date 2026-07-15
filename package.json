@@ -17,6 +17,7 @@
     "build:client-agent": "cd printyx-client && npm install --no-audit --no-fund && npm run bundle",
     "audit:routes": "node scripts/audit-route-parity.mjs",
     "check:routes": "node scripts/check-route-ownership.mjs",
+    "check:schema-drift": "node scripts/check-schema-drift.mjs",
     "check:datadumps": "node scripts/check-no-data-dumps.mjs",
     "check:rootsql": "node scripts/check-no-root-sql.mjs",
     "check:types": "node scripts/check-types.mjs",
