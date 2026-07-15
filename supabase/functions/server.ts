@@ -141,6 +141,25 @@ await serve(
       functionName = 'public-calculator';
     }
 
+    // PA-019: KPIs, the reporting engine, and scheduled reports are served by
+    // handlers INSIDE the `reports` fn (handlers/{kpis,reporting,scheduled}.ts),
+    // but the frontend calls them under their own top-level prefixes. Alias to
+    // the reports fn while PRESERVING the discriminator segment the reports
+    // dispatcher keys on (firstSegment === 'kpis'|'reporting'|'scheduled') —
+    // i.e. mirror dashboard->dashboard-widgets, NOT the segment-stripping
+    // public->public-calculator pattern. splice re-injects the discriminator so
+    // the forwarded path (pathParts.slice(1)) stays /kpis|reporting|scheduled/*.
+    if (functionName === 'kpis') {
+      pathParts.splice(0, 1, 'reports', 'kpis');
+      functionName = 'reports';
+    } else if (functionName === 'reporting') {
+      pathParts.splice(0, 1, 'reports', 'reporting');
+      functionName = 'reports';
+    } else if (functionName === 'scheduled-reports') {
+      pathParts.splice(0, 1, 'reports', 'scheduled');
+      functionName = 'reports';
+    }
+
     if (!functionName || !functions[functionName]) {
       return new Response(
         JSON.stringify({

@@ -9513,9 +9513,9 @@
         "Add a check flagging any crmProxies {fn,pathPrefix} entry whose URL segment lacks a matching server.ts override."
       ],
       "priority": 277,
-      "passes": false,
+      "passes": true,
       "category": "audit-routing",
-      "notes": "[ROUTING/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/middleware/edge-function-proxy.ts:289-319 rewrite these via dev-only pathPrefix to the reports fn; no kpis/reporting/scheduled edge dir and no server.ts override exist, so prod resolves functionName=kpis -> 404. Callers: role-dashboard-config.ts:152, EnhancedReportsHub.tsx, ScheduledReportsDashboard.tsx."
+      "notes": "[ROUTING/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/middleware/edge-function-proxy.ts:289-319 rewrite these via dev-only pathPrefix to the reports fn; no kpis/reporting/scheduled edge dir and no server.ts override exist, so prod resolves functionName=kpis -> 404. Callers: role-dashboard-config.ts:152, EnhancedReportsHub.tsx, ScheduledReportsDashboard.tsx. [DONE 2026-07-15] Added server.ts (Coolify dispatcher) route overrides for kpis/reporting/scheduled-reports → the reports fn, using pathParts.splice(0,1,\"reports\",<disc>) to RE-INJECT the discriminator segment the reports dispatcher keys on (firstSegment===kpis|reporting|scheduled at reports/index.ts:120-124). This mirrors dashboard→dashboard-widgets (segment preserved) NOT public→public-calculator (segment stripped) — because server.ts forwards pathParts.slice(1), a plain alias would drop the discriminator and every reports sub-route would 404/misdispatch. scheduled-reports maps to discriminator scheduled (matching the dev pathPrefix /scheduled). Now /kpis/summary, /reporting/reports/:id/data, /scheduled-reports/:id/toggle round-trip in prod (was functionName=kpis → 404). AC3 guard: server/tests/unit/proxy-override-parity.test.ts (6) extracts every crmProxies {fn,pathPrefix} entry and asserts its URL segment has a matching server.ts functionName===<seg> override — fails CI if a pathPrefix entry is added without one (the PA-019/020/021 root cause). deno check residual errors on server.ts are pre-existing (/app/ import + unknown catches), not from the splice. Ratchet holds 1352."
     },
     {
       "id": "PA-020",
