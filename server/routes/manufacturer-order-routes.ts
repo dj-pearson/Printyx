@@ -114,7 +114,7 @@ router.post('/connections', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertManufacturerConnectionSchema.parse(req.body);
+    const data = insertManufacturerConnectionSchema.parse({ ...req.body, tenantId: user.tenantId });
     const connection = await storage.createManufacturerConnection({
       ...data,
       tenantId: user.tenantId,
@@ -300,7 +300,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertManufacturerOrderSchema.parse(req.body);
+    const data = insertManufacturerOrderSchema.parse({ ...req.body, tenantId: user.tenantId });
     const order = await storage.createManufacturerOrder({
       ...data,
       tenantId: user.tenantId,

@@ -30,7 +30,7 @@ router.post('/workflows', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertWorkflowSchema.parse(req.body);
+    const data = insertWorkflowSchema.parse({ ...req.body, tenantId: user.tenantId });
     const workflow = await storage.createWorkflow({
       ...data,
       tenantId: user.tenantId,
@@ -161,7 +161,7 @@ router.post('/workflows/:workflowId/triggers', async (req: Request, res: Respons
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
-    const data = insertWorkflowTriggerSchema.parse(req.body);
+    const data = insertWorkflowTriggerSchema.parse({ ...req.body, tenantId: user.tenantId });
     const trigger = await storage.createWorkflowTrigger({
       ...data,
       workflowId: req.params.workflowId,
@@ -293,7 +293,7 @@ router.post('/workflows/:workflowId/steps', async (req: Request, res: Response) 
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
-    const data = insertWorkflowStepAutomationSchema.parse(req.body);
+    const data = insertWorkflowStepAutomationSchema.parse({ ...req.body, tenantId: user.tenantId });
     const step = await storage.createWorkflowStep({
       ...data,
       workflowId: req.params.workflowId,

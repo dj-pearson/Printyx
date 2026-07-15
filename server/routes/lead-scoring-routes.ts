@@ -45,7 +45,7 @@ router.post('/rules', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertLeadScoringRuleSchema.parse(req.body);
+    const data = insertLeadScoringRuleSchema.parse({ ...req.body, tenantId: user.tenantId });
     const rule = await storage.createLeadScoringRule({
       ...data,
       tenantId: user.tenantId,
@@ -528,7 +528,7 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
-    const data = insertBantQualificationSchema.parse(req.body);
+    const data = insertBantQualificationSchema.parse({ ...req.body, tenantId: user.tenantId });
 
     // Calculate individual component scores based on the data
     const budgetScore = data.budgetIdentified ? (data.budgetApproved ? 25 : 15) : 0;
@@ -689,7 +689,7 @@ router.post('/engagement/:leadId', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
-    const data = insertLeadEngagementTrackingSchema.parse(req.body);
+    const data = insertLeadEngagementTrackingSchema.parse({ ...req.body, tenantId: user.tenantId });
     const engagement = await storage.createLeadEngagement({
       ...data,
       leadId,

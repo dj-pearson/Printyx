@@ -89,7 +89,7 @@ router.put('/technicians/:id/location', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertTechnicianLocationSchema.parse(req.body);
+    const data = insertTechnicianLocationSchema.parse({ ...req.body, tenantId: user.tenantId });
     const location = await storage.updateTechnicianLocation(req.params.id, user.tenantId, {
       ...data,
       tenantId: user.tenantId,
@@ -206,7 +206,7 @@ router.post('/location-history', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertLocationHistorySchema.parse(req.body);
+    const data = insertLocationHistorySchema.parse({ ...req.body, tenantId: user.tenantId });
     const history = await storage.createGpsLocationHistory({
       ...data,
       tenantId: user.tenantId,
@@ -330,7 +330,7 @@ router.post('/routes', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertRouteAssignmentSchema.parse(req.body);
+    const data = insertRouteAssignmentSchema.parse({ ...req.body, tenantId: user.tenantId });
     const route = await storage.createRouteAssignment({
       ...data,
       tenantId: user.tenantId,
@@ -571,7 +571,7 @@ router.post('/deviations', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertRouteDeviationSchema.parse(req.body);
+    const data = insertRouteDeviationSchema.parse({ ...req.body, tenantId: user.tenantId });
     const deviation = await storage.createRouteDeviation({
       ...data,
       tenantId: user.tenantId,
@@ -714,7 +714,7 @@ router.post('/etas', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertEtaCalculationSchema.parse(req.body);
+    const data = insertEtaCalculationSchema.parse({ ...req.body, tenantId: user.tenantId });
     const eta = await storage.createEtaCalculation({
       ...data,
       tenantId: user.tenantId,
@@ -865,7 +865,7 @@ router.post('/geofences', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertGeofenceSchema.parse(req.body);
+    const data = insertGeofenceSchema.parse({ ...req.body, tenantId: user.tenantId });
     const geofence = await storage.createGeofence({
       ...data,
       tenantId: user.tenantId,
@@ -1009,7 +1009,7 @@ router.post('/geofence-events', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertGeofenceEventSchema.parse(req.body);
+    const data = insertGeofenceEventSchema.parse({ ...req.body, tenantId: user.tenantId });
     const event = await storage.createGeofenceEvent({
       ...data,
       tenantId: user.tenantId,

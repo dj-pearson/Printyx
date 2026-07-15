@@ -87,7 +87,7 @@ router.post('/rules', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertBillingRuleSchema.parse(req.body);
+    const data = insertBillingRuleSchema.parse({ ...req.body, tenantId: user.tenantId });
     const rule = await storage.createBillingRule({
       ...data,
       tenantId: user.tenantId,
@@ -267,7 +267,7 @@ router.post('/anomalies', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertMeterAnomalySchema.parse(req.body);
+    const data = insertMeterAnomalySchema.parse({ ...req.body, tenantId: user.tenantId });
     const anomaly = await storage.createMeterAnomaly({
       ...data,
       tenantId: user.tenantId,
@@ -433,7 +433,7 @@ router.post('/disputes', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertBillingDisputeSchema.parse(req.body);
+    const data = insertBillingDisputeSchema.parse({ ...req.body, tenantId: user.tenantId });
     const dispute = await storage.createBillingDispute({
       ...data,
       tenantId: user.tenantId,
@@ -899,7 +899,7 @@ router.post('/schedules', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertBillingScheduleSchema.parse(req.body);
+    const data = insertBillingScheduleSchema.parse({ ...req.body, tenantId: user.tenantId });
     const schedule = await storage.createBillingSchedule({
       ...data,
       tenantId: user.tenantId,
@@ -1052,7 +1052,7 @@ router.post('/credit-memos', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertCreditMemoSchema.parse(req.body);
+    const data = insertCreditMemoSchema.parse({ ...req.body, tenantId: user.tenantId });
     const creditMemo = await storage.createCreditMemo({
       ...data,
       tenantId: user.tenantId,

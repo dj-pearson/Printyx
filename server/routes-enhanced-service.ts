@@ -154,7 +154,10 @@ router.get('/service-requests', requireServiceAccess(2), async (req: any, res) =
 // Create phone-in ticket
 router.post('/phone-in-tickets', async (req, res) => {
   try {
-    const validatedData = insertPhoneInTicketSchema.parse(req.body);
+    const validatedData = insertPhoneInTicketSchema.parse({
+      ...req.body,
+      tenantId: req.user?.tenantId,
+    });
     const tenantId = req.headers['x-tenant-id'] as string;
 
     // If customerId is provided, fetch customer info from business_records

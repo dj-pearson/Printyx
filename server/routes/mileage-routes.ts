@@ -572,7 +572,7 @@ router.post('/vehicles', async (req: Request, res: Response) => {
   }
 
   try {
-    const data = insertVehicleAssignmentSchema.parse(req.body);
+    const data = insertVehicleAssignmentSchema.parse({ ...req.body, tenantId: user.tenantId });
 
     const [vehicle] = await db
       .insert(vehicleAssignments)

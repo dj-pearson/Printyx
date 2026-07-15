@@ -23,7 +23,10 @@ const router = express.Router();
 // Create warehouse kitting operation
 router.post('/warehouse-kitting-operations', async (req, res) => {
   try {
-    const validatedData = insertWarehouseKittingOperationSchema.parse(req.body);
+    const validatedData = insertWarehouseKittingOperationSchema.parse({
+      ...req.body,
+      tenantId: req.headers['x-tenant-id'] as string,
+    });
     const tenantId = req.headers['x-tenant-id'] as string;
 
     const [operation] = await db

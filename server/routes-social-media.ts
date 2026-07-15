@@ -260,7 +260,10 @@ router.put('/api/social-media/posts/:id', isAuthenticated, async (req: any, res)
       return res.status(401).json({ message: 'Tenant ID required' });
     }
 
-    const updateData = insertSocialMediaPostSchema.parse(req.body);
+    const updateData = insertSocialMediaPostSchema.parse({
+      ...req.body,
+      tenantId: getTenantId(req),
+    });
 
     const [updatedPost] = await db
       .update(socialMediaPosts)
@@ -406,7 +409,10 @@ router.put('/api/social-media/cron-jobs/:id', isAuthenticated, async (req: any, 
       return res.status(401).json({ message: 'Tenant ID required' });
     }
 
-    const updateData = insertSocialMediaCronJobSchema.parse(req.body);
+    const updateData = insertSocialMediaCronJobSchema.parse({
+      ...req.body,
+      tenantId: getTenantId(req),
+    });
 
     const [updatedCronJob] = await db
       .update(socialMediaCronJobs)
