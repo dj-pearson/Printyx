@@ -25,6 +25,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { resolvePlatformBaseUrl } from '../_shared/platform-base-url.ts';
 import JSZip from 'https://esm.sh/jszip@3.10.1';
 
 const READ_PERMS = ['service.equipment.view', 'service.equipment.configure'];
@@ -88,19 +89,21 @@ function newEnrollmentToken(): string {
 //   => PUBLIC_API_BASE_URL MUST be set in this edge function's environment.
 // Tracked by EDGE-015. See printyx-client/AUDIT.md (Distribution topology).
 function platformBaseUrl(req: Request): string {
-  const configured = Deno.env.get('PUBLIC_API_BASE_URL');
-  if (configured) return configured.replace(/\/$/, '');
-  // Fallback only safe in dev/single-host setups. Logs so a misconfigured
-  // prod deploy is visible rather than silently shipping broken installers.
-  console.warn(
-    '[monitoring-clients] PUBLIC_API_BASE_URL is not set — falling back to the request host. ' +
-      'Installer/agent URLs will point at this edge host, which does not serve /install or /api/client-metrics. ' +
-      'Set PUBLIC_API_BASE_URL to the Express host (see EDGE-015).',
-  );
   const url = new URL(req.url);
   const proto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
   const host = req.headers.get('x-forwarded-host') || url.host;
-  return `${proto}://${host}`;
+  // EDGE-015: prefer PUBLIC_API_BASE_URL; fall back to the request host (only
+  // safe in dev/single-host) with a loud warning so a misconfigured prod deploy
+  // is visible rather than silently shipping installers that point at a dead host.
+  const resolved = resolvePlatformBaseUrl(Deno.env.get('PUBLIC_API_BASE_URL'), { proto, host });
+  if (resolved.isFallback) {
+    console.warn(
+      '[monitoring-clients] PUBLIC_API_BASE_URL is not set — falling back to the request host. ' +
+        'Installer/agent URLs will point at this edge host, which does not serve /install or /api/client-metrics. ' +
+        'Set PUBLIC_API_BASE_URL to the Express host (see EDGE-015).',
+    );
+  }
+  return resolved.url;
 }
 
 // Permission gate. JWT claims are the fast path; on a miss we fall back to a

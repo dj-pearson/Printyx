@@ -19,6 +19,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { assessPublicApiBaseUrl } from '../_shared/platform-base-url.ts';
 
 type CheckStatus = 'complete' | 'incomplete' | 'warning' | 'in-progress';
 type Priority = 'high' | 'medium' | 'low';
@@ -242,6 +243,21 @@ async function buildChecks(
       details: 'Daily 02:00 UTC, 7d/4w/12m retention',
     },
   );
+
+  // EDGE-015: monitoring-client installers + agent-ingest URLs must point at the
+  // Express/app host (PUBLIC_API_BASE_URL), not the edge host. Surface a missing
+  // env as a warning so on-prem installs don't silently ship a dead-host URL.
+  const baseUrlCheck = assessPublicApiBaseUrl(Deno.env.get('PUBLIC_API_BASE_URL'));
+  checks.push({
+    id: 'public-api-base-url',
+    category: 'Infrastructure',
+    name: 'Public API Base URL',
+    description: 'PUBLIC_API_BASE_URL points monitoring-client installers/agents at the app host',
+    status: baseUrlCheck.status,
+    priority: 'high',
+    lastChecked: now,
+    details: baseUrlCheck.details,
+  });
 
   return checks;
 }

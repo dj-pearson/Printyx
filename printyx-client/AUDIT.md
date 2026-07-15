@@ -344,6 +344,14 @@ target compiles.
   - `GET /api/monitoring-clients/:id/installer.zip` — the agent + scripts +
     `bootstrap-config.json` zipped together.
 - Path overrides: `PRINTYX_CLIENT_BUNDLE_PATH`, `PRINTYX_CLIENT_SCRIPTS_DIR`.
+- **`PUBLIC_API_BASE_URL` (REQUIRED in prod, EDGE-015):** the installer commands
+  and `bootstrap-config.json` agent-ingest endpoint emitted by the
+  `monitoring-clients` edge function must point at the **Express/app host** that
+  serves `/install/*` and `/api/client-metrics/*` — NOT `functions.printyx.net`
+  (the edge host serves neither). Set `PUBLIC_API_BASE_URL` to the app host in
+  the monitoring-clients edge function's environment. When unset it falls back to
+  the request host (safe only in dev/single-host) and logs a loud warning; the
+  `deployment-readiness` check `public-api-base-url` flags it as a warning.
 - If the bundle is absent (deploy skipped `build:client-agent`), the zip and
   `/install/printyx-client.cjs` endpoints return 503 with a fix hint rather
   than shipping a non-installable artifact.

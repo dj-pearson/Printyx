@@ -168,6 +168,7 @@ Emit this shape via `sendError(req, res, status, message, code?, details?)` from
 
 - API: `https://api.printyx.net` · Edge Functions: `https://functions.printyx.net` · DB pooler: `209.145.59.219:5433`
 - Required env: `DATABASE_URL`, `DB_SSL=true`, `DB_SSL_REJECT_UNAUTHORIZED=false`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- **`PUBLIC_API_BASE_URL`** (EDGE-015): set on the `monitoring-clients` edge function to the Express/app host (the one serving `/install/*` + `/api/client-metrics/*`), NOT `functions.printyx.net`. Unset ⇒ on-prem installer/agent URLs point at a dead host; the `deployment-readiness` check `public-api-base-url` warns.
 
 ## Quick Reference
 
