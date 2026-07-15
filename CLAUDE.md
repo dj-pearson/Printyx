@@ -149,6 +149,8 @@ DELETE /api/[resource]/:id
 { "message": "...", "code": "ERROR_CODE", "details": {}, "requestId": "uuid" }
 ```
 
+Emit this shape via `sendError(req, res, status, message, code?, details?)` from `server/utils/send-error.ts` for inline error responses, or throw an `AppError` subclass from `server/lib/api-errors.ts` (caught by `globalErrorHandler`). Both attach `requestId` from `req.requestId`. Do NOT return ad-hoc `{ error: '...' }` — a Vitest guard (`server/tests/unit/error-format-guard.test.ts`) fails if migrated route files regress.
+
 ### New Route File
 
 1. Create `server/routes-[feature].ts`, register in `server/routes.ts`

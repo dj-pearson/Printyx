@@ -17,6 +17,7 @@
  */
 
 import type { Express } from 'express';
+import { sendError } from './utils/send-error';
 import { format } from 'date-fns';
 import { db } from './db';
 import { and, eq, sql, desc, inArray } from 'drizzle-orm';
@@ -68,7 +69,7 @@ export function registerBillingCoreRoutes(app: Express) {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+        return sendError(req, res, 400, 'Tenant ID is required');
       }
 
       // Get all pending meter readings
@@ -203,7 +204,7 @@ export function registerBillingCoreRoutes(app: Express) {
       });
     } catch (error) {
       log.error('Error generating invoices:', error);
-      res.status(500).json({ message: 'Failed to generate invoices' });
+      sendError(req, res, 500, 'Failed to generate invoices');
     }
   });
 
@@ -217,7 +218,7 @@ export function registerBillingCoreRoutes(app: Express) {
       try {
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: 'Tenant ID is required' });
+          return sendError(req, res, 400, 'Tenant ID is required');
         }
 
         // Parse pagination parameters
@@ -284,7 +285,7 @@ export function registerBillingCoreRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error calculating contract profitability:', error);
-        res.status(500).json({ message: 'Failed to calculate contract profitability' });
+        sendError(req, res, 500, 'Failed to calculate contract profitability');
       }
     },
   );
@@ -327,7 +328,7 @@ export function registerBillingCoreRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error fetching billing analytics:', error);
-        res.status(500).json({ error: 'Failed to fetch billing analytics' });
+        sendError(req, res, 500, 'Failed to fetch billing analytics');
       }
     },
   );
@@ -382,7 +383,7 @@ export function registerBillingCoreRoutes(app: Express) {
       res.json(result.rows);
     } catch (error) {
       log.error('Error fetching billing invoices:', error);
-      res.status(500).json({ error: 'Failed to fetch billing invoices' });
+      sendError(req, res, 500, 'Failed to fetch billing invoices');
     }
   });
 
@@ -415,7 +416,7 @@ export function registerBillingCoreRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching billing configurations:', error);
-        res.status(500).json({ error: 'Failed to fetch billing configurations' });
+        sendError(req, res, 500, 'Failed to fetch billing configurations');
       }
     },
   );
@@ -485,7 +486,7 @@ export function registerBillingCoreRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating billing configuration:', error);
-        res.status(500).json({ error: 'Failed to create billing configuration' });
+        sendError(req, res, 500, 'Failed to create billing configuration');
       }
     },
   );
@@ -507,7 +508,7 @@ export function registerBillingCoreRoutes(app: Express) {
       res.json(result.rows);
     } catch (error) {
       log.error('Error fetching billing cycles:', error);
-      res.status(500).json({ error: 'Failed to fetch billing cycles' });
+      sendError(req, res, 500, 'Failed to fetch billing cycles');
     }
   });
 
@@ -609,7 +610,7 @@ export function registerBillingCoreRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error running billing cycle:', error);
-        res.status(500).json({ error: 'Failed to run billing cycle' });
+        sendError(req, res, 500, 'Failed to run billing cycle');
       }
     },
   );
@@ -639,7 +640,7 @@ export function registerBillingCoreRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching billing adjustments:', error);
-        res.status(500).json({ error: 'Failed to fetch billing adjustments' });
+        sendError(req, res, 500, 'Failed to fetch billing adjustments');
       }
     },
   );
@@ -683,7 +684,7 @@ export function registerBillingCoreRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating billing adjustment:', error);
-        res.status(500).json({ error: 'Failed to create billing adjustment' });
+        sendError(req, res, 500, 'Failed to create billing adjustment');
       }
     },
   );

@@ -9267,8 +9267,8 @@
         "Document the contract and add a lint/test guard"
       ],
       "priority": 259,
-      "passes": false,
-      "notes": "[CORRECTNESS/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Large surface — do incrementally."
+      "passes": true,
+      "notes": "[CORRECTNESS/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Large surface — do incrementally. [DONE 2026-07-15] Shared inline error helper server/utils/send-error.ts (sendError + pure buildErrorBody/defaultCodeForStatus) emits canonical {message,code,details,requestId}; requestId read from req.requestId (requestIdMiddleware). Complements the throw-based AppError path (server/lib/api-errors.ts + globalErrorHandler). Migrated all 33 inline error responses in the 3 named files (financial-forecasting 8, tasks 13, billing-core 12) off ad-hoc {error}/{message} via a reviewed codemod (status>=400 only; success .json untouched; return preserved; 2 Zod-validation responses hand-converted with details). Documented in CLAUDE.md Error Format + a Vitest guard server/tests/unit/error-format-guard.test.ts fails if these files regress to ad-hoc shapes. Helper unit-tested (send-error.test.ts, 5). Ratchet holds 1352. Remaining ~550 handlers across other files can adopt sendError incrementally (add files to the guard MIGRATED_FILES list as they do)."
     },
     {
       "id": "CR-024",

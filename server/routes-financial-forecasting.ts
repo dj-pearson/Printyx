@@ -14,6 +14,7 @@
  */
 
 import type { Express } from 'express';
+import { sendError } from './utils/send-error';
 import { db } from './db';
 import { and, eq, sql } from 'drizzle-orm';
 import { createModuleLogger } from './lib/logger';
@@ -54,7 +55,7 @@ export function registerFinancialForecastingRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error fetching financial metrics:', error);
-        res.status(500).json({ error: 'Failed to fetch financial metrics' });
+        sendError(req, res, 500, 'Failed to fetch financial metrics');
       }
     },
   );
@@ -87,7 +88,7 @@ export function registerFinancialForecastingRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching financial forecasts:', error);
-        res.status(500).json({ error: 'Failed to fetch financial forecasts' });
+        sendError(req, res, 500, 'Failed to fetch financial forecasts');
       }
     },
   );
@@ -143,7 +144,7 @@ export function registerFinancialForecastingRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating financial forecast:', error);
-        res.status(500).json({ error: 'Failed to create financial forecast' });
+        sendError(req, res, 500, 'Failed to create financial forecast');
       }
     },
   );
@@ -167,7 +168,7 @@ export function registerFinancialForecastingRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching cash flow projections:', error);
-        res.status(500).json({ error: 'Failed to fetch cash flow projections' });
+        sendError(req, res, 500, 'Failed to fetch cash flow projections');
       }
     },
   );
@@ -236,7 +237,7 @@ export function registerFinancialForecastingRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating cash flow projection:', error);
-        res.status(500).json({ error: 'Failed to create cash flow projection' });
+        sendError(req, res, 500, 'Failed to create cash flow projection');
       }
     },
   );
@@ -269,7 +270,7 @@ export function registerFinancialForecastingRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching profitability analysis:', error);
-        res.status(500).json({ error: 'Failed to fetch profitability analysis' });
+        sendError(req, res, 500, 'Failed to fetch profitability analysis');
       }
     },
   );
@@ -349,7 +350,7 @@ export function registerFinancialForecastingRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error running profitability analysis:', error);
-        res.status(500).json({ error: 'Failed to run profitability analysis' });
+        sendError(req, res, 500, 'Failed to run profitability analysis');
       }
     },
   );
@@ -370,7 +371,7 @@ export function registerFinancialForecastingRoutes(app: Express) {
       res.json(result.rows);
     } catch (error) {
       log.error('Error fetching financial KPIs:', error);
-      res.status(500).json({ error: 'Failed to fetch financial KPIs' });
+      sendError(req, res, 500, 'Failed to fetch financial KPIs');
     }
   });
 }

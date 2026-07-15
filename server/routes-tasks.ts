@@ -1,4 +1,5 @@
 import type { Express } from 'express';
+import { sendError } from './utils/send-error';
 import { storage } from './storage';
 import { z } from 'zod';
 import { insertTaskSchema, insertProjectSchema } from '@shared/schema';
@@ -13,7 +14,7 @@ export function registerTaskRoutes(app: Express) {
   app.get('/api/tasks', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
+      if (!tenantId) return sendError(req, res, 400, 'Tenant ID required');
       const { assignedTo, my } = req.query;
 
       let userId: string | undefined;
@@ -27,7 +28,7 @@ export function registerTaskRoutes(app: Express) {
       res.json(tasks);
     } catch (error) {
       log.error('Error fetching tasks:', error);
-      res.status(500).json({ error: 'Failed to fetch tasks' });
+      sendError(req, res, 500, 'Failed to fetch tasks');
     }
   });
 
@@ -35,7 +36,7 @@ export function registerTaskRoutes(app: Express) {
   app.get('/api/tasks/stats', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
+      if (!tenantId) return sendError(req, res, 400, 'Tenant ID required');
       const { my } = req.query;
 
       let userId: string | undefined;
@@ -47,7 +48,7 @@ export function registerTaskRoutes(app: Express) {
       res.json(stats);
     } catch (error) {
       log.error('Error fetching task stats:', error);
-      res.status(500).json({ error: 'Failed to fetch task statistics' });
+      sendError(req, res, 500, 'Failed to fetch task statistics');
     }
   });
 
@@ -55,7 +56,7 @@ export function registerTaskRoutes(app: Express) {
   app.post('/api/tasks', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
+      if (!tenantId) return sendError(req, res, 400, 'Tenant ID required');
       const userId = getUserId(req);
 
       // Convert string dates to Date objects and clean up data
@@ -86,9 +87,11 @@ export function registerTaskRoutes(app: Express) {
     } catch (error) {
       log.error('Error creating task:', error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Invalid task data', details: error.errors });
+        return sendError(req, res, 400, 'Invalid task data', 'VALIDATION_ERROR', {
+          errors: error.errors,
+        });
       }
-      res.status(500).json({ error: 'Failed to create task' });
+      sendError(req, res, 500, 'Failed to create task');
     }
   });
 
@@ -96,19 +99,19 @@ export function registerTaskRoutes(app: Express) {
   app.put('/api/tasks/:id', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
+      if (!tenantId) return sendError(req, res, 400, 'Tenant ID required');
       const taskId = req.params.id;
 
       const task = await storage.updateTask(taskId, req.body, tenantId);
 
       if (!task) {
-        return res.status(404).json({ error: 'Task not found' });
+        return sendError(req, res, 404, 'Task not found');
       }
 
       res.json(task);
     } catch (error) {
       log.error('Error updating task:', error);
-      res.status(500).json({ error: 'Failed to update task' });
+      sendError(req, res, 500, 'Failed to update task');
     }
   });
 
@@ -122,7 +125,7 @@ export function registerTaskRoutes(app: Express) {
   app.get('/api/projects', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
+      if (!tenantId) return sendError(req, res, 400, 'Tenant ID required');
       const { assignedTo, my } = req.query;
 
       let userId: string | undefined;
@@ -136,7 +139,7 @@ export function registerTaskRoutes(app: Express) {
       res.json(projects);
     } catch (error) {
       log.error('Error fetching projects:', error);
-      res.status(500).json({ error: 'Failed to fetch projects' });
+      sendError(req, res, 500, 'Failed to fetch projects');
     }
   });
 
@@ -145,7 +148,7 @@ export function registerTaskRoutes(app: Express) {
     try {
       log.info('Creating project - request body:', req.body);
       const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
+      if (!tenantId) return sendError(req, res, 400, 'Tenant ID required');
       const userId = getUserId(req);
       log.info('Creating project', { tenantId, userId });
 
@@ -179,9 +182,11 @@ export function registerTaskRoutes(app: Express) {
     } catch (error) {
       log.error('Error creating project:', error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Invalid project data', details: error.errors });
+        return sendError(req, res, 400, 'Invalid project data', 'VALIDATION_ERROR', {
+          errors: error.errors,
+        });
       }
-      res.status(500).json({ error: 'Failed to create project' });
+      sendError(req, res, 500, 'Failed to create project');
     }
   });
 }
