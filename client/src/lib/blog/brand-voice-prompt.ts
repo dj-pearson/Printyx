@@ -21,7 +21,9 @@ export interface BrandVoiceLike {
   persona_description?: string | null;
   sample_corpus?: string | null;
   pov?: string | null;
-  voice_attributes?: Record<string, unknown> | null;
+  // Accept any object shape (a typed struct or a plain record) — the serializer
+  // only iterates it via Object.entries behind a typeof-object guard.
+  voice_attributes?: Record<string, unknown> | object | null;
 }
 
 const POV_LABELS: Record<string, string> = {

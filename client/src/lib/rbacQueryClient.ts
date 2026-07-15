@@ -1,5 +1,5 @@
 // RBAC-enhanced query client that automatically applies role-based filters
-import { QueryClient, QueryFunction } from '@tanstack/react-query';
+import { QueryClient, QueryCache, QueryFunction } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { RBACService, applyRBACFilters, UserContext } from './rbac';
 
@@ -142,6 +142,28 @@ export const getRBACQueryFn: <T>(options: { on401: 'returnNull' | 'throw' }) => 
 
 // Enhanced query client with RBAC support
 export const rbacQueryClient = new QueryClient({
+  // TanStack Query v5 removed defaultOptions.queries.onError — global query error
+  // handling now lives on the QueryCache (this restores the load-error toast).
+  queryCache: new QueryCache({
+    onError: (error: any) => {
+      const message = typeof error === 'string' ? error : error?.message || 'Failed to load data';
+
+      // Special handling for RBAC errors
+      if (message.includes('403') || message.includes('Access Denied')) {
+        toast({
+          title: 'Access Restricted',
+          description: "You don't have permission to view this data.",
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Load error',
+          description: message,
+          variant: 'destructive',
+        });
+      }
+    },
+  }),
   defaultOptions: {
     queries: {
       queryFn: getRBACQueryFn({ on401: 'throw' }),
@@ -151,24 +173,6 @@ export const rbacQueryClient = new QueryClient({
       gcTime: 10 * 60 * 1000, // 10 minutes (TanStack Query v5 renamed cacheTime → gcTime)
       refetchOnMount: true,
       refetchOnReconnect: true,
-      onError: (error: any) => {
-        const message = typeof error === 'string' ? error : error?.message || 'Failed to load data';
-
-        // Special handling for RBAC errors
-        if (message.includes('403') || message.includes('Access Denied')) {
-          toast({
-            title: 'Access Restricted',
-            description: "You don't have permission to view this data.",
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Load error',
-            description: message,
-            variant: 'destructive',
-          });
-        }
-      },
       retry: (failureCount, error: any) => {
         // Don't retry on auth/permission errors
         if (
