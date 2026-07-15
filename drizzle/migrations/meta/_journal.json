@@ -106,6 +106,13 @@
       "when": 1783925568710,
       "tag": "0023_billing_drift_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1783925568720,
+      "tag": "0024_drop_orphan_report_functions",
+      "breakpoints": true
     }
   ]
 }

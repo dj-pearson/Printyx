@@ -4552,8 +4552,8 @@
         "Run npm run check and npm run build"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "Surface area: 6 SQL files, ~6 corresponding edge function handlers. Discovered as a follow-up to EDGE-007. Performance argument for migrate: aggregating thousands of rows in Postgres is faster than transferring them to Deno and aggregating in JS. Argument for drop: less surface area, simpler deployment.",
+      "passes": true,
+      "notes": "Surface area: 6 SQL files, ~6 corresponding edge function handlers. Discovered as a follow-up to EDGE-007. Performance argument for migrate: aggregating thousands of rows in Postgres is faster than transferring them to Deno and aggregating in JS. Argument for drop: less surface area, simpler deployment. [DONE 2026-07-15] DECISION: drop-and-remove (option b). The 6 drizzle/reports/*.sql files defined 13 SECURITY DEFINER report_* functions that were the rpc() target of persona-reports/ (deleted in EDGE-007). Verified ZERO callers: no rpc(\"report_*\") anywhere in supabase/functions|server|client, and no reference to drizzle/reports/*.sql in any script/package.json (they were applied out-of-band, not via journal). Migration 0024_drop_orphan_report_functions (journal idx 15): DROP FUNCTION IF EXISTS for all 13 (names unique so arg list omitted; no-op on fresh DB, drops on prod). Deleted all 6 .sql files (drizzle/reports/ now empty). No TS change → ratchet holds 1352. Could not run db:migrate against staging in this env; migration is idempotent DROP IF EXISTS. The canonical reports/ handlers keep their JS aggregation (the migrate-to-rpc perf path was NOT chosen — less surface/simpler deploy per the drop argument).",
       "category": "edge-migration"
     },
     {
