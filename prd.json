@@ -9280,8 +9280,8 @@
         "Add a test simulating a failure on the second write"
       ],
       "priority": 260,
-      "passes": false,
-      "notes": "[CORRECTNESS/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[CORRECTNESS/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-15] Wrapped POST /api/sales-handoffs checklist insert + template-task inserts in a single db.transaction (server/routes-sales-handoff.ts:98). Extracted testable core to server/lib/sales-handoff-create.ts (buildTemplateTasks pure + createHandoffWithTasks(tx,...) structural executor). Unit test server/tests/unit/sales-handoff-create.test.ts simulates a failure on the SECOND write and asserts it propagates (transaction aborts) + checklist-only recorded. Ratchet 1353→1352 (removed implicit-any map param); baseline tightened. AUDIT (follow-up): scan of server/routes-*.ts shows ~20 files with ≥3 db.insert; genuine multi-write-in-one-handler risks to revisit include routes-business-records, routes-deals-management, routes-renewal-management, routes-portal-service, routes-lead-assignment — reuse the same db.transaction pattern."
     },
     {
       "id": "CR-025",

@@ -14,6 +14,7 @@ import {
   type InsertImplementationProject,
 } from '@shared/schema';
 import { eq, and, desc, asc, sql, or } from 'drizzle-orm';
+import { createHandoffWithTasks, type HandoffTxExecutor } from './lib/sales-handoff-create';
 
 export function registerSalesHandoffRoutes(app: Express) {
   // ==================== Sales Handoff Checklists ====================
@@ -95,30 +96,22 @@ export function registerSalesHandoffRoutes(app: Express) {
         tenantId,
       };
 
-      const [newHandoff] = await db.insert(salesHandoffChecklists).values(handoffData).returning();
-
-      // Create tasks from template if specified
-      if (req.body.templateId) {
-        const template = await db.query.handoffTaskTemplates.findFirst({
-          where: eq(handoffTaskTemplates.id, req.body.templateId),
-        });
-
-        if (template && template.tasks) {
-          const tasksToCreate = (template.tasks as any[]).map((task) => ({
-            tenantId,
-            handoffId: newHandoff.id,
-            taskName: task.taskName,
-            description: task.description,
-            category: task.category,
-            assignedToRole: task.assignToRole,
-            isRequired: task.isRequired,
-            isBlocking: task.isRequired,
-            dueDate: new Date(Date.now() + task.dueInDays * 24 * 60 * 60 * 1000),
-          }));
-
-          await db.insert(handoffTasks).values(tasksToCreate);
-        }
-      }
+      // CR-024: wrap the checklist insert + template-task inserts in a single
+      // transaction so a failure creating the tasks cannot leave an orphan
+      // handoff checklist with no (or partial) tasks.
+      const newHandoff = await db.transaction((tx) =>
+        createHandoffWithTasks(tx as unknown as HandoffTxExecutor, {
+          checklistTable: salesHandoffChecklists,
+          taskTable: handoffTasks,
+          templateWhere: (templateId) => ({
+            where: eq(handoffTaskTemplates.id, templateId),
+          }),
+          handoffData,
+          templateId: req.body.templateId,
+          tenantId,
+          now: Date.now(),
+        }),
+      );
 
       res.status(201).json(newHandoff);
     } catch (error) {
