@@ -273,7 +273,7 @@ export default function PerformanceMonitoring() {
                 </CardTitle>
                 <CardDescription>Real-time resource utilization and health metrics</CardDescription>
               </div>
-              <DateRangePicker onDateRangeChange={setDateRange} />
+              <DateRangePicker onChange={(range) => range && setDateRange(range)} />
             </div>
           </CardHeader>
           <CardContent>

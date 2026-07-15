@@ -131,6 +131,7 @@
       "Bash(python -c \"import json;json.load\\(open\\('prd.json'\\)\\);print\\('prd.json valid'\\)\")"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "defaultMode": "acceptEdits"
   }
 }
