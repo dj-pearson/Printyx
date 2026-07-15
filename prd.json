@@ -9364,7 +9364,7 @@
       ],
       "priority": 266,
       "passes": false,
-      "notes": "[PERFORMANCE/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "notes": "[PERFORMANCE/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [PARTIAL 2026-07-15] Target 1 DONE: bounded the previously unbounded pipeline-deals fetch in routes-today-dashboard.ts (~137) — added orderBy asc(coalesce(updatedAt,createdAt)) [stalest first, matches the staleness metric] + limit:200, so a large open pipeline can no longer load every deal into memory (result is filtered stale + sliced top 5 anyway). Ratchet holds 1352. Target 2 DEFERRED (business_records SELECT* -> explicit columns, routes-business-records.ts:170): the base GET /api/business-records list has 10+ frontend consumers (usePaginatedQuery, useOptimisticMutations which expects full records back, EnhancedPipelineBoard, CsvImportWizard, AdvancedBillingEngine, crm-object-registry...) reading heterogeneous field sets; blind column pruning risks latent blank-field runtime bugs and needs app-runtime verification of each consumer — do with a running app, not in the ratchet-only loop. Audit note: today-dashboard deals was the main truly-unbounded list; business-records list already had limit/offset pagination."
     },
     {
       "id": "CR-031",

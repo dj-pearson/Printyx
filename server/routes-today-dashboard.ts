@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from './db';
-import { eq, and, gte, lte, desc, sql, isNull, or, inArray } from 'drizzle-orm';
+import { eq, and, gte, lte, asc, desc, sql, isNull, or, inArray } from 'drizzle-orm';
 import { collectIds, indexBy } from './lib/n1-batch';
 import { businessRecordActivities, businessRecords, deals } from '@shared/schema';
 import { leadScoreCalculations } from '@shared/lead-scoring-schema';
@@ -138,7 +138,10 @@ export function registerTodayDashboardRoutes(app: Router) {
         };
       });
 
-      // Fetch pipeline alerts (stalled deals)
+      // Fetch pipeline alerts (stalled deals). CR-030: bound this previously
+      // unbounded fetch — order by the oldest effective update time (stalest
+      // first, matching the staleness metric below) and cap the row count so a
+      // large pipeline can't load every open deal into memory.
       const allDeals =
         (await db.query.deals?.findMany({
           where: and(
@@ -150,6 +153,8 @@ export function registerTodayDashboardRoutes(app: Router) {
               eq(deals.dealStage, 'negotiation'),
             ),
           ),
+          orderBy: [asc(sql`coalesce(${deals.updatedAt}, ${deals.createdAt})`)],
+          limit: 200,
         })) || [];
 
       // Calculate days since last update and identify stale deals
