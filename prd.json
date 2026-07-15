@@ -9293,8 +9293,8 @@
         "Measure and record before/after query count"
       ],
       "priority": 261,
-      "passes": false,
-      "notes": "[PERFORMANCE/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[PERFORMANCE/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-15] Batched the ticket×part nested N+1 into ONE inArray query in server/routes-service-dispatch.ts (batch-check-parts): collect distinct requiredParts, single WHERE part_number IN (...) AND tenant_id=..., then buildAvailablePartSet + computeTicketPartsResults. Query count: was 1 (tickets) + sum(parts per ticket) individual queries → now 2 total (tickets + one batched inventory). Pure helpers in server/lib/service-dispatch-parts.ts, unit-tested (server/tests/unit/service-dispatch-parts.test.ts, 4 tests) verifying identical results to old nested-loop. Ratchet holds 1353."
     },
     {
       "id": "CR-026",

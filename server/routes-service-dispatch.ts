@@ -20,6 +20,11 @@ import {
 } from './middleware/rbac-route-helper';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import {
+  collectRequiredPartNumbers,
+  buildAvailablePartSet,
+  computeTicketPartsResults,
+} from './lib/service-dispatch-parts';
 const router = Router();
 
 // NOTE: Do NOT apply enhanceUserContext globally here because this router is registered
@@ -697,54 +702,30 @@ router.post('/api/dispatch/batch-check-parts', async (req: any, res) => {
       .from(serviceTickets)
       .where(and(eq(serviceTickets.tenantId, tenantId), inArray(serviceTickets.id, ticketIds)));
 
-    // Check parts for each ticket
-    const results = await Promise.all(
-      tickets.map(async (ticket) => {
-        if (!ticket.requiredParts || ticket.requiredParts.length === 0) {
-          return {
-            ticketId: ticket.id,
-            ticketNumber: ticket.ticketNumber,
-            title: ticket.title,
-            partsAvailable: true,
-            missingPartsCount: 0,
-            message: 'No parts required',
-          };
-        }
+    // CR-025: batch the inventory lookup into a SINGLE query instead of
+    // issuing tickets×parts individual queries (nested N+1). Collect every
+    // distinct part number across all tickets, resolve availability once, then
+    // compute per-ticket results from the in-stock set.
+    const requiredPartNumbers = collectRequiredPartNumbers(tickets);
 
-        // Check each required part
-        const partsCheck = await Promise.all(
-          ticket.requiredParts.map(async (partNumber: string) => {
-            const [item] = await db
-              .select({
-                quantityAvailable: inventoryItems.quantityAvailable,
-              })
-              .from(inventoryItems)
-              .where(
-                and(
-                  eq(inventoryItems.tenantId, tenantId),
-                  eq(inventoryItems.partNumber, partNumber),
-                ),
-              )
-              .limit(1);
+    const inventoryRows =
+      requiredPartNumbers.length > 0
+        ? await db
+            .select({
+              partNumber: inventoryItems.partNumber,
+              quantityAvailable: inventoryItems.quantityAvailable,
+            })
+            .from(inventoryItems)
+            .where(
+              and(
+                eq(inventoryItems.tenantId, tenantId),
+                inArray(inventoryItems.partNumber, requiredPartNumbers),
+              ),
+            )
+        : [];
 
-            return (item?.quantityAvailable || 0) > 0;
-          }),
-        );
-
-        const allAvailable = partsCheck.every(Boolean);
-        const missingCount = partsCheck.filter((a) => !a).length;
-
-        return {
-          ticketId: ticket.id,
-          ticketNumber: ticket.ticketNumber,
-          title: ticket.title,
-          partsAvailable: allAvailable,
-          missingPartsCount: missingCount,
-          totalPartsRequired: ticket.requiredParts.length,
-          message: allAvailable ? 'All parts available' : `${missingCount} part(s) missing`,
-        };
-      }),
-    );
+    const availableParts = buildAvailablePartSet(inventoryRows);
+    const results = computeTicketPartsResults(tickets, availableParts);
 
     res.json({
       tickets: results,
