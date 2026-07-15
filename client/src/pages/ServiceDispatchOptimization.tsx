@@ -410,23 +410,9 @@ export default function ServiceDispatchOptimization() {
         <ContextualHelp page="service-dispatch-optimization" />
 
         {/* Page Alerts */}
-        <PageAlerts
-          alerts={mockAlerts
-            .filter((alert) => alert.actionRequired)
-            .map((alert) => ({
-              id: alert.id,
-              type:
-                alert.severity === 'critical' || alert.severity === 'high' ? 'error' : 'warning',
-              title: alert.title,
-              message: alert.message,
-              action: alert.suggestedAction
-                ? {
-                    label: 'Take Action',
-                    onClick: () => {},
-                  }
-                : undefined,
-            }))}
-        />
+        {/* CR-034: PageAlerts fetches its own alerts (filtered by pageKey); it
+            never accepted an `alerts` prop, so the old mock mapping was dead. */}
+        <PageAlerts pageKey="service-dispatch-optimization" />
 
         {/* Service Team Performance Stats */}
         <ServiceTeamStatsWidget variant="full" showAutoRefresh={true} />

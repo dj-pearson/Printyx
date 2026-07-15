@@ -159,7 +159,8 @@ export default function Signup() {
       };
 
       // SECURITY: Email is already sanitized by EmailSchema transform
-      await signup(data.email, data.password, metadata);
+      // signup() takes a single SignupData object (email/password + profile metadata).
+      await signup({ email: data.email, password: data.password, ...metadata });
       return { email: data.email };
     },
     onSuccess: (data) => {
