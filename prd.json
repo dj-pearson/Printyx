@@ -10139,9 +10139,9 @@
         "Keep only truly first-paint-critical page(s) eager."
       ],
       "priority": 321,
-      "passes": false,
+      "passes": true,
       "category": "audit-performance",
-      "notes": "[PERFORMANCE/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). client/src/App.tsx:26-35 statically imports 10 pages (NotFound, Login, ForgotPassword, ResetPassword, Signup, VerifyEmail, AuthCallback, EULA, PrivacyPolicy, Terms) while lazy()-ing 259. Small easy win; overall splitting is healthy."
+      "notes": "[PERFORMANCE/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). client/src/App.tsx:26-35 statically imports 10 pages (NotFound, Login, ForgotPassword, ResetPassword, Signup, VerifyEmail, AuthCallback, EULA, PrivacyPolicy, Terms) while lazy()-ing 259. Small easy win; overall splitting is healthy. [DONE 2026-07-15] Converted the 6 non-first-paint pages in client/src/App.tsx from eager static imports to React.lazy: legal (EndUserLicenseAgreement/PrivacyPolicy/TermsAndConditions) + post-login/verify auth (ResetPassword/VerifyEmail/AuthCallback). Kept the immediate unauthenticated entry flow eager (Login/Signup/ForgotPassword) + NotFound fallback. Safe because <Router/> is rendered inside an App-level <React.Suspense> (App.tsx:1203) and the same unauthenticated <Switch> already renders lazy components (AccessibilityStatement/Homepage), so the newly-lazy pages share that boundary. Removes ~6 pages (incl. 3 legal docs) from the main entry chunk. Ratchet holds 1352. No unit test (bundle-splitting change, no logic surface); verified via tsc + structural Suspense-ancestor confirmation."
     },
     {
       "id": "PA-030",

@@ -22,17 +22,21 @@ import { useRouteAnnouncer } from '@/hooks/useRouteAnnouncer';
 import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 import { SkipNavigation } from '@/components/accessibility/SkipNavigation';
 
-// Critical auth pages - keep eager for fast initial load
+// Critical auth pages - keep eager for fast initial load (first-paint entry flow)
 import NotFound from '@/pages/not-found';
 import Login from '@/pages/Login';
 import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
 import Signup from '@/pages/Signup';
-import VerifyEmail from '@/pages/VerifyEmail';
-import AuthCallback from '@/pages/AuthCallback';
-import EndUserLicenseAgreement from '@/pages/legal/EndUserLicenseAgreement';
-import PrivacyPolicy from '@/pages/legal/PrivacyPolicy';
-import TermsAndConditions from '@/pages/legal/TermsAndConditions';
+
+// PA-029: legal + post-login/verify auth pages are lazy-loaded like the other
+// 259 routes so they don't ship in the main entry chunk. They render inside the
+// same Suspense-covered Switch as the already-lazy public pages below.
+const ResetPassword = React.lazy(() => import('@/pages/ResetPassword'));
+const VerifyEmail = React.lazy(() => import('@/pages/VerifyEmail'));
+const AuthCallback = React.lazy(() => import('@/pages/AuthCallback'));
+const EndUserLicenseAgreement = React.lazy(() => import('@/pages/legal/EndUserLicenseAgreement'));
+const PrivacyPolicy = React.lazy(() => import('@/pages/legal/PrivacyPolicy'));
+const TermsAndConditions = React.lazy(() => import('@/pages/legal/TermsAndConditions'));
 
 // Accessibility Statement - lazy load
 const AccessibilityStatement = React.lazy(() => import('@/pages/legal/AccessibilityStatement'));
