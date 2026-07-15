@@ -9004,8 +9004,8 @@
         "Audit all edge fns using createSupabaseServiceClient for a missing auth.getUser gate"
       ],
       "priority": 240,
-      "passes": false,
-      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Both are unauthenticated + service-role today."
+      "passes": true,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Both are unauthenticated + service-role today. [DONE 2026-07-15] (1) db-check edge fn: added requirePlatformAdmin(req) gate (from _shared/auth.ts) before any service-role query — anonymous callers now get 401/403 instead of information_schema + live rows (deno check clean). (2) mobile-logs edge fn: kept intentionally-unauthenticated (must log when auth broken) but BOUNDED the abuse surface per the stated threats (log injection / write flooding): new import-free _shared/mobile-log-guard.ts = capAndSanitizeEntries (cap 100 entries/req, strip ASCII control chars incl CR/LF to block log-line forging, truncate message 2000/data 4000) + FixedWindowRateLimiter (60/min per deviceId|IP -> 429). Wired both into the handler; console+DB now write sanitized rows. Unit-tested server/tests/unit/mobile-log-guard.test.ts (9 tests). (3) AUDIT of all edge fns using createSupabaseServiceClient without auth.getUser: only 4 surfaced — client-metrics (gated by x-api-key SHA-256 against monitoring_clients.api_key, NOT a gap), mobile-auth (the login endpoint, pre-auth by nature), public-calculator (intentionally public, EDGE-005f), mobile-logs (now bounded). No additional real gaps. deno-check residual errors on mobile-logs are pre-existing (err/dbErr unknown) + the /app/ runtime-path import convention, not regressions. Server ratchet holds 1352."
     },
     {
       "id": "CR-005",

@@ -1,10 +1,25 @@
 // Database diagnostic function
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { createSupabaseServiceClient } from '../_shared/supabase.ts';
+import { requirePlatformAdmin, AuthError } from '../_shared/auth.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
+
+  // CR-004: this diagnostic uses the service role and returns information_schema
+  // + live rows. Gate it behind platform-admin auth so it cannot leak schema or
+  // data to anonymous callers.
+  try {
+    await requirePlatformAdmin(req);
+  } catch (err) {
+    const status = err instanceof AuthError ? err.status : 401;
+    return createCorsResponse(
+      { error: 'Platform admin authentication required', code: 'FORBIDDEN' },
+      status,
+      req,
+    );
+  }
 
   try {
     const admin = createSupabaseServiceClient();
