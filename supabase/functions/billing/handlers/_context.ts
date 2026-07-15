@@ -38,6 +38,15 @@ export function isMissingTableError(error: unknown): boolean {
   return msg.includes('could not find the table') || msg.includes('does not exist');
 }
 
+// PA-034: the three billing drift tables are now provisioned by migration 0023.
+// The missing-table tolerance is KEPT (a DB that predates the migration still
+// degrades gracefully) but logs a provisioning warning so the gap is visible.
+export function warnMissingBillingTable(table: string): void {
+  console.warn(
+    `[billing] table "${table}" is missing — run migration 0023_billing_drift_tables to provision it`,
+  );
+}
+
 // True when PostgREST rejected a write because a column is missing (PGRST204) —
 // the self-healing retry trigger used across this codebase (see proposals fn).
 export function isMissingColumnError(error: unknown): boolean {

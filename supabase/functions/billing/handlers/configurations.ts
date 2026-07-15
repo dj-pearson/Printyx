@@ -9,7 +9,7 @@
 //   POST /billing/configurations        → 201 row    (503 when table missing)
 
 import { createCorsResponse } from '../../_shared/cors.ts';
-import { type BillingCtx, isMissingTableError } from './_context.ts';
+import { type BillingCtx, isMissingTableError, warnMissingBillingTable } from './_context.ts';
 
 const TABLE = 'billing_configurations';
 
@@ -33,6 +33,7 @@ export async function handleConfigurations(ctx: BillingCtx): Promise<Response | 
     const { data, error } = await query;
     if (error) {
       if (isMissingTableError(error)) {
+        warnMissingBillingTable(TABLE);
         console.error(`${TABLE} table missing — returning empty list (drift table)`);
         return createCorsResponse([], 200, req);
       }
@@ -88,6 +89,7 @@ export async function handleConfigurations(ctx: BillingCtx): Promise<Response | 
     const { data, error } = await admin.from(TABLE).insert(row).select().single();
     if (error) {
       if (isMissingTableError(error)) {
+        warnMissingBillingTable(TABLE);
         return createCorsResponse(
           {
             error: 'Billing configurations storage is not provisioned',

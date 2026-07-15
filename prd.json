@@ -9999,9 +9999,9 @@
         "Remove the isMissingTableError tolerance once the tables are guaranteed by migration, or keep it but log a provisioning warning."
       ],
       "priority": 311,
-      "passes": false,
+      "passes": true,
       "category": "audit-database",
-      "notes": "[DATABASE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). All three absent from shared/*.ts and every migration; billing/handlers/_context.ts documents them raw-SQL-only, handlers degrade GET->[] / write->503. No type safety."
+      "notes": "[DATABASE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). All three absent from shared/*.ts and every migration; billing/handlers/_context.ts documents them raw-SQL-only, handlers degrade GET->[] / write->503. No type safety. [DONE 2026-07-15] Added Drizzle schema-of-record shared/billing-drift-schema.ts for billing_configurations/billing_cycles/billing_adjustments + idempotent migration 0023 (journal idx 14), columns mirroring exactly what the billing edge-fn handlers read/write (derived from supabase/functions/billing/handlers/{configurations,cycles,adjustments}.ts insert payloads). CREATE TABLE IF NOT EXISTS so it is a no-op on prod (where they already exist as drift) and provisions them on a fresh DB (fixes silent 503 on billing writes = DR readiness, feeds PA-032). KEPT the isMissingTableError tolerance (a DB predating the migration still degrades gracefully) but added warnMissingBillingTable(TABLE) in all 6 missing-table branches so the provisioning gap is logged. deno check clean on all 3 handlers; schema-contract test server/tests/unit/billing-drift-schema.test.ts (3) keeps the schema in sync with handler payloads. Ratchet holds 1352."
     },
     {
       "id": "PA-036",

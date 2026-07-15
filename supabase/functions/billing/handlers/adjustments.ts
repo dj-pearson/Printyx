@@ -13,7 +13,7 @@
 //   POST /billing/adjustments → 201 row (503 when table missing)
 
 import { createCorsResponse } from '../../_shared/cors.ts';
-import { type BillingCtx, isMissingTableError } from './_context.ts';
+import { type BillingCtx, isMissingTableError, warnMissingBillingTable } from './_context.ts';
 
 const TABLE = 'billing_adjustments';
 
@@ -29,6 +29,7 @@ export async function handleAdjustments(ctx: BillingCtx): Promise<Response | nul
 
     if (error) {
       if (isMissingTableError(error)) {
+        warnMissingBillingTable(TABLE);
         console.error(`${TABLE} table missing — returning empty list (drift table)`);
         return createCorsResponse([], 200, req);
       }
@@ -96,6 +97,7 @@ export async function handleAdjustments(ctx: BillingCtx): Promise<Response | nul
     const { data, error } = await admin.from(TABLE).insert(row).select().single();
     if (error) {
       if (isMissingTableError(error)) {
+        warnMissingBillingTable(TABLE);
         return createCorsResponse(
           {
             error: 'Billing adjustments storage is not provisioned',

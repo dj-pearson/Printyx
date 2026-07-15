@@ -11,7 +11,12 @@
 //                               (503 when the billing_cycles table is missing)
 
 import { createCorsResponse } from '../../_shared/cors.ts';
-import { type BillingCtx, isMissingColumnError, isMissingTableError } from './_context.ts';
+import {
+  type BillingCtx,
+  isMissingColumnError,
+  isMissingTableError,
+  warnMissingBillingTable,
+} from './_context.ts';
 import { generateInvoicesFromPendingReadings } from './generate-invoices.ts';
 
 const TABLE = 'billing_cycles';
@@ -29,6 +34,7 @@ export async function handleCycles(ctx: BillingCtx): Promise<Response | null> {
 
     if (error) {
       if (isMissingTableError(error)) {
+        warnMissingBillingTable(TABLE);
         console.error(`${TABLE} table missing — returning empty list (drift table)`);
         return createCorsResponse([], 200, req);
       }
@@ -57,6 +63,7 @@ export async function handleCycles(ctx: BillingCtx): Promise<Response | null> {
 
     if (cycleError) {
       if (isMissingTableError(cycleError)) {
+        warnMissingBillingTable(TABLE);
         return createCorsResponse(
           {
             error: 'Billing cycles storage is not provisioned',
