@@ -7,7 +7,7 @@
 
 import { Router } from 'express';
 import { db } from './db';
-import { serviceTickets, equipment, businessRecords } from '@shared/schema';
+import { serviceTickets, equipment, businessRecords, technicians } from '@shared/schema';
 import { eq, and, sql, desc, or, ilike, count } from 'drizzle-orm';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
@@ -46,13 +46,56 @@ router.get('/api/service-tickets', async (req: any, res) => {
       );
     }
 
-    const tickets = await db
-      .select()
+    // AUDIT-013: service_tickets stores customer_id / equipment_id /
+    // assigned_technician_id but has NO customerName / equipmentModel /
+    // assignedTechnician columns. ServiceHub renders and filters on those names,
+    // so resolve them here via LEFT JOINs (all LEFT: equipment_id and
+    // assigned_technician_id are nullable, and a customer_id can point at a
+    // deleted business_record). Joins are tenant-scoped on both sides to
+    // preserve multi-tenant isolation.
+    const rows = await db
+      .select({
+        ticket: serviceTickets,
+        customerName: businessRecords.companyName,
+        equipmentModel: equipment.modelNumber,
+        technicianFirstName: technicians.firstName,
+        technicianLastName: technicians.lastName,
+      })
       .from(serviceTickets)
+      .leftJoin(
+        businessRecords,
+        and(
+          eq(businessRecords.id, serviceTickets.customerId),
+          eq(businessRecords.tenantId, tenantId),
+        ),
+      )
+      .leftJoin(
+        equipment,
+        and(eq(equipment.id, serviceTickets.equipmentId), eq(equipment.tenantId, tenantId)),
+      )
+      .leftJoin(
+        technicians,
+        and(
+          eq(technicians.id, serviceTickets.assignedTechnicianId),
+          eq(technicians.tenantId, tenantId),
+        ),
+      )
       .where(and(...conditions))
       .orderBy(desc(serviceTickets.createdAt))
       .limit(limitNum)
       .offset(offset);
+
+    const tickets = rows.map((row) => {
+      const technicianName = [row.technicianFirstName, row.technicianLastName]
+        .filter(Boolean)
+        .join(' ');
+      return {
+        ...row.ticket,
+        customerName: row.customerName,
+        equipmentModel: row.equipmentModel,
+        assignedTechnician: technicianName || null,
+      };
+    });
 
     res.json(tickets);
   } catch (error: any) {
@@ -111,10 +154,7 @@ router.get('/api/service-tickets/stats', async (req: any, res) => {
       .where(
         and(
           eq(serviceTickets.tenantId, tenantId),
-          or(
-            eq(serviceTickets.priority, 'urgent'),
-            eq(serviceTickets.priority, 'critical'),
-          ),
+          or(eq(serviceTickets.priority, 'urgent'), eq(serviceTickets.priority, 'critical')),
         ),
       );
 

@@ -215,18 +215,37 @@ router.get('/', can(['service.address_book.view_team']), async (req: any, res) =
       .from(addressBooks)
       .where(and(...filters));
 
-    const data = await Promise.all(
-      books.map(async (b) => ({
-        id: b.id,
-        name: b.name,
-        customer_id: b.customerId,
-        device_id: b.deviceId,
-        source_vendor: b.sourceVendor,
-        source_model: b.sourceModel,
-        last_imported_at: b.lastImportedAt,
-        entry_count: await entryCount(b.id),
-      })),
-    );
+    // AUDIT-007: this called entryCount(b.id) per book — one COUNT query per row,
+    // fanning out with the number of address books. One GROUP BY over the entries
+    // for exactly these books replaces all of them.
+    const counts = books.length
+      ? await db
+          .select({
+            bookId: addressBookEntries.bookId,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(addressBookEntries)
+          .where(
+            inArray(
+              addressBookEntries.bookId,
+              books.map((b) => b.id),
+            ),
+          )
+          .groupBy(addressBookEntries.bookId)
+      : [];
+    // A book with no entries has no GROUP BY row -> 0, same as the per-book COUNT.
+    const countByBook = new Map(counts.map((c) => [c.bookId, Number(c.count) || 0]));
+
+    const data = books.map((b) => ({
+      id: b.id,
+      name: b.name,
+      customer_id: b.customerId,
+      device_id: b.deviceId,
+      source_vendor: b.sourceVendor,
+      source_model: b.sourceModel,
+      last_imported_at: b.lastImportedAt,
+      entry_count: countByBook.get(b.id) ?? 0,
+    }));
     res.json({ data });
   } catch (err) {
     logErr('list books failed', err);

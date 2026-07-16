@@ -3,7 +3,7 @@
 // Easy-to-use utilities for integrating RBAC into route files
 // =====================================================================
 
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import {
   enhanceUserContext,
   requirePermission,
@@ -356,7 +356,7 @@ export const SCOPES = {
 export function requirePermissionAndLevel(
   permission: string | string[],
   minLevel: number,
-): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
+): RequestHandler {
   return (req, res, next) => {
     const permCheck = requirePermission(permission, { minLevel });
     permCheck(req, res, next);
@@ -366,36 +366,28 @@ export function requirePermissionAndLevel(
 /**
  * Create middleware for manager-level access with specific permission
  */
-export function requireManagerAccess(
-  permission: string | string[],
-): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
+export function requireManagerAccess(permission: string | string[]): RequestHandler {
   return requirePermissionAndLevel(permission, ROLE_LEVELS.MANAGER);
 }
 
 /**
  * Create middleware for director-level access with specific permission
  */
-export function requireDirectorAccess(
-  permission: string | string[],
-): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
+export function requireDirectorAccess(permission: string | string[]): RequestHandler {
   return requirePermissionAndLevel(permission, ROLE_LEVELS.REGIONAL_DIRECTOR);
 }
 
 /**
  * Create middleware for executive-level access with specific permission
  */
-export function requireExecutiveAccess(
-  permission: string | string[],
-): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
+export function requireExecutiveAccess(permission: string | string[]): RequestHandler {
   return requirePermissionAndLevel(permission, ROLE_LEVELS.EXECUTIVE);
 }
 
 /**
  * Create middleware that requires MFA for sensitive operations
  */
-export function requireSensitiveAccess(
-  permission: string | string[],
-): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
+export function requireSensitiveAccess(permission: string | string[]): RequestHandler {
   return requirePermissionWithMFA(permission);
 }
 
@@ -472,8 +464,8 @@ export function getQueryBuilder(req: AuthenticatedRequest): HierarchicalQueryBui
  */
 export function chainMiddleware(
   ...middlewares: Array<(req: AuthenticatedRequest, res: Response, next: NextFunction) => void>
-): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+): RequestHandler {
+  return ((req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     let index = 0;
 
     const runNext = (err?: any) => {
@@ -493,5 +485,5 @@ export function chainMiddleware(
     };
 
     runNext();
-  };
+  }) as unknown as RequestHandler;
 }

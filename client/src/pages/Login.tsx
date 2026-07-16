@@ -60,7 +60,10 @@ export default function Login() {
       // Use the OAuth proxy edge function for self-hosted Supabase
       const functionsUrl = config.supabase.functionsUrl;
       const lastRoute = localStorage.getItem('printyx_last_route');
-      const redirectTo = lastRoute || '/dashboard';
+      // AUDIT-014: fallback was '/dashboard', which is NOT a registered route — so an
+      // OAuth sign-in with no stored last route (i.e. a first-time login) landed the
+      // user on the 404 page immediately after authenticating. '/' is the dashboard.
+      const redirectTo = lastRoute || '/';
 
       const oauthUrl = `${functionsUrl}/oauth-proxy?action=authorize&provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
       window.location.href = oauthUrl;

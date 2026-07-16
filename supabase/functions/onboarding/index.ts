@@ -2,6 +2,7 @@
 // Handles customer onboarding workflows, checklists, and equipment setup
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/tenant.ts';
 
 export default async function handler(req: Request) {
@@ -10,7 +11,10 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    // `: undefined` (not `: null`) — getUser's param is string | undefined, so
+    // `null` trips a TS2345 under `deno check` (the known pre-existing pattern
+    // across ~40 edge fns; fix the ones we touch, per CLAUDE.md).
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -32,12 +36,21 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
+    // AUDIT-012: server.ts strips the function-name segment before invoking us,
+    // so a raw split never sees 'onboarding' at [0]. normalizePath is idempotent
+    // (strips a LEADING '/onboarding' only if present), giving the same shape
+    // under both the Coolify dispatcher and Supabase's native runtime. The
+    // frontend calls /api/onboarding/checklists[/:id[/equipment|sections|tasks]],
+    // so parts = ['checklists', :id?, subResource?].
+    const { parts: pathParts } = normalizePath(url.pathname, 'onboarding');
     const checklistId = pathParts[1];
     const subResource = pathParts[2]; // 'equipment', 'sections', 'tasks'
 
     // GET /onboarding/checklists - List checklists
-    if (req.method === 'GET' && !checklistId && pathParts[0] === 'onboarding') {
+    // NOTE: this guard compared pathParts[0] to 'onboarding', which is never
+    // true after the strip — list AND create (below) both 404'd in production.
+    // The real discriminator is the 'checklists' collection segment.
+    if (req.method === 'GET' && !checklistId && pathParts[0] === 'checklists') {
       const status = url.searchParams.get('status');
       const customerId = url.searchParams.get('customerId') || url.searchParams.get('customer_id');
       const page = parseInt(url.searchParams.get('page') || '1');
@@ -174,7 +187,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /onboarding/checklists - Create checklist
-    if (req.method === 'POST' && !checklistId && pathParts[0] === 'onboarding') {
+    if (req.method === 'POST' && !checklistId && pathParts[0] === 'checklists') {
       const body = await req.json();
 
       const checklistData = {

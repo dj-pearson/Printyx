@@ -396,9 +396,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
               <p className="text-xs text-muted-foreground">Drill-through to flagged POs</p>
               <Button
                 size="sm"
-                onClick={() =>
-                  (window.location.href = '/admin/purchase-orders?filter=variance_gt_2x')
-                }
+                onClick={() => (window.location.href = '/purchase-orders?filter=variance_gt_2x')}
               >
                 View
               </Button>

@@ -33,6 +33,10 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
+    // AUDIT-007: cap the fleet page (?limit=, default 100, hard max 250).
+    const rawLimit = parseInt(String(req.query.limit ?? ''), 10);
+    const limitNum = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 250) : 100;
+
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -55,7 +59,14 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
       .from(equipment)
       .leftJoin(businessRecords, eq(equipment.customerId, businessRecords.id))
       .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')))
-      .orderBy(equipment.nextServiceDueDate);
+      .orderBy(equipment.nextServiceDueDate)
+      // AUDIT-007: this base query was UNBOUNDED, and each row it returns costs a
+      // metrics query PLUS an AI analyzeDeviceHealth() call in the loop below — so
+      // response time scaled linearly with the whole active fleet and the AI calls,
+      // not the DB, dominate. Bounding the base query bounds BOTH. Ordered by
+      // nextServiceDueDate, so the page is the most urgent equipment — which is what
+      // this dashboard is for.
+      .limit(limitNum);
 
     // Calculate health metrics for each equipment
     const equipmentHealth = await Promise.all(

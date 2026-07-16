@@ -1,5 +1,5 @@
 import express from 'express';
-import { desc, eq, and, sql, asc, gte, lte, count } from 'drizzle-orm';
+import { desc, eq, and, sql, asc, gte, lte, count, inArray } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './replitAuth';
 import { deviceRegistrations, deviceMetrics } from '../shared/manufacturer-integration-schema';
@@ -25,39 +25,55 @@ router.get('/api/remote-monitoring/equipment-status', async (req: any, res) => {
       .from(deviceRegistrations)
       .where(eq(deviceRegistrations.tenantId, tenantId));
 
-    // Get latest metrics for each device
-    const equipmentStatus = await Promise.all(
-      devices.map(async (device) => {
-        // Get the most recent metrics for this device
-        const latestMetrics = await db
-          .select()
+    // AUDIT-007: this ran TWO queries PER DEVICE (latest metrics + the whole 24h
+    // window), so a fleet of N devices cost 2N round-trips AND pulled every 24h
+    // sample across the wire just to subtract two of them. Both are now single
+    // batched queries over the fleet.
+    const deviceIds = devices.map((d) => d.id);
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // One DISTINCT ON (device_id) pass = the newest row per device.
+    const latestRows = deviceIds.length
+      ? await db
+          .selectDistinctOn([deviceMetrics.deviceId])
           .from(deviceMetrics)
-          .where(eq(deviceMetrics.deviceId, device.id))
-          .orderBy(desc(deviceMetrics.collectionTimestamp))
-          .limit(1);
+          .where(inArray(deviceMetrics.deviceId, deviceIds))
+          .orderBy(deviceMetrics.deviceId, desc(deviceMetrics.collectionTimestamp))
+      : [];
+    const latestByDevice = new Map(latestRows.map((m) => [m.deviceId, m]));
 
-        const metrics = latestMetrics[0];
-
-        // Get metrics from last 24 hours to calculate daily totals
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const dailyMetrics = await db
-          .select()
+    // One grouped aggregate for the 24h page count. The old code fetched every
+    // sample and used only the first and last totalImpressions, so array_agg
+    // ORDER BY ... [1] reproduces it exactly — including the >= 2 readings guard,
+    // without which a single sample would have yielded 0 anyway.
+    const dailyRows = deviceIds.length
+      ? await db
+          .select({
+            deviceId: deviceMetrics.deviceId,
+            readings: sql<number>`count(*)::int`,
+            firstImpressions: sql<number>`COALESCE((array_agg(${deviceMetrics.totalImpressions} ORDER BY ${deviceMetrics.collectionTimestamp} ASC))[1], 0)`,
+            lastImpressions: sql<number>`COALESCE((array_agg(${deviceMetrics.totalImpressions} ORDER BY ${deviceMetrics.collectionTimestamp} DESC))[1], 0)`,
+          })
           .from(deviceMetrics)
           .where(
             and(
-              eq(deviceMetrics.deviceId, device.id),
+              inArray(deviceMetrics.deviceId, deviceIds),
               gte(deviceMetrics.collectionTimestamp, oneDayAgo),
             ),
           )
-          .orderBy(asc(deviceMetrics.collectionTimestamp));
+          .groupBy(deviceMetrics.deviceId)
+      : [];
+    const dailyByDevice = new Map(dailyRows.map((r) => [r.deviceId, r]));
 
-        // Calculate daily page count from meter readings
-        let dailyPageCount = 0;
-        if (dailyMetrics.length >= 2) {
-          const firstReading = dailyMetrics[0].totalImpressions || 0;
-          const lastReading = dailyMetrics[dailyMetrics.length - 1].totalImpressions || 0;
-          dailyPageCount = lastReading - firstReading;
-        }
+    const equipmentStatus = devices.map((device) => {
+      {
+        const metrics = latestByDevice.get(device.id);
+
+        const daily = dailyByDevice.get(device.id);
+        const dailyPageCount =
+          daily && Number(daily.readings) >= 2
+            ? Number(daily.lastImpressions ?? 0) - Number(daily.firstImpressions ?? 0)
+            : 0;
 
         // Determine connection status based on last seen
         const lastSeenDate = device.lastSeen ? new Date(device.lastSeen) : null;
@@ -207,8 +223,8 @@ router.get('/api/remote-monitoring/equipment-status', async (req: any, res) => {
             autoSleepEnabled: false,
           },
         };
-      }),
-    );
+      }
+    });
 
     res.json(equipmentStatus);
   } catch (error) {
@@ -446,18 +462,24 @@ router.get('/api/remote-monitoring/fleet-overview', async (req: any, res) => {
       (d) => !d.lastSeen || new Date(d.lastSeen) <= tenMinutesAgo,
     );
 
-    // Get latest metrics for all devices
-    const latestMetrics = await Promise.all(
-      devices.map(async (device) => {
-        const metrics = await db
-          .select()
+    // AUDIT-007 (second site): same one-query-per-device fan-out as the
+    // equipment-status handler above — N round-trips to fetch N newest rows. One
+    // DISTINCT ON (device_id) pass replaces it. Shape is unchanged: a device with no
+    // metrics still yields { device, metrics: null }, as the old `metrics[0] || null`
+    // did, so the consumer loop below needs no changes.
+    const fleetDeviceIds = devices.map((d) => d.id);
+    const fleetLatestRows = fleetDeviceIds.length
+      ? await db
+          .selectDistinctOn([deviceMetrics.deviceId])
           .from(deviceMetrics)
-          .where(eq(deviceMetrics.deviceId, device.id))
-          .orderBy(desc(deviceMetrics.collectionTimestamp))
-          .limit(1);
-        return { device, metrics: metrics[0] || null };
-      }),
-    );
+          .where(inArray(deviceMetrics.deviceId, fleetDeviceIds))
+          .orderBy(deviceMetrics.deviceId, desc(deviceMetrics.collectionTimestamp))
+      : [];
+    const fleetLatestByDevice = new Map(fleetLatestRows.map((m) => [m.deviceId, m]));
+    const latestMetrics = devices.map((device) => ({
+      device,
+      metrics: fleetLatestByDevice.get(device.id) ?? null,
+    }));
 
     // Calculate status distribution
     let operational = 0,

@@ -246,7 +246,7 @@ export default function KnowledgeBaseAdminDashboard() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button onClick={() => (window.location.href = '/admin/knowledge-base/article-editor')}>
+          <Button onClick={() => (window.location.href = '/admin/knowledge-base/new')}>
             <FileText className="h-4 w-4 mr-2" />
             New Article
           </Button>

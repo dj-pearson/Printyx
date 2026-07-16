@@ -10,6 +10,35 @@
 import type { ZodSchema, ZodError } from 'https://esm.sh/zod@3.22.4';
 import { getCorsHeaders } from './cors.ts';
 
+/**
+ * AUDIT-006: read pagination bounds from the query string.
+ *
+ * WHY A DEFAULT LIMIT MATTERS: PostgREST silently caps every request at
+ * `db-max-rows` (1000 by default). An unpaginated list does NOT error when it
+ * exceeds that — it just returns the first 1000 rows, so callers quietly see a
+ * truncated list (and any JS-side sum over it is simply WRONG). Always range().
+ *
+ * Accepts either ?limit=&offset= or ?page=&limit= (1-based page).
+ */
+export function readRange(
+  url: URL,
+  opts?: { defaultLimit?: number; maxLimit?: number },
+): { limit: number; offset: number } {
+  const defaultLimit = opts?.defaultLimit ?? 100;
+  const maxLimit = opts?.maxLimit ?? 500;
+
+  const rawLimit = parseInt(url.searchParams.get('limit') ?? '', 10);
+  const limit =
+    Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, maxLimit) : defaultLimit;
+
+  const rawOffset = parseInt(url.searchParams.get('offset') ?? '', 10);
+  if (Number.isFinite(rawOffset) && rawOffset >= 0) return { limit, offset: rawOffset };
+
+  const rawPage = parseInt(url.searchParams.get('page') ?? '', 10);
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  return { limit, offset: (page - 1) * limit };
+}
+
 export function generateRequestId(): string {
   return typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()

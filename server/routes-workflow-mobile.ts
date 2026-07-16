@@ -2055,9 +2055,10 @@ export function registerWorkflowMobileRoutes(app: Express) {
       const { equipmentId } = req.params;
       const { serviceType, priority = 'medium', description } = req.body;
 
-      // Get equipment details
-      const equipmentList = await storage.getEquipment(tenantId);
-      const equipmentItem = equipmentList.find((e: any) => e.id === equipmentId);
+      // AUDIT-007: was `getEquipment(tenantId).find(e => e.id === equipmentId)` —
+      // the tenant's ENTIRE equipment table pulled across the wire to pick one row,
+      // on a primary-key lookup. Now a single tenant-scoped SELECT ... LIMIT 1.
+      const equipmentItem = await storage.getEquipmentById(equipmentId, tenantId);
       if (!equipmentItem) {
         return res.status(404).json({ message: 'Equipment not found' });
       }
@@ -2151,10 +2152,21 @@ export function registerWorkflowMobileRoutes(app: Express) {
 
         const processedInvoices = [];
 
-        for (const reading of unprocessedReadings) {
-          // Get tiered rates for billing calculation
-          const tieredRates = await storage.getContractTieredRatesByContract(contractId);
+        // AUDIT-008: hoisted out of the loop — contractId is fixed for this whole
+        // endpoint, so re-fetching the tiered rates per reading was N identical
+        // queries returning identical rows.
+        const tieredRates = await storage.getContractTieredRatesByContract(contractId);
 
+        // AUDIT-008: the customer is loop-invariant too. The old code re-read
+        // currentBalance and wrote it back on EVERY reading — N sequential
+        // read-modify-write cycles on the same row. Beyond being slow that is a race
+        // hazard: any concurrent balance write between a read and its write is lost.
+        // Read once, sum locally, apply ONE update after the loop.
+        const customer = await storage.getBusinessRecord(contract.customerId, tenantId);
+        const startingBalance = parseFloat(String(customer?.currentBalance || '0'));
+        let billedTotal = 0;
+
+        for (const reading of unprocessedReadings) {
           let totalAmount = parseFloat(contract.monthlyBase?.toString() || '0');
 
           // Calculate black & white copies billing
@@ -2186,8 +2198,15 @@ export function registerWorkflowMobileRoutes(app: Express) {
             tenantId: String(tenantId),
             customerId: String(contract.customerId),
             contractId: contract?.id ? String(contract.id) : null,
-            invoiceNumber: `INV-${String(contract.contractNumber || 'CON')}-$
-            {Date.now()}`,
+            // AUDIT-008: this template literal was BROKEN — a line break sat between
+            // the dollar sign and the opening brace, so the Date.now() placeholder
+            // never interpolated and every invoice got the SAME literal string
+            // (ending in a dollar sign, a newline, then the un-interpolated
+            // placeholder text). invoice_number is UNIQUE, so the SECOND reading for
+            // a contract always violated the constraint and 500'd this endpoint —
+            // this path could never bill more than one reading. The trailing index
+            // also guarantees uniqueness within a run (Date.now() can repeat).
+            invoiceNumber: `INV-${String(contract.contractNumber || 'CON')}-${Date.now()}-${processedInvoices.length}`,
             invoiceDate: new Date(),
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             totalAmount: String(totalAmount),
@@ -2214,13 +2233,18 @@ export function registerWorkflowMobileRoutes(app: Express) {
           );
 
           processedInvoices.push(invoice);
+          billedTotal += totalAmount;
+        }
 
-          // Update customer current balance
-          const customer = await storage.getBusinessRecord(contract.customerId, tenantId);
-          const newBalance = parseFloat(String(customer?.currentBalance || '0')) + totalAmount;
+        // AUDIT-008: one balance update for the whole run instead of N. The final
+        // state is identical to the old loop (starting balance + the sum of every
+        // invoice), and lastMeterReadingDate still lands on the last reading
+        // processed — readings are ordered by readingDate DESC, so that is the
+        // OLDEST, exactly as before.
+        if (processedInvoices.length > 0) {
           await storage.updateBusinessRecord(contract.customerId, tenantId, {
-            currentBalance: newBalance.toString(),
-            lastMeterReadingDate: reading.readingDate,
+            currentBalance: (startingBalance + billedTotal).toString(),
+            lastMeterReadingDate: unprocessedReadings[unprocessedReadings.length - 1].readingDate,
           });
         }
 

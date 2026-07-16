@@ -310,34 +310,56 @@ async function rep_activity(ctx: ToolContext): Promise<ToolResult> {
     : candidates;
 
   const now = Date.now();
-  const reps = await Promise.all(
-    scoped.slice(0, 50).map(async (r) => {
-      const open = await db
-        .select({ updatedAt: proposals.updatedAt })
+  const pageOfReps = scoped.slice(0, 50);
+
+  // AUDIT-007: this ran ONE query PER REP (up to 50), each pulling up to 200
+  // proposal rows, purely to derive a count and a max(updated_at). That is now a
+  // single GROUP BY over the open proposals for exactly these reps.
+  //
+  // NOTE a deliberate behaviour change: openDeals used to be `open.length` off a
+  // .limit(200) query, so it silently SATURATED at 200. count(*) reports the true
+  // number, which can now exceed 200 for a very busy rep. That is a fix, not a
+  // regression, but it is a visible number so it is called out here.
+  const repStats = pageOfReps.length
+    ? await db
+        .select({
+          assignedTo: proposals.assignedTo,
+          openDeals: sql<number>`count(*)::int`,
+          lastActivity: sql<Date | null>`max(${proposals.updatedAt})`,
+        })
         .from(proposals)
         .where(
           and(
             eq(proposals.tenantId, ctx.tenantId),
-            eq(proposals.assignedTo, r.id),
+            inArray(
+              proposals.assignedTo,
+              pageOfReps.map((r) => r.id),
+            ),
             inArray(proposals.status, ['draft', 'sent', 'viewed']),
           ),
         )
-        .orderBy(desc(proposals.updatedAt))
-        .limit(200);
-      const lastActivity = open[0]?.updatedAt ?? null;
-      const stale =
-        !lastActivity ||
-        now - new Date(lastActivity).getTime() > STALE_REP_DAYS * 24 * 60 * 60 * 1000;
-      return {
-        id: r.id,
-        name: `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim() || (r.email ?? 'Unknown'),
-        email: r.email,
-        openDeals: open.length,
-        lastActivity,
-        stale,
-      };
-    }),
-  );
+        .groupBy(proposals.assignedTo)
+    : [];
+
+  const statsByRep = new Map(repStats.map((s) => [s.assignedTo, s]));
+
+  const reps = pageOfReps.map((r) => {
+    // A rep with no open proposals has no GROUP BY row -> 0 open / null activity,
+    // exactly what the per-rep query returned for an empty result.
+    const stat = statsByRep.get(r.id);
+    const lastActivity = stat?.lastActivity ?? null;
+    const stale =
+      !lastActivity ||
+      now - new Date(lastActivity).getTime() > STALE_REP_DAYS * 24 * 60 * 60 * 1000;
+    return {
+      id: r.id,
+      name: `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim() || (r.email ?? 'Unknown'),
+      email: r.email,
+      openDeals: Number(stat?.openDeals) || 0,
+      lastActivity,
+      stale,
+    };
+  });
 
   const staleCount = reps.filter((r) => r.stale).length;
   const summary =

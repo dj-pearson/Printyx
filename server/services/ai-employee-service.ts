@@ -104,6 +104,28 @@ interface WorkflowExecution {
   triggerData?: any;
 }
 
+/** AUDIT-015: shape returned by getAnalyticsOverview (mirrors the dashboard's reads). */
+export interface AiEmployeeAnalytics {
+  totalEmployees: number;
+  activeEmployees: number;
+  totalTasksToday: number;
+  completedTasksToday: number;
+  averageQualityScore: number;
+  averageResponseTime: number;
+  /** null when unknown — there is no source for a savings figure. Never invented. */
+  costSavings: number | null;
+  customerSatisfaction: number;
+  employeeTypes: Array<{ type: string; count: number; efficiency: number }>;
+  recentTasks: Array<{
+    id: string;
+    type: string;
+    status: string;
+    employee: string;
+    duration: string;
+  }>;
+  performanceTrends: { tasksCompleted: number[]; qualityScores: number[]; responseTime: number[] };
+}
+
 class AIEmployeeService {
   private claudeAIService: any;
 
@@ -292,7 +314,11 @@ class AIEmployeeService {
       `);
 
       // Update employee statistics
-      await this.updateEmployeeStats(taskData.employee_id as string, tenantId, executionResult.success);
+      await this.updateEmployeeStats(
+        taskData.employee_id as string,
+        tenantId,
+        executionResult.success,
+      );
     } catch (error) {
       log.error('Error executing task:', error);
 
@@ -915,6 +941,119 @@ class AIEmployeeService {
     } catch (error) {
       log.error('Error fetching workflows:', error);
       return [];
+    }
+  }
+  /**
+   * AUDIT-015: real analytics for the AI-employee dashboard.
+   *
+   * The route previously returned a HARDCODED object ("Mock analytics data - in real
+   * implementation, this would aggregate from the database"), so the dashboard showed
+   * invented figures that looked live. Everything below is aggregated from the actual
+   * ai_employees / ai_employee_tasks rows.
+   *
+   * The one field with NO source is costSavings — nothing records a saving anywhere —
+   * so it is reported as null rather than invented, and the UI omits it. Reporting a
+   * fabricated money figure is the exact problem this story exists to remove.
+   *
+   * Every query is tenant-scoped. Errors degrade to zeros rather than throwing: an
+   * analytics panel must never take the page down.
+   */
+  async getAnalyticsOverview(tenantId: string): Promise<AiEmployeeAnalytics> {
+    const empty: AiEmployeeAnalytics = {
+      totalEmployees: 0,
+      activeEmployees: 0,
+      totalTasksToday: 0,
+      completedTasksToday: 0,
+      averageQualityScore: 0,
+      averageResponseTime: 0,
+      costSavings: null,
+      customerSatisfaction: 0,
+      employeeTypes: [],
+      recentTasks: [],
+      performanceTrends: { tasksCompleted: [], qualityScores: [], responseTime: [] },
+    };
+
+    try {
+      const [totals, byType, today, recent, trends] = await Promise.all([
+        db.execute(sql`
+          SELECT
+            COUNT(*)::int AS total_employees,
+            COUNT(*) FILTER (WHERE status = 'active')::int AS active_employees,
+            COALESCE(AVG(user_satisfaction_rating), 0)::float AS customer_satisfaction
+          FROM ai_employees WHERE tenant_id = ${tenantId}
+        `),
+        db.execute(sql`
+          SELECT employee_type AS type, COUNT(*)::int AS count,
+                 COALESCE(AVG(success_rate), 0)::float AS efficiency
+          FROM ai_employees WHERE tenant_id = ${tenantId}
+          GROUP BY employee_type ORDER BY count DESC
+        `),
+        db.execute(sql`
+          SELECT
+            COUNT(*) FILTER (WHERE assigned_at >= date_trunc('day', now()))::int AS total_today,
+            COUNT(*) FILTER (WHERE status = 'completed' AND completed_at >= date_trunc('day', now()))::int AS completed_today,
+            COALESCE(AVG(quality_score), 0)::float AS avg_quality,
+            COALESCE(AVG(execution_time_minutes), 0)::float AS avg_minutes
+          FROM ai_employee_tasks WHERE tenant_id = ${tenantId}
+        `),
+        db.execute(sql`
+          SELECT t.id, t.task_type AS type, t.status,
+                 COALESCE(e.employee_name, 'Unassigned') AS employee,
+                 t.execution_time_minutes AS minutes
+          FROM ai_employee_tasks t
+          LEFT JOIN ai_employees e ON e.id = t.employee_id AND e.tenant_id = t.tenant_id
+          WHERE t.tenant_id = ${tenantId}
+          ORDER BY t.assigned_at DESC NULLS LAST
+          LIMIT 10
+        `),
+        // Last 7 days, oldest first. generate_series keeps days with no tasks at 0
+        // instead of collapsing the series (which would misalign the chart).
+        db.execute(sql`
+          SELECT d::date AS day,
+                 COUNT(t.id) FILTER (WHERE t.status = 'completed')::int AS tasks_completed,
+                 COALESCE(AVG(t.quality_score), 0)::float AS quality,
+                 COALESCE(AVG(t.execution_time_minutes), 0)::float AS response_time
+          FROM generate_series(date_trunc('day', now()) - interval '6 days', date_trunc('day', now()), interval '1 day') d
+          LEFT JOIN ai_employee_tasks t
+            ON t.tenant_id = ${tenantId} AND t.assigned_at >= d AND t.assigned_at < d + interval '1 day'
+          GROUP BY d ORDER BY d
+        `),
+      ]);
+
+      const t = (totals.rows[0] ?? {}) as Record<string, unknown>;
+      const td = (today.rows[0] ?? {}) as Record<string, unknown>;
+      const trendRows = trends.rows as Record<string, unknown>[];
+
+      return {
+        totalEmployees: Number(t.total_employees) || 0,
+        activeEmployees: Number(t.active_employees) || 0,
+        totalTasksToday: Number(td.total_today) || 0,
+        completedTasksToday: Number(td.completed_today) || 0,
+        averageQualityScore: Number(td.avg_quality) || 0,
+        averageResponseTime: Number(td.avg_minutes) || 0,
+        costSavings: null, // no source of truth — never invented
+        customerSatisfaction: Number(t.customer_satisfaction) || 0,
+        employeeTypes: (byType.rows as Record<string, unknown>[]).map((r) => ({
+          type: String(r.type ?? ''),
+          count: Number(r.count) || 0,
+          efficiency: Number(r.efficiency) || 0,
+        })),
+        recentTasks: (recent.rows as Record<string, unknown>[]).map((r) => ({
+          id: String(r.id ?? ''),
+          type: String(r.type ?? ''),
+          status: String(r.status ?? ''),
+          employee: String(r.employee ?? ''),
+          duration: r.minutes == null ? '—' : `${Number(r.minutes)}m`,
+        })),
+        performanceTrends: {
+          tasksCompleted: trendRows.map((r) => Number(r.tasks_completed) || 0),
+          qualityScores: trendRows.map((r) => Number(r.quality) || 0),
+          responseTime: trendRows.map((r) => Number(r.response_time) || 0),
+        },
+      };
+    } catch (error) {
+      log.error('Error aggregating AI employee analytics:', error);
+      return empty;
     }
   }
 }

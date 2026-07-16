@@ -15,6 +15,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { readRange } from '../_shared/http.ts';
 
 // Snake_case → camelCase so the frontend (which reads camelCase keys directly,
 // e.g. ap.totalAmount / ap.balanceAmount) renders without a transformer.
@@ -76,6 +77,22 @@ export default async function handler(req: Request) {
 
     // GET /accounts-payable/summary - AP aging summary
     if (req.method === 'GET' && resource === 'summary') {
+      // AUDIT-006: prefer the SQL aggregate. Summing in JS meant loading every
+      // unpaid bill, and PostgREST silently truncates at db-max-rows (1000) without
+      // erroring — so past 1000 bills these money totals were simply WRONG, not just
+      // slow. The JS path below is kept as a fallback because drizzle/functions/*.sql
+      // is applied OUT OF BAND (see its README), so this code may deploy before the
+      // function exists; a missing function just falls through.
+      const { data: agg, error: aggError } = await admin.rpc('ap_aging_summary', {
+        p_tenant_id: tenantId,
+      });
+      if (!aggError && agg) {
+        return createCorsResponse(agg, 200, req);
+      }
+      if (aggError) {
+        console.warn('ap_aging_summary RPC unavailable, falling back to JS sum:', aggError.message);
+      }
+
       const { data: rows, error } = await admin
         .from('accounts_payable')
         .select('total_amount, paid_amount, balance_amount, due_date, status')
@@ -128,12 +145,19 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && !resource) {
       const status = url.searchParams.get('status');
       const vendorId = url.searchParams.get('vendorId') || url.searchParams.get('vendor_id');
+      // AUDIT-006: this fetched EVERY bill for the tenant. Beyond the transfer cost,
+      // PostgREST silently caps a request at db-max-rows (1000 by default), so the
+      // list quietly truncated with no error once a tenant crossed that line. `count`
+      // is 'exact' and already returned as `total`, so the frontend's { data, total }
+      // contract is unchanged and it can page.
+      const { limit, offset } = readRange(url);
 
       let query = admin
         .from('accounts_payable')
         .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
-        .order('due_date', { ascending: true });
+        .order('due_date', { ascending: true })
+        .range(offset, offset + limit - 1);
 
       if (status) query = query.eq('status', status);
       if (vendorId) query = query.eq('vendor_id', vendorId);

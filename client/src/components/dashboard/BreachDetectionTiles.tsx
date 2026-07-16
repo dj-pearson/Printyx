@@ -219,7 +219,7 @@ export const DefaultBreachTypes: BreachMetric[] = [
     count: 0,
     severity: 'medium',
     description: 'Orders > 2x planned lead time',
-    drillThroughUrl: '/admin/purchase-orders?filter=variance_gt_2x',
+    drillThroughUrl: '/purchase-orders?filter=variance_gt_2x',
     icon: Package,
     lastUpdated: new Date().toISOString(),
   },

@@ -133,7 +133,8 @@ const PAGE_NAVIGATION: SearchResult[] = [
     title: 'Dashboard',
     subtitle: 'Go to dashboard',
     icon: BarChart3,
-    path: '/dashboard',
+    // AUDIT-014: '/dashboard' is not registered; the dashboard is '/'.
+    path: '/',
   },
   {
     id: 'customers',

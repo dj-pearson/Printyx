@@ -86,7 +86,11 @@ export default function SetupWizard() {
   useEffect(() => {
     if (wizardState) {
       if (wizardState.completed) {
-        navigate('/dashboard');
+        // AUDIT-014: '/dashboard' is NOT a registered route — finishing setup
+        // dumped the user straight onto the NotFound page. The authenticated
+        // dashboard is '/' (App.tsx: <Route path="/" component={Dashboard} />),
+        // which is also what the app's own RedirectToDashboard helper targets.
+        navigate('/');
         return;
       }
       if (wizardState.currentStep) {
@@ -120,7 +124,7 @@ export default function SetupWizard() {
 
     if (isAllDone) {
       toast({ title: 'Setup complete!', description: 'Your workspace is ready to use.' });
-      setTimeout(() => navigate('/dashboard'), 1500);
+      setTimeout(() => navigate('/'), 1500);
     } else {
       // Find next incomplete step
       const nextStep = WIZARD_STEPS.findIndex((_, i) => i > stepIndex && !newCompleted.has(i));
@@ -138,7 +142,7 @@ export default function SetupWizard() {
         completed: true,
       });
       toast({ title: 'Setup complete!', description: 'You can always return to settings.' });
-      setTimeout(() => navigate('/dashboard'), 1500);
+      setTimeout(() => navigate('/'), 1500);
     } else {
       setCurrentStep(nextStep);
       saveProgressMutation.mutate({
@@ -155,7 +159,7 @@ export default function SetupWizard() {
       completedSteps: Array.from(completedSteps),
       completed: true,
     });
-    navigate('/dashboard');
+    navigate('/');
   };
 
   const toggleIntegration = (id: string) => {

@@ -156,7 +156,7 @@ export default function ArticleEditor() {
         description: 'Article saved successfully',
       });
       if (isNew) {
-        navigate(`/admin/knowledge-base/article/${data.id}`);
+        navigate(`/admin/knowledge-base/edit/${data.id}`);
       }
     },
     onError: (error: Error) => {

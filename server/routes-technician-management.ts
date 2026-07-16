@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import { z } from 'zod';
-import { eq, and, desc, sql, count, gte, lte } from 'drizzle-orm';
+import { eq, and, desc, sql, count, gte, lte, inArray } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { createModuleLogger } from './lib/logger';
@@ -98,42 +98,51 @@ export function registerTechnicianManagementRoutes(app: Express) {
           .where(eq(technicians.tenantId, tenantId))
           .orderBy(technicians.firstName, technicians.lastName);
 
-        // Get active ticket counts for each technician
-        const technicianStats = await Promise.all(
-          techniciansData.map(async (tech) => {
-            const activeTickets = await db
-              .select({ count: count() })
-              .from(serviceTickets)
-              .where(
-                and(
-                  eq(serviceTickets.assignedTechnicianId, tech.id),
-                  eq(serviceTickets.tenantId, tenantId),
-                  sql`${serviceTickets.status} NOT IN ('completed', 'cancelled')`,
-                ),
-              );
+        // AUDIT-007: this ran TWO count queries PER TECHNICIAN (2N round-trips that
+        // grew with the team). Both counts are now one GROUP BY over the tickets
+        // table using count(*) FILTER (WHERE ...), so the DB does the bucketing in a
+        // single pass. Predicates are byte-for-byte the same as the per-tech
+        // versions: active = status NOT IN ('completed','cancelled'); completed this
+        // month = status 'completed' AND updated_at >= the 1st of the current month.
+        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-            const completedThisMonth = await db
-              .select({ count: count() })
+        const ticketCounts = techniciansData.length
+          ? await db
+              .select({
+                technicianId: serviceTickets.assignedTechnicianId,
+                activeTickets: sql<number>`count(*) FILTER (WHERE ${serviceTickets.status} NOT IN ('completed', 'cancelled'))`,
+                completedThisMonth: sql<number>`count(*) FILTER (WHERE ${serviceTickets.status} = 'completed' AND ${serviceTickets.updatedAt} >= ${monthStart})`,
+              })
               .from(serviceTickets)
               .where(
                 and(
-                  eq(serviceTickets.assignedTechnicianId, tech.id),
                   eq(serviceTickets.tenantId, tenantId),
-                  eq(serviceTickets.status, 'completed'),
-                  gte(
-                    serviceTickets.updatedAt,
-                    new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                  inArray(
+                    serviceTickets.assignedTechnicianId,
+                    techniciansData.map((t) => t.id),
                   ),
                 ),
-              );
+              )
+              .groupBy(serviceTickets.assignedTechnicianId)
+          : [];
 
-            return {
-              ...tech,
-              activeTickets: activeTickets[0]?.count || 0,
-              completedThisMonth: completedThisMonth[0]?.count || 0,
-            };
-          }),
+        const countsByTech = new Map(
+          ticketCounts.map((row) => [
+            row.technicianId,
+            {
+              activeTickets: Number(row.activeTickets) || 0,
+              completedThisMonth: Number(row.completedThisMonth) || 0,
+            },
+          ]),
         );
+
+        // A technician with no tickets has no GROUP BY row — default to 0/0, which is
+        // what the per-tech count queries returned.
+        const technicianStats = techniciansData.map((tech) => ({
+          ...tech,
+          activeTickets: countsByTech.get(tech.id)?.activeTickets ?? 0,
+          completedThisMonth: countsByTech.get(tech.id)?.completedThisMonth ?? 0,
+        }));
 
         res.json(technicianStats);
       } catch (error) {
