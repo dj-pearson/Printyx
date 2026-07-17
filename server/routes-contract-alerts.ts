@@ -15,7 +15,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 const router = express.Router();
 
 // NOTE: Do NOT apply enhanceUserContext globally here because this router is registered
@@ -28,7 +28,7 @@ router.get(
   '/api/alerts/contract-expirations',
 
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
-  async (req: AuthenticatedRequest, res) => {
+  authed(async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const { daysAhead = 180 } = req.query; // Default to 180 days ahead
@@ -65,10 +65,7 @@ router.get(
           and(
             eq(serviceContracts.tenantId, tenantId),
             eq(serviceContracts.contractStatus, 'active'),
-            lte(
-              serviceContracts.endDate,
-              sql`NOW() + INTERVAL '1 day' * ${Number(daysAhead)}`,
-            ),
+            lte(serviceContracts.endDate, sql`NOW() + INTERVAL '1 day' * ${Number(daysAhead)}`),
             gte(serviceContracts.endDate, sql`NOW()`),
           ),
         )
@@ -170,7 +167,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  },
+  }),
 );
 
 // Get detailed renewal opportunity for a specific contract

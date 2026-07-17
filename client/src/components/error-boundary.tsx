@@ -79,7 +79,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   };
 
   handleGoHome = () => {
-    window.location.href = '/dashboard';
+    // AUDIT-014: was '/dashboard', which is NOT a registered route — so the "go home"
+    // escape hatch on the error screen dropped the user onto the 404 page. Recovering
+    // from an error landed you on another error. The authenticated dashboard is '/'
+    // (App.tsx: <Route path="/" component={Dashboard} />), which is also what the
+    // app's own RedirectToDashboard helper targets.
+    window.location.href = '/';
   };
 
   handleReportBug = () => {

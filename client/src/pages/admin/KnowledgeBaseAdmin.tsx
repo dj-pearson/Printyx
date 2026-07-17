@@ -32,7 +32,6 @@ import {
   Search,
   BarChart3,
   FileText,
-  Folder,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -224,13 +223,7 @@ export default function KnowledgeBaseAdmin() {
             <p className="text-muted-foreground mt-1">Manage articles, categories, and content</p>
           </div>
           <div className="flex gap-2">
-            <Link href="/admin/knowledge-base/categories">
-              <Button variant="outline">
-                <Folder className="h-4 w-4 mr-2" />
-                Manage Categories
-              </Button>
-            </Link>
-            <Link href="/admin/knowledge-base/article/new">
+            <Link href="/admin/knowledge-base/new">
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
                 New Article
@@ -368,7 +361,7 @@ export default function KnowledgeBaseAdmin() {
                       {articlesData?.articles.map((article) => (
                         <TableRow key={article.id}>
                           <TableCell className="font-medium">
-                            <Link href={`/admin/knowledge-base/article/${article.id}`}>
+                            <Link href={`/admin/knowledge-base/edit/${article.id}`}>
                               <span className="hover:underline cursor-pointer">
                                 {article.title}
                               </span>
@@ -401,7 +394,7 @@ export default function KnowledgeBaseAdmin() {
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
-                                  <Link href={`/admin/knowledge-base/article/${article.id}`}>
+                                  <Link href={`/admin/knowledge-base/edit/${article.id}`}>
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit
                                   </Link>
@@ -475,7 +468,7 @@ export default function KnowledgeBaseAdmin() {
                             </p>
                           </div>
                         </div>
-                        <Link href={`/admin/knowledge-base/article/${article.id}`}>
+                        <Link href={`/admin/knowledge-base/edit/${article.id}`}>
                           <Button variant="outline" size="sm">
                             <Edit className="h-4 w-4 mr-2" />
                             Edit

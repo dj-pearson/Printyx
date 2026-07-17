@@ -14,7 +14,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 const router = express.Router();
 
 // Apply RBAC context to all customer success routes
@@ -27,7 +27,7 @@ router.get(
   '/api/customer-success/health-scores',
 
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
-  async (req: AuthenticatedRequest, res) => {
+  authed(async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
@@ -273,7 +273,7 @@ router.get(
       log.error('Error fetching customer health scores:', error);
       res.status(500).json({ message: 'Failed to fetch customer health scores' });
     }
-  },
+  }),
 );
 
 // Get usage analytics for customers - requires customer view permission
@@ -281,7 +281,7 @@ router.get(
   '/api/customer-success/usage-analytics',
 
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
-  async (req: AuthenticatedRequest, res) => {
+  authed(async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const { customerId, period = 'month' } = req.query;
@@ -507,7 +507,7 @@ router.get(
       log.error('Error fetching usage analytics:', error);
       res.status(500).json({ message: 'Failed to fetch usage analytics' });
     }
-  },
+  }),
 );
 
 // Get satisfaction surveys and feedback - requires customer view permission
@@ -515,7 +515,7 @@ router.get(
   '/api/customer-success/satisfaction',
 
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
-  async (req: AuthenticatedRequest, res) => {
+  authed(async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
@@ -671,7 +671,7 @@ router.get(
       log.error('Error fetching satisfaction data:', error);
       res.status(500).json({ message: 'Failed to fetch satisfaction data' });
     }
-  },
+  }),
 );
 
 // Create or trigger customer health score calculation - requires customer edit permission
@@ -679,7 +679,7 @@ router.post(
   '/api/customer-success/calculate-health',
 
   requirePermission([PERMISSIONS.SALES.CUSTOMER.UPDATE]),
-  async (req: AuthenticatedRequest, res) => {
+  authed(async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const { customerIds, recalculateAll = false } = req.body;
@@ -713,7 +713,7 @@ router.post(
       log.error('Error calculating health scores:', error);
       res.status(500).json({ message: 'Failed to calculate health scores' });
     }
-  },
+  }),
 );
 
 export default router;

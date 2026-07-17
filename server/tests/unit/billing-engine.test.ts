@@ -326,13 +326,20 @@ describe('BillingEngineService', () => {
       expect(result.warnings).toContain('No meter readings provided');
     });
 
+    // QUALITY-002: these fixtures used to say blackWhiteCount / colorCount, which are
+    // NOT columns on meter_readings (the real ones are bwMeterReading /
+    // colorMeterReading). The service read the same wrong names, so these tests passed
+    // while the production code path detected NOTHING against real rows — it read
+    // undefined, and `undefined < 0` is false. The `as any[]` below is what let the
+    // fixture lie: it switched off the exact check that would have caught the drift.
+    // Keep these fixtures on the REAL column names.
     it('should detect negative BW reading', async () => {
       const readings = [
         {
           id: 'r1',
           equipmentId: 'eq-1',
-          blackWhiteCount: -100,
-          colorCount: 50,
+          bwMeterReading: -100,
+          colorMeterReading: 50,
         },
       ] as any[];
 
@@ -348,8 +355,8 @@ describe('BillingEngineService', () => {
         {
           id: 'r1',
           equipmentId: 'eq-1',
-          blackWhiteCount: 50,
-          colorCount: -200,
+          bwMeterReading: 50,
+          colorMeterReading: -200,
         },
       ] as any[];
 
@@ -364,8 +371,8 @@ describe('BillingEngineService', () => {
         {
           id: 'r1',
           equipmentId: 'eq-1',
-          blackWhiteCount: 1000,
-          colorCount: 200,
+          bwMeterReading: 1000,
+          colorMeterReading: 200,
         },
       ] as any[];
 

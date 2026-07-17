@@ -379,7 +379,7 @@ export default function SalesCommandCenter() {
                   <a href="/deals">Manage Deals</a>
                 </Button>
                 <Button asChild variant="outline" size="sm">
-                  <a href="/quotes-management">Manage Quotes</a>
+                  <a href="/quotes">Manage Quotes</a>
                 </Button>
                 <Button asChild variant="ghost" size="sm">
                   <a href="/contracts">Contracts</a>

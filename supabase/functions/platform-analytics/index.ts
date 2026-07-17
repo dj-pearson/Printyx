@@ -17,6 +17,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 
 function num(v: unknown): number {
   const n = parseFloat(String(v ?? '0'));
@@ -74,11 +75,16 @@ export default async function handler(req: Request) {
     }
 
     const admin = createSupabaseServiceClient();
-    const { data: userWithRole } = await admin
-      .from('users')
-      .select('role_id, roles!inner(level, can_access_all_tenants)')
-      .eq('id', user.id)
-      .single();
+    // AUDIT-005: this users->roles gate ran on EVERY request to this fn, a second
+    // serialized hop after auth.getUser. Cached by user id for ROLE_CACHE_TTL_MS
+    // (default 30s) — a role change takes effect within that window.
+    const { data: userWithRole } = await cachedRoleLookup(user.id, () =>
+      admin
+        .from('users')
+        .select('role_id, roles!inner(level, can_access_all_tenants)')
+        .eq('id', user.id)
+        .single(),
+    );
     const roleLevel = (userWithRole?.roles as any)?.level || 0;
     const canAccessAllTenants = (userWithRole?.roles as any)?.can_access_all_tenants || false;
     if (roleLevel < 7 && !canAccessAllTenants) {
@@ -91,18 +97,65 @@ export default async function handler(req: Request) {
     const sub = parts[1];
     const sp = url.searchParams;
 
+    // AUDIT-006: helpers below replace `select('*')` + JS reduce/filter.
+    //
+    // Two distinct problems were being solved:
+    //   1. COUNTS pulled every row just to read `.length`. They now use
+    //      { count: 'exact', head: true } — the DB counts, no rows cross the wire.
+    //   2. SUMS still need the values, but PostgREST silently caps a response at
+    //      db-max-rows (1000) WITHOUT erroring, so a plain select simply produced a
+    //      wrong total once a tenant passed that line. fetchAllRows pages explicitly
+    //      so the sum is correct at any size, and the select is narrowed to the one
+    //      column being summed.
+
+    /** Count matching rows in the DB — no row data transferred. */
+    async function countRecords(
+      start: Date | null,
+      end: Date | null,
+      filters: Record<string, string> = {},
+      table = 'platform_business_records',
+    ): Promise<number> {
+      let q = admin.from(table).select('*', { count: 'exact', head: true });
+      if (start) q = q.gte('created_at', start.toISOString());
+      if (end) q = q.lte('created_at', end.toISOString());
+      for (const [k, v] of Object.entries(filters)) q = q.eq(k, v);
+      const { count } = await q;
+      return count ?? 0;
+    }
+
+    /** Page through every matching row (defeats the silent db-max-rows truncation). */
+    async function fetchAllRows(
+      table: string,
+      columns: string,
+      build: (q: any) => any,
+      pageSize = 1000,
+    ): Promise<any[]> {
+      const out: any[] = [];
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await build(admin.from(table).select(columns)).range(
+          offset,
+          offset + pageSize - 1,
+        );
+        if (error || !data || data.length === 0) break;
+        out.push(...data);
+        if (data.length < pageSize) break;
+      }
+      return out;
+    }
+
     // Helper: fetch business records with optional created_at range + extra eq filters.
     async function fetchRecords(
       start: Date | null,
       end: Date | null,
       filters: Record<string, string> = {},
+      columns = '*',
     ): Promise<any[]> {
-      let q = admin.from('platform_business_records').select('*');
-      if (start) q = q.gte('created_at', start.toISOString());
-      if (end) q = q.lte('created_at', end.toISOString());
-      for (const [k, v] of Object.entries(filters)) q = q.eq(k, v);
-      const { data } = await q;
-      return data || [];
+      return await fetchAllRows('platform_business_records', columns, (q: any) => {
+        if (start) q = q.gte('created_at', start.toISOString());
+        if (end) q = q.lte('created_at', end.toISOString());
+        for (const [k, v] of Object.entries(filters)) q = q.eq(k, v);
+        return q;
+      });
     }
 
     async function fetchDeals(start: Date | null, end: Date | null): Promise<any[]> {
@@ -118,22 +171,26 @@ export default async function handler(req: Request) {
       const startDate = sp.get('startDate') ? new Date(sp.get('startDate')!) : null;
       const endDate = sp.get('endDate') ? new Date(sp.get('endDate')!) : null;
 
-      const activeTenants = await fetchRecords(startDate, endDate, {
-        record_type: 'tenant',
-        status: 'active_customer',
-      });
-      const churnedTenants = await fetchRecords(startDate, endDate, {
-        record_type: 'tenant',
-        status: 'churned',
-      });
-      const newCustomers = await fetchRecords(startDate, endDate, { record_type: 'tenant' });
+      // AUDIT-006: these three were serialized and each pulled full rows. Only the
+      // active tenants' current_mrr is actually needed as data; the other two were
+      // fetched purely to read `.length`, so they are now DB counts. Run in parallel.
+      const [activeTenants, churnedTenantCount, newCustomerCount] = await Promise.all([
+        fetchRecords(
+          startDate,
+          endDate,
+          { record_type: 'tenant', status: 'active_customer' },
+          'current_mrr',
+        ),
+        countRecords(startDate, endDate, { record_type: 'tenant', status: 'churned' }),
+        countRecords(startDate, endDate, { record_type: 'tenant' }),
+      ]);
 
       const totalMRR = activeTenants.reduce((s, t) => s + num(t.current_mrr), 0);
       const totalARR = totalMRR * 12;
       const arpa = activeTenants.length > 0 ? totalMRR / activeTenants.length : 0;
       const churnRate =
-        activeTenants.length + churnedTenants.length > 0
-          ? (churnedTenants.length / (activeTenants.length + churnedTenants.length)) * 100
+        activeTenants.length + churnedTenantCount > 0
+          ? (churnedTenantCount / (activeTenants.length + churnedTenantCount)) * 100
           : 0;
       const grr = 100 - churnRate;
       // No last_mrr_change column → expansion always 0 (parity with Express runtime).
@@ -163,8 +220,8 @@ export default async function handler(req: Request) {
           },
           counts: {
             activeTenants: activeTenants.length,
-            churnedTenants: churnedTenants.length,
-            newCustomers: newCustomers.length,
+            churnedTenants: churnedTenantCount,
+            newCustomers: newCustomerCount,
             expandedTenants: 0,
           },
           dateRange: { start: sp.get('startDate') || 'all', end: sp.get('endDate') || 'all' },

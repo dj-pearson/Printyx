@@ -2,6 +2,7 @@
 // Handles service ticket analysis and parts ordering
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -9,7 +10,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -34,9 +35,12 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const resource = pathParts[1]; // analysis ID or 'stats', 'recent'
-    const subResource = pathParts[2];
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /service-analysis, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'service-analysis');
+    const resource = parts[0]; // analysis ID or 'stats', 'recent'
+    const subResource = parts[1];
 
     // GET /service-analysis/stats - Get analysis statistics
     if (req.method === 'GET' && resource === 'stats') {

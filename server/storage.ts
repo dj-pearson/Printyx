@@ -560,6 +560,7 @@ export interface IStorage {
 
   // Equipment operations
   getEquipment(tenantId: string): Promise<Equipment[]>;
+  getEquipmentById(equipmentId: string, tenantId: string): Promise<Equipment | undefined>;
   createEquipment(equipment: Omit<Equipment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Equipment>;
 
   // Contract operations
@@ -2526,15 +2527,53 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getCustomerServiceTickets(customerId: string, tenantId: string): Promise<ServiceTicket[]> {
+  // AUDIT-013: service_tickets stores assigned_technician_id / equipment_id but no
+  // display names. CustomerServiceHistory renders (and searches on) technicianName +
+  // equipmentDescription, so resolve them here via tenant-scoped LEFT JOINs —
+  // otherwise every row reads "Unassigned" / "-" and the technician search matches
+  // nothing. Mirrors the same fix on GET /api/service-tickets (routes-mobile-api.ts).
+  async getCustomerServiceTickets(
+    customerId: string,
+    tenantId: string,
+  ): Promise<
+    (ServiceTicket & { technicianName: string | null; equipmentDescription: string | null })[]
+  > {
     try {
-      return await db
-        .select()
+      const rows = await db
+        .select({
+          ticket: serviceTickets,
+          technicianFirstName: technicians.firstName,
+          technicianLastName: technicians.lastName,
+          equipmentDescription: equipment.description,
+          equipmentModelNumber: equipment.modelNumber,
+        })
         .from(serviceTickets)
+        .leftJoin(
+          technicians,
+          and(
+            eq(technicians.id, serviceTickets.assignedTechnicianId),
+            eq(technicians.tenantId, tenantId),
+          ),
+        )
+        .leftJoin(
+          equipment,
+          and(eq(equipment.id, serviceTickets.equipmentId), eq(equipment.tenantId, tenantId)),
+        )
         .where(
           and(eq(serviceTickets.customerId, customerId), eq(serviceTickets.tenantId, tenantId)),
         )
         .orderBy(desc(serviceTickets.createdAt));
+
+      return rows.map((row) => {
+        const technicianName = [row.technicianFirstName, row.technicianLastName]
+          .filter(Boolean)
+          .join(' ');
+        return {
+          ...row.ticket,
+          technicianName: technicianName || null,
+          equipmentDescription: row.equipmentDescription || row.equipmentModelNumber || null,
+        };
+      });
     } catch (error) {
       log.info('No service tickets table found, returning empty array');
       return [];
@@ -2868,6 +2907,22 @@ export class DatabaseStorage implements IStorage {
   // Equipment operations
   async getEquipment(tenantId: string): Promise<Equipment[]> {
     return await db.select().from(equipment).where(eq(equipment.tenantId, tenantId));
+  }
+
+  /**
+   * AUDIT-007: fetch ONE equipment row by id, tenant-scoped.
+   *
+   * Callers previously did `(await getEquipment(tenantId)).find(e => e.id === x)`,
+   * i.e. pulled the tenant's ENTIRE equipment table across the wire to pick a single
+   * row — cost that grows with the fleet, for a primary-key lookup.
+   */
+  async getEquipmentById(equipmentId: string, tenantId: string): Promise<Equipment | undefined> {
+    const [row] = await db
+      .select()
+      .from(equipment)
+      .where(and(eq(equipment.id, equipmentId), eq(equipment.tenantId, tenantId)))
+      .limit(1);
+    return row;
   }
 
   async createEquipment(

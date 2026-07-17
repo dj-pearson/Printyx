@@ -2,6 +2,7 @@
 // Handles CRM goals, dashboard stats, teams, and progress tracking
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -9,7 +10,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -30,8 +31,11 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const subRoute = pathParts[1]; // e.g., 'goals', 'dashboard-stats', 'teams', 'goal-progress'
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /crm, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'crm');
+    const subRoute = parts[0]; // e.g., 'goals', 'dashboard-stats', 'teams', 'goal-progress'
 
     // GET /crm/goals - List CRM goals
     if (req.method === 'GET' && subRoute === 'goals') {
@@ -95,7 +99,7 @@ export default async function handler(req: Request) {
     // ─── CRMX-006: Notes ────────────────────────────────────────────
     const CRM_RECORD_TYPES = new Set(['deal', 'lead', 'contact', 'company']);
     if (subRoute === 'notes') {
-      const noteId = pathParts[2];
+      const noteId = parts[1];
 
       if (req.method === 'GET' && !noteId) {
         const parentType = url.searchParams.get('parentType');
@@ -171,7 +175,7 @@ export default async function handler(req: Request) {
 
     // ─── CRMX-006: Associations ─────────────────────────────────────
     if (subRoute === 'associations') {
-      const assocId = pathParts[2];
+      const assocId = parts[1];
 
       if (req.method === 'GET' && !assocId) {
         const type = url.searchParams.get('type');

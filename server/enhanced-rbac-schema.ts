@@ -1,6 +1,7 @@
 import { sql, relations } from 'drizzle-orm';
 import {
   index,
+  uniqueIndex,
   jsonb,
   pgTable,
   timestamp,
@@ -309,6 +310,17 @@ export const permissionCache = pgTable(
     tenantId: varchar('tenant_id').notNull(),
   },
   (table) => [
+    // AUDIT-010: setCachedPermissions upserts on this triple, which REQUIRES a real
+    // unique constraint — ON CONFLICT cannot target a plain index. Before this, the
+    // setter always INSERTed, so the table accumulated a duplicate row per cache
+    // refresh per user until the periodic cleanup ran.
+    uniqueIndex('permission_cache_user_context_tenant_uniq').on(
+      table.userId,
+      table.organizationalContext,
+      table.tenantId,
+    ),
+    // Superseded by the unique index above (same leftmost prefix) but kept: dropping
+    // it is a separate call, and it is what the existing lookup planned against.
     index('idx_permission_cache_user_context').on(table.userId, table.organizationalContext),
     index('idx_permission_cache_expires').on(table.expiresAt),
     index('idx_permission_cache_hash').on(table.permissionHash),

@@ -2,6 +2,7 @@
 // Provides sales reporting endpoints for different role levels
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -11,7 +12,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -38,9 +39,12 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const reportType = pathParts[1]; // personal, team, regional, etc.
-    const subReport = pathParts[2]; // pipeline, activity, quota, etc.
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /sales-reports, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'sales-reports');
+    const reportType = parts[0]; // personal, team, regional, etc.
+    const subReport = parts[1]; // pipeline, activity, quota, etc.
 
     const dateFrom = url.searchParams.get('dateFrom');
     const dateTo = url.searchParams.get('dateTo');

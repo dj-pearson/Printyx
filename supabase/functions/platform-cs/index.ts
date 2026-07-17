@@ -9,6 +9,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -30,11 +31,16 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
 
-    const { data: userWithRole } = await admin
-      .from('users')
-      .select('role_id, roles!inner(level, can_access_all_tenants)')
-      .eq('id', user.id)
-      .single();
+    // AUDIT-005: this users->roles gate ran on EVERY request to this fn, a second
+    // serialized hop after auth.getUser. Cached by user id for ROLE_CACHE_TTL_MS
+    // (default 30s) — a role change takes effect within that window.
+    const { data: userWithRole } = await cachedRoleLookup(user.id, () =>
+      admin
+        .from('users')
+        .select('role_id, roles!inner(level, can_access_all_tenants)')
+        .eq('id', user.id)
+        .single(),
+    );
 
     const roleLevel = (userWithRole?.roles as any)?.level || 0;
     const canAccessAllTenants = (userWithRole?.roles as any)?.can_access_all_tenants || false;
@@ -73,11 +79,23 @@ export default async function handler(req: Request) {
         const atRisk = counts[2].count || 0;
         const critical = counts[3].count || 0;
 
-        const { data: scoreRows } = await admin
-          .from('platform_health_scores')
-          .select('overall_score');
+        // AUDIT-006: this averaged overall_score over a plain select of every row.
+        // PostgREST silently caps a response at db-max-rows (1000) WITHOUT erroring,
+        // so past 1000 health scores the average was computed over an arbitrary
+        // subset — a wrong number, not just a slow one. Page explicitly so the mean
+        // is over the full set. (The counts above already use head:true correctly.)
+        const scoreRows: Array<{ overall_score: number | null }> = [];
+        for (let offset = 0; ; offset += 1000) {
+          const { data, error } = await admin
+            .from('platform_health_scores')
+            .select('overall_score')
+            .range(offset, offset + 999);
+          if (error || !data || data.length === 0) break;
+          scoreRows.push(...data);
+          if (data.length < 1000) break;
+        }
         const avg =
-          scoreRows && scoreRows.length > 0
+          scoreRows.length > 0
             ? scoreRows.reduce((s: number, r: any) => s + (r.overall_score || 0), 0) /
               scoreRows.length
             : 0;

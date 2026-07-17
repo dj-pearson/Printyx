@@ -32,7 +32,7 @@ import {
   canSeeDealerCost,
 } from './services/pricing-service';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 /**
  * Product Pricing Routes - Three-Tier Pricing Management
  *
@@ -161,7 +161,7 @@ export function registerProductPricingRoutes(app: Express) {
   app.post(
     '/api/pricing/calculate-rep-cost',
     isAuthenticated,
-    async (req: AuthRequest, res: Response) => {
+    authed(async (req: AuthRequest, res: Response) => {
       try {
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
@@ -191,7 +191,7 @@ export function registerProductPricingRoutes(app: Express) {
         log.error('Error calculating rep cost:', error);
         res.status(500).json({ error: 'Failed to calculate rep cost' });
       }
-    },
+    }),
   );
 
   /**
@@ -201,7 +201,7 @@ export function registerProductPricingRoutes(app: Express) {
   app.patch(
     '/api/product-models/:id/pricing',
     isAuthenticated,
-    async (req: AuthRequest, res: Response) => {
+    authed(async (req: AuthRequest, res: Response) => {
       try {
         const tenantId = req.user?.tenantId;
         const userRole = req.user?.role || 'standard';
@@ -300,7 +300,7 @@ export function registerProductPricingRoutes(app: Express) {
         log.error('Error updating product pricing:', error);
         res.status(500).json({ error: 'Failed to update product pricing' });
       }
-    },
+    }),
   );
 
   /**
@@ -311,7 +311,7 @@ export function registerProductPricingRoutes(app: Express) {
   app.post(
     '/api/pricing/bulk-update-dealer-cost',
     isAuthenticated,
-    async (req: AuthRequest, res: Response) => {
+    authed(async (req: AuthRequest, res: Response) => {
       try {
         const tenantId = req.user?.tenantId;
         const userRole = req.user?.role || 'standard';
@@ -376,7 +376,7 @@ export function registerProductPricingRoutes(app: Express) {
         log.error('Error bulk updating dealer costs:', error);
         res.status(500).json({ error: 'Failed to bulk update dealer costs' });
       }
-    },
+    }),
   );
 
   /**
@@ -387,7 +387,7 @@ export function registerProductPricingRoutes(app: Express) {
   app.get(
     '/api/pricing/margin-report',
     isAuthenticated,
-    async (req: AuthRequest, res: Response) => {
+    authed(async (req: AuthRequest, res: Response) => {
       try {
         const tenantId = req.user?.tenantId;
         const userRole = req.user?.role || 'standard';
@@ -499,7 +499,7 @@ export function registerProductPricingRoutes(app: Express) {
         log.error('Error generating margin report:', error);
         res.status(500).json({ error: 'Failed to generate margin report' });
       }
-    },
+    }),
   );
 
   /**
@@ -509,7 +509,7 @@ export function registerProductPricingRoutes(app: Express) {
   app.get(
     '/api/pricing/margin-report/export',
     isAuthenticated,
-    async (req: AuthRequest, res: Response) => {
+    authed(async (req: AuthRequest, res: Response) => {
       try {
         const tenantId = req.user?.tenantId;
         const userRole = req.user?.role || 'standard';
@@ -575,7 +575,7 @@ export function registerProductPricingRoutes(app: Express) {
         log.error('Error exporting margin report:', error);
         res.status(500).json({ error: 'Failed to export margin report' });
       }
-    },
+    }),
   );
 
   /**
@@ -585,7 +585,7 @@ export function registerProductPricingRoutes(app: Express) {
   app.post(
     '/api/pricing/request-approval',
     isAuthenticated,
-    async (req: AuthRequest, res: Response) => {
+    authed(async (req: AuthRequest, res: Response) => {
       try {
         const tenantId = req.user?.tenantId;
         const userId = req.user?.id;
@@ -630,7 +630,7 @@ export function registerProductPricingRoutes(app: Express) {
         log.error('Error creating price approval request:', error);
         res.status(500).json({ error: 'Failed to create approval request' });
       }
-    },
+    }),
   );
 
   /**
@@ -640,7 +640,7 @@ export function registerProductPricingRoutes(app: Express) {
   app.patch(
     '/api/pricing/approval/:id',
     isAuthenticated,
-    async (req: AuthRequest, res: Response) => {
+    authed(async (req: AuthRequest, res: Response) => {
       try {
         const tenantId = req.user?.tenantId;
         const userId = req.user?.id;
@@ -685,7 +685,7 @@ export function registerProductPricingRoutes(app: Express) {
         log.error('Error updating approval status:', error);
         res.status(500).json({ error: 'Failed to update approval status' });
       }
-    },
+    }),
   );
 
   /**
@@ -695,7 +695,7 @@ export function registerProductPricingRoutes(app: Express) {
   app.get(
     '/api/pricing/approvals/pending',
     isAuthenticated,
-    async (req: AuthRequest, res: Response) => {
+    authed(async (req: AuthRequest, res: Response) => {
       try {
         const tenantId = req.user?.tenantId;
         const userRole = req.user?.role || 'standard';
@@ -732,6 +732,6 @@ export function registerProductPricingRoutes(app: Express) {
         log.error('Error fetching pending approvals:', error);
         res.status(500).json({ error: 'Failed to fetch pending approvals' });
       }
-    },
+    }),
   );
 }

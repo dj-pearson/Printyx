@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import { z } from 'zod';
-import { eq, and, desc, sql, count, gte, lte } from 'drizzle-orm';
+import { eq, and, desc, sql, count, gte, lte, inArray } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { createModuleLogger } from './lib/logger';
@@ -23,7 +23,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 // Validation schema for update operations.
 // Accepts both the real column names and the friendlier aliases the client
 // sends (name -> first/last, specialties -> skills, location ->
@@ -71,7 +71,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/technicians',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW, PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -98,49 +98,58 @@ export function registerTechnicianManagementRoutes(app: Express) {
           .where(eq(technicians.tenantId, tenantId))
           .orderBy(technicians.firstName, technicians.lastName);
 
-        // Get active ticket counts for each technician
-        const technicianStats = await Promise.all(
-          techniciansData.map(async (tech) => {
-            const activeTickets = await db
-              .select({ count: count() })
-              .from(serviceTickets)
-              .where(
-                and(
-                  eq(serviceTickets.assignedTechnicianId, tech.id),
-                  eq(serviceTickets.tenantId, tenantId),
-                  sql`${serviceTickets.status} NOT IN ('completed', 'cancelled')`,
-                ),
-              );
+        // AUDIT-007: this ran TWO count queries PER TECHNICIAN (2N round-trips that
+        // grew with the team). Both counts are now one GROUP BY over the tickets
+        // table using count(*) FILTER (WHERE ...), so the DB does the bucketing in a
+        // single pass. Predicates are byte-for-byte the same as the per-tech
+        // versions: active = status NOT IN ('completed','cancelled'); completed this
+        // month = status 'completed' AND updated_at >= the 1st of the current month.
+        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-            const completedThisMonth = await db
-              .select({ count: count() })
+        const ticketCounts = techniciansData.length
+          ? await db
+              .select({
+                technicianId: serviceTickets.assignedTechnicianId,
+                activeTickets: sql<number>`count(*) FILTER (WHERE ${serviceTickets.status} NOT IN ('completed', 'cancelled'))`,
+                completedThisMonth: sql<number>`count(*) FILTER (WHERE ${serviceTickets.status} = 'completed' AND ${serviceTickets.updatedAt} >= ${monthStart})`,
+              })
               .from(serviceTickets)
               .where(
                 and(
-                  eq(serviceTickets.assignedTechnicianId, tech.id),
                   eq(serviceTickets.tenantId, tenantId),
-                  eq(serviceTickets.status, 'completed'),
-                  gte(
-                    serviceTickets.updatedAt,
-                    new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                  inArray(
+                    serviceTickets.assignedTechnicianId,
+                    techniciansData.map((t) => t.id),
                   ),
                 ),
-              );
+              )
+              .groupBy(serviceTickets.assignedTechnicianId)
+          : [];
 
-            return {
-              ...tech,
-              activeTickets: activeTickets[0]?.count || 0,
-              completedThisMonth: completedThisMonth[0]?.count || 0,
-            };
-          }),
+        const countsByTech = new Map(
+          ticketCounts.map((row) => [
+            row.technicianId,
+            {
+              activeTickets: Number(row.activeTickets) || 0,
+              completedThisMonth: Number(row.completedThisMonth) || 0,
+            },
+          ]),
         );
+
+        // A technician with no tickets has no GROUP BY row — default to 0/0, which is
+        // what the per-tech count queries returned.
+        const technicianStats = techniciansData.map((tech) => ({
+          ...tech,
+          activeTickets: countsByTech.get(tech.id)?.activeTickets ?? 0,
+          completedThisMonth: countsByTech.get(tech.id)?.completedThisMonth ?? 0,
+        }));
 
         res.json(technicianStats);
       } catch (error) {
         log.error('Error fetching technicians:', error);
         res.status(500).json({ error: 'Failed to fetch technicians' });
       }
-    },
+    }),
   );
 
   // Get technician by ID - requires service technician view permission
@@ -148,7 +157,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/technicians/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const technicianId = req.params.id;
@@ -198,7 +207,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         log.error('Error fetching technician:', error);
         res.status(500).json({ error: 'Failed to fetch technician' });
       }
-    },
+    }),
   );
 
   // Create new technician - requires service technician manage permission
@@ -206,7 +215,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/technicians',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -249,7 +258,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to create technician' });
         }
       }
-    },
+    }),
   );
 
   // Update technician - requires service technician manage permission
@@ -257,7 +266,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/technicians/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const technicianId = req.params.id;
@@ -317,7 +326,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to update technician' });
         }
       }
-    },
+    }),
   );
 
   // Delete technician - requires service technician manage permission
@@ -325,7 +334,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/technicians/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const technicianId = req.params.id;
@@ -363,7 +372,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         log.error('Error deleting technician:', error);
         res.status(500).json({ error: 'Failed to delete technician' });
       }
-    },
+    }),
   );
 
   // Get technician availability - requires service technician view permission
@@ -371,7 +380,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/availability',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const { date } = req.query;
@@ -419,7 +428,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         log.error('Error fetching technician availability:', error);
         res.status(500).json({ error: 'Failed to fetch technician availability' });
       }
-    },
+    }),
   );
 
   // Get technician performance metrics - requires service technician view permission
@@ -427,7 +436,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/performance',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -470,7 +479,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         log.error('Error fetching technician performance:', error);
         res.status(500).json({ error: 'Failed to fetch technician performance' });
       }
-    },
+    }),
   );
 
   // Get technician dashboard statistics - requires service technician view permission
@@ -478,7 +487,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/dashboard',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -530,6 +539,6 @@ export function registerTechnicianManagementRoutes(app: Express) {
         log.error('Error fetching technician dashboard:', error);
         res.status(500).json({ error: 'Failed to fetch technician dashboard' });
       }
-    },
+    }),
   );
 }

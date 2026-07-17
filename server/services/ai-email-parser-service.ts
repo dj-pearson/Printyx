@@ -225,10 +225,18 @@ Parse the email above and return ONLY the JSON:`;
     const domain = fromEmail.split('@')[1]?.toLowerCase();
 
     // Find customer by email or email domain
+    //
+    // business_records has no `email` column; the real ones are primaryContactEmail and
+    // billingContactEmail. Matching on primaryContactEmail: this resolves an INBOUND
+    // sender to a customer, and the primary contact is the general-purpose one
+    // (billingContactEmail is the finance-specific pair). Deliberately not widened to
+    // check both — that changes which records an inbound mail resolves to, which is a
+    // routing decision rather than a type fix. The domain fallback below is the broader
+    // net for senders who are not the named contact.
     const customer = await db.query.businessRecords.findFirst({
       where: or(
-        eq(businessRecords.email, fromEmail),
-        domain ? like(businessRecords.email, `%@${domain}`) : undefined,
+        eq(businessRecords.primaryContactEmail, fromEmail),
+        domain ? like(businessRecords.primaryContactEmail, `%@${domain}`) : undefined,
       ),
     });
 

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from './db';
+import { validateReadOnlyQuery, MAX_ROWS } from './lib/sql-console-guard';
 import { users, roles, tenants, activityReports, auditLogs } from '../shared/schema';
 import { rbacAuditLog } from './enhanced-rbac-schema';
 import { eq, desc, sql, count, and, gte, lte, like, inArray } from 'drizzle-orm';
@@ -11,6 +12,26 @@ import { logAdminAction } from './services/audit-log-service';
 const log = createModuleLogger('routes-root-admin');
 
 const router = Router();
+
+/**
+ * AUDIT-007: batch-load user display fields for a page of rows.
+ *
+ * Several handlers here enriched their results with a Promise.all that ran ONE
+ * query PER ROW to fetch a user's name/email — up to 100 round-trips to decorate a
+ * 100-row page. One inArray over the distinct ids replaces all of them.
+ *
+ * Returns a Map; a missing id simply has no entry, so callers keep their existing
+ * `|| 'System'` / `|| 'Unknown'` fallbacks and behaviour is unchanged.
+ */
+async function loadUsersByIds(ids: (string | null | undefined)[]) {
+  const unique = [...new Set(ids.filter((id): id is string => !!id))];
+  if (unique.length === 0) return new Map<string, { name: string | null; email: string | null }>();
+  const rows = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(inArray(users.id, unique));
+  return new Map(rows.map((r) => [r.id, { name: r.name, email: r.email }]));
+}
 
 // Middleware to check root admin access (exported for reuse)
 export const requireRootAdmin = async (req: any, res: any, next: any) => {
@@ -162,33 +183,29 @@ router.get(
         .orderBy(desc(activityReports.createdAt))
         .limit(50);
 
-      // Enrich with tenant and user names
-      const enrichedAlerts = await Promise.all(
-        alerts.map(async (alert) => {
-          const tenant = alert.tenantId
-            ? await db
-                .select({ name: tenants.name })
-                .from(tenants)
-                .where(eq(tenants.id, alert.tenantId))
-                .limit(1)
-            : null;
+      // AUDIT-007: was TWO queries PER ALERT (tenant + user) — up to 100 round-trips
+      // for a 50-row page. Two batched lookups over the distinct ids instead.
+      const alertUsers = await loadUsersByIds(alerts.map((a) => a.userId));
+      const alertTenantIds = [
+        ...new Set(alerts.map((a) => a.tenantId).filter((id): id is string => !!id)),
+      ];
+      const tenantRows = alertTenantIds.length
+        ? await db
+            .select({ id: tenants.id, name: tenants.name })
+            .from(tenants)
+            .where(inArray(tenants.id, alertTenantIds))
+        : [];
+      const tenantsById = new Map(tenantRows.map((t) => [t.id, t.name]));
 
-          const user = alert.userId
-            ? await db
-                .select({ name: users.name, email: users.email })
-                .from(users)
-                .where(eq(users.id, alert.userId))
-                .limit(1)
-            : null;
-
-          return {
-            ...alert,
-            tenant: tenant?.[0]?.name || 'Unknown',
-            userName: user?.[0]?.name || 'Unknown',
-            userEmail: user?.[0]?.email || 'unknown@example.com',
-          };
-        }),
-      );
+      const enrichedAlerts = alerts.map((alert) => {
+        const user = alert.userId ? alertUsers.get(alert.userId) : undefined;
+        return {
+          ...alert,
+          tenant: (alert.tenantId ? tenantsById.get(alert.tenantId) : null) || 'Unknown',
+          userName: user?.name || 'Unknown',
+          userEmail: user?.email || 'unknown@example.com',
+        };
+      });
 
       res.json(enrichedAlerts);
     } catch (error) {
@@ -288,6 +305,13 @@ router.get('/users', requireRootAdmin, async (req, res) => {
         status: users.status,
         lastLogin: users.lastLoginAt,
         createdAt: users.createdAt,
+        // AUDIT-007: the joins below were ALREADY here — the query just never
+        // selected from them, so the old code re-fetched each user's role and tenant
+        // one row at a time (2 queries PER USER, up to 200 round-trips for the 100-row
+        // page) to get data this join already had in hand.
+        roleName: roles.name,
+        roleLevel: roles.level,
+        tenantName: tenants.name,
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
@@ -314,35 +338,17 @@ router.get('/users', requireRootAdmin, async (req, res) => {
 
     const userList = await query.orderBy(desc(users.lastLoginAt)).limit(100);
 
-    // Enrich with role and tenant information
-    const enrichedUsers = await Promise.all(
-      userList.map(async (user) => {
-        const role = user.roleId
-          ? await db
-              .select({ name: roles.name, level: roles.level })
-              .from(roles)
-              .where(eq(roles.id, user.roleId))
-              .limit(1)
-          : null;
-
-        const tenant = user.tenantId
-          ? await db
-              .select({ name: tenants.name })
-              .from(tenants)
-              .where(eq(tenants.id, user.tenantId))
-              .limit(1)
-          : null;
-
-        return {
-          ...user,
-          role: role?.[0]?.name || 'No Role',
-          roleLevel: role?.[0]?.level || 1,
-          tenant: tenant?.[0]?.name || 'No Tenant',
-          department: 'General', // Would be added to schema
-          location: 'Main Office', // Would be added to schema
-        };
-      }),
-    );
+    // AUDIT-007: pure mapping now — no I/O. Fallbacks match the old
+    // `role?.[0]?.name || 'No Role'` behaviour for users with no role/tenant (the
+    // joins are LEFT joins, so those columns come back null).
+    const enrichedUsers = userList.map((user) => ({
+      ...user,
+      role: user.roleName || 'No Role',
+      roleLevel: user.roleLevel || 1,
+      tenant: user.tenantName || 'No Tenant',
+      department: 'General', // Would be added to schema
+      location: 'Main Office', // Would be added to schema
+    }));
 
     res.json(enrichedUsers);
   } catch (error) {
@@ -396,23 +402,16 @@ router.get('/audit-logs', requireRootAdmin, async (req, res) => {
       .limit(100);
 
     // Enrich with user information
-    const enrichedLogs = await Promise.all(
-      logs.map(async (log) => {
-        const user = log.userId
-          ? await db
-              .select({ name: users.name, email: users.email })
-              .from(users)
-              .where(eq(users.id, log.userId))
-              .limit(1)
-          : null;
-
-        return {
-          ...log,
-          userName: user?.[0]?.name || 'System',
-          userEmail: user?.[0]?.email || 'system@printyx.com',
-        };
-      }),
-    );
+    // AUDIT-007: was one user query PER LOG ROW; now a single batched lookup.
+    const logUsers = await loadUsersByIds(logs.map((l) => l.userId));
+    const enrichedLogs = logs.map((log) => {
+      const user = log.userId ? logUsers.get(log.userId) : undefined;
+      return {
+        ...log,
+        userName: user?.name || 'System',
+        userEmail: user?.email || 'system@printyx.com',
+      };
+    });
 
     res.json(enrichedLogs);
   } catch (error) {
@@ -460,62 +459,40 @@ router.post(
     const tenantId = getTenantId(req) || 'platform';
     const clientIp = req.ip || req.socket?.remoteAddress || 'unknown';
 
-    // CR-007 — RESIDUAL RISK: this endpoint runs operator-supplied SQL via
-    // sql.raw() with the app's DB role, so it fully bypasses tenant/RLS isolation
-    // and any SELECT can read across tenants. It is gated to root-admins only and
-    // hardened by an ALLOWLIST (SELECT-only), single-statement enforcement, a
-    // dangerous-keyword denylist (defense-in-depth), a 1000-row cap, and a 10s
-    // statement timeout. Every executed statement is written to the persistent
-    // audit trail (user + tenant) below. TODO(prod): run SELECTs against a
-    // read-only DB role / read replica to remove the write-capability residual.
+    // CR-007 / AUDIT-003 — this endpoint runs operator-supplied SQL with the app's DB
+    // role, so it bypasses tenant/RLS isolation and any SELECT can read across
+    // tenants. It is gated to root-admins only.
+    //
+    // AUDIT-003: write capability is now removed BY THE ENGINE, not by text matching.
+    // The statement executes inside a `SET TRANSACTION READ ONLY` transaction, so
+    // Postgres itself rejects any INSERT/UPDATE/DELETE/DDL with SQLSTATE 25006 —
+    // including anything that slips past the static guard. That is the real boundary.
+    // validateReadOnlyQuery (server/lib/sql-console-guard.ts) remains as
+    // defence-in-depth and for early, readable errors; it replaces the old
+    // `.replace(/'[^']*'/g,'')` literal stripping, which did not understand ''
+    // escapes, E'' strings or $$ dollar-quoting and so disagreed with Postgres about
+    // what was code vs data.
+    //
+    // RESIDUAL: reads still span tenants, and the app role is still the connection
+    // owner. TODO(prod): point this at a dedicated low-privilege role / read replica
+    // (a connection-level grant) so read scope is constrained too — that needs an ops
+    // change (a separate DATABASE_URL), not a code change.
     try {
       const { query } = req.body;
 
-      if (!query || typeof query !== 'string') {
-        return res.status(400).json({ message: 'Query is required' });
-      }
-
-      // Safety check - only allow SELECT queries
-      const trimmedQuery = query.trim().toLowerCase();
-      if (!trimmedQuery.startsWith('select')) {
-        log.warn('Blocked non-SELECT query attempt', {
+      // AUDIT-003: single static gate (SELECT-only, single-statement, denylist,
+      // row cap) with a real Postgres-compatible lexer behind it.
+      const guard = validateReadOnlyQuery(query);
+      if (!guard.ok) {
+        log.warn('Blocked SQL console query', {
           userId,
           clientIp,
-          queryPrefix: query.substring(0, 50),
+          reason: guard.reason,
+          queryPrefix: typeof query === 'string' ? query.substring(0, 50) : '(non-string)',
         });
-        return res.status(400).json({
-          message: 'Only SELECT queries are allowed for security reasons',
-        });
+        return res.status(400).json({ message: guard.reason });
       }
-
-      // Block multiple statements (prevent piggyback injection via semicolons)
-      // Remove string literals and comments before checking for semicolons
-      const withoutStrings = query.replace(/'[^']*'/g, '').replace(/"[^"]*"/g, '');
-      const withoutComments = withoutStrings
-        .replace(/--[^\n]*/g, '')
-        .replace(/\/\*[\s\S]*?\*\//g, '');
-      if (withoutComments.includes(';')) {
-        log.warn('Blocked multi-statement query attempt', { userId, clientIp });
-        return res.status(400).json({
-          message: 'Multiple SQL statements are not allowed',
-        });
-      }
-
-      // Block dangerous SQL keywords that could be injected after SELECT
-      const dangerousKeywords =
-        /\b(INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|DROP\s+|ALTER\s+|CREATE\s+|TRUNCATE\s+|GRANT\s+|REVOKE\s+|EXEC\s*\(|EXECUTE\s+|COPY\s+|pg_read_file|pg_write_file|lo_import|lo_export|pg_sleep|pg_terminate_backend|pg_cancel_backend|set\s+role|set\s+session)\b/i;
-      if (dangerousKeywords.test(withoutStrings)) {
-        log.warn('Blocked query with dangerous keywords', { userId, clientIp });
-        return res.status(400).json({
-          message: 'Query contains disallowed SQL operations',
-        });
-      }
-
-      // Enforce server-side row limit (max 1000 rows)
-      const MAX_ROWS = 1000;
-      const limitedQuery = /\blimit\b/i.test(withoutComments)
-        ? query
-        : `${query} LIMIT ${MAX_ROWS}`;
+      const limitedQuery = guard.limitedQuery!;
 
       // CR-007: persist every executed statement to the audit trail (user +
       // tenant), not just the app log. Best-effort — a logging failure must not
@@ -533,10 +510,18 @@ router.post(
         });
       }
 
-      // Set a statement timeout to prevent long-running queries (10 seconds)
+      // AUDIT-003: run inside a READ ONLY transaction. This — not the regex — is what
+      // makes a write impossible: Postgres raises 25006 ("cannot execute X in a
+      // read-only transaction") for any INSERT/UPDATE/DELETE/DDL, even one smuggled
+      // past the static guard via dollar-quoting or escaped quotes. SET LOCAL scopes
+      // both settings to this transaction, so the pooled connection is not affected
+      // once it returns to the pool.
       const startTime = Date.now();
-      await db.execute(sql.raw('SET LOCAL statement_timeout = 10000'));
-      const result = await db.execute(sql.raw(limitedQuery));
+      const result = await db.transaction(async (tx) => {
+        await tx.execute(sql.raw('SET TRANSACTION READ ONLY'));
+        await tx.execute(sql.raw('SET LOCAL statement_timeout = 10000'));
+        return await tx.execute(sql.raw(limitedQuery));
+      });
 
       // Enforce row limit on results even if user-provided LIMIT was higher
       const limitedRows = result.rows.slice(0, MAX_ROWS);
@@ -623,23 +608,16 @@ router.get('/rbac-audit-logs', requireRootAdmin, async (req, res) => {
       .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     // Enrich with user information
-    const enrichedLogs = await Promise.all(
-      logs.map(async (log) => {
-        const user = log.userId
-          ? await db
-              .select({ name: users.name, email: users.email })
-              .from(users)
-              .where(eq(users.id, log.userId))
-              .limit(1)
-          : null;
-
-        return {
-          ...log,
-          userName: user?.[0]?.name || 'System',
-          userEmail: user?.[0]?.email || 'system@printyx.com',
-        };
-      }),
-    );
+    // AUDIT-007: was one user query PER LOG ROW; now a single batched lookup.
+    const logUsers = await loadUsersByIds(logs.map((l) => l.userId));
+    const enrichedLogs = logs.map((log) => {
+      const user = log.userId ? logUsers.get(log.userId) : undefined;
+      return {
+        ...log,
+        userName: user?.name || 'System',
+        userEmail: user?.email || 'system@printyx.com',
+      };
+    });
 
     res.json({
       data: enrichedLogs,
@@ -756,23 +734,16 @@ router.get('/rbac-audit-logs/admin-bypass', requireRootAdmin, async (req, res) =
       .limit(limitNum);
 
     // Enrich with user information
-    const enrichedLogs = await Promise.all(
-      logs.map(async (log) => {
-        const user = log.userId
-          ? await db
-              .select({ name: users.name, email: users.email })
-              .from(users)
-              .where(eq(users.id, log.userId))
-              .limit(1)
-          : null;
-
-        return {
-          ...log,
-          userName: user?.[0]?.name || 'Unknown',
-          userEmail: user?.[0]?.email || 'unknown',
-        };
-      }),
-    );
+    // AUDIT-007: was one user query PER LOG ROW; now a single batched lookup.
+    const logUsers = await loadUsersByIds(logs.map((l) => l.userId));
+    const enrichedLogs = logs.map((log) => {
+      const user = log.userId ? logUsers.get(log.userId) : undefined;
+      return {
+        ...log,
+        userName: user?.name || 'Unknown',
+        userEmail: user?.email || 'unknown',
+      };
+    });
 
     res.json({
       data: enrichedLogs,

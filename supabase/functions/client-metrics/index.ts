@@ -14,6 +14,7 @@
 // to this function, then delete the directory.
 import { createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -22,8 +23,11 @@ export default async function handler(req: Request) {
   try {
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const action = pathParts[1]; // submit, heartbeat, config
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /client-metrics, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'client-metrics');
+    const action = parts[0]; // submit, heartbeat, config
 
     // Authenticate client via API key
     const apiKey = req.headers.get('x-api-key');

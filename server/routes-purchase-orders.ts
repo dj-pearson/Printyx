@@ -18,7 +18,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 // Validation schemas for update operations
 const purchaseOrderStatusSchema = z.object({
   status: z.enum([
@@ -98,7 +98,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     '/api/purchase-orders',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user?.tenantId || (req as any).user?.claims?.tenantId;
         const purchaseOrders = await storage.getPurchaseOrders(tenantId);
@@ -107,14 +107,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
         log.error('Error fetching purchase orders:', error);
         res.status(500).json({ error: 'Failed to fetch purchase orders' });
       }
-    },
+    }),
   );
 
   app.get(
     '/api/purchase-orders/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const { id } = req.params;
@@ -132,14 +132,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
         log.error('Error fetching purchase order:', error);
         res.status(500).json({ error: 'Failed to fetch purchase order' });
       }
-    },
+    }),
   );
 
   app.post(
     '/api/purchase-orders',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.CREATE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const userId = getUserId(req)!;
@@ -178,14 +178,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to create purchase order' });
         }
       }
-    },
+    }),
   );
 
   app.put(
     '/api/purchase-orders/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const { id } = req.params;
@@ -210,14 +210,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to update purchase order' });
         }
       }
-    },
+    }),
   );
 
   app.delete(
     '/api/purchase-orders/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.DELETE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const { id } = req.params;
@@ -232,7 +232,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         log.error('Error deleting purchase order:', error);
         res.status(500).json({ error: 'Failed to delete purchase order' });
       }
-    },
+    }),
   );
 
   // Update purchase order status - requires edit permission
@@ -240,7 +240,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     '/api/purchase-orders/:id/status',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const { id } = req.params;
@@ -273,7 +273,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         log.error('Error updating purchase order status:', error);
         res.status(500).json({ error: 'Failed to update purchase order status' });
       }
-    },
+    }),
   );
 
   // Purchase Order Items routes - requires view permission
@@ -281,7 +281,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     '/api/purchase-orders/:id/items',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const { id } = req.params;
@@ -292,14 +292,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
         log.error('Error fetching purchase order items:', error);
         res.status(500).json({ error: 'Failed to fetch purchase order items' });
       }
-    },
+    }),
   );
 
   app.post(
     '/api/purchase-orders/:id/items',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const { id } = req.params;
@@ -320,14 +320,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to create purchase order item' });
         }
       }
-    },
+    }),
   );
 
   app.put(
     '/api/purchase-order-items/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const { id } = req.params;
@@ -348,14 +348,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to update purchase order item' });
         }
       }
-    },
+    }),
   );
 
   app.delete(
     '/api/purchase-order-items/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const { id } = req.params;
@@ -370,7 +370,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         log.error('Error deleting purchase order item:', error);
         res.status(500).json({ error: 'Failed to delete purchase order item' });
       }
-    },
+    }),
   );
 
   // Vendors CRUD routes - requires purchase order view permission
@@ -378,7 +378,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     '/api/vendors',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const vendors = await storage.getVendors(tenantId);
@@ -387,14 +387,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
         log.error('Error fetching vendors:', error);
         res.status(500).json({ error: 'Failed to fetch vendors' });
       }
-    },
+    }),
   );
 
   app.get(
     '/api/vendors/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const { id } = req.params;
@@ -409,14 +409,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
         log.error('Error fetching vendor:', error);
         res.status(500).json({ error: 'Failed to fetch vendor' });
       }
-    },
+    }),
   );
 
   app.post(
     '/api/vendors',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
 
@@ -435,14 +435,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to create vendor' });
         }
       }
-    },
+    }),
   );
 
   app.put(
     '/api/vendors/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const { id } = req.params;
@@ -463,14 +463,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to update vendor' });
         }
       }
-    },
+    }),
   );
 
   app.delete(
     '/api/vendors/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.DELETE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const { id } = req.params;
@@ -485,7 +485,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         log.error('Error deleting vendor:', error);
         res.status(500).json({ error: 'Failed to delete vendor' });
       }
-    },
+    }),
   );
 
   // Purchase Order statistics - requires view permission
@@ -493,7 +493,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     '/api/purchase-orders/stats/summary',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = getTenantId(req)!;
         const purchaseOrders = await storage.getPurchaseOrders(tenantId);
@@ -520,6 +520,6 @@ export function registerPurchaseOrderRoutes(app: Express) {
         log.error('Error fetching purchase order stats:', error);
         res.status(500).json({ error: 'Failed to fetch purchase order statistics' });
       }
-    },
+    }),
   );
 }

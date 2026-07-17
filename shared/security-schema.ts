@@ -13,6 +13,7 @@ import {
   boolean,
   integer,
   pgEnum,
+  index,
 } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 
@@ -51,37 +52,53 @@ export const gdprStatusEnum = pgEnum('gdpr_status', [
 
 // ============= AUDIT LOGS TABLE =============
 
-export const auditLogs = pgTable('audit_logs', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id').notNull(),
-  userId: uuid('user_id').notNull(),
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').notNull(),
+    userId: uuid('user_id').notNull(),
 
-  // Action Details
-  action: varchar('action', { length: 255 }).notNull(), // e.g., "CREATE_CUSTOMER", "UPDATE_SERVICE_TICKET"
-  resource: varchar('resource', { length: 255 }).notNull(), // e.g., "customers", "service_tickets"
-  resourceId: uuid('resource_id'), // Specific record ID if applicable
+    // Action Details
+    action: varchar('action', { length: 255 }).notNull(), // e.g., "CREATE_CUSTOMER", "UPDATE_SERVICE_TICKET"
+    resource: varchar('resource', { length: 255 }).notNull(), // e.g., "customers", "service_tickets"
+    resourceId: uuid('resource_id'), // Specific record ID if applicable
 
-  // Data Changes
-  oldValues: jsonb('old_values'), // Previous values for updates
-  newValues: jsonb('new_values'), // New values for creates/updates
+    // Data Changes
+    oldValues: jsonb('old_values'), // Previous values for updates
+    newValues: jsonb('new_values'), // New values for creates/updates
 
-  // Request Context
-  ipAddress: varchar('ip_address', { length: 45 }).notNull(), // Support IPv6
-  userAgent: text('user_agent'),
-  sessionId: varchar('session_id', { length: 255 }),
+    // Request Context
+    ipAddress: varchar('ip_address', { length: 45 }).notNull(), // Support IPv6
+    userAgent: text('user_agent'),
+    sessionId: varchar('session_id', { length: 255 }),
 
-  // Classification
-  severity: auditSeverityEnum('severity').notNull(),
-  category: auditCategoryEnum('category').notNull(),
+    // Classification
+    severity: auditSeverityEnum('severity').notNull(),
+    category: auditCategoryEnum('category').notNull(),
 
-  // Metadata
-  requestId: uuid('request_id'), // For correlating related audit entries
-  parentActionId: uuid('parent_action_id'), // For nested actions
-  additionalContext: jsonb('additional_context'), // Any extra context data
+    // Metadata
+    requestId: uuid('request_id'), // For correlating related audit entries
+    parentActionId: uuid('parent_action_id'), // For nested actions
+    additionalContext: jsonb('additional_context'), // Any extra context data
 
-  // Timestamps
-  timestamp: timestamp('timestamp').defaultNow().notNull(),
-});
+    // Timestamps
+    timestamp: timestamp('timestamp').defaultNow().notNull(),
+  },
+  (table) => ({
+    // AUDIT-009: audit views read newest-first per tenant, and drill into a single
+    // resource. This table had NO indexes at all despite being append-heavy.
+    tenantTimestampIdx: index('audit_logs_tenant_timestamp_idx').on(
+      table.tenantId,
+      table.timestamp,
+    ),
+    tenantResourceIdx: index('audit_logs_tenant_resource_idx').on(
+      table.tenantId,
+      table.resource,
+      table.resourceId,
+    ),
+  }),
+);
 
 // ============= DATA ACCESS LOGS TABLE =============
 

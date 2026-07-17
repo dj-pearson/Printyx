@@ -20,7 +20,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 // Validation schemas for update operations
 const updateProductModelSchema = z
   .object({
@@ -62,7 +62,7 @@ export function registerProductModelsRoutes(app: Express) {
     '/api/product-models',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const { search, category, manufacturer, status } = req.query;
@@ -115,7 +115,7 @@ export function registerProductModelsRoutes(app: Express) {
         log.error('Error fetching product models:', error);
         res.status(500).json({ error: 'Failed to fetch product models' });
       }
-    },
+    }),
   );
 
   // Get product model by ID - requires inventory item view permission
@@ -123,7 +123,7 @@ export function registerProductModelsRoutes(app: Express) {
     '/api/product-models/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const modelId = req.params.id;
@@ -142,7 +142,7 @@ export function registerProductModelsRoutes(app: Express) {
         log.error('Error fetching product model:', error);
         res.status(500).json({ error: 'Failed to fetch product model' });
       }
-    },
+    }),
   );
 
   // Create new product model - requires inventory item create permission
@@ -150,7 +150,7 @@ export function registerProductModelsRoutes(app: Express) {
     '/api/product-models',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.ITEM.CREATE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -171,7 +171,7 @@ export function registerProductModelsRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to create product model' });
         }
       }
-    },
+    }),
   );
 
   // Update product model - requires inventory item edit permission
@@ -179,7 +179,7 @@ export function registerProductModelsRoutes(app: Express) {
     '/api/product-models/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const modelId = req.params.id;
@@ -208,7 +208,7 @@ export function registerProductModelsRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to update product model' });
         }
       }
-    },
+    }),
   );
 
   // Delete product model - requires inventory item delete permission
@@ -216,7 +216,7 @@ export function registerProductModelsRoutes(app: Express) {
     '/api/product-models/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.ITEM.DELETE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const modelId = req.params.id;
@@ -235,7 +235,7 @@ export function registerProductModelsRoutes(app: Express) {
         log.error('Error deleting product model:', error);
         res.status(500).json({ error: 'Failed to delete product model' });
       }
-    },
+    }),
   );
 
   // Get product categories - requires inventory item view permission
@@ -243,7 +243,7 @@ export function registerProductModelsRoutes(app: Express) {
     '/api/product-models/categories',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -259,7 +259,7 @@ export function registerProductModelsRoutes(app: Express) {
         log.error('Error fetching product categories:', error);
         res.status(500).json({ error: 'Failed to fetch product categories' });
       }
-    },
+    }),
   );
 
   // Get manufacturers - requires inventory item view permission
@@ -267,7 +267,7 @@ export function registerProductModelsRoutes(app: Express) {
     '/api/product-models/manufacturers',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -286,7 +286,7 @@ export function registerProductModelsRoutes(app: Express) {
         log.error('Error fetching manufacturers:', error);
         res.status(500).json({ error: 'Failed to fetch manufacturers' });
       }
-    },
+    }),
   );
 
   // Get low stock models - requires inventory item view permission
@@ -294,7 +294,7 @@ export function registerProductModelsRoutes(app: Express) {
     '/api/product-models/low-stock',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -314,7 +314,7 @@ export function registerProductModelsRoutes(app: Express) {
         log.error('Error fetching low stock models:', error);
         res.status(500).json({ error: 'Failed to fetch low stock models' });
       }
-    },
+    }),
   );
 
   // Get product models dashboard stats - requires inventory item view permission
@@ -322,7 +322,7 @@ export function registerProductModelsRoutes(app: Express) {
     '/api/product-models/dashboard',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -369,7 +369,7 @@ export function registerProductModelsRoutes(app: Express) {
         log.error('Error fetching product models dashboard:', error);
         res.status(500).json({ error: 'Failed to fetch product models dashboard' });
       }
-    },
+    }),
   );
 
   // Bulk update stock quantities - requires inventory item edit permission
@@ -377,7 +377,7 @@ export function registerProductModelsRoutes(app: Express) {
     '/api/product-models/bulk-stock-update',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -410,6 +410,6 @@ export function registerProductModelsRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to bulk update stock' });
         }
       }
-    },
+    }),
   );
 }

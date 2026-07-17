@@ -337,7 +337,9 @@ export default function PlatformDealsPipeline() {
                                       <DropdownMenuItem
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setLocation(`/platform-crm/deals/${deal.id}/edit`);
+                                          // AUDIT-014: /edit is not a registered route (it 404'd). PlatformDealDetail
+                                          // owns the isEditing state + PATCH mutation.
+                                          setLocation(`/platform-crm/deals/${deal.id}`);
                                         }}
                                       >
                                         <Edit className="w-4 h-4 mr-2" />

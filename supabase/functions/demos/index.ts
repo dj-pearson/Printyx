@@ -2,6 +2,7 @@
 // Handles demo scheduling and management
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -9,7 +10,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -30,9 +31,12 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const subRoute = pathParts[1]; // e.g., 'customers'
-    const demoId = pathParts[1] && pathParts[1] !== 'customers' ? pathParts[1] : null;
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /demos, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'demos');
+    const subRoute = parts[0]; // e.g., 'customers'
+    const demoId = parts[0] && parts[0] !== 'customers' ? parts[0] : null;
 
     // GET /demos/customers - List customers eligible for demos
     if (req.method === 'GET' && subRoute === 'customers') {

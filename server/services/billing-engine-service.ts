@@ -27,8 +27,12 @@ import {
   autoInvoiceGeneration,
   billingRules,
   meterAnomalies,
-  billingDisputes,
-  creditMemos,
+  // billingDisputes and creditMemos were imported here but never used. They are real
+  // tables (shared/advanced-billing-schema.ts) but shared/schema.ts re-exports that
+  // module by an explicit NAME LIST which omits them, so the import could not resolve
+  // — two TS2305s for symbols this file does not reference. Removed rather than added
+  // to the re-export list: the fix for an unused import is to delete it, and widening
+  // schema.ts's public surface to satisfy dead code is backwards.
   type Invoice,
   type InvoiceLineItem,
   type Contract,
@@ -205,7 +209,10 @@ class BillingEngineService {
       );
 
       // 7. Calculate invoice totals
-      const subtotal = lineItems.reduce((sum, item) => sum + parseFloat(item.total || '0'), 0);
+      const subtotal = lineItems.reduce(
+        (sum, item) => sum + parseFloat(item.extendedPrice || '0'),
+        0,
+      );
       const tax = await this.calculateInvoiceTax(subtotal, contract.customerId, tenantId);
       const total = subtotal + tax;
 
@@ -213,6 +220,23 @@ class BillingEngineService {
       const invoiceNumber = await this.generateInvoiceNumber(tenantId);
 
       // 9. Create invoice
+      //
+      // This payload wrote SIX columns that do not exist on `invoices` — issueDate,
+      // subtotal, total, balance, tax and description — so the insert threw and
+      // generateInvoiceFromContract has never produced an invoice.
+      //
+      // The tell is that the phantoms sit in PAIRS with their real counterparts
+      // (`total` beside totalAmount, `issueDate` beside invoiceDate, `status` beside
+      // invoiceStatus): someone half-migrated this payload, adding the real column
+      // names without removing the old ones. Both `status` and `invoiceStatus` ARE
+      // real columns on this table, so that pair is kept as-is.
+      //
+      // Mapped to the real columns: subtotal -> subtotalAmount, tax -> taxAmount,
+      // balance -> balanceDue, description -> invoiceNotes. `total` and `issueDate`
+      // are DROPPED rather than mapped — totalAmount and invoiceDate beside them
+      // already carry the identical value. issuedAt is deliberately NOT set here:
+      // the row is created as a draft, and the table's issuedAt/issuanceDelayHours
+      // pair is for tracking actual issuance, which happens on send.
       const [invoice] = await db
         .insert(invoices)
         .values({
@@ -222,18 +246,16 @@ class BillingEngineService {
           contractId: contract.id,
           status: 'draft',
           invoiceStatus: 'draft',
-          issueDate: new Date(),
           invoiceDate: new Date(),
           dueDate: this.calculateDueDate(contract.paymentTerms || 'net30'),
-          subtotal: subtotal.toFixed(2),
+          subtotalAmount: subtotal.toFixed(2),
           totalAmount: total.toFixed(2),
-          total: total.toFixed(2),
-          balance: total.toFixed(2),
-          tax: tax.toFixed(2),
+          balanceDue: total.toFixed(2),
+          taxAmount: tax.toFixed(2),
           billingPeriodStart,
           billingPeriodEnd,
           paymentTerms: contract.paymentTerms || 'net30',
-          description: `Invoice for billing period ${this.formatDate(billingPeriodStart)} - ${this.formatDate(billingPeriodEnd)}`,
+          invoiceNotes: `Invoice for billing period ${this.formatDate(billingPeriodStart)} - ${this.formatDate(billingPeriodEnd)}`,
           createdBy: 'system',
         })
         .returning();
@@ -313,7 +335,7 @@ class BillingEngineService {
         const [invoice] = await db
           .select()
           .from(invoices)
-          .where(eq(invoices.id, existing.generatedInvoiceId!))
+          .where(eq(invoices.id, existing.invoiceId!))
           .limit(1);
         return invoice;
       }
@@ -335,7 +357,10 @@ class BillingEngineService {
         const lineItems = await this.calculateLineItemsFromServiceTicket(ticket, tenantId);
 
         // 5. Calculate totals
-        const subtotal = lineItems.reduce((sum, item) => sum + parseFloat(item.total || '0'), 0);
+        const subtotal = lineItems.reduce(
+          (sum, item) => sum + parseFloat(item.extendedPrice || '0'),
+          0,
+        );
         const tax = await this.calculateInvoiceTax(subtotal, ticket.customerId, tenantId);
         const total = subtotal + tax;
 
@@ -343,6 +368,9 @@ class BillingEngineService {
         const invoiceNumber = await this.generateInvoiceNumber(tenantId);
 
         // 7. Create invoice
+        // Same half-migrated payload as generateInvoiceFromContract above, with the
+        // same six phantom columns — so this path has never created an invoice either.
+        // See the note there; mappings are identical.
         const [invoice] = await db
           .insert(invoices)
           .values({
@@ -351,15 +379,13 @@ class BillingEngineService {
             customerId: ticket.customerId,
             status: 'draft',
             invoiceStatus: 'draft',
-            issueDate: new Date(),
             invoiceDate: new Date(),
             dueDate: this.calculateDueDate('net30'),
-            subtotal: subtotal.toFixed(2),
+            subtotalAmount: subtotal.toFixed(2),
             totalAmount: total.toFixed(2),
-            total: total.toFixed(2),
-            balance: total.toFixed(2),
-            tax: tax.toFixed(2),
-            description: `Service call invoice for ticket #${ticket.ticketNumber}`,
+            balanceDue: total.toFixed(2),
+            taxAmount: tax.toFixed(2),
+            invoiceNotes: `Service call invoice for ticket #${ticket.ticketNumber}`,
             externalCustomerId: ticketId, // Link to service ticket
             createdBy: 'system',
           })
@@ -379,7 +405,7 @@ class BillingEngineService {
           .update(autoInvoiceGeneration)
           .set({
             generationStatus: 'completed',
-            generatedInvoiceId: invoice.id,
+            invoiceId: invoice.id,
             completedAt: new Date(),
           })
           .where(eq(autoInvoiceGeneration.id, autoGen.id));
@@ -615,20 +641,35 @@ class BillingEngineService {
       : [];
 
     for (const reading of readings) {
+      // bw/colorMeterReading are the REAL columns; this code previously read
+      // `blackWhiteCount`/`colorCount`, which do not exist on meter_readings.
+      //
+      // Those are ROW properties, not columns in a query, so this never threw — it
+      // read `undefined`. `undefined < 0` is false and `sum + undefined` is NaN, so
+      // METER ANOMALY DETECTION HAS SILENTLY FOUND NOTHING for as long as the wrong
+      // names have been here. Fixing the names is what actually turns it on.
+      //
+      // The columns are nullable, and `?? 0` is used at each read below. That is not
+      // a new policy: JS already coerces null to 0 in these comparisons and sums, so
+      // this makes the existing behaviour explicit and type-safe rather than changing
+      // it. (A null reading is "not recorded"; whether that should be SKIPPED instead
+      // of treated as 0 in the statistics is a real question, but it is a behavioural
+      // change and is left to whoever owns meter validation.)
+      const bwReading = reading.bwMeterReading ?? 0;
+      const colorReading = reading.colorMeterReading ?? 0;
+
       // Check for negative readings
-      if (reading.blackWhiteCount < 0 || reading.colorCount < 0) {
+      if (bwReading < 0 || colorReading < 0) {
         result.isValid = false;
-        result.errors.push(
-          `Negative reading detected: BW=${reading.blackWhiteCount}, Color=${reading.colorCount}`,
-        );
+        result.errors.push(`Negative reading detected: BW=${bwReading}, Color=${colorReading}`);
 
         await this.createMeterAnomaly({
           meterReadingId: reading.id,
           equipmentId: reading.equipmentId,
           anomalyType: 'negative_reading',
           severity: 'critical',
-          currentBwReading: reading.blackWhiteCount,
-          currentColorReading: reading.colorCount,
+          currentBwReading: bwReading,
+          currentColorReading: colorReading,
           tenantId,
         });
       }
@@ -661,23 +702,27 @@ class BillingEngineService {
 
     // Calculate average usage
     const avgBw =
-      historicalReadings.reduce((sum, r) => sum + r.blackWhiteCount, 0) / historicalReadings.length;
+      historicalReadings.reduce((sum, r) => sum + (r.bwMeterReading ?? 0), 0) /
+      historicalReadings.length;
     const avgColor =
-      historicalReadings.reduce((sum, r) => sum + r.colorCount, 0) / historicalReadings.length;
+      historicalReadings.reduce((sum, r) => sum + (r.colorMeterReading ?? 0), 0) /
+      historicalReadings.length;
 
     // Calculate standard deviation
     const stdDevBw = Math.sqrt(
-      historicalReadings.reduce((sum, r) => sum + Math.pow(r.blackWhiteCount - avgBw, 2), 0) /
+      historicalReadings.reduce((sum, r) => sum + Math.pow((r.bwMeterReading ?? 0) - avgBw, 2), 0) /
         historicalReadings.length,
     );
     const stdDevColor = Math.sqrt(
-      historicalReadings.reduce((sum, r) => sum + Math.pow(r.colorCount - avgColor, 2), 0) /
-        historicalReadings.length,
+      historicalReadings.reduce(
+        (sum, r) => sum + Math.pow((r.colorMeterReading ?? 0) - avgColor, 2),
+        0,
+      ) / historicalReadings.length,
     );
 
     // Detect spikes (3 standard deviations)
-    const bwDeviation = currentReading.blackWhiteCount - avgBw;
-    const colorDeviation = currentReading.colorCount - avgColor;
+    const bwDeviation = (currentReading.bwMeterReading ?? 0) - avgBw;
+    const colorDeviation = (currentReading.colorMeterReading ?? 0) - avgColor;
 
     if (Math.abs(bwDeviation) > 3 * stdDevBw || Math.abs(colorDeviation) > 3 * stdDevColor) {
       const anomaly = await this.createMeterAnomaly({
@@ -685,8 +730,8 @@ class BillingEngineService {
         equipmentId: currentReading.equipmentId,
         anomalyType: bwDeviation > 0 || colorDeviation > 0 ? 'spike' : 'sudden_drop',
         severity: Math.abs(bwDeviation) > 5 * stdDevBw ? 'critical' : 'high',
-        currentBwReading: currentReading.blackWhiteCount,
-        currentColorReading: currentReading.colorCount,
+        currentBwReading: currentReading.bwMeterReading,
+        currentColorReading: currentReading.colorMeterReading,
         expectedBwReading: Math.round(avgBw),
         expectedColorReading: Math.round(avgColor),
         bwDeviation: Math.round(bwDeviation),
@@ -818,7 +863,9 @@ class BillingEngineService {
       .select({
         total: sql<number>`COALESCE(SUM(CAST(${invoices.totalAmount} AS DECIMAL)), 0)`,
         paid: sql<number>`COALESCE(SUM(CAST(${invoices.totalAmount} AS DECIMAL)) FILTER (WHERE ${invoices.invoiceStatus} = 'paid'), 0)`,
-        outstanding: sql<number>`COALESCE(SUM(CAST(${invoices.balance} AS DECIMAL)) FILTER (WHERE ${invoices.invoiceStatus} != 'paid'), 0)`,
+        // invoices.balance is phantom; the real column is balance_due. (invoiceStatus
+        // beside it was already correct, which is why only this one errored.)
+        outstanding: sql<number>`COALESCE(SUM(CAST(${invoices.balanceDue} AS DECIMAL)) FILTER (WHERE ${invoices.invoiceStatus} != 'paid'), 0)`,
       })
       .from(invoices)
       .where(
@@ -837,7 +884,8 @@ class BillingEngineService {
     // Average days to payment
     const [paymentDaysResult] = await db
       .select({
-        avgDays: sql<number>`AVG(EXTRACT(DAY FROM (${invoices.paymentDate} - ${invoices.invoiceDate})))`,
+        // invoices.paymentDate is phantom; the real column is paid_date.
+        avgDays: sql<number>`AVG(EXTRACT(DAY FROM (${invoices.paidDate} - ${invoices.invoiceDate})))`,
       })
       .from(invoices)
       .where(
@@ -846,7 +894,7 @@ class BillingEngineService {
           eq(invoices.invoiceStatus, 'paid'),
           gte(invoices.invoiceDate, start),
           lte(invoices.invoiceDate, end),
-          isNotNull(invoices.paymentDate),
+          isNotNull(invoices.paidDate),
         ),
       );
 
@@ -989,37 +1037,46 @@ class BillingEngineService {
     const lineItems: Partial<InvoiceLineItem>[] = [];
 
     // Calculate usage
-    const bwUsage = readings.reduce((sum, r) => sum + r.blackWhiteCount, 0);
-    const colorUsage = readings.reduce((sum, r) => sum + r.colorCount, 0);
+    const bwUsage = readings.reduce((sum, r) => sum + (r.bwMeterReading ?? 0), 0);
+    const colorUsage = readings.reduce((sum, r) => sum + (r.colorMeterReading ?? 0), 0);
 
     // Apply billing rules to calculate pricing
     // This is simplified - actual implementation would be more complex
 
+    // contract.baseRateBw / baseRateColor / monthlyBaseCharge are NOT columns on
+    // contracts — the real ones are blackRate / colorRate / monthlyBase. Reading the
+    // wrong names meant every rate resolved to undefined and fell through to the
+    // hardcoded '0.01' / '0.05' defaults below, so B&W and colour copies have been
+    // billed at those defaults regardless of what the contract actually says. The
+    // monthly base charge fell to undefined and its whole line item was skipped.
+    //
+    // quantity is an INTEGER column; these pushed `.toString()`. Page counts are
+    // already integers, so they are passed through as numbers.
     if (bwUsage > 0) {
       lineItems.push({
-        description: `B&W Copies (${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()})`,
-        quantity: bwUsage.toString(),
-        unitPrice: contract.baseRateBw || '0.01',
-        total: (bwUsage * parseFloat(contract.baseRateBw || '0.01')).toFixed(2),
+        lineDescription: `B&W Copies (${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()})`,
+        quantity: bwUsage,
+        unitPrice: contract.blackRate || '0.01',
+        extendedPrice: (bwUsage * parseFloat(contract.blackRate || '0.01')).toFixed(2),
       });
     }
 
     if (colorUsage > 0) {
       lineItems.push({
-        description: `Color Copies (${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()})`,
-        quantity: colorUsage.toString(),
-        unitPrice: contract.baseRateColor || '0.05',
-        total: (colorUsage * parseFloat(contract.baseRateColor || '0.05')).toFixed(2),
+        lineDescription: `Color Copies (${periodStart.toLocaleDateString()} - ${periodEnd.toLocaleDateString()})`,
+        quantity: colorUsage,
+        unitPrice: contract.colorRate || '0.05',
+        extendedPrice: (colorUsage * parseFloat(contract.colorRate || '0.05')).toFixed(2),
       });
     }
 
     // Add base charges if applicable
-    if (contract.monthlyBaseCharge && parseFloat(contract.monthlyBaseCharge) > 0) {
+    if (contract.monthlyBase && parseFloat(contract.monthlyBase) > 0) {
       lineItems.push({
-        description: 'Monthly Base Charge',
-        quantity: '1',
-        unitPrice: contract.monthlyBaseCharge,
-        total: contract.monthlyBaseCharge,
+        lineDescription: 'Monthly Base Charge',
+        quantity: 1,
+        unitPrice: contract.monthlyBase,
+        extendedPrice: contract.monthlyBase,
       });
     }
 
@@ -1033,12 +1090,20 @@ class BillingEngineService {
     const lineItems: Partial<InvoiceLineItem>[] = [];
 
     // Add labor charges
+    //
+    // NOT FLAGGED BY tsc because `ticket` is typed `any` here, but the same defect as
+    // the builders above: invoice_line_items.quantity is an INTEGER, and laborHours is
+    // decimal(4,2) — so 1.5 billable hours cannot be represented as a quantity and
+    // will truncate or be rejected on insert. extendedPrice below still carries the
+    // correct money, so this is a display/audit problem rather than a mis-charge.
+    // Left as-is: fixing it means either changing the column type or modelling labour
+    // as quantity=1 at a computed rate, which is a billing-model decision.
     if (ticket.laborHours && ticket.laborRate) {
       lineItems.push({
-        description: `Service Labor - ${ticket.laborHours} hours`,
+        lineDescription: `Service Labor - ${ticket.laborHours} hours`,
         quantity: ticket.laborHours.toString(),
         unitPrice: ticket.laborRate,
-        total: (ticket.laborHours * parseFloat(ticket.laborRate)).toFixed(2),
+        extendedPrice: (ticket.laborHours * parseFloat(ticket.laborRate)).toFixed(2),
       });
     }
 
@@ -1046,10 +1111,10 @@ class BillingEngineService {
     if (ticket.parts && Array.isArray(ticket.parts)) {
       for (const part of ticket.parts) {
         lineItems.push({
-          description: part.description || `Part: ${part.partNumber}`,
+          lineDescription: part.description || `Part: ${part.partNumber}`,
           quantity: part.quantity.toString(),
           unitPrice: part.unitPrice,
-          total: (part.quantity * parseFloat(part.unitPrice)).toFixed(2),
+          extendedPrice: (part.quantity * parseFloat(part.unitPrice)).toFixed(2),
         });
       }
     }
@@ -1153,11 +1218,22 @@ class BillingEngineService {
         id: invoices.id,
         invoiceNumber: invoices.invoiceNumber,
         customerId: invoices.customerId,
-        customerEmail: businessRecords.email,
+        // `businessRecords.email` and `invoices.balance` are BOTH phantom columns, so
+        // this query threw — meaning sendInvoice() has never actually sent anything.
+        // Real columns: business_records has primaryContactEmail / billingContactEmail
+        // (no bare `email`), and invoices has balanceDue (no bare `balance`).
+        //
+        // billingContactEmail is chosen deliberately over primaryContactEmail: this is
+        // an INVOICE, and the billing contact is who it is addressed to. It is NOT
+        // coalesced to primaryContactEmail — that would silently email invoices to
+        // whoever happens to be the primary contact, which is a billing-policy decision,
+        // not a type fix. The existing guard below already skips-and-warns when the
+        // address is absent, so the failure mode is loud rather than wrong.
+        customerEmail: businessRecords.billingContactEmail,
         customerName: businessRecords.companyName,
         totalAmount: invoices.totalAmount,
         dueDate: invoices.dueDate,
-        balance: invoices.balance,
+        balanceDue: invoices.balanceDue,
       })
       .from(invoices)
       .leftJoin(businessRecords, eq(invoices.customerId, businessRecords.id))
@@ -1179,21 +1255,27 @@ class BillingEngineService {
       html: `
         <p>Hello ${invoice.customerName},</p>
         <p>Your invoice ${invoice.invoiceNumber} is now available.</p>
-        <p><strong>Amount Due:</strong> $${parseFloat(invoice.balance || invoice.totalAmount || '0').toFixed(2)}</p>
+        <p><strong>Amount Due:</strong> $${parseFloat(invoice.balanceDue || invoice.totalAmount || '0').toFixed(2)}</p>
         <p><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>
         <p>Please log in to your account to view and pay this invoice.</p>
         <p>Thank you for your business!</p>
       `,
-      text: `Invoice ${invoice.invoiceNumber}\nAmount Due: $${parseFloat(invoice.balance || invoice.totalAmount || '0').toFixed(2)}\nDue Date: ${new Date(invoice.dueDate).toLocaleDateString()}`,
+      text: `Invoice ${invoice.invoiceNumber}\nAmount Due: $${parseFloat(invoice.balanceDue || invoice.totalAmount || '0').toFixed(2)}\nDue Date: ${new Date(invoice.dueDate).toLocaleDateString()}`,
     });
 
     // Update invoice status to 'sent'
+    //
+    // issueDate -> issuedAt (the real column). Unlike the draft-creation inserts above
+    // — where issueDate was dropped because invoiceDate beside it already held the same
+    // value — setting issuedAt is CORRECT here: this is the moment the invoice is
+    // actually issued, which is what issuedAt (and its issuanceDelayHours pair) exists
+    // to record.
     await db
       .update(invoices)
       .set({
         status: 'sent',
         invoiceStatus: 'sent',
-        issueDate: new Date(),
+        issuedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));

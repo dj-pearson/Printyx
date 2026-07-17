@@ -2,6 +2,7 @@
 // Handles task comments and time tracking
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 import { rowBelongsToTenant } from '../_shared/tenant-guard.ts';
 import { tenantFromJwt } from '../_shared/resolve-tenant.ts';
 
@@ -11,7 +12,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -33,9 +34,12 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const taskId = pathParts[1]; // tasks/:id/comments or tasks/:id/time
-    const resource = pathParts[2]; // comments or time
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /task-comments, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'task-comments');
+    const taskId = parts[0]; // tasks/:id/comments or tasks/:id/time
+    const resource = parts[1]; // comments or time
 
     // CR-002: the service client bypasses RLS, so verify the parent task belongs
     // to the caller's tenant before any comment/time read or write. This scopes

@@ -230,10 +230,7 @@ export class WebhookService {
           .createHmac('sha256', sfSecret)
           .update(JSON.stringify(payload))
           .digest('hex');
-        return crypto.timingSafeEqual(
-          Buffer.from(sfSignature),
-          Buffer.from(expectedSfSig),
-        );
+        return crypto.timingSafeEqual(Buffer.from(sfSignature), Buffer.from(expectedSfSig));
       }
 
       case 'microsoft-calendar': {
@@ -315,7 +312,14 @@ export class WebhookService {
     if (!signature) return false;
 
     const secret = process.env.QUICKBOOKS_WEBHOOK_TOKEN;
-    if (!secret) return false;
+    if (!secret) {
+      // AUDIT-017: this used to `return false` SILENTLY, so an unconfigured token
+      // was indistinguishable from a bad signature — QuickBooks looked connected
+      // while every webhook was quietly dropped. Match the Salesforce/Microsoft
+      // handlers above and say why we rejected.
+      log.warn('QUICKBOOKS_WEBHOOK_TOKEN not configured - rejecting webhook');
+      return false;
+    }
 
     try {
       const expectedSignature = crypto

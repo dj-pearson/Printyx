@@ -2,6 +2,7 @@
 // Handles CRUD operations for product accessories
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -37,12 +38,15 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /product-accessories, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'product-accessories');
 
     // Check for special routes like /by-model/:modelId
-    const isModelRoute = pathParts[1] === 'by-model';
-    const accessoryId = !isModelRoute ? pathParts[1] : null;
-    const modelId = isModelRoute ? pathParts[2] : null;
+    const isModelRoute = parts[0] === 'by-model';
+    const accessoryId = !isModelRoute ? parts[0] : null;
+    const modelId = isModelRoute ? parts[1] : null;
 
     // GET /product-accessories/by-model/:modelId - Get accessories for a specific product model
     if (req.method === 'GET' && isModelRoute && modelId) {

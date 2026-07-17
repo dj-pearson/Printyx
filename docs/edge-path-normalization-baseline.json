@@ -1,0 +1,4 @@
+{
+  "note": "Edge path-normalization ratchet. scripts/check-edge-path-normalization.mjs fails CI when a NEW edge function reads its path from index [1+] of a raw pathname split without ever reading [0] — i.e. assumes its own name survives server.ts's stripSegments=1, which 404s every route in production (invisible in dev when the prefix is not in crmProxies). Entries here are the pre-existing suspects. Shrink this list, never grow it: migrate a function to normalizePath (one line + an import), then re-run with --update-baseline. Suspected-broken is a STATIC heuristic — verify against a deploy before trusting it.",
+  "suspected": []
+}

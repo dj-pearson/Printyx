@@ -2,6 +2,7 @@
 // Handles data exports in various formats (CSV, JSON, etc.)
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -9,7 +10,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -33,8 +34,11 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const exportType = pathParts[1]; // 'customers', 'leads', 'quotes', etc.
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /exports, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'exports');
+    const exportType = parts[0]; // 'customers', 'leads', 'quotes', etc.
     const format = url.searchParams.get('format') || 'csv'; // csv, json, xlsx
 
     // Helper to convert data to CSV

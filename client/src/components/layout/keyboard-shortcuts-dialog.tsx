@@ -232,7 +232,8 @@ export function useKeyboardNavigation() {
         const handleNext = (nextE: KeyboardEvent) => {
           nextE.preventDefault();
           const routes: Record<string, string> = {
-            h: '/dashboard',
+            // AUDIT-014: '/dashboard' is not a registered route; the dashboard is '/'.
+            h: '/',
             c: '/customers',
             s: '/service-hub',
             i: '/invoices',

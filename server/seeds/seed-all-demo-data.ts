@@ -162,24 +162,31 @@ async function seedCoreInfrastructure() {
 
   // Seed Locations
   log.info('  → Creating locations...');
+  // `code` is NOT NULL on locations and was missing; `type` is not a column at all
+  // (the real one is `location_type`). So this seed could never insert a location.
+  // The code values follow the column's own documented convention ("DT", "NORTH").
   const locationData = [
     {
       id: generateId('loc', 1),
       name: 'Headquarters',
+      code: 'HQ',
       address: '123 Main St, New York, NY 10001',
-      type: 'headquarters',
+      locationType: 'headquarters',
+      isHeadquarters: true,
     },
     {
       id: generateId('loc', 2),
       name: 'West Coast Office',
+      code: 'WEST',
       address: '456 Tech Blvd, San Francisco, CA 94102',
-      type: 'branch',
+      locationType: 'branch',
     },
     {
       id: generateId('loc', 3),
       name: 'Midwest Distribution',
+      code: 'MIDW',
       address: '789 Industrial Way, Chicago, IL 60601',
-      type: 'warehouse',
+      locationType: 'warehouse',
     },
   ];
 
@@ -214,10 +221,15 @@ async function seedCoreInfrastructure() {
 
   // Seed Teams
   log.info('  → Creating teams...');
+  // `department` is NOT NULL on teams; `type` is not a column. Renamed onto the real
+  // column rather than re-inventing the values. NOTE: 'support' is outside the
+  // column's documented vocabulary (sales, service, admin, finance, purchasing) —
+  // the column is a plain varchar with no CHECK, so it inserts, but it is flagged
+  // here rather than silently rewritten to 'service'.
   const teamData = [
-    { id: generateId('team', 1), name: 'Sales Team Alpha', type: 'sales' },
-    { id: generateId('team', 2), name: 'Service Team Beta', type: 'service' },
-    { id: generateId('team', 3), name: 'Support Team', type: 'support' },
+    { id: generateId('team', 1), name: 'Sales Team Alpha', department: 'sales' },
+    { id: generateId('team', 2), name: 'Service Team Beta', department: 'service' },
+    { id: generateId('team', 3), name: 'Support Team', department: 'support' },
   ];
 
   for (const team of teamData) {
@@ -1318,48 +1330,47 @@ async function seedFinanceAndBilling() {
 
   // Seed Chart of Accounts
   log.info('  → Creating chart of accounts...');
+  // The real column is `account_code` (NOT NULL), not `accountNumber`, and
+  // `normalBalance` is not a column at all (chart_of_accounts carries debit_balance /
+  // credit_balance instead). The dropped normalBalance value was pure derivation of
+  // accountType anyway (asset/expense → debit, liability/equity/revenue → credit),
+  // so no information is lost by removing it.
   const accountData = [
     {
       id: generateId('coa', 1),
-      accountNumber: '1000',
+      accountCode: '1000',
       accountName: 'Cash',
       accountType: 'asset',
-      normalBalance: 'debit',
     },
     {
       id: generateId('coa', 2),
-      accountNumber: '1200',
+      accountCode: '1200',
       accountName: 'Accounts Receivable',
       accountType: 'asset',
-      normalBalance: 'debit',
     },
     {
       id: generateId('coa', 3),
-      accountNumber: '2000',
+      accountCode: '2000',
       accountName: 'Accounts Payable',
       accountType: 'liability',
-      normalBalance: 'credit',
     },
     {
       id: generateId('coa', 4),
-      accountNumber: '3000',
+      accountCode: '3000',
       accountName: 'Retained Earnings',
       accountType: 'equity',
-      normalBalance: 'credit',
     },
     {
       id: generateId('coa', 5),
-      accountNumber: '4000',
+      accountCode: '4000',
       accountName: 'Service Revenue',
       accountType: 'revenue',
-      normalBalance: 'credit',
     },
     {
       id: generateId('coa', 6),
-      accountNumber: '5000',
+      accountCode: '5000',
       accountName: 'Cost of Goods Sold',
       accountType: 'expense',
-      normalBalance: 'debit',
     },
   ];
 
@@ -1545,34 +1556,37 @@ async function seedTasksAndActivities() {
 
   // Seed Business Record Activities
   log.info('  → Creating activities...');
+  // `type`/`notes` are not columns on business_record_activities — the real ones are
+  // `activity_type` (NOT NULL) and `description`. Identical defect to the copy of
+  // this seed in server/routes/admin-seed-routes.ts; both are fixed together.
   const activityData = [
     {
       id: generateId('activity', 1),
       businessRecordId: generateId('br', 1),
-      type: 'call',
+      activityType: 'call',
       subject: 'Quarterly review call',
-      notes: 'Discussed service satisfaction and upcoming needs',
+      description: 'Discussed service satisfaction and upcoming needs',
     },
     {
       id: generateId('activity', 2),
       businessRecordId: generateId('br', 1),
-      type: 'email',
+      activityType: 'email',
       subject: 'Sent proposal PDF',
-      notes: 'Emailed updated proposal with new pricing',
+      description: 'Emailed updated proposal with new pricing',
     },
     {
       id: generateId('activity', 3),
       businessRecordId: generateId('br', 4),
-      type: 'meeting',
+      activityType: 'meeting',
       subject: 'Initial discovery meeting',
-      notes: 'Met with prospect to understand their print environment',
+      description: 'Met with prospect to understand their print environment',
     },
     {
       id: generateId('activity', 4),
       businessRecordId: generateId('br', 5),
-      type: 'note',
+      activityType: 'note',
       subject: 'Qualification notes',
-      notes: 'Budget confirmed, decision timeline is Q2',
+      description: 'Budget confirmed, decision timeline is Q2',
     },
   ];
 

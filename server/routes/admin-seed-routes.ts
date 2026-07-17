@@ -203,25 +203,31 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     // ========== PHASE 1: CORE INFRASTRUCTURE ==========
     log.info('[Seed] Phase 1: Core Infrastructure...');
 
-    // Locations
+    // Locations — see the note on the identical copy of this seed in
+    // server/seeds/seed-all-demo-data.ts: `code` is NOT NULL and was missing, and
+    // `type` is not a column (the real one is `location_type`).
     const locationData = [
       {
         id: generateId('loc', 1),
         name: 'Headquarters',
+        code: 'HQ',
         address: '123 Main St, New York, NY 10001',
-        type: 'headquarters',
+        locationType: 'headquarters',
+        isHeadquarters: true,
       },
       {
         id: generateId('loc', 2),
         name: 'West Coast Office',
+        code: 'WEST',
         address: '456 Tech Blvd, San Francisco, CA 94102',
-        type: 'branch',
+        locationType: 'branch',
       },
       {
         id: generateId('loc', 3),
         name: 'Midwest Distribution',
+        code: 'MIDW',
         address: '789 Industrial Way, Chicago, IL 60601',
-        type: 'warehouse',
+        locationType: 'warehouse',
       },
     ];
     for (const loc of locationData) {
@@ -246,11 +252,12 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     }
     results.regions = regionData.length;
 
-    // Teams
+    // Teams — `department` is NOT NULL; `type` is not a column. See the note on the
+    // identical copy in server/seeds/seed-all-demo-data.ts.
     const teamData = [
-      { id: generateId('team', 1), name: 'Sales Team Alpha', type: 'sales' },
-      { id: generateId('team', 2), name: 'Service Team Beta', type: 'service' },
-      { id: generateId('team', 3), name: 'Support Team', type: 'support' },
+      { id: generateId('team', 1), name: 'Sales Team Alpha', department: 'sales' },
+      { id: generateId('team', 2), name: 'Service Team Beta', department: 'service' },
+      { id: generateId('team', 3), name: 'Support Team', department: 'support' },
     ];
     for (const team of teamData) {
       await db
@@ -1100,49 +1107,45 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     }
     results.leases = leaseData.length;
 
-    // Chart of Accounts
+    // Chart of Accounts — real column is `account_code`, not `accountNumber`;
+    // `normalBalance` is not a column. See the note on the identical copy in
+    // server/seeds/seed-all-demo-data.ts.
     const accountData = [
       {
         id: generateId('coa', 1),
-        accountNumber: '1000',
+        accountCode: '1000',
         accountName: 'Cash',
         accountType: 'asset',
-        normalBalance: 'debit',
       },
       {
         id: generateId('coa', 2),
-        accountNumber: '1200',
+        accountCode: '1200',
         accountName: 'Accounts Receivable',
         accountType: 'asset',
-        normalBalance: 'debit',
       },
       {
         id: generateId('coa', 3),
-        accountNumber: '2000',
+        accountCode: '2000',
         accountName: 'Accounts Payable',
         accountType: 'liability',
-        normalBalance: 'credit',
       },
       {
         id: generateId('coa', 4),
-        accountNumber: '3000',
+        accountCode: '3000',
         accountName: 'Retained Earnings',
         accountType: 'equity',
-        normalBalance: 'credit',
       },
       {
         id: generateId('coa', 5),
-        accountNumber: '4000',
+        accountCode: '4000',
         accountName: 'Service Revenue',
         accountType: 'revenue',
-        normalBalance: 'credit',
       },
       {
         id: generateId('coa', 6),
-        accountNumber: '5000',
+        accountCode: '5000',
         accountName: 'Cost of Goods Sold',
         accountType: 'expense',
-        normalBalance: 'debit',
       },
     ];
     for (const account of accountData) {
@@ -1293,34 +1296,41 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     results.tasks = taskData.length;
 
     // Activities
+    //
+    // These rows previously used `type` and `notes`, neither of which is a column on
+    // business_record_activities — the real columns are `activity_type` (NOT NULL)
+    // and `description`. So this seed could never have inserted an activity: it
+    // omitted a required column and passed two unknown ones. The values themselves
+    // ('call'/'email'/'meeting'/'note') already match the activity_type vocabulary,
+    // so this is a rename onto the real columns, not a change of seed data.
     const activityData = [
       {
         id: generateId('activity', 1),
         businessRecordId: generateId('br', 1),
-        type: 'call',
+        activityType: 'call',
         subject: 'Quarterly review call',
-        notes: 'Discussed service satisfaction and upcoming needs',
+        description: 'Discussed service satisfaction and upcoming needs',
       },
       {
         id: generateId('activity', 2),
         businessRecordId: generateId('br', 1),
-        type: 'email',
+        activityType: 'email',
         subject: 'Sent proposal PDF',
-        notes: 'Emailed updated proposal with new pricing',
+        description: 'Emailed updated proposal with new pricing',
       },
       {
         id: generateId('activity', 3),
         businessRecordId: generateId('br', 4),
-        type: 'meeting',
+        activityType: 'meeting',
         subject: 'Initial discovery meeting',
-        notes: 'Met with prospect to understand their print environment',
+        description: 'Met with prospect to understand their print environment',
       },
       {
         id: generateId('activity', 4),
         businessRecordId: generateId('br', 5),
-        type: 'note',
+        activityType: 'note',
         subject: 'Qualification notes',
-        notes: 'Budget confirmed, decision timeline is Q2',
+        description: 'Budget confirmed, decision timeline is Q2',
       },
     ];
     for (const activity of activityData) {

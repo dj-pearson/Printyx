@@ -19,7 +19,10 @@ const bottomNavItems = [
   },
   {
     label: 'Service',
-    path: '/service-dispatch-optimization',
+    // /service-dispatch-optimization is not a route — this bottom-nav tab 404'd on
+    // every tap. The page it names IS registered, at /service-dispatch
+    // (<Route path="/service-dispatch" component={ServiceDispatchOptimization} />).
+    path: '/service-dispatch',
     icon: Wrench,
   },
   {

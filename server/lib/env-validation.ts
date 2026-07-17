@@ -191,6 +191,79 @@ export function validateEnvironment(): ValidationResult {
         'EMAIL_PROVIDER: Set to a real provider (sendgrid, aws-ses, resend) for production email delivery',
       );
     }
+
+    // AUDIT-017: a provider that is SELECTED but not configured is a contradiction,
+    // and email-service.ts silently falls back to simulation — the app looks healthy
+    // while sending nothing. Error on the contradiction only (mirrors the Stripe rule
+    // above: we don't force anyone to configure email, we just refuse to pretend).
+    if (process.env.EMAIL_PROVIDER === 'sendgrid' && !process.env.SENDGRID_API_KEY) {
+      errors.push(
+        'SENDGRID_API_KEY: Required when EMAIL_PROVIDER=sendgrid. Without it email-service.ts silently falls back to simulation and no mail is sent',
+      );
+    }
+    if (process.env.EMAIL_PROVIDER === 'resend' && !process.env.RESEND_API_KEY) {
+      errors.push(
+        'RESEND_API_KEY: Required when EMAIL_PROVIDER=resend. Note this is RESEND_API_KEY — SEO_RESEND_API_KEY is a different (unused) variable and will NOT be picked up',
+      );
+    }
+    if (
+      process.env.EMAIL_PROVIDER === 'aws-ses' &&
+      !(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
+    ) {
+      errors.push(
+        'AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY: Required when EMAIL_PROVIDER=aws-ses. Without them email-service.ts silently falls back to simulation',
+      );
+    }
+
+    // AUDIT-017: same contradiction for SMS — sms-service.ts falls back to simulation.
+    // NOTE the variable name: the Express services read TWILIO_PHONE_NUMBER, while the
+    // Deno edge function supabase/functions/mfa/_twilio.ts reads TWILIO_FROM_NUMBER.
+    // Both names are live in different runtimes — set BOTH. See .env.example.
+    if (process.env.SMS_PROVIDER === 'twilio') {
+      const missingTwilio = [
+        !process.env.TWILIO_ACCOUNT_SID && 'TWILIO_ACCOUNT_SID',
+        !process.env.TWILIO_AUTH_TOKEN && 'TWILIO_AUTH_TOKEN',
+        !process.env.TWILIO_PHONE_NUMBER && 'TWILIO_PHONE_NUMBER',
+      ].filter(Boolean);
+      if (missingTwilio.length) {
+        errors.push(
+          `${missingTwilio.join('/')}: Required when SMS_PROVIDER=twilio. Without them sms-service.ts silently falls back to simulation and no SMS is sent`,
+        );
+      }
+    }
+
+    // AUDIT-017: the credential vault THROWS when its key is absent, so any feature
+    // that stores a third-party credential (address book, chatbot, email autopilot,
+    // voice agent, meter-read vision) 500s at first use rather than at deploy.
+    if (!process.env.ADDRESS_BOOK_MASTER_KEY && !process.env.PRINTYX_CREDENTIAL_VAULT_KEY) {
+      warnings.push(
+        'PRINTYX_CREDENTIAL_VAULT_KEY (or legacy ADDRESS_BOOK_MASTER_KEY): Not set. The AES-256-GCM credential vault throws on use, so address-book/chatbot/autopilot/voice-agent credential endpoints will fail at runtime',
+      );
+    }
+
+    // AUDIT-017: webhook signature verification hard-rejects when its secret is
+    // unset (server/integrations/webhook-service.ts), so an unconfigured secret
+    // silently drops every inbound update from that integration.
+    for (const [name, integration] of [
+      ['SALESFORCE_WEBHOOK_SECRET', 'Salesforce'],
+      ['MICROSOFT_WEBHOOK_SECRET', 'Microsoft'],
+      ['QUICKBOOKS_WEBHOOK_TOKEN', 'QuickBooks'],
+    ] as const) {
+      if (!process.env[name]) {
+        warnings.push(
+          `${name}: Not set. ${integration} webhooks will be rejected, so inbound updates are dropped while the integration appears connected`,
+        );
+      }
+    }
+
+    // AUDIT-017: consumed by the Deno edge runtime (supabase/functions/_shared/cron-auth.ts),
+    // which logs "cron endpoints will always reject" and 401s every scheduled job when unset.
+    // Warned (not errored) here because the Express server itself never reads it.
+    if (!process.env.INTERNAL_CRON_TOKEN) {
+      warnings.push(
+        'INTERNAL_CRON_TOKEN: Not set. Every edge-function cron endpoint will reject with 401, so scheduled jobs silently never run',
+      );
+    }
     if (process.env.EMAIL_ENABLED !== 'true') {
       warnings.push(
         'EMAIL_ENABLED: Not set to "true". Transactional emails (welcome, password reset) will not be sent',

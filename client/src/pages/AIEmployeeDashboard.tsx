@@ -1,5 +1,7 @@
 // client/src/pages/AIEmployeeDashboard.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { MainLayout } from '@/components/layout/main-layout';
 import {
   Card,
@@ -28,7 +30,6 @@ import {
   Activity,
   Settings,
   Play,
-  Pause,
   BarChart3,
   PieChart,
   Calendar,
@@ -76,7 +77,9 @@ interface AnalyticsData {
   completedTasksToday: number;
   averageQualityScore: number;
   averageResponseTime: number;
-  costSavings: number;
+  /** AUDIT-015: null when unknown. Nothing records a savings figure, so it is
+   *  reported as unknown rather than invented. */
+  costSavings: number | null;
   customerSatisfaction: number;
   employeeTypes: Array<{ type: string; count: number; efficiency: number }>;
   recentTasks: Array<{
@@ -93,123 +96,68 @@ interface AnalyticsData {
   };
 }
 
-const mockEmployees: AIEmployee[] = [
-  {
-    id: '1',
-    employeeName: 'Sales Assistant AI',
-    employeeType: 'sales_assistant',
-    employeeRole:
-      'AI Sales Representative specializing in lead qualification and customer engagement',
-    status: 'active',
-    autonomyLevel: 'supervised',
-    successRate: 0.85,
-    totalTasksCompleted: 127,
-    userSatisfactionRating: 4.3,
-    aiPersonality: { communication_style: 'professional_friendly', proactivity: 'high' },
-    aiExpertiseAreas: ['lead_qualification', 'product_knowledge', 'pricing_strategies'],
-    aiCapabilities: ['lead_scoring', 'email_outreach', 'appointment_scheduling'],
-  },
-  {
-    id: '2',
-    employeeName: 'Support Agent AI',
-    employeeType: 'support_agent',
-    employeeRole: 'AI Customer Support Specialist for technical assistance and issue resolution',
-    status: 'active',
-    autonomyLevel: 'semi_autonomous',
-    successRate: 0.88,
-    totalTasksCompleted: 203,
-    userSatisfactionRating: 4.5,
-    aiPersonality: { communication_style: 'helpful_patient', problem_solving: 'systematic' },
-    aiExpertiseAreas: ['technical_troubleshooting', 'product_support', 'customer_communication'],
-    aiCapabilities: ['ticket_triage', 'solution_research', 'customer_communication'],
-  },
-  {
-    id: '3',
-    employeeName: 'Data Analyst AI',
-    employeeType: 'data_analyst',
-    employeeRole: 'AI Business Intelligence Analyst for data analysis and reporting',
-    status: 'active',
-    autonomyLevel: 'autonomous',
-    successRate: 0.92,
-    totalTasksCompleted: 89,
-    userSatisfactionRating: 4.7,
-    aiPersonality: { analytical_approach: 'thorough', attention_to_detail: 'high' },
-    aiExpertiseAreas: ['data_analysis', 'statistical_modeling', 'report_generation'],
-    aiCapabilities: ['data_processing', 'visualization_creation', 'insight_generation'],
-  },
-  {
-    id: '4',
-    employeeName: 'Project Manager AI',
-    employeeType: 'project_manager',
-    employeeRole: 'AI Project Coordinator for task management and team coordination',
-    status: 'active',
-    autonomyLevel: 'semi_autonomous',
-    successRate: 0.79,
-    totalTasksCompleted: 156,
-    userSatisfactionRating: 4.1,
-    aiPersonality: { leadership_style: 'collaborative', organization_level: 'high' },
-    aiExpertiseAreas: ['project_planning', 'resource_allocation', 'timeline_management'],
-    aiCapabilities: ['task_assignment', 'progress_tracking', 'risk_assessment'],
-  },
-];
+/**
+ * AUDIT-015: the API returns raw `SELECT * FROM ai_employees` rows, i.e. snake_case,
+ * while this page reads camelCase. Bridging at the query boundary (the AUDIT-011
+ * lesson) — without this every field renders blank against real data.
+ */
+function toAiEmployee(row: any): AIEmployee {
+  return {
+    id: String(row.id ?? ''),
+    employeeName: row.employeeName ?? row.employee_name ?? '',
+    employeeType: row.employeeType ?? row.employee_type ?? '',
+    employeeRole: row.employeeRole ?? row.employee_role ?? '',
+    status: row.status ?? 'active',
+    autonomyLevel: row.autonomyLevel ?? row.autonomy_level ?? '',
+    successRate: Number(row.successRate ?? row.success_rate ?? 0),
+    totalTasksCompleted: Number(row.totalTasksCompleted ?? row.total_tasks_completed ?? 0),
+    userSatisfactionRating: Number(row.userSatisfactionRating ?? row.user_satisfaction_rating ?? 0),
+    aiPersonality: row.aiPersonality ?? row.ai_personality ?? {},
+    aiExpertiseAreas: row.aiExpertiseAreas ?? row.ai_expertise_areas ?? [],
+    aiCapabilities: row.aiCapabilities ?? row.ai_capabilities ?? [],
+  };
+}
 
-const mockAnalytics: AnalyticsData = {
-  totalEmployees: 4,
-  activeEmployees: 4,
-  totalTasksToday: 23,
-  completedTasksToday: 19,
-  averageQualityScore: 82,
-  averageResponseTime: 1.2,
-  costSavings: 1250.0,
-  customerSatisfaction: 4.3,
-  employeeTypes: [
-    { type: 'sales_assistant', count: 1, efficiency: 85 },
-    { type: 'support_agent', count: 1, efficiency: 88 },
-    { type: 'data_analyst', count: 1, efficiency: 92 },
-    { type: 'project_manager', count: 1, efficiency: 79 },
-  ],
-  recentTasks: [
-    {
-      id: '1',
-      type: 'lead_qualification',
-      status: 'completed',
-      employee: 'Sales Assistant AI',
-      duration: '2m',
-    },
-    {
-      id: '2',
-      type: 'customer_support',
-      status: 'completed',
-      employee: 'Support Agent AI',
-      duration: '15m',
-    },
-    {
-      id: '3',
-      type: 'data_analysis',
-      status: 'in_progress',
-      employee: 'Data Analyst AI',
-      duration: '25m',
-    },
-    {
-      id: '4',
-      type: 'report_generation',
-      status: 'completed',
-      employee: 'Data Analyst AI',
-      duration: '8m',
-    },
-  ],
-  performanceTrends: {
-    tasksCompleted: [15, 18, 22, 19, 23, 21, 25],
-    qualityScores: [78, 80, 82, 84, 82, 85, 82],
-    responseTime: [1.5, 1.3, 1.2, 1.1, 1.2, 1.0, 1.2],
-  },
+const EMPTY_ANALYTICS: AnalyticsData = {
+  totalEmployees: 0,
+  activeEmployees: 0,
+  totalTasksToday: 0,
+  completedTasksToday: 0,
+  averageQualityScore: 0,
+  averageResponseTime: 0,
+  costSavings: null,
+  customerSatisfaction: 0,
+  employeeTypes: [],
+  recentTasks: [],
+  performanceTrends: { tasksCompleted: [], qualityScores: [], responseTime: [] },
 };
 
 const AIEmployeeDashboard: React.FC = () => {
-  const [employees, setEmployees] = useState<AIEmployee[]>(mockEmployees);
-  const [analytics, setAnalytics] = useState<AnalyticsData>(mockAnalytics);
+  // AUDIT-015: was useState(mockEmployees) / useState(mockAnalytics) — this page is
+  // routed at /ai-employees and showed fabricated employees and metrics as if live.
+  // Both endpoints are real now: the router is authenticated (it used to stub auth
+  // with mock-user-id/mock-tenant-id) and analytics/overview aggregates real rows
+  // instead of returning a hardcoded object.
+  const { data: employees = [], isLoading: employeesLoading } = useQuery<AIEmployee[]>({
+    queryKey: ['/api/ai-employees'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/ai-employees', 'GET');
+      // Envelope: { success, data, count }
+      return (res?.data ?? []).map(toAiEmployee);
+    },
+  });
+
+  const { data: analytics = EMPTY_ANALYTICS, isLoading: analyticsLoading } =
+    useQuery<AnalyticsData>({
+      queryKey: ['/api/ai-employees/analytics/overview'],
+      queryFn: async () => {
+        const res = await apiRequest('/api/ai-employees/analytics/overview', 'GET');
+        return (res?.data as AnalyticsData) ?? EMPTY_ANALYTICS;
+      },
+    });
+
   const [selectedEmployee, setSelectedEmployee] = useState<AIEmployee | null>(null);
-  const [loading, setLoading] = useState(false);
+  const loading = employeesLoading || analyticsLoading;
 
   const getEmployeeIcon = (type: string) => {
     switch (type) {
@@ -254,20 +202,15 @@ const AIEmployeeDashboard: React.FC = () => {
     }
   };
 
-  const handleAssignTask = (employeeId: string) => {
-    // Mock task assignment
-    console.log('Assigning task to employee:', employeeId);
-  };
-
-  const handleToggleEmployee = (employeeId: string) => {
-    setEmployees((prev) =>
-      prev.map((emp) =>
-        emp.id === employeeId
-          ? { ...emp, status: emp.status === 'active' ? 'inactive' : 'active' }
-          : emp,
-      ),
-    );
-  };
+  // AUDIT-015: two controls were removed here rather than left as fiction.
+  //  - "Assign Task" only console.log'd. POST /api/ai-employees/tasks does exist, but
+  //    it needs a real task payload (type/title/description/context), i.e. a form —
+  //    that is a feature, not a wiring fix.
+  //  - The pause/resume toggle only flipped LOCAL state: there is no PATCH/PUT/DELETE
+  //    endpoint on this router at all, so it could never persist and the change
+  //    vanished on the next refetch. A button that pretends to change server state is
+  //    worse than no button (CLAUDE.md: delete features with no backing implementation
+  //    rather than fake them).
 
   return (
     <MainLayout
@@ -333,7 +276,11 @@ const AIEmployeeDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Cost Savings</p>
-                <p className="text-2xl font-bold">${analytics.costSavings}</p>
+                {/* AUDIT-015: no source of truth for savings — show unknown, not a
+                    fabricated figure. */}
+                <p className="text-2xl font-bold">
+                  {analytics.costSavings == null ? '—' : `$${analytics.costSavings}`}
+                </p>
               </div>
               <DollarSign className="h-8 w-8 text-green-500" />
             </div>
@@ -436,25 +383,6 @@ const AIEmployeeDashboard: React.FC = () => {
                 </CardContent>
 
                 <CardFooter className="pt-3 flex gap-2">
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleAssignTask(employee.id)}
-                  >
-                    <Play className="h-3 w-3 mr-1" />
-                    Assign Task
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleToggleEmployee(employee.id)}
-                  >
-                    {employee.status === 'active' ? (
-                      <Pause className="h-3 w-3" />
-                    ) : (
-                      <Play className="h-3 w-3" />
-                    )}
-                  </Button>
                   <Button size="sm" variant="outline" onClick={() => setSelectedEmployee(employee)}>
                     <Settings className="h-3 w-3" />
                   </Button>

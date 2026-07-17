@@ -167,7 +167,8 @@ router.post('/phone-in-tickets', async (req, res) => {
           primaryContactName: businessRecords.primaryContactName,
           primaryContactEmail: businessRecords.primaryContactEmail,
           primaryContactPhone: businessRecords.primaryContactPhone,
-          address: businessRecords.address,
+          // `address` is not a column — addressLine1/addressLine2 below are the real
+          // ones and were already being selected alongside it.
           addressLine1: businessRecords.addressLine1,
           addressLine2: businessRecords.addressLine2,
           city: businessRecords.city,
@@ -184,9 +185,12 @@ router.post('/phone-in-tickets', async (req, res) => {
         .limit(1);
 
       if (customer) {
+        // Was `customer.address || [addressLine1, addressLine2].join(', ')`. There is
+        // no `address` column, so the left operand was always undefined and the
+        // fallback was always the live branch — dropping it changes nothing at
+        // runtime, it just stops pretending the column exists.
         const fullAddress = [
-          customer.address ||
-            [customer.addressLine1, customer.addressLine2].filter(Boolean).join(', '),
+          [customer.addressLine1, customer.addressLine2].filter(Boolean).join(', '),
           customer.city,
           customer.state,
           customer.postalCode,
@@ -276,14 +280,18 @@ router.get('/customers', async (req, res) => {
         primaryContactName: businessRecords.primaryContactName,
         primaryContactEmail: businessRecords.primaryContactEmail,
         primaryContactPhone: businessRecords.primaryContactPhone,
-        address: businessRecords.address,
+        // `address` is not a column (dropped — addressLine1 beside it is the real
+        // one), and `type` is not either: the real discriminator is `record_type`
+        // (lead | customer | former_customer).
         addressLine1: businessRecords.addressLine1,
         city: businessRecords.city,
         state: businessRecords.state,
-        type: businessRecords.type,
+        type: businessRecords.recordType,
       })
       .from(businessRecords)
-      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.type, 'customer')));
+      .where(
+        and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
+      );
 
     if (search) {
       query = query.where(
@@ -682,22 +690,30 @@ router.get('/customers/search', async (req, res) => {
       return res.json([]);
     }
 
+    // `customers` is an alias of businessRecords (shared/schema.ts:1470). None of
+    // name/phone/email/address are columns on business_records — the real ones are
+    // companyName, primaryContactPhone, primaryContactEmail and addressLine1 — so
+    // this query referenced four columns that do not exist and threw at runtime.
+    // The PRIMARY contact is the right mapping for a general customer search;
+    // billingContact* is the finance-specific pair and would be wrong here.
+    // The response keys are kept as name/phone/email/address so the API contract
+    // this endpoint already advertises to its callers does not change.
     const searchResults = await db
       .select({
         id: customers.id,
-        name: customers.name,
-        phone: customers.phone,
-        email: customers.email,
-        address: customers.address,
+        name: customers.companyName,
+        phone: customers.primaryContactPhone,
+        email: customers.primaryContactEmail,
+        address: customers.addressLine1,
       })
       .from(customers)
       .where(
         and(
           eq(customers.tenantId, tenantId),
           sql`(
-            LOWER(${customers.name}) LIKE LOWER(${'%' + searchTerm + '%'}) OR
-            LOWER(${customers.phone}) LIKE LOWER(${'%' + searchTerm + '%'}) OR
-            LOWER(${customers.email}) LIKE LOWER(${'%' + searchTerm + '%'})
+            LOWER(${customers.companyName}) LIKE LOWER(${'%' + searchTerm + '%'}) OR
+            LOWER(${customers.primaryContactPhone}) LIKE LOWER(${'%' + searchTerm + '%'}) OR
+            LOWER(${customers.primaryContactEmail}) LIKE LOWER(${'%' + searchTerm + '%'})
           )`,
         ),
       )
@@ -848,14 +864,25 @@ router.get('/phone-tickets/search-contacts/:companyId', async (req, res) => {
     const { companyId } = req.params;
     const tenantId = req.headers['x-tenant-id'] as string;
 
-    // Get contacts for the company
+    // contactName/email/phone/jobTitle are NOT columns on business_records; the real
+    // ones are primaryContactName/primaryContactEmail/primaryContactPhone/
+    // primaryContactTitle, so this query threw at runtime.
+    //
+    // KNOWN LIMITATION, left as-is deliberately: despite the name and the .limit(20),
+    // this cannot return a contact LIST. It filters business_records by primary key
+    // (eq(id, companyId)), so it returns at most ONE row — the company's own primary
+    // contact. The canonical contacts table is companyContacts (CLAUDE.md: "contact =
+    // companyContacts"), and pointing this endpoint there is the real fix. That is a
+    // behavioural change to the response (one row -> N contacts) and belongs to the
+    // CRM consolidation work (CRMX-007), not to a typecheck batch. Mapping the columns
+    // makes it return REAL data instead of throwing; it does not make it correct.
     const contacts = await db
       .select({
         id: businessRecords.id,
-        name: businessRecords.contactName,
-        email: businessRecords.email,
-        phone: businessRecords.phone,
-        role: businessRecords.jobTitle,
+        name: businessRecords.primaryContactName,
+        email: businessRecords.primaryContactEmail,
+        phone: businessRecords.primaryContactPhone,
+        role: businessRecords.primaryContactTitle,
       })
       .from(businessRecords)
       .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.id, companyId)))

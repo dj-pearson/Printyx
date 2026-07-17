@@ -7,7 +7,9 @@
  *
  * Call order:
  *   1. Extract Bearer JWT from Authorization header
- *   2. Verify with Supabase (auth.getUser) — respects token revocation
+ *   2. Verify with Supabase (auth.getUser), through a short-TTL cache (AUDIT-005).
+ *      GoTrue is still the source of truth, but revocation is now honored within
+ *      AUTH_CACHE_TTL_MS (default 30s) rather than instantly — see _shared/auth-cache.ts.
  *   3. Resolve tenantId via:
  *        a. JWT app_metadata.tenantId  (canonical)
  *        b. JWT user_metadata.tenantId (legacy fallback)
@@ -24,6 +26,7 @@ import {
   type SupabaseClient,
   type User,
 } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { cachedGetUser, type GetUserCapable } from './auth-cache.ts';
 
 export interface AuthContext {
   userId: string;
@@ -168,13 +171,23 @@ export async function requireAuth(
   }
 
   const supabase = getAnonClient();
-  const { data, error } = await supabase.auth.getUser(jwt);
+  // AUDIT-005: short-TTL, token-hash-keyed cache in front of the GoTrue round-trip.
+  // GoTrue remains the source of truth (only cache MISSES call it, and only
+  // successes are cached); staleness is bounded by AUTH_CACHE_TTL_MS. See
+  // _shared/auth-cache.ts for the revocation tradeoff.
+  const { data, error } = await cachedGetUser(supabase as unknown as GetUserCapable, jwt, {
+    getEnv: env,
+  });
 
   if (error || !data?.user) {
-    throw new AuthError(401, 'invalid_token', error?.message || 'Invalid or expired token');
+    throw new AuthError(
+      401,
+      'invalid_token',
+      (error as { message?: string } | null)?.message || 'Invalid or expired token',
+    );
   }
 
-  const user = data.user;
+  const user = data.user as User;
   const tenantId = await resolveTenantId(req, user, opts?.log);
 
   if (!tenantId) {

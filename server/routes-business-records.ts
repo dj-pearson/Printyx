@@ -321,6 +321,10 @@ router.post('/api/business-records', requireAuth, async (req: Request, res: Resp
       businessRecordId: newRecord.id,
       tenantId,
       activityType: 'record_created',
+      // `subject` is NOT NULL on business_record_activities. Every activity insert
+      // in this file omitted it, so each one violated the constraint the moment it
+      // ran. See the note on the status_changed insert below.
+      subject: `${data.recordType} created`,
       description: `${data.recordType} created: ${data.companyName}`,
       createdBy: userId,
     });
@@ -421,6 +425,7 @@ router.patch(
         businessRecordId: id,
         tenantId,
         activityType: 'record_updated',
+        subject: 'Record updated',
         description: `Record updated`,
         createdBy: userId,
       });
@@ -544,14 +549,13 @@ router.patch(
         businessRecordId: id,
         tenantId,
         activityType: 'status_changed',
+        subject: 'Status changed',
+        // `metadata` is NOT a column on business_record_activities (the table's
+        // only free-form jsonb columns are related_records and attachments), so
+        // this payload was never persistable. It is dropped rather than remapped:
+        // every field it carried is already rendered into statusChangeDescription
+        // above ("Status changed from X to Y (type → type): notes").
         description: statusChangeDescription,
-        metadata: JSON.stringify({
-          previousStatus: existing.status,
-          newStatus: status,
-          previousRecordType: existing.recordType,
-          newRecordType: finalRecordType,
-          notes,
-        }),
         createdBy: userId,
       });
 
@@ -606,6 +610,7 @@ router.post(
             businessRecordId: record.id,
             tenantId,
             activityType: 'status_changed',
+            subject: 'Bulk status update',
             description: `Bulk status update to "${status}"${notes ? `: ${notes}` : ''}`,
             createdBy: userId,
           }),
@@ -671,6 +676,7 @@ router.delete(
         businessRecordId: id,
         tenantId,
         activityType: 'record_deleted',
+        subject: 'Record deleted',
         description: `Record deleted: ${existing.companyName}`,
         createdBy: userId,
       });

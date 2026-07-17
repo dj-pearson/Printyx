@@ -16,9 +16,16 @@ Or via any SQL runner pointed at `DATABASE_URL`.
 
 ## Files
 
-| File | Purpose | Consumed by |
-|---|---|---|
-| `dashboard-widget-data.sql` | `dashboard_widget_data(widget_key, tenant_id, user_id, role_code, level)` — returns JSONB for one of 34 dashboard widgets. Tenant-scoped by explicit parameter. | `supabase/functions/dashboard-widgets/` |
+| File                        | Purpose                                                                                                                                                                                                   | Consumed by                                                              |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `dashboard-widget-data.sql` | `dashboard_widget_data(widget_key, tenant_id, user_id, role_code, level)` — returns JSONB for one of 34 dashboard widgets. Tenant-scoped by explicit parameter.                                           | `supabase/functions/dashboard-widgets/`                                  |
+| `billing-aggregates.sql`    | `ap_aging_summary(tenant)`, `ar_aging_summary(tenant)`, `billing_analytics(tenant)` — money totals computed in SQL instead of `SELECT *` + reduce in JS (AUDIT-006). Tenant-scoped by explicit parameter. | `supabase/functions/account-payable/`, `account-receivable/`, `billing/` |
+
+> **Callers of `billing-aggregates.sql` fall back to the old in-JS summation when the
+> function is missing**, so the edge functions keep working if they deploy before this
+> file is applied. That fallback is a safety net, not a substitute: while it is in use
+> the totals are still silently truncated at PostgREST's `db-max-rows` (1000) and are
+> therefore WRONG for large tenants. Apply this file to actually fix the numbers.
 
 ## Why not in `drizzle/migrations/`
 

@@ -14,7 +14,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 // Warehouse operation schemas for validation
 const warehouseOperationSchema = z.object({
   equipmentId: z.string(),
@@ -100,7 +100,7 @@ export function registerWarehouseRoutes(app: Express) {
     '/api/warehouse-operations',
     isAuthenticated,
     requirePermission([PERMISSIONS.INVENTORY.WAREHOUSE.VIEW, PERMISSIONS.INVENTORY.ITEM.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user?.tenantId || (req as any).user?.claims?.tenantId;
         const operations = await storage.getWarehouseOperations(tenantId);
@@ -109,7 +109,7 @@ export function registerWarehouseRoutes(app: Express) {
         log.error('Error fetching warehouse operations:', error);
         res.status(500).json({ error: 'Failed to fetch warehouse operations' });
       }
-    },
+    }),
   );
 
   app.get('/api/warehouse-operations/:id', isAuthenticated, async (req: any, res) => {

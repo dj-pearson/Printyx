@@ -837,7 +837,7 @@ export default function WarehouseOperations() {
                           const orderIdFromUrl = new URLSearchParams(window.location.search).get(
                             'orderId',
                           );
-                          setLocation(`/enhanced-onboarding-form?orderId=${orderIdFromUrl}`);
+                          setLocation(`/onboarding/enhanced?orderId=${orderIdFromUrl}`);
                         }}
                         className="flex-1 min-w-[200px] md:flex-initial md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                       >
@@ -850,7 +850,7 @@ export default function WarehouseOperations() {
                           const orderIdFromUrl = new URLSearchParams(window.location.search).get(
                             'orderId',
                           );
-                          setLocation(`/onboarding-dashboard?orderId=${orderIdFromUrl}`);
+                          setLocation(`/onboarding?orderId=${orderIdFromUrl}`);
                         }}
                         className="flex-1 min-w-[200px] md:flex-initial md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                       >

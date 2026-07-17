@@ -430,7 +430,12 @@ export default function PlatformBusinessRecords() {
                   </Button>
                   {/* Bulk assign/delete have no backend yet — disabled rather than
                       shown as working buttons that only toast "coming soon" (PA-047). */}
-                  <Button variant="outline" size="sm" disabled title="Bulk assign is not available yet">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled
+                    title="Bulk assign is not available yet"
+                  >
                     <UserCheck className="w-4 h-4 mr-2" />
                     Assign
                   </Button>
@@ -601,7 +606,9 @@ export default function PlatformBusinessRecords() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    setLocation(`/platform-crm/business-records/${record.id}/edit`)
+                                    // AUDIT-014: /edit is not a registered route (it 404'd). The DETAIL page is the
+                                    // editor — it owns the isEditing state and the PATCH mutation.
+                                    setLocation(`/platform-crm/business-records/${record.id}`)
                                   }
                                 >
                                   <Edit className="w-4 h-4 mr-2" />

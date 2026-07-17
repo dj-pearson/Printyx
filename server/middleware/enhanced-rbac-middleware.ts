@@ -3,7 +3,7 @@
 // Comprehensive permission checking with database-driven permissions
 // =====================================================================
 
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { db } from '../db';
 import { createModuleLogger } from '../lib/logger';
 import { config } from '../config';
@@ -130,11 +130,22 @@ class PermissionCacheService {
         expires: cached.expiresAt.getTime(),
       });
 
-      // Increment cache hits
-      await db
-        .update(permissionCache)
+      // AUDIT-010: the cacheHits bump is telemetry, not a permission decision, but it
+      // used to be AWAITED — so every L2 cache hit (the hot path for every
+      // authorized request) blocked on a DB WRITE before the request could proceed.
+      // Fire-and-forget: the request no longer waits, and a failed counter update
+      // can never fail an otherwise-valid authorization.
+      //
+      // Two-arg .then() rather than .catch(): drizzle query builders are thenables
+      // and this guarantees the rejection is handled (an unhandled rejection would
+      // take the process down under Node's default policy).
+      db.update(permissionCache)
         .set({ cacheHits: sql`${permissionCache.cacheHits} + 1` })
-        .where(eq(permissionCache.id, cached.id));
+        .where(eq(permissionCache.id, cached.id))
+        .then(
+          () => {},
+          (err: unknown) => log.warn('permission cache hit counter update failed', err),
+        );
 
       return permissionSet;
     }
@@ -160,17 +171,41 @@ class PermissionCacheService {
 
     const expiresAt = new Date(Date.now() + this.CACHE_TTL);
 
-    // Store in database
-    await db.insert(permissionCache).values({
-      userId,
-      tenantId,
-      organizationalContext,
-      effectivePermissions: permissionsArray,
-      permissionHash,
-      expiresAt,
-      computationTime,
-      cacheHits: 0,
-    });
+    // AUDIT-010: this always INSERTed, so every recompute (cache miss / expiry /
+    // invalidation) left ANOTHER row for the same (user, context, tenant) — the table
+    // grew unboundedly until the periodic cleanup ran, and the L2 read
+    // (.limit(1) over a non-unique index) could return any one of the duplicates.
+    // Upsert on the triple instead: exactly one live row per cache key.
+    // Requires permission_cache_user_context_tenant_uniq (migration 0030) — ON
+    // CONFLICT cannot target a plain non-unique index.
+    await db
+      .insert(permissionCache)
+      .values({
+        userId,
+        tenantId,
+        organizationalContext,
+        effectivePermissions: permissionsArray,
+        permissionHash,
+        expiresAt,
+        computationTime,
+        cacheHits: 0,
+      })
+      .onConflictDoUpdate({
+        target: [
+          permissionCache.userId,
+          permissionCache.organizationalContext,
+          permissionCache.tenantId,
+        ],
+        set: {
+          effectivePermissions: permissionsArray,
+          permissionHash,
+          expiresAt,
+          computationTime,
+          computedAt: new Date(),
+          // Reset on refresh: the counter tracks hits against THIS cached value.
+          cacheHits: 0,
+        },
+      });
 
     // Store in memory cache
     const memoryCacheKey = `${userId}:${organizationalContext}`;
@@ -477,8 +512,18 @@ class PermissionComputationService {
 /**
  * Enhanced user context middleware - builds full RBAC context
  * Must be used before any permission-checking middleware
+ *
+ * Declared as a RequestHandler with the narrowing asserted ONCE here (the same idiom
+ * the permission-checking factories below use). Previously it was exported with its
+ * narrowed `req: AuthenticatedRequest` signature, which Express can never accept
+ * under strictFunctionTypes — a RequestHandler must take any Request, and a function
+ * demanding a narrower parameter is not assignable to it. Because this middleware is
+ * passed to app.use()/router.use() all over the server, that one declaration was
+ * emitting a TS2769 at EVERY registration site: 56 of them, the single largest
+ * repeated cause in the tree. Asserting here fixes them all at once, and is honest —
+ * this function is what ATTACHES req.user, so it genuinely accepts a bare Request.
  */
-export const enhanceUserContext = async (
+export const enhanceUserContext: RequestHandler = (async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
@@ -601,7 +646,7 @@ export const enhanceUserContext = async (
     log.error('Enhanced RBAC context error:', error);
     res.status(500).json({ error: 'Failed to build user context' });
   }
-};
+}) as unknown as RequestHandler;
 
 /**
  * Require specific permission(s) - user needs ANY of the permissions
@@ -609,8 +654,8 @@ export const enhanceUserContext = async (
 export const requirePermission = (
   permission: string | string[],
   options: PermissionCheckOptions = {},
-): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+): RequestHandler => {
+  return ((req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       res.status(401).json({ error: 'Authentication required' });
       return;
@@ -669,7 +714,7 @@ export const requirePermission = (
     }
 
     next();
-  };
+  }) as unknown as RequestHandler;
 };
 
 /**
@@ -678,8 +723,8 @@ export const requirePermission = (
 export const requireAllPermissions = (
   requiredPermissions: string[],
   options: PermissionCheckOptions = {},
-): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+): RequestHandler => {
+  return ((req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       res.status(401).json({ error: 'Authentication required' });
       return;
@@ -710,7 +755,7 @@ export const requireAllPermissions = (
     }
 
     next();
-  };
+  }) as unknown as RequestHandler;
 };
 
 /**
@@ -719,8 +764,8 @@ export const requireAllPermissions = (
 export const requireAnyPermission = (
   requiredPermissions: string[],
   options: PermissionCheckOptions = {},
-): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+): RequestHandler => {
+  return ((req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       res.status(401).json({ error: 'Authentication required' });
       return;
@@ -750,16 +795,14 @@ export const requireAnyPermission = (
     }
 
     next();
-  };
+  }) as unknown as RequestHandler;
 };
 
 /**
  * Require minimum role level
  */
-export const requireLevel = (
-  minLevel: number,
-): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const requireLevel = (minLevel: number): RequestHandler => {
+  return ((req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       res.status(401).json({ error: 'Authentication required' });
       return;
@@ -776,7 +819,7 @@ export const requireLevel = (
     }
 
     next();
-  };
+  }) as unknown as RequestHandler;
 };
 
 /**
@@ -784,8 +827,8 @@ export const requireLevel = (
  */
 export const requireScope = (
   minScope: 'own' | 'team' | 'location' | 'regional' | 'company' | 'platform',
-): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+): RequestHandler => {
+  return ((req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       res.status(401).json({ error: 'Authentication required' });
       return;
@@ -806,7 +849,7 @@ export const requireScope = (
     }
 
     next();
-  };
+  }) as unknown as RequestHandler;
 };
 
 /**
@@ -891,8 +934,8 @@ export const requireMFA = (req: AuthenticatedRequest, res: Response, next: NextF
 export const requirePermissionWithMFA = (
   permission: string | string[],
   options: PermissionCheckOptions = {},
-): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+): RequestHandler => {
+  return ((req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // First check permission
     const permissionCheck = requirePermission(permission, { ...options, auditLog: false });
     permissionCheck(req, res, (err?: any) => {
@@ -901,7 +944,7 @@ export const requirePermissionWithMFA = (
       // Then check MFA
       requireMFA(req, res, next);
     });
-  };
+  }) as unknown as RequestHandler;
 };
 
 // =====================================================================
@@ -956,10 +999,8 @@ export const checkApprovalRequired = async (
 /**
  * Middleware that checks for approval on sensitive operations
  */
-export const requireApproval = (
-  permissionCode: string,
-): ((req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => {
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const requireApproval = (permissionCode: string): RequestHandler => {
+  return (async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       res.status(401).json({ error: 'Authentication required' });
       return;
@@ -1006,7 +1047,7 @@ export const requireApproval = (
       log.error('Approval check error:', error);
       res.status(500).json({ error: 'Failed to check approval status' });
     }
-  };
+  }) as unknown as RequestHandler;
 };
 
 // =====================================================================

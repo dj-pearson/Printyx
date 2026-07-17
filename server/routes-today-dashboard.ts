@@ -133,8 +133,17 @@ export function registerTodayDashboardRoutes(app: Router) {
         }),
       );
 
-      // Fetch pipeline alerts (stalled deals)
-      const allDeals =
+      // AUDIT-007: this loaded EVERY open deal for the tenant and then filtered the
+      // stale ones (>7 days) in JS before keeping 5 — so the work grew with the whole
+      // pipeline to render a 5-row panel. Both the staleness predicate and the limit
+      // now run in SQL.
+      //
+      // COALESCE(updated_at, created_at) mirrors the JS exactly (it fell back to
+      // createdAt when updatedAt was null). Ordering by that ASC puts the OLDEST —
+      // i.e. most stale — first, which is what the JS `sort desc by daysSinceUpdate`
+      // produced.
+      const STALE_AFTER_DAYS = 7;
+      const staleDeals =
         (await db.query.deals?.findMany({
           where: and(
             eq(deals.tenantId, tenantId),
@@ -144,35 +153,34 @@ export function registerTodayDashboardRoutes(app: Router) {
               eq(deals.dealStage, 'proposal'),
               eq(deals.dealStage, 'negotiation'),
             ),
+            sql`COALESCE(${deals.updatedAt}, ${deals.createdAt}) < now() - make_interval(days => ${STALE_AFTER_DAYS})`,
           ),
+          orderBy: sql`COALESCE(${deals.updatedAt}, ${deals.createdAt}) ASC`,
+          limit: 5,
         })) || [];
 
-      // Calculate days since last update and identify stale deals
-      const pipelineAlerts = allDeals
-        .map((deal) => {
-          const updatedAt = deal.updatedAt ? new Date(deal.updatedAt) : new Date(deal.createdAt!);
-          const daysSinceUpdate = Math.floor(
-            (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24),
-          );
+      // Every row here is already stale and already limited/ordered by SQL; this only
+      // computes the display fields.
+      const pipelineAlerts = staleDeals.map((deal) => {
+        const updatedAt = deal.updatedAt ? new Date(deal.updatedAt) : new Date(deal.createdAt!);
+        const daysSinceUpdate = Math.floor(
+          (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24),
+        );
 
-          // Consider deals stale if > 7 days in same stage
-          const isStale = daysSinceUpdate > 7;
+        const isStale = true; // SQL already applied the staleness predicate
 
-          return {
-            id: deal.id,
-            title: deal.title || deal.dealName || 'Unnamed Deal',
-            companyName: deal.companyName || 'Unknown',
-            value: deal.dealValue || deal.amount || 0,
-            stage: deal.dealStage,
-            daysSinceUpdate,
-            probability: deal.probability || 0,
-            staleReason: isStale ? `Stalled in ${deal.dealStage} stage (avg: 12 days)` : undefined,
-            isStale,
-          };
-        })
-        .filter((deal) => deal.isStale)
-        .sort((a, b) => b.daysSinceUpdate - a.daysSinceUpdate)
-        .slice(0, 5);
+        return {
+          id: deal.id,
+          title: deal.title || deal.dealName || 'Unnamed Deal',
+          companyName: deal.companyName || 'Unknown',
+          value: deal.dealValue || deal.amount || 0,
+          stage: deal.dealStage,
+          daysSinceUpdate,
+          probability: deal.probability || 0,
+          staleReason: isStale ? `Stalled in ${deal.dealStage} stage (avg: 12 days)` : undefined,
+          isStale,
+        };
+      });
 
       // Fetch recent wins (closed-won deals this week)
       const recentWins =

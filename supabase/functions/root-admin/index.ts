@@ -2,6 +2,8 @@
 // Provides root admin system management endpoints
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
+import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -11,7 +13,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -28,11 +30,16 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     // Check for root admin access (role level 7+)
-    const { data: userWithRole } = await admin
-      .from('users')
-      .select('role_id, roles!inner(level, can_access_all_tenants)')
-      .eq('id', user.id)
-      .single();
+    // AUDIT-005: this users->roles gate ran on EVERY request to this fn, a second
+    // serialized hop after auth.getUser. Cached by user id for ROLE_CACHE_TTL_MS
+    // (default 30s) — a role change takes effect within that window.
+    const { data: userWithRole } = await cachedRoleLookup(user.id, () =>
+      admin
+        .from('users')
+        .select('role_id, roles!inner(level, can_access_all_tenants)')
+        .eq('id', user.id)
+        .single(),
+    );
 
     const roleLevel = (userWithRole?.roles as any)?.level || 0;
     const canAccessAllTenants = (userWithRole?.roles as any)?.can_access_all_tenants || false;
@@ -42,9 +49,12 @@ export default async function handler(req: Request) {
     }
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1]; // /root-admin/overview, /root-admin/tenants, etc.
-    const resourceId = pathParts[2];
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /root-admin, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'root-admin');
+    const endpoint = parts[0]; // /root-admin/overview, /root-admin/tenants, etc.
+    const resourceId = parts[1];
 
     // GET /root-admin/overview - System overview
     if (req.method === 'GET' && endpoint === 'overview') {
@@ -168,12 +178,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /root-admin/tenants/:id/suspend - Suspend tenant
-    if (
-      req.method === 'POST' &&
-      endpoint === 'tenants' &&
-      resourceId &&
-      pathParts[3] === 'suspend'
-    ) {
+    if (req.method === 'POST' && endpoint === 'tenants' && resourceId && parts[2] === 'suspend') {
       const { error } = await admin
         .from('tenants')
         .update({ status: 'suspended', updated_at: new Date().toISOString() })
@@ -187,12 +192,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /root-admin/tenants/:id/activate - Activate tenant
-    if (
-      req.method === 'POST' &&
-      endpoint === 'tenants' &&
-      resourceId &&
-      pathParts[3] === 'activate'
-    ) {
+    if (req.method === 'POST' && endpoint === 'tenants' && resourceId && parts[2] === 'activate') {
       const { error } = await admin
         .from('tenants')
         .update({ status: 'active', updated_at: new Date().toISOString() })

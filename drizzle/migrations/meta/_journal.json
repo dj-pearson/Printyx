@@ -85,6 +85,20 @@
       "when": 1783925568680,
       "tag": "0011_pa026_perf_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784233592132,
+      "tag": "0029_audit009_perf_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784237128022,
+      "tag": "0030_audit010_permission_cache_uniq",
+      "breakpoints": true
     }
   ]
 }

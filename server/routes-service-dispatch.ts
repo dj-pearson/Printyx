@@ -19,7 +19,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 const router = Router();
 
 // NOTE: Do NOT apply enhanceUserContext globally here because this router is registered
@@ -58,7 +58,7 @@ router.get(
   requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW, PERMISSIONS.SERVICE.DISPATCH.SCHEDULE]),
   cacheControl(120),
   etag(),
-  async (req: AuthenticatedRequest, res) => {
+  authed(async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const autoAssign = req.query.autoAssign !== 'false'; // Allow override via query param
@@ -77,7 +77,7 @@ router.get(
           customerId: serviceTickets.customerId,
           status: serviceTickets.status,
           createdAt: serviceTickets.createdAt,
-          technicianId: serviceTickets.technicianId,
+          technicianId: serviceTickets.assignedTechnicianId,
         })
         .from(serviceTickets)
         .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'pending')))
@@ -93,7 +93,7 @@ router.get(
       // Get assigned ticket counts for capacity planning
       const assignedTicketsQuery = await db
         .select({
-          technicianId: serviceTickets.technicianId,
+          technicianId: serviceTickets.assignedTechnicianId,
           count: count(serviceTickets.id),
         })
         .from(serviceTickets)
@@ -103,7 +103,7 @@ router.get(
             inArray(serviceTickets.status, ['assigned', 'in_progress']),
           ),
         )
-        .groupBy(serviceTickets.technicianId);
+        .groupBy(serviceTickets.assignedTechnicianId);
 
       const assignedCounts = assignedTicketsQuery.reduce(
         (acc, item) => {
@@ -256,7 +256,7 @@ router.get(
       log.error('Error fetching dispatch recommendations:', error);
       res.status(500).json({ message: 'Failed to fetch dispatch recommendations' });
     }
-  },
+  }),
 );
 
 // Get technician availability (converted to use real database data)
@@ -290,7 +290,7 @@ router.get(
       // Get assigned tickets count for each technician
       const assignedTicketsQuery = await db
         .select({
-          technicianId: serviceTickets.technicianId,
+          technicianId: serviceTickets.assignedTechnicianId,
           count: count(serviceTickets.id),
         })
         .from(serviceTickets)
@@ -300,7 +300,7 @@ router.get(
             inArray(serviceTickets.status, ['assigned', 'in_progress']),
           ),
         )
-        .groupBy(serviceTickets.technicianId);
+        .groupBy(serviceTickets.assignedTechnicianId);
 
       const assignedTicketsCounts = assignedTicketsQuery.reduce(
         (acc, item) => {
@@ -373,14 +373,14 @@ router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any
     // Get technician performance data
     const techPerformance = await db
       .select({
-        technicianId: serviceTickets.technicianId,
+        technicianId: serviceTickets.assignedTechnicianId,
         name: technicians.name,
         completedTickets: count(serviceTickets.id),
       })
       .from(serviceTickets)
-      .leftJoin(technicians, eq(serviceTickets.technicianId, technicians.id))
+      .leftJoin(technicians, eq(serviceTickets.assignedTechnicianId, technicians.id))
       .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'completed')))
-      .groupBy(serviceTickets.technicianId, technicians.name);
+      .groupBy(serviceTickets.assignedTechnicianId, technicians.name);
 
     // Calculate summary statistics
     const totalTickets = ticketStats.reduce((sum, stat) => sum + stat.count, 0);
@@ -697,54 +697,65 @@ router.post('/api/dispatch/batch-check-parts', async (req: any, res) => {
       .from(serviceTickets)
       .where(and(eq(serviceTickets.tenantId, tenantId), inArray(serviceTickets.id, ticketIds)));
 
-    // Check parts for each ticket
-    const results = await Promise.all(
-      tickets.map(async (ticket) => {
-        if (!ticket.requiredParts || ticket.requiredParts.length === 0) {
-          return {
-            ticketId: ticket.id,
-            ticketNumber: ticket.ticketNumber,
-            title: ticket.title,
-            partsAvailable: true,
-            missingPartsCount: 0,
-            message: 'No parts required',
-          };
-        }
+    // AUDIT-007: this was a NESTED fan-out — one inventory query PER PART, PER
+    // TICKET (N tickets x M parts round-trips) to answer a single batch question.
+    // Collect every distinct part number across the whole batch, ask once, and
+    // resolve each ticket in memory.
+    const allPartNumbers = [
+      ...new Set(
+        tickets.flatMap((t) => (t.requiredParts ?? []) as string[]).filter((p): p is string => !!p),
+      ),
+    ];
 
-        // Check each required part
-        const partsCheck = await Promise.all(
-          ticket.requiredParts.map(async (partNumber: string) => {
-            const [item] = await db
-              .select({
-                quantityAvailable: inventoryItems.quantityAvailable,
-              })
-              .from(inventoryItems)
-              .where(
-                and(
-                  eq(inventoryItems.tenantId, tenantId),
-                  eq(inventoryItems.partNumber, partNumber),
-                ),
-              )
-              .limit(1);
+    const stockRows = allPartNumbers.length
+      ? await db
+          .select({
+            partNumber: inventoryItems.partNumber,
+            quantityAvailable: inventoryItems.quantityAvailable,
+          })
+          .from(inventoryItems)
+          .where(
+            and(
+              eq(inventoryItems.tenantId, tenantId),
+              inArray(inventoryItems.partNumber, allPartNumbers),
+            ),
+          )
+      : [];
 
-            return (item?.quantityAvailable || 0) > 0;
-          }),
-        );
+    // A part with no inventory row is simply unavailable — same as the old
+    // `(item?.quantityAvailable || 0) > 0` on an empty result.
+    const availableByPart = new Map<string, boolean>(
+      stockRows.map((r) => [String(r.partNumber), Number(r.quantityAvailable ?? 0) > 0]),
+    );
 
-        const allAvailable = partsCheck.every(Boolean);
-        const missingCount = partsCheck.filter((a) => !a).length;
-
+    const results = tickets.map((ticket) => {
+      if (!ticket.requiredParts || ticket.requiredParts.length === 0) {
         return {
           ticketId: ticket.id,
           ticketNumber: ticket.ticketNumber,
           title: ticket.title,
-          partsAvailable: allAvailable,
-          missingPartsCount: missingCount,
-          totalPartsRequired: ticket.requiredParts.length,
-          message: allAvailable ? 'All parts available' : `${missingCount} part(s) missing`,
+          partsAvailable: true,
+          missingPartsCount: 0,
+          message: 'No parts required',
         };
-      }),
-    );
+      }
+
+      const partsCheck = (ticket.requiredParts as string[]).map(
+        (partNumber) => availableByPart.get(partNumber) ?? false,
+      );
+      const allAvailable = partsCheck.every(Boolean);
+      const missingCount = partsCheck.filter((a) => !a).length;
+
+      return {
+        ticketId: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        title: ticket.title,
+        partsAvailable: allAvailable,
+        missingPartsCount: missingCount,
+        totalPartsRequired: ticket.requiredParts.length,
+        message: allAvailable ? 'All parts available' : `${missingCount} part(s) missing`,
+      };
+    });
 
     res.json({
       tickets: results,

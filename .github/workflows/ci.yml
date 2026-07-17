@@ -44,6 +44,10 @@ jobs:
       - run: npm run lint
       - name: Route ownership ratchet (EDGE-018)
         run: npm run check:routes
+      - name: Nav-target ratchet (AUDIT-014)
+        run: npm run check:nav
+      - name: Edge path-normalization ratchet (EDGE-002e)
+        run: npm run check:edge-paths
       - run: npm run build
       - name: Server bundle check (PA-050)
         run: npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server-bundle-check.mjs

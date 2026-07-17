@@ -41,7 +41,8 @@ import {
   Clock,
   TrendingUp,
 } from 'lucide-react';
-import type { Invoice, Contract, Customer } from '@shared/schema';
+import type { Contract, Customer } from '@shared/schema';
+import { normalizeInvoices, type NormalizedInvoice } from '@/lib/invoice-normalize';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
@@ -56,7 +57,7 @@ import { useToast } from '@/hooks/use-toast';
 export default function Invoices() {
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<NormalizedInvoice | null>(null);
   const [selectedContractId, setSelectedContractId] = useState<string>('');
   const [billingPeriodStart, setBillingPeriodStart] = useState<string>('');
   const [billingPeriodEnd, setBillingPeriodEnd] = useState<string>('');
@@ -69,22 +70,16 @@ export default function Invoices() {
   const { toast } = useToast();
   const { progress: bulkProgress, dismiss: dismissProgress, executeBulk } = useBulkProgress();
 
-  const { data: invoices, isLoading: isLoadingInvoices } = useQuery<Invoice[]>({
+  // AUDIT-011: the edge fn's list endpoint returns raw snake_case rows, so this
+  // must be normalized at the query boundary. The previous bridge here read
+  // `inv.invoiceNumber || inv.invoiceNumber` (the same key OR'd with itself) and
+  // never touched invoice_number/total_amount at all — hence blank invoice
+  // numbers, $NaN totals and "Invalid Date" against real data.
+  const { data: invoices, isLoading: isLoadingInvoices } = useQuery<NormalizedInvoice[]>({
     queryKey: ['/api/billing/invoices'],
     queryFn: async () => {
       const response = await apiRequest('/api/billing/invoices', 'GET');
-      return extractRecords(response).map((inv: any) => ({
-        ...inv,
-        id: inv.id,
-        invoiceNumber: inv.invoiceNumber || inv.invoiceNumber || '',
-        contractId: inv.contractId || inv.contractId || null,
-        customerId: inv.customerId || inv.customerId || '',
-        billingPeriodStart: inv.billing_period_start || inv.billingPeriodStart || '',
-        billingPeriodEnd: inv.billing_period_end || inv.billingPeriodEnd || '',
-        dueDate: inv.dueDate || inv.dueDate || '',
-        createdAt: inv.createdAt || inv.createdAt || '',
-        updatedAt: inv.updatedAt || inv.updatedAt || '',
-      }));
+      return normalizeInvoices(extractRecords(response));
     },
   });
 
@@ -219,9 +214,9 @@ export default function Invoices() {
     );
   };
 
-  const openPaymentDialog = (invoice: Invoice) => {
+  const openPaymentDialog = (invoice: NormalizedInvoice) => {
     setSelectedInvoice(invoice);
-    setPaymentAmount(invoice.totalAmount);
+    setPaymentAmount(String(invoice.totalAmount));
     setPaymentDate(new Date().toISOString().split('T')[0]);
     setIsPaymentDialogOpen(true);
   };
@@ -239,7 +234,8 @@ export default function Invoices() {
     let paidThisMonth = 0;
 
     for (const inv of invoices) {
-      const amount = parseFloat(String(inv.totalAmount)) || 0;
+      // normalizeInvoice already coerced this to a real number.
+      const amount = inv.totalAmount;
       if (inv.status !== 'paid') {
         totalOutstanding += amount;
       }
@@ -688,7 +684,7 @@ export default function Invoices() {
                     <div className="flex-1">
                       <p className="text-xs text-gray-600 mb-1">Total Amount</p>
                       <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                        ${parseFloat(invoice.totalAmount).toFixed(2)}
+                        ${invoice.totalAmount.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -847,7 +843,7 @@ export default function Invoices() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-blue-900">Invoice Amount:</span>
                   <span className="text-lg font-bold text-blue-900">
-                    ${selectedInvoice ? parseFloat(selectedInvoice.totalAmount).toFixed(2) : '0.00'}
+                    ${selectedInvoice ? selectedInvoice.totalAmount.toFixed(2) : '0.00'}
                   </span>
                 </div>
               </div>

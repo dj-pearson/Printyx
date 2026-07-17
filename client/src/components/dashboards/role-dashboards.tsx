@@ -38,20 +38,24 @@ export function ServiceManagerDashboard() {
         const tickets = await apiRequest('/api/service-tickets');
         const technicians = await apiRequest('/api/technicians');
 
+        // AUDIT-013: these counts read the REAL service_tickets shape. Previously
+        // they were all structurally 0: `critical` is not in the priority enum
+        // (low|medium|high|urgent), there is no `dueDate` column, and
+        // `scheduledDate` is a timestamp that never === a 'YYYY-MM-DD' string.
+        const dayKey = (value: any) => (value ? new Date(value).toISOString().split('T')[0] : null);
+        const today = new Date().toISOString().split('T')[0];
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
         return {
           stats: {
-            emergencyTickets: tickets.filter((t: any) => t.priority === 'critical').length,
-            dueToday: tickets.filter(
-              (t: any) => t.dueDate === new Date().toISOString().split('T')[0],
-            ).length,
-            scheduledTomorrow: tickets.filter(
-              (t: any) =>
-                t.scheduledDate === new Date(Date.now() + 86400000).toISOString().split('T')[0],
-            ).length,
+            emergencyTickets: tickets.filter((t: any) => t.priority === 'urgent').length,
+            dueToday: tickets.filter((t: any) => dayKey(t.scheduledDate) === today).length,
+            scheduledTomorrow: tickets.filter((t: any) => dayKey(t.scheduledDate) === tomorrow)
+              .length,
             averageResponseTime: '1.2 hrs',
           },
           priorities: tickets
-            .filter((t: any) => ['critical', 'high'].includes(t.priority))
+            .filter((t: any) => ['urgent', 'high'].includes(t.priority))
             .slice(0, 5),
           technicians: technicians,
           recentActivity: [],
@@ -79,7 +83,7 @@ export function ServiceManagerDashboard() {
           title="Emergency Tickets"
           value={stats.emergencyTickets || 0}
           icon={<AlertCircle className="h-5 w-5" />}
-          href="/service-hub?priority=critical"
+          href="/service-hub?priority=urgent"
           loading={isLoading}
         />
         <StatCard
@@ -117,7 +121,7 @@ export function ServiceManagerDashboard() {
             items={priorities.map((ticket: any) => ({
               id: ticket.id,
               title: `${ticket.ticketNumber} - ${ticket.description || 'Service Request'}`,
-              subtitle: `${ticket.customerName} - ${ticket.equipmentName || 'Equipment'}`,
+              subtitle: `${ticket.customerName || 'Unknown Customer'} - ${ticket.equipmentModel || 'Equipment'}`,
               priority: ticket.priority,
               href: `/service-hub/${ticket.id}`,
             }))}

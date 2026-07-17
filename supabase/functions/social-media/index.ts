@@ -2,6 +2,7 @@
 // Handles social media post generation and scheduling
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -11,7 +12,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -38,9 +39,12 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1];
-    const postId = pathParts[2];
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /social-media, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'social-media');
+    const endpoint = parts[0];
+    const postId = parts[1];
 
     // GET /social-media/posts - List social media posts
     if (req.method === 'GET' && endpoint === 'posts') {
@@ -159,7 +163,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /social-media/posts/:id/publish - Publish post
-    if (req.method === 'POST' && endpoint === 'posts' && postId && pathParts[3] === 'publish') {
+    if (req.method === 'POST' && endpoint === 'posts' && postId && parts[2] === 'publish') {
       const { data: post, error } = await admin
         .from('social_media_posts')
         .update({

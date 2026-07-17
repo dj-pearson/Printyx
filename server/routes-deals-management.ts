@@ -30,7 +30,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 export function registerDealsManagementRoutes(app: Express) {
   // Apply authentication and RBAC context enhancement to all deals routes
   // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires
@@ -48,7 +48,7 @@ export function registerDealsManagementRoutes(app: Express) {
     ]),
     cacheControl(180),
     etag(),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -93,7 +93,7 @@ export function registerDealsManagementRoutes(app: Express) {
         log.error('Error fetching deals:', error);
         res.status(500).json({ error: 'Failed to fetch deals' });
       }
-    },
+    }),
   );
 
   // Get deal by ID

@@ -138,6 +138,44 @@ export default async function handler(req: Request) {
     // GET /billing/analytics - Get billing analytics
     // =============================================================================
     if (req.method === 'GET' && resource === 'analytics') {
+      // AUDIT-006: compute the aggregates in Postgres. The JS path below loaded EVERY
+      // invoice row for the tenant and reduced it in memory — and PostgREST silently
+      // caps a response at db-max-rows (1000) without erroring, so every one of these
+      // figures (revenue, outstanding, MRR/ARR) was WRONG for any tenant past 1000
+      // invoices, not merely slow. Kept as a fallback: drizzle/functions/*.sql is
+      // applied out of band, so this may deploy before billing_analytics exists.
+      const { data: agg, error: aggError } = await admin.rpc('billing_analytics', {
+        p_tenant_id: tenantId,
+      });
+      if (!aggError && agg) {
+        const totalRevenue = Number(agg.totalRevenue || 0);
+        const outstandingAmount = Number(agg.outstandingAmount || 0);
+        const totalInvoices = Number(agg.totalInvoices || 0);
+        const monthlyRecurring = Number(agg.monthlyRecurring || 0);
+        return createCorsResponse(
+          {
+            totalInvoices,
+            totalRevenue,
+            outstandingAmount,
+            overdueInvoices: Number(agg.overdueCount || 0),
+            // NOTE: PAID revenue over ALL invoices — preserved exactly as the JS did.
+            averageInvoiceAmount: totalInvoices > 0 ? totalRevenue / totalInvoices : 0,
+            collectionRate:
+              totalRevenue > 0 ? totalRevenue / (totalRevenue + outstandingAmount) : 0,
+            monthlyRecurringRevenue: monthlyRecurring,
+            annualRecurringRevenue: monthlyRecurring * 12,
+          },
+          200,
+          req,
+        );
+      }
+      if (aggError) {
+        console.warn(
+          'billing_analytics RPC unavailable, falling back to JS scan:',
+          aggError.message,
+        );
+      }
+
       // Get invoice statistics
       const { data: invoices, error: invoicesError } = await admin
         .from('invoices')

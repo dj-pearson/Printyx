@@ -2,6 +2,7 @@
 // Provides service ticket analytics and metrics
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -11,7 +12,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -41,8 +42,11 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const subResource = pathParts[1]; // /service-analytics/trends
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /service-analytics, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'service-analytics');
+    const subResource = parts[0]; // /service-analytics/trends
 
     // GET /service-analytics - Get service analytics overview
     if (req.method === 'GET' && !subResource) {

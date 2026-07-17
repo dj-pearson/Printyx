@@ -304,6 +304,24 @@ export function registerEdgeFunctionProxy(app: any) {
     // it was rewritten to /api/search to match the canonical edge function.
     '/api/search': 'search',
 
+    // AUDIT-015: ai-search. REQUIRED, not defensive — without this entry dev 404s.
+    //
+    // Nothing in Express serves /api/ai-search/*. The legacy router
+    // (server/routes/ai-search-knowledge-routes.ts) is mounted at /api with paths
+    // like '/search/semantic', so it answers on /api/search/* and /api/knowledge/*
+    // — different prefixes entirely, and it has no callers left. It is also MOCK to
+    // the core (getMockEmbeddings(), "in production this would query the database"),
+    // so it must NOT serve this page; the edge function is the only real
+    // implementation.
+    //
+    // Parity verified against supabase/functions/ai-search/index.ts: the dashboard
+    // calls exactly GET /search/suggestions, GET /search/analytics,
+    // GET /knowledge/entities, POST /search/semantic and POST /search/feedback, all
+    // dispatched there. Dir name == prefix segment, so no server.ts override is
+    // needed (the EDGE-004 decision rule); prod strips the fn-name segment and the
+    // fn's stripPrefix tolerates its absence.
+    '/api/ai-search': 'ai-search',
+
     // EDGE-005d top: sales-rep-assignments (17 frontend callsites; biggest
     // production 404 in the audit). New edge function ports 9 endpoints from
     // server/routes-sales-rep-assignments.ts.

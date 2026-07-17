@@ -602,9 +602,7 @@ export default function Contracts() {
                                   )}
                                   <DropdownMenuItem
                                     onClick={() =>
-                                      setLocation(
-                                        `/admin/purchase-orders?contractId=${contract.id}`,
-                                      )
+                                      setLocation(`/purchase-orders?contractId=${contract.id}`)
                                     }
                                   >
                                     <FileText className="w-4 h-4 mr-2" />
@@ -678,9 +676,7 @@ export default function Contracts() {
                         <Button
                           size="sm"
                           className="flex-1"
-                          onClick={() =>
-                            setLocation(`/admin/purchase-orders?contractId=${contract.id}`)
-                          }
+                          onClick={() => setLocation(`/purchase-orders?contractId=${contract.id}`)}
                         >
                           Book Order
                         </Button>

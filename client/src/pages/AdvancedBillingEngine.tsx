@@ -58,29 +58,20 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
-import { type Invoice, type BusinessRecord } from '@shared/schema';
+import { type BusinessRecord } from '@shared/schema';
+import { normalizeInvoices, type NormalizedInvoice } from '@/lib/invoice-normalize';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 import PageAlerts from '@/components/contextual/PageAlerts';
 import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
 import { MobileFAB } from '@/components/ui/mobile-fab';
 
-// Using Invoice from schema - BillingInvoice extends Invoice with additional billing-specific fields
-interface BillingInvoice extends Invoice {
-  invoice_number: string;
-  invoice_date: string;
-  due_date: string;
-  billing_period_start: string;
-  billing_period_end: string;
-  subtotal: number;
-  tax_amount: number;
-  total_amount: number;
-  paid_amount: number;
-  balance_due: number;
-  currency: string;
-  payment_terms: string;
-  customer_name?: string;
-  business_record_name?: string;
-}
+// AUDIT-011: this used to `extends Invoice` and re-declare a pile of snake_case
+// fields (invoice_number/total_amount/balance_due/...) mirroring the raw rows the
+// list endpoint returns. That was actively harmful: it typed balance_due as
+// `number`, but PostgREST serializes decimals as STRINGS, so `balance_due.toFixed(2)`
+// threw "toFixed is not a function" at runtime. Everything now comes off the shared
+// NormalizedInvoice (camelCase, real numbers) — see client/src/lib/invoice-normalize.ts.
+type BillingInvoice = NormalizedInvoice;
 
 // BillingConfiguration mirrors the raw-SQL billing_configurations drift table
 // (no Drizzle schema exists for it — see CLAUDE.md billing notes).
@@ -203,17 +194,11 @@ export default function AdvancedBillingEngine() {
       }
       if (selectedInvoiceStatus !== 'all') params.append('status', selectedInvoiceStatus);
       const response = await apiRequest(`/api/billing/invoices?${params.toString()}`);
-      // Edge function returns { data, total } of snake_case rows; legacy
-      // Express returned a bare array of mixed-case rows. extractRecords
-      // handles the wrapper; the map bridges the casing this page renders.
-      return extractRecords<any>(response).map((inv: any) => ({
-        ...inv,
-        invoiceNumber: inv.invoiceNumber ?? inv.invoice_number ?? '',
-        dueDate: inv.dueDate ?? inv.due_date ?? '',
-        totalAmount: inv.totalAmount ?? inv.total_amount ?? '0',
-        status: inv.status ?? inv.invoice_status ?? 'open',
-        customer_name: inv.customer_name ?? inv.customer?.company_name ?? inv.business_record_name,
-      })) as BillingInvoice[];
+      // Edge function returns { data, total } of snake_case rows; legacy Express
+      // returned a bare array of mixed-case rows. extractRecords handles the
+      // wrapper; normalizeInvoices handles the casing, the decimal-as-string
+      // coercion, and the nested `customer` relation (AUDIT-011).
+      return normalizeInvoices(extractRecords<any>(response));
     },
   });
 
@@ -1229,7 +1214,7 @@ export default function AdvancedBillingEngine() {
                           <div className="flex-1">
                             <h4 className="font-medium text-sm">{invoice.invoiceNumber}</h4>
                             <p className="text-xs text-muted-foreground">
-                              {invoice.customer_name || invoice.business_record_name}
+                              {invoice.customerName || 'Unknown Customer'}
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -1584,19 +1569,19 @@ export default function AdvancedBillingEngine() {
                             <div className="text-sm text-muted-foreground space-y-1">
                               <p>
                                 <span className="font-medium">Customer:</span>{' '}
-                                {invoice.customer_name || invoice.business_record_name}
+                                {invoice.customerName || 'Unknown Customer'}
                               </p>
                               <p>
                                 <span className="font-medium">Period:</span>{' '}
-                                {format(new Date(invoice.billing_period_start), 'MMM dd')} -{' '}
-                                {format(new Date(invoice.billing_period_end), 'MMM dd, yyyy')}
+                                {format(new Date(invoice.billingPeriodStart), 'MMM dd')} -{' '}
+                                {format(new Date(invoice.billingPeriodEnd), 'MMM dd, yyyy')}
                               </p>
                               <p>
                                 <span className="font-medium">Due:</span>{' '}
                                 {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}
                               </p>
                               <p>
-                                <span className="font-medium">Terms:</span> {invoice.payment_terms}
+                                <span className="font-medium">Terms:</span> {invoice.paymentTerms}
                               </p>
                             </div>
                           </div>
@@ -1607,9 +1592,9 @@ export default function AdvancedBillingEngine() {
                             >
                               ${Number(invoice.totalAmount).toFixed(2)}
                             </p>
-                            {invoice.balance_due > 0 && (
+                            {invoice.balanceDue > 0 && (
                               <p className="text-sm text-red-600 font-medium">
-                                Balance: ${invoice.balance_due.toFixed(2)}
+                                Balance: ${invoice.balanceDue.toFixed(2)}
                               </p>
                             )}
                           </div>

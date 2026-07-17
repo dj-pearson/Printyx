@@ -3,6 +3,8 @@ import express from 'express';
 import { z } from 'zod';
 import { aiEmployeeService } from '../services/ai-employee-service';
 import { createModuleLogger } from '../lib/logger';
+import { requireAuth } from '../replitAuth';
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const log = createModuleLogger('ai-employee-routes');
 
 // CR-008: whitelist the create-employee body (createdBy is server-injected).
@@ -16,16 +18,47 @@ const createAiEmployeeSchema = z.object({
   autonomyLevel: z.string().optional(),
 });
 
-// import { authMiddleware } from '../middleware/authMiddleware'; // Assuming auth middleware
-
 const router = express.Router();
 
-// Middleware for authentication and tenant/user ID extraction (mock for now)
-router.use((req, res, next) => {
-  (req as any).userId = 'mock-user-id'; // Replace with actual user ID from auth
-  (req as any).tenantId = 'mock-tenant-id'; // Replace with actual tenant ID from auth
-  next();
-});
+// AUDIT-015 — this router previously stubbed auth:
+//
+//     router.use((req, res, next) => {
+//       (req as any).userId = 'mock-user-id';
+//       (req as any).tenantId = 'mock-tenant-id';
+//       next();
+//     });
+//
+// That was TWO live bugs, not a placeholder:
+//
+//  1. NO AUTHENTICATION. This router is mounted with app.use('/api', ...)
+//     (routes-registry.ts), so every /api/ai-employees endpoint was reachable
+//     unauthenticated and every row it wrote was scoped to a fabricated tenant.
+//
+//  2. IT LEAKED ONTO UNRELATED ROUTES. The `router.use` above had NO PATH, so in
+//     Express it ran for EVERY /api/* request that reached this router and then fell
+//     through to the routers/routes mounted after it. getTenantId()'s first priority
+//     is `req.tenantId` (server/utils/auth-helpers.ts), so any /api route registered
+//     later — /api/dashboards/today, /api/onboarding/*, /api/notifications/* — read
+//     back 'mock-tenant-id' instead of the caller's real tenant. Verified with a
+//     supertest reproduction of the real mount order.
+//
+// The replacement is PATH-SCOPED ('/ai-employees') precisely so it can never affect
+// another router again, and resolves identity through the canonical helpers.
+router.use('/ai-employees', requireAuth);
+
+/** Resolve the caller's tenant/user, or 401. Never fabricate either. */
+function requireIdentity(
+  req: express.Request,
+  res: express.Response,
+): { tenantId: string; userId: string } | null {
+  const tenantId = getTenantId(req);
+  const userId = getUserId(req);
+  if (!tenantId || !userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return null;
+  }
+  return { tenantId, userId };
+}
 
 /**
  * @route POST /api/ai-employees
@@ -34,8 +67,9 @@ router.use((req, res, next) => {
  */
 router.post('/ai-employees', async (req, res) => {
   try {
-    const tenantId = (req as any).tenantId;
-    const userId = (req as any).userId;
+    const identity = requireIdentity(req, res);
+    if (!identity) return;
+    const { tenantId, userId } = identity;
 
     const parsed = createAiEmployeeSchema.parse(req.body ?? {});
     const employeeData = {
@@ -67,7 +101,9 @@ router.post('/ai-employees', async (req, res) => {
  */
 router.get('/ai-employees', async (req, res) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const identity = requireIdentity(req, res);
+    if (!identity) return;
+    const { tenantId } = identity;
     const { employeeType, status, autonomyLevel } = req.query;
 
     const filters = {
@@ -100,7 +136,9 @@ router.get('/ai-employees', async (req, res) => {
  */
 router.get('/ai-employees/:employeeId', async (req, res) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const identity = requireIdentity(req, res);
+    if (!identity) return;
+    const { tenantId } = identity;
     const { employeeId } = req.params;
 
     const employee = await aiEmployeeService.getEmployee(tenantId, employeeId);
@@ -133,7 +171,9 @@ router.get('/ai-employees/:employeeId', async (req, res) => {
  */
 router.post('/ai-employees/tasks', async (req, res) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const identity = requireIdentity(req, res);
+    if (!identity) return;
+    const { tenantId } = identity;
 
     const task = await aiEmployeeService.assignTask(tenantId, req.body);
 
@@ -159,7 +199,9 @@ router.post('/ai-employees/tasks', async (req, res) => {
  */
 router.get('/ai-employees/:employeeId/tasks', async (req, res) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const identity = requireIdentity(req, res);
+    if (!identity) return;
+    const { tenantId } = identity;
     const { employeeId } = req.params;
     const { status } = req.query;
 
@@ -187,7 +229,9 @@ router.get('/ai-employees/:employeeId/tasks', async (req, res) => {
  */
 router.get('/ai-employees/:employeeId/performance', async (req, res) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const identity = requireIdentity(req, res);
+    if (!identity) return;
+    const { tenantId } = identity;
     const { employeeId } = req.params;
     const { days } = req.query;
 
@@ -225,7 +269,9 @@ router.get('/ai-employees/:employeeId/performance', async (req, res) => {
  */
 router.post('/ai-employees/workflows/execute', async (req, res) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const identity = requireIdentity(req, res);
+    if (!identity) return;
+    const { tenantId } = identity;
 
     const executionId = await aiEmployeeService.executeWorkflow(tenantId, req.body);
 
@@ -251,7 +297,9 @@ router.post('/ai-employees/workflows/execute', async (req, res) => {
  */
 router.get('/ai-employees/workflows', async (req, res) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const identity = requireIdentity(req, res);
+    if (!identity) return;
+    const { tenantId } = identity;
     const { workflowType } = req.query;
 
     const workflows = await aiEmployeeService.getWorkflows(tenantId, workflowType as string);
@@ -278,60 +326,16 @@ router.get('/ai-employees/workflows', async (req, res) => {
  */
 router.get('/ai-employees/analytics/overview', async (req, res) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const identity = requireIdentity(req, res);
+    if (!identity) return;
+    const { tenantId } = identity;
 
-    // Mock analytics data - in real implementation, this would aggregate from the database
-    const analyticsData = {
-      totalEmployees: 4,
-      activeEmployees: 4,
-      totalTasksToday: 23,
-      completedTasksToday: 19,
-      averageQualityScore: 82,
-      averageResponseTime: 1.2,
-      costSavings: 1250.0,
-      customerSatisfaction: 4.3,
-      employeeTypes: [
-        { type: 'sales_assistant', count: 1, efficiency: 85 },
-        { type: 'support_agent', count: 1, efficiency: 88 },
-        { type: 'data_analyst', count: 1, efficiency: 92 },
-        { type: 'project_manager', count: 1, efficiency: 79 },
-      ],
-      recentTasks: [
-        {
-          id: '1',
-          type: 'lead_qualification',
-          status: 'completed',
-          employee: 'Sales Assistant AI',
-          duration: '2m',
-        },
-        {
-          id: '2',
-          type: 'customer_support',
-          status: 'completed',
-          employee: 'Support Agent AI',
-          duration: '15m',
-        },
-        {
-          id: '3',
-          type: 'data_analysis',
-          status: 'in_progress',
-          employee: 'Data Analyst AI',
-          duration: '25m',
-        },
-        {
-          id: '4',
-          type: 'report_generation',
-          status: 'completed',
-          employee: 'Data Analyst AI',
-          duration: '8m',
-        },
-      ],
-      performanceTrends: {
-        tasksCompleted: [15, 18, 22, 19, 23, 21, 25],
-        qualityScores: [78, 80, 82, 84, 82, 85, 82],
-        responseTime: [1.5, 1.3, 1.2, 1.1, 1.2, 1.0, 1.2],
-      },
-    };
+    // AUDIT-015: this block used to be a HARDCODED analyticsData object, so the
+    // dashboard rendered invented figures (23 tasks today, 82% quality, $1,250 saved)
+    // that were indistinguishable from real ones. Now aggregated from the actual
+    // ai_employees / ai_employee_tasks rows, tenant-scoped. costSavings comes back
+    // null because nothing records a saving — reported as unknown, never invented.
+    const analyticsData = await aiEmployeeService.getAnalyticsOverview(tenantId);
 
     res.json({
       success: true,

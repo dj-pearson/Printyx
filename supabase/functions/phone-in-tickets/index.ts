@@ -2,6 +2,7 @@
 // Handles phone-in ticket CRUD operations
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -11,7 +12,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -41,9 +42,12 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const ticketId = pathParts[1]; // /phone-in-tickets/:id
-    const subResource = pathParts[2]; // /phone-in-tickets/:id/convert
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /phone-in-tickets, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'phone-in-tickets');
+    const ticketId = parts[0]; // /phone-in-tickets/:id
+    const subResource = parts[1]; // /phone-in-tickets/:id/convert
 
     // ─── Customer / contact / equipment search (EDGE-005c) ─────────────────
     // Ported from Express /api/phone-tickets/{search-companies,search-contacts,

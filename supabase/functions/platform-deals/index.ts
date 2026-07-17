@@ -2,6 +2,8 @@
 // Manages the sales pipeline for platform-level tenant acquisition (Root Admin only)
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
+import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 
 const PIPELINE_STAGES = [
   { stage: 'prospecting', order: 1, probability: 10, category: 'pipeline' },
@@ -23,7 +25,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -40,11 +42,16 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     // Check for root admin access (role level 7+)
-    const { data: userWithRole } = await admin
-      .from('users')
-      .select('role_id, roles!inner(level, can_access_all_tenants)')
-      .eq('id', user.id)
-      .single();
+    // AUDIT-005: this users->roles gate ran on EVERY request to this fn, a second
+    // serialized hop after auth.getUser. Cached by user id for ROLE_CACHE_TTL_MS
+    // (default 30s) — a role change takes effect within that window.
+    const { data: userWithRole } = await cachedRoleLookup(user.id, () =>
+      admin
+        .from('users')
+        .select('role_id, roles!inner(level, can_access_all_tenants)')
+        .eq('id', user.id)
+        .single(),
+    );
 
     const roleLevel = (userWithRole?.roles as any)?.level || 0;
     const canAccessAllTenants = (userWithRole?.roles as any)?.can_access_all_tenants || false;
@@ -54,13 +61,16 @@ export default async function handler(req: Request) {
     }
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1]; // /platform-deals, /platform-deals/pipeline, etc.
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /platform-deals, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'platform-deals');
+    const endpoint = parts[0]; // /platform-deals, /platform-deals/pipeline, etc.
     const dealId =
-      pathParts[1] !== 'pipeline' && pathParts[1] !== 'stats' && pathParts[1] !== 'pipeline-stages'
-        ? pathParts[1]
+      parts[0] !== 'pipeline' && parts[0] !== 'stats' && parts[0] !== 'pipeline-stages'
+        ? parts[0]
         : null;
-    const subResource = pathParts[2];
+    const subResource = parts[1];
 
     // GET /platform-deals/pipeline-stages - Get pipeline stage configuration
     if (req.method === 'GET' && endpoint === 'pipeline-stages') {

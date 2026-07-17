@@ -611,7 +611,13 @@ export default function CustomReportBuilder() {
         description: `"${config.name}" has been saved successfully`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
-      navigate(`/reports/${data.code}`);
+      // /reports/:code is NOT a route and never was — this dropped the user on the
+      // 404 page the instant they saved a report. There is no route-based report
+      // viewer at all: EnhancedReportsHub (the /reports page) opens reports IN-PAGE
+      // via selectedReport state. The saved report does show up there — it is
+      // written to report_definitions with is_active=true, which is exactly what
+      // the hub lists — so the hub is the correct destination, not a guess.
+      navigate('/reports');
     },
     onError: (error: any) => {
       toast({

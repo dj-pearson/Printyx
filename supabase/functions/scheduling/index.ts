@@ -2,6 +2,7 @@
 // Handles appointment and resource scheduling
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -9,7 +10,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -34,9 +35,12 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1];
-    const resourceId = pathParts[2];
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /scheduling, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'scheduling');
+    const endpoint = parts[0];
+    const resourceId = parts[1];
 
     // GET /scheduling/appointments - List appointments
     if (req.method === 'GET' && endpoint === 'appointments' && !resourceId) {
@@ -260,7 +264,7 @@ export default async function handler(req: Request) {
     // POST /scheduling/appointments/:id/confirm - Confirm appointment
     if (req.method === 'POST' && endpoint === 'appointments' && resourceId === 'confirm') {
       const body = await req.json();
-      const appointmentId = body.appointmentId || pathParts[2];
+      const appointmentId = body.appointmentId || parts[1];
 
       const { data: appointment, error } = await admin
         .from('appointments')
@@ -284,7 +288,7 @@ export default async function handler(req: Request) {
     // POST /scheduling/appointments/:id/cancel - Cancel appointment
     if (req.method === 'POST' && endpoint === 'appointments' && resourceId === 'cancel') {
       const body = await req.json();
-      const appointmentId = body.appointmentId || pathParts[2];
+      const appointmentId = body.appointmentId || parts[1];
 
       const { data: appointment, error } = await admin
         .from('appointments')

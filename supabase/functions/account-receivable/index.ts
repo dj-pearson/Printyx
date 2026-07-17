@@ -15,6 +15,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { readRange } from '../_shared/http.ts';
 
 // Snake_case → camelCase so the frontend (which reads camelCase keys directly,
 // e.g. ar.totalAmount / ar.balanceAmount) renders without a transformer. The
@@ -81,6 +82,20 @@ export default async function handler(req: Request) {
 
     // GET /accounts-receivable/summary - AR aging summary
     if (req.method === 'GET' && resource === 'summary') {
+      // AUDIT-006: SQL aggregate first — see the AP twin. Summing in JS loaded every
+      // unpaid invoice and was silently capped at PostgREST's db-max-rows (1000),
+      // making the aging buckets wrong (not just slow). The JS path stays as a
+      // fallback because drizzle/functions/*.sql is applied out of band.
+      const { data: agg, error: aggError } = await admin.rpc('ar_aging_summary', {
+        p_tenant_id: tenantId,
+      });
+      if (!aggError && agg) {
+        return createCorsResponse(agg, 200, req);
+      }
+      if (aggError) {
+        console.warn('ar_aging_summary RPC unavailable, falling back to JS sum:', aggError.message);
+      }
+
       const { data: rows, error } = await admin
         .from('accounts_receivable')
         .select('total_amount, paid_amount, balance_amount, due_date, status')
@@ -147,12 +162,17 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && !resource) {
       const status = url.searchParams.get('status');
       const customerId = url.searchParams.get('customerId') || url.searchParams.get('customer_id');
+      // AUDIT-006: unpaginated, this fetched every invoice for the tenant AND was
+      // silently truncated at PostgREST's db-max-rows cap (1000) with no error.
+      // `total` already comes from an exact count, so { data, total } is unchanged.
+      const { limit, offset } = readRange(url);
 
       let query = admin
         .from('accounts_receivable')
         .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
-        .order('due_date', { ascending: true });
+        .order('due_date', { ascending: true })
+        .range(offset, offset + limit - 1);
 
       if (status) query = query.eq('status', status);
       if (customerId) query = query.eq('customer_id', customerId);

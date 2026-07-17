@@ -984,40 +984,47 @@ export const tenants = pgTable('tenants', {
 });
 
 // User storage table with multi-location support
-export const users = pgTable('users', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id'), // null for Printyx platform users
-  email: varchar('email').unique(),
-  firstName: varchar('first_name'),
-  lastName: varchar('last_name'),
-  profileImageUrl: varchar('profile_image_url'),
-  passwordHash: varchar('password_hash'), // bcrypt hashed password
-  role: varchar('role'), // Legacy string role (admin, manager, etc.) - kept for backward compatibility
-  roleId: varchar('role_id'), // references roles.id - new enhanced RBAC
-  teamId: varchar('team_id'), // references teams.id
-  managerId: varchar('manager_id'), // direct manager - references users.id
-  employeeId: varchar('employee_id'), // company employee ID
+export const users = pgTable(
+  'users',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id'), // null for Printyx platform users
+    email: varchar('email').unique(),
+    firstName: varchar('first_name'),
+    lastName: varchar('last_name'),
+    profileImageUrl: varchar('profile_image_url'),
+    passwordHash: varchar('password_hash'), // bcrypt hashed password
+    role: varchar('role'), // Legacy string role (admin, manager, etc.) - kept for backward compatibility
+    roleId: varchar('role_id'), // references roles.id - new enhanced RBAC
+    teamId: varchar('team_id'), // references teams.id
+    managerId: varchar('manager_id'), // direct manager - references users.id
+    employeeId: varchar('employee_id'), // company employee ID
 
-  // Multi-location assignments
-  primaryLocationId: varchar('primary_location_id'), // references locations.id - user's home location
-  regionId: varchar('region_id'), // references regions.id - for regional managers
+    // Multi-location assignments
+    primaryLocationId: varchar('primary_location_id'), // references locations.id - user's home location
+    regionId: varchar('region_id'), // references regions.id - for regional managers
 
-  // Access scope (determines what locations/regions user can access)
-  accessScope: varchar('access_scope', { length: 20 }).default('location'), // location, region, company, platform
+    // Access scope (determines what locations/regions user can access)
+    accessScope: varchar('access_scope', { length: 20 }).default('location'), // location, region, company, platform
 
-  // Platform and account settings
-  isPlatformUser: boolean('is_platform_user').default(false), // True for Printyx staff
-  isActive: boolean('is_active').default(true),
-  lastLoginAt: timestamp('last_login_at'),
+    // Platform and account settings
+    isPlatformUser: boolean('is_platform_user').default(false), // True for Printyx staff
+    isActive: boolean('is_active').default(true),
+    lastLoginAt: timestamp('last_login_at'),
 
-  // Free-form user metadata (e.g. signup phone/source captured at registration).
-  metadata: jsonb('metadata'),
+    // Free-form user metadata (e.g. signup phone/source captured at registration).
+    metadata: jsonb('metadata'),
 
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // AUDIT-009: every tenant-scoped user lookup/list scans by tenant_id.
+    tenantIdx: index('users_tenant_idx').on(table.tenantId),
+  }),
+);
 
 // User Settings - Store user preferences, accessibility settings, and profile data
 export const userSettings = pgTable('user_settings', {
@@ -2113,6 +2120,10 @@ export const invoices = pgTable(
     tenantCustomerIdx: index('invoices_tenant_customer_idx').on(table.tenantId, table.customerId),
     tenantStatusIdx: index('invoices_tenant_status_idx').on(table.tenantId, table.invoiceStatus),
     tenantCreatedIdx: index('invoices_tenant_created_idx').on(table.tenantId, table.createdAt),
+    // AUDIT-009: external_customer_id doubles as the service-ticket reference and is
+    // the ?ticketId= filter on GET /billing/invoices (see the CLAUDE.md billing note),
+    // so it is queried on its own without a tenant prefix.
+    externalCustomerIdx: index('invoices_external_customer_idx').on(table.externalCustomerId),
   }),
 );
 
@@ -2350,51 +2361,63 @@ export const quoteLineItems = pgTable('quote_line_items', {
 });
 
 // Unified Business Record Activities - Single activity table for entire lifecycle
-export const businessRecordActivities = pgTable('business_record_activities', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  businessRecordId: varchar('business_record_id'), // References businessRecords.id (nullable for migration)
-  companyId: varchar('company_id'), // References companies.id (new architecture)
+export const businessRecordActivities = pgTable(
+  'business_record_activities',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
+    businessRecordId: varchar('business_record_id'), // References businessRecords.id (nullable for migration)
+    companyId: varchar('company_id'), // References companies.id (new architecture)
 
-  // Activity Details
-  activityType: varchar('activity_type').notNull(), // email, call, meeting, demo, proposal, task, note, external, service_call, billing, churn_prevention
-  subject: varchar('subject').notNull(),
-  description: text('description'),
-  direction: varchar('direction'), // inbound, outbound
+    // Activity Details
+    activityType: varchar('activity_type').notNull(), // email, call, meeting, demo, proposal, task, note, external, service_call, billing, churn_prevention
+    subject: varchar('subject').notNull(),
+    description: text('description'),
+    direction: varchar('direction'), // inbound, outbound
 
-  // Email Information
-  emailFrom: varchar('email_from'),
-  emailTo: text('email_to'), // JSON array for multiple recipients
-  emailCc: text('email_cc'),
-  emailSubject: varchar('email_subject'),
-  emailBody: text('email_body'),
-  isShared: boolean('is_shared').default(false),
+    // Email Information
+    emailFrom: varchar('email_from'),
+    emailTo: text('email_to'), // JSON array for multiple recipients
+    emailCc: text('email_cc'),
+    emailSubject: varchar('email_subject'),
+    emailBody: text('email_body'),
+    isShared: boolean('is_shared').default(false),
 
-  // Call Information
-  callDuration: integer('call_duration'), // in minutes
-  callOutcome: varchar('call_outcome'), // answered, no_answer, busy, voicemail
+    // Call Information
+    callDuration: integer('call_duration'), // in minutes
+    callOutcome: varchar('call_outcome'), // answered, no_answer, busy, voicemail
 
-  // Scheduling
-  scheduledDate: timestamp('scheduled_date'),
-  completedDate: timestamp('completed_date'),
-  dueDate: timestamp('due_date'),
+    // Scheduling
+    scheduledDate: timestamp('scheduled_date'),
+    completedDate: timestamp('completed_date'),
+    dueDate: timestamp('due_date'),
 
-  // Outcomes & Follow-up
-  outcome: varchar('outcome'), // completed, no_response, rescheduled, cancelled, replied
-  nextAction: text('next_action'),
-  followUpDate: timestamp('follow_up_date'),
+    // Outcomes & Follow-up
+    outcome: varchar('outcome'), // completed, no_response, rescheduled, cancelled, replied
+    nextAction: text('next_action'),
+    followUpDate: timestamp('follow_up_date'),
 
-  // Related Records & Attachments
-  relatedRecords: jsonb('related_records'), // Links to deals, agreements, etc.
-  attachments: jsonb('attachments'), // File references
+    // Related Records & Attachments
+    relatedRecords: jsonb('related_records'), // Links to deals, agreements, etc.
+    attachments: jsonb('attachments'), // File references
 
-  // Tracking
-  createdBy: varchar('created_by').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    // Tracking
+    createdBy: varchar('created_by').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // AUDIT-009: the activity timeline reads by record, newest first; the tenant
+    // index backs tenant-wide activity feeds.
+    recordCreatedIdx: index('business_record_activities_record_created_idx').on(
+      table.businessRecordId,
+      table.createdAt,
+    ),
+    tenantIdx: index('business_record_activities_tenant_idx').on(table.tenantId),
+  }),
+);
 
 // For backward compatibility during migration
 export const leadActivities = businessRecordActivities; // Alias for existing code
@@ -5986,6 +6009,14 @@ export const proposals = pgTable(
     // PA-026: tenant-scoped indexes (table had none).
     tenantStatusIdx: index('proposals_tenant_status_idx').on(table.tenantId, table.status),
     tenantCreatedIdx: index('proposals_tenant_created_idx').on(table.tenantId, table.createdAt),
+    // AUDIT-009: `proposals` is the live quotes table and callers filter by
+    // proposal_type='quote' BEFORE status, which (tenant_id, status) above cannot
+    // serve. Not redundant with it — different leftmost prefix.
+    tenantTypeStatusIdx: index('proposals_tenant_type_status_idx').on(
+      table.tenantId,
+      table.proposalType,
+      table.status,
+    ),
   }),
 );
 
@@ -6042,7 +6073,16 @@ export const proposalLineItems = pgTable(
   },
   (table) => ({
     // PA-026: FK + tenant indexes (table had none).
-    proposalIdx: index('proposal_line_items_proposal_idx').on(table.proposalId),
+    // AUDIT-009: widened proposal_id -> (proposal_id, line_number). QUOTE-020 makes
+    // line_number the source of truth for ordering and EVERY read path orders by it,
+    // so the composite serves the real query (filter by proposal, sort by line) while
+    // still covering proposal_id-only lookups via the leftmost-prefix rule. Keeping a
+    // separate single-column proposal_id index alongside it would be redundant and
+    // only add write amplification, so it is replaced rather than supplemented.
+    proposalLineIdx: index('proposal_line_items_proposal_line_idx').on(
+      table.proposalId,
+      table.lineNumber,
+    ),
     tenantIdx: index('proposal_line_items_tenant_idx').on(table.tenantId),
   }),
 );
@@ -6523,103 +6563,125 @@ export const quotePricingLineItems = pgTable('quote_pricing_line_items', {
 // Note: vendors table is defined above with full E-Automate compatibility
 
 // Accounts Payable
-export const accountsPayable = pgTable('accounts_payable', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const accountsPayable = pgTable(
+  'accounts_payable',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // Reference Information
-  vendorId: varchar('vendor_id').notNull(),
-  billNumber: varchar('bill_number').notNull(),
-  purchaseOrderNumber: varchar('purchase_order_number'),
-  referenceNumber: varchar('reference_number'),
+    // Reference Information
+    vendorId: varchar('vendor_id').notNull(),
+    billNumber: varchar('bill_number').notNull(),
+    purchaseOrderNumber: varchar('purchase_order_number'),
+    referenceNumber: varchar('reference_number'),
 
-  // Bill Details
-  billDate: timestamp('bill_date').notNull(),
-  dueDate: timestamp('due_date').notNull(),
-  description: text('description'),
+    // Bill Details
+    billDate: timestamp('bill_date').notNull(),
+    dueDate: timestamp('due_date').notNull(),
+    description: text('description'),
 
-  // Financial Information
-  subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
-  taxAmount: decimal('tax_amount', { precision: 12, scale: 2 }).default('0'),
-  totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
-  paidAmount: decimal('paid_amount', { precision: 12, scale: 2 }).default('0'),
-  balanceAmount: decimal('balance_amount', {
-    precision: 12,
-    scale: 2,
-  }).notNull(),
+    // Financial Information
+    subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
+    taxAmount: decimal('tax_amount', { precision: 12, scale: 2 }).default('0'),
+    totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
+    paidAmount: decimal('paid_amount', { precision: 12, scale: 2 }).default('0'),
+    balanceAmount: decimal('balance_amount', {
+      precision: 12,
+      scale: 2,
+    }).notNull(),
 
-  // Status & Classification
-  status: varchar('status').notNull().default('pending'),
-  priority: varchar('priority').default('normal'),
-  category: varchar('category'),
-  department: varchar('department'),
+    // Status & Classification
+    status: varchar('status').notNull().default('pending'),
+    priority: varchar('priority').default('normal'),
+    category: varchar('category'),
+    department: varchar('department'),
 
-  // Payment Information
-  paymentMethod: varchar('payment_method'),
-  paymentDate: timestamp('payment_date'),
-  checkNumber: varchar('check_number'),
+    // Payment Information
+    paymentMethod: varchar('payment_method'),
+    paymentDate: timestamp('payment_date'),
+    checkNumber: varchar('check_number'),
 
-  // Approval Workflow
-  approvedBy: varchar('approved_by'),
-  approvedDate: timestamp('approved_date'),
-  approvalNotes: text('approval_notes'),
+    // Approval Workflow
+    approvedBy: varchar('approved_by'),
+    approvedDate: timestamp('approved_date'),
+    approvalNotes: text('approval_notes'),
 
-  // Tracking
-  createdBy: varchar('created_by').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    // Tracking
+    createdBy: varchar('created_by').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // AUDIT-009: AP aging/list views filter by tenant + status and sort by due date.
+    tenantStatusDueIdx: index('accounts_payable_tenant_status_due_idx').on(
+      table.tenantId,
+      table.status,
+      table.dueDate,
+    ),
+  }),
+);
 
 // Accounts Receivable
-export const accountsReceivable = pgTable('accounts_receivable', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const accountsReceivable = pgTable(
+  'accounts_receivable',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // Reference Information
-  customerId: varchar('customer_id').notNull(),
-  invoiceNumber: varchar('invoice_number').notNull(),
-  contractId: varchar('contract_id'),
-  salesOrderNumber: varchar('sales_order_number'),
+    // Reference Information
+    customerId: varchar('customer_id').notNull(),
+    invoiceNumber: varchar('invoice_number').notNull(),
+    contractId: varchar('contract_id'),
+    salesOrderNumber: varchar('sales_order_number'),
 
-  // Invoice Details
-  invoiceDate: timestamp('invoice_date').notNull(),
-  dueDate: timestamp('due_date').notNull(),
-  description: text('description'),
+    // Invoice Details
+    invoiceDate: timestamp('invoice_date').notNull(),
+    dueDate: timestamp('due_date').notNull(),
+    description: text('description'),
 
-  // Financial Information
-  subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
-  taxAmount: decimal('tax_amount', { precision: 12, scale: 2 }).default('0'),
-  totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
-  paidAmount: decimal('paid_amount', { precision: 12, scale: 2 }).default('0'),
-  balanceAmount: decimal('balance_amount', {
-    precision: 12,
-    scale: 2,
-  }).notNull(),
+    // Financial Information
+    subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
+    taxAmount: decimal('tax_amount', { precision: 12, scale: 2 }).default('0'),
+    totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
+    paidAmount: decimal('paid_amount', { precision: 12, scale: 2 }).default('0'),
+    balanceAmount: decimal('balance_amount', {
+      precision: 12,
+      scale: 2,
+    }).notNull(),
 
-  // Status & Classification
-  status: varchar('status').notNull().default('outstanding'),
-  invoiceType: varchar('invoice_type').notNull(),
-  category: varchar('category'),
+    // Status & Classification
+    status: varchar('status').notNull().default('outstanding'),
+    invoiceType: varchar('invoice_type').notNull(),
+    category: varchar('category'),
 
-  // Payment Information
-  paymentTerms: varchar('payment_terms').default('Net 30'),
-  paymentMethod: varchar('payment_method'),
-  lastPaymentDate: timestamp('last_payment_date'),
+    // Payment Information
+    paymentTerms: varchar('payment_terms').default('Net 30'),
+    paymentMethod: varchar('payment_method'),
+    lastPaymentDate: timestamp('last_payment_date'),
 
-  // Collections & Follow-up
-  followUpDate: timestamp('follow_up_date'),
-  collectionNotes: text('collection_notes'),
-  daysOverdue: integer('days_overdue').default(0),
+    // Collections & Follow-up
+    followUpDate: timestamp('follow_up_date'),
+    collectionNotes: text('collection_notes'),
+    daysOverdue: integer('days_overdue').default(0),
 
-  // Tracking
-  createdBy: varchar('created_by').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    // Tracking
+    createdBy: varchar('created_by').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // AUDIT-009: AR aging/list views filter by tenant + status and sort by due date.
+    tenantStatusDueIdx: index('accounts_receivable_tenant_status_due_idx').on(
+      table.tenantId,
+      table.status,
+      table.dueDate,
+    ),
+  }),
+);
 
 // Chart of Accounts
 export const chartOfAccounts = pgTable('chart_of_accounts', {

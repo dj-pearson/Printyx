@@ -60,9 +60,13 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
       .select({
         id: businessRecords.id,
         companyName: businessRecords.companyName,
-        contactName: businessRecords.contactName,
-        email: businessRecords.email,
-        phone: businessRecords.phone,
+        // contactName/email/phone are not columns on business_records — the real
+        // ones are the primaryContact* trio (billingContact* is the finance-specific
+        // pair and is not what a global search should match on). Response keys are
+        // unchanged so the search API contract is preserved.
+        contactName: businessRecords.primaryContactName,
+        email: businessRecords.primaryContactEmail,
+        phone: businessRecords.primaryContactPhone,
         recordType: businessRecords.recordType,
         status: businessRecords.status,
         estimatedValue: businessRecords.estimatedValue,
@@ -74,9 +78,9 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
           eq(businessRecords.tenantId, tenantId),
           or(
             ilike(businessRecords.companyName, searchTerm),
-            ilike(businessRecords.contactName, searchTerm),
-            ilike(businessRecords.email, searchTerm),
-            ilike(businessRecords.phone, searchTerm),
+            ilike(businessRecords.primaryContactName, searchTerm),
+            ilike(businessRecords.primaryContactEmail, searchTerm),
+            ilike(businessRecords.primaryContactPhone, searchTerm),
           ),
         ),
       )

@@ -1,4 +1,4 @@
 {
-  "note": "QUALITY-002 tsc-error ratchet baseline. scripts/check-types.mjs fails CI only when the error count grows above `total`. Lower it (never raise it) as debt is fixed: node scripts/check-types.mjs --update-baseline.",
-  "total": 2
+  "note": "QUALITY-002 tsc-error ratchet baseline. scripts/check-types.mjs fails CI only when the error count grows above `total`. Lower it (never raise it) as debt is fixed: node scripts/check-types.mjs --update-baseline. 2026-07-17 (QUALITY-002 batch 24): 1092 -> 1083 — more business_records phantom columns across five live services. Note usage-tracking-service used isDeleted=false where the real flag is isActive with OPPOSITE polarity (a careless rename would silently invert the result set), and chrome-extension matched CONCAT(firstName, lastName) on a table that has neither column (contact name is a single primaryContactName).",
+  "total": 1083
 }

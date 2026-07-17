@@ -30,6 +30,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
+import { normalizeInvoices } from '@/lib/invoice-normalize';
 import { fetchInvoicePdfBlob, triggerBlobDownload } from '@/lib/invoice-pdf';
 import MainLayout from '@/components/layout/main-layout';
 import { CreditCard, Download, Plus, Trash2, Edit, CheckCircle, Building2 } from 'lucide-react';
@@ -86,17 +87,11 @@ export default function Billing() {
     queryKey: ['/api/billing/invoices'],
     queryFn: async () => {
       const response = await apiRequest('/api/billing/invoices', 'GET');
-      // Edge function rows are snake_case — bridge to the camelCase this page renders.
-      return extractRecords(response).map((invoice: any) => ({
-        ...invoice,
-        id: invoice.id,
-        invoiceNumber: invoice.invoiceNumber || invoice.invoice_number || '',
-        dueDate: invoice.dueDate || invoice.due_date || '',
-        createdAt: invoice.createdAt || invoice.created_at || '',
-        invoiceDate: invoice.invoiceDate || invoice.invoice_date || '',
-        total: invoice.total ?? invoice.totalAmount ?? invoice.total_amount,
-        status: invoice.status || invoice.invoice_status || '',
-      }));
+      // AUDIT-011: shared normalizer — this page's inline bridge preferred the
+      // LEGACY `status` column over the canonical `invoice_status`, so an invoice
+      // that is invoice_status='paid' but status='draft' rendered as draft (and
+      // disagreed with the ?status= filter, which queries invoice_status).
+      return normalizeInvoices(extractRecords(response));
     },
   });
 
@@ -464,7 +459,7 @@ export default function Billing() {
                             )
                           : 'N/A'}
                       </TableCell>
-                      <TableCell>${parseFloat(invoice.total || '0').toFixed(2)}</TableCell>
+                      <TableCell>${invoice.totalAmount.toFixed(2)}</TableCell>
                       <TableCell>
                         {invoice.status === 'paid' ? (
                           <Badge className="bg-green-100 text-green-800">
