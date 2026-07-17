@@ -2,6 +2,7 @@
 // Handles SEO settings, pages, analytics, sitemaps, and redirects
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -9,7 +10,10 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    // `: undefined` rather than `: null` — auth.getUser takes string | undefined, so
+    // null trips TS2345. This is the pre-existing pattern across ~40 edge fns that
+    // CLAUDE.md documents; its guidance is to fix it in the files you touch.
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -30,11 +34,30 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // pathParts[0] = 'seo', pathParts[1] = resource, pathParts[2] = id or action
-    const resource = pathParts[1];
-    const resourceId = pathParts[2];
-    const action = pathParts[3];
+
+    // EVERY route in this function 404'd in production before this.
+    //
+    // It used to do `pathParts = url.pathname.split('/')` and read the resource from
+    // pathParts[1], on the assumption that pathParts[0] === 'seo' — i.e. that the
+    // request still carried the /seo prefix. It does not: the Coolify dispatcher
+    // (supabase/functions/server.ts) STRIPS the function-name segment before invoking
+    // the handler (stripSegments = 1; it rewrites the path to
+    // `'/' + pathParts.slice(1).join('/')`). So /seo/settings arrived here as
+    // /settings, pathParts[1] was undefined, and every `resource === '...'` guard below
+    // was false — all six endpoints 404'd.
+    //
+    // It went unnoticed because '/api/seo' is NOT in crmProxies: dev serves SEO from
+    // Express and never touches this function, so the breakage was prod-only and
+    // invisible locally.
+    //
+    // normalizePath strips an OPTIONAL leading /seo, so it is idempotent — the routes
+    // resolve identically whether the prefix is present (a direct/native call) or has
+    // already been stripped (the Coolify dispatcher). Same fix EDGE-002m applied
+    // elsewhere; the sibling `integrations` fn still carries this bug (see CLAUDE.md).
+    const { parts } = normalizePath(url.pathname, 'seo');
+    const resource = parts[0];
+    const resourceId = parts[1];
+    const action = parts[2];
 
     // ============= SETTINGS =============
 

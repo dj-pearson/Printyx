@@ -43,7 +43,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 export function registerCrmGoalRoutes(app: Express) {
   // Apply authentication and RBAC context to all CRM goals routes
   // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires
@@ -59,7 +59,7 @@ export function registerCrmGoalRoutes(app: Express) {
       PERMISSIONS.SALES.REPORT.VIEW_LOCATION,
       PERMISSIONS.SALES.REPORT.VIEW_COMPANY,
     ]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const goals = await db
           .select({
@@ -89,7 +89,7 @@ export function registerCrmGoalRoutes(app: Express) {
         log.error('Error fetching goals:', error);
         res.status(500).json({ error: 'Failed to fetch goals' });
       }
-    },
+    }),
   );
 
   app.post('/api/crm/goals', isAuthenticated, async (req: any, res) => {

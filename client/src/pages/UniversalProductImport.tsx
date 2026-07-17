@@ -38,13 +38,7 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -81,7 +75,16 @@ const PRODUCT_TYPES = [
     description: 'Hardware devices - copiers, printers, MFPs with 3-tier pricing',
     icon: Monitor,
     color: 'text-blue-600 bg-blue-50',
-    keywords: ['model', 'copier', 'printer', 'mfp', 'device', 'hardware', 'color_speed', 'bw_speed'],
+    keywords: [
+      'model',
+      'copier',
+      'printer',
+      'mfp',
+      'device',
+      'hardware',
+      'color_speed',
+      'bw_speed',
+    ],
   },
   {
     id: 'product_accessories',
@@ -405,7 +408,7 @@ export default function UniversalProductImport() {
       return await apiRequest(
         `/api/import/jobs/${jobId}/duplicates/${duplicateId}/resolve`,
         'POST',
-        { resolution }
+        { resolution },
       );
     },
     onSuccess: () => {
@@ -479,7 +482,7 @@ export default function UniversalProductImport() {
         previewMutation.mutate(formData);
       }
     },
-    [productType]
+    [productType],
   );
 
   // Handle upload
@@ -524,8 +527,8 @@ export default function UniversalProductImport() {
   const handleMappingChange = useCallback((sourceColumn: string, targetField: string) => {
     setMappings((prev) =>
       prev.map((m) =>
-        m.sourceColumn === sourceColumn ? { ...m, targetField, userConfirmed: true } : m
-      )
+        m.sourceColumn === sourceColumn ? { ...m, targetField, userConfirmed: true } : m,
+      ),
     );
   }, []);
 
@@ -605,7 +608,7 @@ export default function UniversalProductImport() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/settings/products')}>
+              <Button variant="ghost" size="icon" onClick={() => navigate('/product-hub')}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
@@ -641,7 +644,7 @@ export default function UniversalProductImport() {
                   'flex items-center gap-2',
                   idx < currentStep && 'text-primary',
                   idx === currentStep && 'text-primary font-medium',
-                  idx > currentStep && 'text-muted-foreground'
+                  idx > currentStep && 'text-muted-foreground',
                 )}
               >
                 <div
@@ -649,7 +652,7 @@ export default function UniversalProductImport() {
                     'w-8 h-8 rounded-full flex items-center justify-center text-sm',
                     idx < currentStep && 'bg-primary text-primary-foreground',
                     idx === currentStep && 'bg-primary text-primary-foreground',
-                    idx > currentStep && 'bg-muted text-muted-foreground'
+                    idx > currentStep && 'bg-muted text-muted-foreground',
                   )}
                 >
                   {idx < currentStep ? <Check className="h-4 w-4" /> : idx + 1}
@@ -662,7 +665,7 @@ export default function UniversalProductImport() {
                   <div
                     className={cn(
                       'hidden md:block h-px w-16 mx-2',
-                      idx < currentStep ? 'bg-primary' : 'bg-border'
+                      idx < currentStep ? 'bg-primary' : 'bg-border',
                     )}
                   />
                 )}
@@ -692,7 +695,7 @@ export default function UniversalProductImport() {
                     onClick={() => setProductType(UNIVERSAL_MODE.id)}
                     className={cn(
                       'cursor-pointer transition-all hover:shadow-md col-span-2 md:col-span-4',
-                      productType === UNIVERSAL_MODE.id && 'ring-2 ring-primary'
+                      productType === UNIVERSAL_MODE.id && 'ring-2 ring-primary',
                     )}
                   >
                     <CardContent className="p-4 flex items-center gap-4">
@@ -701,7 +704,9 @@ export default function UniversalProductImport() {
                       </div>
                       <div>
                         <h3 className="font-medium">{UNIVERSAL_MODE.name}</h3>
-                        <p className="text-sm text-muted-foreground">{UNIVERSAL_MODE.description}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {UNIVERSAL_MODE.description}
+                        </p>
                       </div>
                       {productType === UNIVERSAL_MODE.id && (
                         <Badge className="ml-auto">Selected</Badge>
@@ -719,7 +724,7 @@ export default function UniversalProductImport() {
                         onClick={() => setProductType(type.id)}
                         className={cn(
                           'cursor-pointer transition-all hover:shadow-md',
-                          isSelected && 'ring-2 ring-primary'
+                          isSelected && 'ring-2 ring-primary',
                         )}
                       >
                         <CardContent className="p-4 text-center">
@@ -755,7 +760,7 @@ export default function UniversalProductImport() {
                     'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
                     file
                       ? 'border-primary bg-primary/5'
-                      : 'border-muted-foreground/25 hover:border-primary/50'
+                      : 'border-muted-foreground/25 hover:border-primary/50',
                   )}
                 >
                   {file ? (
@@ -908,9 +913,7 @@ export default function UniversalProductImport() {
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertTitle>Importing to: {getActualProductType()?.name}</AlertTitle>
-                <AlertDescription>
-                  {getActualProductType()?.description}
-                </AlertDescription>
+                <AlertDescription>{getActualProductType()?.description}</AlertDescription>
               </Alert>
             )}
 
@@ -1120,7 +1123,7 @@ export default function UniversalProductImport() {
                           'p-4 border rounded-lg mb-2',
                           dup.resolution === 'pending'
                             ? 'border-yellow-500 bg-yellow-50'
-                            : 'border-green-500 bg-green-50'
+                            : 'border-green-500 bg-green-50',
                         )}
                       >
                         <div className="flex items-center justify-between mb-2">
@@ -1245,7 +1248,7 @@ export default function UniversalProductImport() {
                     )}
 
                     <div className="flex justify-center gap-4 pt-4">
-                      <Button variant="outline" onClick={() => navigate('/settings/products')}>
+                      <Button variant="outline" onClick={() => navigate('/product-hub')}>
                         Back to Products
                       </Button>
                       <Button

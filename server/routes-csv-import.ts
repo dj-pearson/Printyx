@@ -32,7 +32,7 @@ import {
   duplicateResolutionRequestSchema,
 } from '@shared/csv-import-schema';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 // Configure multer for CSV file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -62,7 +62,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/entity-types',
     resolveTenant,
     requireTenant,
-    async (_req: ImportRequest, res: Response) => {
+    authed(async (_req: ImportRequest, res: Response) => {
       try {
         const entityTypes = Object.keys(ENTITY_TEMPLATES).map((type) => ({
           type,
@@ -76,7 +76,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error fetching entity types:', error);
         res.status(500).json({ message: 'Failed to fetch entity types' });
       }
-    },
+    }),
   );
 
   /**
@@ -86,7 +86,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/templates/:entityType',
     resolveTenant,
     requireTenant,
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const { entityType } = req.params;
         const columns = CsvImportService.getTemplateColumns(entityType);
@@ -104,7 +104,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error fetching template:', error);
         res.status(500).json({ message: 'Failed to fetch template' });
       }
-    },
+    }),
   );
 
   /**
@@ -114,7 +114,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/templates/:entityType/download',
     resolveTenant,
     requireTenant,
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const { entityType } = req.params;
         const csvContent = CsvImportService.generateTemplate(entityType);
@@ -129,7 +129,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error generating template:', error);
         res.status(500).json({ message: 'Failed to generate template' });
       }
-    },
+    }),
   );
 
   // ============= IMPORT JOB ENDPOINTS =============
@@ -143,7 +143,7 @@ export function registerCsvImportRoutes(app: Express) {
     requireTenant,
     requirePermission([PERMISSIONS.SALES.LEAD.CREATE, PERMISSIONS.SALES.CUSTOMER.CREATE]),
     upload.single('file'),
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: 'No file uploaded' });
@@ -193,7 +193,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error creating import job:', error);
         res.status(500).json({ message: 'Failed to create import job' });
       }
-    },
+    }),
   );
 
   /**
@@ -204,7 +204,7 @@ export function registerCsvImportRoutes(app: Express) {
     resolveTenant,
     requireTenant,
     upload.single('file'),
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: 'No file uploaded' });
@@ -236,7 +236,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error previewing mapping:', error);
         res.status(500).json({ message: 'Failed to preview mapping' });
       }
-    },
+    }),
   );
 
   /**
@@ -246,7 +246,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/jobs/:jobId',
     resolveTenant,
     requireTenant,
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const { jobId } = req.params;
         const job = await CsvImportService.getImportJob(jobId);
@@ -272,7 +272,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error fetching import job:', error);
         res.status(500).json({ message: 'Failed to fetch import job' });
       }
-    },
+    }),
   );
 
   /**
@@ -282,7 +282,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/jobs',
     resolveTenant,
     requireTenant,
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const tenantId = req.tenantId!;
         const { entityType, status, limit } = req.query;
@@ -304,7 +304,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error fetching import jobs:', error);
         res.status(500).json({ message: 'Failed to fetch import jobs' });
       }
-    },
+    }),
   );
 
   /**
@@ -314,7 +314,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/jobs/:jobId/mappings',
     resolveTenant,
     requireTenant,
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const { jobId } = req.params;
 
@@ -358,7 +358,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error updating mappings:', error);
         res.status(500).json({ message: 'Failed to update mappings' });
       }
-    },
+    }),
   );
 
   // ============= VALIDATION ENDPOINTS =============
@@ -370,7 +370,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/jobs/:jobId/validate',
     resolveTenant,
     requireTenant,
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const { jobId } = req.params;
         const job = await CsvImportService.getImportJob(jobId);
@@ -401,7 +401,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error validating import:', error);
         res.status(500).json({ message: 'Failed to validate import' });
       }
-    },
+    }),
   );
 
   // ============= DUPLICATE RESOLUTION ENDPOINTS =============
@@ -413,7 +413,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/jobs/:jobId/duplicates',
     resolveTenant,
     requireTenant,
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const { jobId } = req.params;
         const job = await CsvImportService.getImportJob(jobId);
@@ -436,7 +436,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error fetching duplicates:', error);
         res.status(500).json({ message: 'Failed to fetch duplicates' });
       }
-    },
+    }),
   );
 
   /**
@@ -446,7 +446,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/jobs/:jobId/duplicates/:duplicateId/resolve',
     resolveTenant,
     requireTenant,
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const { jobId, duplicateId } = req.params;
         const { resolution, mergeStrategy } = req.body;
@@ -481,7 +481,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error resolving duplicate:', error);
         res.status(500).json({ message: 'Failed to resolve duplicate' });
       }
-    },
+    }),
   );
 
   /**
@@ -491,7 +491,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/jobs/:jobId/duplicates/resolve-all',
     resolveTenant,
     requireTenant,
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const { jobId } = req.params;
         const { resolution } = req.body;
@@ -525,7 +525,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error resolving duplicates:', error);
         res.status(500).json({ message: 'Failed to resolve duplicates' });
       }
-    },
+    }),
   );
 
   // ============= IMPORT EXECUTION ENDPOINTS =============
@@ -538,7 +538,7 @@ export function registerCsvImportRoutes(app: Express) {
     resolveTenant,
     requireTenant,
     requirePermission([PERMISSIONS.SALES.LEAD.CREATE, PERMISSIONS.SALES.CUSTOMER.CREATE]),
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const { jobId } = req.params;
         const job = await CsvImportService.getImportJob(jobId);
@@ -568,7 +568,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error executing import:', error);
         res.status(500).json({ message: 'Failed to execute import' });
       }
-    },
+    }),
   );
 
   /**
@@ -578,7 +578,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/jobs/:jobId/cancel',
     resolveTenant,
     requireTenant,
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const { jobId } = req.params;
         const job = await CsvImportService.getImportJob(jobId);
@@ -604,7 +604,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error cancelling import:', error);
         res.status(500).json({ message: 'Failed to cancel import' });
       }
-    },
+    }),
   );
 
   // ============= AI REFINEMENT ENDPOINTS (Premium Feature) =============
@@ -616,7 +616,7 @@ export function registerCsvImportRoutes(app: Express) {
     '/api/import/ai/status',
     resolveTenant,
     requireTenant,
-    async (_req: ImportRequest, res: Response) => {
+    authed(async (_req: ImportRequest, res: Response) => {
       try {
         const available = aiCsvRefinementService.isAvailable();
         res.json({
@@ -628,7 +628,7 @@ export function registerCsvImportRoutes(app: Express) {
       } catch (error: any) {
         res.status(500).json({ message: 'Failed to check AI status' });
       }
-    },
+    }),
   );
 
   /**
@@ -640,7 +640,7 @@ export function registerCsvImportRoutes(app: Express) {
     requireTenant,
     requireFeature('ai_csv_import'),
     upload.single('file'),
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         if (!req.file) {
           return res.status(400).json({ message: 'No file uploaded' });
@@ -674,7 +674,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error with AI mapping:', error);
         res.status(500).json({ message: 'AI mapping failed' });
       }
-    },
+    }),
   );
 
   /**
@@ -685,7 +685,7 @@ export function registerCsvImportRoutes(app: Express) {
     resolveTenant,
     requireTenant,
     requireFeature('ai_csv_import'),
-    async (req: ImportRequest, res: Response) => {
+    authed(async (req: ImportRequest, res: Response) => {
       try {
         const { jobId } = req.params;
         const job = await CsvImportService.getImportJob(jobId);
@@ -726,7 +726,7 @@ export function registerCsvImportRoutes(app: Express) {
         log.error('Error with AI processing:', error);
         res.status(500).json({ message: 'AI processing failed' });
       }
-    },
+    }),
   );
 }
 

@@ -17,6 +17,16 @@ import { createLogger } from '../../_shared/logger.ts';
 
 const log = createLogger('ai-search-search');
 
+// The answer JSON comes back from an unconstrained model completion, so a field
+// the prompt asks for as an array can arrive as a string, an object, or be absent.
+// The dashboard renders these with `.length > 0 && ....map(...)` — and a STRING
+// passes the length guard then throws on .map — so coerce at this boundary rather
+// than trusting the model to have honoured the schema.
+function asArray<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  return [];
+}
+
 const FALLBACK_SUGGESTIONS = [
   'How to set up meeting transcription',
   'AI documentation best practices',
@@ -474,9 +484,9 @@ async function synthesizeAnswer(
       relevanceScore: r.relevanceScore,
     })),
     source_confidence: results.slice(0, 5).map((r) => r.relevanceScore),
-    answer_sections: parsed.answerSections ?? [],
-    key_points: parsed.keyPoints ?? [],
-    related_topics: parsed.relatedTopics ?? [],
+    answer_sections: asArray(parsed.answerSections),
+    key_points: asArray<string>(parsed.keyPoints),
+    related_topics: asArray<string>(parsed.relatedTopics),
     factual_accuracy_score: parsed.factualAccuracy ?? null,
     completeness_score: parsed.completeness ?? null,
     clarity_score: parsed.clarity ?? null,
@@ -492,16 +502,36 @@ async function synthesizeAnswer(
   const { data: inserted } = await db
     .from('ai_generated_answers')
     .insert(answerRow)
-    .select(
-      'id, answer_text, answer_confidence, answer_type, source_documents, key_points, related_topics',
-    )
+    .select('id')
     .single();
 
-  return (
-    inserted ?? {
-      answerText: answerRow.answer_text,
-      answerConfidence: confidence,
-      answerType: answerRow.answer_type,
-    }
-  );
+  // Always return ONE camelCase shape, built from the values we just wrote.
+  //
+  // This previously returned the raw inserted row (snake_case) on the happy path
+  // but a camelCase literal on the insert-failure path, so the answer's field
+  // names depended on whether the write succeeded — and the snake_case branch
+  // rendered blank in the dashboard, which reads camelCase. Deriving the response
+  // from `answerRow` instead of the DB echo keeps the two paths identical and
+  // returns the full answer (sections/scores) rather than the subset the previous
+  // `.select()` projected. If the insert failed there is no id to vote on, so the
+  // feedback control keys off `id` being present.
+  return {
+    id: inserted?.id ?? null,
+    answerText: answerRow.answer_text,
+    answerConfidence: confidence,
+    answerType: answerRow.answer_type,
+    sourceDocuments: answerRow.source_documents,
+    answerSections: answerRow.answer_sections,
+    keyPoints: answerRow.key_points,
+    relatedTopics: answerRow.related_topics,
+    factualAccuracyScore: answerRow.factual_accuracy_score,
+    completenessScore: answerRow.completeness_score,
+    clarityScore: answerRow.clarity_score,
+    usefulnessScore: answerRow.usefulness_score,
+    // A freshly generated answer has no votes yet; the counters start at the
+    // column defaults rather than being read back.
+    userHelpfulVotes: 0,
+    userUnhelpfulVotes: 0,
+    createdAt: new Date().toISOString(),
+  };
 }

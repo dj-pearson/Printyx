@@ -2,6 +2,7 @@
 // Handles automatic supply ordering based on thresholds
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -9,7 +10,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -34,9 +35,12 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1];
-    const ruleId = pathParts[2];
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /auto-supply-replenishment, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'auto-supply-replenishment');
+    const endpoint = parts[0];
+    const ruleId = parts[1];
 
     // GET /auto-supply-replenishment/rules - List replenishment rules
     if (req.method === 'GET' && endpoint === 'rules' && !ruleId) {

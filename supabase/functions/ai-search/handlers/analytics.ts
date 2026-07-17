@@ -32,6 +32,39 @@ export async function handleAnalytics(req: Request, ctx: HandlerCtx): Promise<Re
     });
   }
 
+  // Answer-quality aggregates. The dashboard's KPI tiles read answersGenerated /
+  // averageAnswerConfidence / answerHelpfulnessRate, so they are derived from real
+  // ai_generated_answers rows over the same window. An answer-side failure degrades
+  // those three fields to zero rather than failing the whole analytics payload —
+  // the query-side numbers above are still worth returning.
+  const { data: answers, error: answersError } = await db
+    .from('ai_generated_answers')
+    .select('id, answer_confidence, user_helpful_votes, user_unhelpful_votes')
+    .eq('tenant_id', auth.tenantId)
+    .gte('created_at', start.toISOString())
+    .lte('created_at', end.toISOString());
+
+  const answerRows = answersError ? [] : (answers ?? []);
+  const answersGenerated = answerRows.length;
+
+  let totalConfidence = 0;
+  let confidenceCount = 0;
+  let helpfulVotes = 0;
+  let unhelpfulVotes = 0;
+
+  for (const a of answerRows) {
+    // numeric(3,2) can arrive as a string over PostgREST — coerce before summing.
+    const confidence = Number(a.answer_confidence);
+    if (Number.isFinite(confidence)) {
+      totalConfidence += confidence;
+      confidenceCount += 1;
+    }
+    helpfulVotes += Number(a.user_helpful_votes ?? 0);
+    unhelpfulVotes += Number(a.user_unhelpful_votes ?? 0);
+  }
+
+  const totalVotes = helpfulVotes + unhelpfulVotes;
+
   const rows = queries ?? [];
   const totalQueries = rows.length;
   const uniqueUsers = new Set(rows.map((r) => r.user_id)).size;
@@ -91,6 +124,13 @@ export async function handleAnalytics(req: Request, ctx: HandlerCtx): Promise<Re
       averageResponseTime: totalQueries > 0 ? Math.round(totalResponseTime / totalQueries) : 0,
       averageResultCount: totalQueries > 0 ? Number((totalResults / totalQueries).toFixed(1)) : 0,
       zeroResultQueryRate: totalQueries > 0 ? Number((zeroResults / totalQueries).toFixed(3)) : 0,
+      answersGenerated,
+      averageAnswerConfidence:
+        confidenceCount > 0 ? Number((totalConfidence / confidenceCount).toFixed(2)) : 0,
+      // Share of cast votes that were positive. With no votes there is no rate to
+      // report — 0 renders as "0% helpful", which is the honest reading of "nobody
+      // has voted" here rather than a claim that answers were judged unhelpful.
+      answerHelpfulnessRate: totalVotes > 0 ? Number((helpfulVotes / totalVotes).toFixed(3)) : 0,
       averageUserSatisfaction:
         satisfactionCount > 0 ? Number((totalSatisfaction / satisfactionCount).toFixed(2)) : 0,
       followUpQueryRate: totalQueries > 0 ? Number((followUps / totalQueries).toFixed(3)) : 0,

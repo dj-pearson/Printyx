@@ -16,7 +16,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 export function registerOpportunitiesRoutes(app: Express) {
   // Apply authentication and RBAC context to all opportunities routes
   // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires
@@ -31,7 +31,7 @@ export function registerOpportunitiesRoutes(app: Express) {
       PERMISSIONS.SALES.OPPORTUNITY.VIEW_TEAM,
       PERMISSIONS.SALES.OPPORTUNITY.VIEW_LOCATION,
     ]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -71,7 +71,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         log.error('Error fetching opportunities:', error);
         res.status(500).json({ error: 'Failed to fetch opportunities' });
       }
-    },
+    }),
   );
 
   // Get opportunity by ID

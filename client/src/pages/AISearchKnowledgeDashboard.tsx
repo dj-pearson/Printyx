@@ -3,7 +3,20 @@
  * Vector database search, AI query processing, and intelligent knowledge discovery interface
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import {
+  toKnowledgeEntity,
+  toSearchResult,
+  toAiAnswer,
+  type KnowledgeEntity,
+  type KnowledgeEntityRow,
+  type SearchResult,
+  type SearchAnalytics,
+  type AIAnswer,
+  type SemanticSearchResponse,
+} from '@/lib/ai-search/normalize';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +35,6 @@ import { MainLayout } from '@/components/layout/main-layout';
 import {
   Search,
   Brain,
-  Sparkles,
   Zap,
   Target,
   TrendingUp,
@@ -57,103 +69,14 @@ import {
   AlertCircle,
   Info,
   ExternalLink,
-  Plus,
   Minus,
   X,
 } from 'lucide-react';
 
-interface SearchResult {
-  contentId: string;
-  contentType: string;
-  title: string;
-  excerpt: string;
-  similarity: number;
-  relevanceScore: number;
-  source: {
-    author?: string;
-    createdAt?: Date;
-    category?: string;
-    tags: string[];
-  };
-  highlights: string[];
-}
-
-interface AIAnswer {
-  id: string;
-  answerText: string;
-  answerConfidence: number;
-  answerType: string;
-  sourceDocuments: Array<{
-    id: string;
-    type: string;
-    title: string;
-    excerpt: string;
-    relevanceScore: number;
-  }>;
-  answerSections: Array<{
-    title: string;
-    content: string;
-    sources: string[];
-  }>;
-  keyPoints: string[];
-  relatedTopics: string[];
-  factualAccuracyScore?: number;
-  completenessScore?: number;
-  clarityScore?: number;
-  usefulnessScore?: number;
-  userHelpfulVotes: number;
-  userUnhelpfulVotes: number;
-  createdAt: Date;
-}
-
-interface KnowledgeEntity {
-  id: string;
-  entityName: string;
-  entityType: string;
-  entityDescription?: string;
-  entityCategory?: string;
-  entitySummary?: string;
-  mentionFrequency: number;
-  importanceScore: number;
-  trendingScore: number;
-  entityAttributes: Record<string, any>;
-  entityFacts: string[];
-  aiConfidenceScore: number;
-  entityStatus: string;
-  qualityScore: number;
-  createdAt: Date;
-  updatedAt: Date;
-  lastMentionedAt?: Date;
-}
-
-interface SearchAnalytics {
-  totalQueries: number;
-  uniqueUsers: number;
-  averageQueriesPerUser: number;
-  mostCommonQueryTypes: Array<{ type: string; count: number; percentage: number }>;
-  popularSearchTerms: Array<{ term: string; count: number; trend: string }>;
-  trendingTopics: Array<{ topic: string; growth: number; volume: number }>;
-  averageResponseTime: number;
-  averageResultCount: number;
-  zeroResultQueryRate: number;
-  answersGenerated: number;
-  averageAnswerConfidence: number;
-  answerHelpfulnessRate: number;
-  averageUserSatisfaction: number;
-  aiInsights: string[];
-  optimizationRecommendations: string[];
-  contentSuggestions: string[];
-}
-
 const AISearchKnowledgeDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [aiAnswer, setAiAnswer] = useState<AIAnswer | null>(null);
-  const [knowledgeEntities, setKnowledgeEntities] = useState<KnowledgeEntity[]>([]);
-  const [searchAnalytics, setSearchAnalytics] = useState<SearchAnalytics | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('search');
+  const [votedAnswerId, setVotedAnswerId] = useState<string | null>(null);
   const [searchFilters, setSearchFilters] = useState({
     contentTypes: [] as string[],
     categories: [] as string[],
@@ -161,264 +84,96 @@ const AISearchKnowledgeDashboard: React.FC = () => {
     maxResults: 10,
     includeAnswer: true,
   });
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [relatedTopics, setRelatedTopics] = useState<string[]>([]);
-  const [searchMetrics, setSearchMetrics] = useState<any>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    loadDashboardData();
-    loadSearchSuggestions();
-  }, []);
+  // -- Data ------------------------------------------------------------------
+  const {
+    data: knowledgeEntities = [],
+    isLoading: entitiesLoading,
+    isError: entitiesFailed,
+  } = useQuery<KnowledgeEntity[]>({
+    queryKey: ['/api/ai-search/knowledge/entities'],
+    queryFn: async () => {
+      const res = await apiRequest<{ entities?: KnowledgeEntityRow[] }>(
+        '/api/ai-search/knowledge/entities?limit=50&sortBy=importance',
+      );
+      return (res.entities ?? []).map(toKnowledgeEntity);
+    },
+  });
 
-  const loadDashboardData = async () => {
-    setLoading(true);
-    try {
-      // Mock data loading - replace with actual API calls
-      const mockEntities: KnowledgeEntity[] = [
-        {
-          id: 'entity-1',
-          entityName: 'Motion AI',
-          entityType: 'product',
-          entityDescription: 'Advanced AI-powered productivity and automation platform',
-          entityCategory: 'software',
-          entitySummary: 'SaaS platform for enterprise productivity with AI capabilities',
-          mentionFrequency: 156,
-          importanceScore: 0.95,
-          trendingScore: 0.23,
-          entityAttributes: {
-            type: 'SaaS platform',
-            industry: 'productivity',
-            targetMarket: 'enterprise',
-          },
-          entityFacts: [
-            'Integrates with popular meeting platforms',
-            'Provides AI-powered transcription',
-            'Offers intelligent scheduling',
-          ],
-          aiConfidenceScore: 0.92,
-          entityStatus: 'active',
-          qualityScore: 0.88,
-          createdAt: new Date('2025-09-15T10:00:00Z'),
-          updatedAt: new Date('2025-09-25T14:30:00Z'),
-          lastMentionedAt: new Date('2025-09-26T09:15:00Z'),
-        },
-        {
-          id: 'entity-2',
-          entityName: 'Claude AI',
-          entityType: 'technology',
-          entityDescription: 'Large language model for AI-powered content generation and analysis',
-          entityCategory: 'artificial_intelligence',
-          entitySummary: 'Advanced language model with reasoning capabilities',
-          mentionFrequency: 89,
-          importanceScore: 0.88,
-          trendingScore: 0.31,
-          entityAttributes: {
-            provider: 'Anthropic',
-            modelType: 'language_model',
-            capabilities: ['text_generation', 'analysis', 'reasoning'],
-          },
-          entityFacts: [
-            'Developed by Anthropic',
-            'Constitutional AI approach',
-            'Strong reasoning capabilities',
-          ],
-          aiConfidenceScore: 0.94,
-          entityStatus: 'active',
-          qualityScore: 0.91,
-          createdAt: new Date('2025-09-10T08:00:00Z'),
-          updatedAt: new Date('2025-09-24T16:45:00Z'),
-          lastMentionedAt: new Date('2025-09-25T11:30:00Z'),
-        },
-      ];
+  const {
+    data: searchAnalytics = null,
+    isLoading: analyticsLoading,
+    isError: analyticsFailed,
+  } = useQuery<SearchAnalytics | null>({
+    queryKey: ['/api/ai-search/search/analytics'],
+    queryFn: () => apiRequest<SearchAnalytics>('/api/ai-search/search/analytics'),
+  });
 
-      const mockAnalytics: SearchAnalytics = {
-        totalQueries: 1247,
-        uniqueUsers: 89,
-        averageQueriesPerUser: 14.0,
-        mostCommonQueryTypes: [
-          { type: 'how_to', count: 387, percentage: 31.0 },
-          { type: 'factual', count: 298, percentage: 23.9 },
-          { type: 'troubleshooting', count: 234, percentage: 18.8 },
-        ],
-        popularSearchTerms: [
-          { term: 'meeting transcription', count: 156, trend: 'increasing' },
-          { term: 'AI documentation', count: 134, trend: 'stable' },
-          { term: 'team collaboration', count: 98, trend: 'increasing' },
-        ],
-        trendingTopics: [
-          { topic: 'AI Writing Assistant', growth: 45.2, volume: 234 },
-          { topic: 'Vector Search', growth: 38.7, volume: 187 },
-          { topic: 'Knowledge Management', growth: 29.3, volume: 298 },
-        ],
-        averageResponseTime: 342,
-        averageResultCount: 7.3,
-        zeroResultQueryRate: 0.08,
-        answersGenerated: 892,
-        averageAnswerConfidence: 0.84,
-        answerHelpfulnessRate: 0.79,
-        averageUserSatisfaction: 4.2,
-        aiInsights: [
-          'Search query complexity has increased by 23% over the past month',
-          'How-to queries have the highest satisfaction rates (4.6/5)',
-          'Users who receive AI-generated answers are 67% more likely to complete sessions',
-        ],
-        optimizationRecommendations: [
-          'Expand content coverage for advanced scheduling topics',
-          'Improve response times for complex how-to queries',
-          'Create more visual content for troubleshooting topics',
-        ],
-        contentSuggestions: [
-          'Create comprehensive guide on advanced scheduling algorithms',
-          'Develop troubleshooting knowledge base for integration issues',
-          'Add mobile app documentation and feature guides',
-        ],
-      };
+  // Suggestions are a convenience affordance; a failure here leaves the chips
+  // hidden rather than surfacing an error banner over the search box.
+  const { data: suggestions = [] } = useQuery<string[]>({
+    queryKey: ['/api/ai-search/search/suggestions'],
+    queryFn: async () => {
+      const res = await apiRequest<{ suggestions?: string[] }>('/api/ai-search/search/suggestions');
+      return res.suggestions ?? [];
+    },
+  });
 
-      setKnowledgeEntities(mockEntities);
-      setSearchAnalytics(mockAnalytics);
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
+  const searchMutation = useMutation<SemanticSearchResponse, Error, string>({
+    mutationFn: (query: string) =>
+      apiRequest<SemanticSearchResponse>('/api/ai-search/search/semantic', 'POST', {
+        query,
+        contentTypes: searchFilters.contentTypes,
+        categories: searchFilters.categories,
+        maxResults: searchFilters.maxResults,
+        includeAnswer: searchFilters.includeAnswer,
+      }),
+  });
+
+  const feedbackMutation = useMutation<
+    unknown,
+    Error,
+    { queryId: string; answerId: string; wasHelpful: boolean }
+  >({
+    mutationFn: (vars) => apiRequest('/api/ai-search/search/feedback', 'POST', vars),
+    onSuccess: (_data, vars) => setVotedAnswerId(vars.answerId),
+  });
+
+  // Derived from the mutation rather than mirrored into state, so the results
+  // cannot drift out of sync with the request that produced them.
+  const searchLoading = searchMutation.isPending;
+  const searchResults: SearchResult[] = (searchMutation.data?.results ?? []).map(toSearchResult);
+  const aiAnswer: AIAnswer | null = searchMutation.data?.answer
+    ? toAiAnswer(searchMutation.data.answer)
+    : null;
+  const relatedTopics = searchMutation.data?.relatedTopics ?? [];
+  const searchMetrics = searchMutation.data?.searchMetrics ?? null;
+  const loading = entitiesLoading || analyticsLoading;
+
+  const runSearch = (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    setVotedAnswerId(null);
+    searchMutation.mutate(trimmed);
   };
 
-  const loadSearchSuggestions = async () => {
-    try {
-      const mockSuggestions = [
-        'How to set up meeting transcription',
-        'AI documentation best practices',
-        'Team collaboration workflows',
-        'Calendar integration troubleshooting',
-        'Advanced scheduling algorithms',
-        'Vector search implementation',
-        'Knowledge management strategies',
-        'Automated content generation',
-      ];
-      setSuggestions(mockSuggestions);
-    } catch (error) {
-      console.error('Failed to load search suggestions:', error);
-    }
-  };
-
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-
-    setSearchLoading(true);
-    try {
-      // Mock search results - replace with actual API call
-      const mockResults: SearchResult[] = [
-        {
-          contentId: 'doc-1',
-          contentType: 'document',
-          title: 'Meeting Transcription Setup Guide',
-          excerpt:
-            'Complete guide for setting up AI-powered meeting transcription with step-by-step instructions for multiple platforms including Zoom, Teams, and Google Meet.',
-          similarity: 0.94,
-          relevanceScore: 0.92,
-          source: {
-            author: 'user-1',
-            createdAt: new Date('2025-09-20'),
-            category: 'tutorial',
-            tags: ['meetings', 'AI', 'transcription', 'setup'],
-          },
-          highlights: ['meeting transcription', 'setup', 'AI-powered'],
-        },
-        {
-          contentId: 'article-1',
-          contentType: 'knowledge_article',
-          title: 'AI Documentation Best Practices',
-          excerpt:
-            'Essential best practices for creating high-quality documents using AI assistance, including tips for prompt engineering and content optimization.',
-          similarity: 0.87,
-          relevanceScore: 0.85,
-          source: {
-            author: 'user-2',
-            createdAt: new Date('2025-09-18'),
-            category: 'best_practices',
-            tags: ['AI', 'documentation', 'writing', 'best-practices'],
-          },
-          highlights: ['AI', 'documentation', 'best practices'],
-        },
-      ];
-
-      const mockAnswer: AIAnswer = {
-        id: 'answer-1',
-        answerText:
-          'To set up AI-powered meeting transcription, you need to configure your meeting platform integration, enable automatic recording, and customize the AI processing settings. The system supports multiple platforms including Zoom, Microsoft Teams, and Google Meet with 91% accuracy across 95+ languages.',
-        answerConfidence: 0.89,
-        answerType: 'step_by_step',
-        sourceDocuments: mockResults.slice(0, 2).map((result) => ({
-          id: result.contentId,
-          type: result.contentType,
-          title: result.title,
-          excerpt: result.excerpt,
-          relevanceScore: result.relevanceScore,
-        })),
-        answerSections: [
-          {
-            title: 'Platform Integration',
-            content:
-              'Connect your meeting platform (Zoom, Teams, or Google Meet) using the provided API credentials and webhook configurations.',
-            sources: ['doc-1'],
-          },
-          {
-            title: 'Recording Setup',
-            content:
-              'Enable automatic recording with cloud storage integration and configure quality settings for optimal transcription accuracy.',
-            sources: ['doc-1'],
-          },
-        ],
-        keyPoints: [
-          'Supports 95+ languages with 91% accuracy',
-          'Real-time transcription with speaker identification',
-          'Automatic action item extraction',
-          'Integration with popular meeting platforms',
-        ],
-        relatedTopics: [
-          'AI transcription',
-          'meeting automation',
-          'speech recognition',
-          'workflow integration',
-        ],
-        factualAccuracyScore: 0.92,
-        completenessScore: 0.85,
-        clarityScore: 0.91,
-        usefulnessScore: 0.88,
-        userHelpfulVotes: 23,
-        userUnhelpfulVotes: 2,
-        createdAt: new Date(),
-      };
-
-      setSearchResults(mockResults);
-      setAiAnswer(mockAnswer);
-      setRelatedTopics([
-        'AI transcription',
-        'meeting automation',
-        'speech recognition',
-        'workflow integration',
-      ]);
-      setSearchMetrics({
-        totalResults: mockResults.length,
-        searchTime: 342,
-        embeddingTime: 45,
-        answerTime: 1250,
-      });
-    } catch (error) {
-      console.error('Search failed:', error);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
+  const handleSearch = () => runSearch(searchQuery);
 
   const handleSuggestionClick = (suggestion: string) => {
     setSearchQuery(suggestion);
-    handleSearch();
+    // Pass the suggestion through explicitly -- setSearchQuery does not apply
+    // until the next render, so reading searchQuery back here would re-run the
+    // PREVIOUS query (a bug the fixture version shipped with).
+    runSearch(suggestion);
   };
 
-  const handleAnswerFeedback = (answerId: string, isHelpful: boolean) => {
-    // TODO: Send feedback to the API when endpoint is available
+  const handleAnswerFeedback = (answerId: string | null, isHelpful: boolean) => {
+    const queryId = searchMutation.data?.queryId;
+    // answerId is null when the answer could not be persisted, so there is no
+    // row to attach a vote to.
+    if (!answerId || !queryId) return;
+    feedbackMutation.mutate({ queryId, answerId, wasHelpful: isHelpful });
   };
 
   const toggleSectionExpansion = (sectionId: string) => {
@@ -466,6 +221,23 @@ const AISearchKnowledgeDashboard: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <span className="ml-2 text-gray-600">Loading AI search dashboard...</span>
+      </div>
+    );
+  }
+
+  // Both dashboard queries failing means the ai-search backend is unreachable.
+  // Say so explicitly: a shell of empty tiles is indistinguishable from a tenant
+  // that simply has no search history yet, and this page exists precisely to stop
+  // showing numbers that cannot be trusted.
+  if (entitiesFailed && analyticsFailed) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+        <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
+        <p className="text-gray-900 font-medium">Could not load AI search data</p>
+        <p className="text-sm text-gray-600 mt-1 max-w-md">
+          The knowledge and analytics services did not respond. No data is shown rather than
+          placeholder figures. Try again shortly.
+        </p>
       </div>
     );
   }
@@ -713,9 +485,14 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                   <div className="flex items-center justify-between pt-4 border-t">
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-2">
+                        {/* Disabled once a vote lands (or while it is in flight), and
+                            when the answer has no persisted id to vote against. */}
                         <Button
                           variant="outline"
                           size="sm"
+                          disabled={
+                            !aiAnswer.id || feedbackMutation.isPending || votedAnswerId !== null
+                          }
                           onClick={() => handleAnswerFeedback(aiAnswer.id, true)}
                         >
                           <ThumbsUp className="h-4 w-4 mr-1" />
@@ -724,11 +501,17 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
+                          disabled={
+                            !aiAnswer.id || feedbackMutation.isPending || votedAnswerId !== null
+                          }
                           onClick={() => handleAnswerFeedback(aiAnswer.id, false)}
                         >
                           <ThumbsDown className="h-4 w-4 mr-1" />
                           {aiAnswer.userUnhelpfulVotes}
                         </Button>
+                        {votedAnswerId !== null && (
+                          <span className="text-sm text-gray-500">Thanks for the feedback</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -1017,8 +800,8 @@ const AISearchKnowledgeDashboard: React.FC = () => {
               </Card>
             </div>
 
-            {/* Query Types and Trends */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Query Types — derived from the recorded intent of real queries. */}
+            <div className="grid grid-cols-1 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -1028,6 +811,9 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
+                    {searchAnalytics?.mostCommonQueryTypes.length === 0 && (
+                      <p className="text-sm text-gray-500">No searches recorded yet.</p>
+                    )}
                     {searchAnalytics?.mostCommonQueryTypes.map((type, index) => (
                       <div key={index} className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
@@ -1052,97 +838,21 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <TrendingUp className="h-5 w-5 mr-2" />
-                    Trending Topics
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {searchAnalytics?.trendingTopics.map((topic, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium">{topic.topic}</p>
-                          <p className="text-xs text-gray-500">{topic.volume} queries</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge className="bg-green-100 text-green-800">
-                            <TrendingUp className="h-3 w-3 mr-1" />+{topic.growth.toFixed(1)}%
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
-            {/* AI Insights and Recommendations */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Lightbulb className="h-5 w-5 mr-2" />
-                    AI Insights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {searchAnalytics?.aiInsights.map((insight, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start space-x-3 p-3 rounded-lg bg-blue-50"
-                    >
-                      <Sparkles className="h-4 w-4 text-blue-600 mt-0.5" />
-                      <p className="text-sm">{insight}</p>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+            {/* REMOVED (AUDIT-015): "Trending Topics", "AI Insights", "Optimization
+                Recommendations" and "Content Creation Suggestions".
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Target className="h-5 w-5 mr-2" />
-                    Optimization Recommendations
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {searchAnalytics?.optimizationRecommendations.map((recommendation, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start space-x-3 p-3 rounded-lg bg-green-50"
-                    >
-                      <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5" />
-                      <p className="text-sm">{recommendation}</p>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
+                All four were LLM-style narrative panels that nothing computes: the
+                analytics handler hardcodes trendingTopics/aiInsights/
+                optimizationRecommendations/contentSuggestions to [], and no code path
+                populates them. Wired up they would render as four permanently empty
+                cards — a promise of analysis the product does not perform.
 
-            {/* Content Suggestions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Plus className="h-5 w-5 mr-2" />
-                  Content Creation Suggestions
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {searchAnalytics?.contentSuggestions.map((suggestion, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start space-x-3 p-3 rounded-lg bg-orange-50"
-                  >
-                    <FileText className="h-4 w-4 text-orange-600 mt-0.5" />
-                    <p className="text-sm">{suggestion}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                Per the CLAUDE.md rule applied throughout this story (delete features
+                with no backing implementation rather than fake them), they are removed
+                instead of being given empty states. The fixture UI is recoverable via
+                `git log --follow` if a story ever implements the analysis behind them. */}
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">

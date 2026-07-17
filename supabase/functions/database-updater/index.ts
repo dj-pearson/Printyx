@@ -2,6 +2,7 @@
 // Provides database updater system status and control (Root Admin only)
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 
 export default async function handler(req: Request) {
@@ -12,7 +13,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -46,9 +47,12 @@ export default async function handler(req: Request) {
     }
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1]; // /database-updater/status, /database-updater/start, etc.
-    const updaterName = pathParts[2]; // /database-updater/execute/:updaterName
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /database-updater, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'database-updater');
+    const endpoint = parts[0]; // /database-updater/status, /database-updater/start, etc.
+    const updaterName = parts[1]; // /database-updater/execute/:updaterName
 
     // GET /database-updater/status - Get status of the updater system
     if (req.method === 'GET' && endpoint === 'status') {

@@ -154,7 +154,12 @@ async function checkDuplicateRecord(
       .where(
         and(
           eq(businessRecords.tenantId, tenantId),
-          eq(businessRecords.email, params.email.toLowerCase()),
+          // `email` is not a column on business_records. Matching on
+          // primaryContactEmail: this is a prospecting lookup, so the primary
+          // contact is the right one. NOTE billingContactEmail also exists and is
+          // deliberately NOT matched — widening the lookup to both would change
+          // which records this resolves, which is a product call, not a type fix.
+          eq(businessRecords.primaryContactEmail, params.email.toLowerCase()),
         ),
       )
       .limit(1);
@@ -173,8 +178,17 @@ async function checkDuplicateRecord(
         and(
           eq(businessRecords.tenantId, tenantId),
           sql`LOWER(${businessRecords.companyName}) = LOWER(${params.company})`,
-          sql`(LOWER(CONCAT(${businessRecords.firstName}, ' ', ${businessRecords.lastName})) = LOWER(${params.name}) OR
-               LOWER(CONCAT(${businessRecords.lastName}, ' ', ${businessRecords.firstName})) = LOWER(${params.name}))`,
+          // firstName/lastName are NOT columns on business_records — the contact name
+          // is a SINGLE column, primaryContactName. So the CONCAT below referenced two
+          // columns that do not exist and this fuzzy match could never resolve.
+          //
+          // The old code compared both name orders ("first last" OR "last first"),
+          // which a single free-text column cannot reproduce; it now compares
+          // primaryContactName directly. That is not a loss — the two-order comparison
+          // never ran — but it does mean matching depends on how the name happens to be
+          // stored. Reversed-order matching would need a real first/last split, which
+          // this table does not have.
+          sql`LOWER(${businessRecords.primaryContactName}) = LOWER(${params.name})`,
         ),
       )
       .limit(1);

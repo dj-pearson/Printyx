@@ -6,6 +6,7 @@
 // docs/quote-module-architecture.md.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -13,7 +14,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -38,8 +39,11 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const quoteId = pathParts[1]; // quotes/:quoteId/line-items
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /quote-line-items, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'quote-line-items');
+    const quoteId = parts[0]; // quotes/:quoteId/line-items
 
     // GET /quotes/:quoteId/line-items - Get quote line items
     if (req.method === 'GET' && quoteId) {

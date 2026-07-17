@@ -22,20 +22,34 @@ router.get('/api/service/proactive-maintenance', async (req: any, res) => {
     }
 
     // Get all equipment with calculated maintenance needs
+    // make/model/location/status are NOT columns on equipment — the real ones are
+    // manufacturer/modelNumber/locationDescription/equipmentStatus. Every one of them
+    // was named here, so this query threw ("column does not exist") and the whole
+    // endpoint 500'd; none of the health-score logic below has ever executed.
+    //
+    // meterReading is DELIBERATELY still broken (equipment.currentMeterReading does
+    // not exist either, and there is no equivalent column — equipment carries only
+    // meterType). Readings live in the separate meter_readings table, so wiring this
+    // needs a JOIN to the latest reading per equipment AND a product decision this
+    // batch will not invent: the health formula below compares the reading against a
+    // page allowance, but meter_readings stores bwMeterReading and colorMeterReading
+    // separately, so "the" reading is bw, colour, or their sum — three different
+    // health scores. Left erroring on purpose: a wrong-but-plausible meter number
+    // silently corrupts every health score, which is worse than the current 500.
     const equipmentList = await db
       .select({
         equipmentId: equipment.id,
         serialNumber: equipment.serialNumber,
-        make: equipment.make,
-        model: equipment.model,
+        make: equipment.manufacturer,
+        model: equipment.modelNumber,
         customerId: equipment.customerId,
         customerName: businessRecords.companyName,
-        location: equipment.location,
+        location: equipment.locationDescription,
         meterReading: equipment.currentMeterReading,
         lastServiceDate: equipment.lastServiceDate,
         nextServiceDue: equipment.nextServiceDueDate,
         installDate: equipment.installDate,
-        status: equipment.status,
+        status: equipment.equipmentStatus,
       })
       .from(equipment)
       .leftJoin(businessRecords, eq(equipment.customerId, businessRecords.id))
@@ -185,9 +199,10 @@ router.post('/api/service/proactive-maintenance/:equipmentId/schedule', async (r
         id: equipment.id,
         customerId: equipment.customerId,
         serialNumber: equipment.serialNumber,
-        make: equipment.make,
-        model: equipment.model,
-        location: equipment.location,
+        // Real columns: manufacturer / modelNumber / locationDescription.
+        make: equipment.manufacturer,
+        model: equipment.modelNumber,
+        location: equipment.locationDescription,
       })
       .from(equipment)
       .where(and(eq(equipment.id, equipmentId), eq(equipment.tenantId, tenantId)))

@@ -21,7 +21,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 // Request validation schemas
 const salesforceImportSchema = z.object({
   objectType: z.enum(['Account', 'Contact', 'Lead', 'Opportunity', 'Product2']),
@@ -46,7 +46,7 @@ export function registerSalesforceRoutes(app: Express) {
     isAuthenticated,
     requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
     requireLevel(ROLE_LEVELS.MANAGER),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const userId = req.user?.id || (req as any).user?.claims?.sub;
         if (!userId) {
@@ -137,7 +137,7 @@ export function registerSalesforceRoutes(app: Express) {
         log.error('Salesforce import error:', error);
         res.status(500).json({ error: 'Internal server error during import' });
       }
-    },
+    }),
   );
 
   // Get Salesforce sync status - requires admin integration permission
@@ -145,7 +145,7 @@ export function registerSalesforceRoutes(app: Express) {
     '/api/salesforce/sync-status',
     isAuthenticated,
     requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const syncStatus = await db.execute(`
         SELECT 
@@ -189,7 +189,7 @@ export function registerSalesforceRoutes(app: Express) {
         log.error('Error fetching sync status:', error);
         res.status(500).json({ error: 'Failed to fetch sync status' });
       }
-    },
+    }),
   );
 
   // Get field mappings for a Salesforce object - requires admin integration permission
@@ -197,7 +197,7 @@ export function registerSalesforceRoutes(app: Express) {
     '/api/salesforce/field-mappings/:objectType',
     isAuthenticated,
     requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const { objectType } = req.params;
 
@@ -215,7 +215,7 @@ export function registerSalesforceRoutes(app: Express) {
         log.error('Error fetching field mappings:', error);
         res.status(500).json({ error: 'Failed to fetch field mappings' });
       }
-    },
+    }),
   );
 
   // Get all available Salesforce object mappings - requires admin integration permission
@@ -223,7 +223,7 @@ export function registerSalesforceRoutes(app: Express) {
     '/api/salesforce/mappings',
     isAuthenticated,
     requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const mappings = SALESFORCE_FIELD_MAPPINGS.map((mapping) => ({
           salesforceObject: mapping.salesforceObject,
@@ -236,7 +236,7 @@ export function registerSalesforceRoutes(app: Express) {
         log.error('Error fetching mappings:', error);
         res.status(500).json({ error: 'Failed to fetch mappings' });
       }
-    },
+    }),
   );
 
   // Preview Salesforce data transformation - requires admin integration permission
@@ -244,7 +244,7 @@ export function registerSalesforceRoutes(app: Express) {
     '/api/salesforce/preview-transform',
     isAuthenticated,
     requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const { objectType, sampleRecord } = req.body;
 
@@ -270,7 +270,7 @@ export function registerSalesforceRoutes(app: Express) {
         log.error('Error previewing transformation:', error);
         res.status(500).json({ error: 'Failed to preview transformation' });
       }
-    },
+    }),
   );
 
   // Delete Salesforce imported data (for testing/cleanup) - requires admin integration permission with manager level
@@ -279,7 +279,7 @@ export function registerSalesforceRoutes(app: Express) {
     isAuthenticated,
     requirePermission([PERMISSIONS.ADMIN.SETTINGS.INTEGRATIONS]),
     requireLevel(ROLE_LEVELS.MANAGER),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const { objectType } = req.params;
 
@@ -329,7 +329,7 @@ export function registerSalesforceRoutes(app: Express) {
         log.error('Error during cleanup:', error);
         res.status(500).json({ error: 'Failed to cleanup data' });
       }
-    },
+    }),
   );
 }
 

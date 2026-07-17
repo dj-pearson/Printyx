@@ -2,6 +2,7 @@
 // Handles financial management endpoints: metrics, cash flow, revenue, expenses, forecasts, reports
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -11,7 +12,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -40,10 +41,13 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /financial, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'financial');
     // Path structure: /financial/[resource]/[type]
-    const resource = pathParts[1]; // metrics, cash-flow, revenue, expenses, forecasts, reports
-    const subResource = pathParts[2]; // For reports/:type
+    const resource = parts[0]; // metrics, cash-flow, revenue, expenses, forecasts, reports
+    const subResource = parts[1]; // For reports/:type
 
     // Parse common query parameters
     const period = url.searchParams.get('period') || 'month';

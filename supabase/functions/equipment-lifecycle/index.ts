@@ -2,6 +2,7 @@
 // Handles equipment lifecycle state machine operations
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 // Valid lifecycle stages
 const LIFECYCLE_STAGES = {
@@ -103,7 +104,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -124,7 +125,10 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /equipment-lifecycle, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'equipment-lifecycle');
 
     // Path patterns:
     // /equipment-lifecycle/stages
@@ -133,8 +137,8 @@ export default async function handler(req: Request) {
     // /equipment-lifecycle/transitions/history
     // /equipment-lifecycle/upcoming
 
-    const firstPart = pathParts[1]; // After 'equipment-lifecycle'
-    const secondPart = pathParts[2];
+    const firstPart = parts[0]; // After 'equipment-lifecycle'
+    const secondPart = parts[1];
 
     // GET /equipment-lifecycle/stages - Get all lifecycle stages
     if (req.method === 'GET' && firstPart === 'stages') {

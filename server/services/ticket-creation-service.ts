@@ -85,7 +85,9 @@ export class TicketCreationService {
     let customer = await db.query.businessRecords.findFirst({
       where: and(
         eq(businessRecords.tenantId, this.tenantId),
-        eq(businessRecords.email, ticketData.customerEmail),
+        // No `email` column on business_records — matching the primary contact, which
+        // is who raises a service ticket (billingContactEmail is the finance pair).
+        eq(businessRecords.primaryContactEmail, ticketData.customerEmail),
       ),
     });
 
@@ -402,7 +404,7 @@ export class TicketCreationService {
         .where(
           and(
             eq(serviceTickets.tenantId, this.tenantId),
-            eq(serviceTickets.technicianId, technicianId),
+            eq(serviceTickets.assignedTechnicianId, technicianId),
             sql`status IN ('open', 'in_progress', 'pending')`,
           ),
         );
@@ -496,7 +498,7 @@ export class TicketCreationService {
         .where(
           and(
             eq(serviceTickets.tenantId, this.tenantId),
-            eq(serviceTickets.technicianId, technicianId),
+            eq(serviceTickets.assignedTechnicianId, technicianId),
             eq(serviceTickets.customerId, customerId),
             eq(serviceTickets.status, 'completed'),
           ),

@@ -170,6 +170,27 @@ await serve(
       functionName = 'account-receivable';
     }
 
+    // AIEmployeeDashboard calls /api/ai-employees (+ /analytics/overview, /tasks)
+    // but the directory is the singular ai-employee, so every one of those calls
+    // 404'd in production. AUDIT-015 wired that page to this prefix and its own
+    // notes flagged exactly this risk ("the frontend calls the PLURAL
+    // /api/ai-employees while the edge dir is the SINGULAR ai-employee — verify
+    // the prod prefix resolves"); this is that verification, and it did not.
+    // Surfaced by `npm run check:routes` as a missing-edge route.
+    //
+    // NOT the accounts-payable shape above — this needs stripSegments = 0, like
+    // the leases family below. The ai-employee handler's OWN url layout is
+    // /ai-employee/ai-employees/... : it reads `firstSegment = pathParts[0]` and
+    // compares it to 'ai-employees', so the plural segment is its RESOURCE
+    // discriminator, not just a prefix. Stripping it (the default) would hand the
+    // handler /analytics/overview and pathParts[0] would be 'analytics' — every
+    // route would still miss. Keeping segment 0 hands it
+    // /ai-employees/analytics/overview, which is what it expects.
+    if (functionName === 'ai-employees') {
+      functionName = 'ai-employee';
+      stripSegments = 0;
+    }
+
     // EDGE-005f: three frontend prefixes whose dir name differs from the URL.
     //  - /api/deployment/{readiness,metrics} live in the deployment-readiness fn.
     //  - /api/integration-hub/dashboard lives in the integrations fn.

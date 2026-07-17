@@ -512,8 +512,18 @@ class PermissionComputationService {
 /**
  * Enhanced user context middleware - builds full RBAC context
  * Must be used before any permission-checking middleware
+ *
+ * Declared as a RequestHandler with the narrowing asserted ONCE here (the same idiom
+ * the permission-checking factories below use). Previously it was exported with its
+ * narrowed `req: AuthenticatedRequest` signature, which Express can never accept
+ * under strictFunctionTypes — a RequestHandler must take any Request, and a function
+ * demanding a narrower parameter is not assignable to it. Because this middleware is
+ * passed to app.use()/router.use() all over the server, that one declaration was
+ * emitting a TS2769 at EVERY registration site: 56 of them, the single largest
+ * repeated cause in the tree. Asserting here fixes them all at once, and is honest —
+ * this function is what ATTACHES req.user, so it genuinely accepts a bare Request.
  */
-export const enhanceUserContext = async (
+export const enhanceUserContext: RequestHandler = (async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
@@ -636,7 +646,7 @@ export const enhanceUserContext = async (
     log.error('Enhanced RBAC context error:', error);
     res.status(500).json({ error: 'Failed to build user context' });
   }
-};
+}) as unknown as RequestHandler;
 
 /**
  * Require specific permission(s) - user needs ANY of the permissions

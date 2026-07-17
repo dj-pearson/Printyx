@@ -2,6 +2,7 @@
 // Provides root admin system management endpoints
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 
 export default async function handler(req: Request) {
@@ -12,7 +13,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -48,9 +49,12 @@ export default async function handler(req: Request) {
     }
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1]; // /root-admin/overview, /root-admin/tenants, etc.
-    const resourceId = pathParts[2];
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /root-admin, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'root-admin');
+    const endpoint = parts[0]; // /root-admin/overview, /root-admin/tenants, etc.
+    const resourceId = parts[1];
 
     // GET /root-admin/overview - System overview
     if (req.method === 'GET' && endpoint === 'overview') {
@@ -174,12 +178,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /root-admin/tenants/:id/suspend - Suspend tenant
-    if (
-      req.method === 'POST' &&
-      endpoint === 'tenants' &&
-      resourceId &&
-      pathParts[3] === 'suspend'
-    ) {
+    if (req.method === 'POST' && endpoint === 'tenants' && resourceId && parts[2] === 'suspend') {
       const { error } = await admin
         .from('tenants')
         .update({ status: 'suspended', updated_at: new Date().toISOString() })
@@ -193,12 +192,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /root-admin/tenants/:id/activate - Activate tenant
-    if (
-      req.method === 'POST' &&
-      endpoint === 'tenants' &&
-      resourceId &&
-      pathParts[3] === 'activate'
-    ) {
+    if (req.method === 'POST' && endpoint === 'tenants' && resourceId && parts[2] === 'activate') {
       const { error } = await admin
         .from('tenants')
         .update({ status: 'active', updated_at: new Date().toISOString() })

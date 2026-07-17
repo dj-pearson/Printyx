@@ -3,7 +3,45 @@
  * Unified authentication utilities that support both Supabase JWT and session-based auth.
  */
 
-import { Request } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+
+/**
+ * Adapt a handler that declares a NARROWED request type (AuthenticatedRequest,
+ * TenantRequest, ImportRequest, ...) into a plain Express RequestHandler.
+ *
+ * WHY THIS EXISTS (QUALITY-002). Writing the narrowed type directly on the handler:
+ *
+ *   app.get('/x', mw, async (req: AuthenticatedRequest, res) => { ... })
+ *                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ *
+ * does not typecheck. Express's RequestHandler accepts a plain `Request`, and under
+ * `strictFunctionTypes` a function that demands a NARROWER parameter is not
+ * assignable to one that must accept any Request — the middleware chain is not
+ * obliged to have attached `user`/`tenantId` by the time the handler runs. tsc
+ * reports it as an unhelpful "TS2769: No overload matches this call" on the route
+ * registration, which is the single largest error cluster in the server tree.
+ *
+ * The narrowing is a real claim about runtime state (the auth middleware DID run),
+ * it just isn't one the type system can see. So assert it ONCE, here, at the Express
+ * boundary — the same idiom the RBAC middleware factories and chainMiddleware in
+ * middleware/rbac-route-helper.ts already use — instead of scattering `as any` or
+ * `(req as AuthenticatedRequest)` casts through every handler body.
+ *
+ * The request type is inferred from the handler's own annotation, so callers pass no
+ * explicit generic:
+ *
+ *   app.get('/x', mw, authed(async (req: AuthenticatedRequest, res) => { ... }))
+ *
+ * NOTE this is an assertion, not a check: it does not verify the middleware ran. It
+ * moves an existing unchecked assumption to one auditable place; it does not create
+ * one. Handlers must still resolve identity via getUserId/getTenantId, which return
+ * undefined rather than fabricating a value.
+ */
+export function authed<Req extends Request = Request>(
+  handler: (req: Req, res: Response, next: NextFunction) => unknown,
+): RequestHandler {
+  return handler as unknown as RequestHandler;
+}
 
 /**
  * Get the authenticated user's ID from the request.

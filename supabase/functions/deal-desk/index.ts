@@ -2,6 +2,7 @@
 // Handles approval workflows, discount management, and pricing governance
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -11,7 +12,8 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    // ': undefined' not ': null' — auth.getUser takes string | undefined (CLAUDE.md).
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -37,12 +39,26 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // Path structure: /deal-desk/[resource]/[id]/[action]
-    // pathParts[0] = 'deal-desk'
-    const resource = pathParts[1]; // 'requests', 'rules', 'analytics'
-    const resourceId = pathParts[2];
-    const action = pathParts[3]; // 'decision', 'comments'
+
+    // EVERY route in this function 404'd in production before this — identical bug to
+    // the one fixed in supabase/functions/seo/index.ts (EDGE-002e).
+    //
+    // It read the resource from pathParts[1] on the assumption that pathParts[0] was
+    // 'deal-desk', i.e. that the /deal-desk prefix survived. It does not: the Coolify
+    // dispatcher (server.ts) strips the function-name segment before invoking the
+    // handler (stripSegments = 1), so /deal-desk/requests arrived here as /requests,
+    // pathParts[1] was undefined, and every `resource === '...'` guard was false.
+    //
+    // Invisible locally because '/api/deal-desk' is not in crmProxies: dev serves it
+    // from Express and never reaches this function. The frontend calls five of these
+    // paths (/dashboard, /my-approvals, /pending, /requests, /requests/:id).
+    //
+    // normalizePath strips an OPTIONAL leading /deal-desk, so it resolves identically
+    // whether the prefix is present or already stripped.
+    const { parts } = normalizePath(url.pathname, 'deal-desk');
+    const resource = parts[0]; // 'requests', 'rules', 'analytics'
+    const resourceId = parts[1];
+    const action = parts[2]; // 'decision', 'comments'
 
     // ==================== Approval Rules ====================
 

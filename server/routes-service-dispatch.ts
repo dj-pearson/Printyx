@@ -19,7 +19,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 const router = Router();
 
 // NOTE: Do NOT apply enhanceUserContext globally here because this router is registered
@@ -58,7 +58,7 @@ router.get(
   requirePermission([PERMISSIONS.SERVICE.DISPATCH.VIEW, PERMISSIONS.SERVICE.DISPATCH.SCHEDULE]),
   cacheControl(120),
   etag(),
-  async (req: AuthenticatedRequest, res) => {
+  authed(async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const autoAssign = req.query.autoAssign !== 'false'; // Allow override via query param
@@ -77,7 +77,7 @@ router.get(
           customerId: serviceTickets.customerId,
           status: serviceTickets.status,
           createdAt: serviceTickets.createdAt,
-          technicianId: serviceTickets.technicianId,
+          technicianId: serviceTickets.assignedTechnicianId,
         })
         .from(serviceTickets)
         .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'pending')))
@@ -93,7 +93,7 @@ router.get(
       // Get assigned ticket counts for capacity planning
       const assignedTicketsQuery = await db
         .select({
-          technicianId: serviceTickets.technicianId,
+          technicianId: serviceTickets.assignedTechnicianId,
           count: count(serviceTickets.id),
         })
         .from(serviceTickets)
@@ -103,7 +103,7 @@ router.get(
             inArray(serviceTickets.status, ['assigned', 'in_progress']),
           ),
         )
-        .groupBy(serviceTickets.technicianId);
+        .groupBy(serviceTickets.assignedTechnicianId);
 
       const assignedCounts = assignedTicketsQuery.reduce(
         (acc, item) => {
@@ -256,7 +256,7 @@ router.get(
       log.error('Error fetching dispatch recommendations:', error);
       res.status(500).json({ message: 'Failed to fetch dispatch recommendations' });
     }
-  },
+  }),
 );
 
 // Get technician availability (converted to use real database data)
@@ -290,7 +290,7 @@ router.get(
       // Get assigned tickets count for each technician
       const assignedTicketsQuery = await db
         .select({
-          technicianId: serviceTickets.technicianId,
+          technicianId: serviceTickets.assignedTechnicianId,
           count: count(serviceTickets.id),
         })
         .from(serviceTickets)
@@ -300,7 +300,7 @@ router.get(
             inArray(serviceTickets.status, ['assigned', 'in_progress']),
           ),
         )
-        .groupBy(serviceTickets.technicianId);
+        .groupBy(serviceTickets.assignedTechnicianId);
 
       const assignedTicketsCounts = assignedTicketsQuery.reduce(
         (acc, item) => {
@@ -373,14 +373,14 @@ router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any
     // Get technician performance data
     const techPerformance = await db
       .select({
-        technicianId: serviceTickets.technicianId,
+        technicianId: serviceTickets.assignedTechnicianId,
         name: technicians.name,
         completedTickets: count(serviceTickets.id),
       })
       .from(serviceTickets)
-      .leftJoin(technicians, eq(serviceTickets.technicianId, technicians.id))
+      .leftJoin(technicians, eq(serviceTickets.assignedTechnicianId, technicians.id))
       .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'completed')))
-      .groupBy(serviceTickets.technicianId, technicians.name);
+      .groupBy(serviceTickets.assignedTechnicianId, technicians.name);
 
     // Calculate summary statistics
     const totalTickets = ticketStats.reduce((sum, stat) => sum + stat.count, 0);

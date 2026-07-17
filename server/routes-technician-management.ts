@@ -23,7 +23,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId, authed } from './utils/auth-helpers';
 // Validation schema for update operations.
 // Accepts both the real column names and the friendlier aliases the client
 // sends (name -> first/last, specialties -> skills, location ->
@@ -71,7 +71,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/technicians',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW, PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -149,7 +149,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         log.error('Error fetching technicians:', error);
         res.status(500).json({ error: 'Failed to fetch technicians' });
       }
-    },
+    }),
   );
 
   // Get technician by ID - requires service technician view permission
@@ -157,7 +157,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/technicians/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const technicianId = req.params.id;
@@ -207,7 +207,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         log.error('Error fetching technician:', error);
         res.status(500).json({ error: 'Failed to fetch technician' });
       }
-    },
+    }),
   );
 
   // Create new technician - requires service technician manage permission
@@ -215,7 +215,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/technicians',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -258,7 +258,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to create technician' });
         }
       }
-    },
+    }),
   );
 
   // Update technician - requires service technician manage permission
@@ -266,7 +266,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/technicians/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const technicianId = req.params.id;
@@ -326,7 +326,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
           res.status(500).json({ error: 'Failed to update technician' });
         }
       }
-    },
+    }),
   );
 
   // Delete technician - requires service technician manage permission
@@ -334,7 +334,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/technicians/:id',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const technicianId = req.params.id;
@@ -372,7 +372,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         log.error('Error deleting technician:', error);
         res.status(500).json({ error: 'Failed to delete technician' });
       }
-    },
+    }),
   );
 
   // Get technician availability - requires service technician view permission
@@ -380,7 +380,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/availability',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
         const { date } = req.query;
@@ -428,7 +428,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         log.error('Error fetching technician availability:', error);
         res.status(500).json({ error: 'Failed to fetch technician availability' });
       }
-    },
+    }),
   );
 
   // Get technician performance metrics - requires service technician view permission
@@ -436,7 +436,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/performance',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -479,7 +479,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         log.error('Error fetching technician performance:', error);
         res.status(500).json({ error: 'Failed to fetch technician performance' });
       }
-    },
+    }),
   );
 
   // Get technician dashboard statistics - requires service technician view permission
@@ -487,7 +487,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     '/api/technician-management/dashboard',
     isAuthenticated,
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
-    async (req: AuthenticatedRequest, res) => {
+    authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
@@ -539,6 +539,6 @@ export function registerTechnicianManagementRoutes(app: Express) {
         log.error('Error fetching technician dashboard:', error);
         res.status(500).json({ error: 'Failed to fetch technician dashboard' });
       }
-    },
+    }),
   );
 }

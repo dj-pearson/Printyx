@@ -41,24 +41,34 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // Get all active equipment with health analysis
+    // make/model/location/status were named here but are NOT columns on equipment —
+    // the real ones are manufacturer/modelNumber/locationDescription/equipmentStatus.
+    // The query threw ("column does not exist"), so this endpoint 500'd outright.
+    //
+    // meterReading is DELIBERATELY still broken: equipment.currentMeterReading does
+    // not exist and has no equivalent column (equipment carries only meterType).
+    // Readings live in meter_readings, so this needs a JOIN to the latest row per
+    // equipment plus a decision on WHICH meter counts (bwMeterReading, colorMeterReading
+    // or their sum). Inventing that number would silently skew every prediction on this
+    // page — worse than the error. Same call as in routes-proactive-maintenance.ts.
     const equipmentList = await db
       .select({
         equipmentId: equipment.id,
         serialNumber: equipment.serialNumber,
-        make: equipment.make,
-        model: equipment.model,
+        make: equipment.manufacturer,
+        model: equipment.modelNumber,
         customerId: equipment.customerId,
         customerName: businessRecords.companyName,
-        location: equipment.location,
+        location: equipment.locationDescription,
         meterReading: equipment.currentMeterReading,
         lastServiceDate: equipment.lastServiceDate,
         nextServiceDue: equipment.nextServiceDueDate,
         installDate: equipment.installDate,
-        status: equipment.status,
+        status: equipment.equipmentStatus,
       })
       .from(equipment)
       .leftJoin(businessRecords, eq(equipment.customerId, businessRecords.id))
-      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')))
+      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.equipmentStatus, 'active')))
       .orderBy(equipment.nextServiceDueDate)
       // AUDIT-007: this base query was UNBOUNDED, and each row it returns costs a
       // metrics query PLUS an AI analyzeDeviceHealth() call in the loop below — so
@@ -266,9 +276,9 @@ router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any
         id: equipment.id,
         customerId: equipment.customerId,
         serialNumber: equipment.serialNumber,
-        make: equipment.make,
-        model: equipment.model,
-        location: equipment.location,
+        make: equipment.manufacturer,
+        model: equipment.modelNumber,
+        location: equipment.locationDescription,
       })
       .from(equipment)
       .where(and(eq(equipment.id, equipmentId), eq(equipment.tenantId, tenantId)))
@@ -432,7 +442,7 @@ router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) =
     const activeEquipment = await db
       .select({ serialNumber: equipment.serialNumber })
       .from(equipment)
-      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')));
+      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.equipmentStatus, 'active')));
 
     const serialNumbers = activeEquipment
       .map((e) => e.serialNumber)
@@ -505,11 +515,11 @@ router.get('/api/predictive-maintenance/parts-forecast', async (req: any, res) =
       .select({
         id: equipment.id,
         serialNumber: equipment.serialNumber,
-        make: equipment.make,
-        model: equipment.model,
+        make: equipment.manufacturer,
+        model: equipment.modelNumber,
       })
       .from(equipment)
-      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')));
+      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.equipmentStatus, 'active')));
 
     const partsForecast: Record<
       string,

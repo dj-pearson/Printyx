@@ -300,11 +300,19 @@ router.get('/validate/service-completion/:ticketId', async (req, res) => {
         id: serviceTickets.id,
         ticketNumber: serviceTickets.ticketNumber,
         status: serviceTickets.status,
-        technicianId: serviceTickets.technicianId,
+        technicianId: serviceTickets.assignedTechnicianId,
         resolutionNotes: serviceTickets.resolutionNotes,
-        workPerformed: serviceTickets.workPerformed,
+        // workPerformed and timeSpent are NOT columns on service_tickets; the real
+        // ones are workOrderNotes (text) and laborHours (decimal). The response keys
+        // are kept so this endpoint's contract is unchanged.
+        //
+        // laborHours is safe to stand in for timeSpent HERE specifically because the
+        // only consumer (below) tests it for > 0 — i.e. "was any labour recorded" —
+        // so the hours-vs-minutes unit question does not affect the validation. Any
+        // future consumer that DISPLAYS this value must treat it as HOURS.
+        workPerformed: serviceTickets.workOrderNotes,
         partsUsed: serviceTickets.partsUsed,
-        timeSpent: serviceTickets.timeSpent,
+        timeSpent: serviceTickets.laborHours,
         customerSignature: serviceTickets.customerSignature,
       })
       .from(serviceTickets)

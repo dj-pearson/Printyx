@@ -347,7 +347,11 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     id: 'billing',
     title: 'Billing Hub',
     icon: DollarSign,
-    path: '/billing-hub',
+    // /billing-hub is NOT a registered route and no BillingHub page exists — this
+    // top-level sidebar item landed on the 404 page. Every other section sets
+    // `path` to its FIRST CHILD's path (e.g. Products & Equipment → /product-hub),
+    // and this section's first child is literally titled 'Billing Hub' → '/billing'.
+    path: '/billing',
     matchPatterns: [
       '/billing*',
       '/invoices*',

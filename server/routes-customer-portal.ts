@@ -55,7 +55,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 // Auth helpers for Supabase JWT + session fallback
-import { getUserId, getTenantId, isAuthenticated as checkAuth } from './utils/auth-helpers';
+import { getUserId, getTenantId, isAuthenticated as checkAuth, authed } from './utils/auth-helpers';
 
 // Customer portal specific auth middleware
 const requireCustomerPortalAuth = async (req: any, res: any, next: any) => {
@@ -113,7 +113,7 @@ router.get(
   '/dashboard/stats',
 
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
-  async (req: AuthenticatedRequest, res) => {
+  authed(async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
@@ -166,7 +166,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  },
+  }),
 );
 
 // Get all portal users for a tenant

@@ -247,7 +247,9 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     id: 'billing',
     title: 'Billing Hub',
     icon: DollarSign,
-    path: '/billing-hub',
+    // Same drift as the desktop sidebar: /billing-hub is not a route. This
+    // section's first child, 'Billing Hub', points at the registered /billing.
+    path: '/billing',
     matchPatterns: [
       '/billing*',
       '/invoices*',

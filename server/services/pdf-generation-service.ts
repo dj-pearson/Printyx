@@ -617,8 +617,11 @@ class PDFGenerationService {
         invoiceNumber: invoices.invoiceNumber,
         customerId: invoices.customerId,
         customerName: businessRecords.companyName,
-        customerEmail: businessRecords.email,
-        customerPhone: businessRecords.phone,
+        // email/phone are not columns on business_records. This is the INVOICE PDF, so
+        // the BILLING contact is the right pair — consistent with the same decision in
+        // billing-engine-service.sendInvoice(). Response keys unchanged.
+        customerEmail: businessRecords.billingContactEmail,
+        customerPhone: businessRecords.billingContactPhone,
         contractId: invoices.contractId,
         issuedAt: invoices.issuedAt,
         invoiceDate: invoices.invoiceDate,

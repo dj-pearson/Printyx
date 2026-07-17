@@ -195,7 +195,10 @@ export class UsageTrackingService {
     const [recordsCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(businessRecords)
-      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.isDeleted, false)));
+      // isDeleted is not a column on business_records; the real flag is isActive, with
+      // the opposite polarity — so `isDeleted = false` becomes `isActive = true`. The
+      // old predicate named a column that does not exist, so this query threw.
+      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.isActive, true)));
 
     // Get storage usage
     // TODO: Implement actual storage calculation from documents, attachments, etc.

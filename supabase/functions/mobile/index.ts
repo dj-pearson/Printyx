@@ -2,6 +2,7 @@
 // Handles mobile sessions, photos, and offline sync for field technicians
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -11,7 +12,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -37,10 +38,13 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /mobile, making this correct whether or not the prefix survived.
+    const { parts } = normalizePath(url.pathname, 'mobile');
     // Path structure: /mobile/sessions, /mobile/sessions/:id, /mobile/photos, /mobile/photos/:id, /mobile/sync
-    const resource = pathParts[1]; // sessions, photos, sync
-    const resourceId = pathParts[2]; // :id or :ticketId for photos
+    const resource = parts[0]; // sessions, photos, sync
+    const resourceId = parts[1]; // :id or :ticketId for photos
 
     // ========================================
     // SESSIONS ENDPOINTS
