@@ -120,6 +120,8 @@ Leads and customers share `business_records`. Status field determines state. Lea
 4. `npm run db:migrate` (acquires `__migration_lock`, auto-expires after 5min)
 5. Commit schema + migration file together
 
+**Journal integrity (SUPA-005):** drizzle's migrator only applies migrations listed in `drizzle/migrations/meta/_journal.json`. A `*.sql` file with no journal entry is silently NEVER applied → schema drift. `npm run check:migrations` (CI guard) fails when any migration file is unjournaled, two files share a 4-digit prefix, or journal `idx` is non-contiguous. Always add migrations via `db:generate` (which updates the journal) — never hand-drop a `.sql` into `drizzle/migrations/`.
+
 `db:push` is dev-only. For an existing DB without migrations: generate baseline, then `npm run db:migrate:baseline` (marks applied without executing).
 
 ### Backups

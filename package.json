@@ -19,6 +19,7 @@
     "check:routes": "node scripts/check-route-ownership.mjs",
     "check:nav": "node scripts/check-nav-targets.mjs",
     "check:edge-paths": "node scripts/check-edge-path-normalization.mjs",
+    "check:migrations": "node scripts/check-migration-journal.mjs",
     "check:datadumps": "node scripts/check-no-data-dumps.mjs",
     "check:rootsql": "node scripts/check-no-root-sql.mjs",
     "check:types": "node scripts/check-types.mjs",
