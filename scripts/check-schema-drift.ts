@@ -1,0 +1,460 @@
+#!/usr/bin/env tsx
+/**
+ * Schema Drift Checker (SUPA-006)
+ *
+ * Compares the Drizzle schema (shared/drizzle-schema.ts — the same entry point
+ * drizzle-kit uses) against what is ACTUALLY in the live database, and reports
+ * every disagreement.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * This database was built by `db:push` + hand-applied SQL; the migration history
+ * was never the source of truth. Nothing ever compared the two, so drift stayed
+ * invisible until a migration happened to touch it and failed. Three real
+ * examples found the hard way, all in the 8 tables migration 0029 touches:
+ *
+ *   - invoices.external_customer_id  — declared in schema, ABSENT live (42703)
+ *   - permission_cache               — declared in schema, table ABSENT live (42P01)
+ *   - audit_logs                     — live table is a DIFFERENT SHAPE entirely
+ *                                      (table_name/record_id vs resource/resource_id,
+ *                                      and missing severity/category/session_id/...)
+ *
+ * 0029 touches 8 of ~498 tables. This script exists to find the rest BEFORE they
+ * surface as a mid-migration error at 2am.
+ *
+ * `scripts/database-schema-reporter.ts` reports what is live but never compares it
+ * to the Drizzle schema. This is that missing half.
+ *
+ * MODES
+ * -----
+ * DATABASE_URL has never worked against the Supavisor pooler on :5433 ("Tenant or
+ * user not found" — the stack has no POOLER_TENANT_ID, so NO username can
+ * authenticate). Until that is fixed, the offline path is the only one that runs:
+ *
+ *   --live-sql        Print a small read-only query. Run it in the Supabase SQL
+ *                     editor and export the result as CSV.
+ *   --compare <csv>   Diff that CSV against the Drizzle schema and report. No
+ *                     credentials needed.
+ *   (default)         Connect via DATABASE_URL and report. For CI, once a working
+ *                     connection exists.
+ *   --emit-sql        Self-contained drift query with the expected schema baked in.
+ *                     Correct, but ~700KB — too large for the SQL editor. Kept for
+ *                     piping to psql; prefer --live-sql + --compare by hand.
+ *
+ * Exit codes: 0 = no drift, 1 = drift found, 2 = could not run.
+ */
+
+import 'dotenv/config';
+import { is } from 'drizzle-orm';
+import { PgTable, getTableConfig } from 'drizzle-orm/pg-core';
+import * as schema from '../shared/drizzle-schema';
+
+type ExpectedColumn = { column: string; sqlType: string; notNull: boolean };
+type ExpectedTable = { table: string; columns: ExpectedColumn[] };
+
+/** Walk every pgTable drizzle-kit can see and record its declared shape. */
+function collectExpected(): ExpectedTable[] {
+  const out: ExpectedTable[] = [];
+  const seen = new Set<string>();
+
+  for (const value of Object.values(schema)) {
+    if (!is(value, PgTable)) continue;
+    const cfg = getTableConfig(value as PgTable);
+
+    // drizzle-schema.ts re-exports across ~37 files; the same table can surface
+    // under more than one binding. Dedupe on the SQL name, not the JS export.
+    if (seen.has(cfg.name)) continue;
+    seen.add(cfg.name);
+
+    out.push({
+      table: cfg.name,
+      columns: cfg.columns.map((c) => ({
+        column: c.name,
+        sqlType: c.getSQLType(),
+        notNull: c.notNull,
+      })),
+    });
+  }
+  return out.sort((a, b) => a.table.localeCompare(b.table));
+}
+
+const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
+
+/**
+ * Normalize a type name for comparison. Postgres reports types under different
+ * spellings than drizzle emits (varchar vs character varying, etc). We compare
+ * loosely on purpose: a varchar(255) vs varchar(64) difference is real but far
+ * less urgent than a missing column, and flagging every length nuance would bury
+ * the signal. Length/precision is deliberately dropped.
+ */
+function normalizeType(t: string): string {
+  const base = t
+    .toLowerCase()
+    .replace(/\(.*\)/, '')
+    .replace(/\[\]$/, ' array')
+    .trim();
+  const alias: Record<string, string> = {
+    'character varying': 'varchar',
+    character: 'char',
+    'timestamp without time zone': 'timestamp',
+    'timestamp with time zone': 'timestamptz',
+    'time without time zone': 'time',
+    'double precision': 'float8',
+    integer: 'int4',
+    int: 'int4',
+    serial: 'int4',
+    bigint: 'int8',
+    bigserial: 'int8',
+    smallint: 'int2',
+    boolean: 'bool',
+    real: 'float4',
+    numeric: 'decimal',
+    'user-defined': 'enum',
+  };
+  return alias[base] ?? base;
+}
+
+/** Build one self-contained SQL statement that returns only drift rows. */
+function emitSql(expected: ExpectedTable[]): string {
+  const rows: string[] = [];
+  for (const t of expected) {
+    for (const c of t.columns) {
+      rows.push(`(${q(t.table)},${q(c.column)},${q(normalizeType(c.sqlType))},${c.notNull})`);
+    }
+  }
+
+  return `-- Schema drift: Drizzle (shared/drizzle-schema.ts) vs live database.
+-- Generated by scripts/check-schema-drift.ts --emit-sql. Read-only; safe to run.
+-- ${expected.length} tables / ${rows.length} columns expected.
+-- Empty result = no drift. Rows are ordered worst-first.
+with expected(tbl, col, sqltype, notnull) as (values
+${rows.join(',\n')}
+),
+live as (
+  select table_name::text tbl, column_name::text col,
+         case data_type
+           when 'character varying' then 'varchar'
+           when 'character' then 'char'
+           when 'timestamp without time zone' then 'timestamp'
+           when 'timestamp with time zone' then 'timestamptz'
+           when 'time without time zone' then 'time'
+           when 'double precision' then 'float8'
+           when 'integer' then 'int4'
+           when 'bigint' then 'int8'
+           when 'smallint' then 'int2'
+           when 'boolean' then 'bool'
+           when 'real' then 'float4'
+           when 'numeric' then 'decimal'
+           when 'USER-DEFINED' then 'enum'
+           else data_type
+         end::text sqltype,
+         (is_nullable = 'NO') notnull
+  from information_schema.columns
+  where table_schema = 'public'
+),
+live_tables as (select distinct tbl from live),
+expected_tables as (select distinct tbl from expected)
+-- 1) whole tables the schema declares that do not exist live
+select 'MISSING_TABLE' as issue, e.tbl, null::text as col,
+       'declared in Drizzle, absent in database' as detail
+  from expected_tables e
+ where not exists (select 1 from live_tables l where l.tbl = e.tbl)
+union all
+-- 2) columns missing from a table that DOES exist (the 42703 class)
+select 'MISSING_COLUMN', e.tbl, e.col,
+       'expected ' || e.sqltype || case when e.notnull then ' NOT NULL' else '' end
+  from expected e
+  join live_tables lt on lt.tbl = e.tbl
+ where not exists (select 1 from live l where l.tbl = e.tbl and l.col = e.col)
+union all
+-- 3) type mismatches (the audit_logs class, when names happen to line up)
+select 'TYPE_MISMATCH', e.tbl, e.col,
+       'expected ' || e.sqltype || ', live ' || l.sqltype
+  from expected e
+  join live l on l.tbl = e.tbl and l.col = e.col
+ where e.sqltype <> l.sqltype
+union all
+-- 4) schema says NOT NULL, database allows null (silent data-integrity gap)
+select 'NULLABILITY', e.tbl, e.col, 'expected NOT NULL, live nullable'
+  from expected e
+  join live l on l.tbl = e.tbl and l.col = e.col
+ where e.notnull and not l.notnull
+union all
+-- 5) tables live but undeclared: raw-SQL/legacy drift (e.g. billing_configurations).
+--    Informational — NOT something to drop. db:push would try to DROP these.
+select 'UNDECLARED_TABLE', l.tbl, null,
+       'exists in database, not in Drizzle schema'
+  from live_tables l
+ where not exists (select 1 from expected_tables e where e.tbl = l.tbl)
+   and l.tbl not like 'pg_%'
+   and l.tbl not in ('__drizzle_migrations', '__migration_lock')
+order by 1, 2, 3;`;
+}
+
+async function runDirect(expected: ExpectedTable[]): Promise<number> {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    console.error('DATABASE_URL is not set. Use --emit-sql to run this in the SQL editor instead.');
+    return 2;
+  }
+
+  const pg = (await import('pg')).default;
+  const client = new pg.Client({
+    connectionString: url,
+    ssl: false,
+    connectionTimeoutMillis: 10_000,
+  });
+  try {
+    await client.connect();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`Could not connect: ${msg}`);
+    if (/tenant or user not found/i.test(msg)) {
+      console.error(
+        '\nThat is Supavisor rejecting the username, not a bad password. The pooler on :5433\n' +
+          'has no POOLER_TENANT_ID configured, so no username can authenticate. Either connect\n' +
+          'to Postgres directly (bypassing the pooler) or use --emit-sql in the SQL editor.',
+      );
+    }
+    return 2;
+  }
+
+  try {
+    const { rows } = await client.query(emitSql(expected).replace(/^--.*$/gm, ''));
+    if (rows.length === 0) {
+      console.log(`No drift. ${expected.length} tables match the Drizzle schema.`);
+      return 0;
+    }
+    const byIssue = new Map<string, typeof rows>();
+    for (const r of rows) {
+      if (!byIssue.has(r.issue)) byIssue.set(r.issue, []);
+      byIssue.get(r.issue)!.push(r);
+    }
+    for (const [issue, rs] of byIssue) {
+      console.log(`\n${issue} (${rs.length})`);
+      for (const r of rs) {
+        console.log(`  ${r.tbl}${r.col ? '.' + r.col : ''} — ${r.detail}`);
+      }
+    }
+    // UNDECLARED_TABLE is informational (legacy raw-SQL tables are expected here),
+    // so it alone must not fail a build.
+    const actionable = rows.filter((r) => r.issue !== 'UNDECLARED_TABLE').length;
+    console.log(`\n${rows.length} findings, ${actionable} actionable.`);
+    return actionable > 0 ? 1 : 0;
+  } finally {
+    await client.end();
+  }
+}
+
+/** The small query to run in the SQL editor; export its result as CSV. */
+const LIVE_SQL = `-- Live schema dump for scripts/check-schema-drift.ts --compare.
+-- Read-only. Run in the Supabase SQL editor, then export the result as CSV.
+select table_name, column_name, data_type, is_nullable
+  from information_schema.columns
+ where table_schema = 'public'
+ order by table_name, column_name;`;
+
+type LiveColumn = { tbl: string; col: string; sqlType: string; notNull: boolean };
+
+/**
+ * Minimal CSV reader: handles quoted fields and embedded commas/quotes, which is
+ * all Supabase's export emits. Accepts the four columns of LIVE_SQL in any order.
+ */
+function parseCsv(text: string): LiveColumn[] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else quoted = false;
+      } else field += c;
+      continue;
+    }
+    if (c === '"') quoted = true;
+    else if (c === ',') {
+      row.push(field);
+      field = '';
+    } else if (c === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else if (c !== '\r') field += c;
+  }
+  if (field.length || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  const nonEmpty = rows.filter((r) => r.some((f) => f.trim() !== ''));
+  if (nonEmpty.length === 0) throw new Error('CSV is empty.');
+
+  const header = nonEmpty[0].map((h) => h.trim().toLowerCase().replace(/^"|"$/g, ''));
+  const idx = (name: string) => {
+    const i = header.indexOf(name);
+    if (i === -1)
+      throw new Error(`CSV is missing the "${name}" column. Found: ${header.join(', ')}`);
+    return i;
+  };
+  const [t, c, d, n] = [
+    idx('table_name'),
+    idx('column_name'),
+    idx('data_type'),
+    idx('is_nullable'),
+  ];
+
+  return nonEmpty.slice(1).map((r) => ({
+    tbl: r[t].trim(),
+    col: r[c].trim(),
+    sqlType: normalizeType(r[d].trim()),
+    notNull: r[n].trim().toUpperCase() === 'NO',
+  }));
+}
+
+function report(findings: { issue: string; tbl: string; col?: string; detail: string }[]): number {
+  if (findings.length === 0) {
+    console.log('No drift. The database matches the Drizzle schema.');
+    return 0;
+  }
+  const order = [
+    'MISSING_TABLE',
+    'MISSING_COLUMN',
+    'TYPE_MISMATCH',
+    'NULLABILITY',
+    'UNDECLARED_TABLE',
+  ];
+  for (const issue of order) {
+    const rs = findings.filter((f) => f.issue === issue);
+    if (!rs.length) continue;
+    console.log(`\n${issue} (${rs.length})`);
+    for (const r of rs.slice(0, 60)) {
+      console.log(`  ${r.tbl}${r.col ? '.' + r.col : ''} — ${r.detail}`);
+    }
+    if (rs.length > 60) console.log(`  ... and ${rs.length - 60} more`);
+  }
+  // UNDECLARED_TABLE is informational: legacy raw-SQL tables (billing_configurations
+  // et al) legitimately live outside the Drizzle schema. It must not fail a build on
+  // its own — but it IS what db:push would try to DROP, so it stays visible.
+  const actionable = findings.filter((f) => f.issue !== 'UNDECLARED_TABLE').length;
+  console.log(`\n${findings.length} findings, ${actionable} actionable.`);
+  return actionable > 0 ? 1 : 0;
+}
+
+function diff(expected: ExpectedTable[], live: LiveColumn[]) {
+  const findings: { issue: string; tbl: string; col?: string; detail: string }[] = [];
+  const liveByTable = new Map<string, Map<string, LiveColumn>>();
+  for (const l of live) {
+    if (!liveByTable.has(l.tbl)) liveByTable.set(l.tbl, new Map());
+    liveByTable.get(l.tbl)!.set(l.col, l);
+  }
+
+  for (const e of expected) {
+    const lt = liveByTable.get(e.table);
+    if (!lt) {
+      findings.push({
+        issue: 'MISSING_TABLE',
+        tbl: e.table,
+        detail: 'declared in Drizzle, absent in database',
+      });
+      continue;
+    }
+    for (const c of e.columns) {
+      const lc = lt.get(c.column);
+      if (!lc) {
+        findings.push({
+          issue: 'MISSING_COLUMN',
+          tbl: e.table,
+          col: c.column,
+          detail: `expected ${normalizeType(c.sqlType)}${c.notNull ? ' NOT NULL' : ''}`,
+        });
+        continue;
+      }
+      const want = normalizeType(c.sqlType);
+      if (want !== lc.sqlType) {
+        findings.push({
+          issue: 'TYPE_MISMATCH',
+          tbl: e.table,
+          col: c.column,
+          detail: `expected ${want}, live ${lc.sqlType}`,
+        });
+      }
+      if (c.notNull && !lc.notNull) {
+        findings.push({
+          issue: 'NULLABILITY',
+          tbl: e.table,
+          col: c.column,
+          detail: 'expected NOT NULL, live nullable',
+        });
+      }
+    }
+  }
+
+  const declared = new Set(expected.map((e) => e.table));
+  for (const tbl of liveByTable.keys()) {
+    if (declared.has(tbl) || tbl.startsWith('pg_')) continue;
+    if (tbl === '__drizzle_migrations' || tbl === '__migration_lock') continue;
+    findings.push({
+      issue: 'UNDECLARED_TABLE',
+      tbl,
+      detail: 'exists in database, not in Drizzle schema',
+    });
+  }
+  return findings;
+}
+
+async function main() {
+  const expected = collectExpected();
+  if (expected.length === 0) {
+    console.error(
+      'Found no pgTable exports in shared/drizzle-schema.ts — that is almost certainly a bug here.',
+    );
+    process.exit(2);
+  }
+
+  const argv = process.argv.slice(2);
+
+  if (argv.includes('--live-sql')) {
+    console.log(LIVE_SQL);
+    process.exit(0);
+  }
+
+  const ci = argv.indexOf('--compare');
+  if (ci !== -1) {
+    const file = argv[ci + 1];
+    if (!file) {
+      console.error('--compare needs a path to the CSV exported from --live-sql.');
+      process.exit(2);
+    }
+    const { readFileSync } = await import('node:fs');
+    let live: LiveColumn[];
+    try {
+      live = parseCsv(readFileSync(file, 'utf8'));
+    } catch (e) {
+      console.error(`Could not read ${file}: ${e instanceof Error ? e.message : String(e)}`);
+      process.exit(2);
+    }
+    console.log(
+      `Comparing ${expected.length} Drizzle tables (${expected.reduce((n, t) => n + t.columns.length, 0)} columns) ` +
+        `against ${new Set(live.map((l) => l.tbl)).size} live tables (${live.length} columns).`,
+    );
+    process.exit(report(diff(expected, live)));
+  }
+
+  if (argv.includes('--emit-sql')) {
+    console.log(emitSql(expected));
+    process.exit(0);
+  }
+  process.exit(await runDirect(expected));
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(2);
+});

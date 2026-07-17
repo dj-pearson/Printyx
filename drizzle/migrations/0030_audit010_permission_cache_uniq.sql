@@ -17,6 +17,35 @@
 -- 0009 while migrations run past 0028; see the AUDIT-009 notes). Journalled as idx 13 so
 -- `npm run db:migrate` actually applies it.
 
+-- DRIFT REPAIR: permission_cache does not exist in the live database (the DELETE below
+-- raised 42P01 undefined_table). It is declared in server/enhanced-rbac-schema.ts (re-
+-- exported via shared/schema.ts) and created by 0000, but 0000 has never executed here —
+-- it is a from-scratch baseline whose 498 CREATE TABLEs carry no IF NOT EXISTS, so it
+-- aborts on the first already-existing table and rolls back whole. Nothing else creates
+-- this table: server/init-rbac-tables.ts has ZERO callers, and its DDL is invalid
+-- Postgres anyway (inline `INDEX(...)` in CREATE TABLE is MySQL syntax) for a table of a
+-- DIFFERENT shape (cache_key/permission_code/result). Do not use it as a reference.
+--
+-- DDL below is copied verbatim from 0000 (line 5619) so the two agree exactly.
+CREATE TABLE IF NOT EXISTS "permission_cache" (
+	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" varchar NOT NULL,
+	"organizational_context" varchar NOT NULL,
+	"effective_permissions" jsonb NOT NULL,
+	"permission_hash" varchar(64) NOT NULL,
+	"computed_at" timestamp DEFAULT now(),
+	"expires_at" timestamp NOT NULL,
+	"cache_version" integer DEFAULT 1,
+	"computation_time" integer,
+	"cache_hits" integer DEFAULT 0,
+	"tenant_id" varchar NOT NULL
+);--> statement-breakpoint
+
+-- The two non-unique indexes 0000 pairs with this table (line 12968-12969). The
+-- user_context one is what the header below refers to as "pre-existing".
+CREATE INDEX IF NOT EXISTS "idx_permission_cache_user_context" ON "permission_cache" USING btree ("user_id","organizational_context");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "idx_permission_cache_expires" ON "permission_cache" USING btree ("expires_at");--> statement-breakpoint
+
 DELETE FROM "permission_cache";--> statement-breakpoint
 
 -- The upsert in setCachedPermissions targets exactly this triple. ON CONFLICT requires
