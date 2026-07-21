@@ -63,14 +63,31 @@ export interface APMInstance {
 let Sentry: typeof import('@sentry/node') | null = null;
 let SentryProfiler: typeof import('@sentry/profiling-node') | null = null;
 
+// Committed default Sentry DSN for the Printyx platform. A Sentry DSN is a
+// public identifier (the frontend DSN is shipped in the browser bundle by
+// design), so it is safe to commit. An explicit SENTRY_DSN env var always
+// overrides this. The baked-in default only applies in production so that local
+// dev and CI runs don't report to the shared project unless SENTRY_DSN is set.
+export const DEFAULT_SENTRY_DSN =
+  'https://dcc5602397f3cdc991f4c4aabed199b4@o4510398791352320.ingest.us.sentry.io/4511770291273728';
+
+// Resolve the effective DSN: explicit env var wins everywhere; otherwise fall
+// back to the platform default only in production.
+export function resolveSentryDsn(): string | undefined {
+  return (
+    process.env.SENTRY_DSN ||
+    (process.env.NODE_ENV === 'production' ? DEFAULT_SENTRY_DSN : undefined)
+  );
+}
+
 // Build configuration from environment
 function buildConfig(): APMConfig {
-  const provider =
-    (process.env.APM_PROVIDER as APMProvider) || (process.env.SENTRY_DSN ? 'sentry' : 'none');
+  const dsn = resolveSentryDsn();
+  const provider = (process.env.APM_PROVIDER as APMProvider) || (dsn ? 'sentry' : 'none');
 
   return {
     provider,
-    dsn: process.env.SENTRY_DSN,
+    dsn,
     environment: process.env.NODE_ENV || 'development',
     release: process.env.APP_VERSION || process.env.npm_package_version,
     debug: process.env.APM_DEBUG === 'true',

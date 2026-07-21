@@ -128,7 +128,12 @@ export async function initMonitoring(config: MonitoringConfig = {}): Promise<voi
   }
 
   const {
-    enableAPM = !!process.env.SENTRY_DSN || !!process.env.APM_PROVIDER,
+    // Enable APM when a Sentry DSN or provider is explicitly configured, or in
+    // production where apm.ts falls back to the committed platform default DSN
+    // (resolveSentryDsn) — this guarantees error/perf routing platform-wide.
+    enableAPM = !!process.env.SENTRY_DSN ||
+      !!process.env.APM_PROVIDER ||
+      process.env.NODE_ENV === 'production',
     enableLogAggregation = !!process.env.LOG_TRANSPORT,
   } = config;
 

@@ -11,8 +11,15 @@ import { initializePWA } from '@/lib/pwa';
 import { configErrors } from '@/lib/config';
 import ConfigErrorScreen from '@/components/ConfigErrorScreen';
 
-// Initialize Sentry for frontend error tracking
-const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
+// Initialize Sentry for frontend error tracking.
+// The Printyx Sentry DSN is a public identifier (it ships in this browser
+// bundle by design), so it is safe to commit as a default. An explicit
+// VITE_SENTRY_DSN always overrides it; the baked-in default only applies in
+// production builds so local dev doesn't report to the shared project.
+const DEFAULT_SENTRY_DSN =
+  'https://dcc5602397f3cdc991f4c4aabed199b4@o4510398791352320.ingest.us.sentry.io/4511770291273728';
+const SENTRY_DSN =
+  import.meta.env.VITE_SENTRY_DSN || (import.meta.env.PROD ? DEFAULT_SENTRY_DSN : undefined);
 if (SENTRY_DSN) {
   Sentry.init({
     dsn: SENTRY_DSN,
