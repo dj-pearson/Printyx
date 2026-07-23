@@ -22,17 +22,21 @@ import { useRouteAnnouncer } from '@/hooks/useRouteAnnouncer';
 import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 import { SkipNavigation } from '@/components/accessibility/SkipNavigation';
 
-// Critical auth pages - keep eager for fast initial load
+// Critical auth pages - keep eager for fast initial load.
+// Login is the primary unauthenticated entry; NotFound is the universal
+// route-fallback. Everything else here is lazy (PA-029) so it stays out of the
+// main entry chunk like the other 259 routes — these render inside the same
+// Suspense boundaries as the already-lazy Homepage/landing pages.
 import NotFound from '@/pages/not-found';
 import Login from '@/pages/Login';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
-import Signup from '@/pages/Signup';
-import VerifyEmail from '@/pages/VerifyEmail';
-import AuthCallback from '@/pages/AuthCallback';
-import EndUserLicenseAgreement from '@/pages/legal/EndUserLicenseAgreement';
-import PrivacyPolicy from '@/pages/legal/PrivacyPolicy';
-import TermsAndConditions from '@/pages/legal/TermsAndConditions';
+const ForgotPassword = React.lazy(() => import('@/pages/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('@/pages/ResetPassword'));
+const Signup = React.lazy(() => import('@/pages/Signup'));
+const VerifyEmail = React.lazy(() => import('@/pages/VerifyEmail'));
+const AuthCallback = React.lazy(() => import('@/pages/AuthCallback'));
+const EndUserLicenseAgreement = React.lazy(() => import('@/pages/legal/EndUserLicenseAgreement'));
+const PrivacyPolicy = React.lazy(() => import('@/pages/legal/PrivacyPolicy'));
+const TermsAndConditions = React.lazy(() => import('@/pages/legal/TermsAndConditions'));
 
 // Accessibility Statement - lazy load
 const AccessibilityStatement = React.lazy(() => import('@/pages/legal/AccessibilityStatement'));
