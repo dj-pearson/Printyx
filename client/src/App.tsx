@@ -221,6 +221,8 @@ const QuoteView = React.lazy(() => import('@/pages/QuoteView'));
 const ProposalBuilder = React.lazy(() => import('@/pages/ProposalBuilder'));
 const DealDeskDashboard = React.lazy(() => import('@/pages/DealDeskDashboard'));
 const ApprovalRequestDetail = React.lazy(() => import('@/pages/ApprovalRequestDetail'));
+const DealDetail = React.lazy(() => import('@/pages/DealDetail'));
+const BusinessRecordDetail = React.lazy(() => import('@/pages/BusinessRecordDetail'));
 const ApprovalRulesConfiguration = React.lazy(() => import('@/pages/ApprovalRulesConfiguration'));
 const PipelineConfiguration = React.lazy(() => import('@/pages/PipelineConfiguration'));
 const PreventiveMaintenanceScheduling = React.lazy(
@@ -633,9 +635,11 @@ function Router() {
                 <Route path="/customers/:slug" component={CustomerDetail} />
                 <Route path="/crm" component={CustomersPage} />
                 <Route path="/business-records" component={CustomersPage} />
+                <Route path="/business-records/:id" component={BusinessRecordDetail} />
                 <Route path="/leads-management" component={LeadsPage} />
                 <Route path="/contacts" component={Contacts} />
                 <Route path="/deals" component={CrmDealsPage} />
+                <Route path="/deals/:id" component={DealDetail} />
                 <Route path="/opportunities" component={CrmDealsPage} />
                 <Route path="/deals-management" component={CrmDealsPage} />
                 {/* Outreach Hub */}
