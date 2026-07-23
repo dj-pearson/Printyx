@@ -612,9 +612,10 @@ export async function getPoliciesDueForExecution(): Promise<DataRetentionPolicy[
 /**
  * Run scheduled retention jobs
  */
-export async function runScheduledRetention(): Promise<{
+export async function runScheduledRetention(dryRun: boolean = true): Promise<{
   policiesChecked: number;
   jobsCreated: number;
+  dryRun: boolean;
   errors: string[];
 }> {
   const policies = await getPoliciesDueForExecution();
@@ -623,7 +624,10 @@ export async function runScheduledRetention(): Promise<{
 
   for (const policy of policies) {
     try {
-      await executePurge(policy.id, policy.tenantId, undefined, 'scheduled');
+      // dryRun (default) only identifies/records candidate rows without
+      // deleting. Destructive purge stays gated until the archive-before-purge
+      // path is completed and the operator explicitly opts in.
+      await executePurge(policy.id, policy.tenantId, undefined, 'scheduled', dryRun);
       jobsCreated++;
     } catch (error: any) {
       errors.push(`Policy ${policy.id}: ${error.message}`);
@@ -633,6 +637,7 @@ export async function runScheduledRetention(): Promise<{
   return {
     policiesChecked: policies.length,
     jobsCreated,
+    dryRun,
     errors,
   };
 }
