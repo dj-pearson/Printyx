@@ -119,7 +119,12 @@ router.post('/categories', requireAdmin, async (req: Request, res: Response) => 
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
 
-    const data = insertKnowledgeCategorySchema.parse(req.body);
+    // PA-035: tenantId + createdBy are NOT NULL and injected at .values() below,
+    // so they must be omitted from the parse (the client never sends them —
+    // requiring them here would 500 every create).
+    const data = insertKnowledgeCategorySchema
+      .omit({ tenantId: true, createdBy: true })
+      .parse(req.body);
 
     const [category] = await db
       .insert(knowledgeCategories)
@@ -392,7 +397,10 @@ router.post('/articles', requireAdmin, async (req: Request, res: Response) => {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
 
-    const data = insertKnowledgeArticleSchema.parse(req.body);
+    // PA-035: tenantId + createdBy are NOT NULL and injected at .values() below.
+    const data = insertKnowledgeArticleSchema
+      .omit({ tenantId: true, createdBy: true })
+      .parse(req.body);
 
     // Generate plain text content from content JSON
     const plainTextContent =
@@ -692,7 +700,8 @@ router.post('/articles/:id/feedback', async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = getUserId(req) || null;
 
-    const data = insertArticleFeedbackSchema.parse(req.body);
+    // PA-035: tenantId is NOT NULL and injected at .values() below.
+    const data = insertArticleFeedbackSchema.omit({ tenantId: true }).parse(req.body);
 
     const [feedback] = await db
       .insert(articleFeedback)

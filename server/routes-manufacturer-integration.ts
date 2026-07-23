@@ -47,7 +47,11 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
-      const validatedData = insertManufacturerIntegrationSchema.parse(req.body);
+      // PA-035: tenantId is NOT NULL, so inject it before parse (the client never
+      // sends it — parsing req.body alone would 500 every create). Injecting
+      // (rather than .omit) keeps validatedData's type aligned with the
+      // createIntegration() parameter.
+      const validatedData = insertManufacturerIntegrationSchema.parse({ ...req.body, tenantId });
 
       const integration = await manufacturerIntegrationService.createIntegration(
         tenantId,

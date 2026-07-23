@@ -23,7 +23,10 @@ const router = express.Router();
 // Create warehouse kitting operation
 router.post('/warehouse-kitting-operations', async (req, res) => {
   try {
-    const validatedData = insertWarehouseKittingOperationSchema.parse(req.body);
+    // PA-035: tenantId is NOT NULL and injected at .values() below.
+    const validatedData = insertWarehouseKittingOperationSchema
+      .omit({ tenantId: true })
+      .parse(req.body);
     const tenantId = req.headers['x-tenant-id'] as string;
 
     const [operation] = await db

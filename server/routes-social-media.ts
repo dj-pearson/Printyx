@@ -260,7 +260,11 @@ router.put('/api/social-media/posts/:id', isAuthenticated, async (req: any, res)
       return res.status(401).json({ message: 'Tenant ID required' });
     }
 
-    const updateData = insertSocialMediaPostSchema.parse(req.body);
+    // PA-035: this is an UPDATE — validating req.body against the full insert
+    // schema wrongly requires NOT NULL columns (incl. server-injected tenantId)
+    // the client isn't updating, 500-ing every partial update. .partial() makes
+    // all fields optional, which is correct for a PUT/PATCH.
+    const updateData = insertSocialMediaPostSchema.partial().parse(req.body);
 
     const [updatedPost] = await db
       .update(socialMediaPosts)
@@ -406,7 +410,9 @@ router.put('/api/social-media/cron-jobs/:id', isAuthenticated, async (req: any, 
       return res.status(401).json({ message: 'Tenant ID required' });
     }
 
-    const updateData = insertSocialMediaCronJobSchema.parse(req.body);
+    // PA-035: UPDATE path — .partial() so a partial update isn't rejected for
+    // missing NOT NULL / server-injected columns it isn't changing.
+    const updateData = insertSocialMediaCronJobSchema.partial().parse(req.body);
 
     const [updatedCronJob] = await db
       .update(socialMediaCronJobs)
