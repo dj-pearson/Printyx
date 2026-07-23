@@ -249,8 +249,11 @@ export class GdprDataExportService {
         data.user = await db.query.users.findFirst({
           where: and(eq(users.tenantId, tenantId), eq(users.id, subjectId)),
         });
-        // Sanitize sensitive fields
+        // Sanitize sensitive fields. NOTE: the real credential column is
+        // `passwordHash` (password_hash); the older `password`/`hashedPassword`
+        // deletes were no-ops and leaked the bcrypt hash into the export.
         if (data.user) {
+          delete data.user.passwordHash;
           delete data.user.password;
           delete data.user.hashedPassword;
         }

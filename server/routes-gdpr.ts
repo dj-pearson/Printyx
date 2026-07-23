@@ -10,6 +10,7 @@ import { createModuleLogger } from './lib/logger';
 import { requireAuth } from './replitAuth';
 import { getUserId, getTenantId, isPlatformAdmin } from './utils/auth-helpers';
 import { gdprDataExportService } from './services/gdpr-data-export-service';
+import { gdprErasureService } from './services/gdpr-erasure-service';
 import { consentManagementService } from './services/consent-management-service';
 import { logAuditEvent } from './security-compliance';
 import { db } from './db';
@@ -266,12 +267,41 @@ export function registerGdprRoutes(app: Express) {
           })
           .where(eq(gdprRequests.id, requestId));
 
-        // Execute the deletion
-        // In a production system, this would call specific data purge routines
-        // for each affected system and data category. For now, we mark it as completed
-        // and log the action comprehensively.
+        // Execute the deletion — anonymize the subject's personal data in place
+        // across the canonical tables (see gdpr-erasure-service for the Art. 17(3)
+        // retention rationale). Failures leave the request as in_progress so it can
+        // be retried, rather than falsely reporting completion.
         const dataCategories = (deletionRequest.dataCategories as string[]) || [];
         const affectedSystems = (deletionRequest.affectedSystems as string[]) || [];
+
+        let erasure;
+        try {
+          erasure = await gdprErasureService.executeErasure(tenantId, {
+            // gdpr_requests has no subject_type column — let the service detect it.
+            subjectType: 'auto',
+            subjectId: deletionRequest.subjectId,
+            subjectEmail: deletionRequest.subjectEmail,
+            dataCategories,
+          });
+        } catch (erasureError) {
+          log.error(`Erasure execution failed for request ${requestId}:`, erasureError);
+          await db
+            .update(gdprRequests)
+            .set({
+              status: 'in_progress',
+              processingNotes: `Erasure attempt failed: ${erasureError instanceof Error ? erasureError.message : 'Unknown error'}. Request left in_progress for retry.`,
+              updatedAt: new Date(),
+            })
+            .where(eq(gdprRequests.id, requestId));
+          return res.status(500).json({
+            message: 'Data erasure failed; request left in progress for retry.',
+            error: erasureError instanceof Error ? erasureError.message : 'Unknown error',
+          });
+        }
+
+        const erasureSummary = Object.entries(erasure.anonymized)
+          .map(([table, count]) => `${table}=${count}`)
+          .join(', ');
 
         // Mark as completed
         await db
@@ -279,7 +309,7 @@ export function registerGdprRoutes(app: Express) {
           .set({
             status: 'completed',
             completionDate: new Date(),
-            processingNotes: `Data deletion executed by admin ${requestingUserId}. Categories: ${dataCategories.join(', ')}. Systems: ${affectedSystems.join(', ')}.`,
+            processingNotes: `Data erasure executed by admin ${requestingUserId}. Rows anonymized: ${erasureSummary || 'none'} (total ${erasure.totalRows}). Categories: ${dataCategories.join(', ')}. Systems: ${affectedSystems.join(', ')}. ${erasure.notes.join(' ')}`,
             updatedAt: new Date(),
           })
           .where(eq(gdprRequests.id, requestId));
@@ -296,6 +326,8 @@ export function registerGdprRoutes(app: Express) {
             subjectEmail: deletionRequest.subjectEmail,
             dataCategories,
             affectedSystems,
+            rowsAnonymized: erasure.anonymized,
+            totalRowsAnonymized: erasure.totalRows,
             executedAt: new Date().toISOString(),
           },
           ipAddress: req.ip || 'unknown',
@@ -310,13 +342,16 @@ export function registerGdprRoutes(app: Express) {
         );
 
         res.json({
-          message: 'Data deletion executed successfully',
+          message: 'Data erasure executed successfully',
           request: {
             id: requestId,
             status: 'completed',
             subjectEmail: deletionRequest.subjectEmail,
             dataCategories,
             affectedSystems,
+            rowsAnonymized: erasure.anonymized,
+            totalRowsAnonymized: erasure.totalRows,
+            notes: erasure.notes,
             completedAt: new Date().toISOString(),
             executedBy: requestingUserId,
           },
