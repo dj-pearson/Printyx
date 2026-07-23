@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from './db';
-import { eq, and, gte, lte, desc, sql, isNull, or } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, sql, isNull, or, inArray } from 'drizzle-orm';
 import { businessRecordActivities, businessRecords, deals } from '@shared/schema';
 import { leadScoreCalculations } from '@shared/lead-scoring-schema';
 import type { Request, Response } from 'express';
@@ -111,27 +111,34 @@ export function registerTodayDashboardRoutes(app: Router) {
         .orderBy(desc(leadScoreCalculations.totalScore))
         .limit(10);
 
-      // Enrich leads with business record data
-      const enrichedHotLeads = await Promise.all(
-        hotLeads.map(async (lead) => {
-          const businessRecord = lead.leadId
-            ? await db.query.businessRecords?.findFirst({
-                where: eq(businessRecords.id, lead.leadId),
-              })
-            : null;
+      // CR-027: was one businessRecords query PER hot lead (an N+1). Load every
+      // referenced business record in ONE query, then enrich in memory. Output is
+      // unchanged: a lead with no leadId, or a leadId with no matching record,
+      // still falls back exactly as the per-lead findFirst did.
+      const hotLeadIds = [
+        ...new Set(hotLeads.map((l) => l.leadId).filter((id): id is string => !!id)),
+      ];
+      const hotLeadRecords = hotLeadIds.length
+        ? ((await db.query.businessRecords?.findMany({
+            where: inArray(businessRecords.id, hotLeadIds),
+          })) ?? [])
+        : [];
+      const businessRecordById = new Map(hotLeadRecords.map((r) => [r.id, r]));
 
-          return {
-            id: lead.leadId || lead.id,
-            companyName: businessRecord?.companyName || 'Unknown',
-            contactName: businessRecord?.primaryContactName,
-            estimatedValue: businessRecord?.estimatedDealValue || 0,
-            score: lead.totalScore,
-            status: businessRecord?.status || 'lead',
-            lastContact: businessRecord?.lastContactDate,
-            reason: `${lead.leadGrade || 'A'} grade lead - ${lead.qualificationStatus || 'qualified'}`,
-          };
-        }),
-      );
+      const enrichedHotLeads = hotLeads.map((lead) => {
+        const businessRecord = lead.leadId ? businessRecordById.get(lead.leadId) : null;
+
+        return {
+          id: lead.leadId || lead.id,
+          companyName: businessRecord?.companyName || 'Unknown',
+          contactName: businessRecord?.primaryContactName,
+          estimatedValue: businessRecord?.estimatedDealValue || 0,
+          score: lead.totalScore,
+          status: businessRecord?.status || 'lead',
+          lastContact: businessRecord?.lastContactDate,
+          reason: `${lead.leadGrade || 'A'} grade lead - ${lead.qualificationStatus || 'qualified'}`,
+        };
+      });
 
       // AUDIT-007: this loaded EVERY open deal for the tenant and then filtered the
       // stale ones (>7 days) in JS before keeping 5 — so the work grew with the whole
