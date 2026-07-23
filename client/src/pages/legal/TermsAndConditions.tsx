@@ -190,7 +190,17 @@ export default function TermsAndConditions() {
                     <p className="text-gray-700 leading-relaxed">
                       We will process Customer Data solely as necessary to provide our Services and
                       as directed by you. We implement appropriate technical and organizational
-                      measures to protect your data.
+                      measures to protect your data. Where we process personal data on your behalf,
+                      our{' '}
+                      <a href="/dpa" className="text-blue-600 underline">
+                        Data Processing Agreement
+                      </a>{' '}
+                      applies and is incorporated into these Terms by reference. The third parties
+                      that support the Services are listed on our{' '}
+                      <a href="/subprocessors" className="text-blue-600 underline">
+                        Subprocessors
+                      </a>{' '}
+                      page.
                     </p>
                   </div>
                   <div>

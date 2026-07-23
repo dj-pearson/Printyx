@@ -41,6 +41,9 @@ const TermsAndConditions = React.lazy(() => import('@/pages/legal/TermsAndCondit
 // Accessibility Statement - lazy load
 const AccessibilityStatement = React.lazy(() => import('@/pages/legal/AccessibilityStatement'));
 const DoNotSell = React.lazy(() => import('@/pages/legal/DoNotSell'));
+const CookiePolicy = React.lazy(() => import('@/pages/legal/CookiePolicy'));
+const Subprocessors = React.lazy(() => import('@/pages/legal/Subprocessors'));
+const DataProcessingAgreement = React.lazy(() => import('@/pages/legal/DataProcessingAgreement'));
 const Unauthorized = React.lazy(() => import('@/pages/Unauthorized'));
 
 // Marketing pages - lazy load
@@ -532,6 +535,9 @@ function Router() {
           <Route path="/terms" component={TermsAndConditions} />
           <Route path="/accessibility" component={AccessibilityStatement} />
           <Route path="/do-not-sell" component={DoNotSell} />
+          <Route path="/cookies" component={CookiePolicy} />
+          <Route path="/subprocessors" component={Subprocessors} />
+          <Route path="/dpa" component={DataProcessingAgreement} />
           <Route path="/" component={Homepage} />
 
           {/* Strategic landing pages */}
@@ -1205,6 +1211,9 @@ function Router() {
                 <Route path="/terms" component={TermsAndConditions} />
                 <Route path="/accessibility" component={AccessibilityStatement} />
                 <Route path="/do-not-sell" component={DoNotSell} />
+                <Route path="/cookies" component={CookiePolicy} />
+                <Route path="/subprocessors" component={Subprocessors} />
+                <Route path="/dpa" component={DataProcessingAgreement} />
                 <Route path="/getting-started" component={GettingStarted} />
                 <Route path="/setup-wizard" component={SetupWizard} />
                 <Route path="/onboarding" component={OnboardingDashboard} />
