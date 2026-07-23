@@ -44,13 +44,18 @@ export function registerDealTagRoutes(app: Express) {
 
       const schema = z.object({
         name: z.string().min(1).max(100),
-        color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default('#3B82F6'),
+        color: z
+          .string()
+          .regex(/^#[0-9A-Fa-f]{6}$/)
+          .default('#3B82F6'),
         description: z.string().optional(),
       });
 
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: 'Validation failed', errors: parsed.error.flatten().fieldErrors });
+        return res
+          .status(400)
+          .json({ message: 'Validation failed', errors: parsed.error.flatten().fieldErrors });
       }
 
       const [created] = await db
@@ -73,14 +78,19 @@ export function registerDealTagRoutes(app: Express) {
 
       const schema = z.object({
         name: z.string().min(1).max(100).optional(),
-        color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+        color: z
+          .string()
+          .regex(/^#[0-9A-Fa-f]{6}$/)
+          .optional(),
         description: z.string().optional(),
         isActive: z.boolean().optional(),
       });
 
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: 'Validation failed', errors: parsed.error.flatten().fieldErrors });
+        return res
+          .status(400)
+          .json({ message: 'Validation failed', errors: parsed.error.flatten().fieldErrors });
       }
 
       const [updated] = await db
@@ -103,10 +113,17 @@ export function registerDealTagRoutes(app: Express) {
       const tenantId = getTenantId(req);
       if (!tenantId) return res.status(401).json({ message: 'Authentication required' });
 
-      // Delete assignments first
-      await db.delete(dealTagAssignments).where(eq(dealTagAssignments.tagId, req.params.id));
-      // Delete tag
-      await db.delete(dealTags).where(and(eq(dealTags.id, req.params.id), eq(dealTags.tenantId, tenantId)));
+      // CR-024: delete the tag's assignments and the tag itself atomically, so a
+      // failure between the two writes cannot strip a tag's assignments while
+      // leaving the tag (or vice versa).
+      await db.transaction(async (tx) => {
+        // Delete assignments first
+        await tx.delete(dealTagAssignments).where(eq(dealTagAssignments.tagId, req.params.id));
+        // Delete tag
+        await tx
+          .delete(dealTags)
+          .where(and(eq(dealTags.id, req.params.id), eq(dealTags.tenantId, tenantId)));
+      });
 
       res.json({ message: 'Tag deleted' });
     } catch (error: any) {
@@ -168,23 +185,27 @@ export function registerDealTagRoutes(app: Express) {
   });
 
   // DELETE /api/deals/:dealId/tags/:tagId - Remove tag from deal
-  app.delete('/api/deals/:dealId/tags/:tagId', isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      await db
-        .delete(dealTagAssignments)
-        .where(
-          and(
-            eq(dealTagAssignments.dealId, req.params.dealId),
-            eq(dealTagAssignments.tagId, req.params.tagId),
-          ),
-        );
+  app.delete(
+    '/api/deals/:dealId/tags/:tagId',
+    isAuthenticated,
+    async (req: Request, res: Response) => {
+      try {
+        await db
+          .delete(dealTagAssignments)
+          .where(
+            and(
+              eq(dealTagAssignments.dealId, req.params.dealId),
+              eq(dealTagAssignments.tagId, req.params.tagId),
+            ),
+          );
 
-      res.json({ message: 'Tag removed' });
-    } catch (error: any) {
-      log.error('Failed to remove deal tag:', error);
-      res.status(500).json({ message: 'Failed to remove tag' });
-    }
-  });
+        res.json({ message: 'Tag removed' });
+      } catch (error: any) {
+        log.error('Failed to remove deal tag:', error);
+        res.status(500).json({ message: 'Failed to remove tag' });
+      }
+    },
+  );
 
   // ═════════════════════ Board Card Config ══════════════════════════
 
@@ -234,12 +255,16 @@ export function registerDealTagRoutes(app: Express) {
         pipelineId: z.string().optional(),
         viewId: z.string().optional(),
         applyForEveryone: z.boolean().default(false),
-        cardFields: z.array(z.object({
-          field: z.string(),
-          label: z.string(),
-          position: z.number(),
-          format: z.string().optional(),
-        })).optional(),
+        cardFields: z
+          .array(
+            z.object({
+              field: z.string(),
+              label: z.string(),
+              position: z.number(),
+              format: z.string().optional(),
+            }),
+          )
+          .optional(),
         tagDisplayEnabled: z.boolean().optional(),
         maxFieldsShown: z.number().min(1).max(10).optional(),
         cardStyle: z.enum(['compact', 'standard', 'detailed']).optional(),
@@ -247,7 +272,9 @@ export function registerDealTagRoutes(app: Express) {
 
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: 'Validation failed', errors: parsed.error.flatten().fieldErrors });
+        return res
+          .status(400)
+          .json({ message: 'Validation failed', errors: parsed.error.flatten().fieldErrors });
       }
 
       const { applyForEveryone, ...data } = parsed.data;
@@ -281,8 +308,10 @@ export function registerDealTagRoutes(app: Express) {
 
       const updateData: Record<string, any> = { updatedAt: new Date() };
       if (req.body.cardFields !== undefined) updateData.cardFields = req.body.cardFields;
-      if (req.body.tagDisplayEnabled !== undefined) updateData.tagDisplayEnabled = req.body.tagDisplayEnabled;
-      if (req.body.maxFieldsShown !== undefined) updateData.maxFieldsShown = req.body.maxFieldsShown;
+      if (req.body.tagDisplayEnabled !== undefined)
+        updateData.tagDisplayEnabled = req.body.tagDisplayEnabled;
+      if (req.body.maxFieldsShown !== undefined)
+        updateData.maxFieldsShown = req.body.maxFieldsShown;
       if (req.body.cardStyle !== undefined) updateData.cardStyle = req.body.cardStyle;
 
       const [updated] = await db

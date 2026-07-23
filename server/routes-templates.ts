@@ -147,29 +147,36 @@ export function registerTemplateRoutes(app: Express) {
         endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
       };
 
-      const [newProject] = await db.insert(projects).values(projectData).returning();
+      // CR-024: create the project and its template tasks in ONE transaction, so
+      // a failure partway through the task inserts cannot leave a project with a
+      // partial (or empty) task set. All writes go through `tx`.
+      const newProject = await db.transaction(async (tx) => {
+        const [created] = await tx.insert(projects).values(projectData).returning();
 
-      // Create tasks from template
-      if (template.taskTemplate && Array.isArray(template.taskTemplate)) {
-        const taskPromises = template.taskTemplate.map((taskTemplate: any, index: number) => {
-          const taskData = {
-            title: taskTemplate.title,
-            description: taskTemplate.description,
-            priority: taskTemplate.priority,
-            estimatedHours: taskTemplate.estimatedHours,
-            projectId: newProject.id,
-            tenantId,
-            createdBy: userId,
-            status: 'todo' as const,
-            // If dependencies are specified, we'll need to resolve them after all tasks are created
-            dependencies: taskTemplate.dependencies || [],
-          };
+        // Create tasks from template
+        if (template.taskTemplate && Array.isArray(template.taskTemplate)) {
+          const taskPromises = template.taskTemplate.map((taskTemplate: any) => {
+            const taskData = {
+              title: taskTemplate.title,
+              description: taskTemplate.description,
+              priority: taskTemplate.priority,
+              estimatedHours: taskTemplate.estimatedHours,
+              projectId: created.id,
+              tenantId,
+              createdBy: userId,
+              status: 'todo' as const,
+              // If dependencies are specified, we'll resolve them after all tasks are created
+              dependencies: taskTemplate.dependencies || [],
+            };
 
-          return db.insert(tasks).values(taskData).returning();
-        });
+            return tx.insert(tasks).values(taskData).returning();
+          });
 
-        await Promise.all(taskPromises);
-      }
+          await Promise.all(taskPromises);
+        }
+
+        return created;
+      });
 
       res.status(201).json({
         project: newProject,
