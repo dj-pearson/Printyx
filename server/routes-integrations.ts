@@ -83,49 +83,68 @@ export function registerIntegrationRoutes(app: Express) {
     }
   });
 
-  // Get deployment readiness metrics (placeholder for now)
-  app.get('/api/deployment-readiness', isAuthenticated, async (req: any, res, next) => {
-    try {
-      // Calculate deployment readiness based on actual system state
-      const mockMetrics = {
-        totalChecks: 25,
-        completedChecks: 18,
-        criticalIssues: 2,
-        warnings: 5,
-        lastUpdated: new Date().toISOString(),
-        overallStatus: 'in_progress' as const,
-      };
+  // PA-046: the /api/deployment-readiness mock was removed. It returned static,
+  // invented metrics (25 checks / 2 critical, etc.) and had NO frontend caller —
+  // DeploymentReadiness.tsx reads the real deployment-readiness edge function via
+  // /api/deployment/readiness and /api/deployment/metrics (EDGE-005f), in every
+  // environment. Emitting fabricated numbers here read as real and served no one.
 
-      res.json(mockMetrics);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Get integration webhooks (placeholder for now)
-  app.get('/api/webhooks', async (req: any, res, next) => {
+  // GET /api/webhooks — the webhook endpoints this system actually exposes, with
+  // honest status. (PA-046: was a hardcoded sample with INVENTED success rates of
+  // 98.5% / 99.2%.) `status` reflects whether the provider's signing secret is
+  // configured; there is no webhook delivery-stats tracking yet, so lastTriggered
+  // and successRate are explicitly null (the UI shows "Not tracked") rather than
+  // fabricated. Each url points at the real POST handler under /api/webhooks/:provider.
+  app.get('/api/webhooks', isAuthenticated, async (req: any, res, next) => {
     try {
-      // Return sample webhook data based on integrations
-      const webhooks = [
+      const base = process.env.PUBLIC_API_BASE_URL || '';
+      const providers = [
         {
-          id: 'webhook-001',
-          integration: 'Google Calendar',
-          url: 'https://printyx.app/api/webhooks/google-calendar',
-          events: ['calendar.event.created', 'calendar.event.updated'],
-          status: 'active',
-          lastDelivery: new Date(),
-          successRate: 98.5,
+          id: 'stripe',
+          name: 'Stripe Payments',
+          events: ['payment.succeeded', 'payment.failed'],
+          configured: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
         },
         {
-          id: 'webhook-002',
-          integration: 'Stripe Payments',
-          url: 'https://printyx.app/api/webhooks/stripe',
-          events: ['payment.succeeded', 'payment.failed'],
-          status: 'active',
-          lastDelivery: new Date(),
-          successRate: 99.2,
+          id: 'salesforce',
+          name: 'Salesforce',
+          events: ['account.updated', 'contact.updated', 'opportunity.updated'],
+          configured: Boolean(process.env.SALESFORCE_WEBHOOK_SECRET),
+        },
+        {
+          id: 'microsoft-calendar',
+          name: 'Microsoft Calendar',
+          events: ['calendar.event.created', 'calendar.event.updated'],
+          configured: Boolean(process.env.MICROSOFT_WEBHOOK_SECRET),
+        },
+        {
+          id: 'quickbooks',
+          name: 'QuickBooks',
+          events: ['customer.updated', 'invoice.updated', 'payment.updated'],
+          configured: Boolean(process.env.QUICKBOOKS_WEBHOOK_TOKEN),
+        },
+        {
+          id: 'google-calendar',
+          name: 'Google Calendar',
+          events: ['calendar.event.created', 'calendar.event.updated'],
+          configured: Boolean(process.env.GOOGLE_WEBHOOK_TOKEN),
         },
       ];
+
+      const webhooks = providers.map((p) => ({
+        id: `webhook-${p.id}`,
+        name: p.name,
+        integration: p.name,
+        url: `${base}/api/webhooks/${p.id}`,
+        events: p.events,
+        status: p.configured ? 'active' : 'inactive',
+        // No delivery-stats tracking exists yet — do not fabricate.
+        lastTriggered: null,
+        lastDelivery: null,
+        successRate: null,
+        deliveryStatsTracked: false,
+      }));
+
       res.json(webhooks);
     } catch (error) {
       next(error);
