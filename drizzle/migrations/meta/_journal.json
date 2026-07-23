@@ -120,6 +120,13 @@
       "when": 1784815572775,
       "tag": "0033_pa044_extension_api_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1784816357478,
+      "tag": "0034_pa045_journal_entries",
+      "breakpoints": true
     }
   ]
 }

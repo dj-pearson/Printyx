@@ -16,7 +16,7 @@ import csv from 'csv-parser';
 import { Readable } from 'stream';
 import { db } from './db';
 import { businessRecords } from '../shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth';
 import { z } from 'zod';
@@ -41,9 +41,10 @@ const upload = multer({
 });
 
 // In-memory job storage (should be moved to database in production)
-const importJobs = new Map<string, ImportJob>();
+// Exported as a test seam (PA-045 merge-path test seeds a job directly).
+export const importJobs = new Map<string, ImportJob>();
 
-interface ImportJob {
+export interface ImportJob {
   id: string;
   tenantId: string;
   userId: string;
@@ -583,8 +584,17 @@ router.post('/api/import/jobs/:jobId/execute', requireAuth, async (req: Request,
           skippedRows++;
           continue;
         } else if (duplicate.resolution === 'merge') {
-          // TODO: Implement merge logic
-          mergedRows++;
+          // PA-045: overwrite the existing record's mapped fields with this row.
+          const mergeData = mapRowData(row, job.columnMappings);
+          try {
+            if (job.entityType === 'business_records') {
+              await updateBusinessRecord(duplicate.existingRecordId, mergeData, tenantId);
+            }
+            mergedRows++;
+          } catch (error) {
+            log.error('Error merging row:', error);
+            skippedRows++;
+          }
           continue;
         }
       }
@@ -951,6 +961,22 @@ async function insertBusinessRecord(data: any, tenantId: string, userId: string)
     status: data.status || 'new',
     leadSource: data.leadSource || 'import',
   });
+}
+
+/**
+ * PA-045: merge an imported row into an existing record — overwrite the mapped
+ * fields on the existing (tenant-scoped) record rather than creating a new one.
+ * Only the mapped columns are touched; identity/audit columns are left as-is.
+ */
+async function updateBusinessRecord(
+  existingId: string,
+  data: Record<string, unknown>,
+  tenantId: string,
+) {
+  await db
+    .update(businessRecords)
+    .set({ ...data, updatedAt: new Date() })
+    .where(and(eq(businessRecords.id, existingId), eq(businessRecords.tenantId, tenantId)));
 }
 
 export default router;
