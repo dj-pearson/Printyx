@@ -9293,8 +9293,8 @@
         "Measure and record before/after query count"
       ],
       "priority": 261,
-      "passes": false,
-      "notes": "[PERFORMANCE/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[PERFORMANCE/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). | COMPLETE 2026-07-23 — the parts-availability N+1 is gone. SCOPE CORRECTION: the AC pointed at routes-service-dispatch.ts:699-730, but those lines are the BATCH endpoint (/api/dispatch/batch-check-parts), which was ALREADY de-fanned under AUDIT-007 (single distinct-part IN query). The still-live N+1 was the SINGLE-ticket POST /api/dispatch/check-parts (was ~line 591): requiredParts.map(async p => db.select().where(partNumber = p).limit(1)) — one inventory round-trip PER part. FIX: one batched db.select().where(tenantId = X AND partNumber IN (distinct parts)) + in-memory resolution. Output is byte-identical: still maps over requiredParts in order (preserving duplicates); keeps the FIRST row per part number (mirrors the old .limit(1)); a part with no inventory row stays unavailable with the same {available:false, reason:\"Part not found in inventory\", quantityAvailable:0, quantityOnOrder:0} shape; found parts keep {partNumber,name,available,quantityAvailable,quantityOnHand,quantityOnOrder,reason}. TEST (AC bullets 2+3): server/tests/unit/service-dispatch-check-parts.test.ts drives a real Express mount with a mocked db that COUNTS select calls — asserts exactly ONE query for a 3-part request (before: 3, one per part), byte-identical per-part shapes across all three branches (available / out-of-stock / not-found) incl. the \"2 part(s) unavailable\" message and canDispatch flag, and ZERO queries on the empty-parts short-circuit. 3/3 pass. BEFORE/AFTER QUERY COUNT: N parts -> N queries becomes N parts -> 1 query (independent of part count). VERIFICATION: vitest 3/3 green; tsc ratchet holds at 1083; lint ratchet holds at 12000."
     },
     {
       "id": "CR-026",
