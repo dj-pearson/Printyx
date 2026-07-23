@@ -315,6 +315,7 @@ const EnhancedOnboardingForm = React.lazy(() => import('@/pages/EnhancedOnboardi
 const ComprehensiveOnboardingForm = React.lazy(() => import('@/pages/ComprehensiveOnboardingForm'));
 const RoleManagement = React.lazy(() => import('@/pages/RoleManagement'));
 const AuditLogViewer = React.lazy(() => import('@/pages/AuditLogViewer'));
+const GdprComplianceDashboard = React.lazy(() => import('@/pages/GdprComplianceDashboard'));
 const ApiKeyManagement = React.lazy(() => import('@/pages/ApiKeyManagement'));
 const GPT5Dashboard = React.lazy(() => import('@/pages/GPT5Dashboard'));
 const DocumentBuilder = React.lazy(() => import('@/pages/DocumentBuilder'));
@@ -1170,6 +1171,9 @@ function Router() {
                 </Route>
                 <Route path="/admin/audit-logs">
                   {() => <ProtectedRoute component={AuditLogViewer} platformOnly />}
+                </Route>
+                <Route path="/gdpr">
+                  {() => <ProtectedRoute component={GdprComplianceDashboard} minLevel={6} />}
                 </Route>
                 <Route path="/erp-integration" component={ERPIntegration} />
                 <Route path="/manufacturer-integration" component={ManufacturerIntegration} />
