@@ -41,7 +41,8 @@ jobs:
         run: npm run check:datadumps
       - name: No root-level SQL (PA-033)
         run: npm run check:rootsql
-      - run: npm run lint
+      - name: ESLint problem-count ratchet (PA-048)
+        run: npm run check:lint
       - name: Route ownership ratchet (EDGE-018)
         run: npm run check:routes
       - name: Nav-target ratchet (AUDIT-014)

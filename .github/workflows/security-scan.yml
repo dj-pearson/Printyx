@@ -47,7 +47,12 @@ jobs:
       - run: npm ci
 
       - name: ESLint security rules
-        run: npx eslint . --ext .ts,.tsx --rule '{"no-eval": "error", "no-implied-eval": "error", "no-new-func": "error"}' --max-warnings 0
+        # Isolated security config (PA-048) so the --max-warnings 0 gate is not
+        # drowned by the large pre-existing style/type backlog now that .ts/.tsx
+        # are actually linted. Flags eval / implied-eval / new Function sinks in
+        # both .ts/.tsx and .js. Was a no-op before: the flat config ignored all
+        # TypeScript, so this step never inspected a single .ts file.
+        run: npx eslint . --config eslint.security.config.js --no-inline-config --max-warnings 0
 
       - name: Run security audit script
         run: npx tsx scripts/audit/security-audit.ts
