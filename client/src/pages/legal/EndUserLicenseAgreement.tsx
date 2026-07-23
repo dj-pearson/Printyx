@@ -9,7 +9,7 @@ export default function EndUserLicenseAgreement() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">End User License Agreement</h1>
           <p className="text-gray-600">Effective Date: January 1, 2025</p>
-          <p className="text-gray-600">Last Updated: January 1, 2025</p>
+          <p className="text-gray-600">Last Updated: July 23, 2026</p>
         </div>
 
         <Card>
@@ -306,9 +306,8 @@ export default function EndUserLicenseAgreement() {
                   For questions about this End User License Agreement, please contact us at:
                 </p>
                 <div className="mt-4 space-y-1">
-                  <p className="text-gray-700">Email: legal@printyx.com</p>
+                  <p className="text-gray-700">Email: legal@printyx.net</p>
                   <p className="text-gray-700">Address: Printyx LLC, Legal Department</p>
-                  <p className="text-gray-700">Phone: 1-800-PRINTYX</p>
                 </div>
               </div>
             </CardContent>

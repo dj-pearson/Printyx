@@ -13,7 +13,7 @@ export default function TermsAndConditions() {
             <h1 className="text-3xl font-bold text-gray-900">Terms and Conditions</h1>
           </div>
           <p className="text-gray-600">Effective Date: January 1, 2025</p>
-          <p className="text-gray-600">Last Updated: January 1, 2025</p>
+          <p className="text-gray-600">Last Updated: July 23, 2026</p>
         </div>
 
         <Card>
@@ -475,13 +475,10 @@ export default function TermsAndConditions() {
                 </p>
                 <div className="space-y-2">
                   <p className="text-gray-700">
-                    <strong>Email:</strong> legal@printyx.com
+                    <strong>Email:</strong> legal@printyx.net
                   </p>
                   <p className="text-gray-700">
                     <strong>Address:</strong> Printyx LLC, Legal Department
-                  </p>
-                  <p className="text-gray-700">
-                    <strong>Phone:</strong> 1-800-PRINTYX
                   </p>
                 </div>
                 <p className="text-sm text-gray-600 mt-4">

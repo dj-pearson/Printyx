@@ -71,7 +71,7 @@ const Homepage = () => {
           description:
             'AI-powered predictive intelligence platform for copier dealers. Modern architecture with predictive equipment failure detection, dynamic pricing engine, and smart service dispatch.',
           socialProfiles: ['https://linkedin.com/company/printyx', 'https://twitter.com/printyx'],
-          email: 'support@printyx.com',
+          email: 'support@printyx.net',
         }),
 
         // SoftwareApplication Schema

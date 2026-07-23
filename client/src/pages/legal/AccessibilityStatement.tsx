@@ -16,7 +16,6 @@ import {
   AlertCircle,
   HelpCircle,
   Mail,
-  Phone,
   ExternalLink,
 } from 'lucide-react';
 
@@ -385,7 +384,7 @@ export default function AccessibilityStatement() {
               encounter accessibility barriers:
             </p>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid gap-6">
               <a
                 href="mailto:accessibility@printyx.net"
                 className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors no-underline"
@@ -396,19 +395,6 @@ export default function AccessibilityStatement() {
                 <div>
                   <h3 className="font-semibold text-gray-900 dark:text-white">Email Us</h3>
                   <p className="text-sm text-primary">accessibility@printyx.net</p>
-                </div>
-              </a>
-
-              <a
-                href="tel:+18005551234"
-                className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors no-underline"
-              >
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                  <Phone className="h-6 w-6 text-green-600" aria-hidden="true" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">Call Us</h3>
-                  <p className="text-sm text-green-600">1-800-555-1234</p>
                 </div>
               </a>
             </div>
