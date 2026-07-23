@@ -6,6 +6,13 @@ import multer from 'multer';
 import path from 'path';
 import { createModuleLogger } from './lib/logger';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import {
+  gdprDataExportService,
+  DATA_CATEGORIES,
+  type DataCategory,
+} from './services/gdpr-data-export-service';
+import { gdprErasureService } from './services/gdpr-erasure-service';
+import { logAuditEvent } from './security-compliance';
 const log = createModuleLogger('routes-settings');
 
 // Configure multer for avatar uploads
@@ -234,29 +241,37 @@ export async function uploadAvatar(req: Request, res: Response) {
 // Export user data
 export async function exportUserData(req: Request, res: Response) {
   try {
-    const user = req.user as any;
-    if (!user?.id) {
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+    if (!userId || !tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Gather all user-related data
-    const userData = await storage.getUserById(user.id);
-    const userSettings = await storage.getUserSettings(user.id);
-    const userAssignments = await storage.getUserCustomerAssignments(user.id, user.tenantId);
+    // Comprehensive DSAR (GDPR Art. 20 portability): collect the subject's
+    // personal data across every category via the shared export service rather
+    // than the previous profile-only dump. Credential hashes are stripped inside
+    // the service.
+    const exportData = await gdprDataExportService.collectPersonalData(
+      tenantId,
+      'user',
+      userId,
+      Object.keys(DATA_CATEGORIES) as DataCategory[],
+      [],
+    );
 
-    const exportData = {
-      profile: {
-        id: userData?.id,
-        email: userData?.email,
-        firstName: userData?.firstName,
-        lastName: userData?.lastName,
-        profileImageUrl: userData?.profileImageUrl,
-        createdAt: userData?.createdAt,
-      },
-      settings: userSettings,
-      assignments: userAssignments,
-      exportedAt: new Date().toISOString(),
-    };
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: 'SELF_SERVICE_DATA_EXPORT',
+      resource: 'users',
+      resourceId: userId,
+      newValues: { exportedAt: new Date().toISOString() },
+      ipAddress: req.ip || 'unknown',
+      userAgent: req.get('User-Agent') || 'unknown',
+      sessionId: 'system',
+      severity: 'high',
+      category: 'data_access',
+    }).catch((e) => log.error('Audit log failed for data export:', e));
 
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', 'attachment; filename="printyx-user-data.json"');
@@ -267,24 +282,56 @@ export async function exportUserData(req: Request, res: Response) {
   }
 }
 
-// Delete user account
+// Delete user account (GDPR Art. 17 self-service erasure).
+//
+// This ANONYMIZES the account in place (clears PII, credentials and 2FA, and
+// deactivates the login) via the shared erasure service, rather than hard-
+// deleting the row. Anonymization is irreversible for the data subject while
+// preserving referential integrity and any records the controller must retain
+// for a legal obligation (Art. 17(3)(b)). It is also consistent with the
+// admin-executed erasure path.
 export async function deleteUserAccount(req: Request, res: Response) {
   try {
-    const user = req.user as any;
-    if (!user?.id) {
+    const userId = getUserId(req);
+    const tenantId = getTenantId(req);
+    if (!userId || !tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Delete user settings first (due to foreign key constraint)
-    await storage.deleteUserSettings(user.id);
+    // Remove the user's customer assignments (relationship data, not the
+    // subject's own PII) before anonymizing the account.
+    await storage.deleteUserCustomerAssignments(userId).catch((e) => {
+      log.error('Failed to remove user assignments during erasure:', e);
+    });
 
-    // Delete user assignments
-    await storage.deleteUserCustomerAssignments(user.id);
+    const erasure = await gdprErasureService.executeErasure(tenantId, {
+      subjectType: 'user',
+      subjectId: userId,
+    });
 
-    // Finally delete the user
-    await storage.deleteUser(user.id);
+    await logAuditEvent({
+      tenantId,
+      userId,
+      action: 'SELF_SERVICE_ACCOUNT_ERASURE',
+      resource: 'users',
+      resourceId: userId,
+      newValues: {
+        rowsAnonymized: erasure.anonymized,
+        totalRowsAnonymized: erasure.totalRows,
+        executedAt: new Date().toISOString(),
+      },
+      ipAddress: req.ip || 'unknown',
+      userAgent: req.get('User-Agent') || 'unknown',
+      sessionId: 'system',
+      severity: 'high',
+      category: 'data_modification',
+    }).catch((e) => log.error('Audit log failed for account erasure:', e));
 
-    res.json({ message: 'Account deleted successfully' });
+    res.json({
+      message:
+        'Your account has been deactivated and your personal information has been erased. You have been signed out.',
+      rowsAnonymized: erasure.anonymized,
+    });
   } catch (error) {
     log.error('Error deleting user account:', error);
     res.status(500).json({ message: 'Failed to delete account' });

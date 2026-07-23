@@ -296,11 +296,14 @@ export default function Settings() {
   const deleteMutation = useMutation({
     mutationFn: () => apiRequest('/api/user/delete', { method: 'DELETE' }),
     onSuccess: () => {
-      toast({ title: 'Account deleted successfully' });
-      // Redirect to login or home page
-      window.location.href = '/';
+      toast({ title: 'Your account has been erased. Signing you out…' });
+      // The account is anonymized and deactivated server-side; clear any local
+      // session and send the user to the login page.
+      localStorage.clear();
+      window.location.replace('/login');
     },
     onError: () => {
+      setIsDeleting(false);
       toast({ title: 'Failed to delete account', variant: 'destructive' });
     },
   });
@@ -1098,15 +1101,16 @@ export default function Settings() {
               <CardHeader>
                 <CardTitle className="text-red-600">Delete Account</CardTitle>
                 <CardDescription>
-                  Permanently delete your account and all associated data.
+                  Erase your personal information and deactivate your account.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <Alert className="mb-4">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    This action cannot be undone. This will permanently delete your account and
-                    remove all your data from our servers.
+                    This action cannot be undone. Your personal information will be erased, your
+                    account deactivated, and you will be signed out. Records we are legally required
+                    to keep (such as invoices) are retained in anonymized form.
                   </AlertDescription>
                 </Alert>
 
@@ -1121,8 +1125,8 @@ export default function Settings() {
                     <DialogHeader>
                       <DialogTitle>Are you absolutely sure?</DialogTitle>
                       <DialogDescription>
-                        This action cannot be undone. This will permanently delete your account and
-                        remove all your data from our servers.
+                        This action cannot be undone. Your personal information will be erased and
+                        your account deactivated and signed out.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
