@@ -267,6 +267,8 @@ const PlatformConfiguration = React.lazy(() => import('@/pages/PlatformConfigura
 
 // Platform CRM - Full tenant lifecycle management for root admins
 const PlatformCRMDashboard = React.lazy(() => import('@/pages/PlatformCRMDashboard'));
+const PlatformActivities = React.lazy(() => import('@/pages/PlatformActivities'));
+const PlatformPerformance = React.lazy(() => import('@/pages/PlatformPerformance'));
 const PlatformBusinessRecords = React.lazy(() => import('@/pages/PlatformBusinessRecords'));
 const PlatformBusinessRecordDetail = React.lazy(
   () => import('@/pages/PlatformBusinessRecordDetail'),
@@ -1002,6 +1004,12 @@ function Router() {
                 </Route>
                 <Route path="/platform-crm/dashboard">
                   {() => <AdminRouteGuard component={PlatformCRMDashboard} />}
+                </Route>
+                <Route path="/platform-crm/activities">
+                  {() => <AdminRouteGuard component={PlatformActivities} />}
+                </Route>
+                <Route path="/platform-crm/performance">
+                  {() => <AdminRouteGuard component={PlatformPerformance} />}
                 </Route>
                 <Route path="/platform-crm/business-records/:id">
                   {() => <AdminRouteGuard component={PlatformBusinessRecordDetail} />}
