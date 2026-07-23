@@ -127,6 +127,13 @@
       "when": 1784816357478,
       "tag": "0034_pa045_journal_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784817477195,
+      "tag": "0035_pa042_import_row_capture",
+      "breakpoints": true
     }
   ]
 }
