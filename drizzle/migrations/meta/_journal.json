@@ -113,6 +113,13 @@
       "when": 1784814908328,
       "tag": "0032_cr029_search_trgm_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1784815572775,
+      "tag": "0033_pa044_extension_api_keys",
+      "breakpoints": true
     }
   ]
 }
