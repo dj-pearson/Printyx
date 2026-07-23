@@ -36,7 +36,7 @@ const STEPS: OnboardingStep[] = [
     title: 'Import your data',
     description: 'Bring in your existing customers, leads, and equipment.',
     ctaLabel: 'Import data',
-    path: '/data-import',
+    path: '/import',
     icon: Upload,
   },
   {

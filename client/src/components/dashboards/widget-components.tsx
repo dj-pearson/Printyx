@@ -788,7 +788,7 @@ const ROLE_ACTIONS: Record<
     {
       label: 'Team Report',
       icon: 'BarChart3',
-      path: '/reports/sales',
+      path: '/reports',
       color: 'bg-indigo-100 text-indigo-600',
     },
     {
@@ -808,7 +808,7 @@ const ROLE_ACTIONS: Record<
     {
       label: 'Team Report',
       icon: 'BarChart3',
-      path: '/reports/sales',
+      path: '/reports',
       color: 'bg-indigo-100 text-indigo-600',
     },
     {
@@ -834,13 +834,13 @@ const ROLE_ACTIONS: Record<
     {
       label: 'My Route',
       icon: 'Calendar',
-      path: '/service-dispatch/my-route',
+      path: '/service-dispatch',
       color: 'bg-blue-100 text-blue-600',
     },
     {
       label: 'Parts Lookup',
       icon: 'Package',
-      path: '/warehouse-operations/lookup',
+      path: '/warehouse-operations',
       color: 'bg-yellow-100 text-yellow-600',
     },
     {
@@ -904,7 +904,7 @@ const ROLE_ACTIONS: Record<
     {
       label: 'Reports',
       icon: 'BarChart3',
-      path: '/reports/service',
+      path: '/reports',
       color: 'bg-indigo-100 text-indigo-600',
     },
   ],
@@ -918,7 +918,7 @@ const ROLE_ACTIONS: Record<
     {
       label: 'Aging Report',
       icon: 'BarChart3',
-      path: '/reports/finance',
+      path: '/reports',
       color: 'bg-indigo-100 text-indigo-600',
     },
     {
