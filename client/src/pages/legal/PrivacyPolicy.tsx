@@ -96,8 +96,8 @@ export default function PrivacyPolicy() {
                         data enrichment services
                       </li>
                       <li>
-                        <strong>Authentication:</strong> Profile information from Replit
-                        authentication services
+                        <strong>Authentication:</strong> Profile information from our authentication
+                        provider (Supabase) when you sign in
                       </li>
                     </ul>
                   </div>
