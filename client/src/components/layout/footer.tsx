@@ -29,8 +29,9 @@ const footerSections = [
     links: [
       { href: '/privacy', label: 'Privacy Policy' },
       { href: '/terms', label: 'Terms of Service' },
-      { href: '/security', label: 'Security' },
       { href: '/eula', label: 'EULA' },
+      { href: '/accessibility', label: 'Accessibility' },
+      { href: '/do-not-sell', label: 'Do Not Sell or Share My Personal Information' },
     ],
   },
   {
@@ -84,13 +85,7 @@ export default function Footer() {
             <span className="text-xs text-muted-foreground">v{APP_VERSION}</span>
           </div>
 
-          <nav aria-label="Privacy and accessibility" className="flex items-center gap-4">
-            <Link
-              href="/accessibility"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Accessibility
-            </Link>
+          <nav aria-label="Privacy choices" className="flex items-center gap-4">
             <button
               type="button"
               onClick={openCookieSettings}

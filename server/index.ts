@@ -271,6 +271,12 @@ app.use(inputSanitization);
 import { enforcePaginationBounds } from './middleware/pagination-bounds';
 app.use(enforcePaginationBounds);
 
+// Global Privacy Control (CCPA/CPRA): advertise support via the standard
+// discovery file and expose the Sec-GPC opt-out signal to downstream handlers.
+import { gpcSignal, gpcWellKnown } from './middleware/gpc-signal';
+app.get('/.well-known/gpc.json', gpcWellKnown);
+app.use(gpcSignal);
+
 // Audit log for root-admin actions and sensitive endpoints
 // Note: This is now primarily handled by the structured logging middleware,
 // but we keep file-based audit logging for compliance/backup purposes
