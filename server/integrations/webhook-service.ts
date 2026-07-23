@@ -38,10 +38,16 @@ export class WebhookService {
     provider: string,
     payload: any,
     headers: Record<string, string>,
+    // The EXACT request body bytes (as received). Provider HMAC signatures are
+    // computed over these raw bytes — re-serializing the parsed `payload` with
+    // JSON.stringify produces different bytes (key order, whitespace, unicode
+    // escaping) and can never match. Callers must pass req.body.toString() from
+    // an express.raw() route. (PA-018)
+    rawBody: string,
   ): Promise<WebhookProcessingResult> {
     try {
       // Verify webhook signature based on provider
-      const isValid = await this.verifyWebhookSignature(provider, payload, headers);
+      const isValid = await this.verifyWebhookSignature(provider, payload, headers, rawBody);
       if (!isValid) {
         return {
           success: false,
@@ -209,10 +215,11 @@ export class WebhookService {
     provider: string,
     payload: any,
     headers: Record<string, string>,
+    rawBody: string,
   ): Promise<boolean> {
     switch (provider) {
       case 'stripe':
-        return this.verifyStripeSignature(payload, headers['stripe-signature']);
+        return this.verifyStripeSignature(rawBody, headers['stripe-signature']);
 
       case 'salesforce': {
         // Validate Salesforce webhook using shared secret in custom header
@@ -226,11 +233,16 @@ export class WebhookService {
           log.warn('Salesforce webhook missing signature header');
           return false;
         }
-        const expectedSfSig = crypto
-          .createHmac('sha256', sfSecret)
-          .update(JSON.stringify(payload))
-          .digest('hex');
-        return crypto.timingSafeEqual(Buffer.from(sfSignature), Buffer.from(expectedSfSig));
+        // HMAC over the raw request bytes, not JSON.stringify(payload). (PA-018)
+        const expectedSfSig = crypto.createHmac('sha256', sfSecret).update(rawBody).digest('hex');
+        const sfSigBuf = Buffer.from(sfSignature);
+        const expectedSfBuf = Buffer.from(expectedSfSig);
+        // timingSafeEqual throws on length mismatch — guard so a wrong-length
+        // signature fails closed instead of raising.
+        return (
+          sfSigBuf.length === expectedSfBuf.length &&
+          crypto.timingSafeEqual(sfSigBuf, expectedSfBuf)
+        );
       }
 
       case 'microsoft-calendar': {
@@ -253,7 +265,7 @@ export class WebhookService {
         return this.verifyGoogleSignature(payload, headers);
 
       case 'quickbooks':
-        return this.verifyQuickBooksSignature(payload, headers['intuit-signature']);
+        return this.verifyQuickBooksSignature(rawBody, headers['intuit-signature']);
 
       default:
         return false;
@@ -263,7 +275,7 @@ export class WebhookService {
   /**
    * Verify Stripe webhook signature
    */
-  private static verifyStripeSignature(payload: any, signature: string): boolean {
+  private static verifyStripeSignature(rawBody: string, signature: string): boolean {
     if (!signature) return false;
 
     const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -276,10 +288,12 @@ export class WebhookService {
 
       if (!signatureHash || !timestamp) return false;
 
-      const payloadString = JSON.stringify(payload);
+      // Stripe signs `${timestamp}.${rawBody}` over the RAW request bytes.
+      // Re-serializing the parsed event with JSON.stringify would change the
+      // bytes and never match. (PA-018)
       const expectedSignature = crypto
         .createHmac('sha256', secret)
-        .update(`${timestamp}.${payloadString}`)
+        .update(`${timestamp}.${rawBody}`)
         .digest('hex');
 
       return crypto.timingSafeEqual(
@@ -308,7 +322,7 @@ export class WebhookService {
   /**
    * Verify QuickBooks webhook signature
    */
-  private static verifyQuickBooksSignature(payload: any, signature: string): boolean {
+  private static verifyQuickBooksSignature(rawBody: string, signature: string): boolean {
     if (!signature) return false;
 
     const secret = process.env.QUICKBOOKS_WEBHOOK_TOKEN;
@@ -322,12 +336,15 @@ export class WebhookService {
     }
 
     try {
+      // Intuit signs the RAW request payload bytes, not JSON.stringify(payload). (PA-018)
       const expectedSignature = crypto
         .createHmac('sha256', secret)
-        .update(JSON.stringify(payload))
+        .update(rawBody)
         .digest('base64');
 
-      return signature === expectedSignature;
+      const sigBuf = Buffer.from(signature);
+      const expectedBuf = Buffer.from(expectedSignature);
+      return sigBuf.length === expectedBuf.length && crypto.timingSafeEqual(sigBuf, expectedBuf);
     } catch (error) {
       log.error('QuickBooks signature verification error:', error);
       return false;

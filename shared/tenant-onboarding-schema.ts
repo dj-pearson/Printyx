@@ -474,6 +474,10 @@ export const dataImportValidations = pgTable('data_import_validations', {
     }>
   >(),
 
+  // Raw parsed rows captured at validation time so the execute step can insert
+  // them without the client re-sending the file (PA-042).
+  rawRows: jsonb('raw_rows').$type<Array<Record<string, unknown>>>(),
+
   // Import Execution
   importExecuted: boolean('import_executed').default(false),
   importedRows: integer('imported_rows'),

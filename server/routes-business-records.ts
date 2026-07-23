@@ -168,19 +168,22 @@ router.get(
         businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt;
       const orderFn = sortOrder === 'asc' ? asc : desc;
 
-      const records = await db
-        .select()
-        .from(businessRecords)
-        .where(and(...conditions))
-        .orderBy(orderFn(sortColumn))
-        .limit(parseInt(limit as string))
-        .offset(parseInt(offset as string));
-
-      // Get total count for pagination
-      const [{ count }] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(businessRecords)
-        .where(and(...conditions));
+      // CR-029: the page query and the total-count query hit the same filtered
+      // scan; run them CONCURRENTLY instead of back-to-back so the request waits
+      // on one round-trip, not two.
+      const [records, [{ count }]] = await Promise.all([
+        db
+          .select()
+          .from(businessRecords)
+          .where(and(...conditions))
+          .orderBy(orderFn(sortColumn))
+          .limit(parseInt(limit as string))
+          .offset(parseInt(offset as string)),
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(businessRecords)
+          .where(and(...conditions)),
+      ]);
 
       res.json({
         records,
@@ -808,19 +811,22 @@ router.get(
         businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt;
       const orderFn = sortOrder === 'asc' ? asc : desc;
 
-      const records = await db
-        .select()
-        .from(businessRecords)
-        .where(and(...conditions))
-        .orderBy(orderFn(sortColumn))
-        .limit(parseInt(limit as string))
-        .offset(parseInt(offset as string));
-
-      // Get total count for pagination
-      const [{ count }] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(businessRecords)
-        .where(and(...conditions));
+      // CR-029: the page query and the total-count query hit the same filtered
+      // scan; run them CONCURRENTLY instead of back-to-back so the request waits
+      // on one round-trip, not two.
+      const [records, [{ count }]] = await Promise.all([
+        db
+          .select()
+          .from(businessRecords)
+          .where(and(...conditions))
+          .orderBy(orderFn(sortColumn))
+          .limit(parseInt(limit as string))
+          .offset(parseInt(offset as string)),
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(businessRecords)
+          .where(and(...conditions)),
+      ]);
 
       res.json({
         records,

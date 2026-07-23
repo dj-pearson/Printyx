@@ -606,49 +606,63 @@ router.post('/api/dispatch/check-parts', async (req: any, res) => {
       });
     }
 
-    // Check inventory for each required part
-    const partsCheck = await Promise.all(
-      requiredParts.map(async (partNumber: string) => {
-        const [inventoryItem] = await db
-          .select({
-            id: inventoryItems.id,
-            partNumber: inventoryItems.partNumber,
-            name: inventoryItems.name,
-            quantityAvailable: inventoryItems.quantityAvailable,
-            quantityOnHand: inventoryItems.quantityOnHand,
-            quantityOnOrder: inventoryItems.quantityOnOrder,
-          })
-          .from(inventoryItems)
-          .where(
-            and(eq(inventoryItems.tenantId, tenantId), eq(inventoryItems.partNumber, partNumber)),
-          )
-          .limit(1);
+    // CR-025: this was an N+1 — one inventory query PER required part. Ask for
+    // every distinct part in ONE batched IN query, then resolve each part in
+    // memory. Output is unchanged: we still map over `requiredParts` in order
+    // (preserving duplicates), and a part with no inventory row is unavailable,
+    // exactly as the old per-part `.limit(1)` + not-found branch produced.
+    const distinctPartNumbers = [...new Set(requiredParts as string[])];
 
-        if (!inventoryItem) {
-          return {
-            partNumber,
-            available: false,
-            reason: 'Part not found in inventory',
-            quantityAvailable: 0,
-            quantityOnOrder: 0,
-          };
-        }
+    const inventoryRows = await db
+      .select({
+        partNumber: inventoryItems.partNumber,
+        name: inventoryItems.name,
+        quantityAvailable: inventoryItems.quantityAvailable,
+        quantityOnHand: inventoryItems.quantityOnHand,
+        quantityOnOrder: inventoryItems.quantityOnOrder,
+      })
+      .from(inventoryItems)
+      .where(
+        and(
+          eq(inventoryItems.tenantId, tenantId),
+          inArray(inventoryItems.partNumber, distinctPartNumbers),
+        ),
+      );
 
-        const available = (inventoryItem.quantityAvailable || 0) > 0;
+    // Keep the FIRST row seen per part number, mirroring the old `.limit(1)`.
+    const inventoryByPart = new Map<string, (typeof inventoryRows)[number]>();
+    for (const row of inventoryRows) {
+      const key = String(row.partNumber);
+      if (!inventoryByPart.has(key)) inventoryByPart.set(key, row);
+    }
 
+    const partsCheck = (requiredParts as string[]).map((partNumber) => {
+      const inventoryItem = inventoryByPart.get(partNumber);
+
+      if (!inventoryItem) {
         return {
           partNumber,
-          name: inventoryItem.name,
-          available,
-          quantityAvailable: inventoryItem.quantityAvailable || 0,
-          quantityOnHand: inventoryItem.quantityOnHand || 0,
-          quantityOnOrder: inventoryItem.quantityOnOrder || 0,
-          reason: !available
-            ? `Out of stock (${inventoryItem.quantityOnOrder || 0} on order)`
-            : undefined,
+          available: false,
+          reason: 'Part not found in inventory',
+          quantityAvailable: 0,
+          quantityOnOrder: 0,
         };
-      }),
-    );
+      }
+
+      const available = (inventoryItem.quantityAvailable || 0) > 0;
+
+      return {
+        partNumber,
+        name: inventoryItem.name,
+        available,
+        quantityAvailable: inventoryItem.quantityAvailable || 0,
+        quantityOnHand: inventoryItem.quantityOnHand || 0,
+        quantityOnOrder: inventoryItem.quantityOnOrder || 0,
+        reason: !available
+          ? `Out of stock (${inventoryItem.quantityOnOrder || 0} on order)`
+          : undefined,
+      };
+    });
 
     const missingParts = partsCheck.filter((p) => !p.available);
     const availableParts = partsCheck.filter((p) => p.available);

@@ -232,6 +232,30 @@ await serve(
       stripSegments = 0;
     }
 
+    // PA-019: KPI tiles, the Reporting Engine, and Scheduled Reports are served
+    // by handlers INSIDE the reports fn (handlers/kpis.ts, reporting.ts,
+    // scheduled.ts), but the frontend calls the top-level /api/{kpis,reporting,
+    // scheduled-reports} prefixes and there is no kpis/reporting/scheduled-reports
+    // function directory — so production resolved functionName='kpis' (etc.) and
+    // 404'd. Dev routed them via dev-only crmProxies {fn:'reports',pathPrefix}
+    // entries; this is the prod equivalent.
+    //
+    // Like the leases / ai-employee families, the segment the reports dispatcher
+    // keys on (firstSegment = pathParts[0]) IS this segment, so it must SURVIVE
+    // the strip (stripSegments = 0), NOT the segment-stripping public->public-*
+    // pattern. For kpis/reporting the URL segment already equals the
+    // discriminator; scheduled-reports is keyed as 'scheduled' inside the fn
+    // (matching the dev proxy's pathPrefix:'/scheduled'), so that one segment is
+    // rewritten.
+    if (functionName === 'kpis' || functionName === 'reporting') {
+      functionName = 'reports';
+      stripSegments = 0;
+    } else if (functionName === 'scheduled-reports') {
+      functionName = 'reports';
+      stripSegments = 0;
+      pathParts[0] = 'scheduled';
+    }
+
     if (!functionName || !functions[functionName]) {
       return new Response(
         JSON.stringify({

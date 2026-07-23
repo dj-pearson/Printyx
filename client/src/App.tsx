@@ -22,17 +22,21 @@ import { useRouteAnnouncer } from '@/hooks/useRouteAnnouncer';
 import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 import { SkipNavigation } from '@/components/accessibility/SkipNavigation';
 
-// Critical auth pages - keep eager for fast initial load
+// Critical auth pages - keep eager for fast initial load.
+// Login is the primary unauthenticated entry; NotFound is the universal
+// route-fallback. Everything else here is lazy (PA-029) so it stays out of the
+// main entry chunk like the other 259 routes — these render inside the same
+// Suspense boundaries as the already-lazy Homepage/landing pages.
 import NotFound from '@/pages/not-found';
 import Login from '@/pages/Login';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
-import Signup from '@/pages/Signup';
-import VerifyEmail from '@/pages/VerifyEmail';
-import AuthCallback from '@/pages/AuthCallback';
-import EndUserLicenseAgreement from '@/pages/legal/EndUserLicenseAgreement';
-import PrivacyPolicy from '@/pages/legal/PrivacyPolicy';
-import TermsAndConditions from '@/pages/legal/TermsAndConditions';
+const ForgotPassword = React.lazy(() => import('@/pages/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('@/pages/ResetPassword'));
+const Signup = React.lazy(() => import('@/pages/Signup'));
+const VerifyEmail = React.lazy(() => import('@/pages/VerifyEmail'));
+const AuthCallback = React.lazy(() => import('@/pages/AuthCallback'));
+const EndUserLicenseAgreement = React.lazy(() => import('@/pages/legal/EndUserLicenseAgreement'));
+const PrivacyPolicy = React.lazy(() => import('@/pages/legal/PrivacyPolicy'));
+const TermsAndConditions = React.lazy(() => import('@/pages/legal/TermsAndConditions'));
 
 // Accessibility Statement - lazy load
 const AccessibilityStatement = React.lazy(() => import('@/pages/legal/AccessibilityStatement'));
@@ -217,6 +221,8 @@ const QuoteView = React.lazy(() => import('@/pages/QuoteView'));
 const ProposalBuilder = React.lazy(() => import('@/pages/ProposalBuilder'));
 const DealDeskDashboard = React.lazy(() => import('@/pages/DealDeskDashboard'));
 const ApprovalRequestDetail = React.lazy(() => import('@/pages/ApprovalRequestDetail'));
+const DealDetail = React.lazy(() => import('@/pages/DealDetail'));
+const BusinessRecordDetail = React.lazy(() => import('@/pages/BusinessRecordDetail'));
 const ApprovalRulesConfiguration = React.lazy(() => import('@/pages/ApprovalRulesConfiguration'));
 const PipelineConfiguration = React.lazy(() => import('@/pages/PipelineConfiguration'));
 const PreventiveMaintenanceScheduling = React.lazy(
@@ -261,6 +267,8 @@ const PlatformConfiguration = React.lazy(() => import('@/pages/PlatformConfigura
 
 // Platform CRM - Full tenant lifecycle management for root admins
 const PlatformCRMDashboard = React.lazy(() => import('@/pages/PlatformCRMDashboard'));
+const PlatformActivities = React.lazy(() => import('@/pages/PlatformActivities'));
+const PlatformPerformance = React.lazy(() => import('@/pages/PlatformPerformance'));
 const PlatformBusinessRecords = React.lazy(() => import('@/pages/PlatformBusinessRecords'));
 const PlatformBusinessRecordDetail = React.lazy(
   () => import('@/pages/PlatformBusinessRecordDetail'),
@@ -629,9 +637,11 @@ function Router() {
                 <Route path="/customers/:slug" component={CustomerDetail} />
                 <Route path="/crm" component={CustomersPage} />
                 <Route path="/business-records" component={CustomersPage} />
+                <Route path="/business-records/:id" component={BusinessRecordDetail} />
                 <Route path="/leads-management" component={LeadsPage} />
                 <Route path="/contacts" component={Contacts} />
                 <Route path="/deals" component={CrmDealsPage} />
+                <Route path="/deals/:id" component={DealDetail} />
                 <Route path="/opportunities" component={CrmDealsPage} />
                 <Route path="/deals-management" component={CrmDealsPage} />
                 {/* Outreach Hub */}
@@ -994,6 +1004,12 @@ function Router() {
                 </Route>
                 <Route path="/platform-crm/dashboard">
                   {() => <AdminRouteGuard component={PlatformCRMDashboard} />}
+                </Route>
+                <Route path="/platform-crm/activities">
+                  {() => <AdminRouteGuard component={PlatformActivities} />}
+                </Route>
+                <Route path="/platform-crm/performance">
+                  {() => <AdminRouteGuard component={PlatformPerformance} />}
                 </Route>
                 <Route path="/platform-crm/business-records/:id">
                   {() => <AdminRouteGuard component={PlatformBusinessRecordDetail} />}

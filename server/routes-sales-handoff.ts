@@ -95,18 +95,24 @@ export function registerSalesHandoffRoutes(app: Express) {
         tenantId,
       };
 
-      const [newHandoff] = await db.insert(salesHandoffChecklists).values(handoffData).returning();
+      // Read the template up front (a read — safe outside the transaction).
+      const template = req.body.templateId
+        ? await db.query.handoffTaskTemplates.findFirst({
+            where: eq(handoffTaskTemplates.id, req.body.templateId),
+          })
+        : null;
 
-      // Create tasks from template if specified
-      if (req.body.templateId) {
-        const template = await db.query.handoffTaskTemplates.findFirst({
-          where: eq(handoffTaskTemplates.id, req.body.templateId),
-        });
+      // CR-024: the checklist insert and the template-task insert are ONE unit —
+      // wrap them in a transaction so a failure on the task insert cannot leave a
+      // checklist with no tasks (a partial write). Both writes go through `tx`,
+      // so the DB rolls the checklist back if the tasks insert throws.
+      const newHandoff = await db.transaction(async (tx) => {
+        const [created] = await tx.insert(salesHandoffChecklists).values(handoffData).returning();
 
         if (template && template.tasks) {
           const tasksToCreate = (template.tasks as any[]).map((task) => ({
             tenantId,
-            handoffId: newHandoff.id,
+            handoffId: created.id,
             taskName: task.taskName,
             description: task.description,
             category: task.category,
@@ -116,9 +122,13 @@ export function registerSalesHandoffRoutes(app: Express) {
             dueDate: new Date(Date.now() + task.dueInDays * 24 * 60 * 60 * 1000),
           }));
 
-          await db.insert(handoffTasks).values(tasksToCreate);
+          if (tasksToCreate.length > 0) {
+            await tx.insert(handoffTasks).values(tasksToCreate);
+          }
         }
-      }
+
+        return created;
+      });
 
       res.status(201).json(newHandoff);
     } catch (error) {

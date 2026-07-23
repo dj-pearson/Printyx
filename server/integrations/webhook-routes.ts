@@ -39,34 +39,48 @@ const stripeWebhookSchema = z.object({
   data: z.object({ object: z.record(z.unknown()) }),
 });
 
-const salesforceWebhookSchema = z.object({
-  // Salesforce outbound messages contain sObject data
-}).passthrough().refine(
-  (data) => Object.keys(data).length > 0,
-  { message: 'Salesforce webhook payload cannot be empty' },
-);
+const salesforceWebhookSchema = z
+  .object({
+    // Salesforce outbound messages contain sObject data
+  })
+  .passthrough()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Salesforce webhook payload cannot be empty',
+  });
 
 const microsoftGraphWebhookSchema = z.object({
-  value: z.array(z.object({
-    subscriptionId: z.string(),
-    changeType: z.string(),
-    resource: z.string(),
-  }).passthrough()),
+  value: z.array(
+    z
+      .object({
+        subscriptionId: z.string(),
+        changeType: z.string(),
+        resource: z.string(),
+      })
+      .passthrough(),
+  ),
 });
 
 const googleCalendarWebhookSchema = z.object({}).passthrough();
 
 const quickbooksWebhookSchema = z.object({
-  eventNotifications: z.array(z.object({
-    realmId: z.string(),
-    dataChangeEvent: z.object({
-      entities: z.array(z.object({
-        name: z.string(),
-        id: z.string(),
-        operation: z.string(),
-      }).passthrough()),
-    }),
-  }).passthrough()),
+  eventNotifications: z.array(
+    z
+      .object({
+        realmId: z.string(),
+        dataChangeEvent: z.object({
+          entities: z.array(
+            z
+              .object({
+                name: z.string(),
+                id: z.string(),
+                operation: z.string(),
+              })
+              .passthrough(),
+          ),
+        }),
+      })
+      .passthrough(),
+  ),
 });
 
 /**
@@ -75,7 +89,8 @@ const quickbooksWebhookSchema = z.object({
 router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
   try {
     const { provider } = req.params;
-    const payload = JSON.parse(req.body.toString());
+    const rawBody = req.body.toString();
+    const payload = JSON.parse(rawBody);
     const headers = req.headers as Record<string, string>;
 
     log.info(`Received webhook from ${provider}`, {
@@ -83,7 +98,7 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
       event: payload?.type || payload?.event || 'unknown',
     });
 
-    const result = await WebhookService.processWebhook(provider, payload, headers);
+    const result = await WebhookService.processWebhook(provider, payload, headers, rawBody);
 
     if (result.success) {
       res.status(200).json({
@@ -108,13 +123,17 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
 /**
  * Salesforce-specific webhook endpoint
  */
-router.post('/api/webhooks/salesforce', express.json(), async (req, res) => {
+router.post('/api/webhooks/salesforce', rawBodyParser, async (req, res) => {
   try {
-    const payload = salesforceWebhookSchema.parse(req.body);
+    // Raw body parsing (not express.json) so the HMAC signature can be verified
+    // against the exact bytes Salesforce signed. (PA-018)
+    const rawBody = req.body.toString();
+    const payload = salesforceWebhookSchema.parse(JSON.parse(rawBody));
     const result = await WebhookService.processWebhook(
       'salesforce',
       payload,
       req.headers as Record<string, string>,
+      rawBody,
     );
 
     if (result.success) {
@@ -132,12 +151,13 @@ router.post('/api/webhooks/salesforce', express.json(), async (req, res) => {
  */
 router.post('/api/webhooks/stripe', rawBodyParser, async (req, res) => {
   try {
-    const raw = JSON.parse(req.body.toString());
-    const payload = stripeWebhookSchema.parse(raw);
+    const rawBody = req.body.toString();
+    const payload = stripeWebhookSchema.parse(JSON.parse(rawBody));
     const result = await WebhookService.processWebhook(
       'stripe',
       payload,
       req.headers as Record<string, string>,
+      rawBody,
     );
 
     if (result.success) {
@@ -167,6 +187,9 @@ router.post('/api/webhooks/microsoft-calendar', express.json(), async (req, res)
       'microsoft-calendar',
       payload,
       req.headers as Record<string, string>,
+      // Microsoft validates via clientState token, not a body HMAC, so rawBody
+      // is unused here; pass a best-effort serialization for the signature.
+      JSON.stringify(req.body),
     );
 
     if (result.success) {
@@ -189,6 +212,9 @@ router.post('/api/webhooks/google-calendar', express.json(), async (req, res) =>
       'google-calendar',
       payload,
       req.headers as Record<string, string>,
+      // Google validates via channel token/id headers, not a body HMAC, so
+      // rawBody is unused here; pass a best-effort serialization.
+      JSON.stringify(req.body),
     );
 
     if (result.success) {
@@ -206,12 +232,13 @@ router.post('/api/webhooks/google-calendar', express.json(), async (req, res) =>
  */
 router.post('/api/webhooks/quickbooks', rawBodyParser, async (req, res) => {
   try {
-    const raw = JSON.parse(req.body.toString());
-    const payload = quickbooksWebhookSchema.parse(raw);
+    const rawBody = req.body.toString();
+    const payload = quickbooksWebhookSchema.parse(JSON.parse(rawBody));
     const result = await WebhookService.processWebhook(
       'quickbooks',
       payload,
       req.headers as Record<string, string>,
+      rawBody,
     );
 
     if (result.success) {

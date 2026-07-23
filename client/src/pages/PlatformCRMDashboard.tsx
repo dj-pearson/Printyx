@@ -76,11 +76,12 @@ interface PipelineMetrics {
 
 interface RecentActivity {
   id: string;
-  type: 'call' | 'email' | 'meeting' | 'demo' | 'note';
-  businessRecordName: string;
-  subject: string;
-  createdAt: string;
-  createdBy: string;
+  activity_type?: string | null;
+  subject?: string | null;
+  description?: string | null;
+  created_by?: string | null;
+  activity_date?: string | null;
+  created_at?: string | null;
 }
 
 interface HealthSummary {
@@ -93,7 +94,7 @@ interface HealthSummary {
 interface TopPerformer {
   repName: string;
   dealsWon: number;
-  revenue: number;
+  revenueGenerated: number;
   conversionRate: number;
 }
 
@@ -115,11 +116,12 @@ export default function PlatformCRMDashboard() {
   });
 
   // Fetch recent activities
-  const { data: recentActivities, isLoading: activitiesLoading } = useQuery<RecentActivity[]>({
-    queryKey: [
-      '/api/platform-activities',
-      { limit: 10, sortBy: 'activityDate', sortOrder: 'desc' },
-    ],
+  const { data: recentActivities, isLoading: activitiesLoading } = useQuery<{
+    activities: RecentActivity[];
+  }>({
+    // Single-string key: the default queryFn does queryKey.join('/'), so an object
+    // element here would produce the malformed URL /api/platform-activities/[object Object].
+    queryKey: ['/api/platform-activities?limit=10&sortBy=activityDate&sortOrder=desc'],
     refetchInterval: 30000,
   });
 
@@ -136,8 +138,10 @@ export default function PlatformCRMDashboard() {
   });
 
   // Fetch sales performance
-  const { data: performance, isLoading: performanceLoading } = useQuery({
-    queryKey: ['/api/platform-analytics/sales-performance', { timeRange }],
+  const { data: performance, isLoading: performanceLoading } = useQuery<{
+    repPerformance: TopPerformer[];
+  }>({
+    queryKey: [`/api/platform-analytics/sales-performance?timeRange=${timeRange}`],
     refetchInterval: 60000,
   });
 
@@ -170,14 +174,14 @@ export default function PlatformCRMDashboard() {
 
   const currentMetrics = metrics || defaultMetrics;
   const currentPipeline = pipeline?.pipeline || [];
-  const currentActivities = recentActivities || [];
+  const currentActivities = recentActivities?.activities || [];
   const currentHealth = healthSummary?.summary || {
     healthy: 0,
     at_risk: 0,
     critical: 0,
     totalScore: 0,
   };
-  const topPerformers = (performance as any)?.repPerformance?.slice(0, 5) || [];
+  const topPerformers = performance?.repPerformance?.slice(0, 5) || [];
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -454,22 +458,33 @@ export default function PlatformCRMDashboard() {
                         key={activity.id}
                         className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                       >
-                        <div className="mt-1">{getActivityIcon(activity.type)}</div>
+                        <div className="mt-1">{getActivityIcon(activity.activity_type ?? '')}</div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="font-medium text-sm">{activity.businessRecordName}</p>
-                              <p className="text-sm text-muted-foreground truncate">
-                                {activity.subject}
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm break-words">
+                                {activity.subject || activity.activity_type || 'Activity'}
                               </p>
+                              {activity.description && (
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {activity.description}
+                                </p>
+                              )}
                             </div>
-                            <Badge variant="outline" className="text-xs shrink-0">
-                              {activity.type}
-                            </Badge>
+                            {activity.activity_type && (
+                              <Badge variant="outline" className="text-xs shrink-0 capitalize">
+                                {activity.activity_type}
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}{' '}
-                            by {activity.createdBy}
+                            {(() => {
+                              const when = activity.created_at || activity.activity_date;
+                              return when
+                                ? formatDistanceToNow(new Date(when), { addSuffix: true })
+                                : 'Unknown time';
+                            })()}
+                            {activity.created_by ? ` by ${activity.created_by}` : ''}
                           </p>
                         </div>
                       </div>
@@ -607,7 +622,7 @@ export default function PlatformCRMDashboard() {
                           </TableCell>
                           <TableCell className="text-right">{rep.dealsWon}</TableCell>
                           <TableCell className="text-right font-semibold">
-                            {formatCurrency(rep.revenue)}
+                            {formatCurrency(rep.revenueGenerated)}
                           </TableCell>
                           <TableCell className="text-right">
                             {formatPercentage(rep.conversionRate)}

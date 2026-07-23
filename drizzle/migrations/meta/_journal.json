@@ -99,6 +99,41 @@
       "when": 1784237128022,
       "tag": "0030_audit010_permission_cache_uniq",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784807921338,
+      "tag": "0031_edge007a_drop_orphaned_report_fns",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1784814908328,
+      "tag": "0032_cr029_search_trgm_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1784815572775,
+      "tag": "0033_pa044_extension_api_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1784816357478,
+      "tag": "0034_pa045_journal_entries",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784817477195,
+      "tag": "0035_pa042_import_row_capture",
+      "breakpoints": true
     }
   ]
 }

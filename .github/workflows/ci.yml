@@ -41,13 +41,16 @@ jobs:
         run: npm run check:datadumps
       - name: No root-level SQL (PA-033)
         run: npm run check:rootsql
-      - run: npm run lint
+      - name: ESLint problem-count ratchet (PA-048)
+        run: npm run check:lint
       - name: Route ownership ratchet (EDGE-018)
         run: npm run check:routes
       - name: Nav-target ratchet (AUDIT-014)
         run: npm run check:nav
       - name: Edge path-normalization ratchet (EDGE-002e)
         run: npm run check:edge-paths
+      - name: Proxy-override parity (PA-019)
+        run: npm run check:proxy-overrides
       - run: npm run build
       - name: Server bundle check (PA-050)
         run: npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server-bundle-check.mjs

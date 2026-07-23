@@ -12,6 +12,7 @@ import {
   tenantHealthScores,
   tenantCloneOperations,
   onboardingAnalytics,
+  businessRecords,
 } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { requireRootAdmin } from './routes-root-admin';
@@ -388,26 +389,122 @@ router.get('/import/:validationId', async (req, res) => {
 });
 
 /**
+ * PA-042: onboarding CSV import targets. Only data types whose validated CSV
+ * shape can satisfy the target table's NOT NULL columns are insertable. The
+ * onboarding auto-mapper (autoMapColumns) only produces a company name + contact
+ * / address fields, which cleanly maps to business_records; equipment /
+ * contracts / inventory require a customer FK, dates, or name/category that the
+ * CSV shape does not carry, so those return an explicit error instead of
+ * silently reporting a successful import.
+ */
+interface ImportTarget {
+  table: typeof businessRecords;
+  // Translate the auto-mapper field names (columnMappings[*].mappedTo) into real
+  // target-table columns, dropping empty values.
+  toRow: (mapped: Record<string, unknown>, tenantId: string) => Record<string, unknown>;
+}
+
+function assignIfPresent(row: Record<string, unknown>, key: string, value: unknown) {
+  if (value != null && String(value).trim() !== '') row[key] = String(value);
+}
+
+const IMPORT_TARGETS: Record<string, ImportTarget> = {
+  customers: {
+    table: businessRecords,
+    toRow: (mapped, tenantId) => {
+      const row: Record<string, unknown> = {
+        tenantId,
+        recordType: 'customer',
+        status: 'active',
+        companyName: String(mapped.companyName ?? '').trim(),
+      };
+      assignIfPresent(row, 'primaryContactEmail', mapped.email);
+      assignIfPresent(row, 'primaryContactPhone', mapped.phone);
+      assignIfPresent(row, 'addressLine1', mapped.address);
+      assignIfPresent(row, 'city', mapped.city);
+      assignIfPresent(row, 'state', mapped.state);
+      assignIfPresent(row, 'postalCode', mapped.zipCode);
+      return row;
+    },
+  },
+};
+
+/**
  * POST /api/tenants/import/:validationId/execute
- * Execute validated data import
+ * Execute a validated data import: insert the rows that passed validation into
+ * the target table, scoped by tenant, inside a transaction so a partial failure
+ * rolls the whole import back. importedRows reflects the real inserted count.
  */
 router.post('/import/:validationId/execute', async (req, res) => {
   try {
-    // TODO: Implement actual data import execution
-    // This would take the validated data and import it into the database
+    const [validation] = await db
+      .select()
+      .from(dataImportValidations)
+      .where(eq(dataImportValidations.id, req.params.validationId))
+      .limit(1);
+
+    if (!validation) {
+      return res.status(404).json({ error: 'Validation not found' });
+    }
+    if (validation.importExecuted) {
+      return res.status(409).json({ error: 'Import already executed for this validation' });
+    }
+
+    const target = IMPORT_TARGETS[validation.dataType];
+    if (!target) {
+      return res.status(400).json({
+        error: `Import execution is not supported for data type "${validation.dataType}"`,
+        code: 'UNSUPPORTED_IMPORT_TYPE',
+      });
+    }
+
+    const tenantId = validation.tenantId || getTenantId(req) || req.body?.tenantId;
+    if (!tenantId) {
+      return res.status(400).json({ error: 'No tenant context for this import' });
+    }
+
+    const rawRows = Array.isArray(validation.rawRows) ? validation.rawRows : [];
+    const columnMappings = validation.columnMappings ?? {};
+    // errors carry 1-based row numbers; those rows failed validation and are skipped.
+    const invalidRowNumbers = new Set((validation.errors ?? []).map((e) => e.row));
+
+    const rowsToInsert: Record<string, unknown>[] = [];
+    rawRows.forEach((raw, index) => {
+      if (invalidRowNumbers.has(index + 1)) return;
+      const mapped: Record<string, unknown> = {};
+      for (const [csvColumn, mapping] of Object.entries(columnMappings)) {
+        if (mapping?.mappedTo) mapped[mapping.mappedTo] = raw[csvColumn];
+      }
+      rowsToInsert.push(target.toRow(mapped, tenantId));
+    });
+
+    let importedRows = 0;
+    if (rowsToInsert.length > 0) {
+      await db.transaction(async (tx) => {
+        await tx
+          .insert(target.table)
+          .values(rowsToInsert as (typeof businessRecords.$inferInsert)[]);
+        importedRows = rowsToInsert.length;
+      });
+    }
+
+    const failedRows = rawRows.length - importedRows;
 
     const [updated] = await db
       .update(dataImportValidations)
       .set({
         importExecuted: true,
         importedAt: new Date(),
-        importedRows: req.body.rowsToImport || 0,
+        importedRows,
+        failedRows,
       })
       .where(eq(dataImportValidations.id, req.params.validationId))
       .returning();
 
     res.json({
       success: true,
+      importedRows,
+      failedRows,
       validation: updated,
     });
   } catch (error) {

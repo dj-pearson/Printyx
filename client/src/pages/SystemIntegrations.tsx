@@ -65,8 +65,10 @@ interface WebhookEndpoint {
   url: string;
   events: string[];
   status: 'active' | 'inactive';
-  lastTriggered: string;
-  successRate: number;
+  // PA-046: delivery-stats tracking does not exist yet, so these are null from
+  // the API rather than fabricated numbers.
+  lastTriggered: string | null;
+  successRate: number | null;
 }
 
 export default function SystemIntegrations() {
@@ -377,11 +379,15 @@ export default function SystemIntegrations() {
                             {webhook.status}
                           </Badge>
                           <span className="text-xs text-gray-500">
-                            Success rate: {webhook.successRate}%
+                            {webhook.successRate != null
+                              ? `Success rate: ${webhook.successRate}%`
+                              : 'Delivery stats not tracked'}
                           </span>
-                          <span className="text-xs text-gray-500">
-                            Last triggered: {new Date(webhook.lastTriggered).toLocaleString()}
-                          </span>
+                          {webhook.lastTriggered && (
+                            <span className="text-xs text-gray-500">
+                              Last triggered: {new Date(webhook.lastTriggered).toLocaleString()}
+                            </span>
+                          )}
                         </div>
                         <div className="flex gap-1 mt-2">
                           {webhook.events.map((event) => (
