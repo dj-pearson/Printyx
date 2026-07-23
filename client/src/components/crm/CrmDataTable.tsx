@@ -308,26 +308,35 @@ export function CrmDataTable({
               {visibleFields.map((field) => (
                 <TableHead
                   key={field.field}
-                  className={cn(
-                    'text-xs',
-                    field.width,
-                    field.sortable && 'cursor-pointer select-none',
-                  )}
-                  onClick={() => field.sortable && handleSort(field.field)}
+                  className={cn('text-xs', field.width)}
+                  aria-sort={
+                    field.sortable && sortField === field.field
+                      ? sortDir === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : undefined
+                  }
                 >
-                  <div className="flex items-center gap-1">
-                    {field.label}
-                    {field.sortable &&
-                      (sortField === field.field ? (
+                  {field.sortable ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSort(field.field)}
+                      className="flex items-center gap-1 select-none hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                    >
+                      {field.label}
+                      {sortField === field.field ? (
                         sortDir === 'asc' ? (
-                          <ArrowUp className="h-3 w-3" />
+                          <ArrowUp className="h-3 w-3" aria-hidden="true" />
                         ) : (
-                          <ArrowDown className="h-3 w-3" />
+                          <ArrowDown className="h-3 w-3" aria-hidden="true" />
                         )
                       ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-30" />
-                      ))}
-                  </div>
+                        <ArrowUpDown className="h-3 w-3 opacity-30" aria-hidden="true" />
+                      )}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1">{field.label}</div>
+                  )}
                 </TableHead>
               ))}
               <TableHead className="w-10" />
@@ -366,11 +375,20 @@ export function CrmDataTable({
               records.map((record: any) => (
                 <TableRow
                   key={record.id}
+                  tabIndex={0}
+                  aria-label={`View ${config.labelPlural.replace(/s$/i, '').toLowerCase()} details`}
                   className={cn(
-                    'cursor-pointer hover:bg-muted/50',
+                    'cursor-pointer hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                     selectedIds?.has(record.id) && 'bg-primary/5',
                   )}
                   onClick={() => setLocation(`${config.detailPath}/${record.id}`)}
+                  onKeyDown={(e) => {
+                    // Keyboard operability (WCAG 2.1.1) for the row-level navigation.
+                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      setLocation(`${config.detailPath}/${record.id}`);
+                    }
+                  }}
                 >
                   {onSelectionChange && (
                     <TableCell onClick={(e) => e.stopPropagation()}>

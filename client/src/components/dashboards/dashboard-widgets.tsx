@@ -196,9 +196,14 @@ export function PriorityList({
 
               if (item.action) {
                 return (
-                  <div key={item.id} onClick={item.action}>
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={item.action}
+                    className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                  >
                     {ItemContent}
-                  </div>
+                  </button>
                 );
               }
 

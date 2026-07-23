@@ -52,11 +52,18 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
         {/* Search - Responsive design */}
         <div className="flex-1 max-w-sm mx-2 sm:mx-4">
           <div className="relative hidden sm:block">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" aria-hidden="true" />
             <Input
+              aria-label="Search customers, tickets, and more"
               placeholder="Search customers, tickets... (⌘K)"
               className="pl-10 h-10 bg-gray-50 border-gray-200 focus:bg-white cursor-pointer"
               onClick={onSearchClick}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSearchClick?.();
+                }
+              }}
               readOnly
             />
           </div>

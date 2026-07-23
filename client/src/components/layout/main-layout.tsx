@@ -9,7 +9,6 @@ import {
   KeyboardShortcutsDialog,
   useKeyboardNavigation,
 } from '@/components/layout/keyboard-shortcuts-dialog';
-import { SkipNavigation } from '@/components/accessibility/SkipNavigation';
 import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 
 interface MainLayoutProps {
@@ -26,15 +25,8 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      {/* Skip Navigation for Keyboard Users - WCAG 2.1 Level A (2.4.1) */}
-      <SkipNavigation
-        links={[
-          { id: 'main-content', label: 'Skip to main content' },
-          { id: 'sidebar-navigation', label: 'Skip to navigation' },
-          { id: 'search-input', label: 'Skip to search' },
-        ]}
-      />
-
+      {/* Skip navigation is rendered once at the app root (App.tsx) targeting the
+          single #main-content region below — no duplicate skip nav here. */}
       <div className="flex min-h-screen w-full bg-executive">
         <CommandPalette open={open} onOpenChange={setOpen} />
         <KeyboardShortcutsDialog />
@@ -48,14 +40,11 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
 
           <SmartBreadcrumb />
 
-          <main
-            id="main-content"
-            className="flex-1 overflow-auto"
-            tabIndex={-1}
-            aria-label="Main content"
-          >
+          {/* Content region. The <main id="main-content"> landmark is provided
+              once by App.tsx to avoid nested <main> / duplicate ids. */}
+          <div className="flex-1 overflow-auto">
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 md:pb-6">{children}</div>
-          </main>
+          </div>
         </SidebarInset>
 
         <div className="md:hidden">
