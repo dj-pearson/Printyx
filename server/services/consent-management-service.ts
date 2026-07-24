@@ -271,14 +271,20 @@ export class ConsentManagementService {
   ): Promise<ConsentRecord> {
     const consentType = (data.consentType || 'marketing_email') as ConsentType;
 
-    const existing = await db.query.consentRecords.findFirst({
-      where: and(
-        eq(consentRecords.tenantId, tenantId),
-        eq(consentRecords.subjectId, data.subjectId),
-        eq(consentRecords.consentType, consentType as any),
-        or(eq(consentRecords.status, 'given'), eq(consentRecords.status, 'pending')),
-      ),
-    });
+    // Use the typed query builder (db.select) rather than db.query.consentRecords,
+    // which is not registered in the relational query namespace.
+    const [existing] = await db
+      .select({ id: consentRecords.id })
+      .from(consentRecords)
+      .where(
+        and(
+          eq(consentRecords.tenantId, tenantId),
+          eq(consentRecords.subjectId, data.subjectId),
+          eq(consentRecords.consentType, consentType as any),
+          or(eq(consentRecords.status, 'given'), eq(consentRecords.status, 'pending')),
+        ),
+      )
+      .limit(1);
 
     if (existing) {
       return this.withdrawConsent(
