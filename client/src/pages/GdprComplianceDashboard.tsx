@@ -16,15 +16,11 @@ import {
   UserCheck,
   FileCheck,
   Merge,
-  Map,
 } from 'lucide-react';
-import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 
 export default function GdprComplianceDashboard() {
-  const [, navigate] = useLocation();
-
   // Fetch consent statistics
   const { data: consentStats } = useQuery({
     queryKey: ['/api/gdpr/consent/stats'],
@@ -59,18 +55,8 @@ export default function GdprComplianceDashboard() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">GDPR Compliance Dashboard</h1>
             <p className="text-muted-foreground">
-              Manage data privacy, consent, and compliance requirements
+              An overview of data privacy, consent, and compliance metrics for your organization.
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/gdpr/data-export')}>
-              <Download className="h-4 w-4 mr-2" />
-              Data Export
-            </Button>
-            <Button onClick={() => navigate('/gdpr/compliance-report')}>
-              <FileText className="h-4 w-4 mr-2" />
-              Generate Report
-            </Button>
           </div>
         </div>
 
@@ -130,95 +116,50 @@ export default function GdprComplianceDashboard() {
           </Card>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate('/gdpr/consent')}
-          >
+        {/* Category summaries */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <UserCheck className="h-5 w-5 text-blue-600" />
                 Consent Management
               </CardTitle>
-              <CardDescription>Track and manage user consent preferences</CardDescription>
+              <CardDescription>Recorded user consent preferences</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  {consentStats?.totalRecords || 0} records
-                </span>
-                <Button variant="ghost" size="sm">
-                  Manage
-                </Button>
-              </div>
+              <span className="text-sm text-muted-foreground">
+                {consentStats?.totalRecords || 0} records
+              </span>
             </CardContent>
           </Card>
 
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate('/gdpr/dpa')}
-          >
+          <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <FileCheck className="h-5 w-5 text-purple-600" />
                 Data Processing Agreements
               </CardTitle>
-              <CardDescription>Manage vendor DPAs and compliance checks</CardDescription>
+              <CardDescription>Vendor DPAs and compliance checks</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  {dpaStats?.totalDpas || 0} agreements
-                </span>
-                <Button variant="ghost" size="sm">
-                  Manage
-                </Button>
-              </div>
+              <span className="text-sm text-muted-foreground">
+                {dpaStats?.totalDpas || 0} agreements
+              </span>
             </CardContent>
           </Card>
 
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate('/gdpr/deduplication')}
-          >
+          <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Merge className="h-5 w-5 text-orange-600" />
                 Contact Deduplication
               </CardTitle>
-              <CardDescription>Find and merge duplicate contacts</CardDescription>
+              <CardDescription>Potential duplicate contacts</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  {dedupStats?.totalMatches || 0} potential duplicates
-                </span>
-                <Button variant="ghost" size="sm">
-                  Review
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate('/territories')}
-          >
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Map className="h-5 w-5 text-green-600" />
-                Territory Management
-              </CardTitle>
-              <CardDescription>Manage sales territories and assignments</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">View territories</span>
-                <Button variant="ghost" size="sm">
-                  Manage
-                </Button>
-              </div>
+              <span className="text-sm text-muted-foreground">
+                {dedupStats?.totalMatches || 0} potential duplicates
+              </span>
             </CardContent>
           </Card>
         </div>
@@ -244,13 +185,6 @@ export default function GdprComplianceDashboard() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/gdpr/dpa?filter=expiring')}
-                  >
-                    Review
-                  </Button>
                 </div>
               )}
 
@@ -265,13 +199,6 @@ export default function GdprComplianceDashboard() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/gdpr/dpa?filter=pending-compliance')}
-                  >
-                    Review
-                  </Button>
                 </div>
               )}
 
@@ -286,13 +213,6 @@ export default function GdprComplianceDashboard() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/gdpr/consent?filter=withdrawn')}
-                  >
-                    View
-                  </Button>
                 </div>
               )}
 
@@ -307,13 +227,6 @@ export default function GdprComplianceDashboard() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/gdpr/deduplication')}
-                  >
-                    Review
-                  </Button>
                 </div>
               )}
 
@@ -360,13 +273,6 @@ export default function GdprComplianceDashboard() {
                       </Badge>
                     </div>
                   ))}
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate('/gdpr/data-export')}
-                  >
-                    View All Exports
-                  </Button>
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">

@@ -13,7 +13,7 @@ export default function TermsAndConditions() {
             <h1 className="text-3xl font-bold text-gray-900">Terms and Conditions</h1>
           </div>
           <p className="text-gray-600">Effective Date: January 1, 2025</p>
-          <p className="text-gray-600">Last Updated: January 1, 2025</p>
+          <p className="text-gray-600">Last Updated: July 23, 2026</p>
         </div>
 
         <Card>
@@ -190,7 +190,17 @@ export default function TermsAndConditions() {
                     <p className="text-gray-700 leading-relaxed">
                       We will process Customer Data solely as necessary to provide our Services and
                       as directed by you. We implement appropriate technical and organizational
-                      measures to protect your data.
+                      measures to protect your data. Where we process personal data on your behalf,
+                      our{' '}
+                      <a href="/dpa" className="text-blue-600 underline">
+                        Data Processing Agreement
+                      </a>{' '}
+                      applies and is incorporated into these Terms by reference. The third parties
+                      that support the Services are listed on our{' '}
+                      <a href="/subprocessors" className="text-blue-600 underline">
+                        Subprocessors
+                      </a>{' '}
+                      page.
                     </p>
                   </div>
                   <div>
@@ -475,13 +485,10 @@ export default function TermsAndConditions() {
                 </p>
                 <div className="space-y-2">
                   <p className="text-gray-700">
-                    <strong>Email:</strong> legal@printyx.com
+                    <strong>Email:</strong> legal@printyx.net
                   </p>
                   <p className="text-gray-700">
                     <strong>Address:</strong> Printyx LLC, Legal Department
-                  </p>
-                  <p className="text-gray-700">
-                    <strong>Phone:</strong> 1-800-PRINTYX
                   </p>
                 </div>
                 <p className="text-sm text-gray-600 mt-4">

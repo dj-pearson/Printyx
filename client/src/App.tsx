@@ -40,6 +40,10 @@ const TermsAndConditions = React.lazy(() => import('@/pages/legal/TermsAndCondit
 
 // Accessibility Statement - lazy load
 const AccessibilityStatement = React.lazy(() => import('@/pages/legal/AccessibilityStatement'));
+const DoNotSell = React.lazy(() => import('@/pages/legal/DoNotSell'));
+const CookiePolicy = React.lazy(() => import('@/pages/legal/CookiePolicy'));
+const Subprocessors = React.lazy(() => import('@/pages/legal/Subprocessors'));
+const DataProcessingAgreement = React.lazy(() => import('@/pages/legal/DataProcessingAgreement'));
 const Unauthorized = React.lazy(() => import('@/pages/Unauthorized'));
 
 // Marketing pages - lazy load
@@ -314,6 +318,7 @@ const EnhancedOnboardingForm = React.lazy(() => import('@/pages/EnhancedOnboardi
 const ComprehensiveOnboardingForm = React.lazy(() => import('@/pages/ComprehensiveOnboardingForm'));
 const RoleManagement = React.lazy(() => import('@/pages/RoleManagement'));
 const AuditLogViewer = React.lazy(() => import('@/pages/AuditLogViewer'));
+const GdprComplianceDashboard = React.lazy(() => import('@/pages/GdprComplianceDashboard'));
 const ApiKeyManagement = React.lazy(() => import('@/pages/ApiKeyManagement'));
 const GPT5Dashboard = React.lazy(() => import('@/pages/GPT5Dashboard'));
 const DocumentBuilder = React.lazy(() => import('@/pages/DocumentBuilder'));
@@ -529,6 +534,10 @@ function Router() {
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
           <Route path="/accessibility" component={AccessibilityStatement} />
+          <Route path="/do-not-sell" component={DoNotSell} />
+          <Route path="/cookies" component={CookiePolicy} />
+          <Route path="/subprocessors" component={Subprocessors} />
+          <Route path="/dpa" component={DataProcessingAgreement} />
           <Route path="/" component={Homepage} />
 
           {/* Strategic landing pages */}
@@ -1169,6 +1178,9 @@ function Router() {
                 <Route path="/admin/audit-logs">
                   {() => <ProtectedRoute component={AuditLogViewer} platformOnly />}
                 </Route>
+                <Route path="/gdpr">
+                  {() => <ProtectedRoute component={GdprComplianceDashboard} minLevel={6} />}
+                </Route>
                 <Route path="/erp-integration" component={ERPIntegration} />
                 <Route path="/manufacturer-integration" component={ManufacturerIntegration} />
                 <Route
@@ -1198,6 +1210,10 @@ function Router() {
                 <Route path="/privacy" component={PrivacyPolicy} />
                 <Route path="/terms" component={TermsAndConditions} />
                 <Route path="/accessibility" component={AccessibilityStatement} />
+                <Route path="/do-not-sell" component={DoNotSell} />
+                <Route path="/cookies" component={CookiePolicy} />
+                <Route path="/subprocessors" component={Subprocessors} />
+                <Route path="/dpa" component={DataProcessingAgreement} />
                 <Route path="/getting-started" component={GettingStarted} />
                 <Route path="/setup-wizard" component={SetupWizard} />
                 <Route path="/onboarding" component={OnboardingDashboard} />

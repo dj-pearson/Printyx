@@ -35,6 +35,8 @@
     "preview": "vite preview",
     "check": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" tsc",
     "lint": "eslint .",
+    "lint:a11y": "eslint client/src --config eslint.a11y.config.js",
+    "test:a11y": "playwright test tests/a11y",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "prepare": "husky install",
@@ -302,6 +304,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
     "@playwright/test": "^1.57.0",
     "@replit/vite-plugin-cartographer": "^0.2.8",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
@@ -337,6 +340,7 @@
     "esbuild": "^0.25.0",
     "eslint": "^9.10.0",
     "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react": "^7.35.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "happy-dom": "^15.0.0",

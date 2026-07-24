@@ -966,6 +966,7 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/database-management': { platformOnly: true },
   '/admin/mobile-logs': { platformOnly: true },
   '/admin/audit-logs': { platformOnly: true },
+  '/gdpr': { minLevel: 6 },
 
   // =====================================================================
   // DEV/TEST ROUTES

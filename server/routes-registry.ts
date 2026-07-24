@@ -682,6 +682,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // (frontend hits /api/reports/breaches via the edge-function-proxy).
   registerGdprRoutes(app);
 
+  // ─── Data Retention (admin) ──────────────────────────────────────
+  const { registerDataRetentionRoutes } = await import('./routes-data-retention');
+  registerDataRetentionRoutes(app);
+
   // ─── Security Dashboard ────────────────────────────────────────
   const { registerSecurityDashboardRoutes } = await import('./routes-security-dashboard');
   registerSecurityDashboardRoutes(app);

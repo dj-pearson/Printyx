@@ -16,7 +16,6 @@ import {
   AlertCircle,
   HelpCircle,
   Mail,
-  Phone,
   ExternalLink,
 } from 'lucide-react';
 
@@ -97,11 +96,14 @@ export default function AccessibilityStatement() {
                 />
                 <div>
                   <h3 className="font-semibold text-green-900 dark:text-green-100 mb-1">
-                    WCAG 2.1 Level AA
+                    WCAG 2.1 Level AA — Partially Conformant
                   </h3>
                   <p className="text-green-800 dark:text-green-200 text-sm">
-                    Printyx substantially conforms to WCAG 2.1 Level AA. Substantially conformant
-                    means that the content substantially conforms to the accessibility standard.
+                    Printyx is partially conformant with WCAG 2.1 Level AA. &quot;Partially
+                    conformant&quot; means that some parts of the content do not yet fully conform
+                    to the accessibility standard. We have an active remediation program and are
+                    prioritizing full keyboard operability and consistent labeling across all
+                    screens.
                   </p>
                 </div>
               </div>
@@ -203,8 +205,8 @@ export default function AccessibilityStatement() {
                 <div>
                   <h3 className="font-semibold mb-1">Motor Accessibility</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Large click targets (44x44px minimum), reduced motion option, and support for
-                    alternative input devices.
+                    A reduced-motion option, keyboard operability, and support for alternative input
+                    devices. We are standardizing larger touch targets across all controls.
                   </p>
                 </div>
               </div>
@@ -296,9 +298,9 @@ export default function AccessibilityStatement() {
                 </kbd>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <span>Go to Home</span>
+                <span>Go to Dashboard</span>
                 <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm font-mono">
-                  G then H
+                  G then D
                 </kbd>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
@@ -308,15 +310,15 @@ export default function AccessibilityStatement() {
                 </kbd>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <span>Create New</span>
+                <span>Go to Quotes / Reports / Invoices / Settings</span>
                 <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm font-mono">
-                  C
+                  G then Q / R / I / S
                 </kbd>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <span>Save Form</span>
+                <span>New Lead / Quote / Customer</span>
                 <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm font-mono">
-                  Cmd/Ctrl + S
+                  N then L / Q / C
                 </kbd>
               </div>
             </div>
@@ -382,7 +384,7 @@ export default function AccessibilityStatement() {
               encounter accessibility barriers:
             </p>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid gap-6">
               <a
                 href="mailto:accessibility@printyx.net"
                 className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors no-underline"
@@ -393,19 +395,6 @@ export default function AccessibilityStatement() {
                 <div>
                   <h3 className="font-semibold text-gray-900 dark:text-white">Email Us</h3>
                   <p className="text-sm text-primary">accessibility@printyx.net</p>
-                </div>
-              </a>
-
-              <a
-                href="tel:+18005551234"
-                className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors no-underline"
-              >
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                  <Phone className="h-6 w-6 text-green-600" aria-hidden="true" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">Call Us</h3>
-                  <p className="text-sm text-green-600">1-800-555-1234</p>
                 </div>
               </a>
             </div>
@@ -473,7 +462,7 @@ export default function AccessibilityStatement() {
 
         {/* Last Updated */}
         <div className="text-center text-sm text-gray-500 dark:text-gray-400 mb-8">
-          <p>This statement was last updated on January 12, 2026.</p>
+          <p>This statement was last updated on July 23, 2026.</p>
           <p className="mt-2">We review and update this statement regularly to ensure accuracy.</p>
         </div>
       </main>

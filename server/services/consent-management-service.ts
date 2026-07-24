@@ -247,6 +247,94 @@ export class ConsentManagementService {
   }
 
   /**
+   * Record a marketing consent withdrawal (e.g. an email unsubscribe) in the
+   * unified consent ledger so opt-out state is auditable end-to-end.
+   *
+   * If the subject already has an active marketing_email consent, it is
+   * withdrawn; otherwise a new record is inserted directly in the 'withdrawn'
+   * state to capture the opt-out event.
+   */
+  async recordMarketingWithdrawal(
+    tenantId: string,
+    data: {
+      subjectId: string;
+      subjectType?: string;
+      subjectEmail?: string;
+      consentType?: ConsentType;
+      reason?: string;
+      method?: string;
+      source?: string;
+      ipAddress?: string;
+      userAgent?: string;
+    },
+    actorId?: string,
+  ): Promise<ConsentRecord> {
+    const consentType = (data.consentType || 'marketing_email') as ConsentType;
+
+    // Use the typed query builder (db.select) rather than db.query.consentRecords,
+    // which is not registered in the relational query namespace.
+    const [existing] = await db
+      .select({ id: consentRecords.id })
+      .from(consentRecords)
+      .where(
+        and(
+          eq(consentRecords.tenantId, tenantId),
+          eq(consentRecords.subjectId, data.subjectId),
+          eq(consentRecords.consentType, consentType as any),
+          or(eq(consentRecords.status, 'given'), eq(consentRecords.status, 'pending')),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      return this.withdrawConsent(
+        tenantId,
+        existing.id,
+        {
+          reason: data.reason || 'Unsubscribed',
+          method: data.method,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+        },
+        actorId,
+      );
+    }
+
+    const [consent] = await db
+      .insert(consentRecords)
+      .values({
+        tenantId,
+        subjectType: data.subjectType || 'contact',
+        subjectId: data.subjectId,
+        subjectEmail: data.subjectEmail,
+        consentType: consentType as any,
+        status: 'withdrawn',
+        legalBasis: 'consent',
+        source: (data.source as any) || 'email',
+        withdrawnAt: new Date(),
+        withdrawalReason: data.reason || 'Unsubscribed',
+        withdrawalMethod: data.method,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+      })
+      .returning();
+
+    await this.createAuditEntry(tenantId, consent.id, {
+      action: 'withdrawn',
+      previousStatus: null,
+      newStatus: 'withdrawn',
+      newValues: { consentType, status: 'withdrawn' },
+      changedBy: actorId,
+      changedByType: actorId ? 'user' : 'subject',
+      ipAddress: data.ipAddress,
+      userAgent: data.userAgent,
+      reason: data.reason || 'Marketing opt-out recorded',
+    });
+
+    return consent;
+  }
+
+  /**
    * Update consent record
    */
   async updateConsent(

@@ -17,11 +17,11 @@ interface SkipNavigationProps {
   links?: SkipLink[];
 }
 
-const defaultLinks: SkipLink[] = [
-  { id: 'main-content', label: 'Skip to main content' },
-  { id: 'navigation', label: 'Skip to navigation' },
-  { id: 'search', label: 'Skip to search' },
-];
+// Only include targets that reliably exist on every page. The main content
+// region (#main-content) is rendered app-wide; page-specific targets like a
+// sidebar or search box are added per-layout via the `links` prop where they
+// actually exist, so we don't emit skip links that resolve to nothing.
+const defaultLinks: SkipLink[] = [{ id: 'main-content', label: 'Skip to main content' }];
 
 export function SkipNavigation({ links = defaultLinks }: SkipNavigationProps) {
   const handleSkip = useCallback((e: React.MouseEvent<HTMLAnchorElement>, id: string) => {

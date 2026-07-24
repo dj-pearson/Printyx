@@ -1,6 +1,7 @@
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'wouter';
 import { Linkedin, Twitter } from 'lucide-react';
+import { openCookieSettings } from '@/lib/cookie-consent';
 
 const APP_VERSION = __APP_VERSION__ ?? '1.0.0';
 
@@ -28,8 +29,12 @@ const footerSections = [
     links: [
       { href: '/privacy', label: 'Privacy Policy' },
       { href: '/terms', label: 'Terms of Service' },
-      { href: '/security', label: 'Security' },
       { href: '/eula', label: 'EULA' },
+      { href: '/cookies', label: 'Cookie Policy' },
+      { href: '/dpa', label: 'Data Processing Agreement' },
+      { href: '/subprocessors', label: 'Subprocessors' },
+      { href: '/accessibility', label: 'Accessibility' },
+      { href: '/do-not-sell', label: 'Do Not Sell or Share My Personal Information' },
     ],
   },
   {
@@ -82,6 +87,16 @@ export default function Footer() {
             </p>
             <span className="text-xs text-muted-foreground">v{APP_VERSION}</span>
           </div>
+
+          <nav aria-label="Privacy choices" className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={openCookieSettings}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cookie Settings
+            </button>
+          </nav>
 
           <div className="flex items-center gap-4">
             <a
