@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { storage } from '../storage';
 import { stripServerFields } from '../utils/strip-server-fields';
 import { createModuleLogger } from '../lib/logger';
+import { consentManagementService } from '../services/consent-management-service';
 const log = createModuleLogger('email-marketing-routes');
 
 import {
@@ -700,6 +701,25 @@ router.post('/email-unsubscribes', async (req: Request, res: Response) => {
     });
 
     const unsubscribe = await storage.createEmailUnsubscribe(validatedData);
+
+    // Mirror the opt-out into the unified consent ledger so marketing-consent
+    // state is auditable end-to-end. Best-effort: only when we can tie the
+    // unsubscribe to a subject (contactId). Never blocks the unsubscribe.
+    if (unsubscribe.contactId) {
+      consentManagementService
+        .recordMarketingWithdrawal(tenantId, {
+          subjectId: unsubscribe.contactId,
+          subjectType: 'contact',
+          subjectEmail: unsubscribe.email,
+          reason: unsubscribe.reason || undefined,
+          method: unsubscribe.unsubscribeMethod || undefined,
+          source: 'email',
+          ipAddress: unsubscribe.ipAddress || undefined,
+          userAgent: unsubscribe.userAgent || undefined,
+        })
+        .catch((e) => log.error('Failed to record unsubscribe in consent ledger:', e));
+    }
+
     res.status(201).json(unsubscribe);
   } catch (error) {
     if (error instanceof z.ZodError) {
