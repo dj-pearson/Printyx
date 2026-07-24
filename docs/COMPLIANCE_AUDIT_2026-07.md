@@ -195,6 +195,44 @@ Severity: **P0** = active legal exposure / false compliance signal; **P1** = pro
 
 ---
 
+## Remediation Status (updated 2026-07-24)
+
+The roadmap above has been worked through P0→P3. All changes are static-review
+clean (tsc) and committed; runtime/e2e verification is still pending (the repo's
+`npm run build` is pre-existing-broken in this environment).
+
+**P0 — done:** real right-to-erasure (anonymize-in-place) + DSAR hash-leak fix;
+granular script-gating cookie CMP with GPC honoring + persistent re-entry;
+baseline keyboard-accessibility fixes in shared components + landmark/skip-nav
+structure + header search label; Do-Not-Sell page + server `Sec-GPC` honoring +
+`/.well-known/gpc.json`; corrected Accessibility Statement / Privacy Policy
+overclaims; fixed contact channels (`.com`→`.net`, removed placeholder phones).
+
+**P1 — done:** comprehensive self-service export + safe account erasure in
+Settings; GDPR dashboard routed as a read-only admin overview; DPA + subprocessor
+list + standalone Cookie Policy authored, routed, and linked (DPA incorporated
+into Terms); data-retention engine wired to a daily scheduler in report-only mode
+(purge gated behind `DATA_RETENTION_PURGE_ENABLED`) with an admin API.
+
+**P2 — done:** Privacy Policy mandatory disclosures (legal basis, retention
+periods, recipients, automated decision-making, sensitive PI, supervisory
+authority); RoPA register (`docs/RECORDS_OF_PROCESSING_ACTIVITIES.md`); email
+unsubscribes mirrored into the consent ledger.
+
+**P3 — guardrails in place:** `eslint-plugin-jsx-a11y` runs via a dedicated
+config (`eslint.a11y.config.js`, `npm run lint:a11y`) kept separate from the main
+lint ratchet; `@axe-core/playwright` smoke test over the public legal pages
+(`npm run test:a11y`). Remaining catalogued a11y debt (~278 findings, mostly
+`label-has-associated-control`, plus ~38 `click-events-have-key-events` across
+~30 page-level files) is now visible and regression-guarded; burning it down is
+ongoing follow-up.
+
+**Still open (needs owner):** finish `archiveRecords` before enabling destructive
+retention purge; connect the public edge-function unsubscribe path and marketing
+opt-in to the ledger; provide the real registered entity address and support
+phone; and **legal-counsel review of all new/updated legal documents** before
+relying on them.
+
 ## Caveats & Limitations of This Audit
 
 - Static code review only — **no** live assistive-technology testing, screen-reader passes, colour-contrast measurement at scale, or penetration testing.

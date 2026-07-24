@@ -332,14 +332,7 @@ export function EnhancedNotificationBell() {
         {batches.length > 0 && (
           <>
             {batches.map((batch) => (
-              <div
-                key={batch.type}
-                className="p-3 rounded-md bg-muted/50 hover:bg-muted cursor-pointer"
-                onClick={() => {
-                  // Could expand to show individual items
-                  console.log('Batch clicked', batch);
-                }}
-              >
+              <div key={batch.type} className="p-3 rounded-md bg-muted/50">
                 <div className="flex items-start gap-3">
                   {getPriorityIcon(batch.items[0].priority)}
                   <div className="flex-1 space-y-1">
@@ -400,8 +393,10 @@ export function EnhancedNotificationBell() {
     return (
       <div
         key={notification.id}
+        role="button"
+        tabIndex={0}
         className={cn(
-          'p-3 rounded-md hover:bg-accent cursor-pointer transition-colors',
+          'p-3 rounded-md hover:bg-accent cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           !notification.read && 'bg-blue-50/50 dark:bg-blue-950/20',
         )}
         onClick={() => {
@@ -410,6 +405,17 @@ export function EnhancedNotificationBell() {
           }
           if (notification.actionUrl) {
             window.location.href = notification.actionUrl;
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (!notification.read) {
+              markAsReadMutation.mutate(notification.id);
+            }
+            if (notification.actionUrl) {
+              window.location.href = notification.actionUrl;
+            }
           }
         }}
       >
