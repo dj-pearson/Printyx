@@ -142,6 +142,46 @@ export default function PrivacyPolicy() {
                       <li>Enforce our terms of service and user agreements</li>
                     </ul>
                   </div>
+                  <div>
+                    <h3 className="font-medium mb-2">3.4 Legal Basis for Processing (EU/UK)</h3>
+                    <p className="text-gray-700 leading-relaxed mb-2">
+                      Where the GDPR or UK GDPR applies, we process personal data on one or more of
+                      the following legal bases:
+                    </p>
+                    <ul className="list-disc pl-6 space-y-2 text-gray-700">
+                      <li>
+                        <strong>Contract (Art. 6(1)(b)):</strong> to provide the Platform and
+                        perform our agreement with you.
+                      </li>
+                      <li>
+                        <strong>Legitimate interests (Art. 6(1)(f)):</strong> to secure, maintain,
+                        and improve the Platform, prevent fraud and abuse, and for direct business
+                        communications — balanced against your rights.
+                      </li>
+                      <li>
+                        <strong>Consent (Art. 6(1)(a)):</strong> for non-essential cookies,
+                        analytics, and marketing communications, which you may withdraw at any time.
+                      </li>
+                      <li>
+                        <strong>Legal obligation (Art. 6(1)(c)):</strong> to comply with tax,
+                        accounting, and other legal requirements.
+                      </li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h3 className="font-medium mb-2">
+                      3.5 Automated Decision-Making and Profiling
+                    </h3>
+                    <p className="text-gray-700 leading-relaxed">
+                      Some features (such as lead scoring and predictive service insights) use
+                      automated processing to generate recommendations. These are decision-support
+                      tools: they inform, but do not solely make, decisions that produce legal or
+                      similarly significant effects on an individual. We do not carry out automated
+                      decision-making within the meaning of Article 22 GDPR without a lawful basis
+                      and appropriate safeguards, and you may contact us to request human review of
+                      a decision that significantly affects you.
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -180,6 +220,14 @@ export default function PrivacyPolicy() {
                         acquisitions, or asset sales with appropriate safeguards
                       </li>
                     </ul>
+                    <p className="text-gray-700 leading-relaxed mt-2">
+                      The service providers that process personal data on our behalf are listed on
+                      our{' '}
+                      <a href="/subprocessors" className="text-blue-600 underline">
+                        Subprocessors
+                      </a>{' '}
+                      page.
+                    </p>
                   </div>
                   <div>
                     <h3 className="font-medium mb-2">4.3 Multi-Tenant Architecture</h3>
@@ -212,10 +260,42 @@ export default function PrivacyPolicy() {
                   </div>
                   <div>
                     <h3 className="font-medium mb-2">5.2 Data Retention</h3>
-                    <p className="text-gray-700 leading-relaxed">
-                      We retain your information for as long as necessary to provide our services
-                      and comply with legal obligations. Business data is retained according to your
-                      subscription terms, with options for data export upon termination.
+                    <p className="text-gray-700 leading-relaxed mb-2">
+                      We retain personal data only for as long as necessary for the purposes it was
+                      collected, and to meet legal, tax, and accounting obligations. Our typical
+                      retention periods are:
+                    </p>
+                    <ul className="list-disc pl-6 space-y-2 text-gray-700">
+                      <li>
+                        <strong>Account &amp; business data:</strong> for the life of your
+                        subscription and up to 30 days after termination, during which you may
+                        export your data, after which it is deleted or anonymized.
+                      </li>
+                      <li>
+                        <strong>Invoices &amp; financial records:</strong> up to 7 years, as
+                        required by tax and accounting law.
+                      </li>
+                      <li>
+                        <strong>Security &amp; audit logs:</strong> up to 7 years for security and
+                        legal-defense purposes.
+                      </li>
+                      <li>
+                        <strong>Support communications:</strong> up to 3 years after the
+                        interaction.
+                      </li>
+                      <li>
+                        <strong>Marketing/analytics data and cookies:</strong> per your consent and
+                        the durations described in our{' '}
+                        <a href="/cookies" className="text-blue-600 underline">
+                          Cookie Policy
+                        </a>
+                        .
+                      </li>
+                    </ul>
+                    <p className="text-gray-700 leading-relaxed mt-2">
+                      Where we are required to retain records that contain personal data, we
+                      anonymize the personal identifiers where feasible rather than retain
+                      identifiable data.
                     </p>
                   </div>
                   <div>
@@ -242,6 +322,15 @@ export default function PrivacyPolicy() {
                       <li>Export your business data in standard formats</li>
                       <li>Restrict or object to certain processing activities</li>
                     </ul>
+                    <p className="text-gray-700 leading-relaxed mt-2">
+                      Signed-in users can export their data and delete (anonymize) their account
+                      directly under Settings &gt; Data. To exercise any right, you can also email{' '}
+                      <a href="mailto:privacy@printyx.net" className="text-blue-600 underline">
+                        privacy@printyx.net
+                      </a>
+                      . We respond within 30 days (or as required by law) and do not discriminate
+                      against you for exercising your rights.
+                    </p>
                   </div>
                   <div>
                     <h3 className="font-medium mb-2">6.2 Additional Rights (EU/UK Residents)</h3>
@@ -251,15 +340,42 @@ export default function PrivacyPolicy() {
                       <li>Right to lodge complaints with supervisory authorities</li>
                       <li>Rights regarding automated decision-making</li>
                     </ul>
+                    <p className="text-gray-700 leading-relaxed mt-2">
+                      You may lodge a complaint with your local supervisory authority. In the UK
+                      this is the Information Commissioner&apos;s Office (ICO,{' '}
+                      <a
+                        href="https://ico.org.uk"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        ico.org.uk
+                      </a>
+                      ); in the EU it is the data protection authority in your country of residence.
+                    </p>
                   </div>
                   <div>
-                    <h3 className="font-medium mb-2">6.3 California Residents (CCPA)</h3>
+                    <h3 className="font-medium mb-2">6.3 California Residents (CCPA/CPRA)</h3>
                     <ul className="list-disc pl-6 space-y-2 text-gray-700">
                       <li>Right to know what personal information is collected</li>
                       <li>Right to delete personal information</li>
-                      <li>Right to opt-out of sale (we don't sell personal information)</li>
+                      <li>
+                        Right to opt-out of the sale or sharing of personal information — see our{' '}
+                        <a href="/do-not-sell" className="text-blue-600 underline">
+                          Do Not Sell or Share My Personal Information
+                        </a>{' '}
+                        page. We do not sell personal information for money, and we honor the Global
+                        Privacy Control (GPC) signal.
+                      </li>
+                      <li>Right to correct inaccurate personal information</li>
+                      <li>Right to limit the use of sensitive personal information</li>
                       <li>Right to non-discrimination for exercising privacy rights</li>
                     </ul>
+                    <p className="text-gray-700 leading-relaxed mt-2">
+                      <strong>Sensitive personal information:</strong> we do not use or disclose
+                      sensitive personal information (as defined by the CPRA) for purposes other
+                      than those permitted without a right to limit, and we do not sell or share it.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -301,8 +417,15 @@ export default function PrivacyPolicy() {
                   <div>
                     <h3 className="font-medium mb-2">8.2 Cookie Management</h3>
                     <p className="text-gray-700 leading-relaxed">
-                      You can control cookie settings through your browser preferences. Disabling
-                      certain cookies may limit platform functionality.
+                      Non-essential cookies are set only with your consent. You can review and
+                      change your choices at any time through the &quot;Cookie Settings&quot;
+                      control in our footer, or through your browser preferences. Disabling certain
+                      cookies may limit platform functionality. For full details, including cookie
+                      categories and durations, see our{' '}
+                      <a href="/cookies" className="text-blue-600 underline">
+                        Cookie Policy
+                      </a>
+                      .
                     </p>
                   </div>
                 </div>
@@ -365,8 +488,12 @@ export default function PrivacyPolicy() {
                     <h3 className="font-medium mb-2">12.1 Our Role</h3>
                     <p className="text-gray-700 leading-relaxed">
                       Printyx acts as both a data controller (for account and usage information) and
-                      data processor (for your business data). We process your business data
-                      according to your instructions and applicable data protection agreements.
+                      data processor (for your business data). When we process personal data on your
+                      behalf as a processor, our{' '}
+                      <a href="/dpa" className="text-blue-600 underline">
+                        Data Processing Agreement
+                      </a>{' '}
+                      governs that processing.
                     </p>
                   </div>
                   <div>
@@ -399,7 +526,8 @@ export default function PrivacyPolicy() {
                     <strong>Data Protection Officer:</strong> dpo@printyx.net
                   </p>
                   <p className="text-gray-700">
-                    <strong>Address:</strong> Printyx LLC, Privacy Department
+                    <strong>Entity:</strong> Printyx LLC (Privacy Department). Our registered
+                    mailing address is available on request.
                   </p>
                 </div>
                 <p className="text-sm text-gray-600 mt-4">
