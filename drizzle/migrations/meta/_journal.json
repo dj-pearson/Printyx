@@ -134,6 +134,153 @@
       "when": 1784817477195,
       "tag": "0035_pa042_import_row_capture",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1784817478195,
+      "tag": "0036_client_enrollment_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1784817479195,
+      "tag": "0037_monitoring_clients_customer_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784817480195,
+      "tag": "0038_client_commands",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1784817481195,
+      "tag": "0039_device_alerts",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1784817482195,
+      "tag": "0040_auto_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1784817483195,
+      "tag": "0041_blog_revision_retention_days",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1784817484195,
+      "tag": "0042_quote_cost_margin",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1784817485195,
+      "tag": "0043_proposal_template_content",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1784817486195,
+      "tag": "0044_branding_profile_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1784817487195,
+      "tag": "0045_proposal_share_token",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1784817488195,
+      "tag": "0046_proposal_line_item_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1784817489195,
+      "tag": "0047_proposal_discount_reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1784817490195,
+      "tag": "0048_tenant_user_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1784817491195,
+      "tag": "0049_custom_field_definitions",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1784817492195,
+      "tag": "0050_crm_custom_fields_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1784817493195,
+      "tag": "0051_crm_notes_associations",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1784817494195,
+      "tag": "0052_pipeline_stage_legacy_map",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1784817495195,
+      "tag": "0053_workflow_runtime_idempotency",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1784817496195,
+      "tag": "0054_search_trgm_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1784817497195,
+      "tag": "0055_web_forms",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1784817498195,
+      "tag": "0056_email_sequence_enrollments",
+      "breakpoints": true
     }
   ]
 }

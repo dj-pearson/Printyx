@@ -20,6 +20,12 @@ const LOCK_ID = 1;
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const MIGRATIONS_FOLDER = path.resolve(__dirname, '../../drizzle/migrations');
 
+// drizzle-orm's migrator defaults to schema "drizzle", table "__drizzle_migrations".
+// Every read/write of the ledger here must use the same qualified name, or the
+// baseline and status commands operate on a table the migrator never consults.
+const MIGRATIONS_SCHEMA = 'drizzle';
+const MIGRATIONS_TABLE = `${MIGRATIONS_SCHEMA}.__drizzle_migrations`;
+
 function buildDatabaseUrl(): string {
   if (process.env.DATABASE_URL?.startsWith('postgres')) {
     return process.env.DATABASE_URL;
@@ -197,16 +203,21 @@ async function markBaseline(): Promise<void> {
     }
 
     const journal = JSON.parse(fs.readFileSync(journalPath, 'utf-8'));
-    const entries: Array<{ tag: string }> = journal.entries || [];
+    const entries: Array<{ tag: string; when: number }> = journal.entries || [];
 
     if (entries.length === 0) {
       log.error('[Migrate] No migration entries in journal.');
       process.exit(1);
     }
 
-    // Create the drizzle migrations table if it doesn't exist
+    // Create the drizzle migrations table if it doesn't exist.
+    // MUST be drizzle.__drizzle_migrations: that is where drizzle-orm's own
+    // migrator reads and writes (migrationsSchema defaults to "drizzle"). An
+    // unqualified name lands in public.* — a table the migrator never looks at,
+    // so baselining would silently have no effect on what db:migrate applies.
+    await pool.query(`CREATE SCHEMA IF NOT EXISTS ${MIGRATIONS_SCHEMA}`);
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS __drizzle_migrations (
+      CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
         id SERIAL PRIMARY KEY,
         hash TEXT NOT NULL,
         created_at BIGINT
@@ -214,7 +225,7 @@ async function markBaseline(): Promise<void> {
     `);
 
     // Check what's already applied
-    const applied = await pool.query(`SELECT hash FROM __drizzle_migrations`);
+    const applied = await pool.query(`SELECT hash FROM ${MIGRATIONS_TABLE}`);
     const appliedHashes = new Set(applied.rows.map((r: { hash: string }) => r.hash));
 
     let marked = 0;
@@ -233,9 +244,14 @@ async function markBaseline(): Promise<void> {
         continue;
       }
 
-      await pool.query(`INSERT INTO __drizzle_migrations (hash, created_at) VALUES ($1, $2)`, [
+      // created_at MUST be the journal entry's `when` (drizzle's folderMillis),
+      // not Date.now(). The migrator applies a migration only when
+      // max(created_at) < folderMillis, so stamping "now" here would park a
+      // value above every folderMillis and permanently skip every future
+      // migration.
+      await pool.query(`INSERT INTO ${MIGRATIONS_TABLE} (hash, created_at) VALUES ($1, $2)`, [
         hash,
-        Date.now(),
+        entry.when,
       ]);
       marked++;
       log.info(`[Migrate] Marked as applied: ${entry.tag}`);
@@ -270,7 +286,7 @@ async function showStatus(): Promise<void> {
 
     try {
       const result = await pool.query(
-        `SELECT * FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 20`,
+        `SELECT * FROM ${MIGRATIONS_TABLE} ORDER BY created_at DESC LIMIT 20`,
       );
       log.info(`\n[Migrate] Applied migrations (${result.rows.length} shown):`);
       for (const row of result.rows) {
