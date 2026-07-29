@@ -454,6 +454,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // Express detection misses. They really are both-served.
     '/api/web-forms': 'web-forms',
     '/api/email-sequences': 'email-sequences',
+    //
+    // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
+    // READ endpoints the dashboard calls, but the Express router also owns
+    // create / tasks / workflows-execute, which run agents through
+    // ClaudeAIService and are not ported. Proxying forwards the WHOLE prefix and
+    // falls through only on a network error, never a 404 (see the CLAUDE.md
+    // warning), so an entry here would take those write endpoints from
+    // working-in-dev to 404-in-dev. Prod is unaffected either way: it never
+    // reached Express, which is why the read endpoints were 404ing there.
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {
