@@ -336,6 +336,23 @@ export function registerEdgeFunctionProxy(app: any) {
     // /api/scheduled-reports/* → /reports/scheduled/*.
     '/api/scheduled-reports': { fn: 'reports', pathPrefix: '/scheduled' },
 
+    // SUPA-011: lease-payments is served by the `leases` edge fn (handlers/
+    // payments.ts), which keys off pathParts[0]==='lease-payments'. Production
+    // already resolves this via a server.ts override (functionName
+    // 'lease-payments'→'leases', stripSegments=0, so the segment survives). This
+    // dev entry re-adds the /lease-payments prefix (like kpis/reporting/scheduled)
+    // so dev matches prod. Verified: leases/index.ts case 'lease-payments' →
+    // handlePayments handles /:id/process (the LeaseDetail.tsx:82 call).
+    '/api/lease-payments': { fn: 'leases', pathPrefix: '/lease-payments' },
+
+    // SUPA-011 (drift cleanup): ai-employees is served by the `ai-employee` edge
+    // fn, which keys off pathParts[0]==='ai-employees'. Production already resolves
+    // it via a server.ts override (functionName 'ai-employees'→'ai-employee',
+    // stripSegments=0). This dev entry re-adds the prefix so dev matches prod.
+    // (Pre-existing upstream drift surfaced by the route-ownership guard; same
+    // clean pattern as lease-payments, so resolved here rather than grandfathered.)
+    '/api/ai-employees': { fn: 'ai-employee', pathPrefix: '/ai-employees' },
+
     // EDGE-002a: billing — full frontend parity audited 2026-06-11
     // (analytics + 3 sub-routes, invoices list/:id/pay/email/pdf/
     // generate-from-contract, rules + activate/deactivate, configurations,
