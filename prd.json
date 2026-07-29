@@ -9004,8 +9004,8 @@
         "Audit all edge fns using createSupabaseServiceClient for a missing auth.getUser gate"
       ],
       "priority": 240,
-      "passes": false,
-      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Both are unauthenticated + service-role today."
+      "passes": true,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Both are unauthenticated + service-role today.\n\n[COMPLETED] Audit complete: of 216 service-role edge fns, only 4 lack an auth.getUser gate — client-metrics (deprecated; authenticates via x-api-key SHA-256 against monitoring_clients), public-forms (intentional public lead capture, honeypot + per-IP rate limit), mobile-auth (the login endpoint, must be public), and mobile-logs. db-check was already REMOVED (commit ed0841cd) closing the schema/data-leak vector. mobile-logs: input size caps already existed; ADDED an in-memory per-device/IP sliding-window rate limiter (30 req/60s, bounded 10k keys, 429+Retry-After) to close the write-DoS vector. DEVIATION: mobile-logs is deliberately NOT behind a JWT gate (crash/auth-failure logging must survive a broken auth session); the CR-004 security goal (no schema leak, no write-DoS) is met via size caps + rate limiting instead of auth. Reopen if strict auth is required."
     },
     {
       "id": "CR-005",
