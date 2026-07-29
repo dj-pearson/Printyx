@@ -88,6 +88,32 @@ function walk(dir, exts, out = []) {
 // reachability walk in scripts/check-nav-targets.mjs — kept local rather than
 // shared because that script also strips comments for its own purposes, which
 // is irrelevant here.
+//
+// FAIL-SAFE, and this matters: a wrong "dead" verdict here DE-GATES a real prod
+// 404, so the dangerous direction is under-reporting reachability. The walk only
+// follows STRING-LITERAL imports. Server-side code already defeats it —
+// routes-registry.ts mounts routers via `await import(modulePath)` over an array
+// of literals, so a purely regex walk marks those routers unreachable even
+// though they are mounted. The client tree currently has no such pattern, but if
+// one appears the walk would silently start calling live files dead. So: detect
+// the constructs it cannot follow, and when any is present treat EVERY file as
+// live (disabling the split) rather than emit confident wrong answers.
+function clientHasUnfollowableImports(clientFiles) {
+  for (const file of clientFiles) {
+    let src;
+    try {
+      src = readFileSync(file, 'utf-8');
+    } catch {
+      continue;
+    }
+    // import.meta.glob(...) — Vite's bulk import, no literal specifier per file.
+    if (src.includes('import.meta.glob')) return file;
+    // import(<not a quote>) — a computed specifier this walk cannot resolve.
+    if (/\bimport\(\s*[^'"`\s)]/.test(src)) return file;
+  }
+  return null;
+}
+
 function reachableClientFiles(repo, clientSrc) {
   const entries = [join(clientSrc, 'App.tsx'), join(clientSrc, 'main.tsx')].filter((f) =>
     existsSync(f),
@@ -178,7 +204,14 @@ export function computeParity(repo = repoDefault) {
   // split, and the same reasoning, as scripts/check-nav-targets.mjs.
   const clientSrc = join(repo, 'client', 'src');
   const clientFiles = walk(clientSrc, ['.ts', '.tsx']);
-  const liveFiles = reachableClientFiles(repo, clientSrc);
+  // See clientHasUnfollowableImports: if the walk cannot be trusted, every file
+  // counts as live, so the split collapses to "all live" and the guard keeps
+  // gating on everything — the safe direction.
+  const unfollowable = clientHasUnfollowableImports(clientFiles);
+  const reachabilityTrusted = unfollowable === null;
+  const liveFiles = reachabilityTrusted
+    ? reachableClientFiles(repo, clientSrc)
+    : new Set(clientFiles);
 
   const frontendCalls = new Set();
   const liveFrontendCalls = new Set();
@@ -267,5 +300,10 @@ export function computeParity(repo = repoDefault) {
     liveFrontendCalls,
     callerFiles,
     proxied,
+    // False when a construct the import walk cannot follow was found, in which
+    // case the LIVE/DEAD split was disabled and everything reads as live.
+    // `unfollowableImportFile` names the first offender so it can be fixed.
+    reachabilityTrusted,
+    unfollowableImportFile: unfollowable,
   };
 }

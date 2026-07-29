@@ -33,7 +33,16 @@ const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
 const baselinePath = join(repo, 'docs', 'route-ownership-baseline.json');
 const update = process.argv.includes('--update-baseline');
 
-const { byClass, byClassLive, byClassDead } = computeParity(repo);
+const { byClass, byClassLive, byClassDead, reachabilityTrusted, unfollowableImportFile } =
+  computeParity(repo);
+
+if (!reachabilityTrusted) {
+  console.log(
+    `ℹ LIVE/DEAD split DISABLED — ${unfollowableImportFile} uses an import this walk cannot follow` +
+      ` (import.meta.glob or a computed specifier), so every call is treated as live and gates.` +
+      ` This is the fail-safe direction; teach reachableClientFiles() the pattern to re-enable it.`,
+  );
+}
 const current = {
   bothDivergent: byClass('both-divergent'),
   missingEdge: byClass('missing-edge'),
