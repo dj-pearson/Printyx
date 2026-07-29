@@ -45,6 +45,8 @@ jobs:
         run: npm run check:lint
       - name: Route ownership ratchet (EDGE-018)
         run: npm run check:routes
+      - name: Migration-journal guard (SUPA-005)
+        run: npm run check:migrations
       - name: Nav-target ratchet (AUDIT-014)
         run: npm run check:nav
       - name: Edge path-normalization ratchet (EDGE-002e)

@@ -8,11 +8,21 @@
  * POST /mobile-logs
  * Body: { deviceId, sessionId, platform, appVersion, entries: LogEntry[] }
  *
- * No authentication required — logging should work even when auth is broken.
- * Because it is unauthenticated and writes via the service-role client, every
- * input is bounded/sanitized below to prevent unbounded-insert storage DoS and
- * to keep values within the mobile_app_logs column limits. (Per-device rate
- * limiting would need a shared store and is tracked as a follow-up.)
+ * No authentication required — logging should work even when auth is broken
+ * (a crash/auth-failure is exactly when the client-side logs matter most, so a
+ * JWT gate would defeat the feature). Per the CR-004 audit this is one of only
+ * 4 service-role edge fns without an auth.getUser gate, and the only one whose
+ * abuse surface is an unbounded write. The write-DoS goal of CR-004 is met by
+ * two layers instead of auth: (1) every input is bounded/sanitized below to keep
+ * batches small and within the mobile_app_logs column limits, and (2) a
+ * per-device/IP sliding-window rate limiter (below) caps request frequency.
+ *
+ * The rate limiter is in-memory (best-effort per instance — Deno Deploy may run
+ * several). That is the standard mitigation for high-volume log ingestion; it
+ * meaningfully bounds a single instance's exposure and, combined with the
+ * MAX_ENTRIES per-request cap, the total write volume. A cross-instance shared
+ * store (e.g. a Postgres counter or Upstash) would be strictly stronger and is
+ * the follow-up if abuse is observed.
  */
 
 import { getCorsHeaders, handleCors } from '/app/functions/_shared/cors.ts';
@@ -28,6 +38,44 @@ const MAX_PLATFORM = 20; // platform varchar(20)
 const MAX_APP_VERSION = 20; // app_version varchar(20)
 const MAX_LEVEL = 10; // level varchar(10)
 const MAX_SCREEN = 100; // screen varchar(100)
+
+// ── Rate limiting (CR-004) ────────────────────────────────────────────────
+// In-memory, best-effort per instance. Keyed by device id (falling back to
+// client IP) so one noisy/malicious device can't flood the mobile_app_logs
+// table. A sliding window of RL_MAX requests per RL_WINDOW_MS. The tracker map
+// is itself bounded (RL_MAX_KEYS) so the limiter can't be turned into a memory
+// DoS; when full, the oldest-touched key is evicted.
+const RL_WINDOW_MS = 60_000; // 1 minute window
+const RL_MAX = 30; // max requests per key per window
+const RL_MAX_KEYS = 10_000; // cap tracked keys to bound memory
+const rlHits = new Map<string, number[]>(); // key → recent request timestamps
+
+function rateLimitKey(req: Request, deviceId: string | null): string {
+  if (deviceId) return `d:${deviceId}`;
+  const fwd = req.headers.get('x-forwarded-for');
+  const ip = (fwd ? fwd.split(',')[0].trim() : req.headers.get('x-real-ip')) || 'unknown';
+  return `ip:${ip}`;
+}
+
+// Returns true if the request is allowed, false if it exceeds the window.
+function checkRateLimit(key: string, now: number): boolean {
+  if (rlHits.size >= RL_MAX_KEYS && !rlHits.has(key)) {
+    // Evict the least-recently-touched key (Map preserves insertion order).
+    const oldest = rlHits.keys().next().value;
+    if (oldest !== undefined) rlHits.delete(oldest);
+  }
+  const cutoff = now - RL_WINDOW_MS;
+  const recent = (rlHits.get(key) ?? []).filter((t) => t > cutoff);
+  if (recent.length >= RL_MAX) {
+    rlHits.set(key, recent); // persist the trimmed window
+    return false;
+  }
+  recent.push(now);
+  // Re-insert last so eviction order tracks recency.
+  rlHits.delete(key);
+  rlHits.set(key, recent);
+  return true;
+}
 
 function clampStr(value: unknown, max: number): string | null {
   if (value === null || value === undefined) return null;
@@ -67,6 +115,16 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     const body = await req.json();
     const { deviceId, sessionId, platform, appVersion, entries } = body;
+
+    // Rate limit before any work: an anonymous caller must not be able to flood
+    // the mobile_app_logs table with high-frequency batches.
+    const rlKey = rateLimitKey(req, clampStr(deviceId, MAX_DEVICE_ID));
+    if (!checkRateLimit(rlKey, Date.now())) {
+      return new Response(JSON.stringify({ error: 'Too many requests', received: 0 }), {
+        status: 429,
+        headers: { ...jsonHeaders, 'Retry-After': String(Math.ceil(RL_WINDOW_MS / 1000)) },
+      });
+    }
 
     if (!Array.isArray(entries) || entries.length === 0) {
       return new Response(JSON.stringify({ received: 0 }), { status: 200, headers: jsonHeaders });
