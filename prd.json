@@ -10854,8 +10854,8 @@
         "Output is a checklist in docs/supabase-remediation.md that drives SUPA-011..017."
       ],
       "priority": 331,
-      "passes": false,
-      "notes": "The 45 come from docs/route-ownership-baseline.json missingEdge. Severity: P1. Feeds all EPIC-2 stories.",
+      "passes": true,
+      "notes": "The 45 come from docs/route-ownership-baseline.json missingEdge. Severity: P1. Feeds all EPIC-2 stories.\n\n[COMPLETED] Classified all 45 missing-edge domains: 3 ALIAS (accessories->product-accessories, documents->document-management, lease-payments->leases), 37 PORT (real Express handler, no edge fn), 5 DEAD (platform, predictive-analytics, quote-templates, system-monitoring, technician-sessions). Full evidence table in docs/supabase-remediation.md. Key correction: meter-reads is PORT not an alias (meter-readings edge fn is billing CRUD without /submissions).",
       "category": "route-parity"
     },
     {
@@ -10984,8 +10984,8 @@
         "Output drives SUPA-021..024."
       ],
       "priority": 339,
-      "passes": false,
-      "notes": "From docs/route-ownership-baseline.json bothDivergent. Severity: P1.",
+      "passes": true,
+      "notes": "From docs/route-ownership-baseline.json bothDivergent. Severity: P1.\n\n[COMPLETED] Classified all 59 both-divergent domains: 49 PROXY (edge fn substantive, add crmProxies to align dev->prod), 6 INVESTIGATE (admin/catalog/crm/dashboard/database-updater/quickbooks - security or stub/mock or OAuth-callback divergence), 2 KEEP-EXPRESS (deal-stages, performance - edge fns are hardcoded stubs), 2 RETIRE-EXPRESS (audit-logs, content-gap-analysis - edge headers say they replace the Express handler). Full table in docs/supabase-remediation.md.",
       "category": "route-parity"
     },
     {
