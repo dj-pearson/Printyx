@@ -10839,8 +10839,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 330,
-      "passes": false,
-      "notes": "Prevention. Severity: P2.",
+      "passes": true,
+      "notes": "Prevention. Severity: P2.\n\n[COMPLETED] Wired npm run check:migrations into CI quality gate (.github/workflows/ci.yml) right after check:routes. Script scripts/check-migration-journal.mjs already existed and passes (40 files/40 journal entries); documented in CLAUDE.md Migration Workflow.",
       "category": "audit-build-ci"
     },
     {
