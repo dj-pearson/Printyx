@@ -454,6 +454,14 @@ export function registerEdgeFunctionProxy(app: any) {
     // Express detection misses. They really are both-served.
     '/api/web-forms': 'web-forms',
     '/api/email-sequences': 'email-sequences',
+
+    // EDGE-022. pipeline-forecast is proxied because its edge fn has FULL
+    // parity — Express serves exactly one endpoint on that prefix.
+    // /api/sales-forecasts is deliberately NOT proxied: Express also has a
+    // POST (routes-sales-forecasting.ts) that the edge fn does not implement,
+    // and a proxy forwards the whole prefix, so an entry would take that write
+    // from working-in-dev to 404-in-dev. Same call as /api/ai-employees above.
+    '/api/pipeline-forecast': 'pipeline-forecast',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns

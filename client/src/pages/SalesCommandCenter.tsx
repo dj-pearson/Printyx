@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -94,12 +95,22 @@ export default function SalesCommandCenter() {
   });
 
   // Forecasts list
+  // EDGE-022: was bare `fetch('/api/...')`, which is broken in prod twice over —
+  // the relative URL never reaches functions.printyx.net (getApiUrl rewrites
+  // /api/x -> <edge host>/x, and a raw fetch skips it, so the request hits the
+  // Pages origin, falls through to the SPA shell, and .json() throws), and it
+  // sends no Bearer token so it would 401 even if it arrived. apiRequest does both.
   const { data: forecasts = [] } = useQuery<Forecast[]>({
     queryKey: ['/api/sales-forecasts'],
-    queryFn: () => fetch('/api/sales-forecasts').then((r) => r.json()),
+    queryFn: () => apiRequest('/api/sales-forecasts'),
   });
 
   // Pipeline forecast summary (deals + quotes + proposals)
+  // NOTE: `owner=me` is sent but NOT implemented by either backend — the Express
+  // handler reads only period/startDate/endDate, and the edge function mirrors
+  // it. Left as-is rather than silently dropped from the URL: the scope toggle
+  // is a real UI affordance that no backend honours, which is a bug to fix
+  // deliberately (server-side owner filtering), not to hide here.
   const { data: forecastData } = useQuery<ForecastData>({
     queryKey: ['/api/pipeline-forecast', selectedForecast, period, ownerScope],
     queryFn: () => {
@@ -108,7 +119,7 @@ export default function SalesCommandCenter() {
       const params = new URLSearchParams();
       params.append('period', period);
       if (ownerScope === 'me') params.append('owner', 'me');
-      return fetch(`${url}?${params.toString()}`).then((r) => r.json());
+      return apiRequest(`${url}?${params.toString()}`);
     },
   });
 
