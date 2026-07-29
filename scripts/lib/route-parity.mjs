@@ -84,6 +84,55 @@ function walk(dir, exts, out = []) {
   return out;
 }
 
+// Files reachable by walking imports from the app's entry points. Mirrors the
+// reachability walk in scripts/check-nav-targets.mjs — kept local rather than
+// shared because that script also strips comments for its own purposes, which
+// is irrelevant here.
+function reachableClientFiles(repo, clientSrc) {
+  const entries = [join(clientSrc, 'App.tsx'), join(clientSrc, 'main.tsx')].filter((f) =>
+    existsSync(f),
+  );
+
+  const resolve = (spec, fromFile) => {
+    let base;
+    if (spec.startsWith('@/')) base = join(clientSrc, spec.slice(2));
+    else if (spec.startsWith('.')) base = join(dirname(fromFile), spec);
+    else return null; // package import
+    const tries = [
+      base,
+      `${base}.tsx`,
+      `${base}.ts`,
+      `${base}.jsx`,
+      `${base}.js`,
+      join(base, 'index.tsx'),
+      join(base, 'index.ts'),
+    ];
+    return tries.find((t) => existsSync(t) && statSync(t).isFile()) ?? null;
+  };
+
+  const seen = new Set();
+  const queue = [...entries];
+  const re = /(?:from\s*|import\s*\(\s*)['"]([^'"]+)['"]/g;
+  while (queue.length > 0) {
+    const file = queue.pop();
+    if (!file || seen.has(file)) continue;
+    seen.add(file);
+    let src;
+    try {
+      src = readFileSync(file, 'utf-8');
+    } catch {
+      continue;
+    }
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const target = resolve(m[1], file);
+      if (target && !seen.has(target)) queue.push(target);
+    }
+    re.lastIndex = 0;
+  }
+  return seen;
+}
+
 function readAll(files) {
   return files.map((f) => {
     try {
@@ -120,10 +169,38 @@ export function computeParity(repo = repoDefault) {
   ]);
 
   // 3. Frontend-called /api/* segments.
-  const clientText = readAll(walk(join(repo, 'client', 'src'), ['.ts', '.tsx'])).join('\n');
-  const frontendCalls = new Set(
-    [...clientText.matchAll(/['"`]\/api\/([a-z0-9-]+)/g)].map((m) => m[1]),
-  );
+  //
+  // Scanned PER FILE, not over one concatenated blob, so each domain can be
+  // split into calls made from files a user can actually reach vs calls made
+  // from orphaned files. A `missing-edge` domain is only a PROD BLOCKER if a
+  // LIVE file calls it: an orphaned page's fetch never runs, so counting it as
+  // a blocker inflates the number and buries the real ones. Same LIVE/DEAD
+  // split, and the same reasoning, as scripts/check-nav-targets.mjs.
+  const clientSrc = join(repo, 'client', 'src');
+  const clientFiles = walk(clientSrc, ['.ts', '.tsx']);
+  const liveFiles = reachableClientFiles(repo, clientSrc);
+
+  const frontendCalls = new Set();
+  const liveFrontendCalls = new Set();
+  const callerFiles = new Map(); // domain -> { live: string[], dead: string[] }
+  for (const file of clientFiles) {
+    let src;
+    try {
+      src = readFileSync(file, 'utf-8');
+    } catch {
+      continue;
+    }
+    const isLive = liveFiles.has(file);
+    for (const m of src.matchAll(/['"`]\/api\/([a-z0-9-]+)/g)) {
+      const d = m[1];
+      frontendCalls.add(d);
+      if (!callerFiles.has(d)) callerFiles.set(d, { live: [], dead: [] });
+      const bucket = callerFiles.get(d);
+      const list = isLive ? bucket.live : bucket.dead;
+      if (!list.includes(file)) list.push(file);
+      if (isLive) liveFrontendCalls.add(d);
+    }
+  }
 
   // 4. Express-served /api/* segments (app.METHOD('/api/x') and app.use('/api/x')).
   const serverText = readAll(walk(join(repo, 'server'), ['.ts'])).join('\n');
@@ -155,10 +232,14 @@ export function computeParity(repo = repoDefault) {
   const rows = [...domains].sort().map((d) => ({
     domain: d,
     frontend: frontendCalls.has(d),
+    // frontendLive is false when EVERY caller of this domain sits in an
+    // orphaned file, i.e. the call exists in source but can never run.
+    frontendLive: liveFrontendCalls.has(d),
     edge: edgeFns.has(d),
     express: expressServed.has(d),
     proxied: proxied.has(d),
     klass: classify(d),
+    callers: callerFiles.get(d) ?? { live: [], dead: [] },
   }));
 
   const counts = {};
@@ -166,5 +247,25 @@ export function computeParity(repo = repoDefault) {
 
   const byClass = (k) => rows.filter((r) => r.klass === k).map((r) => r.domain);
 
-  return { rows, counts, byClass, edgeFns, expressServed, frontendCalls, proxied };
+  // Same class, split by whether a user can actually trigger the call. Callers
+  // that gate CI should use byClassLive('missing-edge'); byClassDead is a
+  // worklist for the dead-code stories, not a blocker.
+  const byClassLive = (k) =>
+    rows.filter((r) => r.klass === k && r.frontendLive).map((r) => r.domain);
+  const byClassDead = (k) =>
+    rows.filter((r) => r.klass === k && r.frontend && !r.frontendLive).map((r) => r.domain);
+
+  return {
+    rows,
+    counts,
+    byClass,
+    byClassLive,
+    byClassDead,
+    edgeFns,
+    expressServed,
+    frontendCalls,
+    liveFrontendCalls,
+    callerFiles,
+    proxied,
+  };
 }

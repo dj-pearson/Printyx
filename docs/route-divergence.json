@@ -65,7 +65,6 @@
     "accessories",
     "ai",
     "ai-analytics",
-    "ai-employees",
     "approvals",
     "assignment-groups",
     "business-process",
@@ -149,6 +148,7 @@
     "customers",
     "deals",
     "deployment",
+    "email-sequences",
     "feature-flags",
     "integration-hub",
     "knowledge-base",
@@ -179,6 +179,7 @@
     "territories",
     "users",
     "vendors",
+    "web-forms",
     "webhooks"
   ],
   "expressCanonical": [
