@@ -1,6 +1,6 @@
 {
   "note": "PA-048 ESLint problem-count ratchet baseline. scripts/check-lint.mjs fails CI only when total (errors + warnings) grows above `total`. Lower it (never raise it) as debt is fixed: node scripts/check-lint.mjs --update-baseline.",
-  "total": 11994,
-  "errors": 10649,
-  "warnings": 1345
+  "total": 11916,
+  "errors": 10572,
+  "warnings": 1344
 }
