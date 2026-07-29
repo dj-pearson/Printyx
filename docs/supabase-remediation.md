@@ -44,7 +44,7 @@ Legend: ✅ done · 🟡 in progress · ⛔ blocked-on-user · ⬜ not started
 | SUPA-002 | Reconcile drizzle journal | 🟡 | File/journal reconciliation is offline-doable; final verify needs DB (SUPA-001). |
 | SUPA-003 | Apply missing migrations | ⛔ | Needs backup + prod/staging DB access. HIGH RISK. |
 | SUPA-004 | Remove PGRST204 fallbacks | ⬜ | Depends on SUPA-003. |
-| SUPA-005 | CI guard: journal ↔ files | 🟡 | Script is offline-doable; can't mark pass until SUPA-002 tree is clean. |
+| SUPA-005 | CI guard: journal ↔ files | ✅ | `scripts/check-migration-journal.mjs` passes (40 files/40 entries) and is now wired into the CI quality gate (`npm run check:migrations`, ci.yml after check:routes). |
 | SUPA-010 | Triage 45 missing-edge | 🟡 | Read-only classification, in progress via investigation. |
 | SUPA-011 | Dispatcher aliases | ⬜ | Depends on SUPA-010. |
 | SUPA-012 | Port: forecasting/AI | ⬜ | Depends on SUPA-010 (+ schema for some). |
