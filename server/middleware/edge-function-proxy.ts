@@ -430,6 +430,52 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/platform-activities': 'platform-activities',
     '/api/platform-analytics': 'platform-analytics',
     '/api/platform-cs': 'platform-cs',
+
+    // CRMX-003 leftover: the custom-fields edge fn and the Express handler in
+    // routes-custom-fields.ts both served /api/custom-fields with no proxy
+    // entry, which check:routes flags as ambiguous ownership. Prod already
+    // bypasses Express and hits the edge fn, so this only makes dev match prod.
+    // NOTE routes-custom-fields.ts STAYS — its validateCustomFieldValues is
+    // imported by routes-business-records.ts and routes-deals.ts; only the HTTP
+    // handlers are superseded. Dir name == prefix segment, no override needed.
+    '/api/custom-fields': 'custom-fields',
+
+    // New edge fns for three domains that 404'd in PROD — the frontend calls
+    // them but only Express served them, and prod bypasses Express entirely.
+    // Proxying dev too is the point: without an entry the new functions would
+    // run ONLY in prod, which is the "invisible in dev" trap that let these
+    // rot in the first place. Dir name == prefix segment, no override needed.
+    //
+    // NOTE for anyone re-running npm run audit:routes: it classifies both of
+    // these `edge-only`, i.e. it does NOT see the Express side. That is a false
+    // negative in the tool — routes-web-forms.ts and routes-email-sequences.ts
+    // declare full '/api/...' paths INSIDE a Router that routes-registry.ts
+    // mounts with a bare `app.use(router)` (lines 635-636), a shape the audit's
+    // Express detection misses. They really are both-served.
+    '/api/web-forms': 'web-forms',
+    '/api/email-sequences': 'email-sequences',
+
+    // EDGE-022. pipeline-forecast is proxied because its edge fn has FULL
+    // parity — Express serves exactly one endpoint on that prefix.
+    // /api/sales-forecasts is deliberately NOT proxied: Express also has a
+    // POST (routes-sales-forecasting.ts) that the edge fn does not implement,
+    // and a proxy forwards the whole prefix, so an entry would take that write
+    // from working-in-dev to 404-in-dev. Same call as /api/ai-employees above.
+    '/api/pipeline-forecast': 'pipeline-forecast',
+
+    // EDGE-023. Proxied because the edge fn has FULL parity — all seven Express
+    // endpoints (list, export.csv, GET/PUT settings, refresh, digest/preview,
+    // :contractId) are implemented.
+    '/api/contract-pnl': 'contract-pnl',
+    //
+    // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
+    // READ endpoints the dashboard calls, but the Express router also owns
+    // create / tasks / workflows-execute, which run agents through
+    // ClaudeAIService and are not ported. Proxying forwards the WHOLE prefix and
+    // falls through only on a network error, never a 404 (see the CLAUDE.md
+    // warning), so an entry here would take those write endpoints from
+    // working-in-dev to 404-in-dev. Prod is unaffected either way: it never
+    // reached Express, which is why the read endpoints were 404ing there.
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {

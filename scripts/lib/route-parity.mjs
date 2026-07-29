@@ -84,6 +84,81 @@ function walk(dir, exts, out = []) {
   return out;
 }
 
+// Files reachable by walking imports from the app's entry points. Mirrors the
+// reachability walk in scripts/check-nav-targets.mjs — kept local rather than
+// shared because that script also strips comments for its own purposes, which
+// is irrelevant here.
+//
+// FAIL-SAFE, and this matters: a wrong "dead" verdict here DE-GATES a real prod
+// 404, so the dangerous direction is under-reporting reachability. The walk only
+// follows STRING-LITERAL imports. Server-side code already defeats it —
+// routes-registry.ts mounts routers via `await import(modulePath)` over an array
+// of literals, so a purely regex walk marks those routers unreachable even
+// though they are mounted. The client tree currently has no such pattern, but if
+// one appears the walk would silently start calling live files dead. So: detect
+// the constructs it cannot follow, and when any is present treat EVERY file as
+// live (disabling the split) rather than emit confident wrong answers.
+function clientHasUnfollowableImports(clientFiles) {
+  for (const file of clientFiles) {
+    let src;
+    try {
+      src = readFileSync(file, 'utf-8');
+    } catch {
+      continue;
+    }
+    // import.meta.glob(...) — Vite's bulk import, no literal specifier per file.
+    if (src.includes('import.meta.glob')) return file;
+    // import(<not a quote>) — a computed specifier this walk cannot resolve.
+    if (/\bimport\(\s*[^'"`\s)]/.test(src)) return file;
+  }
+  return null;
+}
+
+function reachableClientFiles(repo, clientSrc) {
+  const entries = [join(clientSrc, 'App.tsx'), join(clientSrc, 'main.tsx')].filter((f) =>
+    existsSync(f),
+  );
+
+  const resolve = (spec, fromFile) => {
+    let base;
+    if (spec.startsWith('@/')) base = join(clientSrc, spec.slice(2));
+    else if (spec.startsWith('.')) base = join(dirname(fromFile), spec);
+    else return null; // package import
+    const tries = [
+      base,
+      `${base}.tsx`,
+      `${base}.ts`,
+      `${base}.jsx`,
+      `${base}.js`,
+      join(base, 'index.tsx'),
+      join(base, 'index.ts'),
+    ];
+    return tries.find((t) => existsSync(t) && statSync(t).isFile()) ?? null;
+  };
+
+  const seen = new Set();
+  const queue = [...entries];
+  const re = /(?:from\s*|import\s*\(\s*)['"]([^'"]+)['"]/g;
+  while (queue.length > 0) {
+    const file = queue.pop();
+    if (!file || seen.has(file)) continue;
+    seen.add(file);
+    let src;
+    try {
+      src = readFileSync(file, 'utf-8');
+    } catch {
+      continue;
+    }
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const target = resolve(m[1], file);
+      if (target && !seen.has(target)) queue.push(target);
+    }
+    re.lastIndex = 0;
+  }
+  return seen;
+}
+
 function readAll(files) {
   return files.map((f) => {
     try {
@@ -120,20 +195,118 @@ export function computeParity(repo = repoDefault) {
   ]);
 
   // 3. Frontend-called /api/* segments.
-  const clientText = readAll(walk(join(repo, 'client', 'src'), ['.ts', '.tsx'])).join('\n');
-  const frontendCalls = new Set(
-    [...clientText.matchAll(/['"`]\/api\/([a-z0-9-]+)/g)].map((m) => m[1]),
-  );
+  //
+  // Scanned PER FILE, not over one concatenated blob, so each domain can be
+  // split into calls made from files a user can actually reach vs calls made
+  // from orphaned files. A `missing-edge` domain is only a PROD BLOCKER if a
+  // LIVE file calls it: an orphaned page's fetch never runs, so counting it as
+  // a blocker inflates the number and buries the real ones. Same LIVE/DEAD
+  // split, and the same reasoning, as scripts/check-nav-targets.mjs.
+  const clientSrc = join(repo, 'client', 'src');
+  const clientFiles = walk(clientSrc, ['.ts', '.tsx']);
+  // See clientHasUnfollowableImports: if the walk cannot be trusted, every file
+  // counts as live, so the split collapses to "all live" and the guard keeps
+  // gating on everything — the safe direction.
+  const unfollowable = clientHasUnfollowableImports(clientFiles);
+  const reachabilityTrusted = unfollowable === null;
+  const liveFiles = reachabilityTrusted
+    ? reachableClientFiles(repo, clientSrc)
+    : new Set(clientFiles);
 
-  // 4. Express-served /api/* segments (app.METHOD('/api/x') and app.use('/api/x')).
-  const serverText = readAll(walk(join(repo, 'server'), ['.ts'])).join('\n');
+  const frontendCalls = new Set();
+  const liveFrontendCalls = new Set();
+  const callerFiles = new Map(); // domain -> { live: string[], dead: string[] }
+  for (const file of clientFiles) {
+    let src;
+    try {
+      src = readFileSync(file, 'utf-8');
+    } catch {
+      continue;
+    }
+    const isLive = liveFiles.has(file);
+    for (const m of src.matchAll(/['"`]\/api\/([a-z0-9-]+)/g)) {
+      const d = m[1];
+      frontendCalls.add(d);
+      if (!callerFiles.has(d)) callerFiles.set(d, { live: [], dead: [] });
+      const bucket = callerFiles.get(d);
+      const list = isLive ? bucket.live : bucket.dead;
+      if (!list.includes(file)) list.push(file);
+      if (isLive) liveFrontendCalls.add(d);
+    }
+  }
+
+  // 4. Express-served /api/* segments.
+  //
+  // This used to match ONLY `app.METHOD('/api/x')` / `app.use('/api/x', ...)`,
+  // which misses every route declared on a Router object. That blind spot made
+  // the tool assert things that were plainly false — it reported web-forms and
+  // email-sequences as `edge-only` while Express was serving them (EDGE-019),
+  // and it hid live Express handlers behind an `edge-only` "fully migrated"
+  // label for seven domains. Two mount shapes exist in this repo and both are
+  // now covered:
+  //
+  //   (a) ABSOLUTE — the module declares the full path on a Router and is
+  //       mounted bare: `router.get('/api/web-forms')` + `app.use(router)`.
+  //       Matched by allowing any identifier before the method, not just `app`.
+  //
+  //   (b) PREFIXED — the module declares a RELATIVE path and routes-registry
+  //       mounts it at '/api': `router.get('/approvals')` mounted by
+  //       `app.use('/api', mod.default)`. Nothing in the module text contains
+  //       "/api", so no amount of scanning the module alone can find it; the
+  //       mount prefix has to be applied. Resolved below from the registry.
+  // Tests are excluded: a supertest fixture that builds its own app and
+  // declares routes is not production surface, and counting it would invent
+  // Express handlers that do not ship. This matters more now than it did when
+  // only `app.METHOD` matched, because widening to any identifier also picks up
+  // routers built inside test files.
+  const serverFiles = walk(join(repo, 'server'), ['.ts']).filter(
+    (f) => !/\.(test|spec)\.ts$/.test(f) && !/[\\/](tests?|__tests__)[\\/]/.test(f),
+  );
+  const serverText = readAll(serverFiles).join('\n');
   const expressServed = new Set(
     [
+      // (a) any identifier — app, router, apiRouter, r … — with an absolute path.
       ...serverText.matchAll(
-        /app\.(?:get|post|put|patch|delete|use|all)\(\s*['"`]\/api\/([a-z0-9-]+)/g,
+        /\b[A-Za-z_][A-Za-z0-9_]*\.(?:get|post|put|patch|delete|use|all)\(\s*['"`]\/api\/([a-z0-9-]+)/g,
       ),
     ].map((m) => m[1]),
   );
+
+  // (b) Routers mounted under a '/api' prefix. routes-registry.ts collects the
+  // module paths in an array of string literals and mounts each with
+  // `app.use('/api', mod.default)` in a loop, so the specifier is a variable at
+  // the import site — unreadable to a regex that expects a literal. Read the
+  // array literals instead, then apply the prefix to each router's own paths.
+  const registryPath = join(repo, 'server', 'routes-registry.ts');
+  if (existsSync(registryPath)) {
+    const registrySrc = readFileSync(registryPath, 'utf-8');
+    // Only bother if the registry really does mount something at bare '/api'.
+    if (/app\.use\(\s*['"`]\/api['"`]\s*,/.test(registrySrc)) {
+      for (const arrMatch of registrySrc.matchAll(
+        /(?:const|let)\s+\w+\s*:\s*string\[\]\s*=\s*\[([\s\S]*?)\]/g,
+      )) {
+        for (const lit of arrMatch[1].matchAll(/['"`](\.\.?\/[^'"`]+)['"`]/g)) {
+          const modPath = join(repo, 'server', lit[1]);
+          const file = [`${modPath}.ts`, join(modPath, 'index.ts'), modPath].find(
+            (f) => existsSync(f) && statSync(f).isFile(),
+          );
+          if (!file) continue;
+          let modSrc;
+          try {
+            modSrc = readFileSync(file, 'utf-8');
+          } catch {
+            continue;
+          }
+          for (const r of modSrc.matchAll(
+            /\b[A-Za-z_][A-Za-z0-9_]*\.(?:get|post|put|patch|delete|use|all)\(\s*['"`]\/([a-z0-9-]+)/g,
+          )) {
+            // Skip 'api' itself — an absolute '/api/x' path already matched in (a).
+            if (r[1] !== 'api') expressServed.add(r[1]);
+          }
+        }
+      }
+    }
+  }
 
   const domains = new Set([...frontendCalls, ...edgeFns, ...expressServed]);
 
@@ -155,10 +328,14 @@ export function computeParity(repo = repoDefault) {
   const rows = [...domains].sort().map((d) => ({
     domain: d,
     frontend: frontendCalls.has(d),
+    // frontendLive is false when EVERY caller of this domain sits in an
+    // orphaned file, i.e. the call exists in source but can never run.
+    frontendLive: liveFrontendCalls.has(d),
     edge: edgeFns.has(d),
     express: expressServed.has(d),
     proxied: proxied.has(d),
     klass: classify(d),
+    callers: callerFiles.get(d) ?? { live: [], dead: [] },
   }));
 
   const counts = {};
@@ -166,5 +343,30 @@ export function computeParity(repo = repoDefault) {
 
   const byClass = (k) => rows.filter((r) => r.klass === k).map((r) => r.domain);
 
-  return { rows, counts, byClass, edgeFns, expressServed, frontendCalls, proxied };
+  // Same class, split by whether a user can actually trigger the call. Callers
+  // that gate CI should use byClassLive('missing-edge'); byClassDead is a
+  // worklist for the dead-code stories, not a blocker.
+  const byClassLive = (k) =>
+    rows.filter((r) => r.klass === k && r.frontendLive).map((r) => r.domain);
+  const byClassDead = (k) =>
+    rows.filter((r) => r.klass === k && r.frontend && !r.frontendLive).map((r) => r.domain);
+
+  return {
+    rows,
+    counts,
+    byClass,
+    byClassLive,
+    byClassDead,
+    edgeFns,
+    expressServed,
+    frontendCalls,
+    liveFrontendCalls,
+    callerFiles,
+    proxied,
+    // False when a construct the import walk cannot follow was found, in which
+    // case the LIVE/DEAD split was disabled and everything reads as live.
+    // `unfollowableImportFile` names the first offender so it can be fixed.
+    reachabilityTrusted,
+    unfollowableImportFile: unfollowable,
+  };
 }

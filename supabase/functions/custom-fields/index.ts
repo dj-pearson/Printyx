@@ -29,6 +29,36 @@ const VALID_FIELD_TYPES = new Set([
 ]);
 const KEY_RE = /^[a-z][a-z0-9_]*$/;
 
+// PostgREST returns raw snake_case columns, but every consumer of this endpoint
+// types the row in camelCase (client/src/hooks/useCustomFields.ts
+// `CustomFieldDefinition`, and through it CustomFieldsSettings, CrmDataTable,
+// crm-columns, CustomFieldInput/Section, WebFormBuilder). The Express handler
+// this function mirrors returns Drizzle rows, which are ALREADY camelCase — so
+// returning snake_case here is a silent prod-only break: the settings table
+// renders blank Type/Active cells and the `a.sortOrder - b.sortOrder` sort
+// degrades to NaN. Serialize on the way out so both backends agree.
+// deno-lint-ignore no-explicit-any
+function toCamel(row: any) {
+  if (!row) return row;
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    objectType: row.object_type,
+    key: row.key,
+    label: row.label,
+    fieldType: row.field_type,
+    options: row.options,
+    required: row.required,
+    defaultValue: row.default_value,
+    description: row.description,
+    isActive: row.is_active,
+    sortOrder: row.sort_order,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -86,7 +116,8 @@ export default async function handler(req: Request) {
 
       const { data, error } = await query;
       if (error) return createCorsResponse({ error: error.message }, 500, req);
-      return createCorsResponse({ data: data ?? [], total: (data ?? []).length }, 200, req);
+      const rows = (data ?? []).map(toCamel);
+      return createCorsResponse({ data: rows, total: rows.length }, 200, req);
     }
 
     // ─── CREATE ─────────────────────────────────────────────────────
@@ -126,7 +157,7 @@ export default async function handler(req: Request) {
         }
         return createCorsResponse({ error: error.message }, 500, req);
       }
-      return createCorsResponse(data, 201, req);
+      return createCorsResponse(toCamel(data), 201, req);
     }
 
     // ─── UPDATE ─────────────────────────────────────────────────────
@@ -155,7 +186,7 @@ export default async function handler(req: Request) {
 
       if (error) return createCorsResponse({ error: error.message }, 500, req);
       if (!data) return createCorsResponse({ error: 'Custom field not found' }, 404, req);
-      return createCorsResponse(data, 200, req);
+      return createCorsResponse(toCamel(data), 200, req);
     }
 
     // ─── DELETE (soft by default) ───────────────────────────────────

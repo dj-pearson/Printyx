@@ -40,7 +40,7 @@ import {
 } from '@/components/ui/dialog';
 import { AlertTriangle, Download, Mail, RefreshCw, Settings2, TrendingDown } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
-import { getApiUrl } from '@/lib/config';
+import { downloadAuthedFile } from '@/lib/authed-download';
 import { useToast } from '@/hooks/use-toast';
 
 interface SettingsUpdate {
@@ -219,9 +219,24 @@ export default function ContractProfitability() {
   const rows = list?.data ?? [];
   const threshold = list?.gpAlertThreshold ?? 20;
 
-  const handleExport = () => {
-    const url = getApiUrl(`/api/contract-pnl/export.csv?${params.toString()}`);
-    window.open(url, '_blank');
+  // EDGE-023: was window.open(getApiUrl(...)), a browser navigation that sends
+  // NO Authorization header — it works in dev, where Express accepts the session
+  // cookie, and 401s in prod the moment the request reaches the edge function.
+  // downloadAuthedFile attaches the same Bearer + x-tenant-id the rest of the
+  // app uses and saves the blob.
+  const handleExport = async () => {
+    try {
+      await downloadAuthedFile(
+        `/api/contract-pnl/export.csv?${params.toString()}`,
+        'contract-pnl.csv',
+      );
+    } catch (e: unknown) {
+      toast({
+        title: 'Export failed',
+        description: e instanceof Error ? e.message : 'Could not download the margin report.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (

@@ -38,6 +38,13 @@ import { resolveTenant } from './middleware/tenancy';
 import { getTenantId, getUserId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
 import { contractPnlSettings } from '@shared/schema';
+import {
+  num,
+  ratesFrom,
+  computePnl,
+  computeMonthly,
+  type ResolvedRates,
+} from '@shared/contract-pnl-math';
 
 const log = createModuleLogger('routes-contract-pnl');
 
@@ -45,138 +52,21 @@ const log = createModuleLogger('routes-contract-pnl');
  *  the button from hammering it. The nightly cron is exempt of the UI gate. */
 const REFRESH_COOLDOWN_MS = 60_000;
 
-const DEFAULTS = {
-  techBurdenedRate: 75,
-  avgPartCost: 45,
-  financingRate: 0,
-  gpAlertThreshold: 20,
-};
+// EDGE-023: the rate defaults (CONTRACT_PNL_DEFAULTS) and every P&L formula
+// moved to shared/contract-pnl-math.ts so this router and the contract-pnl edge
+// function compute identical numbers, and so the arithmetic is pinned by
+// server/tests/unit/contract-pnl-math.test.ts. Behaviour here is unchanged —
+// ratesFrom() applies those defaults internally, so nothing in this file needs
+// to reference them directly any more.
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function num(v: unknown): number {
-  if (v == null) return 0;
-  const n = typeof v === 'number' ? v : parseFloat(String(v));
-  return Number.isFinite(n) ? n : 0;
-}
-
 /** Postgres "relation does not exist" — tolerate a not-yet-migrated view. */
 function isMissingRelationError(err: unknown): boolean {
   const e = err as { code?: string; message?: string } | undefined;
   return e?.code === '42P01' || /does not exist/i.test(e?.message ?? '');
-}
-
-interface ResolvedRates {
-  burdenedRate: number;
-  avgPartCost: number;
-  financingRate: number;
-  gpAlertThreshold: number;
-}
-
-function ratesFrom(settings: {
-  techBurdenedRate?: string | null;
-  avgPartCost?: string | null;
-  financingRate?: number | null;
-  gpAlertThreshold?: number | null;
-}): ResolvedRates {
-  return {
-    burdenedRate:
-      settings.techBurdenedRate != null
-        ? num(settings.techBurdenedRate)
-        : DEFAULTS.techBurdenedRate,
-    avgPartCost: settings.avgPartCost != null ? num(settings.avgPartCost) : DEFAULTS.avgPartCost,
-    financingRate:
-      settings.financingRate != null ? num(settings.financingRate) : DEFAULTS.financingRate,
-    gpAlertThreshold:
-      settings.gpAlertThreshold != null ? settings.gpAlertThreshold : DEFAULTS.gpAlertThreshold,
-  };
-}
-
-interface PnlComputed {
-  revenue12: number;
-  cost12: number;
-  laborCost: number;
-  partsCost: number;
-  suppliesCost: number;
-  financingCost: number;
-  copiesRevenue: number;
-  baseRevenue: number;
-  grossProfit: number;
-  gpPercent: number | null;
-  monthlyRevenue: number;
-  monthlyCost: number;
-}
-
-/** Apply the per-tenant rates to one view row's raw 12-month aggregates. */
-function computePnl(
-  row: {
-    copies_revenue_12mo?: unknown;
-    base_revenue_12mo?: unknown;
-    labor_hours_12mo?: unknown;
-    parts_count_12mo?: unknown;
-    supplies_cost_12mo?: unknown;
-  },
-  r: ResolvedRates,
-): PnlComputed {
-  const copiesRevenue = num(row.copies_revenue_12mo);
-  const baseRevenue = num(row.base_revenue_12mo);
-  const revenue12 = copiesRevenue + baseRevenue;
-  const laborCost = num(row.labor_hours_12mo) * r.burdenedRate;
-  const partsCost = num(row.parts_count_12mo) * r.avgPartCost;
-  const suppliesCost = num(row.supplies_cost_12mo);
-  const financingCost = baseRevenue * r.financingRate;
-  const cost12 = laborCost + partsCost + suppliesCost + financingCost;
-  const grossProfit = revenue12 - cost12;
-  const gpPercent = revenue12 > 0 ? (grossProfit / revenue12) * 100 : null;
-  return {
-    revenue12,
-    cost12,
-    laborCost,
-    partsCost,
-    suppliesCost,
-    financingCost,
-    copiesRevenue,
-    baseRevenue,
-    grossProfit,
-    gpPercent,
-    monthlyRevenue: revenue12 / 12,
-    monthlyCost: cost12 / 12,
-  };
-}
-
-/** Monthly GP% for one (contract, month) raw row — drives the sparkline + detail. */
-function computeMonthly(
-  row: {
-    copies_revenue?: unknown;
-    base_revenue?: unknown;
-    labor_hours?: unknown;
-    parts_count?: unknown;
-    supplies_cost?: unknown;
-  },
-  r: ResolvedRates,
-) {
-  const copiesRevenue = num(row.copies_revenue);
-  const baseRevenue = num(row.base_revenue);
-  const revenue = copiesRevenue + baseRevenue;
-  const laborCost = num(row.labor_hours) * r.burdenedRate;
-  const partsCost = num(row.parts_count) * r.avgPartCost;
-  const suppliesCost = num(row.supplies_cost);
-  const financingCost = baseRevenue * r.financingRate;
-  const cost = laborCost + partsCost + suppliesCost + financingCost;
-  const grossProfit = revenue - cost;
-  const gpPercent = revenue > 0 ? (grossProfit / revenue) * 100 : null;
-  return {
-    revenue,
-    cost,
-    laborCost,
-    partsCost,
-    suppliesCost,
-    financingCost,
-    grossProfit,
-    gpPercent,
-  };
 }
 
 async function getOrCreateSettings(tenantId: string) {

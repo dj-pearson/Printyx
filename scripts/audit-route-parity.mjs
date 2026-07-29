@@ -13,8 +13,17 @@ import { computeParity, EXPRESS_CANONICAL, CLASS_ORDER } from './lib/route-parit
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const { rows, counts, byClass, edgeFns, expressServed, frontendCalls, proxied } =
-  computeParity(repo);
+const {
+  rows,
+  counts,
+  byClass,
+  byClassLive,
+  byClassDead,
+  edgeFns,
+  expressServed,
+  frontendCalls,
+  proxied,
+} = computeParity(repo);
 
 const yn = (b) => (b ? '✅' : '·');
 const order = CLASS_ORDER;
@@ -42,6 +51,20 @@ for (const k of ['missing-edge', 'both-divergent']) {
   const list = byClass(k);
   md += `\n**${k}** (${list.length}): ${list.length ? list.map((d) => `\`${d}\``).join(', ') : '_none_'}\n`;
 }
+
+// LIVE/DEAD split. A missing-edge domain only 404s a real user if a file that
+// is reachable from App.tsx/main.tsx calls it — an orphaned page's fetch never
+// runs. Without this split the "PROD BLOCKER" count is inflated by dead code
+// and the genuinely broken domains are harder to see.
+const liveMissing = byClassLive('missing-edge');
+const deadMissing = byClassDead('missing-edge');
+md += `\n### missing-edge, split by reachability\n\n`;
+md += `A domain is only a prod blocker if a file reachable from \`App.tsx\`/\`main.tsx\` calls it.\n\n`;
+md += `**LIVE — a user can hit these (${liveMissing.length}):** `;
+md += liveMissing.length ? liveMissing.map((d) => `\`${d}\``).join(', ') : '_none_';
+md += `\n\n**DEAD callers only — flagged, but the call never renders (${deadMissing.length}):** `;
+md += deadMissing.length ? deadMissing.map((d) => `\`${d}\``).join(', ') : '_none_';
+md += `\n\nThe DEAD set is a worklist for the dead-code stories (delete the caller), not a porting\nbacklog, and it does not gate CI.\n`;
 
 md += `\n## Full matrix\n\n| Domain | Frontend | Edge fn | Express | Proxied | Class |\n|---|:--:|:--:|:--:|:--:|---|\n`;
 for (const k of order) {
@@ -74,8 +97,16 @@ writeFileSync(
 console.log('Route parity audit:');
 for (const k of order) if (counts[k]) console.log(`  ${k.padEnd(18)} ${counts[k]}`);
 console.log(`\nWrote ${outPath}`);
-const blockers = byClass('missing-edge');
-if (blockers.length) {
-  console.log(`\n⚠ ${blockers.length} potential prod blockers (frontend calls, no edge fn):`);
-  console.log('  ' + blockers.join(', '));
+// Report the LIVE set as the blocker list. The dead-caller ones are listed
+// separately so they read as dead-code cleanup rather than porting work.
+if (liveMissing.length) {
+  console.log(`\n⚠ ${liveMissing.length} prod blockers (a LIVE page calls it, no edge fn):`);
+  console.log('  ' + liveMissing.join(', '));
+}
+if (deadMissing.length) {
+  console.log(
+    `\nℹ ${deadMissing.length} more have no edge fn but only ORPHANED callers` +
+      ` — dead-code cleanup, not porting:`,
+  );
+  console.log('  ' + deadMissing.join(', '));
 }

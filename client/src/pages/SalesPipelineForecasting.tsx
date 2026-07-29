@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -60,10 +61,15 @@ export default function SalesPipelineForecasting() {
     },
   });
 
-  // Fetch available forecasts
+  // EDGE-022: these two used bare `fetch('/api/...')`, which is broken in prod
+  // twice over — the relative URL never reaches functions.printyx.net (getApiUrl
+  // rewrites /api/x -> <edge host>/x, and a raw fetch skips it, so the request
+  // hits the Pages origin, falls through to the SPA shell, and .json() throws),
+  // and it carries no Bearer token, so it would 401 even if it arrived.
+  // apiRequest does both.
   const { data: forecasts } = useQuery({
     queryKey: ['/api/sales-forecasts'],
-    queryFn: () => fetch('/api/sales-forecasts').then((res) => res.json()),
+    queryFn: () => apiRequest('/api/sales-forecasts'),
   });
 
   // Get selected forecast data safely
@@ -79,7 +85,7 @@ export default function SalesPipelineForecasting() {
       }
       const params = new URLSearchParams();
       params.append('period', period);
-      return fetch(`${url}?${params.toString()}`).then((res) => res.json());
+      return apiRequest(`${url}?${params.toString()}`);
     },
   }) as { data: any | undefined; isLoading: boolean };
 
