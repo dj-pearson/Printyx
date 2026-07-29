@@ -4,25 +4,25 @@
 
 **Architecture:** prod frontend → `functions.printyx.net/<route>` (edge) for ALL `/api/*` via `getApiUrl`. The Express proxy map (53 prefixes) only affects **dev**. Express stays canonical for `/api/client-metrics/*` (agent) and `/install/*`.
 
-**Totals:** 345 domains · 257 edge fns · 179 Express-served · 202 frontend-called · 53 proxied
+**Totals:** 383 domains · 257 edge fns · 244 Express-served · 202 frontend-called · 53 proxied
 
 ## Summary by class
 
 | Class | Count | Meaning |
 |---|---|---|
 | `missing-edge` | 44 | Frontend calls it, NO edge function → **PROD BLOCKER** |
-| `both-divergent` | 59 | Express + edge both exist, not proxied → dev ≠ prod (maintenance trap) |
-| `express-only` | 31 | Express handler, no edge function → not yet migrated |
-| `dead-express` | 18 | Express + edge exist, no frontend ref → Express likely dead |
+| `both-divergent` | 69 | Express + edge both exist, not proxied → dev ≠ prod (maintenance trap) |
+| `express-only` | 69 | Express handler, no edge function → not yet migrated |
+| `dead-express` | 22 | Express + edge exist, no frontend ref → Express likely dead |
 | `proxied` | 53 | In proxy map → dev forwards to edge (aligned) |
-| `edge-only` | 130 | Edge function only, no Express handler → fully migrated |
+| `edge-only` | 116 | Edge function only, no Express handler → fully migrated |
 | `express-canonical` | 10 | Express is canonical by design (agent ingest) |
 
 ## Action-needed first
 
 **missing-edge** (44): `accessories`, `ai`, `ai-analytics`, `approvals`, `assignment-groups`, `business-process`, `chatbot`, `churn-risk`, `content`, `contract-pnl`, `contract-tiered-rates`, `daily-briefing`, `documents`, `email-autopilot`, `email-parser`, `equipment-disposal`, `erp-integration`, `financial-forecasting`, `incident-response`, `lease-payments`, `meter-reads`, `pipeline-forecast`, `platform`, `portal-service`, `predictive-analytics`, `predictive-failure`, `qbr`, `quote-templates`, `record-layout-config`, `renewal-autoquote`, `sales-forecasts`, `sales-performance`, `salesforce`, `security-compliance`, `service`, `system-monitoring`, `task-workflows`, `technician-sessions`, `toner-replenish`, `truck-stock`, `voice-agent`, `voice-ticket-close`, `white-label`, `workflow-automation`
 
-**both-divergent** (59): `admin`, `audit-logs`, `auto-lead-routing`, `auto-supply-replenishment`, `catalog`, `commission`, `content-gap-analysis`, `contract-renewal`, `contracts`, `crm`, `dashboard`, `dashboards`, `database-updater`, `deal-desk-copilot`, `deal-stages`, `demos`, `devices`, `document-management`, `enrichment`, `equipment`, `financial`, `fleet`, `gdpr`, `import`, `integrations`, `inventory`, `invoices`, `leads`, `maintenance`, `managed-services`, `manufacturer-integrations`, `meter-readings`, `mobile`, `mobile-field`, `onboarding`, `parts-orders`, `performance`, `predictive-dispatch`, `pricing`, `product-accessories`, `product-models`, `professional-services`, `projects`, `purchase-orders`, `quickbooks`, `rbac`, `remote-monitoring`, `root-admin`, `seo`, `service-analysis`, `service-analytics`, `service-tickets`, `software-products`, `subscriptions`, `supplies`, `technician-management`, `templates`, `user`, `warehouse-operations`
+**both-divergent** (69): `admin`, `ai-employees`, `analytics`, `audit-logs`, `auto-lead-routing`, `auto-supply-replenishment`, `catalog`, `chart-of-accounts`, `commission`, `content-gap-analysis`, `contract-renewal`, `contracts`, `crm`, `dashboard`, `dashboards`, `database-updater`, `deal-desk-copilot`, `deal-stages`, `demos`, `devices`, `document-management`, `email-campaigns`, `enabled-products`, `enrichment`, `equipment`, `equipment-lifecycle`, `financial`, `fleet`, `gdpr`, `import`, `integrations`, `inventory`, `invoices`, `journal-entries`, `leads`, `leases`, `maintenance`, `managed-services`, `manufacturer-integrations`, `meter-readings`, `mobile`, `mobile-field`, `onboarding`, `parts-orders`, `performance`, `predictive-dispatch`, `pricing`, `product-accessories`, `product-models`, `professional-services`, `projects`, `purchase-orders`, `quickbooks`, `rbac`, `remote-monitoring`, `root-admin`, `sales-pipeline`, `seo`, `service-analysis`, `service-analytics`, `service-tickets`, `social-media`, `software-products`, `subscriptions`, `supplies`, `technician-management`, `templates`, `user`, `warehouse-operations`
 
 ### missing-edge, split by reachability
 
@@ -42,25 +42,25 @@ backlog, and it does not gate CI.
 | `accessories` | ✅ | · | ✅ | · | `missing-edge` |
 | `ai` | ✅ | · | ✅ | · | `missing-edge` |
 | `ai-analytics` | ✅ | · | ✅ | · | `missing-edge` |
-| `approvals` | ✅ | · | · | · | `missing-edge` |
-| `assignment-groups` | ✅ | · | · | · | `missing-edge` |
+| `approvals` | ✅ | · | ✅ | · | `missing-edge` |
+| `assignment-groups` | ✅ | · | ✅ | · | `missing-edge` |
 | `business-process` | ✅ | · | ✅ | · | `missing-edge` |
 | `chatbot` | ✅ | · | ✅ | · | `missing-edge` |
 | `churn-risk` | ✅ | · | ✅ | · | `missing-edge` |
-| `content` | ✅ | · | · | · | `missing-edge` |
+| `content` | ✅ | · | ✅ | · | `missing-edge` |
 | `contract-pnl` | ✅ | · | ✅ | · | `missing-edge` |
 | `contract-tiered-rates` | ✅ | · | ✅ | · | `missing-edge` |
 | `daily-briefing` | ✅ | · | ✅ | · | `missing-edge` |
-| `documents` | ✅ | · | · | · | `missing-edge` |
+| `documents` | ✅ | · | ✅ | · | `missing-edge` |
 | `email-autopilot` | ✅ | · | ✅ | · | `missing-edge` |
 | `email-parser` | ✅ | · | ✅ | · | `missing-edge` |
-| `equipment-disposal` | ✅ | · | · | · | `missing-edge` |
+| `equipment-disposal` | ✅ | · | ✅ | · | `missing-edge` |
 | `erp-integration` | ✅ | · | ✅ | · | `missing-edge` |
 | `financial-forecasting` | ✅ | · | · | · | `missing-edge` |
 | `incident-response` | ✅ | · | ✅ | · | `missing-edge` |
-| `lease-payments` | ✅ | · | · | · | `missing-edge` |
+| `lease-payments` | ✅ | · | ✅ | · | `missing-edge` |
 | `meter-reads` | ✅ | · | ✅ | · | `missing-edge` |
-| `pipeline-forecast` | ✅ | · | · | · | `missing-edge` |
+| `pipeline-forecast` | ✅ | · | ✅ | · | `missing-edge` |
 | `platform` | ✅ | · | · | · | `missing-edge` |
 | `portal-service` | ✅ | · | ✅ | · | `missing-edge` |
 | `predictive-analytics` | ✅ | · | · | · | `missing-edge` |
@@ -69,7 +69,7 @@ backlog, and it does not gate CI.
 | `quote-templates` | ✅ | · | · | · | `missing-edge` |
 | `record-layout-config` | ✅ | · | ✅ | · | `missing-edge` |
 | `renewal-autoquote` | ✅ | · | ✅ | · | `missing-edge` |
-| `sales-forecasts` | ✅ | · | · | · | `missing-edge` |
+| `sales-forecasts` | ✅ | · | ✅ | · | `missing-edge` |
 | `sales-performance` | ✅ | · | · | · | `missing-edge` |
 | `salesforce` | ✅ | · | ✅ | · | `missing-edge` |
 | `security-compliance` | ✅ | · | ✅ | · | `missing-edge` |
@@ -84,10 +84,13 @@ backlog, and it does not gate CI.
 | `white-label` | ✅ | · | ✅ | · | `missing-edge` |
 | `workflow-automation` | ✅ | · | ✅ | · | `missing-edge` |
 | `admin` | ✅ | ✅ | ✅ | · | `both-divergent` |
+| `ai-employees` | ✅ | ✅ | ✅ | · | `both-divergent` |
+| `analytics` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `audit-logs` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `auto-lead-routing` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `auto-supply-replenishment` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `catalog` | ✅ | ✅ | ✅ | · | `both-divergent` |
+| `chart-of-accounts` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `commission` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `content-gap-analysis` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `contract-renewal` | ✅ | ✅ | ✅ | · | `both-divergent` |
@@ -101,8 +104,11 @@ backlog, and it does not gate CI.
 | `demos` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `devices` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `document-management` | ✅ | ✅ | ✅ | · | `both-divergent` |
+| `email-campaigns` | ✅ | ✅ | ✅ | · | `both-divergent` |
+| `enabled-products` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `enrichment` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `equipment` | ✅ | ✅ | ✅ | · | `both-divergent` |
+| `equipment-lifecycle` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `financial` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `fleet` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `gdpr` | ✅ | ✅ | ✅ | · | `both-divergent` |
@@ -110,7 +116,9 @@ backlog, and it does not gate CI.
 | `integrations` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `inventory` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `invoices` | ✅ | ✅ | ✅ | · | `both-divergent` |
+| `journal-entries` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `leads` | ✅ | ✅ | ✅ | · | `both-divergent` |
+| `leases` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `maintenance` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `managed-services` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `manufacturer-integrations` | ✅ | ✅ | ✅ | · | `both-divergent` |
@@ -131,10 +139,12 @@ backlog, and it does not gate CI.
 | `rbac` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `remote-monitoring` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `root-admin` | ✅ | ✅ | ✅ | · | `both-divergent` |
+| `sales-pipeline` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `seo` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `service-analysis` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `service-analytics` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `service-tickets` | ✅ | ✅ | ✅ | · | `both-divergent` |
+| `social-media` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `software-products` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `subscriptions` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `supplies` | ✅ | ✅ | ✅ | · | `both-divergent` |
@@ -144,39 +154,78 @@ backlog, and it does not gate CI.
 | `warehouse-operations` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `accessibility` | · | · | ✅ | · | `express-only` |
 | `accessory-model-compatibility` | · | · | ✅ | · | `express-only` |
+| `alerts` | · | · | ✅ | · | `express-only` |
 | `beta` | · | · | ✅ | · | `express-only` |
 | `board-card-config` | · | · | ✅ | · | `express-only` |
 | `build-processes` | · | · | ✅ | · | `express-only` |
-| `calendar` | · | · | ✅ | · | `express-only` |
+| `calculator` | · | · | ✅ | · | `express-only` |
+| `collaboration` | · | · | ✅ | · | `express-only` |
 | `data` | · | · | ✅ | · | `express-only` |
 | `data-retention` | · | · | ✅ | · | `express-only` |
 | `deal-tags` | · | · | ✅ | · | `express-only` |
 | `deals-management` | · | · | ✅ | · | `express-only` |
 | `delivery-schedules` | · | · | ✅ | · | `express-only` |
+| `dispatch` | · | · | ✅ | · | `express-only` |
 | `docs` | · | · | ✅ | · | `express-only` |
-| `extension` | · | · | ✅ | · | `express-only` |
+| `document-field-mappings` | · | · | ✅ | · | `express-only` |
+| `document-templates` | · | · | ✅ | · | `express-only` |
+| `document-types` | · | · | ✅ | · | `express-only` |
+| `email-events` | · | · | ✅ | · | `express-only` |
+| `email-list-members` | · | · | ✅ | · | `express-only` |
+| `email-lists` | · | · | ✅ | · | `express-only` |
+| `email-sends` | · | · | ✅ | · | `express-only` |
+| `email-unsubscribes` | · | · | ✅ | · | `express-only` |
+| `executions` | · | · | ✅ | · | `express-only` |
+| `google-indexing` | · | · | ✅ | · | `express-only` |
+| `installation-checklists` | · | · | ✅ | · | `express-only` |
+| `installations` | · | · | ✅ | · | `express-only` |
+| `integration-credentials` | · | · | ✅ | · | `express-only` |
+| `knowledge` | · | · | ✅ | · | `express-only` |
+| `lease-dispositions` | · | · | ✅ | · | `express-only` |
+| `lease-renewals` | · | · | ✅ | · | `express-only` |
 | `models` | · | · | ✅ | · | `express-only` |
 | `monitoring` | · | · | ✅ | · | `express-only` |
+| `optimize-schedule` | · | · | ✅ | · | `express-only` |
 | `phone-tickets` | · | · | ✅ | · | `express-only` |
 | `purchase-order-items` | · | · | ✅ | · | `express-only` |
 | `real-time-data` | · | · | ✅ | · | `express-only` |
+| `recordings` | · | · | ✅ | · | `express-only` |
+| `resource` | · | · | ✅ | · | `express-only` |
+| `rooms` | · | · | ✅ | · | `express-only` |
+| `sales-forecasting-rules` | · | · | ✅ | · | `express-only` |
+| `sales-performance-metrics` | · | · | ✅ | · | `express-only` |
 | `sales-trends` | · | · | ✅ | · | `express-only` |
+| `schedule` | · | · | ✅ | · | `express-only` |
+| `schedule-request` | · | · | ✅ | · | `express-only` |
 | `serial-numbers` | · | · | ✅ | · | `express-only` |
+| `service-dispatch` | · | · | ✅ | · | `express-only` |
+| `service-signatures` | · | · | ✅ | · | `express-only` |
 | `sessions` | · | · | ✅ | · | `express-only` |
 | `signature-analytics` | · | · | ✅ | · | `express-only` |
+| `signature-documents` | · | · | ✅ | · | `express-only` |
 | `signature-requests` | · | · | ✅ | · | `express-only` |
+| `signature-signers` | · | · | ✅ | · | `express-only` |
 | `signature-templates` | · | · | ✅ | · | `express-only` |
+| `speakers` | · | · | ✅ | · | `express-only` |
 | `static-data` | · | · | ✅ | · | `express-only` |
+| `steps` | · | · | ✅ | · | `express-only` |
 | `tenants` | · | · | ✅ | · | `express-only` |
 | `test` | · | · | ✅ | · | `express-only` |
+| `triggers` | · | · | ✅ | · | `express-only` |
+| `types` | · | · | ✅ | · | `express-only` |
+| `universal-search` | · | · | ✅ | · | `express-only` |
 | `upload` | · | · | ✅ | · | `express-only` |
 | `v1` | · | · | ✅ | · | `express-only` |
 | `versions` | · | · | ✅ | · | `express-only` |
+| `workflow-events` | · | · | ✅ | · | `express-only` |
 | `workflow-rules` | · | · | ✅ | · | `express-only` |
+| `workflow-runtime` | · | · | ✅ | · | `express-only` |
+| `workflow-templates` | · | · | ✅ | · | `express-only` |
 | `assign-lead` | · | ✅ | ✅ | · | `dead-express` |
 | `automation` | · | ✅ | ✅ | · | `dead-express` |
 | `contract-renewals` | · | ✅ | ✅ | · | `dead-express` |
 | `csrf-token` | · | ✅ | ✅ | · | `dead-express` |
+| `email-templates` | · | ✅ | ✅ | · | `dead-express` |
 | `expansion-opportunities` | · | ✅ | ✅ | · | `dead-express` |
 | `handoff-task-templates` | · | ✅ | ✅ | · | `dead-express` |
 | `handoff-tasks` | · | ✅ | ✅ | · | `dead-express` |
@@ -184,13 +233,16 @@ backlog, and it does not gate CI.
 | `lead-assignment-history` | · | ✅ | ✅ | · | `dead-express` |
 | `lead-assignment-queue` | · | ✅ | ✅ | · | `dead-express` |
 | `lead-assignment-rules` | · | ✅ | ✅ | · | `dead-express` |
+| `meetings` | · | ✅ | ✅ | · | `dead-express` |
 | `printer-monitoring` | · | ✅ | ✅ | · | `dead-express` |
 | `renewal-activities` | · | ✅ | ✅ | · | `dead-express` |
 | `renewal-playbooks` | · | ✅ | ✅ | · | `dead-express` |
 | `rep-capacity` | · | ✅ | ✅ | · | `dead-express` |
 | `sales-handoffs` | · | ✅ | ✅ | · | `dead-express` |
 | `sales-territories` | · | ✅ | ✅ | · | `dead-express` |
+| `teams` | · | ✅ | ✅ | · | `dead-express` |
 | `user-assignments` | · | ✅ | ✅ | · | `dead-express` |
+| `workflows` | · | ✅ | ✅ | · | `dead-express` |
 | `accounts-payable` | ✅ | · | ✅ | ✅ | `proxied` |
 | `accounts-receivable` | ✅ | · | ✅ | ✅ | `proxied` |
 | `activities` | ✅ | ✅ | ✅ | ✅ | `proxied` |
@@ -211,7 +263,7 @@ backlog, and it does not gate CI.
 | `customers` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `deals` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `deployment` | ✅ | · | · | ✅ | `proxied` |
-| `email-sequences` | ✅ | ✅ | · | ✅ | `proxied` |
+| `email-sequences` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `feature-flags` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `integration-hub` | ✅ | · | ✅ | ✅ | `proxied` |
 | `knowledge-base` | ✅ | ✅ | ✅ | ✅ | `proxied` |
@@ -225,7 +277,7 @@ backlog, and it does not gate CI.
 | `platform-crm` | ✅ | ✅ | · | ✅ | `proxied` |
 | `platform-cs` | ✅ | ✅ | · | ✅ | `proxied` |
 | `platform-deals` | ✅ | ✅ | ✅ | ✅ | `proxied` |
-| `predictive-maintenance` | ✅ | ✅ | · | ✅ | `proxied` |
+| `predictive-maintenance` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `proposals` | ✅ | ✅ | · | ✅ | `proxied` |
 | `quotes` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `reporting` | ✅ | · | · | ✅ | `proxied` |
@@ -234,7 +286,7 @@ backlog, and it does not gate CI.
 | `sales-rep-assignments` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `saved-views` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `scheduled-reports` | ✅ | · | ✅ | ✅ | `proxied` |
-| `search` | ✅ | ✅ | · | ✅ | `proxied` |
+| `search` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `security` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `service-products` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `signatures` | ✅ | ✅ | · | ✅ | `proxied` |
@@ -242,15 +294,13 @@ backlog, and it does not gate CI.
 | `territories` | ✅ | ✅ | · | ✅ | `proxied` |
 | `users` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `vendors` | ✅ | ✅ | ✅ | ✅ | `proxied` |
-| `web-forms` | ✅ | ✅ | · | ✅ | `proxied` |
+| `web-forms` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `webhooks` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `account-payable` | · | ✅ | · | · | `edge-only` |
 | `account-receivable` | · | ✅ | · | · | `edge-only` |
 | `address-books` | ✅ | ✅ | · | · | `edge-only` |
 | `ai-documentation` | · | ✅ | · | · | `edge-only` |
 | `ai-employee` | · | ✅ | · | · | `edge-only` |
-| `ai-employees` | ✅ | ✅ | · | · | `edge-only` |
-| `analytics` | ✅ | ✅ | · | · | `edge-only` |
 | `apollo` | ✅ | ✅ | · | · | `edge-only` |
 | `appointments` | · | ✅ | · | · | `edge-only` |
 | `auth-me` | · | ✅ | · | · | `edge-only` |
@@ -294,7 +344,6 @@ backlog, and it does not gate CI.
 | `branding-profiles` | ✅ | ✅ | · | · | `edge-only` |
 | `business-records-search` | · | ✅ | · | · | `edge-only` |
 | `card-config` | · | ✅ | · | · | `edge-only` |
-| `chart-of-accounts` | ✅ | ✅ | · | · | `edge-only` |
 | `chrome-extension` | · | ✅ | · | · | `edge-only` |
 | `crm-goals` | · | ✅ | · | · | `edge-only` |
 | `customer-devices` | · | ✅ | · | · | `edge-only` |
@@ -307,11 +356,7 @@ backlog, and it does not gate CI.
 | `deal-desk` | ✅ | ✅ | · | · | `edge-only` |
 | `dedup-companies` | · | ✅ | · | · | `edge-only` |
 | `deployment-readiness` | · | ✅ | · | · | `edge-only` |
-| `email-campaigns` | ✅ | ✅ | · | · | `edge-only` |
 | `email-marketing` | · | ✅ | · | · | `edge-only` |
-| `email-templates` | · | ✅ | · | · | `edge-only` |
-| `enabled-products` | ✅ | ✅ | · | · | `edge-only` |
-| `equipment-lifecycle` | ✅ | ✅ | · | · | `edge-only` |
 | `exports` | · | ✅ | · | · | `edge-only` |
 | `field-service` | · | ✅ | · | · | `edge-only` |
 | `file-storage` | · | ✅ | · | · | `edge-only` |
@@ -321,14 +366,11 @@ backlog, and it does not gate CI.
 | `geocode-leads` | · | ✅ | · | · | `edge-only` |
 | `hello` | · | ✅ | · | · | `edge-only` |
 | `import-export` | · | ✅ | · | · | `edge-only` |
-| `journal-entries` | ✅ | ✅ | · | · | `edge-only` |
 | `lead-assignment` | · | ✅ | · | · | `edge-only` |
 | `lead-scoring` | ✅ | ✅ | · | · | `edge-only` |
-| `leases` | ✅ | ✅ | · | · | `edge-only` |
 | `locations` | · | ✅ | · | · | `edge-only` |
 | `manufacturer-orders` | · | ✅ | · | · | `edge-only` |
 | `meeting-transcription` | · | ✅ | · | · | `edge-only` |
-| `meetings` | · | ✅ | · | · | `edge-only` |
 | `mfa` | · | ✅ | · | · | `edge-only` |
 | `mobile-auth` | · | ✅ | · | · | `edge-only` |
 | `oauth-proxy` | · | ✅ | · | · | `edge-only` |
@@ -351,13 +393,11 @@ backlog, and it does not gate CI.
 | `public-forms` | · | ✅ | · | · | `edge-only` |
 | `quote-line-items` | ✅ | ✅ | · | · | `edge-only` |
 | `role-management` | · | ✅ | · | · | `edge-only` |
-| `sales-pipeline` | ✅ | ✅ | · | · | `edge-only` |
 | `sales-reports` | · | ✅ | · | · | `edge-only` |
 | `scheduling` | · | ✅ | · | · | `edge-only` |
 | `service-contracts` | · | ✅ | · | · | `edge-only` |
 | `settings` | · | ✅ | · | · | `edge-only` |
 | `signup` | · | ✅ | · | · | `edge-only` |
-| `social-media` | ✅ | ✅ | · | · | `edge-only` |
 | `sso` | · | ✅ | · | · | `edge-only` |
 | `task-comments` | · | ✅ | · | · | `edge-only` |
 | `tasks-bulk` | · | ✅ | · | · | `edge-only` |
@@ -365,7 +405,6 @@ backlog, and it does not gate CI.
 | `tasks-stats` | · | ✅ | · | · | `edge-only` |
 | `tax-rates` | · | ✅ | · | · | `edge-only` |
 | `team-reports` | · | ✅ | · | · | `edge-only` |
-| `teams` | · | ✅ | · | · | `edge-only` |
 | `technicians` | ✅ | ✅ | · | · | `edge-only` |
 | `tenant-settings` | · | ✅ | · | · | `edge-only` |
 | `today-dashboard` | · | ✅ | · | · | `edge-only` |
@@ -373,7 +412,6 @@ backlog, and it does not gate CI.
 | `user-settings` | · | ✅ | · | · | `edge-only` |
 | `users-team` | · | ✅ | · | · | `edge-only` |
 | `work-orders` | · | ✅ | · | · | `edge-only` |
-| `workflows` | · | ✅ | · | · | `edge-only` |
 | `auth` | ✅ | · | ✅ | · | `express-canonical` |
 | `client-errors` | ✅ | · | ✅ | · | `express-canonical` |
 | `client-metrics` | · | ✅ | ✅ | · | `express-canonical` |
@@ -381,6 +419,6 @@ backlog, and it does not gate CI.
 | `device-monitoring` | ✅ | · | ✅ | · | `express-canonical` |
 | `me` | · | ✅ | ✅ | · | `express-canonical` |
 | `mobile-logs` | ✅ | ✅ | ✅ | · | `express-canonical` |
-| `public` | ✅ | · | · | · | `express-canonical` |
+| `public` | ✅ | · | ✅ | · | `express-canonical` |
 | `trial` | ✅ | · | ✅ | · | `express-canonical` |
 | `validate` | ✅ | ✅ | · | · | `express-canonical` |

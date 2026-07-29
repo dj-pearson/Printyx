@@ -235,15 +235,78 @@ export function computeParity(repo = repoDefault) {
     }
   }
 
-  // 4. Express-served /api/* segments (app.METHOD('/api/x') and app.use('/api/x')).
-  const serverText = readAll(walk(join(repo, 'server'), ['.ts'])).join('\n');
+  // 4. Express-served /api/* segments.
+  //
+  // This used to match ONLY `app.METHOD('/api/x')` / `app.use('/api/x', ...)`,
+  // which misses every route declared on a Router object. That blind spot made
+  // the tool assert things that were plainly false — it reported web-forms and
+  // email-sequences as `edge-only` while Express was serving them (EDGE-019),
+  // and it hid live Express handlers behind an `edge-only` "fully migrated"
+  // label for seven domains. Two mount shapes exist in this repo and both are
+  // now covered:
+  //
+  //   (a) ABSOLUTE — the module declares the full path on a Router and is
+  //       mounted bare: `router.get('/api/web-forms')` + `app.use(router)`.
+  //       Matched by allowing any identifier before the method, not just `app`.
+  //
+  //   (b) PREFIXED — the module declares a RELATIVE path and routes-registry
+  //       mounts it at '/api': `router.get('/approvals')` mounted by
+  //       `app.use('/api', mod.default)`. Nothing in the module text contains
+  //       "/api", so no amount of scanning the module alone can find it; the
+  //       mount prefix has to be applied. Resolved below from the registry.
+  // Tests are excluded: a supertest fixture that builds its own app and
+  // declares routes is not production surface, and counting it would invent
+  // Express handlers that do not ship. This matters more now than it did when
+  // only `app.METHOD` matched, because widening to any identifier also picks up
+  // routers built inside test files.
+  const serverFiles = walk(join(repo, 'server'), ['.ts']).filter(
+    (f) => !/\.(test|spec)\.ts$/.test(f) && !/[\\/](tests?|__tests__)[\\/]/.test(f),
+  );
+  const serverText = readAll(serverFiles).join('\n');
   const expressServed = new Set(
     [
+      // (a) any identifier — app, router, apiRouter, r … — with an absolute path.
       ...serverText.matchAll(
-        /app\.(?:get|post|put|patch|delete|use|all)\(\s*['"`]\/api\/([a-z0-9-]+)/g,
+        /\b[A-Za-z_][A-Za-z0-9_]*\.(?:get|post|put|patch|delete|use|all)\(\s*['"`]\/api\/([a-z0-9-]+)/g,
       ),
     ].map((m) => m[1]),
   );
+
+  // (b) Routers mounted under a '/api' prefix. routes-registry.ts collects the
+  // module paths in an array of string literals and mounts each with
+  // `app.use('/api', mod.default)` in a loop, so the specifier is a variable at
+  // the import site — unreadable to a regex that expects a literal. Read the
+  // array literals instead, then apply the prefix to each router's own paths.
+  const registryPath = join(repo, 'server', 'routes-registry.ts');
+  if (existsSync(registryPath)) {
+    const registrySrc = readFileSync(registryPath, 'utf-8');
+    // Only bother if the registry really does mount something at bare '/api'.
+    if (/app\.use\(\s*['"`]\/api['"`]\s*,/.test(registrySrc)) {
+      for (const arrMatch of registrySrc.matchAll(
+        /(?:const|let)\s+\w+\s*:\s*string\[\]\s*=\s*\[([\s\S]*?)\]/g,
+      )) {
+        for (const lit of arrMatch[1].matchAll(/['"`](\.\.?\/[^'"`]+)['"`]/g)) {
+          const modPath = join(repo, 'server', lit[1]);
+          const file = [`${modPath}.ts`, join(modPath, 'index.ts'), modPath].find(
+            (f) => existsSync(f) && statSync(f).isFile(),
+          );
+          if (!file) continue;
+          let modSrc;
+          try {
+            modSrc = readFileSync(file, 'utf-8');
+          } catch {
+            continue;
+          }
+          for (const r of modSrc.matchAll(
+            /\b[A-Za-z_][A-Za-z0-9_]*\.(?:get|post|put|patch|delete|use|all)\(\s*['"`]\/([a-z0-9-]+)/g,
+          )) {
+            // Skip 'api' itself — an absolute '/api/x' path already matched in (a).
+            if (r[1] !== 'api') expressServed.add(r[1]);
+          }
+        }
+      }
+    }
+  }
 
   const domains = new Set([...frontendCalls, ...edgeFns, ...expressServed]);
 

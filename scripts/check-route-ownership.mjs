@@ -61,7 +61,12 @@ const note =
   'scripts/check-route-ownership.mjs FAILS CI when a NEW both-divergent (ambiguous Express+edge, unproxied) ' +
   'or missing-edge (frontend calls it, no edge fn) domain appears that is not listed here. ' +
   'To resolve debt: fix the domain (proxy/retire/port) and remove it from the matching list, then re-run ' +
-  'npm run audit:routes. Regenerate this file with: node scripts/check-route-ownership.mjs --update-baseline';
+  'npm run audit:routes. Regenerate this file with: node scripts/check-route-ownership.mjs --update-baseline. ' +
+  'EDGE-020 (2026-07-29): bothDivergent GREW 59 -> 69, which is a DETECTION FIX, not a regression. Express ' +
+  'detection previously matched only app.METHOD("/api/x"), missing every route declared on a Router — both ' +
+  'the absolute form (router.get("/api/x") + app.use(router)) and the prefixed form (router.get("/x") + ' +
+  'app.use("/api", router)). Those 10 domains were always divergent; the tool simply could not see them, and ' +
+  'reported several as edge-only "fully migrated". Each was hand-verified before baselining.';
 
 if (update) {
   writeFileSync(
