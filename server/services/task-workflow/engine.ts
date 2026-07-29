@@ -27,10 +27,17 @@ import {
 } from '@shared/schema';
 import { notifyStepsAssigned } from './notifier';
 import { createModuleLogger } from '../../lib/logger';
+// EDGE-024: the stage math moved to shared/task-workflow-state.ts so this
+// engine and the task-workflows edge function make the same decisions, and so
+// the transitions are pinned by server/tests/unit/task-workflow-state.test.ts.
+// Behaviour here is unchanged — these are the same functions, re-homed.
+import {
+  TERMINAL_STEP_STATUSES,
+  computeCurrentStageIndex as computeCurrentStageIndexShared,
+  stepsInStage as stepsInStageShared,
+} from '@shared/task-workflow-state';
 
 const log = createModuleLogger('task-workflow-engine');
-
-const TERMINAL_STEP_STATUSES = new Set(['completed', 'skipped']);
 
 export interface WorkflowWithSteps {
   workflow: TaskWorkflow;
@@ -78,15 +85,17 @@ async function actorName(userId?: string | null): Promise<string | undefined> {
 // Stage math
 // ---------------------------------------------------------------------------
 
-/** Lowest stageIndex that still has a non-terminal step; -1 if all are terminal. */
+/**
+ * Lowest stageIndex that still has a non-terminal step; -1 if all are terminal.
+ * Re-exported from the shared module so existing importers of this engine keep
+ * working while there is only ONE implementation.
+ */
 export function computeCurrentStageIndex(steps: TaskWorkflowStep[]): number {
-  const incomplete = steps.filter((s) => !TERMINAL_STEP_STATUSES.has(s.status));
-  if (incomplete.length === 0) return -1;
-  return Math.min(...incomplete.map((s) => s.stageIndex));
+  return computeCurrentStageIndexShared(steps);
 }
 
 function stepsInStage(steps: TaskWorkflowStep[], stageIndex: number): TaskWorkflowStep[] {
-  return steps.filter((s) => s.stageIndex === stageIndex);
+  return stepsInStageShared(steps, stageIndex);
 }
 
 // ---------------------------------------------------------------------------

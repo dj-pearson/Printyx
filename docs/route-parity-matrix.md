@@ -4,14 +4,14 @@
 
 **Architecture:** prod frontend → `functions.printyx.net/<route>` (edge) for ALL `/api/*` via `getApiUrl`. The Express proxy map (55 prefixes) only affects **dev**. Express stays canonical for `/api/client-metrics/*` (agent) and `/install/*`.
 
-**Totals:** 383 domains · 260 edge fns · 244 Express-served · 202 frontend-called · 55 proxied
+**Totals:** 383 domains · 261 edge fns · 244 Express-served · 202 frontend-called · 55 proxied
 
 ## Summary by class
 
 | Class | Count | Meaning |
 |---|---|---|
-| `missing-edge` | 41 | Frontend calls it, NO edge function → **PROD BLOCKER** |
-| `both-divergent` | 70 | Express + edge both exist, not proxied → dev ≠ prod (maintenance trap) |
+| `missing-edge` | 40 | Frontend calls it, NO edge function → **PROD BLOCKER** |
+| `both-divergent` | 71 | Express + edge both exist, not proxied → dev ≠ prod (maintenance trap) |
 | `express-only` | 69 | Express handler, no edge function → not yet migrated |
 | `dead-express` | 22 | Express + edge exist, no frontend ref → Express likely dead |
 | `proxied` | 55 | In proxy map → dev forwards to edge (aligned) |
@@ -20,15 +20,15 @@
 
 ## Action-needed first
 
-**missing-edge** (41): `accessories`, `ai`, `ai-analytics`, `approvals`, `assignment-groups`, `business-process`, `chatbot`, `churn-risk`, `content`, `contract-tiered-rates`, `daily-briefing`, `documents`, `email-autopilot`, `email-parser`, `equipment-disposal`, `erp-integration`, `financial-forecasting`, `incident-response`, `lease-payments`, `meter-reads`, `platform`, `portal-service`, `predictive-analytics`, `predictive-failure`, `qbr`, `quote-templates`, `record-layout-config`, `renewal-autoquote`, `sales-performance`, `salesforce`, `security-compliance`, `service`, `system-monitoring`, `task-workflows`, `technician-sessions`, `toner-replenish`, `truck-stock`, `voice-agent`, `voice-ticket-close`, `white-label`, `workflow-automation`
+**missing-edge** (40): `accessories`, `ai`, `ai-analytics`, `approvals`, `assignment-groups`, `business-process`, `chatbot`, `churn-risk`, `content`, `contract-tiered-rates`, `daily-briefing`, `documents`, `email-autopilot`, `email-parser`, `equipment-disposal`, `erp-integration`, `financial-forecasting`, `incident-response`, `lease-payments`, `meter-reads`, `platform`, `portal-service`, `predictive-analytics`, `predictive-failure`, `qbr`, `quote-templates`, `record-layout-config`, `renewal-autoquote`, `sales-performance`, `salesforce`, `security-compliance`, `service`, `system-monitoring`, `technician-sessions`, `toner-replenish`, `truck-stock`, `voice-agent`, `voice-ticket-close`, `white-label`, `workflow-automation`
 
-**both-divergent** (70): `admin`, `ai-employees`, `analytics`, `audit-logs`, `auto-lead-routing`, `auto-supply-replenishment`, `catalog`, `chart-of-accounts`, `commission`, `content-gap-analysis`, `contract-renewal`, `contracts`, `crm`, `dashboard`, `dashboards`, `database-updater`, `deal-desk-copilot`, `deal-stages`, `demos`, `devices`, `document-management`, `email-campaigns`, `enabled-products`, `enrichment`, `equipment`, `equipment-lifecycle`, `financial`, `fleet`, `gdpr`, `import`, `integrations`, `inventory`, `invoices`, `journal-entries`, `leads`, `leases`, `maintenance`, `managed-services`, `manufacturer-integrations`, `meter-readings`, `mobile`, `mobile-field`, `onboarding`, `parts-orders`, `performance`, `predictive-dispatch`, `pricing`, `product-accessories`, `product-models`, `professional-services`, `projects`, `purchase-orders`, `quickbooks`, `rbac`, `remote-monitoring`, `root-admin`, `sales-forecasts`, `sales-pipeline`, `seo`, `service-analysis`, `service-analytics`, `service-tickets`, `social-media`, `software-products`, `subscriptions`, `supplies`, `technician-management`, `templates`, `user`, `warehouse-operations`
+**both-divergent** (71): `admin`, `ai-employees`, `analytics`, `audit-logs`, `auto-lead-routing`, `auto-supply-replenishment`, `catalog`, `chart-of-accounts`, `commission`, `content-gap-analysis`, `contract-renewal`, `contracts`, `crm`, `dashboard`, `dashboards`, `database-updater`, `deal-desk-copilot`, `deal-stages`, `demos`, `devices`, `document-management`, `email-campaigns`, `enabled-products`, `enrichment`, `equipment`, `equipment-lifecycle`, `financial`, `fleet`, `gdpr`, `import`, `integrations`, `inventory`, `invoices`, `journal-entries`, `leads`, `leases`, `maintenance`, `managed-services`, `manufacturer-integrations`, `meter-readings`, `mobile`, `mobile-field`, `onboarding`, `parts-orders`, `performance`, `predictive-dispatch`, `pricing`, `product-accessories`, `product-models`, `professional-services`, `projects`, `purchase-orders`, `quickbooks`, `rbac`, `remote-monitoring`, `root-admin`, `sales-forecasts`, `sales-pipeline`, `seo`, `service-analysis`, `service-analytics`, `service-tickets`, `social-media`, `software-products`, `subscriptions`, `supplies`, `task-workflows`, `technician-management`, `templates`, `user`, `warehouse-operations`
 
 ### missing-edge, split by reachability
 
 A domain is only a prod blocker if a file reachable from `App.tsx`/`main.tsx` calls it.
 
-**LIVE — a user can hit these (31):** `accessories`, `ai`, `ai-analytics`, `business-process`, `chatbot`, `churn-risk`, `content`, `contract-tiered-rates`, `daily-briefing`, `documents`, `email-autopilot`, `erp-integration`, `incident-response`, `lease-payments`, `meter-reads`, `portal-service`, `predictive-analytics`, `predictive-failure`, `qbr`, `quote-templates`, `renewal-autoquote`, `security-compliance`, `service`, `task-workflows`, `technician-sessions`, `toner-replenish`, `truck-stock`, `voice-agent`, `voice-ticket-close`, `white-label`, `workflow-automation`
+**LIVE — a user can hit these (30):** `accessories`, `ai`, `ai-analytics`, `business-process`, `chatbot`, `churn-risk`, `content`, `contract-tiered-rates`, `daily-briefing`, `documents`, `email-autopilot`, `erp-integration`, `incident-response`, `lease-payments`, `meter-reads`, `portal-service`, `predictive-analytics`, `predictive-failure`, `qbr`, `quote-templates`, `renewal-autoquote`, `security-compliance`, `service`, `technician-sessions`, `toner-replenish`, `truck-stock`, `voice-agent`, `voice-ticket-close`, `white-label`, `workflow-automation`
 
 **DEAD callers only — flagged, but the call never renders (10):** `approvals`, `assignment-groups`, `email-parser`, `equipment-disposal`, `financial-forecasting`, `platform`, `record-layout-config`, `sales-performance`, `salesforce`, `system-monitoring`
 
@@ -72,7 +72,6 @@ backlog, and it does not gate CI.
 | `security-compliance` | ✅ | · | ✅ | · | `missing-edge` |
 | `service` | ✅ | · | ✅ | · | `missing-edge` |
 | `system-monitoring` | ✅ | · | · | · | `missing-edge` |
-| `task-workflows` | ✅ | · | ✅ | · | `missing-edge` |
 | `technician-sessions` | ✅ | · | · | · | `missing-edge` |
 | `toner-replenish` | ✅ | · | ✅ | · | `missing-edge` |
 | `truck-stock` | ✅ | · | ✅ | · | `missing-edge` |
@@ -146,6 +145,7 @@ backlog, and it does not gate CI.
 | `software-products` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `subscriptions` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `supplies` | ✅ | ✅ | ✅ | · | `both-divergent` |
+| `task-workflows` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `technician-management` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `templates` | ✅ | ✅ | ✅ | · | `both-divergent` |
 | `user` | ✅ | ✅ | ✅ | · | `both-divergent` |
