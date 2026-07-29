@@ -462,6 +462,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // and a proxy forwards the whole prefix, so an entry would take that write
     // from working-in-dev to 404-in-dev. Same call as /api/ai-employees above.
     '/api/pipeline-forecast': 'pipeline-forecast',
+
+    // EDGE-023. Proxied because the edge fn has FULL parity — all seven Express
+    // endpoints (list, export.csv, GET/PUT settings, refresh, digest/preview,
+    // :contractId) are implemented.
+    '/api/contract-pnl': 'contract-pnl',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
