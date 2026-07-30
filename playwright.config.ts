@@ -2,6 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
+  // Own *.spec.ts ONLY (PROD-002). Playwright's default testMatch also matches
+  // *.test.ts, which made tests/blog-e2e-smoke.test.ts a vitest test that
+  // Playwright ALSO tried to run. vitest owns *.test.ts; keep these disjoint.
+  testMatch: '**/*.spec.ts',
   timeout: 30_000,
   expect: { timeout: 5000 },
   fullyParallel: true,

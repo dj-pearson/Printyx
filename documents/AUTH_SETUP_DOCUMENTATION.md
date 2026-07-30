@@ -168,7 +168,7 @@ APPLE_CLIENT_SECRET=<apple-oauth-client-secret>
 
 # Security
 API_EXTERNAL_URL=https://api.tryeatpal.com
-ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NTI1MzE2MCwiZXhwIjo0OTIwOTI2NzYwLCJyb2xlIjoiYW5vbiJ9.HBFEkJdBlHpZozkyUAcaV2IO-065599yClMPfsYt3Ug
+ANON_KEY=<your-anon-key>
 SERVICE_ROLE_KEY=<service-role-jwt>
 ```
 
@@ -179,7 +179,7 @@ Separate Deno service environment:
 ```bash
 # Supabase Connection
 SUPABASE_URL=https://api.tryeatpal.com
-SUPABASE_ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NTI1MzE2MCwiZXhwIjo0OTIwOTI2NzYwLCJyb2xlIjoiYW5vbiJ9.HBFEkJdBlHpZozkyUAcaV2IO-065599yClMPfsYt3Ug
+SUPABASE_ANON_KEY=<your-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-jwt>
 
 # OpenAI (for AI features)

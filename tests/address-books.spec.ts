@@ -13,9 +13,15 @@
  * Run: npm run test:e2e:chromium -- tests/address-books.spec.ts
  */
 import { test, expect, Page } from '@playwright/test';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const CANON_FIXTURE = resolve(__dirname, 'fixtures/address-book/canon-sample.csv');
+// package.json sets "type": "module", so __dirname does not exist here. Using it
+// threw at COLLECTION time, and because Playwright aborts the whole run on a
+// collection error that single line took the ENTIRE e2e suite to
+// "0 tests in 0 files" (PROD-002).
+const here = dirname(fileURLToPath(import.meta.url));
+const CANON_FIXTURE = resolve(here, 'fixtures/address-book/canon-sample.csv');
 
 async function setupDemoAuth(page: Page): Promise<void> {
   await page.addInitScript(() => {

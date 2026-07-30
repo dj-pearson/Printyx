@@ -8,6 +8,7 @@
   },
   "scripts": {
     "ralph": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ralph/ralph.ps1",
+    "preinstall": "node scripts/check-node-version.mjs",
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
     "dev:frontend": "vite",
     "build": "vite build",
@@ -126,7 +127,8 @@
     "audit:supply-chain": "tsx scripts/supply-chain-check.ts",
     "audit:deps": "tsx scripts/dependency-check.ts",
     "audit:errors": "tsx scripts/audit/error-tracker.ts",
-    "check:security": "npm audit --audit-level=high && tsx scripts/supply-chain-check.ts && tsx scripts/dependency-check.ts"
+    "check:security": "npm audit --audit-level=high && tsx scripts/supply-chain-check.ts && tsx scripts/dependency-check.ts",
+    "check:node": "node scripts/check-node-version.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

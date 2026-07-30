@@ -21,9 +21,17 @@ enum AppConfig {
     // SUPABASE_ANON_KEY). Release builds fail closed if injection didn't
     // happen — previously a hardcoded anon-key fallback lived here, which
     // defeated key rotation and left stale keys live in every shipped build.
+    // The DEBUG fallback no longer HARDCODES the anon key (PROD-005/PA-014). The
+    // previous literal was the same token committed in mobile/eas.json: it is in git
+    // history, carried a ~100-year expiry (iat 2025-12-06, exp 2125-12-06), and could
+    // not be rotated without a code change — the exact failure the comment above
+    // describes, just narrowed to DEBUG rather than removed. Debug builds now read it
+    // from the environment, matching how apiBaseURL already resolves API_BASE_URL.
     #if DEBUG
-    private static let debugSupabaseURL = "https://api.printyx.net"
-    private static let debugSupabaseAnonKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c"
+    private static let debugSupabaseURL =
+        ProcessInfo.processInfo.environment["SUPABASE_URL"] ?? "https://api.printyx.net"
+    private static let debugSupabaseAnonKey =
+        ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"] ?? ""
     #endif
 
     static var supabaseURL: String {
@@ -48,6 +56,14 @@ enum AppConfig {
             return value
         }
         #if DEBUG
+        // Fail closed in DEBUG too rather than handing back "" — an empty key produces
+        // confusing 401s from GoTrue instead of naming the missing configuration.
+        guard !debugSupabaseAnonKey.isEmpty else {
+            fatalError(
+                "SUPABASE_ANON_KEY is not configured. Set it in the scheme's environment "
+                    + "variables (or inject via Info.plist). It is deliberately not hardcoded."
+            )
+        }
         return debugSupabaseAnonKey
         #else
         fatalError("SUPABASE_ANON_KEY is not configured. Inject via Info.plist at build time.")

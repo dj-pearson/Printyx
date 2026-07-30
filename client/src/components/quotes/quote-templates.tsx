@@ -75,11 +75,22 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [editingTemplate, setEditingTemplate] = React.useState<QuoteTemplate | null>(null);
 
-  // Fetch templates from localStorage (in a real app, this would be an API call)
+  // Templates are stored in localStorage — this is browser-local state, NOT an API.
+  //
+  // The cache key is deliberately 'local:quote-templates' and must NOT be given an
+  // API-shaped name (PROD-013). When it was one, the route-parity audit classified this
+  // domain as a live production 404 in every report: the audit greps reachable client
+  // files for api paths and cannot tell a cache key from a URL. It was the single false
+  // positive among 29 flagged domains and it cost real triage time. (Note the wording
+  // here avoids spelling that path out — a mention in a comment re-triggers the same
+  // grep.) There is no quote_templates table in any schema or migration.
+  //
+  // If these ever do move server-side, add the table + migration and the edge function
+  // FIRST, then switch this to a real path — do not restore the API-shaped key while
+  // the data is still local.
   const { data: templates = [] } = useQuery<QuoteTemplate[]>({
-    queryKey: ['/api/quote-templates'],
+    queryKey: ['local:quote-templates'],
     queryFn: async () => {
-      // For now, use localStorage. In production, replace with API call
       const stored = localStorage.getItem('quoteTemplates');
       return stored ? JSON.parse(stored) : [];
     },
@@ -103,7 +114,7 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
       return template;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/quote-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['local:quote-templates'] });
       toast({
         title: 'Success',
         description: 'Template saved successfully',
@@ -122,7 +133,7 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
       return templateId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/quote-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['local:quote-templates'] });
       toast({
         title: 'Success',
         description: 'Template deleted successfully',
@@ -145,7 +156,7 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
       return templateId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/quote-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['local:quote-templates'] });
     },
   });
 
@@ -391,7 +402,7 @@ export function SaveQuoteTemplate({ quoteData, onSaved }: SaveQuoteTemplateProps
     templates.push(template);
     localStorage.setItem('quoteTemplates', JSON.stringify(templates));
 
-    queryClient.invalidateQueries({ queryKey: ['/api/quote-templates'] });
+    queryClient.invalidateQueries({ queryKey: ['local:quote-templates'] });
 
     toast({
       title: 'Success',
