@@ -78,11 +78,20 @@ Add these three required variables:
 
 ```bash
 SUPABASE_URL=https://api.printyx.net
-SUPABASE_ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c
-SUPABASE_SERVICE_ROLE_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoic2VydmljZV9yb2xlIn0.WWuFoA4d-oJA0_nG_Q-87JtoAp1xaJQLRzlTVyGCTVQ
+SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 ```
 
-_(These are from your existing Supabase service)_
+_(Copy the real values from the Supabase dashboard — never back into this file.)_
+
+> **These were previously committed here as literal values (PROD-005).** Both are in git
+> history and must be treated as compromised: the anon key, and — more seriously — the
+> **`service_role` key, which bypasses RLS entirely**. Rotate both in Supabase; removing
+> the lines does not un-publish them.
+>
+> `npm run check:secrets` did not catch this, because it exempted every `.md` finding as a
+> presumed placeholder. That exemption is now narrowed to structurally-invalid /
+> placeholder tokens, so a real JWT in documentation fails the build.
 
 ### Step 5: Deploy
 

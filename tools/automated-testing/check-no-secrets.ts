@@ -162,6 +162,43 @@ interface ScanResult {
 // ============================================================================
 
 /**
+ * Is this match a structurally REAL JWT, as opposed to a documentation placeholder?
+ *
+ * Used to decide whether a token found in markdown / plain text is a genuine leak.
+ * Real: three base64url segments whose payload decodes to JSON carrying recognizable
+ * claims, with a signature of plausible length that is not filler.
+ * Placeholder: a signature of repeated characters (`XXXXXXXX…`), a `your-project`
+ * style ref, or a payload that does not decode at all.
+ */
+function looksLikeRealJwt(match: string): boolean {
+  const token = match.trim().replace(/^["']|["'],?$/g, '');
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+
+  const [, payload, signature] = parts;
+
+  // HS256 signatures are 43 base64url chars. Filler like XXXX… or 000… is a
+  // placeholder, however long it is.
+  if (signature.length < 20) return false;
+  if (/^(.)\1+$/.test(signature)) return false;
+
+  try {
+    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8'));
+    // A real Supabase/GoTrue token carries these; a scrambled placeholder does not.
+    const hasClaims =
+      typeof decoded === 'object' &&
+      decoded !== null &&
+      ('role' in decoded || 'iss' in decoded || 'sub' in decoded);
+    if (!hasClaims) return false;
+    // Docs commonly illustrate with ref: "your-project" / "your-project-ref".
+    if (typeof decoded.ref === 'string' && /your[-_]?project/i.test(decoded.ref)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Checks if a detection is likely a false positive
  */
 function isFalsePositive(detection: SecretDetection): boolean {
@@ -216,9 +253,16 @@ function isFalsePositive(detection: SecretDetection): boolean {
   }
 
   // Documentation (markdown / plain-text) contains setup examples and
-  // placeholder credentials, not real secrets.
+  // placeholder credentials — but NOT always. This exemption used to be
+  // unconditional, and it hid real committed credentials for exactly as long as
+  // it existed (PROD-005): documents/COOLIFY_SETUP_EDGE_FUNCTIONS.md carried the
+  // live Supabase anon key AND the service_role key, which bypasses RLS
+  // entirely, while `npm run check:secrets` reported "No secrets detected".
+  //
+  // So docs stay exempt for placeholder-shaped tokens, but a structurally REAL
+  // JWT in documentation is treated as the leak it is.
   if (/\.(md|markdown|txt)$/i.test(detection.file)) {
-    return true;
+    return !looksLikeRealJwt(detection.match);
   }
 
   // A bare PEM header with no key body (e.g. instructional text telling a user

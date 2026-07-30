@@ -1,4 +1,5 @@
 {
+  "//": "EXPO_PUBLIC_SUPABASE_ANON_KEY is intentionally NOT in this file (PROD-005/PA-014). It was committed here for all three profiles, so it lived in git history with a ~100-year expiry (iat 2025-12-06, exp 2125-12-06) and could not be rotated without a code change. Define it as an EAS environment variable / secret of the same name (`eas env:create` or the project dashboard) and EAS injects it at build time; mobile/src/config/index.ts reads it from process.env. Do not re-add a literal value here — `npm run check:secrets` is a blocking CI gate and will fail the build.",
   "cli": {
     "version": ">= 12.0.0",
     "appVersionSource": "remote"
@@ -9,7 +10,6 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://api.printyx.net",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c",
         "EXPO_PUBLIC_API_BASE_URL": "https://printyx.net",
         "EXPO_PUBLIC_EDGE_FUNCTIONS_URL": "https://functions.printyx.net",
         "EXPO_PUBLIC_APP_URL": "https://printyx.net"
@@ -22,7 +22,6 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://api.printyx.net",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c",
         "EXPO_PUBLIC_API_BASE_URL": "https://printyx.net",
         "EXPO_PUBLIC_EDGE_FUNCTIONS_URL": "https://functions.printyx.net",
         "EXPO_PUBLIC_APP_URL": "https://printyx.net"
@@ -37,7 +36,6 @@
     "production": {
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://api.printyx.net",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c",
         "EXPO_PUBLIC_API_BASE_URL": "https://printyx.net",
         "EXPO_PUBLIC_EDGE_FUNCTIONS_URL": "https://functions.printyx.net",
         "EXPO_PUBLIC_APP_URL": "https://printyx.net"
