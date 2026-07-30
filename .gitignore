@@ -70,6 +70,15 @@ scripts/export-complete-database.js
 # path segment, which silently swallowed scripts/audit/lib/report-generator.ts
 # and required the 21 negation lines that used to live here.
 /report*
+
+# Playwright output at the repo root. playwright.config.ts writes
+# test-results/{results.json,junit.xml} plus the html reporter's
+# playwright-report/. Only "testing/test-results/" was ignored, so the ROOT
+# copies were untracked — invisible until PROD-002, because the e2e suite was
+# collecting 0 tests and never produced any output to leave behind.
+# Anchored per the note above so these never match a nested source path.
+/playwright-report/
+/test-results/
 Output.json
 .env.tmp
 
