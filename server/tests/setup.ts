@@ -11,7 +11,44 @@ config();
 
 // Set test environment
 process.env.NODE_ENV = 'test';
-process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+
+// Prefer TEST_DATABASE_URL, but NEVER assign undefined into process.env — Node
+// coerces that to the literal string "undefined", which is truthy and defeats every
+// `if (!process.env.DATABASE_URL)` guard downstream (including the one below, and
+// db.ts's own `?.startsWith('postgres')` check, which then falls through to the
+// component branch and throws).
+if (process.env.TEST_DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+} else if (!process.env.DATABASE_URL) {
+  delete process.env.DATABASE_URL;
+}
+
+// PROD-003: let PURE UNIT tests import modules that transitively reach server/db.ts.
+//
+// server/db.ts calls buildDatabaseUrl() at module scope, which THROWS when neither
+// DATABASE_URL nor DB_HOST/DB_USER/DB_PASSWORD is set. The repo ships no .env (only
+// .env.development and .env.example), so seven test files failed at COLLECTION and
+// never ran a single assertion:
+//
+//   tenant-isolation, tenant-resolution-cr001, products-crud-rbac,
+//   rbac-middleware-extended, sso-relaystate, pricing-input-validation,
+//   voice-audio-host-allowlist
+//
+// Every one of those is a pure unit test — middleware with mocked req/res, a Zod
+// schema, a path predicate, a host allowlist. None needs a database; they only need
+// the import to succeed. CLAUDE.md calls the tenantId filter SECURITY CRITICAL, and
+// the test proving that boundary holds was silently not running.
+//
+// A pg.Pool does not connect on construction (node-postgres connects lazily on first
+// query), so a placeholder URL makes the import succeed while issuing ZERO
+// connections. The host is deliberately unroutable rather than a plausible localhost
+// Postgres: a test that genuinely queries must fail FAST and loudly instead of
+// hanging, or silently reaching a developer's real database. Tests that truly need a
+// live database should set TEST_DATABASE_URL, which always wins over this fallback.
+if (!process.env.DATABASE_URL && !process.env.DB_HOST) {
+  process.env.DATABASE_URL =
+    'postgresql://unit-test:unit-test@127.0.0.1:1/printyx_unit_test_no_db_expected';
+}
 
 // Global test setup
 beforeAll(async () => {
