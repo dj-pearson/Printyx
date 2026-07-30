@@ -51,7 +51,30 @@ as `PROD-001`.
 `SUPA-003` deliberately stays **open**: the journal is reconciled, but whether the live database
 has had those 21 files _applied_ is unverified — `check:drift` exits with `DATABASE_URL is not set`.
 
-## The core production gap: 29 domains that work in dev and 404 in prod — STATIC
+## The core production gap: 28 domains that work in dev and 404 in prod — MECHANISM VERIFIED
+
+> **Updated later the same day.** The count is **28**, not 29, and the premise is no longer
+> assumed. `client/src/lib/config.ts` `getApiUrl()` rewrites `/api/x` →
+> `https://functions.printyx.net/x` whenever `import.meta.env.PROD`, with **no Express fallback
+> anywhere in the path** — so an Express-only domain genuinely hard-404s in production.
+>
+> One flagged domain was a **false positive**: `quote-templates` used an API-shaped string as a
+> TanStack Query *cache key* while its `queryFn` read `localStorage` and never touched the
+> network. Fixed at the source (renamed to `local:quote-templates`) and removed from the
+> baseline. I scanned the other 28 for the same no-network pattern — it was the only one.
+>
+> Two of the remaining 28 differ in kind: `predictive-analytics` and `technician-sessions` use
+> the *default* `queryFn` (which fetches the queryKey as a URL) and have **no Express handler
+> either**, so they are broken in **dev as well as prod**. `technician-sessions` also drives
+> check-in mutations, so that technician workflow is non-functional everywhere. Neither has a
+> backing table, so both need a schema decision rather than a port.
+>
+> **Measured effort:** PROD-012's four handlers alone are **3,950 lines** of Express
+> (`voice-ticket-close` 860, `voice-agent` 825, `chatbot` 1200, `email-autopilot` 1065) across
+> 4–9 endpoints each. The full port is roughly **20,000 lines** to re-express as Deno edge
+> functions *with field-by-field shape parity*. This is multi-session work, and rushing it is
+> actively harmful — the pages fall back to mock data with `|| [...]`, so a shape mismatch
+> renders fabricated numbers, which is worse than the 404 it replaces.
 
 Express serves dev; production hits the edge function directly. A domain with an Express handler
 and no edge function is therefore **invisible locally and dead in production**. Derived from
