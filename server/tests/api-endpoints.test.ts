@@ -6,15 +6,22 @@
 import request from 'supertest';
 import express from 'express';
 
-// Mock app setup for testing
-const createTestApp = () => {
+// Mock app setup for testing.
+//
+// PROD-002: these were CommonJS require() calls, which cannot resolve a .ts
+// module under vitest's ESM loader — so beforeAll threw "Cannot find module
+// '../routes/ai-routes-simple'" (the module exists; require just can't load it)
+// and all 33 tests in this file were skipped rather than run. Dynamic import()
+// resolves TS correctly, so createTestApp is async.
+const createTestApp = async () => {
   const app = express();
   app.use(express.json());
 
-  // Import routes
-  const aiRoutes = require('../routes/ai-routes-simple').default;
-  const calendarRoutes = require('../routes/calendar-routes').default;
-  const taskRoutes = require('../routes/task-routes').default;
+  const [aiRoutes, calendarRoutes, taskRoutes] = await Promise.all([
+    import('../routes/ai-routes-simple').then((m) => m.default),
+    import('../routes/calendar-routes').then((m) => m.default),
+    import('../routes/task-routes').then((m) => m.default),
+  ]);
 
   app.use('/api/ai', aiRoutes);
   app.use('/api/calendar', calendarRoutes);
@@ -26,8 +33,8 @@ const createTestApp = () => {
 describe('Motion AI API Endpoints', () => {
   let app: express.Application;
 
-  beforeAll(() => {
-    app = createTestApp();
+  beforeAll(async () => {
+    app = await createTestApp();
   });
 
   describe('AI Routes', () => {

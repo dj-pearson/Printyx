@@ -92,30 +92,52 @@ Highest-risk members touch money and customer data: `invoices`, `contracts`, `fi
 
 ## The test suite cannot be trusted yet — VERIFIED
 
-`npm run test`: **26 failed files / 10 failed tests** of 95 files / 1423 tests (1380 passing).
-Almost none are product bugs. Three distinct causes:
+`npm run test` started at **26 failed files / 10 failed tests** of 95 files / 1423 tests. Almost
+none were product bugs. Four distinct causes, and the worst one was not in vitest at all.
 
-1. **19 files are a config bug.** `vitest.config.ts` declares no `include`/`exclude`, so vitest's
-   default glob sweeps in 10 Playwright specs under `tests/` (which die with "Playwright Test did
-   not expect test() to be called here") and 6 sub-package files under `mobile/` and
-   `printyx-client/`. → `PROD-002`
+1. **16 files were a runner-ownership bug — FIXED (`PROD-002`).** `vitest.config.ts` declared no
+   `include`/`exclude`, so its default glob swept up 10 Playwright specs under `tests/` (dying with
+   "Playwright Test did not expect test() to be called here") and 6 sub-package files under
+   `mobile/` and `printyx-client/`. Split by **extension**, not directory — `tests/` legitimately
+   holds both, since `tests/blog-e2e-smoke.test.ts` is a passing vitest test sitting beside the
+   specs. Now `*.test.ts` → vitest, `*.spec.ts` → Playwright, mutually exclusive.
+   **Result: 26 → 10 failing files, 0 regressions** (all 69 previously-passing files still pass).
 
-2. **6 security tests never run at all.** `server/db.ts:35` throws
+2. **The entire E2E suite collected ZERO tests — FIXED (`PROD-002`).** `npm run test:e2e` reported
+   `Total: 0 tests in 0 files`. Playwright aborts the whole run on any collection error, and there
+   were two: `tests/address-books.spec.ts:18` used `__dirname`, which does not exist because
+   `package.json` sets `"type": "module"`; and Playwright's default `testMatch` also matched
+   `*.test.ts`, so it loaded the vitest file and crashed on
+   `Cannot redefine property: Symbol($$jest-matchers-object)` — vitest's `expect` colliding with
+   Playwright's. Pinning `testMatch` to `*.spec.ts` and switching to `fileURLToPath(import.meta.url)`
+   fixed both. **Result: 0 → 882 tests in 10 files.** Every claim that E2E coverage existed was
+   false; nothing was running.
+
+3. **7 tests never run at all** — not 6. `server/db.ts:35` throws
    `Database configuration incomplete` at _import_, and the repo ships only `.env.development` and
-   `.env.example` — no `.env`. These files fail at **collection**, so not one assertion executes:
+   `.env.example` — no `.env`. These fail at **collection**, so not one assertion executes:
    `tenant-isolation`, `tenant-resolution-cr001`, `products-crud-rbac`, `rbac-middleware-extended`,
-   `sso-relaystate`, `pricing-input-validation`.
+   `sso-relaystate`, `pricing-input-validation`, and `voice-audio-host-allowlist`.
 
    `CLAUDE.md` calls the `tenantId` filter **SECURITY CRITICAL** and says a missing filter is a
    vulnerability. **The test proving that boundary holds has never run.** That is a production gap
    on its own, not just a test-hygiene issue. → `PROD-003`
 
-3. **2 genuine product failures**, both in `server/tests/integration/report-execution.test.ts`:
-   - `:337` expects `"Unsupported format"`, receives `"Missing required permissions"` — the
-     permission check fires **before** format validation, so a bad format is misreported as an
-     authorization failure. Real API-contract bug.
-   - `:399` concurrent execution — 10 parallel report executions do not all succeed.
-     → `PROD-004`
+4. **Genuine product/environment failures**, now visible instead of buried:
+   - `server/tests/integration/report-execution.test.ts:337` expects `"Unsupported format"`,
+     receives `"Missing required permissions"` — the permission check fires **before** format
+     validation, so a bad format is misreported as an authorization failure. Real API-contract bug.
+     `:399` concurrent execution — 10 parallel report executions do not all succeed. → `PROD-004`
+   - `server/tests/task-scheduling.test.ts` needs a Claude API key (`Claude API key not
+     configured`) — an external-service dependency, not a code defect.
+   - `server/tests/api-endpoints.test.ts` used CommonJS `require()` for a `.ts` module, which
+     vitest's ESM loader cannot resolve, so `beforeAll` threw and **all 33 tests silently skipped**.
+     Converted to dynamic `import()`; they now execute and honestly report that they need a
+     database, which puts them in `PROD-003`'s scope rather than hiding them.
+
+**Net after `PROD-002`: 79 files / 69 passing, 10 failing files, 1384 passing tests, 0 regressions.**
+Failing *tests* rose 10 → 39 — this is the fix working, not a regression: 33 api-endpoints tests
+that were silently skipped now run and correctly report a missing database.
 
 ## One security guard is failing right now — VERIFIED
 

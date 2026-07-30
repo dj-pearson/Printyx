@@ -11230,13 +11230,13 @@
         "No test that was previously passing stops running (compare the passing-file list before and after)"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Opened 2026-07-30 production-gap deep dive. This is a config bug, not 19 broken features — it is the cheapest large signal win in the repo."
+      "passes": true,
+      "notes": "Opened 2026-07-30 production-gap deep dive. This is a config bug, not 19 broken features — it is the cheapest large signal win in the repo.\n\nDONE 2026-07-30, VERIFIED. Split by EXTENSION not directory (tests/ holds both: tests/blog-e2e-smoke.test.ts is a passing vitest test beside the Playwright specs). vitest include = server/**/*.test.ts, client/**/*.test.{ts,tsx}, tests/**/*.test.ts; exclude = **/*.spec.ts, mobile/**, printyx-client/**. Result: 95->79 files collected, 26->10 failing files, 0 regressions (all 69 previously-passing files still pass, verified by diffing the JSON reporter file lists before/after).\n\nSCOPE GREW — two extra defects found while verifying, both fixed here:\n(1) THE ENTIRE E2E SUITE COLLECTED ZERO TESTS. 'npm run test:e2e' reported 'Total: 0 tests in 0 files'. Playwright aborts the whole run on ANY collection error and there were two: tests/address-books.spec.ts:18 used __dirname (package.json sets type:module, so it is undefined), and Playwright's DEFAULT testMatch also matches *.test.ts, so it loaded the vitest file and crashed on 'Cannot redefine property: Symbol($$jest-matchers-object)' — vitest's expect colliding with Playwright's. Fixed by pinning testMatch to '**/*.spec.ts' and using fileURLToPath(import.meta.url). 0 -> 882 tests in 10 files. Any prior claim of E2E coverage was false.\n(2) server/tests/api-endpoints.test.ts used CommonJS require() for a .ts module, which vitest's ESM loader cannot resolve, so beforeAll threw 'Cannot find module' (the module EXISTS) and all 33 tests SILENTLY SKIPPED. Converted to dynamic import(); they now execute and correctly report needing a DB -> folded into PROD-003.\n\nNOTE ON COUNTS: failing TESTS rose 10->39 while failing FILES fell 26->10. That is the fix working, not a regression — 33 previously-skipped tests now actually run."
     },
     {
       "id": "PROD-003",
       "title": "Make the multi-tenant isolation and RBAC security tests actually run",
-      "description": "VERIFIED 2026-07-30: six security tests never execute. server/db.ts:35 throws \"Database configuration incomplete. Provide either DATABASE_URL or DB_HOST, DB_USER, DB_PASSWORD\" at import time, and the repo ships only .env.development and .env.example (no .env), so the files fail at COLLECTION — they report as failures without a single assertion running. The affected files are exactly the ones guarding the security-critical invariants: tenant-isolation, tenant-resolution-cr001, products-crud-rbac, rbac-middleware-extended, sso-relaystate, pricing-input-validation. CLAUDE.md calls the tenantId filter \"SECURITY CRITICAL\" and states missing filters are vulnerabilities — and the test that proves it holds has never run in this configuration. This is a production gap in its own right: there is no evidence the tenant boundary is enforced.",
+      "description": "VERIFIED 2026-07-30: seven tests never execute. server/db.ts:35 throws \"Database configuration incomplete. Provide either DATABASE_URL or DB_HOST, DB_USER, DB_PASSWORD\" at import time, and the repo ships only .env.development and .env.example (no .env), so the files fail at COLLECTION — they report as failures without a single assertion running. The affected files are guarding the security-critical invariants: tenant-isolation, tenant-resolution-cr001, products-crud-rbac, rbac-middleware-extended, sso-relaystate, pricing-input-validation. CLAUDE.md calls the tenantId filter \"SECURITY CRITICAL\" and states missing filters are vulnerabilities — and the test that proves it holds has never run in this configuration. This is a production gap in its own right: there is no evidence the tenant boundary is enforced.",
       "acceptanceCriteria": [
         "The six files execute their assertions rather than failing at import",
         "Either a test DATABASE_URL is provided (migrated ephemeral/test database) or the db import is injectable so pure-unit tests need no live DB",
@@ -11245,7 +11245,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "Opened 2026-07-30 production-gap deep dive. Blocked by PROD-002 only for clean signal; independently fixable. Overlaps PA-049 (which additionally covers E2E gating + coverage) — keep PA-049 for the CI-policy half and use this for making the tests runnable at all."
+      "notes": "Opened 2026-07-30 production-gap deep dive. Blocked by PROD-002 only for clean signal; independently fixable. Overlaps PA-049 (which additionally covers E2E gating + coverage) — keep PA-049 for the CI-policy half and use this for making the tests runnable at all.\n\nCORRECTED 2026-07-30: it is SEVEN files, not six — voice-audio-host-allowlist.test.ts fails the same way and was missed in the first pass. Full list: tenant-isolation, tenant-resolution-cr001, products-crud-rbac, rbac-middleware-extended, sso-relaystate, pricing-input-validation, voice-audio-host-allowlist.\n\nSCOPE ADDED by PROD-002: server/tests/api-endpoints.test.ts (33 tests) now RUNS after its require()->import() fix and returns 500s because it has no database. Those 33 belong to this story. After PROD-002 the suite is 79 files / 69 passing / 10 failing, and ALL 10 remaining failing files are either this story (8 files) or PROD-004 (report-execution) plus task-scheduling (needs a Claude API key, an external-service dependency rather than a code defect)."
     },
     {
       "id": "PROD-004",
@@ -11259,7 +11259,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "Opened 2026-07-30 production-gap deep dive. These are the ONLY real product test failures found; everything else red in the suite is runner configuration."
+      "notes": "Opened 2026-07-30 production-gap deep dive. These are the ONLY real product test failures found; everything else red in the suite is runner configuration.\n\nREFINED 2026-07-30: after PROD-002 these are confirmed as the only genuine ASSERTION failures. Two neighbours in the remaining-10 are NOT product bugs: task-scheduling needs a Claude API key, and api-endpoints needs a database (PROD-003)."
     },
     {
       "id": "PROD-005",
