@@ -11299,8 +11299,8 @@
         "check:routes reports no resolved-but-baselined domains"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Opened 2026-07-30 production-gap deep dive. Per CLAUDE.md, --update-baseline also absorbs unrelated drift — document anything non-story it moves."
+      "passes": true,
+      "notes": "Opened 2026-07-30 production-gap deep dive. Per CLAUDE.md, --update-baseline also absorbs unrelated drift — document anything non-story it moves.\n\nDONE 2026-07-30, VERIFIED. The 2 resolved domains were ai-employees (bothDivergent) and lease-payments (missingEdge). Both confirmed genuinely fixed, not merely undetected:\n  - ai-employees: edge fn dir supabase/functions/ai-employees exists AND server.ts handles the plural-segment mapping (EDGE-019 work). Now classifies 'proxied'.\n  - lease-payments: classified 'proxied' with edge=false, which is the pattern CLAUDE.md warns about (proxying a prefix with no matching fn takes it from working-in-dev to 404-in-dev). Checked before trusting it: server.ts:227 routes functionName==='lease-payments' to the EXISTING supabase/functions/leases fn, deliberately, because the dispatcher cannot tell /lease-payments/:id/process from /leases/:id/... . A real alias, so prod resolves.\nBaseline: bothDivergent 71->70, missingEdge 40->39. Diff reviewed and it is EXACTLY the two removals — no unrelated upstream drift was absorbed this time (CLAUDE.md warns --update-baseline can pull in unrelated reclassifications). check:routes green."
     },
     {
       "id": "PROD-008",
