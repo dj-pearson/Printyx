@@ -361,10 +361,15 @@ Provide 3-5 optimization insights as a JSON array of strings.`;
         break;
     }
 
-    // Due date urgency
+    // Due date urgency. Overdue gets its own band: without it an already-missed task
+    // collapsed into the same `< 1` bucket as one due in 23 hours and scored
+    // identically, so the most urgent work never sorted above merely-due-soon work.
+    // The bands mirror calculateUrgency below, which has always ranked overdue (100)
+    // above due-today (90).
     if (task.dueDate) {
       const daysUntilDue = (task.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-      if (daysUntilDue < 1) score += 30;
+      if (daysUntilDue < 0) score += 40;
+      else if (daysUntilDue < 1) score += 30;
       else if (daysUntilDue < 3) score += 20;
       else if (daysUntilDue < 7) score += 10;
     }
