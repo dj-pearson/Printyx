@@ -484,6 +484,22 @@ export function registerEdgeFunctionProxy(app: any) {
     // endpoints (list, export.csv, GET/PUT settings, refresh, digest/preview,
     // :contractId) are implemented.
     '/api/contract-pnl': 'contract-pnl',
+
+    // PROD-010. Proxied because the edge fn implements ALL SEVEN Express
+    // endpoints on this prefix (list, generate, GET/POST suppressions, GET/PATCH
+    // /:id, /:id/send) — the full-parity bar the entries above are held to.
+    //
+    // One behavior DOES change in dev, deliberately: generate no longer produces
+    // a PDF. Express renders it with Playwright/Chromium, which cannot run in the
+    // Deno runtime, so the edge fn stores the HTML artifact and leaves pdf_url
+    // null (a path Express already takes whenever Chromium is absent).
+    //
+    // Proxying anyway is the point: production has NO qbr function today, so the
+    // page 404s there entirely. Leaving dev on Express would keep PDFs working on
+    // developer machines while prod silently lacked them — precisely the
+    // works-in-dev/broken-in-prod split this batch of stories exists to close.
+    // Restoring PDFs means rendering outside the edge runtime, for both.
+    '/api/qbr': 'qbr',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
