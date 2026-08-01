@@ -519,6 +519,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // digest/preview), which is also everything CustomerRisk.tsx calls.
     // Digest ASSEMBLY is real; delivery stays a stub, exactly as in Express.
     '/api/churn-risk': 'churn-risk',
+
+    // PROD-010. Full parity: all EIGHT Express endpoints (score, predictions,
+    // predictions/:id/{approve,snooze,dismiss}, GET/PUT settings, accuracy).
+    // The agent kill switch (predictive_dispatch_settings.agent_enabled) is
+    // honored on the edge path too — this endpoint dispatches technicians, so a
+    // port that ignored the pause would make that button a no-op in production.
+    '/api/predictive-failure': 'predictive-failure',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
