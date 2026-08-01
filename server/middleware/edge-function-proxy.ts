@@ -500,6 +500,19 @@ export function registerEdgeFunctionProxy(app: any) {
     // works-in-dev/broken-in-prod split this batch of stories exists to close.
     // Restoring PDFs means rendering outside the edge runtime, for both.
     '/api/qbr': 'qbr',
+
+    // PROD-010. Full parity: /dashboard is the ONLY endpoint Express serves on
+    // this prefix (routes-sample-data.ts) and the only one the page calls.
+    //
+    // NOT ported alongside it: /api/business-process. Both of its Express
+    // dashboard handlers (routes-business-process-optimization.ts:24 and
+    // routes-sample-data.ts:1209) return hardcoded numbers with ZERO database
+    // access — 47 processes, $127,890.50 "cost savings" — and they ignore the
+    // category/department filters the page sends. Porting that would publish
+    // fabricated business metrics to production, where the page currently 404s.
+    // A 404 is honest; confident fake numbers are not. It belongs to PA-040
+    // (wire or clearly flag the fully-mock dashboards), not to this batch.
+    '/api/ai-analytics': 'ai-analytics',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
