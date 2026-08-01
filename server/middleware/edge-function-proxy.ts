@@ -513,6 +513,12 @@ export function registerEdgeFunctionProxy(app: any) {
     // A 404 is honest; confident fake numbers are not. It belongs to PA-040
     // (wire or clearly flag the fully-mock dashboards), not to this batch.
     '/api/ai-analytics': 'ai-analytics',
+
+    // PROD-010. Full parity: all SEVEN Express endpoints are implemented
+    // (score, scores, scores/:id/history, save-plan, GET/PUT settings,
+    // digest/preview), which is also everything CustomerRisk.tsx calls.
+    // Digest ASSEMBLY is real; delivery stays a stub, exactly as in Express.
+    '/api/churn-risk': 'churn-risk',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
