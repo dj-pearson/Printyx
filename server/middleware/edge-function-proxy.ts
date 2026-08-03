@@ -526,6 +526,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // honored on the edge path too — this endpoint dispatches technicians, so a
     // port that ignored the pause would make that button a no-op in production.
     '/api/predictive-failure': 'predictive-failure',
+
+    // PROD-010. Full parity: all SIX Express endpoints (generate, list,
+    // GET/PUT preferences, stats, :id/open), which is also everything
+    // DailyBriefings.tsx calls. All six had to ship together — proxying forwards
+    // the whole prefix, so a partial port would have taken the rest from
+    // working-in-dev to 404-in-dev.
+    '/api/daily-briefing': 'daily-briefing',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
