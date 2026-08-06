@@ -59,8 +59,14 @@ interface Integration {
   features: string[];
   benefits: string[];
   pricingModel?: string;
-  documentationUrl?: string;
-  supportUrl?: string;
+  // AUDIT-014: documentationUrl / supportUrl were declared here and set on four
+  // integrations, but NOTHING ever read them — there was no render site anywhere
+  // in the repo. They pointed at /docs/integrations/* and /support/*, none of
+  // which are registered routes and none of which exist as pages, so wiring them
+  // up would have shipped links straight to the 404 page. Removed rather than
+  // invented, per the rule for features with no backing implementation. If
+  // per-integration docs are wanted later they should be absolute URLs to a real
+  // docs site, not app-relative paths.
 }
 
 const integrations: Integration[] = [
@@ -91,8 +97,6 @@ const integrations: Integration[] = [
       'Real-time financial visibility',
     ],
     pricingModel: 'Included',
-    documentationUrl: '/docs/integrations/quickbooks',
-    supportUrl: '/support/quickbooks',
   },
   {
     id: 'salesforce',
@@ -120,7 +124,6 @@ const integrations: Integration[] = [
       'Better sales pipeline visibility',
     ],
     pricingModel: 'Included',
-    documentationUrl: '/docs/integrations/salesforce',
   },
   {
     id: 'e-automate',
@@ -190,7 +193,6 @@ const integrations: Integration[] = [
     ],
     benefits: ['Faster payment collection', 'Automated subscriptions', 'Lower processing fees'],
     pricingModel: 'Stripe fees apply',
-    documentationUrl: '/docs/integrations/stripe',
   },
 
   // Communication

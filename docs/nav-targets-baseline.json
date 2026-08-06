@@ -38,10 +38,6 @@
     "client/src/lib/validations.ts:/profile",
     "client/src/lib/validations.ts:/service",
     "client/src/pages/BookingManage.tsx:/book/__DYN__",
-    "client/src/pages/IntegrationMarketplaceDashboard.tsx:/docs/integrations/quickbooks",
-    "client/src/pages/IntegrationMarketplaceDashboard.tsx:/docs/integrations/salesforce",
-    "client/src/pages/IntegrationMarketplaceDashboard.tsx:/docs/integrations/stripe",
-    "client/src/pages/IntegrationMarketplaceDashboard.tsx:/support/quickbooks",
     "client/src/pages/ProposalPublicView.tsx:/p/:token"
   ]
 }
