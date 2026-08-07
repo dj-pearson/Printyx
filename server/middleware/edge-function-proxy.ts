@@ -538,6 +538,14 @@ export function registerEdgeFunctionProxy(app: any) {
     // classifications/:requestId, rate, timeline/:requestId), which is also
     // everything CustomerPortalService.tsx calls.
     '/api/portal-service': 'portal-service',
+
+    // PROD-011. The edge fn is a superset of the Express prefix: it keeps
+    // /:sessionId/workflow-steps (the only endpoint the two sides ever agreed
+    // on) and adds the two URLs TechnicianTicketWorkflow.tsx calls that existed
+    // nowhere — /:ticketId and /:sessionId/complete-step. Express's
+    // /:sessionId/update-step had zero callers and is removed with it, so
+    // nothing regresses from working-in-dev.
+    '/api/technician-sessions': 'technician-sessions',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns

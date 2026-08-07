@@ -186,8 +186,9 @@ export default function TechnicianTicketWorkflow({
   });
 
   // Get workflow steps for this session
+  // stepCompleted is a TIMESTAMP, not a boolean — a step is done once it has one.
   const { data: workflowStepsData } = useQuery<
-    Array<{ stepCompleted?: boolean; stepName?: string }>
+    Array<{ stepCompleted?: string | null; stepName?: string }>
   >({
     queryKey: ['/api/technician-sessions', sessionId, 'workflow-steps'],
     enabled: !!sessionId,
@@ -197,9 +198,14 @@ export default function TechnicianTicketWorkflow({
     if (session) {
       setSessionId(session.id);
       if (workflowStepsData) {
-        const completed = workflowStepsData
-          .filter((step: any) => step.stepCompleted)
-          .map((step: any) => step.stepName);
+        // An existing session IS the check-in; without this a technician who
+        // reloads mid-visit is sent back to a check-in step they already did.
+        const completed = ['check_in'].concat(
+          workflowStepsData
+            .filter((step) => Boolean(step.stepCompleted))
+            .map((step) => step.stepName)
+            .filter((name): name is string => Boolean(name)),
+        );
         setCompletedSteps(completed);
 
         // Set current step to first incomplete step
@@ -215,13 +221,15 @@ export default function TechnicianTicketWorkflow({
   const checkInMutation = useMutation({
     mutationFn: async (data: any) => {
       if (!sessionId) {
-        // Create new session first
+        // Create new session first. The response is the session row, so the id
+        // is `id` — reading `sessionData.sessionId` left sessionId null and every
+        // later step posted to /api/technician-sessions/null/complete-step.
         const sessionData = await apiRequest(
-          `/api/service-tickets/${ticket.id}/check-in`,
+          `/api/technician-sessions/${ticket.id}/check-in`,
           'POST',
           data,
         );
-        setSessionId(sessionData.sessionId);
+        setSessionId(sessionData.id);
         return sessionData;
       }
       return { sessionId };
