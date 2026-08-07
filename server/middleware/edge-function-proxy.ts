@@ -559,6 +559,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // /api/service and /api/service/* only — NOT /api/service-tickets, which
     // keeps its own function. normalizePath is anchored the same way.
     '/api/service': 'service',
+
+    // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
+    // submissions list/:id/approve/reject, GET/PUT settings), which is also
+    // everything MeterReadReview.tsx calls. This pipeline writes billing rows,
+    // so the port keeps the guard that a fallback extraction can never
+    // auto-approve — see the edge fn header.
+    '/api/meter-reads': 'meter-reads',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
