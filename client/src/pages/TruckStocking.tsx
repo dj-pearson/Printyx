@@ -41,7 +41,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
-import { getApiUrl } from '@/lib/config';
+import { downloadTruckStockPickList } from '@/lib/truck-stock-csv';
 import { useToast } from '@/hooks/use-toast';
 
 interface RecommendedItem {
@@ -184,8 +184,17 @@ export default function TruckStocking() {
       }),
   });
 
+  // Authenticated fetch, not window.open: a plain navigation carries no Bearer
+  // token, so it 401s against the edge function and the warehouse gets a JSON
+  // error page instead of a pick list.
   const downloadPickList = (id: string) => {
-    window.open(getApiUrl(`/api/truck-stock/recommendations/${id}/export.csv`), '_blank');
+    downloadTruckStockPickList(id).catch((err: unknown) =>
+      toast({
+        title: 'Download failed',
+        description: err instanceof Error ? err.message : 'Failed to download the pick list',
+        variant: 'destructive',
+      }),
+    );
   };
 
   const rows = list?.data ?? [];

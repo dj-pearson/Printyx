@@ -566,6 +566,14 @@ export function registerEdgeFunctionProxy(app: any) {
     // so the port keeps the guard that a fallback extraction can never
     // auto-approve — see the edge fn header.
     '/api/meter-reads': 'meter-reads',
+
+    // PROD-011. Full parity: all ELEVEN Express endpoints (generate,
+    // recommendations list/:id/export.csv/pick/receive, inventory, GET/PUT
+    // settings, callbacks, stats), which is also everything TruckStocking.tsx
+    // calls. The CSV export returns text/csv rather than JSON, so the page now
+    // fetches it with auth headers instead of window.open — a plain navigation
+    // carries no Bearer token and 401s against the edge function.
+    '/api/truck-stock': 'truck-stock',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
