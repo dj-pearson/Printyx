@@ -484,6 +484,105 @@ export function registerEdgeFunctionProxy(app: any) {
     // endpoints (list, export.csv, GET/PUT settings, refresh, digest/preview,
     // :contractId) are implemented.
     '/api/contract-pnl': 'contract-pnl',
+
+    // PROD-010. Proxied because the edge fn implements ALL SEVEN Express
+    // endpoints on this prefix (list, generate, GET/POST suppressions, GET/PATCH
+    // /:id, /:id/send) — the full-parity bar the entries above are held to.
+    //
+    // One behavior DOES change in dev, deliberately: generate no longer produces
+    // a PDF. Express renders it with Playwright/Chromium, which cannot run in the
+    // Deno runtime, so the edge fn stores the HTML artifact and leaves pdf_url
+    // null (a path Express already takes whenever Chromium is absent).
+    //
+    // Proxying anyway is the point: production has NO qbr function today, so the
+    // page 404s there entirely. Leaving dev on Express would keep PDFs working on
+    // developer machines while prod silently lacked them — precisely the
+    // works-in-dev/broken-in-prod split this batch of stories exists to close.
+    // Restoring PDFs means rendering outside the edge runtime, for both.
+    '/api/qbr': 'qbr',
+
+    // PROD-010. Full parity: /dashboard is the ONLY endpoint Express serves on
+    // this prefix (routes-sample-data.ts) and the only one the page calls.
+    //
+    // NOT ported alongside it: /api/business-process. Both of its Express
+    // dashboard handlers (routes-business-process-optimization.ts:24 and
+    // routes-sample-data.ts:1209) return hardcoded numbers with ZERO database
+    // access — 47 processes, $127,890.50 "cost savings" — and they ignore the
+    // category/department filters the page sends. Porting that would publish
+    // fabricated business metrics to production, where the page currently 404s.
+    // A 404 is honest; confident fake numbers are not. It belongs to PA-040
+    // (wire or clearly flag the fully-mock dashboards), not to this batch.
+    '/api/ai-analytics': 'ai-analytics',
+
+    // PROD-010. Full parity: all SEVEN Express endpoints are implemented
+    // (score, scores, scores/:id/history, save-plan, GET/PUT settings,
+    // digest/preview), which is also everything CustomerRisk.tsx calls.
+    // Digest ASSEMBLY is real; delivery stays a stub, exactly as in Express.
+    '/api/churn-risk': 'churn-risk',
+
+    // PROD-010. Full parity: all EIGHT Express endpoints (score, predictions,
+    // predictions/:id/{approve,snooze,dismiss}, GET/PUT settings, accuracy).
+    // The agent kill switch (predictive_dispatch_settings.agent_enabled) is
+    // honored on the edge path too — this endpoint dispatches technicians, so a
+    // port that ignored the pause would make that button a no-op in production.
+    '/api/predictive-failure': 'predictive-failure',
+
+    // PROD-010. Full parity: all SIX Express endpoints (generate, list,
+    // GET/PUT preferences, stats, :id/open), which is also everything
+    // DailyBriefings.tsx calls. All six had to ship together — proxying forwards
+    // the whole prefix, so a partial port would have taken the rest from
+    // working-in-dev to 404-in-dev.
+    '/api/daily-briefing': 'daily-briefing',
+
+    // PROD-011. Full parity: all FOUR Express endpoints (classify,
+    // classifications/:requestId, rate, timeline/:requestId), which is also
+    // everything CustomerPortalService.tsx calls.
+    '/api/portal-service': 'portal-service',
+
+    // PROD-011. The edge fn is a superset of the Express prefix: it keeps
+    // /:sessionId/workflow-steps (the only endpoint the two sides ever agreed
+    // on) and adds the two URLs TechnicianTicketWorkflow.tsx calls that existed
+    // nowhere — /:ticketId and /:sessionId/complete-step. Express's
+    // /:sessionId/update-step had zero callers and is removed with it, so
+    // nothing regresses from working-in-dev.
+    '/api/technician-sessions': 'technician-sessions',
+
+    // PROD-011. Full parity: all EIGHT endpoints across the TWO Express routers
+    // that share this prefix — routes-service-knowledge.ts (search, backfill,
+    // embed/:ticketId, stats, GET/PUT settings) and routes-proactive-maintenance.ts
+    // (list, :equipmentId/schedule) — which covers everything KnowledgeSearch.tsx
+    // and ProactiveServiceDashboard.tsx call. Both routers had to ship together:
+    // proxying forwards the whole prefix, so porting one would have taken the
+    // other from working-in-dev to 404-in-dev.
+    //
+    // app.use() matches on path-segment boundaries, so this entry captures
+    // /api/service and /api/service/* only — NOT /api/service-tickets, which
+    // keeps its own function. normalizePath is anchored the same way.
+    '/api/service': 'service',
+
+    // PROD-011. Full parity: all EIGHT Express endpoints (inbound, submit,
+    // submissions list/:id/approve/reject, GET/PUT settings), which is also
+    // everything MeterReadReview.tsx calls. This pipeline writes billing rows,
+    // so the port keeps the guard that a fallback extraction can never
+    // auto-approve — see the edge fn header.
+    '/api/meter-reads': 'meter-reads',
+
+    // PROD-011. Full parity: all ELEVEN Express endpoints (generate,
+    // recommendations list/:id/export.csv/pick/receive, inventory, GET/PUT
+    // settings, callbacks, stats), which is also everything TruckStocking.tsx
+    // calls. The CSV export returns text/csv rather than JSON, so the page now
+    // fetches it with auth headers instead of window.open — a plain navigation
+    // carries no Bearer token and 401s against the edge function.
+    '/api/truck-stock': 'truck-stock',
+
+    // PROD-011, the last domain in the batch. Full parity: all TWELVE Express
+    // endpoints (capture, evaluate, run, levels, orders list/:id/ship/:id/cancel,
+    // machines/:id/ship-now, GET/PUT tenant settings, GET/PUT machine settings),
+    // which is also everything TonerReplenish.tsx calls. This pipeline creates
+    // orders without a human in the loop, so the port keeps every suppression —
+    // customer-managed, auto-ship-off, open-order dedupe and the cost gate. See
+    // the edge fn header.
+    '/api/toner-replenish': 'toner-replenish',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns

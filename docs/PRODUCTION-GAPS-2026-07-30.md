@@ -59,20 +59,30 @@ has had those 21 files _applied_ is unverified — `check:drift` exits with `DAT
 > anywhere in the path** — so an Express-only domain genuinely hard-404s in production.
 >
 > One flagged domain was a **false positive**: `quote-templates` used an API-shaped string as a
-> TanStack Query *cache key* while its `queryFn` read `localStorage` and never touched the
+> TanStack Query _cache key_ while its `queryFn` read `localStorage` and never touched the
 > network. Fixed at the source (renamed to `local:quote-templates`) and removed from the
 > baseline. I scanned the other 28 for the same no-network pattern — it was the only one.
 >
 > Two of the remaining 28 differ in kind: `predictive-analytics` and `technician-sessions` use
-> the *default* `queryFn` (which fetches the queryKey as a URL) and have **no Express handler
+> the _default_ `queryFn` (which fetches the queryKey as a URL) and have **no Express handler
 > either**, so they are broken in **dev as well as prod**. `technician-sessions` also drives
 > check-in mutations, so that technician workflow is non-functional everywhere. Neither has a
 > backing table, so both need a schema decision rather than a port.
 >
+> **CORRECTED 2026-08-07 (PROD-011).** The paragraph above is right that `technician-sessions`
+> is broken in dev as well as prod, and wrong about why. Express _does_ serve
+> `/api/technician-sessions/:sessionId/workflow-steps` (and an uncalled `update-step`) from
+> `routes-enhanced-service.ts`, and the tables `technician_ticket_sessions` and `workflow_steps`
+> _do_ exist in `shared/enhanced-service-schema.ts`. What was actually wrong is that
+> `TechnicianTicketWorkflow.tsx` calls four URLs and three of them existed on **neither** side —
+> a URL mismatch, not an absent implementation. So it needed a port, not a schema decision, and
+> it has been ported. `predictive-analytics` was checked the same way and the original reading
+> held: no handler, no backing table, caller removed (PROD-010).
+>
 > **Measured effort:** PROD-012's four handlers alone are **3,950 lines** of Express
 > (`voice-ticket-close` 860, `voice-agent` 825, `chatbot` 1200, `email-autopilot` 1065) across
 > 4–9 endpoints each. The full port is roughly **20,000 lines** to re-express as Deno edge
-> functions *with field-by-field shape parity*. This is multi-session work, and rushing it is
+> functions _with field-by-field shape parity_. This is multi-session work, and rushing it is
 > actively harmful — the pages fall back to mock data with `|| [...]`, so a shape mismatch
 > renders fabricated numbers, which is worse than the 404 it replaces.
 
@@ -152,14 +162,14 @@ none were product bugs. Four distinct causes, and the worst one was not in vites
      validation, so a bad format is misreported as an authorization failure. Real API-contract bug.
      `:399` concurrent execution — 10 parallel report executions do not all succeed. → `PROD-004`
    - `server/tests/task-scheduling.test.ts` needs a Claude API key (`Claude API key not
-     configured`) — an external-service dependency, not a code defect.
+configured`) — an external-service dependency, not a code defect.
    - `server/tests/api-endpoints.test.ts` used CommonJS `require()` for a `.ts` module, which
      vitest's ESM loader cannot resolve, so `beforeAll` threw and **all 33 tests silently skipped**.
      Converted to dynamic `import()`; they now execute and honestly report that they need a
      database, which puts them in `PROD-003`'s scope rather than hiding them.
 
 **Net after `PROD-002`: 79 files / 69 passing, 10 failing files, 1384 passing tests, 0 regressions.**
-Failing *tests* rose 10 → 39 — this is the fix working, not a regression: 33 api-endpoints tests
+Failing _tests_ rose 10 → 39 — this is the fix working, not a regression: 33 api-endpoints tests
 that were silently skipped now run and correctly report a missing database.
 
 ## One security guard is failing right now — VERIFIED

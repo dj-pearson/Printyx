@@ -5,6 +5,7 @@
 
 import request from 'supertest';
 import express from 'express';
+import { mockUsers } from './setup';
 
 // Mock app setup for testing.
 //
@@ -13,9 +14,26 @@ import express from 'express';
 // '../routes/ai-routes-simple'" (the module exists; require just can't load it)
 // and all 33 tests in this file were skipped rather than run. Dynamic import()
 // resolves TS correctly, so createTestApp is async.
+//
+// PROD-004: the app mounted the routers with NO authentication middleware, but every
+// handler in them opens with `const { tenantId } = req.user`. With req.user undefined
+// that destructure threw before any handler logic ran, so all 29 remaining tests
+// failed on a blanket 500 — which read as "these tests need a database". They do not:
+// these routers serve in-memory fixture data and touch no database at all. The routers
+// are written to sit behind requireAuth, which populates req.user, so the harness has
+// to supply that context for the assertions to reach the code they were written for.
 const createTestApp = async () => {
   const app = express();
   app.use(express.json());
+
+  // Stand in for requireAuth. Only { id, tenantId } is read by these routers.
+  app.use((req, _res, next) => {
+    (req as express.Request & { user: unknown }).user = {
+      id: mockUsers.salesRep.id,
+      tenantId: mockUsers.salesRep.tenantId,
+    };
+    next();
+  });
 
   const [aiRoutes, calendarRoutes, taskRoutes] = await Promise.all([
     import('../routes/ai-routes-simple').then((m) => m.default),
@@ -39,7 +57,13 @@ describe('Motion AI API Endpoints', () => {
 
   describe('AI Routes', () => {
     describe('GET /api/ai/health', () => {
-      test('should return health status', async () => {
+      // This route is a liveness probe against the real Claude API: it issues an actual
+      // completion and, per its own catch, 500s with 'Claude API unavailable' when the
+      // call fails. Without CLAUDE_API_KEY there is no product behavior left to assert,
+      // so run it only when a key is configured rather than reporting a red test for a
+      // missing credential. (POST /leads/analyze below needs no guard — it falls back
+      // to generated analysis when the API is unreachable.)
+      test.skipIf(!process.env.CLAUDE_API_KEY)('should return health status', async () => {
         const response = await request(app).get('/api/ai/health').expect(200);
 
         expect(response.body).toHaveProperty('status');

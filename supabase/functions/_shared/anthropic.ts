@@ -20,9 +20,17 @@ const DEFAULT_MODEL = Deno.env.get('CLAUDE_MODEL') ?? 'claude-sonnet-4-6';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 
+/**
+ * A content block, for the multimodal case. Blocks are passed to the API
+ * verbatim, so this stays deliberately open — see meter-reads, which sends an
+ * image block alongside text.
+ */
+export type ClaudeContentBlock = { type: string; [key: string]: unknown };
+
 export interface ClaudeMessage {
   role: 'user' | 'assistant';
-  content: string;
+  /** A plain string for text-only turns, or content blocks for multimodal ones. */
+  content: string | ClaudeContentBlock[];
 }
 
 export interface GenerateCompletionOptions {

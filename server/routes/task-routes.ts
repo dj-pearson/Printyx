@@ -285,9 +285,14 @@ router.post('/schedule', async (req, res) => {
       ...preferences,
     };
 
+    // Honor the requested selection. The endpoint takes taskIds and validates that it
+    // is an array, but previously scheduled the full fixture set regardless — so
+    // scheduling an empty list, or any subset, still came back with every task.
+    const requestedTasks = mockTasks.filter((task) => taskIds.includes(task.id));
+
     // Schedule tasks with AI
     const schedulingResult = await TaskSchedulingService.scheduleTasksWithAI(
-      mockTasks,
+      requestedTasks,
       defaultPreferences,
       existingEvents,
       startDate ? new Date(startDate) : new Date(),
