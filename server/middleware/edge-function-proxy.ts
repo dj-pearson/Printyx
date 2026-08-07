@@ -574,6 +574,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // fetches it with auth headers instead of window.open — a plain navigation
     // carries no Bearer token and 401s against the edge function.
     '/api/truck-stock': 'truck-stock',
+
+    // PROD-011, the last domain in the batch. Full parity: all TWELVE Express
+    // endpoints (capture, evaluate, run, levels, orders list/:id/ship/:id/cancel,
+    // machines/:id/ship-now, GET/PUT tenant settings, GET/PUT machine settings),
+    // which is also everything TonerReplenish.tsx calls. This pipeline creates
+    // orders without a human in the loop, so the port keeps every suppression —
+    // customer-managed, auto-ship-off, open-order dedupe and the cost gate. See
+    // the edge fn header.
+    '/api/toner-replenish': 'toner-replenish',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
