@@ -533,6 +533,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // the whole prefix, so a partial port would have taken the rest from
     // working-in-dev to 404-in-dev.
     '/api/daily-briefing': 'daily-briefing',
+
+    // PROD-011. Full parity: all FOUR Express endpoints (classify,
+    // classifications/:requestId, rate, timeline/:requestId), which is also
+    // everything CustomerPortalService.tsx calls.
+    '/api/portal-service': 'portal-service',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
