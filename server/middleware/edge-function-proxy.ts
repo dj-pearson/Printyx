@@ -546,6 +546,19 @@ export function registerEdgeFunctionProxy(app: any) {
     // /:sessionId/update-step had zero callers and is removed with it, so
     // nothing regresses from working-in-dev.
     '/api/technician-sessions': 'technician-sessions',
+
+    // PROD-011. Full parity: all EIGHT endpoints across the TWO Express routers
+    // that share this prefix — routes-service-knowledge.ts (search, backfill,
+    // embed/:ticketId, stats, GET/PUT settings) and routes-proactive-maintenance.ts
+    // (list, :equipmentId/schedule) — which covers everything KnowledgeSearch.tsx
+    // and ProactiveServiceDashboard.tsx call. Both routers had to ship together:
+    // proxying forwards the whole prefix, so porting one would have taken the
+    // other from working-in-dev to 404-in-dev.
+    //
+    // app.use() matches on path-segment boundaries, so this entry captures
+    // /api/service and /api/service/* only — NOT /api/service-tickets, which
+    // keeps its own function. normalizePath is anchored the same way.
+    '/api/service': 'service',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns

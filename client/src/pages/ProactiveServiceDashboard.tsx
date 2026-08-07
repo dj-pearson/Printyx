@@ -38,8 +38,13 @@ interface EquipmentMaintenanceItem {
   nextServiceDue: string;
   daysUntilDue: number;
   healthScore: number;
-  meterReading: number;
-  recommendedPages: number;
+  /**
+   * Always null. `equipment` has no meter column, and readings live in
+   * meter_readings with bw and colour stored separately — so which number
+   * belongs here is an open product decision (PROD-011). The health score is
+   * computed from service dates only; nothing renders this field.
+   */
+  meterReading: number | null;
   urgency: 'overdue' | 'urgent' | 'soon' | 'scheduled';
   estimatedIssues?: string[];
 }
