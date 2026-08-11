@@ -11513,8 +11513,8 @@
         "npm run check && npm run lint pass."
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "[PHASE 0 / CLEANUP] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Blocks COP-B02, which needs a single canonical timeline to build the deal record on.",
+      "passes": true,
+      "notes": "[PHASE 0 / CLEANUP] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Blocks COP-B02, which needs a single canonical timeline to build the deal record on. [DONE 2026-08-11: not a merge — components/ui/activity-timeline.tsx (187 lines) had ZERO importers, so there was nothing to fold. Deleted it; components/ActivityTimeline.tsx (700 lines, used by LeadDetail + CustomerDetail) survives. NUANCE worth carrying to COP-B02: the two were not really duplicates. The deleted one was PRESENTATIONAL (took ActivityItem[]); the survivor is a CONTAINER hardwired to a single prop, businessRecordId, which it fetches by. See COP-B02 note.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11633,7 +11633,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 1 / CORE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. The single most important screen in the product and the biggest single build in Phase 1. Depends on COP-E05 (one timeline) and COP-M07 (one stage model); COP-M05 and COP-B11 extend it later.",
+      "notes": "[PHASE 1 / CORE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. The single most important screen in the product and the biggest single build in Phase 1. Depends on COP-E05 (one timeline) and COP-M07 (one stage model); COP-M05 and COP-B11 extend it later. [INPUT from COP-E05, 2026-08-11: the surviving components/ActivityTimeline.tsx is a container hardwired to `businessRecordId: string` and fetches its own data, so it CANNOT render a deal timeline as-is — generalize it to a polymorphic parent (parentType + parentId over crm_associations / crm_notes, per CRMX-006) before building the deal record on it. A presentational variant taking ActivityItem[] existed and was deleted as dead code; recover with `git show 9c30f93:client/src/components/ui/activity-timeline.tsx` if a container/presentational split is wanted. Also: the survivor has a console.log on every render (line 87) — drop it while you are in there.]",
       "category": "crm-copier-overhaul"
     },
     {
