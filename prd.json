@@ -11637,6 +11637,24 @@
       "category": "crm-copier-overhaul"
     },
     {
+      "id": "COP-M00",
+      "title": "Repair drizzle migration generation — meta snapshots are 22 behind the journal",
+      "description": "As a developer, I need `npm run db:generate` to emit a migration containing only my change, because today it emits 151 statements of already-applied drift and numbers the file into a collision — so no story that needs a schema change can ship.",
+      "acceptanceCriteria": [
+        "Reproduce first: `DATABASE_URL=<any> npm run db:generate` after any schema edit emits ~2,281 lines / ~151 statements and writes 0040_<name>.sql, which collides with the existing 0040_auto_orders.sql and fails `npm run check:migrations`.",
+        "Root cause is the snapshot set, not the journal: drizzle/migrations/meta holds only 15 snapshots (highest 0018_snapshot.json) against 40 journal entries (highest tag 0056_email_sequence_enrollments). drizzle-kit diffs the schema against the LATEST snapshot, so every change made after 0018 is invisible to the differ and gets re-emitted.",
+        "The journal itself is healthy — check:migrations passes on a clean tree, all 40 files are journaled, prefixes unique, idx contiguous. Do not 'fix' the journal.",
+        "Second defect to fix in the same pass: drizzle-kit names the new file from the journal LENGTH (0040) while the files on disk are numbered up to 0056, so a fresh generate always collides. Reconcile the two numbering schemes.",
+        "Rebuild or backfill the meta snapshots so a no-op `db:generate` (schema unchanged) produces an EMPTY migration. That is the pass/fail test.",
+        "Then verify the real case: add one nullable column and confirm the generated SQL contains only that column.",
+        "Do not hand-author migrations as the fix — CLAUDE.md forbids dropping a .sql into drizzle/migrations, and the journal guard exists to enforce it."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "[PHASE 1 / BLOCKER] Found 2026-08-11 while implementing COP-M04. BLOCKS every story that needs a schema change: COP-M04, COP-M05, and through them the whole Phase 3 copier wedge (COP-B04 Opportunity Radar, COP-B05 Fleet Assessment, COP-B06 installed-base quoting). Related to the SUPA-005 journal-integrity work, but distinct: that guard checks the JOURNAL, which is currently healthy — this is the SNAPSHOT set, which the guard does not check. Consider extending check-migration-journal.mjs to also assert snapshots == journal entries, so this cannot silently regress again.",
+      "category": "crm-copier-overhaul"
+    },
+    {
       "id": "COP-M04",
       "title": "Extend the deals table with the copier-dealer fields the sales motion needs",
       "description": "As a copier sales rep, I need the deal to carry the facts that decide a copier deal, because `deals` today is a generic B2B deal — no motion type, no forecast category, no incumbent vendor, no lease buyout exposure, no trade-in, no current print volume, no target CPC.",
@@ -11651,7 +11669,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 1 / SCHEMA] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Foundation for COP-B04/B05/B06/B10 and COP-I06. Raw material already exists elsewhere and should be reused, not reinvented: business_records.competitorName/mainCompetitors, leases.buyoutAmount + buyout type enums, contracts.blackRate/colorRate.",
+      "notes": "[PHASE 1 / SCHEMA] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Foundation for COP-B04/B05/B06/B10 and COP-I06. Raw material already exists elsewhere and should be reused, not reinvented: business_records.competitorName/mainCompetitors, leases.buyoutAmount + buyout type enums, contracts.blackRate/colorRate. [BLOCKED 2026-08-11 on COP-M00 — `npm run db:generate` is broken in this repo, so the migration this story requires cannot be produced the sanctioned way. Attempted and reverted. The schema edit itself is done and correct; paste it back once COP-M00 lands. COLUMNS TO ADD to `deals` (all nullable, so existing rows stay valid): deal_motion varchar(40) [new_logo|fleet_refresh|lease_rollover|expansion|renewal|competitive_takeaway|service_only]; forecast_category varchar(20) [pipeline|best_case|commit|closed]; incumbent_vendor varchar; lease_buyout_exposure numeric(12,2); trade_in_value numeric(12,2); current_monthly_volume_bw integer; current_monthly_volume_color integer; target_cpc_black numeric(10,4); target_cpc_color numeric(10,4); replaces_contract_id varchar. CPC precision 10,4 deliberately MATCHES contracts.black_rate/color_rate so quote and contract math cannot disagree by rounding. varchar not pgEnum so new motions need no enum migration. NOTE: forecast_category and trade_in_value already exist on OTHER tables (opportunities, lease_dispositions) — they are genuinely new on `deals`. Also observed: `deals.custom_fields` (CRMX-003/004) is in the Drizzle schema but has NO migration, so it is part of the same drift.]",
       "category": "crm-copier-overhaul"
     },
     {
