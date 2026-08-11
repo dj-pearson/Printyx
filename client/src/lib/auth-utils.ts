@@ -20,6 +20,7 @@ const ALLOWED_REDIRECT_PATHS = [
   '/business-records',
   '/leads',
   '/deals',
+  '/crm/deals',
   '/opportunities',
   '/quotes',
   '/proposals',

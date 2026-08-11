@@ -74,7 +74,8 @@ const dealsConfig: CrmObjectConfig = {
   labelPlural: 'Deals',
   icon: 'DollarSign',
   apiEndpoint: '/api/deals',
-  detailPath: '/deals',
+  // COP-E04: canonical deals path. Legacy /deals/:id redirects here.
+  detailPath: '/crm/deals',
   hasBoardView: true,
   pipelineField: 'stage',
   fields: [

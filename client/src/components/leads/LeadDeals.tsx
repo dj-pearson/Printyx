@@ -569,7 +569,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => window.open(`/deals/${deal.id}`, '_blank')}
+                      onClick={() => window.open(`/crm/deals/${deal.id}`, '_blank')}
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Button>

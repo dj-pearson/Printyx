@@ -587,6 +587,21 @@ function Router() {
     return null;
   };
 
+  /**
+   * COP-E04: legacy CRM path -> canonical path, as an in-app replace so the
+   * back button does not bounce the user between the two. Query string and hash
+   * are carried over, so shared filtered/saved-view links keep working. `build`
+   * receives the wouter route params, which is how detail redirects keep the id.
+   */
+  const LegacyRedirect = ({ to }: { to: string }) => {
+    const [, navigate] = useLocation();
+    React.useEffect(() => {
+      const { search, hash } = window.location;
+      navigate(`${to}${search}${hash}`, { replace: true });
+    }, [navigate, to]);
+    return null;
+  };
+
   // Authenticated routes
   return (
     <>
@@ -636,7 +651,14 @@ function Router() {
                 <Route path="/today" component={TodayDashboard} />
                 <Route path="/dashboard/today" component={TodayDashboard} />
                 {/* CRM */}
+                {/* COP-E04: /crm/deals is the canonical deals path. The legacy
+                    /deals, /deals-management and /opportunities paths redirect
+                    here rather than each rendering their own copy of the page.
+                    Leads/contacts/companies are NOT collapsed yet — that is
+                    gated on COP-B00, because redirecting /leads-management to
+                    /crm/leads would also change which table reps read in dev. */}
                 <Route path="/crm/deals" component={CrmDealsPage} />
+                <Route path="/crm/deals/:id" component={DealDetail} />
                 <Route path="/crm/leads" component={CrmLeadsPage} />
                 <Route path="/crm/contacts" component={CrmContactsPage} />
                 <Route path="/crm/companies" component={CrmCompaniesPage} />
@@ -649,10 +671,13 @@ function Router() {
                 <Route path="/business-records/:id" component={BusinessRecordDetail} />
                 <Route path="/leads-management" component={LeadsPage} />
                 <Route path="/contacts" component={Contacts} />
-                <Route path="/deals" component={CrmDealsPage} />
-                <Route path="/deals/:id" component={DealDetail} />
-                <Route path="/opportunities" component={CrmDealsPage} />
-                <Route path="/deals-management" component={CrmDealsPage} />
+                {/* COP-E04: legacy deal paths — redirects, not duplicate routes. */}
+                <Route path="/deals/:id">
+                  {(params) => <LegacyRedirect to={`/crm/deals/${params.id}`} />}
+                </Route>
+                <Route path="/deals">{() => <LegacyRedirect to="/crm/deals" />}</Route>
+                <Route path="/opportunities">{() => <LegacyRedirect to="/crm/deals" />}</Route>
+                <Route path="/deals-management">{() => <LegacyRedirect to="/crm/deals" />}</Route>
                 {/* Outreach Hub */}
                 <Route path="/outreach" component={OutreachHub} />
                 <Route path="/outreach/business-context" component={OutreachBusinessContext} />

@@ -227,6 +227,7 @@ const ALLOWED_REDIRECT_PREFIXES = [
   '/business-records',
   '/leads',
   '/deals',
+  '/crm/deals',
   '/opportunities',
   '/service',
   '/inventory',

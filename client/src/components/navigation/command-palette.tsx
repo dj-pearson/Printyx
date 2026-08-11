@@ -158,7 +158,7 @@ const PAGE_NAVIGATION: SearchResult[] = [
     title: 'Deals & Pipeline',
     subtitle: 'View sales pipeline',
     icon: TrendingUp,
-    path: '/deals',
+    path: '/crm/deals',
   },
   {
     id: 'activities',

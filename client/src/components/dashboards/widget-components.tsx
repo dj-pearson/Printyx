@@ -800,7 +800,7 @@ const ROLE_ACTIONS: Record<
     {
       label: 'View Pipeline',
       icon: 'TrendingUp',
-      path: '/deals',
+      path: '/crm/deals',
       color: 'bg-blue-100 text-blue-600',
     },
   ],
@@ -820,7 +820,7 @@ const ROLE_ACTIONS: Record<
     {
       label: 'View Pipeline',
       icon: 'TrendingUp',
-      path: '/deals',
+      path: '/crm/deals',
       color: 'bg-blue-100 text-blue-600',
     },
     {

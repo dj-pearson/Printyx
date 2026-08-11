@@ -131,7 +131,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     id: 'crm',
     title: 'Sales Hub',
     icon: Target,
-    path: '/opportunities',
+    path: '/crm/deals',
     matchPatterns: [
       '/leads*',
       '/contacts*',
@@ -151,7 +151,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Lead Enrichment', path: '/data-enrichment', icon: Search },
       { title: 'Contacts', path: '/contacts', icon: Users },
       // COP-E07: the object is a Deal. Route unchanged (COP-E04 collapses the URLs).
-      { title: 'Deals', path: '/opportunities', icon: Target },
+      { title: 'Deals', path: '/crm/deals', icon: Target },
       { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
       { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: TrendingUp },
       { title: 'CRM Goals Dashboard', path: '/crm-goals-dashboard', icon: TrendingUp },
