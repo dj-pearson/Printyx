@@ -11463,7 +11463,7 @@
         "npm run check && npm run lint pass."
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "[PHASE 0 / NAV] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Audit evidence: RoleAwareCollapsibleSidebar.tsx 'crm' section has 17 flat children mixing objects, tools, dashboards, and settings; Meeting Transcription sits under Productivity.",
       "category": "crm-copier-overhaul"
     },

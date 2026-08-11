@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, Link } from 'wouter';
 // useQuery removed - permissions are now resolved via usePermissions hook
 import { useAuth } from '@/hooks/useAuth';
@@ -97,6 +97,14 @@ interface NavigationItem {
   title: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
+  /**
+   * COP-M02: optional group label. Consecutive children sharing a group render
+   * under one non-navigable heading. Kept as a field on the flat child array
+   * (rather than a nested structure) so permission filtering, search, and the
+   * active-path highlight keep working unchanged — a heading appears only when
+   * at least one child in that group survives filtering.
+   */
+  group?: string;
 }
 
 interface NavigationSection {
@@ -219,32 +227,58 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/document-builder*',
       '/deal-desk*',
       '/crm-goals*',
-      '/pipeline-config*',
+      // COP-M02: /pipeline-config and /proposals/branding now live under Settings.
       '/sales-rep-assignments*',
+      '/meeting-transcription*',
       '/lead-map*',
       '/customers*',
       '/prospects*',
       '/crm*',
       '/business-records*',
     ],
+    // COP-M02: grouped Work / Sell / Manage instead of one flat 17-item list.
+    // Every route is unchanged — this story moves and groups, it does not rewire.
+    // Config entries (Custom Fields, Proposal Branding, Pipeline Configuration)
+    // moved out to Settings; Meeting Transcription moved in from Productivity.
     children: [
-      { title: 'Leads', path: '/leads-management', icon: UserPlus },
-      { title: 'Web Forms', path: '/marketing/forms', icon: FileText },
-      { title: 'Email Sequences', path: '/marketing/sequences', icon: Mail },
-      { title: 'Prospects', path: '/prospects', icon: Users },
-      { title: 'Customers', path: '/customers', icon: UserCheck },
-      { title: 'Contacts', path: '/contacts', icon: Users },
-      { title: 'Opportunities', path: '/opportunities', icon: Target },
-      { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
-      { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
-      { title: 'Proposal Templates', path: '/proposal-templates', icon: FileText },
-      { title: 'Proposal Branding', path: '/proposals/branding', icon: Palette },
-      { title: 'Contracts', path: '/contracts', icon: FileSignature },
-      { title: 'Deal Desk', path: '/deal-desk', icon: CheckCircle2 },
-      { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },
-      { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
-      { title: 'Commission Management', path: '/commission-management', icon: DollarSign },
-      { title: 'Custom Fields', path: '/settings/custom-fields', icon: Settings },
+      { title: 'Leads', path: '/leads-management', icon: UserPlus, group: 'Work' },
+      { title: 'Prospects', path: '/prospects', icon: Users, group: 'Work' },
+      { title: 'Customers', path: '/customers', icon: UserCheck, group: 'Work' },
+      { title: 'Contacts', path: '/contacts', icon: Users, group: 'Work' },
+      { title: 'Opportunities', path: '/opportunities', icon: Target, group: 'Work' },
+      { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp, group: 'Work' },
+
+      {
+        title: 'Quotes & Proposals',
+        path: '/quote-proposal-generation',
+        icon: FileText,
+        group: 'Sell',
+      },
+      { title: 'Proposal Templates', path: '/proposal-templates', icon: FileText, group: 'Sell' },
+      { title: 'Contracts', path: '/contracts', icon: FileSignature, group: 'Sell' },
+      { title: 'Deal Desk', path: '/deal-desk', icon: CheckCircle2, group: 'Sell' },
+      { title: 'Meetings', path: '/meeting-transcription', icon: Video, group: 'Sell' },
+      { title: 'Email Sequences', path: '/marketing/sequences', icon: Mail, group: 'Sell' },
+      { title: 'Web Forms', path: '/marketing/forms', icon: FileText, group: 'Sell' },
+
+      {
+        title: 'Sales Command Center',
+        path: '/sales-command-center',
+        icon: Monitor,
+        group: 'Manage',
+      },
+      {
+        title: 'Customer Success',
+        path: '/customer-success-management',
+        icon: UserCheck,
+        group: 'Manage',
+      },
+      {
+        title: 'Commission Management',
+        path: '/commission-management',
+        icon: DollarSign,
+        group: 'Manage',
+      },
     ],
   },
 
@@ -432,7 +466,8 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Basic Tasks', path: '/basic-tasks', icon: CheckSquare },
       { title: 'AI Employees', path: '/ai-employees', icon: Bot },
       { title: 'Calendar Integration', path: '/calendar', icon: Calendar },
-      { title: 'Meeting Transcription', path: '/meeting-transcription', icon: Video },
+      // COP-M02: Meeting Transcription moved to Sales Hub → Sell (it is a selling
+      // tool, not a productivity utility). Route unchanged.
       { title: 'AI Search & Knowledge', path: '/ai-search', icon: Search },
       { title: 'AI Task Scheduling', path: '/ai-task-scheduling', icon: Brain },
       { title: 'Conversation AI', path: '/conversational-ai-dashboard', icon: MessageSquare },
@@ -493,7 +528,29 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     title: 'Settings',
     icon: Settings,
     path: '/settings',
-    matchPatterns: ['/settings*'],
+    // COP-M02: config surfaces that used to sit inside Sales Hub live here now.
+    matchPatterns: ['/settings*', '/pipeline-config*', '/proposals/branding*'],
+    children: [
+      { title: 'General', path: '/settings', icon: Settings, group: 'Workspace' },
+      {
+        title: 'Custom Fields',
+        path: '/settings/custom-fields',
+        icon: Settings,
+        group: 'Sales configuration',
+      },
+      {
+        title: 'Pipeline Configuration',
+        path: '/pipeline-config',
+        icon: TrendingUp,
+        group: 'Sales configuration',
+      },
+      {
+        title: 'Proposal Branding',
+        path: '/proposals/branding',
+        icon: Palette,
+        group: 'Sales configuration',
+      },
+    ],
   },
 ];
 
@@ -825,36 +882,48 @@ export function RoleAwareCollapsibleSidebar({
                         </CollapsibleTrigger>
                         <CollapsibleContent className="ml-2 mt-1">
                           <SidebarMenu>
-                            {section.children.map((child) => (
-                              <SidebarMenuItem key={child.path}>
-                                <SidebarMenuButton
-                                  asChild
-                                  className={cn(
-                                    'py-2.5 px-4 ml-6 rounded-md transition-all duration-200 text-sm font-normal',
-                                    'border-l-2 border-transparent hover:border-slate-300',
-                                    isActive(child.path)
-                                      ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-l-blue-500'
-                                      : 'hover:bg-slate-50 text-slate-800',
+                            {section.children.map((child, childIndex) => (
+                              <React.Fragment key={child.path}>
+                                {/* COP-M02: group heading, emitted when the group changes. */}
+                                {child.group &&
+                                  child.group !== section.children?.[childIndex - 1]?.group && (
+                                    <div
+                                      aria-hidden="true"
+                                      className="ml-6 mt-3 mb-1 px-4 text-[10px] font-semibold uppercase tracking-wider text-slate-400 group-data-[collapsible=icon]:hidden"
+                                    >
+                                      {child.group}
+                                    </div>
                                   )}
-                                  data-active={isActive(child.path)}
-                                  data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
-                                >
-                                  <Link href={child.path}>
-                                    <child.icon
-                                      className={cn(
-                                        'h-4 w-4',
-                                        isActive(child.path) ? 'text-blue-600' : 'text-slate-700',
-                                      )}
-                                    />
-                                    <span>{child.title}</span>
-                                    {isActive(child.path) && (
-                                      <Badge className="ml-auto bg-blue-600 text-white text-xs">
-                                        Active
-                                      </Badge>
+                                <SidebarMenuItem>
+                                  <SidebarMenuButton
+                                    asChild
+                                    className={cn(
+                                      'py-2.5 px-4 ml-6 rounded-md transition-all duration-200 text-sm font-normal',
+                                      'border-l-2 border-transparent hover:border-slate-300',
+                                      isActive(child.path)
+                                        ? 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-l-blue-500'
+                                        : 'hover:bg-slate-50 text-slate-800',
                                     )}
-                                  </Link>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
+                                    data-active={isActive(child.path)}
+                                    data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
+                                  >
+                                    <Link href={child.path}>
+                                      <child.icon
+                                        className={cn(
+                                          'h-4 w-4',
+                                          isActive(child.path) ? 'text-blue-600' : 'text-slate-700',
+                                        )}
+                                      />
+                                      <span>{child.title}</span>
+                                      {isActive(child.path) && (
+                                        <Badge className="ml-auto bg-blue-600 text-white text-xs">
+                                          Active
+                                        </Badge>
+                                      )}
+                                    </Link>
+                                  </SidebarMenuButton>
+                                </SidebarMenuItem>
+                              </React.Fragment>
                             ))}
                           </SidebarMenu>
                         </CollapsibleContent>
