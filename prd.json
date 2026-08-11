@@ -11724,7 +11724,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 2 / AUTOMATION] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. HubSpot renamed Guided Actions to Suggested Tasks in 2026 specifically to add auto-expiry — copy that behaviour, it is the part that makes the feature trustworthy. The durable runtime already exists; this is a signal library plus ranking on top of it.",
+      "notes": "[PHASE 2 / AUTOMATION] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. HubSpot renamed Guided Actions to Suggested Tasks in 2026 specifically to add auto-expiry — copy that behaviour, it is the part that makes the feature trustworthy. The durable runtime already exists; this is a signal library plus ranking on top of it. [BLOCKED 2026-08-11 (loop triage): needs PERSISTENCE, so it is gated on COP-M00. Three of its own acceptance criteria require durable state — suggestions must AUTO-EXPIRE when the underlying condition clears, dismissals must be RECORDED, and generation must be IDEMPOTENT via a dedupeKey. None of that survives a computed-on-read implementation, so it needs at least one new table, which cannot be migrated until db:generate is repaired. The signal library itself is otherwise ready to build: the durable workflow runtime exists (workflow-execution-service.ts + dispatchWorkflowEvent), and COP-B11's shared/deal-score.ts already computes several of the required signals (activity recency, stage SLA breach, next step overdue, close date passed) as a pure function that a generator could reuse directly rather than reimplement.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -12031,7 +12031,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 4 / MOBILE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. First slice of CRMX-018 (largest single effort in the CRM backlog, which is why it is scoped down to the rep experience here). Meter photo capture ties to the meter-read vision schema.",
+      "notes": "[PHASE 4 / MOBILE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. First slice of CRMX-018 (largest single effort in the CRM backlog, which is why it is scoped down to the rep experience here). Meter photo capture ties to the meter-read vision schema. [NOT STARTED 2026-08-11 (loop triage) — needs a human decision first, not just effort. Its own AC1 is 'one implementation is chosen as canonical and the decision is recorded with its rationale', choosing between three parallel apps (mobile/, mobile-app/, ios/). That is an architecture call with long-term maintenance consequences and should not be made as a side effect of a backlog loop. It is also the largest single effort in the CRM backlog per CRMX-018. Deliberately left for a directed session.]",
       "category": "crm-copier-overhaul"
     },
     {
