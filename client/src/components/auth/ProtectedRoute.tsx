@@ -11,7 +11,7 @@
  *     {() => (
  *       <ProtectedRoute
  *         permissions={['sales.lead.view_own', 'sales.lead.view_team']}
- *         component={LeadsManagement}
+ *         component={LeadsPage}
  *       />
  *     )}
  *   </Route>

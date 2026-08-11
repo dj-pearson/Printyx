@@ -11480,8 +11480,8 @@
         "npm run check && npm run build && npm run lint pass, and the app boots with no missing-module errors."
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "[PHASE 0 / CLEANUP] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Line counts at audit time: DealsManagement 2851, LeadsManagement 1733, customers 1419, TaskManagement 1072, BasicTaskManagement 855, TerritoryManagement 700, AITaskScheduling 629, my-tasks 464, TaskManagementPage 342 = 10,065. Tasks are served by TaskHub at /tasks. CAVEAT: the audit was static (read App.tsx + grep), so re-verify each file is truly unreachable before deleting.",
+      "passes": true,
+      "notes": "[PHASE 0 / CLEANUP] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Line counts at audit time: DealsManagement 2851, LeadsManagement 1733, customers 1419, TaskManagement 1072, BasicTaskManagement 855, TerritoryManagement 700, AITaskScheduling 629, my-tasks 464, TaskManagementPage 342 = 10,065. Tasks are served by TaskHub at /tasks. CAVEAT: the audit was static (read App.tsx + grep), so re-verify each file is truly unreachable before deleting. [DONE 2026-08-11: all 9 pages re-verified as having ZERO ES imports before deletion (10,065 lines, matching the audit exactly). Also removed components/tasks/TaskList.tsx (493 lines) — a PRE-EXISTING orphan with no importer, not one created by this change (the deleted TaskManagement.tsx defined its own local TaskListView). TaskHub.tsx's header already documented that it replaces the five task pages. Deleting these dropped the tsc ratchet 1067 -> 1066; baseline tightened.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11872,7 +11872,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Hard sequencing note: COP-E01 must preserve the reusable parts of TerritoryManagement.tsx before deleting it, or this story restarts from scratch.",
+      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Hard sequencing note: COP-E01 must preserve the reusable parts of TerritoryManagement.tsx before deleting it, or this story restarts from scratch. [SALVAGE NOTE from COP-E01, 2026-08-11: TerritoryManagement.tsx (700 lines) was deleted at parent commit b0c3790 — recover with `git show b0c3790:client/src/pages/TerritoryManagement.tsx`. Do NOT resurrect it as-is: it was phantom-wired and could never have worked. It called /api/territories, /api/territories/stats and /api/territories/types, NONE of which exist — the real API is /api/sales-territories/* in server/routes-lead-assignment.ts (GET list, GET :id, POST, PUT :id, DELETE :id) over the sales_territories table in shared/lead-assignment-schema.ts. It also called apiRequest(url, {method:'DELETE'}), the object-options form, while this codebase's apiRequest signature is apiRequest(url, 'METHOD', body) — so every mutation was broken too. Useful to mine for its Territory interface and UI layout only; rebuild the data layer against the real endpoints.]",
       "category": "crm-copier-overhaul"
     },
     {
