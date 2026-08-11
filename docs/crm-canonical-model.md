@@ -95,3 +95,48 @@ is a status update that preserves history. **No change needed.** All new work bi
 
 No code changes beyond `@deprecated` banners on the deprecated Drizzle tables/route files pointing
 to this document. The actual data migration and repointing happen in CRMX-005/006/007.
+
+---
+
+## Addendum — COP-B00: the runtime contradicts this doc, and why the doc still wins
+
+**Added 2026-08-11.** A later session found that the deployed runtime does the opposite of what
+this document says, and initially read that as "production already migrated the other way, so the
+canonical decision is unsettled." The dates say otherwise. Recording the evidence so nobody has to
+re-derive it.
+
+### What the runtime actually does
+
+`supabase/functions/business-records/index.ts` — which serves `/api/business-records` in production
+via `edge-function-proxy.ts` — lists **FROM `companies`**, inserts **INTO `companies`**, maps rows
+through `mapCompanyToBusinessRecord()`, and its own comment on the by-id branch reads
+_"Fallback: try business_records table for unmigrated records."_
+
+Express (`server/routes-business-records.ts`) meanwhile queries the real `businessRecords` table.
+So the same page reads a **different table in dev than in prod**.
+
+### Why this is legacy rather than a competing decision
+
+| Date           | Artefact                                                                                                               | Direction                            |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 2026-06-26     | `scripts/migrate-business-records-to-companies.ts`, and `mapCompanyToBusinessRecord()` introduced in the edge function | `business_records` → **`companies`** |
+| **2026-07-14** | **CRMX-002 — this document, plus the `@deprecated` banner on `companies`**                                             | **`companies` → `business_records`** |
+
+The edge function's binding **predates this decision by roughly three weeks**. The team reversed
+course in July; the edge function was never updated, and CRMX-007 (the implementation) has never
+been started.
+
+### What that settles, and what it does not
+
+**Settled — do not re-open:** `business_records` is the canonical account table. This document is
+the most recent authority and the evidence against it is older than it is.
+
+**Still open — needs database access, not a decision:**
+
+1. Repoint the `business-records` edge function at `business_records`, retiring
+   `mapCompanyToBusinessRecord()`. Until then dev and prod disagree, which is what actually blocks
+   COP-M01 (the navigation repoint) — reps would see different data by environment.
+2. Migrate the rows. Count `companies` vs `business_records` per tenant, find rows present in only
+   one, and check whether any id appears in both. That is CRMX-007 / COP-E06.
+3. Order matters: repointing the edge function **before** migrating rows would hide records that
+   currently live only in `companies`.
