@@ -24,6 +24,7 @@ import {
   X,
   Save,
   Filter,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,7 +54,29 @@ import { useToast } from '@/hooks/use-toast';
 import { useSavedViews, type SavedViewData } from '@/hooks/useSavedViews';
 import { getCrmObjectConfig, type CrmObjectType } from '@/lib/crm-object-registry';
 import { FirstRunTip } from '@/components/onboarding/FirstRunTip';
+import { BulkOperationsToolbar, type BulkAction } from '@/components/ui/bulk-operations-toolbar';
+import type { CrmRecord } from '@/components/crm/CrmDataTable';
+import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
+import { apiRequest } from '@/lib/queryClient';
+import { resolveVisibleColumns, buildColumnCatalog } from '@/lib/crm-columns';
+import { useCustomFields, type CustomFieldObjectType } from '@/hooks/useCustomFields';
+import { useCreateFromUrl } from '@/hooks/useCreateFromUrl';
 import { cn } from '@/lib/utils';
+
+const CUSTOM_FIELD_OBJECT_TYPES: CustomFieldObjectType[] = [
+  'deals',
+  'leads',
+  'contacts',
+  'companies',
+];
+
+/**
+ * COP-M01: hard cap on an export. The table is server-paginated at 25/page, so
+ * exporting "what is loaded" would silently emit one page. We fetch the whole
+ * filtered set instead, and tell the user when we had to stop short rather than
+ * handing them a truncated file that looks complete.
+ */
+const EXPORT_MAX_ROWS = 5000;
 
 interface CrmIndexShellProps {
   objectType: CrmObjectType;
@@ -66,6 +89,11 @@ interface CrmIndexShellProps {
   headerExtra?: React.ReactNode;
   /** Callback when creating a new record */
   onCreateNew?: () => void;
+  /**
+   * COP-M01: bulk actions offered once rows are selected. The shell owns the
+   * selection state and renders the toolbar; pages just declare the operations.
+   */
+  bulkActions?: BulkAction[];
 }
 
 export interface CrmViewRenderProps {
@@ -80,6 +108,21 @@ export interface CrmViewRenderProps {
   onColumnConfigChange: (config: NonNullable<SavedViewData['columnConfig']>) => void;
   /** CRMX-012: whether column changes persist (an active view exists). */
   columnsPersist: boolean;
+  /** COP-M01: selection state, owned by the shell so the bulk toolbar can live in the toolbar. */
+  selectedIds: Set<string>;
+  onSelectionChange: (ids: Set<string>) => void;
+  /** COP-M01: let the table report its server-side total back to the shell. */
+  onTotalCountChange: (total: number) => void;
+  /**
+   * COP-I04: empty-state wiring. `onClearFilters` lets a filtered-empty view
+   * offer the action that actually helps (clear the filters) instead of a
+   * create button that would not bring the missing rows back; `onCreateNew` is
+   * the real create flow for a genuinely-empty view.
+   */
+  onClearFilters: () => void;
+  onCreateNew?: () => void;
+  /** COP-I04: true when a search or filter is narrowing the view. */
+  isFiltered: boolean;
 }
 
 export function CrmIndexShell({
@@ -88,6 +131,7 @@ export function CrmIndexShell({
   renderBoard,
   headerExtra,
   onCreateNew,
+  bulkActions,
 }: CrmIndexShellProps) {
   const config = getCrmObjectConfig(objectType);
   const { toast } = useToast();
@@ -308,6 +352,111 @@ export function CrmIndexShell({
     }
   }, [activeView]);
 
+  // ─── COP-M01: Selection + Export ────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [totalCount, setTotalCount] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const { fields: customFieldDefs } = useCustomFields(
+    CUSTOM_FIELD_OBJECT_TYPES.includes(objectType as CustomFieldObjectType)
+      ? (objectType as CustomFieldObjectType)
+      : undefined,
+  );
+
+  // Clear the selection whenever the visible result set changes underneath it —
+  // otherwise a bulk action would apply to rows the user can no longer see.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [objectType, search, activeFilters, activeViewId]);
+
+  const handleExport = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams({
+        limit: String(EXPORT_MAX_ROWS),
+        offset: '0',
+        ...(search ? { search } : {}),
+        ...(activeSortConfig
+          ? { sortBy: activeSortConfig.field, sortOrder: activeSortConfig.direction }
+          : {}),
+        ...(config.recordType ? { recordType: config.recordType } : {}),
+      });
+      for (const [key, value] of Object.entries(activeFilters)) {
+        if (value !== undefined && value !== null && value !== '') {
+          params.set(key, String(value));
+        }
+      }
+
+      const response = await apiRequest(`${config.apiEndpoint}?${params.toString()}`, 'GET');
+      const rows: CrmRecord[] = Array.isArray(response)
+        ? response
+        : (response?.data ?? response?.records ?? []);
+      const total: number = response?.total ?? rows.length;
+
+      if (rows.length === 0) {
+        toast({ title: 'Nothing to export', description: 'This view has no records.' });
+        return;
+      }
+
+      // Export exactly the columns the user has visible, in their order.
+      const catalog = buildColumnCatalog(config.fields, customFieldDefs ?? []);
+      const visible = resolveVisibleColumns(catalog, resolvedColumnConfig, config.defaultColumns);
+      const columns: ExportColumn<CrmRecord>[] = visible.map((col) => ({
+        key: col.field,
+        label: col.label,
+        format: (value: unknown, row: CrmRecord) => {
+          const custom = row?.customFields as Record<string, unknown> | undefined;
+          const raw = col.customKey ? custom?.[col.customKey] : value;
+          if (raw === null || raw === undefined) return '';
+          if (raw instanceof Date) return raw.toISOString();
+          if (typeof raw === 'object') return JSON.stringify(raw);
+          return String(raw);
+        },
+      }));
+
+      exportToCSV(rows, columns, {
+        filename: `${config.labelPlural.toLowerCase().replace(/\s+/g, '-')}-export`,
+      });
+
+      // Be explicit when the cap bit — a silently truncated export is worse than none.
+      if (total > rows.length) {
+        toast({
+          title: `Exported ${rows.length.toLocaleString()} of ${total.toLocaleString()}`,
+          description: `Exports are capped at ${EXPORT_MAX_ROWS.toLocaleString()} rows. Narrow the view with filters to export the rest.`,
+        });
+      } else {
+        toast({ title: `Exported ${rows.length.toLocaleString()} ${config.labelPlural}` });
+      }
+    } catch (error) {
+      toast({
+        title: 'Export failed',
+        description: error instanceof Error ? error.message : 'Could not export this view.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [
+    config,
+    search,
+    activeFilters,
+    activeSortConfig,
+    resolvedColumnConfig,
+    customFieldDefs,
+    toast,
+  ]);
+
+  // COP-I02: the command palette's "Create ..." entries hand off via ?action=new.
+  useCreateFromUrl(onCreateNew);
+
+  // COP-I04: clear everything narrowing the view, so a "no matches" empty state
+  // can offer the one action that brings the rows back. Distinct from the
+  // toolbar's handleClearFilters, which deliberately leaves the search box alone.
+  const handleClearSearchAndFilters = useCallback(() => {
+    setSearch('');
+    setActiveFilters({});
+    setIsModified(true);
+  }, []);
+
   // ─── Render Props ───────────────────────────────────────────────
   const viewRenderProps: CrmViewRenderProps = {
     objectType,
@@ -318,6 +467,13 @@ export function CrmIndexShell({
     columnConfig: resolvedColumnConfig,
     onColumnConfigChange: handleColumnConfigChange,
     columnsPersist: Boolean(activeView),
+    selectedIds,
+    onSelectionChange: setSelectedIds,
+    onTotalCountChange: setTotalCount,
+    // COP-I04: empty-state wiring.
+    isFiltered: Boolean(search.trim()) || Object.keys(activeFilters).length > 0,
+    onClearFilters: handleClearSearchAndFilters,
+    onCreateNew,
   };
 
   const activeFilterCount = Object.keys(activeFilters).length;
@@ -381,6 +537,19 @@ export function CrmIndexShell({
                 </Button>
               )}
             </div>
+
+            {/* COP-M01: export the whole filtered view, not just the loaded page. */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handleExport}
+              disabled={isExporting}
+              title={`Export these ${config.labelPlural.toLowerCase()} to CSV`}
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">{isExporting ? 'Exporting…' : 'Export'}</span>
+            </Button>
 
             {onCreateNew && (
               <Button size="sm" className="gap-1.5" onClick={onCreateNew}>
@@ -563,6 +732,19 @@ export function CrmIndexShell({
               </Button>
             </>
           )}
+        </div>
+      )}
+
+      {/* ─── COP-M01: Bulk Operations ─────────────────────────────── */}
+      {bulkActions && bulkActions.length > 0 && selectedIds.size > 0 && (
+        <div className="px-3 pt-2">
+          <BulkOperationsToolbar
+            selectedCount={selectedIds.size}
+            totalCount={totalCount}
+            actions={bulkActions}
+            selectedIds={Array.from(selectedIds)}
+            onClearSelection={() => setSelectedIds(new Set())}
+          />
         </div>
       )}
 

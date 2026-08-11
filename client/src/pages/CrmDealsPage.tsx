@@ -12,7 +12,9 @@ import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { CrmIndexShell, type CrmViewRenderProps } from '@/components/crm/CrmIndexShell';
 import { EnhancedPipelineBoard } from '@/components/crm/EnhancedPipelineBoard';
-import { CrmDataTable } from '@/components/crm/CrmDataTable';
+import { CrmDataTable, type CrmRowAction } from '@/components/crm/CrmDataTable';
+import type { BulkAction } from '@/components/ui/bulk-operations-toolbar';
+import { Mail, Phone, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -121,19 +123,147 @@ export default function CrmDealsPage() {
       </Select>
     ) : null;
 
+  // ─── COP-M01: row + bulk actions ──────────────────────────────────────────
+  // These reach parity with what the legacy index pages offered, so the shell
+  // is a strict upgrade rather than a trade-off.
+
+  const patchDeal = useCallback(
+    async (id: string, body: Record<string, unknown>) =>
+      apiRequest(`/api/deals/${id}`, 'PUT', body),
+    [],
+  );
+
+  const afterMutate = useCallback(
+    (title: string) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
+      toast({ title });
+    },
+    [queryClient, toast],
+  );
+
+  const rowActions = useMemo<CrmRowAction[]>(
+    () => [
+      {
+        id: 'email',
+        label: 'Send Email',
+        icon: Mail,
+        onClick: (record) => {
+          if (record.primaryContactEmail) {
+            window.open(`mailto:${record.primaryContactEmail}`, '_self');
+          } else {
+            toast({ title: 'No email', description: 'No email address on this deal.' });
+          }
+        },
+      },
+      {
+        id: 'call',
+        label: 'Call',
+        icon: Phone,
+        onClick: (record) => {
+          if (record.primaryContactPhone) {
+            window.open(`tel:${record.primaryContactPhone}`, '_self');
+          } else {
+            toast({ title: 'No phone', description: 'No phone number on this deal.' });
+          }
+        },
+      },
+      {
+        id: 'won',
+        label: 'Mark Won',
+        icon: CheckCircle2,
+        isAvailable: (record) => record.status === 'open' || !record.status,
+        onClick: async (record) => {
+          await patchDeal(record.id, { status: 'won', actualCloseDate: new Date().toISOString() });
+          afterMutate('Deal marked won');
+        },
+      },
+      {
+        id: 'lost',
+        label: 'Mark Lost',
+        icon: XCircle,
+        isAvailable: (record) => record.status === 'open' || !record.status,
+        onClick: async (record) => {
+          await patchDeal(record.id, { status: 'lost', actualCloseDate: new Date().toISOString() });
+          afterMutate('Deal marked lost');
+        },
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        icon: Trash2,
+        variant: 'destructive',
+        onClick: async (record) => {
+          await apiRequest(`/api/deals/${record.id}`, 'DELETE');
+          afterMutate('Deal deleted');
+        },
+      },
+    ],
+    [patchDeal, afterMutate, toast],
+  );
+
+  const bulkActions = useMemo<BulkAction[]>(
+    () => [
+      {
+        id: 'bulk-won',
+        label: 'Mark Won',
+        icon: CheckCircle2,
+        onClick: async (ids) => {
+          await Promise.all(
+            ids.map((id) =>
+              patchDeal(id, { status: 'won', actualCloseDate: new Date().toISOString() }),
+            ),
+          );
+          afterMutate(`${ids.length} deal(s) marked won`);
+        },
+      },
+      {
+        id: 'bulk-lost',
+        label: 'Mark Lost',
+        icon: XCircle,
+        onClick: async (ids) => {
+          await Promise.all(
+            ids.map((id) =>
+              patchDeal(id, { status: 'lost', actualCloseDate: new Date().toISOString() }),
+            ),
+          );
+          afterMutate(`${ids.length} deal(s) marked lost`);
+        },
+      },
+      {
+        id: 'bulk-delete',
+        label: 'Delete',
+        icon: Trash2,
+        variant: 'destructive',
+        requiresConfirmation: true,
+        onClick: async (ids) => {
+          await Promise.all(ids.map((id) => apiRequest(`/api/deals/${id}`, 'DELETE')));
+          afterMutate(`${ids.length} deal(s) deleted`);
+        },
+      },
+    ],
+    [patchDeal, afterMutate],
+  );
+
   const renderTable = useCallback(
     (props: CrmViewRenderProps) => (
       <CrmDataTable
         objectType="deals"
         search={props.search}
         activeFilters={props.activeFilters}
+        selectedIds={props.selectedIds}
+        onSelectionChange={props.onSelectionChange}
+        onTotalCountChange={props.onTotalCountChange}
+        rowActions={rowActions}
         sortConfig={props.sortConfig}
+        isFiltered={props.isFiltered}
+        onClearFilters={props.onClearFilters}
+        onCreateNew={props.onCreateNew}
         columnConfig={props.columnConfig}
         onColumnConfigChange={props.onColumnConfigChange}
         columnsPersist={props.columnsPersist}
       />
     ),
-    [],
+    [rowActions],
   );
 
   const renderBoard = useCallback(
@@ -156,6 +286,7 @@ export default function CrmDealsPage() {
         renderBoard={renderBoard}
         headerExtra={pipelineSelector}
         onCreateNew={() => setShowCreateDialog(true)}
+        bulkActions={bulkActions}
       />
 
       {/* Create Deal Dialog */}

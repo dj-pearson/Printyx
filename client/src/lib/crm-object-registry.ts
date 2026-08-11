@@ -4,6 +4,17 @@
  * Used by CrmIndexShell and all CRM components for consistent behavior across object types.
  */
 
+/**
+ * The CRM object types a user can see and work in.
+ *
+ * COP-E07: 'opportunities' is NOT a user-facing object. The canonical sales
+ * object is the Deal (see docs/crm-canonical-model.md, CRMX-002); the
+ * `opportunities` table survives only as Salesforce sync staging, and the
+ * /api/opportunities/convert-to-deal bridge stays intact. It remains in this
+ * union solely so the legacy /opportunities route keeps resolving to the deals
+ * config until COP-E04 collapses the URLs — it must never gain its own label,
+ * nav entry, or registry config of its own.
+ */
 export type CrmObjectType = 'deals' | 'leads' | 'contacts' | 'companies' | 'opportunities';
 
 export interface CrmFieldDef {
@@ -63,7 +74,8 @@ const dealsConfig: CrmObjectConfig = {
   labelPlural: 'Deals',
   icon: 'DollarSign',
   apiEndpoint: '/api/deals',
-  detailPath: '/deals',
+  // COP-E04: canonical deals path. Legacy /deals/:id redirects here.
+  detailPath: '/crm/deals',
   hasBoardView: true,
   pipelineField: 'stage',
   fields: [

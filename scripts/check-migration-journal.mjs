@@ -11,7 +11,16 @@
 //   (a) a numbered migration *.sql file has no matching _journal.json entry,
 //   (b) a _journal.json entry has no matching *.sql file,
 //   (c) two migration files share the same 4-digit numeric prefix,
-//   (d) journal `idx` values are not a contiguous 0..N-1 sequence.
+//   (d) journal `idx` values are not a contiguous 0..N-1 sequence,
+//   (e) COP-M00: a journal entry has no matching meta/NNNN_snapshot.json.
+//
+// (e) is a DIFFERENT failure from (a)-(d) and the journal can be perfectly
+// healthy while it holds. drizzle-kit diffs your schema against the snapshot of
+// the LAST journal entry. When snapshots are missing it silently falls back to
+// the newest one it can find, so `db:generate` re-emits every change made since
+// then — in this repo that produced a 2,281-line / 141-statement migration and a
+// filename that collided with an existing file. The journal guard passed the
+// whole time, which is exactly why this check had to be added.
 //
 // Usage: node scripts/check-migration-journal.mjs
 // Wire:  package.json "audit:migrations": "node scripts/check-migration-journal.mjs"
@@ -82,8 +91,46 @@ if (!existsSync(journalPath)) {
     }
   }
 
+  // --- (e) COP-M00: every journal entry needs its snapshot ------------------
+  const metaDir = resolve(migrationsDir, 'meta');
+  const snapshots = new Set(
+    readdirSync(metaDir)
+      .filter((f) => /^\d{4}_snapshot\.json$/.test(f))
+      .map((f) => Number(f.slice(0, 4))),
+  );
+  const missingSnapshots = entries.map((e) => e.idx).filter((idx) => !snapshots.has(idx));
+
+  // RATCHET, not a hard gate. 25 snapshots are already missing (COP-M00) and
+  // restoring them needs DB introspection, so failing outright would just break
+  // CI on a pre-existing condition. Fail only when it gets WORSE — that stops
+  // the hole widening while the real reconciliation is scheduled. Matches how
+  // the typecheck and route-ownership ratchets work in this repo.
+  const SNAPSHOT_GAP_BASELINE = 25;
+  if (missingSnapshots.length > SNAPSHOT_GAP_BASELINE) {
+    const shown = missingSnapshots.slice(0, 10).join(', ');
+    const more = missingSnapshots.length > 10 ? `, +${missingSnapshots.length - 10} more` : '';
+    problems.push(
+      `Snapshot gap WIDENED: ${missingSnapshots.length} journal entr(ies) have no ` +
+        `meta/NNNN_snapshot.json (baseline ${SNAPSHOT_GAP_BASELINE}): idx ${shown}${more}. ` +
+        `drizzle-kit diffs against the LAST entry's snapshot, so gaps make db:generate re-emit ` +
+        `already-migrated changes instead of just your delta. See COP-M00.`,
+    );
+  } else if (missingSnapshots.length > 0) {
+    console.warn(
+      `⚠ ${missingSnapshots.length} journal entr(ies) have no snapshot (known, baseline ` +
+        `${SNAPSHOT_GAP_BASELINE}). db:generate will over-emit until COP-M00 reconciles this. ` +
+        `Do not "fix" it by absorbing the drift into a snapshot — see ` +
+        `docs/COP-M00-migration-tooling.md.`,
+    );
+  } else if (SNAPSHOT_GAP_BASELINE > 0) {
+    console.log(
+      `✓ Snapshot gap is closed. Drop SNAPSHOT_GAP_BASELINE to 0 in this script to lock it in.`,
+    );
+  }
+
   console.log(
-    `Checked ${files.length} migration file(s) against ${entries.length} journal entry(ies).`,
+    `Checked ${files.length} migration file(s) against ${entries.length} journal entry(ies), ` +
+      `and ${entries.length - missingSnapshots.length}/${entries.length} snapshot(s).`,
   );
 }
 
@@ -96,4 +143,6 @@ if (problems.length) {
   process.exit(1);
 }
 
-console.log('✓ Migration-journal guard passed: every migration file is journaled, prefixes unique, idx contiguous.');
+console.log(
+  '✓ Migration-journal guard passed: every migration file is journaled, prefixes unique, idx contiguous.',
+);

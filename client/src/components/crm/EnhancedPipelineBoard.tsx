@@ -38,7 +38,11 @@ import {
   DollarSign,
   Calendar,
   MapPin,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
+import { useListKeyboardNav } from '@/hooks/useListKeyboardNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -125,8 +129,11 @@ function StageColumn({
       <div className="flex-1 overflow-y-auto p-2 space-y-2 max-h-[calc(100vh-320px)] min-h-[100px]">
         {children}
         {records.length === 0 && (
+          // COP-I04: this used to read `records.length === 0 ? 'records' : 'deals'`
+          // inside a block already guarded by that same condition, so the 'deals'
+          // branch was unreachable. Say the thing plainly instead.
           <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
-            No {records.length === 0 ? 'records' : 'deals'} in this stage
+            Nothing in this stage
           </div>
         )}
       </div>
@@ -161,8 +168,13 @@ function DealCard({
     <Card
       ref={setNodeRef}
       style={style}
+      // COP-I02: cards join the j/k roving-focus list and open on Enter.
+      // Drag remains pointer-only; this is the keyboard path to the same action.
+      {...(!isDragOverlay ? { 'data-list-row': true, tabIndex: 0 } : {})}
+      onClick={() => !isDragOverlay && onViewDetail?.(record)}
       className={cn(
         'p-3 cursor-grab active:cursor-grabbing transition-shadow',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isDragging && 'opacity-50',
         isDragOverlay && 'shadow-lg rotate-2 ring-2 ring-primary',
         !isDragging && 'hover:shadow-md',
@@ -346,7 +358,13 @@ export function EnhancedPipelineBoard({
   const stages = useMemo(() => (stagesData ?? []).sort((a, b) => a.order - b.order), [stagesData]);
 
   // Fetch records
-  const { data: records = [], isLoading: recordsLoading } = useQuery<DealRecord[]>({
+  const {
+    data: records = [],
+    isLoading: recordsLoading,
+    isError: recordsError,
+    error: recordsErrorObj,
+    refetch: refetchRecords,
+  } = useQuery<DealRecord[]>({
     queryKey: [config.apiEndpoint, 'board', { search, ...activeFilters }],
     queryFn: async () => {
       const params = new URLSearchParams({ limit: '500' });
@@ -478,6 +496,9 @@ export function EnhancedPipelineBoard({
     [records, stages, stageChangeMutation, toast],
   );
 
+  // COP-I02: j/k + arrow navigation over the board cards.
+  const boardNavRef = useListKeyboardNav<HTMLDivElement>();
+
   // Active dragging record
   const activeRecord = activeId ? records.find((r) => r.id === activeId) : null;
 
@@ -495,9 +516,30 @@ export function EnhancedPipelineBoard({
     );
   }
 
+  // COP-I04: a failed board fetch used to render as an empty board — every stage
+  // column showing "nothing here", which reads as "you have no deals". Say what
+  // actually happened.
+  if (recordsError && records.length === 0) {
+    return (
+      <div className="p-4">
+        <EmptyState
+          icon={AlertTriangle}
+          type="error"
+          title="Could not load the board"
+          description={
+            recordsErrorObj instanceof Error
+              ? recordsErrorObj.message
+              : 'The request failed. This is a loading problem, not an empty pipeline.'
+          }
+          action={{ label: 'Try again', onClick: () => refetchRecords(), icon: RefreshCw }}
+        />
+      </div>
+    );
+  }
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex gap-3 p-4 overflow-x-auto h-full">
+      <div className="flex gap-3 p-4 overflow-x-auto h-full" ref={boardNavRef}>
         {stages.map((stage) => (
           <StageColumn
             key={stage.id}

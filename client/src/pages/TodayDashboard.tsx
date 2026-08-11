@@ -25,7 +25,9 @@ import {
   Sparkles,
   ArrowRight,
   MessageSquare,
+  RefreshCw,
 } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 
 interface Activity {
@@ -99,16 +101,12 @@ export default function TodayDashboard() {
   const queryClient = useQueryClient();
 
   // Fetch today's dashboard data
-  const { data, isLoading } = useQuery<TodayViewData>({
+  // COP-B01: this used to catch a failed request and return generateMockTodayData(),
+  // so an outage showed the rep FABRICATED pipeline, wins and hot leads rather
+  // than an error. Let it fail and surface it (CRMX-001 / COP-I07 rule).
+  const { data, isLoading, isError, error, refetch } = useQuery<TodayViewData>({
     queryKey: ['/api/dashboards/today'],
-    queryFn: async () => {
-      try {
-        return await apiRequest('/api/dashboards/today');
-      } catch (error) {
-        // Fallback with mock data for demo
-        return generateMockTodayData();
-      }
-    },
+    queryFn: () => apiRequest('/api/dashboards/today'),
     enabled: isAuthenticated,
     refetchInterval: 60000, // Refresh every minute
   });
@@ -140,6 +138,25 @@ export default function TodayDashboard() {
           </div>
           <Skeleton className="h-96 w-full" />
         </div>
+      </MainLayout>
+    );
+  }
+
+  // COP-B01: with the mock fallback gone, a failure has to say so.
+  if (isError || !data) {
+    return (
+      <MainLayout title="Today" description="Your personalized daily workflow">
+        <EmptyState
+          icon={AlertTriangle}
+          type="error"
+          title="Could not load your day"
+          description={
+            error instanceof Error
+              ? error.message
+              : 'The request failed. Nothing here is stale or partial — it simply did not load.'
+          }
+          action={{ label: 'Try again', onClick: () => refetch(), icon: RefreshCw }}
+        />
       </MainLayout>
     );
   }
@@ -568,168 +585,6 @@ function getTimeOfDay(): string {
   if (hour < 12) return 'morning';
   if (hour < 18) return 'afternoon';
   return 'evening';
-}
-
-function generateMockTodayData(): TodayViewData {
-  const now = new Date();
-  const yesterday = addDays(now, -1);
-  const tomorrow = addDays(now, 1);
-
-  return {
-    overdue: [
-      {
-        id: '1',
-        title: 'Follow up on proposal',
-        type: 'call',
-        scheduledDate: yesterday.toISOString(),
-        priority: 'high',
-        status: 'overdue',
-        customerName: 'Acme Corporation',
-        customerId: 'cust-1',
-      },
-      {
-        id: '2',
-        title: 'Send contract documents',
-        type: 'email',
-        scheduledDate: yesterday.toISOString(),
-        priority: 'urgent',
-        status: 'overdue',
-        customerName: 'TechCorp Inc',
-        customerId: 'cust-2',
-      },
-    ],
-    today: [
-      {
-        id: '3',
-        title: 'Demo call with prospect',
-        type: 'meeting',
-        scheduledDate: new Date(now.setHours(10, 0)).toISOString(),
-        priority: 'high',
-        status: 'pending',
-        customerName: 'Global Industries',
-        customerId: 'cust-3',
-      },
-      {
-        id: '4',
-        title: 'Check in with key account',
-        type: 'call',
-        scheduledDate: new Date(now.setHours(14, 30)).toISOString(),
-        priority: 'medium',
-        status: 'pending',
-        customerName: 'Enterprise Solutions',
-        customerId: 'cust-4',
-      },
-      {
-        id: '5',
-        title: 'Send quarterly review',
-        type: 'email',
-        scheduledDate: new Date(now.setHours(16, 0)).toISOString(),
-        priority: 'low',
-        status: 'pending',
-        customerName: 'ABC Company',
-        customerId: 'cust-5',
-      },
-    ],
-    upcoming: [
-      {
-        id: '6',
-        title: 'Renewal discussion',
-        type: 'meeting',
-        scheduledDate: tomorrow.toISOString(),
-        priority: 'high',
-        status: 'pending',
-        customerName: 'Big Corp',
-        customerId: 'cust-6',
-      },
-      {
-        id: '7',
-        title: 'Product training session',
-        type: 'meeting',
-        scheduledDate: addDays(now, 2).toISOString(),
-        priority: 'medium',
-        status: 'pending',
-        customerName: 'StartupXYZ',
-        customerId: 'cust-7',
-      },
-    ],
-    hotLeads: [
-      {
-        id: 'lead-1',
-        companyName: 'MegaCorp Industries',
-        contactName: 'John Smith',
-        estimatedValue: 150000,
-        score: 92,
-        status: 'qualified',
-        reason: 'Opened proposal 5 times, high engagement',
-      },
-      {
-        id: 'lead-2',
-        companyName: 'FastGrowth LLC',
-        contactName: 'Jane Doe',
-        estimatedValue: 85000,
-        score: 88,
-        status: 'qualified',
-        reason: 'Budget confirmed, decision maker engaged',
-      },
-      {
-        id: 'lead-3',
-        companyName: 'Innovation Labs',
-        contactName: 'Bob Johnson',
-        estimatedValue: 120000,
-        score: 85,
-        status: 'qualified',
-        reason: 'Similar company just purchased, warm referral',
-      },
-    ],
-    pipelineAlerts: [
-      {
-        id: 'deal-1',
-        title: 'Enterprise Software Deal',
-        companyName: 'Acme Corp',
-        value: 180000,
-        stage: 'proposal',
-        daysSinceUpdate: 23,
-        probability: 60,
-        staleReason: 'Stalled in proposal stage (avg: 12 days)',
-      },
-      {
-        id: 'deal-2',
-        title: 'Hardware Upgrade',
-        companyName: 'TechCorp',
-        value: 95000,
-        stage: 'negotiation',
-        daysSinceUpdate: 15,
-        probability: 70,
-        staleReason: 'No contact in 2 weeks',
-      },
-    ],
-    recentWins: [
-      {
-        id: 'win-1',
-        title: 'Annual Support Contract',
-        companyName: 'Global Enterprises',
-        value: 125000,
-        stage: 'closed-won',
-        daysSinceUpdate: 1,
-        probability: 100,
-      },
-      {
-        id: 'win-2',
-        title: 'Cloud Migration Project',
-        companyName: 'Local Business Inc',
-        value: 75000,
-        stage: 'closed-won',
-        daysSinceUpdate: 3,
-        probability: 100,
-      },
-    ],
-    stats: {
-      pipelineValue: 1245000,
-      quotaAttainment: 87,
-      conversionRate: 24,
-      tasksCompleted: 8,
-    },
-  };
 }
 
 // Missing import

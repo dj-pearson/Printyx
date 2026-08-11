@@ -3,7 +3,7 @@
  * Uses the CRM object registry for field definitions and rendering.
  * Part of CRM-002/CRM-006: Table view with inline editing support.
  */
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
@@ -23,6 +23,7 @@ import {
   type TableFieldDef,
 } from '@/lib/crm-columns';
 import { ColumnPicker } from '@/components/crm/ColumnPicker';
+import { useListKeyboardNav } from '@/hooks/useListKeyboardNav';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
   Table,
@@ -53,8 +54,30 @@ import {
   ChevronLeft,
   ChevronRight,
   Rocket,
+  AlertTriangle,
+  RefreshCw,
+  FilterX,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+/**
+ * COP-M01: a per-object row action, rendered in the row overflow menu beneath
+ * the built-in View/Edit entries. Pages supply these so the shell reaches parity
+ * with the legacy index pages (convert, deactivate, assign owner, delete, ...).
+ */
+/** A CRM row as returned by the list endpoints: an id plus registry/custom fields. */
+export type CrmRecord = { id: string } & Record<string, unknown>;
+
+export interface CrmRowAction {
+  id: string;
+  label: string;
+  icon?: React.ElementType;
+  variant?: 'default' | 'destructive';
+  /** Hide the action for rows it does not apply to (e.g. Reactivate on an active record). */
+  isAvailable?: (record: CrmRecord) => boolean;
+  onClick: (record: CrmRecord) => void | Promise<void>;
+}
 
 interface CrmDataTableProps {
   objectType: CrmObjectType;
@@ -65,6 +88,14 @@ interface CrmDataTableProps {
   /** Selected record IDs for bulk operations */
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  /** COP-M01: per-object row actions appended to the row overflow menu. */
+  rowActions?: CrmRowAction[];
+  /** COP-M01: report the server-side total up so the shell's bulk toolbar can show it. */
+  onTotalCountChange?: (total: number) => void;
+  /** COP-I04: empty-state wiring supplied by the shell. */
+  isFiltered?: boolean;
+  onClearFilters?: () => void;
+  onCreateNew?: () => void;
   /** CRMX-012: persisted column config for the active saved view. */
   columnConfig?: ColumnConfigEntry[] | null;
   /** CRMX-012: called when the user changes columns (parent persists it). */
@@ -88,6 +119,11 @@ export function CrmDataTable({
   onSortChange,
   selectedIds,
   onSelectionChange,
+  rowActions,
+  onTotalCountChange,
+  isFiltered,
+  onClearFilters,
+  onCreateNew,
   columnConfig,
   onColumnConfigChange,
   columnsPersist = true,
@@ -104,6 +140,8 @@ export function CrmDataTable({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  // COP-I02: j/k + arrow navigation over the rows.
+  const listNavRef = useListKeyboardNav<HTMLDivElement>();
   const [page, setPage] = useState(1);
   const [localSortField, setLocalSortField] = useState(sortConfig?.field ?? 'createdAt');
   const [localSortDir, setLocalSortDir] = useState<'asc' | 'desc'>(sortConfig?.direction ?? 'desc');
@@ -138,7 +176,7 @@ export function CrmDataTable({
     ],
   );
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey,
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -166,8 +204,16 @@ export function CrmDataTable({
   });
 
   const records = data?.records ?? [];
+  // COP-I04: prefer the shell's flag, but fall back to local state so the table
+  // still tells the two empty cases apart when used outside the shell.
+  const narrowed = isFiltered ?? (Boolean(search) || Object.keys(activeFilters).length > 0);
   const totalRecords = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+
+  // COP-M01: surface the server-side total to the shell (bulk toolbar count).
+  useEffect(() => {
+    onTotalCountChange?.(totalRecords);
+  }, [totalRecords, onTotalCountChange]);
 
   // Column sort handler
   const handleSort = useCallback(
@@ -281,6 +327,27 @@ export function CrmDataTable({
     );
   }
 
+  // COP-I04: a failed fetch used to fall through and render as an EMPTY table —
+  // indistinguishable from "you have no records", which is a very different
+  // thing to tell a user. Fail loudly and offer the retry.
+  if (isError && records.length === 0) {
+    return (
+      <div className="p-4">
+        <EmptyState
+          icon={AlertTriangle}
+          type="error"
+          title={`Could not load ${config.labelPlural.toLowerCase()}`}
+          description={
+            error instanceof Error
+              ? error.message
+              : 'The request failed. This is a loading problem, not an empty list.'
+          }
+          action={{ label: 'Try again', onClick: () => refetch(), icon: RefreshCw }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       {onColumnConfigChange && (
@@ -292,7 +359,7 @@ export function CrmDataTable({
           />
         </div>
       )}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" ref={listNavRef}>
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
@@ -346,35 +413,48 @@ export function CrmDataTable({
             {records.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleFields.length + 2} className="p-0">
-                  {/* CRMX-014: helpful empty state with a primary CTA. */}
-                  <EmptyState
-                    title={
-                      search || Object.keys(activeFilters).length > 0
-                        ? `No ${config.labelPlural.toLowerCase()} match your filters`
-                        : `No ${config.labelPlural.toLowerCase()} yet`
-                    }
-                    description={
-                      search || Object.keys(activeFilters).length > 0
-                        ? 'Try adjusting your search or filters.'
-                        : `Get started by importing data or following the setup guide.`
-                    }
-                    type={search || Object.keys(activeFilters).length > 0 ? 'search' : 'default'}
-                    action={
-                      search || Object.keys(activeFilters).length > 0
-                        ? undefined
-                        : {
-                            label: 'Getting started guide',
-                            onClick: () => setLocation('/getting-started'),
-                            icon: Rocket,
-                          }
-                    }
-                  />
+                  {/* CRMX-014 + COP-I04: "no matches" and "none yet" are different
+                      problems and get different actions — clearing filters is what
+                      brings rows back, and a create button would not. */}
+                  {narrowed ? (
+                    <EmptyState
+                      type="search"
+                      title={`No ${config.labelPlural.toLowerCase()} match your filters`}
+                      description="Nothing here matches the current search and filters. Your records are still there."
+                      action={
+                        onClearFilters
+                          ? { label: 'Clear filters', onClick: onClearFilters, icon: FilterX }
+                          : undefined
+                      }
+                    />
+                  ) : (
+                    <EmptyState
+                      title={`No ${config.labelPlural.toLowerCase()} yet`}
+                      description={`${config.labelPlural} you create will appear here, with saved views, filters and bulk actions.`}
+                      action={
+                        onCreateNew
+                          ? {
+                              label: `Create ${config.label.toLowerCase()}`,
+                              onClick: onCreateNew,
+                              icon: Plus,
+                            }
+                          : undefined
+                      }
+                      secondaryAction={{
+                        label: 'Getting started guide',
+                        onClick: () => setLocation('/getting-started'),
+                        variant: 'outline',
+                        icon: Rocket,
+                      }}
+                    />
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
               records.map((record: any) => (
                 <TableRow
                   key={record.id}
+                  data-list-row
                   tabIndex={0}
                   aria-label={`View ${config.labelPlural.replace(/s$/i, '').toLowerCase()} details`}
                   className={cn(
@@ -426,6 +506,25 @@ export function CrmDataTable({
                         >
                           <Edit className="h-4 w-4 mr-2" /> Edit
                         </DropdownMenuItem>
+                        {/* COP-M01: per-object actions supplied by the page. */}
+                        {(rowActions ?? [])
+                          .filter((action) => action.isAvailable?.(record) ?? true)
+                          .map((action) => {
+                            const ActionIcon = action.icon;
+                            return (
+                              <DropdownMenuItem
+                                key={action.id}
+                                onClick={() => action.onClick(record)}
+                                className={cn(
+                                  action.variant === 'destructive' &&
+                                    'text-destructive focus:text-destructive',
+                                )}
+                              >
+                                {ActionIcon && <ActionIcon className="h-4 w-4 mr-2" />}
+                                {action.label}
+                              </DropdownMenuItem>
+                            );
+                          })}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

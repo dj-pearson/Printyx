@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useCreateFromUrl } from '@/hooks/useCreateFromUrl';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -257,6 +258,9 @@ export default function CustomersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  // COP-I02: honour ?action=new from the command palette.
+  useCreateFromUrl(() => setIsCreateOpen(true));
   const [isImportOpen, setIsImportOpen] = useState(false);
 
   const form = useForm({

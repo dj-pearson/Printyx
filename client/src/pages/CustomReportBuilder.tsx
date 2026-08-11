@@ -108,9 +108,9 @@ const DATA_SOURCES = [
   },
   {
     id: 'opportunities',
-    name: 'Opportunities',
+    name: 'Deals',
     icon: BarChart3,
-    description: 'Sales opportunities and deals',
+    description: 'Sales deals and pipeline',
   },
   {
     id: 'service_tickets',
@@ -144,7 +144,7 @@ const SOURCE_COLUMNS: Record<
     { id: 'updatedAt', name: 'Updated Date', type: 'date', aggregatable: false },
   ],
   opportunities: [
-    { id: 'name', name: 'Opportunity Name', type: 'string', aggregatable: false },
+    { id: 'name', name: 'Deal Name', type: 'string', aggregatable: false },
     { id: 'stage', name: 'Stage', type: 'string', aggregatable: false },
     { id: 'amount', name: 'Amount', type: 'currency', aggregatable: true },
     { id: 'probability', name: 'Probability', type: 'number', aggregatable: true },
