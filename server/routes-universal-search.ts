@@ -7,6 +7,7 @@ import {
   quotes,
   invoices,
   equipment,
+  contracts,
 } from '@shared/schema';
 import { ilike, or, and, eq } from 'drizzle-orm';
 import type { Request, Response } from 'express';
@@ -24,12 +25,16 @@ const searchCache = new MemoryCacheService();
 const SEARCH_CACHE_TTL_SECONDS = 20;
 
 interface TenantRequest extends Request {
-  tenantId?: number;
+  // COP-I05: this was `number`, but tenant ids are varchar everywhere — in the
+  // schema, in getTenantId(), and in every other route file. The wrong type made
+  // eq(<table>.tenantId, tenantId) fail to typecheck in every branch of this
+  // search, and it also made TenantRequest incorrectly extend Request.
+  tenantId?: string;
 }
 
 interface SearchResult {
   id: string;
-  type: 'customer' | 'lead' | 'deal' | 'activity' | 'quote' | 'invoice' | 'equipment';
+  type: 'customer' | 'lead' | 'deal' | 'activity' | 'quote' | 'invoice' | 'equipment' | 'contract';
   title: string;
   subtitle?: string;
   path?: string;
@@ -83,6 +88,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
       quoteGroup,
       invoiceGroup,
       equipmentGroup,
+      contractGroup,
     ] = await Promise.all([
       // ---- Business records (customers and leads) ----
       (async (): Promise<SearchResult[]> => {
@@ -390,6 +396,8 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
             .select({
               id: equipment.id,
               serialNumber: equipment.serialNumber,
+              assetTag: equipment.assetTag,
+              customerId: equipment.customerId,
               modelNumber: equipment.modelNumber,
               manufacturer: equipment.manufacturer,
               description: equipment.description,
@@ -403,6 +411,8 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
                 eq(equipment.tenantId, tenantId),
                 or(
                   ilike(equipment.serialNumber, searchTerm),
+                  // COP-I05: a copier rep searches by asset tag as often as serial.
+                  ilike(equipment.assetTag, searchTerm),
                   ilike(equipment.modelNumber, searchTerm),
                   ilike(equipment.manufacturer, searchTerm),
                   ilike(equipment.description, searchTerm),
@@ -429,15 +439,83 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
               type: 'equipment',
               title,
               subtitle,
-              path: `/equipment?id=${equip.id}`,
+              // COP-I05 AC2: a serial hit must resolve to the owning ACCOUNT, which
+              // is what the rep actually wants — the equipment list filtered to one
+              // machine is a dead end.
+              path: equip.customerId
+                ? `/customers/${equip.customerId}`
+                : `/equipment?id=${equip.id}`,
               metadata: {
                 status: equip.equipmentStatus || undefined,
               },
-              relevance: 6,
+              // An exact serial or asset-tag match is the most specific thing a
+              // rep can type — rank it above a fuzzy name match.
+              relevance:
+                equip.serialNumber?.toLowerCase() === normalizedQuery ||
+                equip.assetTag?.toLowerCase() === normalizedQuery
+                  ? 12
+                  : 6,
             });
           }
         } catch (error) {
           log.warn('Could not search equipment:', error);
+        }
+        return out;
+      })(),
+
+      // ---- Contracts (COP-I05: reps search by contract number constantly) ----
+      (async (): Promise<SearchResult[]> => {
+        const out: SearchResult[] = [];
+        try {
+          const rows = await db
+            .select({
+              id: contracts.id,
+              contractNumber: contracts.contractNumber,
+              customerId: contracts.customerId,
+              status: contracts.status,
+              endDate: contracts.endDate,
+              monthlyBase: contracts.monthlyBase,
+              companyName: businessRecords.companyName,
+            })
+            .from(contracts)
+            .leftJoin(businessRecords, eq(contracts.customerId, businessRecords.id))
+            .where(
+              and(
+                eq(contracts.tenantId, tenantId),
+                or(
+                  ilike(contracts.contractNumber, searchTerm),
+                  ilike(businessRecords.companyName, searchTerm),
+                ),
+              ),
+            )
+            .limit(limit);
+
+          for (const contract of rows) {
+            out.push({
+              id: `contract-${contract.id}`,
+              type: 'contract',
+              title: contract.contractNumber ? `Contract ${contract.contractNumber}` : 'Contract',
+              subtitle: [
+                contract.companyName,
+                contract.endDate ? `Ends ${new Date(contract.endDate).toLocaleDateString()}` : null,
+              ]
+                .filter(Boolean)
+                .join(' • '),
+              // Same rule as equipment: resolve to the owning account.
+              path: contract.customerId
+                ? `/customers/${contract.customerId}`
+                : `/contracts?id=${contract.id}`,
+              metadata: {
+                status: contract.status || undefined,
+                value: contract.monthlyBase ? String(contract.monthlyBase) : undefined,
+                date: contract.endDate ? new Date(contract.endDate).toISOString() : undefined,
+              },
+              relevance: contract.contractNumber?.toLowerCase() === normalizedQuery ? 12 : 6,
+            });
+          }
+        } catch (error) {
+          // Optional table — degrade gracefully, same as the other four.
+          log.warn('Could not search contracts:', error);
         }
         return out;
       })(),
@@ -451,6 +529,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
       ...quoteGroup,
       ...invoiceGroup,
       ...equipmentGroup,
+      ...contractGroup,
     ];
 
     const sortedResults = results.sort((a, b) => b.relevance - a.relevance).slice(0, limit);

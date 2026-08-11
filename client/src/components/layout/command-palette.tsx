@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { usePermissions } from '@/hooks/usePermissions';
+import { apiRequest } from '@/lib/queryClient';
 import {
   CommandDialog,
   CommandEmpty,
@@ -28,6 +29,8 @@ import {
   AlertCircle,
   Building2,
   Monitor,
+  Target,
+  FileSignature,
 } from 'lucide-react';
 
 interface SearchResult {
@@ -37,6 +40,48 @@ interface SearchResult {
   subtitle?: string;
   url?: string;
   icon?: React.ReactNode;
+}
+
+/** COP-I05: the shape /api/universal-search returns. */
+interface UniversalSearchHit {
+  id: string;
+  type: 'customer' | 'lead' | 'deal' | 'activity' | 'quote' | 'invoice' | 'equipment' | 'contract';
+  title: string;
+  subtitle?: string;
+  path?: string;
+}
+
+const TYPE_LABELS: Record<UniversalSearchHit['type'], string> = {
+  customer: 'Customers',
+  lead: 'Leads',
+  deal: 'Deals',
+  activity: 'Activities',
+  quote: 'Quotes',
+  invoice: 'Invoices',
+  equipment: 'Equipment',
+  contract: 'Contracts',
+};
+
+function iconForType(type: UniversalSearchHit['type']) {
+  const cls = 'h-4 w-4';
+  switch (type) {
+    case 'customer':
+      return <Building2 className={cls} />;
+    case 'lead':
+      return <Users className={cls} />;
+    case 'deal':
+      return <Target className={cls} />;
+    case 'equipment':
+      return <Monitor className={cls} />;
+    case 'contract':
+      return <FileSignature className={cls} />;
+    case 'quote':
+      return <FileText className={cls} />;
+    case 'invoice':
+      return <DollarSign className={cls} />;
+    default:
+      return <ClipboardList className={cls} />;
+  }
 }
 
 interface CommandPaletteProps {
@@ -67,25 +112,23 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     }
   }, []);
 
-  // Fetch data for search
-  const { data: customers = [] } = useQuery<any[]>({
-    queryKey: ['/api/customers'],
-    enabled: open && search.length > 0,
-  });
+  // COP-I05: one ranked server search instead of downloading four full lists and
+  // filtering them in the browser. /api/universal-search covers business records,
+  // deals, activities, quotes, invoices, equipment (serial + asset tag) and
+  // contracts (contract number), scores relevance server-side, and is tenant-scoped
+  // in every branch. Debounced so it does not fire on every keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 180);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const { data: tickets = [] } = useQuery<any[]>({
-    queryKey: ['/api/service-tickets'],
-    enabled: open && search.length > 0,
-  });
-
-  const { data: equipment = [] } = useQuery<any[]>({
-    queryKey: ['/api/equipment'],
-    enabled: open && search.length > 0,
-  });
-
-  const { data: invoices = [] } = useQuery<any[]>({
-    queryKey: ['/api/invoices'],
-    enabled: open && search.length > 0,
+  const { data: searchHits = [], isFetching: searching } = useQuery<UniversalSearchHit[]>({
+    queryKey: ['/api/universal-search', debouncedSearch],
+    queryFn: () =>
+      apiRequest(`/api/universal-search?q=${encodeURIComponent(debouncedSearch)}&limit=20`),
+    enabled: open && debouncedSearch.trim().length >= 2,
+    staleTime: 20_000,
   });
 
   // Quick actions
@@ -172,95 +215,25 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     return canAccessItem(action.url.split('?')[0]);
   });
 
-  // Filter and map results
-  const searchResults = useCallback((): {
-    customers: SearchResult[];
-    equipment: SearchResult[];
-    tickets: SearchResult[];
-    invoices: SearchResult[];
-  } => {
-    if (!search || search.length < 2) {
-      return { customers: [], equipment: [], tickets: [], invoices: [] };
+  // COP-I05: group the server's ranked hits by type, preserving relevance order
+  // within each group. The server already sorted, so this only buckets.
+  const grouped = useMemo(() => {
+    const buckets = new Map<string, SearchResult[]>();
+    for (const hit of searchHits) {
+      const mapped: SearchResult = {
+        id: hit.id,
+        type: 'action',
+        title: hit.title,
+        subtitle: hit.subtitle,
+        url: hit.path,
+        icon: iconForType(hit.type),
+      };
+      const list = buckets.get(hit.type) ?? [];
+      list.push(mapped);
+      buckets.set(hit.type, list);
     }
-
-    const searchLower = search.toLowerCase();
-
-    const filteredCustomers: SearchResult[] = (customers || [])
-      .filter(
-        (c: any) =>
-          c.companyName?.toLowerCase().includes(searchLower) ||
-          c.primaryContactName?.toLowerCase().includes(searchLower) ||
-          c.primaryContactEmail?.toLowerCase().includes(searchLower),
-      )
-      .slice(0, 5)
-      .map((c: any) => ({
-        id: c.id,
-        type: 'customer' as const,
-        title: c.companyName,
-        subtitle: c.primaryContactName || c.primaryContactEmail,
-        url: `/customers/${c.id}`,
-        icon: <Building2 className="h-4 w-4" />,
-      }));
-
-    const filteredEquipment: SearchResult[] = (equipment || [])
-      .filter(
-        (e: any) =>
-          e.equipmentName?.toLowerCase().includes(searchLower) ||
-          e.model?.toLowerCase().includes(searchLower) ||
-          e.serialNumber?.toLowerCase().includes(searchLower),
-      )
-      .slice(0, 5)
-      .map((e: any) => ({
-        id: e.id,
-        type: 'equipment' as const,
-        title: e.equipmentName || e.model,
-        subtitle: `SN: ${e.serialNumber || 'N/A'}`,
-        url: `/equipment/${e.id}`,
-        icon: <Monitor className="h-4 w-4" />,
-      }));
-
-    const filteredTickets: SearchResult[] = (tickets || [])
-      .filter(
-        (t: any) =>
-          t.ticketNumber?.toLowerCase().includes(searchLower) ||
-          t.description?.toLowerCase().includes(searchLower) ||
-          t.priority?.toLowerCase().includes(searchLower),
-      )
-      .slice(0, 5)
-      .map((t: any) => ({
-        id: t.id,
-        type: 'ticket' as const,
-        title: `${t.ticketNumber || 'Ticket'} - ${t.description?.substring(0, 50) || 'Service Request'}`,
-        subtitle: `Priority: ${t.priority || 'Medium'}`,
-        url: `/service-hub/${t.id}`,
-        icon: <Wrench className="h-4 w-4" />,
-      }));
-
-    const filteredInvoices: SearchResult[] = (invoices || [])
-      .filter(
-        (i: any) =>
-          i.invoiceNumber?.toLowerCase().includes(searchLower) ||
-          i.customerName?.toLowerCase().includes(searchLower),
-      )
-      .slice(0, 5)
-      .map((i: any) => ({
-        id: i.id,
-        type: 'invoice' as const,
-        title: `${i.invoiceNumber || 'Invoice'} - ${i.customerName || 'Unknown'}`,
-        subtitle: `$${i.totalAmount || '0.00'}`,
-        url: `/invoices/${i.id}`,
-        icon: <DollarSign className="h-4 w-4" />,
-      }));
-
-    return {
-      customers: filteredCustomers,
-      equipment: filteredEquipment,
-      tickets: filteredTickets,
-      invoices: filteredInvoices,
-    };
-  }, [search, customers, equipment, tickets, invoices]);
-
-  const results = searchResults();
+    return buckets;
+  }, [searchHits]);
 
   // Add to recent items
   const addToRecent = useCallback((item: SearchResult) => {
@@ -274,7 +247,6 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     });
   }, []);
 
-  // Handle item selection
   const onSelect = useCallback(
     (item: SearchResult) => {
       if (item.url) {
@@ -292,12 +264,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     (action) => search.length === 0 || action.title.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const hasResults =
-    results.customers.length > 0 ||
-    results.equipment.length > 0 ||
-    results.tickets.length > 0 ||
-    results.invoices.length > 0 ||
-    filteredActions.length > 0;
+  const hasResults = grouped.size > 0 || filteredActions.length > 0;
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
@@ -350,90 +317,27 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         {/* Search Results */}
         {search.length > 0 && (
           <>
-            {results.customers.length > 0 && (
-              <>
-                <CommandGroup heading="Customers">
-                  {results.customers.map((customer) => (
-                    <CommandItem
-                      key={customer.id}
-                      value={customer.title}
-                      onSelect={() => onSelect(customer)}
-                    >
-                      {customer.icon}
-                      <div className="ml-2">
-                        <div className="font-medium">{customer.title}</div>
-                        {customer.subtitle && (
-                          <div className="text-xs text-muted-foreground">{customer.subtitle}</div>
-                        )}
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-                <CommandSeparator />
-              </>
-            )}
-
-            {results.equipment.length > 0 && (
-              <>
-                <CommandGroup heading="Equipment">
-                  {results.equipment.map((item) => (
-                    <CommandItem key={item.id} value={item.title} onSelect={() => onSelect(item)}>
-                      {item.icon}
-                      <div className="ml-2">
-                        <div className="font-medium">{item.title}</div>
-                        {item.subtitle && (
-                          <div className="text-xs text-muted-foreground">{item.subtitle}</div>
-                        )}
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-                <CommandSeparator />
-              </>
-            )}
-
-            {results.tickets.length > 0 && (
-              <>
-                <CommandGroup heading="Service Requests">
-                  {results.tickets.map((ticket) => (
-                    <CommandItem
-                      key={ticket.id}
-                      value={ticket.title}
-                      onSelect={() => onSelect(ticket)}
-                    >
-                      {ticket.icon}
-                      <div className="ml-2">
-                        <div className="font-medium">{ticket.title}</div>
-                        {ticket.subtitle && (
-                          <div className="text-xs text-muted-foreground">{ticket.subtitle}</div>
-                        )}
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-                <CommandSeparator />
-              </>
-            )}
-
-            {results.invoices.length > 0 && (
-              <CommandGroup heading="Invoices">
-                {results.invoices.map((invoice) => (
-                  <CommandItem
-                    key={invoice.id}
-                    value={invoice.title}
-                    onSelect={() => onSelect(invoice)}
-                  >
-                    {invoice.icon}
-                    <div className="ml-2">
-                      <div className="font-medium">{invoice.title}</div>
-                      {invoice.subtitle && (
-                        <div className="text-xs text-muted-foreground">{invoice.subtitle}</div>
+            {/* COP-I05: server-ranked hits, grouped by object type. */}
+            {Array.from(grouped.entries()).map(([type, items]) => (
+              <CommandGroup
+                key={type}
+                heading={TYPE_LABELS[type as UniversalSearchHit['type']] ?? type}
+              >
+                {items.map((item) => (
+                  <CommandItem key={item.id} value={item.title} onSelect={() => onSelect(item)}>
+                    {item.icon}
+                    <div className="ml-2 min-w-0">
+                      <div className="font-medium truncate">{item.title}</div>
+                      {item.subtitle && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {item.subtitle}
+                        </div>
                       )}
                     </div>
                   </CommandItem>
                 ))}
               </CommandGroup>
-            )}
+            ))}
           </>
         )}
       </CommandList>
