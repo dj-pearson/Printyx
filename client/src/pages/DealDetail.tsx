@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { NotesPanel } from '@/components/crm/NotesPanel';
+import { DealInsightsPanel } from '@/components/crm/DealInsightsPanel';
 import {
   ArrowLeft,
   Building2,
@@ -51,7 +52,6 @@ import {
   FileText,
   AlertTriangle,
   RefreshCw,
-  Sparkles,
   CheckCircle2,
   Printer,
   ListChecks,
@@ -511,13 +511,9 @@ export default function DealDetail() {
                 <CardTitle className="text-sm">Insights</CardTitle>
               </CardHeader>
               <CardContent>
-                {/* COP-B11 fills this. Deliberately shows nothing rather than a
-                    fabricated score — see CRMX-001. */}
-                <EmptyState
-                  icon={Sparkles}
-                  title="No insights yet"
-                  description="Deal scoring and the AI summary arrive with COP-B11, computed from this deal's real interaction history."
-                />
+                {/* COP-B11: a real, inspectable score. Renders "not enough
+                    signal" rather than a number when the deal is too sparse. */}
+                <DealInsightsPanel deal={deal} activityCount={entries.length} />
               </CardContent>
             </Card>
 
