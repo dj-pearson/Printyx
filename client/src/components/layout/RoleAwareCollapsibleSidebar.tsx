@@ -235,12 +235,15 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/prospects*',
       '/crm*',
       '/business-records*',
+      '/today*',
     ],
     // COP-M02: grouped Work / Sell / Manage instead of one flat 17-item list.
     // Every route is unchanged — this story moves and groups, it does not rewire.
     // Config entries (Custom Fields, Proposal Branding, Pipeline Configuration)
     // moved out to Settings; Meeting Transcription moved in from Productivity.
     children: [
+      // COP-B01: TodayDashboard existed and was reachable from NO navigation.
+      { title: 'My Day', path: '/today', icon: Zap, group: 'Work' },
       { title: 'Leads', path: '/leads-management', icon: UserPlus, group: 'Work' },
       { title: 'Prospects', path: '/prospects', icon: Users, group: 'Work' },
       { title: 'Customers', path: '/customers', icon: UserCheck, group: 'Work' },
