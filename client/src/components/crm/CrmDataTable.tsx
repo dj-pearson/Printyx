@@ -53,6 +53,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Rocket,
+  AlertTriangle,
+  RefreshCw,
+  FilterX,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -87,6 +91,10 @@ interface CrmDataTableProps {
   rowActions?: CrmRowAction[];
   /** COP-M01: report the server-side total up so the shell's bulk toolbar can show it. */
   onTotalCountChange?: (total: number) => void;
+  /** COP-I04: empty-state wiring supplied by the shell. */
+  isFiltered?: boolean;
+  onClearFilters?: () => void;
+  onCreateNew?: () => void;
   /** CRMX-012: persisted column config for the active saved view. */
   columnConfig?: ColumnConfigEntry[] | null;
   /** CRMX-012: called when the user changes columns (parent persists it). */
@@ -112,6 +120,9 @@ export function CrmDataTable({
   onSelectionChange,
   rowActions,
   onTotalCountChange,
+  isFiltered,
+  onClearFilters,
+  onCreateNew,
   columnConfig,
   onColumnConfigChange,
   columnsPersist = true,
@@ -162,7 +173,7 @@ export function CrmDataTable({
     ],
   );
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey,
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -190,6 +201,9 @@ export function CrmDataTable({
   });
 
   const records = data?.records ?? [];
+  // COP-I04: prefer the shell's flag, but fall back to local state so the table
+  // still tells the two empty cases apart when used outside the shell.
+  const narrowed = isFiltered ?? (Boolean(search) || Object.keys(activeFilters).length > 0);
   const totalRecords = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
 
@@ -310,6 +324,27 @@ export function CrmDataTable({
     );
   }
 
+  // COP-I04: a failed fetch used to fall through and render as an EMPTY table —
+  // indistinguishable from "you have no records", which is a very different
+  // thing to tell a user. Fail loudly and offer the retry.
+  if (isError && records.length === 0) {
+    return (
+      <div className="p-4">
+        <EmptyState
+          icon={AlertTriangle}
+          type="error"
+          title={`Could not load ${config.labelPlural.toLowerCase()}`}
+          description={
+            error instanceof Error
+              ? error.message
+              : 'The request failed. This is a loading problem, not an empty list.'
+          }
+          action={{ label: 'Try again', onClick: () => refetch(), icon: RefreshCw }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       {onColumnConfigChange && (
@@ -375,29 +410,41 @@ export function CrmDataTable({
             {records.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleFields.length + 2} className="p-0">
-                  {/* CRMX-014: helpful empty state with a primary CTA. */}
-                  <EmptyState
-                    title={
-                      search || Object.keys(activeFilters).length > 0
-                        ? `No ${config.labelPlural.toLowerCase()} match your filters`
-                        : `No ${config.labelPlural.toLowerCase()} yet`
-                    }
-                    description={
-                      search || Object.keys(activeFilters).length > 0
-                        ? 'Try adjusting your search or filters.'
-                        : `Get started by importing data or following the setup guide.`
-                    }
-                    type={search || Object.keys(activeFilters).length > 0 ? 'search' : 'default'}
-                    action={
-                      search || Object.keys(activeFilters).length > 0
-                        ? undefined
-                        : {
-                            label: 'Getting started guide',
-                            onClick: () => setLocation('/getting-started'),
-                            icon: Rocket,
-                          }
-                    }
-                  />
+                  {/* CRMX-014 + COP-I04: "no matches" and "none yet" are different
+                      problems and get different actions — clearing filters is what
+                      brings rows back, and a create button would not. */}
+                  {narrowed ? (
+                    <EmptyState
+                      type="search"
+                      title={`No ${config.labelPlural.toLowerCase()} match your filters`}
+                      description="Nothing here matches the current search and filters. Your records are still there."
+                      action={
+                        onClearFilters
+                          ? { label: 'Clear filters', onClick: onClearFilters, icon: FilterX }
+                          : undefined
+                      }
+                    />
+                  ) : (
+                    <EmptyState
+                      title={`No ${config.labelPlural.toLowerCase()} yet`}
+                      description={`${config.labelPlural} you create will appear here, with saved views, filters and bulk actions.`}
+                      action={
+                        onCreateNew
+                          ? {
+                              label: `Create ${config.label.toLowerCase()}`,
+                              onClick: onCreateNew,
+                              icon: Plus,
+                            }
+                          : undefined
+                      }
+                      secondaryAction={{
+                        label: 'Getting started guide',
+                        onClick: () => setLocation('/getting-started'),
+                        variant: 'outline',
+                        icon: Rocket,
+                      }}
+                    />
+                  )}
                 </TableCell>
               </TableRow>
             ) : (

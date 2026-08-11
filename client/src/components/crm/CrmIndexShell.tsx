@@ -112,6 +112,16 @@ export interface CrmViewRenderProps {
   onSelectionChange: (ids: Set<string>) => void;
   /** COP-M01: let the table report its server-side total back to the shell. */
   onTotalCountChange: (total: number) => void;
+  /**
+   * COP-I04: empty-state wiring. `onClearFilters` lets a filtered-empty view
+   * offer the action that actually helps (clear the filters) instead of a
+   * create button that would not bring the missing rows back; `onCreateNew` is
+   * the real create flow for a genuinely-empty view.
+   */
+  onClearFilters: () => void;
+  onCreateNew?: () => void;
+  /** COP-I04: true when a search or filter is narrowing the view. */
+  isFiltered: boolean;
 }
 
 export function CrmIndexShell({
@@ -434,6 +444,15 @@ export function CrmIndexShell({
     toast,
   ]);
 
+  // COP-I04: clear everything narrowing the view, so a "no matches" empty state
+  // can offer the one action that brings the rows back. Distinct from the
+  // toolbar's handleClearFilters, which deliberately leaves the search box alone.
+  const handleClearSearchAndFilters = useCallback(() => {
+    setSearch('');
+    setActiveFilters({});
+    setIsModified(true);
+  }, []);
+
   // ─── Render Props ───────────────────────────────────────────────
   const viewRenderProps: CrmViewRenderProps = {
     objectType,
@@ -447,6 +466,10 @@ export function CrmIndexShell({
     selectedIds,
     onSelectionChange: setSelectedIds,
     onTotalCountChange: setTotalCount,
+    // COP-I04: empty-state wiring.
+    isFiltered: Boolean(search.trim()) || Object.keys(activeFilters).length > 0,
+    onClearFilters: handleClearSearchAndFilters,
+    onCreateNew,
   };
 
   const activeFilterCount = Object.keys(activeFilters).length;

@@ -11546,8 +11546,8 @@
         "npm run check && npm run lint pass."
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "[PHASE 0 / UX] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Cheap, high-perceived-quality, and it lands naturally alongside the nav repoint since reps will be seeing the shell pages for the first time.",
+      "passes": true,
+      "notes": "[PHASE 0 / UX] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Cheap, high-perceived-quality, and it lands naturally alongside the nav repoint since reps will be seeing the shell pages for the first time. [DONE 2026-08-11: the biggest real gap was NOT missing empty states — the indexes already had one — it was that a FAILED FETCH rendered as an EMPTY table/board, telling the user 'you have no deals' when the truth was 'the request failed'. CrmDataTable and EnhancedPipelineBoard now destructure isError/error/refetch and render a distinct error state with a Try again action. Second fix: the two empty cases now get DIFFERENT actions — filtered-empty offers 'Clear filters' (a create button would not bring the missing rows back), truly-empty offers 'Create <Object>' wired to the real create dialog plus the getting-started guide as a secondary. The shell owns filter state so it supplies isFiltered/onClearFilters/onCreateNew through CrmViewRenderProps; a new handleClearSearchAndFilters clears BOTH search and filters, kept separate from the existing toolbar handleClearFilters which deliberately leaves the search box alone. Also fixed a tautology in the board's per-column empty text: `records.length === 0 ? 'records' : 'deals'` sat inside a block already guarded by that same condition, so the 'deals' branch was unreachable. NotesPanel already had correct loading/error/empty states and was left alone.]",
       "category": "crm-copier-overhaul"
     },
     {

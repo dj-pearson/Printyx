@@ -255,6 +255,9 @@ export default function CrmDealsPage() {
         onTotalCountChange={props.onTotalCountChange}
         rowActions={rowActions}
         sortConfig={props.sortConfig}
+        isFiltered={props.isFiltered}
+        onClearFilters={props.onClearFilters}
+        onCreateNew={props.onCreateNew}
         columnConfig={props.columnConfig}
         onColumnConfigChange={props.onColumnConfigChange}
         columnsPersist={props.columnsPersist}
