@@ -3,7 +3,7 @@
  * Uses the CRM object registry for field definitions and rendering.
  * Part of CRM-002/CRM-006: Table view with inline editing support.
  */
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
@@ -56,6 +56,24 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/**
+ * COP-M01: a per-object row action, rendered in the row overflow menu beneath
+ * the built-in View/Edit entries. Pages supply these so the shell reaches parity
+ * with the legacy index pages (convert, deactivate, assign owner, delete, ...).
+ */
+/** A CRM row as returned by the list endpoints: an id plus registry/custom fields. */
+export type CrmRecord = { id: string } & Record<string, unknown>;
+
+export interface CrmRowAction {
+  id: string;
+  label: string;
+  icon?: React.ElementType;
+  variant?: 'default' | 'destructive';
+  /** Hide the action for rows it does not apply to (e.g. Reactivate on an active record). */
+  isAvailable?: (record: CrmRecord) => boolean;
+  onClick: (record: CrmRecord) => void | Promise<void>;
+}
+
 interface CrmDataTableProps {
   objectType: CrmObjectType;
   search: string;
@@ -65,6 +83,10 @@ interface CrmDataTableProps {
   /** Selected record IDs for bulk operations */
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  /** COP-M01: per-object row actions appended to the row overflow menu. */
+  rowActions?: CrmRowAction[];
+  /** COP-M01: report the server-side total up so the shell's bulk toolbar can show it. */
+  onTotalCountChange?: (total: number) => void;
   /** CRMX-012: persisted column config for the active saved view. */
   columnConfig?: ColumnConfigEntry[] | null;
   /** CRMX-012: called when the user changes columns (parent persists it). */
@@ -88,6 +110,8 @@ export function CrmDataTable({
   onSortChange,
   selectedIds,
   onSelectionChange,
+  rowActions,
+  onTotalCountChange,
   columnConfig,
   onColumnConfigChange,
   columnsPersist = true,
@@ -168,6 +192,11 @@ export function CrmDataTable({
   const records = data?.records ?? [];
   const totalRecords = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+
+  // COP-M01: surface the server-side total to the shell (bulk toolbar count).
+  useEffect(() => {
+    onTotalCountChange?.(totalRecords);
+  }, [totalRecords, onTotalCountChange]);
 
   // Column sort handler
   const handleSort = useCallback(
@@ -426,6 +455,25 @@ export function CrmDataTable({
                         >
                           <Edit className="h-4 w-4 mr-2" /> Edit
                         </DropdownMenuItem>
+                        {/* COP-M01: per-object actions supplied by the page. */}
+                        {(rowActions ?? [])
+                          .filter((action) => action.isAvailable?.(record) ?? true)
+                          .map((action) => {
+                            const ActionIcon = action.icon;
+                            return (
+                              <DropdownMenuItem
+                                key={action.id}
+                                onClick={() => action.onClick(record)}
+                                className={cn(
+                                  action.variant === 'destructive' &&
+                                    'text-destructive focus:text-destructive',
+                                )}
+                              >
+                                {ActionIcon && <ActionIcon className="h-4 w-4 mr-2" />}
+                                {action.label}
+                              </DropdownMenuItem>
+                            );
+                          })}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
