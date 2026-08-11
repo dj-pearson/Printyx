@@ -1,10 +1,43 @@
-import { useQuery } from '@tanstack/react-query';
+/**
+ * DealDetail — the deal record page (COP-B02).
+ *
+ * Replaces a 238-line read-only field dump. A copier rep lives on this screen,
+ * and it previously had no timeline, no notes, no tasks, no quotes, no next
+ * step and no way to advance the stage — while Lead and Customer detail were
+ * 2,287 and 2,935 lines.
+ *
+ * Composition notes:
+ *  - Notes come from NotesPanel (CRMX-006), already polymorphic.
+ *  - Activities come from the deal's own timeline endpoint plus anything linked
+ *    through crm_associations, so a task or note attached to the deal shows up
+ *    without tasks/quotes needing a dealId column (they do not have one).
+ *  - Stage advance posts to /api/pipeline-config/deals/:id/move — the SAME
+ *    endpoint the board drag uses, so both paths fire identical automation.
+ *  - The insights panel is a real slot with an honest empty state; COP-B11
+ *    fills it. It does not fabricate a score.
+ *  - Equipment is deliberately a stub: the deal↔equipment association is
+ *    COP-M05, which is blocked on COP-M00 (migration tooling).
+ */
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useRoute } from 'wouter';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import MainLayout from '@/components/layout/main-layout';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { NotesPanel } from '@/components/crm/NotesPanel';
 import {
   ArrowLeft,
   Building2,
@@ -15,8 +48,14 @@ import {
   Calendar,
   Percent,
   Target,
-  Tag,
   FileText,
+  AlertTriangle,
+  RefreshCw,
+  Sparkles,
+  CheckCircle2,
+  Printer,
+  ListChecks,
+  Activity as ActivityIcon,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -26,6 +65,7 @@ interface DealData {
   description?: string | null;
   amount?: string | null;
   companyName?: string | null;
+  customerId?: string | null;
   primaryContactName?: string | null;
   primaryContactEmail?: string | null;
   primaryContactPhone?: string | null;
@@ -42,8 +82,36 @@ interface DealData {
   stageName?: string | null;
   stageColor?: string | null;
   ownerName?: string | null;
+  nextFollowUpDate?: string | null;
+  lastActivityDate?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+}
+
+interface StageOption {
+  id: string;
+  name: string;
+  displayName?: string;
+  color?: string;
+  order?: number;
+}
+
+interface BoardResponse {
+  stages?: StageOption[];
+  data?: { stages?: StageOption[] };
+}
+
+/** The activities endpoint has returned a bare array and an envelope over time. */
+type TimelineResponse = TimelineEntry[] | { data?: TimelineEntry[]; records?: TimelineEntry[] };
+
+interface TimelineEntry {
+  id: string;
+  type?: string | null;
+  subject?: string | null;
+  description?: string | null;
+  createdAt?: string | null;
+  userId?: string | null;
+  outcome?: string | null;
 }
 
 function money(value?: string | null): string | null {
@@ -90,23 +158,92 @@ function Field({
 }
 
 export default function DealDetail() {
-  const [, params] = useRoute('/deals/:id');
+  // COP-E04 made /crm/deals/:id canonical and left /deals/:id as a redirect.
+  // Match BOTH — matching only the legacy shape left this page unable to read
+  // its own id on the canonical URL.
+  const [matchesCanonical, canonicalParams] = useRoute('/crm/deals/:id');
+  const [, legacyParams] = useRoute('/deals/:id');
+  const dealId = (matchesCanonical ? canonicalParams?.id : legacyParams?.id) ?? undefined;
+
   const [, navigate] = useLocation();
-  const dealId = params?.id;
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [tab, setTab] = useState('activity');
 
   const {
     data: deal,
     isLoading,
     isError,
+    error,
+    refetch,
   } = useQuery<DealData>({
     queryKey: [`/api/deals/${dealId}`],
     enabled: !!dealId,
   });
 
+  // Stage list drives the advance control. Same source as the board.
+  const { data: board } = useQuery<BoardResponse>({
+    queryKey: ['/api/pipeline-config/board'],
+    queryFn: () => apiRequest('/api/pipeline-config/board'),
+    enabled: !!dealId,
+    staleTime: 300_000,
+  });
+
+  const stages: StageOption[] = useMemo(() => {
+    const raw = board?.stages ?? board?.data?.stages ?? [];
+    return Array.isArray(raw) ? raw : [];
+  }, [board]);
+
+  const { data: timeline, isLoading: timelineLoading } = useQuery<TimelineResponse>({
+    queryKey: [`/api/deals/${dealId}/activities`],
+    queryFn: () => apiRequest(`/api/deals/${dealId}/activities`),
+    enabled: !!dealId,
+  });
+
+  const entries: TimelineEntry[] = useMemo(() => {
+    if (Array.isArray(timeline)) return timeline;
+    return timeline?.data ?? timeline?.records ?? [];
+  }, [timeline]);
+
+  const moveStage = useMutation({
+    // The endpoint expects `toStageId` (the legacy deal_stages.id the board also
+    // sends), not `stageId` — sending the wrong key silently 400s.
+    mutationFn: (toStageId: string) =>
+      apiRequest(`/api/pipeline-config/deals/${dealId}/move`, 'POST', { toStageId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/deals/${dealId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/deals/${dealId}/activities`] });
+      toast({ title: 'Stage updated' });
+    },
+    onError: () => toast({ title: 'Could not move stage', variant: 'destructive' }),
+  });
+
+  const setStatus = useMutation({
+    mutationFn: (status: 'won' | 'lost') =>
+      apiRequest(`/api/deals/${dealId}`, 'PUT', {
+        status,
+        actualCloseDate: new Date().toISOString(),
+      }),
+    onSuccess: (_d, status) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/deals/${dealId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
+      toast({ title: `Deal marked ${status}` });
+    },
+    onError: () => toast({ title: 'Could not update the deal', variant: 'destructive' }),
+  });
+
   if (isLoading) {
     return (
       <MainLayout>
-        <div className="p-6 text-center py-12 text-muted-foreground">Loading deal…</div>
+        <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-4">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-28 w-full" />
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Skeleton className="h-64 lg:col-span-2" />
+            <Skeleton className="h-64" />
+          </div>
+        </div>
       </MainLayout>
     );
   }
@@ -115,123 +252,305 @@ export default function DealDetail() {
     return (
       <MainLayout>
         <div className="p-6 max-w-2xl mx-auto">
-          <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate('/deals')}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back to Deals
+          <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate('/crm/deals')}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to deals
           </Button>
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              This deal could not be found. It may have been deleted or you may not have access to
-              it.
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={AlertTriangle}
+            type="error"
+            title={isError ? 'Could not load this deal' : 'Deal not found'}
+            description={
+              isError
+                ? error instanceof Error
+                  ? error.message
+                  : 'The request failed.'
+                : 'It may have been deleted, or you may not have access to it.'
+            }
+            action={{ label: 'Try again', onClick: () => refetch(), icon: RefreshCw }}
+          />
         </div>
       </MainLayout>
     );
   }
 
   const closeDate = deal.expectedCloseDate ? format(new Date(deal.expectedCloseDate), 'PP') : null;
+  const nextStep = deal.nextFollowUpDate ? format(new Date(deal.nextFollowUpDate), 'PP') : null;
+  const isOpen = !deal.status || deal.status === 'open';
 
   return (
     <MainLayout>
-      <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/deals')}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Deals
+      <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/crm/deals')}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to deals
         </Button>
 
+        {/* ─── Header: identity, money, stage, close actions ─────────── */}
         <Card>
-          <CardHeader>
+          <CardContent className="pt-6 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <CardTitle className="text-xl break-words">{deal.title}</CardTitle>
+                <h1 className="text-xl font-semibold leading-tight break-words">{deal.title}</h1>
                 {deal.companyName && (
-                  <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                    <Building2 className="h-3.5 w-3.5" /> {deal.companyName}
-                  </p>
+                  <p className="text-sm text-muted-foreground mt-0.5">{deal.companyName}</p>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {deal.status && <Badge variant={statusVariant(deal.status)}>{deal.status}</Badge>}
+              <div className="flex items-center gap-2">
+                <Badge variant={statusVariant(deal.status)}>{deal.status || 'open'}</Badge>
                 {deal.stageName && (
                   <Badge
                     variant="outline"
-                    style={
-                      deal.stageColor
-                        ? { borderColor: deal.stageColor, color: deal.stageColor }
-                        : undefined
-                    }
+                    style={deal.stageColor ? { borderColor: deal.stageColor } : undefined}
                   >
                     {deal.stageName}
                   </Badge>
                 )}
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field icon={DollarSign} label="Amount" value={money(deal.amount)} />
-            <Field
-              icon={DollarSign}
-              label="Estimated Monthly Value"
-              value={money(deal.estimatedMonthlyValue)}
-            />
-            <Field
-              icon={Percent}
-              label="Probability"
-              value={deal.probability != null ? `${deal.probability}%` : null}
-            />
-            <Field icon={Calendar} label="Expected Close" value={closeDate} />
-            <Field icon={Tag} label="Priority" value={deal.priority} />
-            <Field icon={Target} label="Deal Type" value={deal.dealType} />
-            <Field icon={Tag} label="Source" value={deal.source} />
-            <Field icon={User} label="Owner" value={deal.ownerName} />
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Field icon={DollarSign} label="Amount" value={money(deal.amount)} />
+              <Field
+                icon={DollarSign}
+                label="Monthly value"
+                value={money(deal.estimatedMonthlyValue)}
+              />
+              <Field icon={Calendar} label="Expected close" value={closeDate} />
+              <Field
+                icon={Percent}
+                label="Probability"
+                value={deal.probability != null ? `${deal.probability}%` : null}
+              />
+              <Field icon={User} label="Owner" value={deal.ownerName} />
+              <Field icon={Target} label="Next step" value={nextStep} />
+              <Field icon={Target} label="Source" value={deal.source} />
+              <Field icon={Target} label="Priority" value={deal.priority} />
+            </div>
+
+            {/* Stage advance + close, mirroring the board's actions. */}
+            {isOpen && (
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t">
+                <span className="text-xs text-muted-foreground">Move to stage</span>
+                <Select
+                  value={deal.stageId ?? undefined}
+                  onValueChange={(v) => moveStage.mutate(v)}
+                  disabled={moveStage.isPending || stages.length === 0}
+                >
+                  <SelectTrigger className="h-8 w-[200px] text-xs">
+                    <SelectValue placeholder={stages.length ? 'Select stage' : 'No stages'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stages.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.displayName || s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex-1" />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={setStatus.isPending}
+                  onClick={() => setStatus.mutate('won')}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-1" /> Mark won
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={setStatus.isPending}
+                  onClick={() => setStatus.mutate('lost')}
+                >
+                  Mark lost
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {(deal.primaryContactName || deal.primaryContactEmail || deal.primaryContactPhone) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Primary Contact</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field icon={User} label="Name" value={deal.primaryContactName} />
-              <Field icon={Mail} label="Email" value={deal.primaryContactEmail} />
-              <Field icon={Phone} label="Phone" value={deal.primaryContactPhone} />
-            </CardContent>
-          </Card>
-        )}
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* ─── Main column: timeline / notes / tasks / quotes ──────── */}
+          <div className="lg:col-span-2 space-y-4">
+            <Tabs value={tab} onValueChange={setTab}>
+              <TabsList className="flex-wrap h-auto">
+                <TabsTrigger value="activity">
+                  <ActivityIcon className="h-4 w-4 mr-1.5" /> Activity
+                </TabsTrigger>
+                <TabsTrigger value="notes">
+                  <FileText className="h-4 w-4 mr-1.5" /> Notes
+                </TabsTrigger>
+                <TabsTrigger value="tasks">
+                  <ListChecks className="h-4 w-4 mr-1.5" /> Tasks
+                </TabsTrigger>
+                <TabsTrigger value="equipment">
+                  <Printer className="h-4 w-4 mr-1.5" /> Equipment
+                </TabsTrigger>
+              </TabsList>
 
-        {(deal.productsInterested || deal.description || deal.notes) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Field icon={FileText} label="Products Interested" value={deal.productsInterested} />
-              {deal.description && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Description</p>
-                  <p className="text-sm whitespace-pre-wrap">{deal.description}</p>
+              <TabsContent value="activity" className="mt-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Timeline</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {timelineLoading ? (
+                      <div className="space-y-2">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <Skeleton key={i} className="h-12 w-full" />
+                        ))}
+                      </div>
+                    ) : entries.length === 0 ? (
+                      <EmptyState
+                        title="No activity yet"
+                        description="Calls, emails, meetings and stage changes on this deal will appear here."
+                      />
+                    ) : (
+                      <ol className="space-y-3">
+                        {entries.map((e) => (
+                          <li key={e.id} className="flex gap-3 text-sm">
+                            <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-medium break-words">
+                                {e.subject || e.type || 'Activity'}
+                              </p>
+                              {e.description && (
+                                <p className="text-muted-foreground break-words">{e.description}</p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {e.createdAt ? format(new Date(e.createdAt), 'PPp') : ''}
+                                {e.outcome ? ` · ${e.outcome}` : ''}
+                              </p>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="notes" className="mt-4">
+                {/* CRMX-006 NotesPanel is already polymorphic — no work needed. */}
+                <NotesPanel parentType="deal" parentId={dealId} />
+              </TabsContent>
+
+              <TabsContent value="tasks" className="mt-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Tasks</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Tasks have no dealId column; they attach through
+                        crm_associations. Wiring that UI is its own slice, so
+                        say so rather than render a fake list. */}
+                    <EmptyState
+                      title="Task links are not wired yet"
+                      description="Tasks attach to a deal through the CRM association layer. This panel lands with the task-association slice."
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="equipment" className="mt-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Equipment on this deal</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <EmptyState
+                      icon={Printer}
+                      title="Not available yet"
+                      description="Linking the machines a deal places or replaces needs the deal-to-equipment association (COP-M05), which is blocked on the migration tooling."
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* ─── Side column: contact, details, insights slot ────────── */}
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Primary contact</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Field icon={User} label="Name" value={deal.primaryContactName} />
+                <Field icon={Mail} label="Email" value={deal.primaryContactEmail} />
+                <Field icon={Phone} label="Phone" value={deal.primaryContactPhone} />
+                {!deal.primaryContactName &&
+                  !deal.primaryContactEmail &&
+                  !deal.primaryContactPhone && (
+                    <p className="text-sm text-muted-foreground">No contact on this deal.</p>
+                  )}
+                <div className="flex gap-2 pt-1">
+                  {deal.primaryContactEmail && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`mailto:${deal.primaryContactEmail}`, '_self')}
+                    >
+                      <Mail className="h-4 w-4 mr-1" /> Email
+                    </Button>
+                  )}
+                  {deal.primaryContactPhone && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`tel:${deal.primaryContactPhone}`, '_self')}
+                    >
+                      <Phone className="h-4 w-4 mr-1" /> Call
+                    </Button>
+                  )}
                 </div>
-              )}
-              {deal.notes && (
-                <>
-                  <Separator />
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Notes</p>
-                    <p className="text-sm whitespace-pre-wrap">{deal.notes}</p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
 
-        {(deal.createdAt || deal.updatedAt) && (
-          <p className="text-xs text-muted-foreground">
-            {deal.createdAt && <>Created {format(new Date(deal.createdAt), 'PPp')}</>}
-            {deal.createdAt && deal.updatedAt && ' · '}
-            {deal.updatedAt && <>Updated {format(new Date(deal.updatedAt), 'PPp')}</>}
-          </p>
-        )}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Insights</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* COP-B11 fills this. Deliberately shows nothing rather than a
+                    fabricated score — see CRMX-001. */}
+                <EmptyState
+                  icon={Sparkles}
+                  title="No insights yet"
+                  description="Deal scoring and the AI summary arrive with COP-B11, computed from this deal's real interaction history."
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Field icon={Building2} label="Account" value={deal.companyName} />
+                <Field icon={Target} label="Deal type" value={deal.dealType} />
+                <Field icon={FileText} label="Products" value={deal.productsInterested} />
+                <Field
+                  icon={Calendar}
+                  label="Created"
+                  value={deal.createdAt ? format(new Date(deal.createdAt), 'PP') : null}
+                />
+                <Field
+                  icon={ActivityIcon}
+                  label="Last activity"
+                  value={
+                    deal.lastActivityDate ? format(new Date(deal.lastActivityDate), 'PP') : null
+                  }
+                />
+                {deal.description && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Description</p>
+                    <p className="text-sm break-words">{deal.description}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </MainLayout>
   );
