@@ -11,6 +11,7 @@ import {
   Search,
   Home,
   Users,
+  TrendingUp,
   Wrench,
   Package,
   DollarSign,
@@ -100,6 +101,38 @@ export function KeyboardShortcutsDialog() {
           keys: ['G', 'D'],
           description: 'Go to dispatch board',
           icon: <Calendar className="h-4 w-4" />,
+        },
+        {
+          keys: ['G', 'P'],
+          description: 'Go to pipeline (deals board)',
+          icon: <TrendingUp className="h-4 w-4" />,
+        },
+        {
+          keys: ['G', 'L'],
+          description: 'Go to leads',
+          icon: <Users className="h-4 w-4" />,
+        },
+      ],
+    },
+    {
+      // COP-I02: roving focus over CRM list rows and board cards.
+      title: 'Lists & boards',
+      shortcuts: [
+        {
+          keys: ['J'],
+          description: 'Next row / card',
+        },
+        {
+          keys: ['K'],
+          description: 'Previous row / card',
+        },
+        {
+          keys: ['Enter'],
+          description: 'Open the focused record',
+        },
+        {
+          keys: ['Esc'],
+          description: 'Leave the list',
         },
       ],
     },
@@ -239,11 +272,21 @@ export function useKeyboardNavigation() {
             i: '/invoices',
             w: '/warehouse-operations',
             d: '/service-dispatch',
+            // COP-I02: CRM destinations. 'd' was already dispatch, so the deals
+            // board takes 'p' for pipeline. 'l' follows the CURRENT leads nav
+            // target rather than /crm/leads — that repoint is COP-M01, gated on
+            // COP-B00.
+            p: '/crm/deals',
+            l: '/leads-management',
           };
 
           const route = routes[nextE.key.toLowerCase()];
           if (route) {
-            window.location.href = route;
+            // COP-I02: SPA navigation. This used to assign window.location.href,
+            // which full-page-reloads the app on every keyboard jump — the
+            // opposite of what a keyboard-first shortcut is for.
+            window.history.pushState({}, '', route);
+            window.dispatchEvent(new PopStateEvent('popstate'));
           }
 
           document.removeEventListener('keydown', handleNext);

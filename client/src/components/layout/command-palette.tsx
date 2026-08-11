@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   CommandDialog,
   CommandEmpty,
@@ -45,6 +46,10 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [, navigate] = useLocation();
+  // COP-I02: the palette must not offer what the sidebar hides. canAccessItem
+  // resolves against the SAME navigation-permissions rules the sidebar uses, so
+  // the two can never drift apart.
+  const { canAccessItem } = usePermissions();
   const [search, setSearch] = useState('');
   const [recentItems, setRecentItems] = useState<SearchResult[]>([]);
 
@@ -159,6 +164,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       icon: <Package className="h-4 w-4" />,
     },
   ];
+
+  // COP-I02: drop any action whose destination the user cannot reach. Paths
+  // carry a query string, so compare on the pathname only.
+  const permittedActions = quickActions.filter((action) => {
+    if (!action.url) return true;
+    return canAccessItem(action.url.split('?')[0]);
+  });
 
   // Filter and map results
   const searchResults = useCallback((): {
@@ -276,7 +288,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   );
 
   // Filter quick actions by search
-  const filteredActions = quickActions.filter(
+  const filteredActions = permittedActions.filter(
     (action) => search.length === 0 || action.title.toLowerCase().includes(search.toLowerCase()),
   );
 

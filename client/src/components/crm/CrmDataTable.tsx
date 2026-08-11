@@ -23,6 +23,7 @@ import {
   type TableFieldDef,
 } from '@/lib/crm-columns';
 import { ColumnPicker } from '@/components/crm/ColumnPicker';
+import { useListKeyboardNav } from '@/hooks/useListKeyboardNav';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
   Table,
@@ -139,6 +140,8 @@ export function CrmDataTable({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  // COP-I02: j/k + arrow navigation over the rows.
+  const listNavRef = useListKeyboardNav<HTMLDivElement>();
   const [page, setPage] = useState(1);
   const [localSortField, setLocalSortField] = useState(sortConfig?.field ?? 'createdAt');
   const [localSortDir, setLocalSortDir] = useState<'asc' | 'desc'>(sortConfig?.direction ?? 'desc');
@@ -356,7 +359,7 @@ export function CrmDataTable({
           />
         </div>
       )}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" ref={listNavRef}>
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
@@ -451,6 +454,7 @@ export function CrmDataTable({
               records.map((record: any) => (
                 <TableRow
                   key={record.id}
+                  data-list-row
                   tabIndex={0}
                   aria-label={`View ${config.labelPlural.replace(/s$/i, '').toLowerCase()} details`}
                   className={cn(

@@ -42,6 +42,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useListKeyboardNav } from '@/hooks/useListKeyboardNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -167,8 +168,13 @@ function DealCard({
     <Card
       ref={setNodeRef}
       style={style}
+      // COP-I02: cards join the j/k roving-focus list and open on Enter.
+      // Drag remains pointer-only; this is the keyboard path to the same action.
+      {...(!isDragOverlay ? { 'data-list-row': true, tabIndex: 0 } : {})}
+      onClick={() => !isDragOverlay && onViewDetail?.(record)}
       className={cn(
         'p-3 cursor-grab active:cursor-grabbing transition-shadow',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isDragging && 'opacity-50',
         isDragOverlay && 'shadow-lg rotate-2 ring-2 ring-primary',
         !isDragging && 'hover:shadow-md',
@@ -490,6 +496,9 @@ export function EnhancedPipelineBoard({
     [records, stages, stageChangeMutation, toast],
   );
 
+  // COP-I02: j/k + arrow navigation over the board cards.
+  const boardNavRef = useListKeyboardNav<HTMLDivElement>();
+
   // Active dragging record
   const activeRecord = activeId ? records.find((r) => r.id === activeId) : null;
 
@@ -530,7 +539,7 @@ export function EnhancedPipelineBoard({
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex gap-3 p-4 overflow-x-auto h-full">
+      <div className="flex gap-3 p-4 overflow-x-auto h-full" ref={boardNavRef}>
         {stages.map((stage) => (
           <StageColumn
             key={stage.id}
