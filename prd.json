@@ -11580,7 +11580,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 1 / CLEANUP] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Hard dependency on COP-M01 landing AND being exercised — do not delete on the strength of a static read. Contacts.tsx also reads the standalone supabase-companies source, so check COP-E06 (model consolidation) does not need it first.",
+      "notes": "[PHASE 1 / CLEANUP] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Hard dependency on COP-M01 landing AND being exercised — do not delete on the strength of a static read. Contacts.tsx also reads the standalone supabase-companies source, so check COP-E06 (model consolidation) does not need it first. [GATED 2026-08-11 (loop triage): blocked on COP-B00. Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11597,7 +11597,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 1 / IA] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. This is the story that turns the product's best CRM idea (zero-data-loss lifecycle on business_records) from a hidden implementation detail into a visible advantage. Depends on COP-M01 + COP-E04.",
+      "notes": "[PHASE 1 / IA] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. This is the story that turns the product's best CRM idea (zero-data-loss lifecycle on business_records) from a hidden implementation detail into a visible advantage. Depends on COP-M01 + COP-E04. [GATED 2026-08-11 (loop triage): blocked on COP-B00. Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11687,7 +11687,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 1 / SCHEMA] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. This is the join that makes the whole Phase 3 copier wedge possible — COP-B04/B05/B06 all depend on it. Depends on COP-M04.",
+      "notes": "[PHASE 1 / SCHEMA] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. This is the join that makes the whole Phase 3 copier wedge possible — COP-B04/B05/B06 all depend on it. Depends on COP-M04. [GATED 2026-08-11 (loop triage): blocked on COP-M00. Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11743,7 +11743,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 2 / ENGAGEMENT] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Supersedes CRMX-010 — mark that story as folded into this one. Audit evidence: routes-email-autopilot.ts documents its own stubs at lines 35-51 (OAuth, inbox, voice fingerprint, createProviderDraft). Marketing email via SendGrid is already real and is a separate path — do not conflate them.",
+      "notes": "[PHASE 2 / ENGAGEMENT] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Supersedes CRMX-010 — mark that story as folded into this one. Audit evidence: routes-email-autopilot.ts documents its own stubs at lines 35-51 (OAuth, inbox, voice fingerprint, createProviderDraft). Marketing email via SendGrid is already real and is a separate path — do not conflate them. [ENVIRONMENT-BLOCKED 2026-08-11 (loop triage): needs Gmail/Outlook OAuth applications and stored provider secrets — cannot be built or verified in this container.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11761,7 +11761,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 2 / PERF] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Speed is the single most-cited reason reps abandon a CRM; this is a product requirement, not an optimization pass.",
+      "notes": "[PHASE 2 / PERF] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Speed is the single most-cited reason reps abandon a CRM; this is a product requirement, not an optimization pass. [ENVIRONMENT-BLOCKED 2026-08-11 (loop triage): needs a running app plus a tenant seeded to ~5,000 records; the AC is a measured, repeatable benchmark, which cannot be produced here (no DB reachable, no .env).]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11817,7 +11817,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. THE differentiating story in this backlog — a general CRM structurally cannot build it because it does not know what is in the customer's copier room. Audit evidence: equipment.leaseExpiresDate is rendered in exactly ONE place today (CustomerEquipment.tsx:345, a badge) and generates zero pipeline. Depends on COP-M04 + COP-M05. Overlaps the existing renewal auto-quote generator (US-SUPER-010) — reuse its T12-actuals and CPC re-tiering logic rather than duplicating it, and see COP-M06.",
+      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. THE differentiating story in this backlog — a general CRM structurally cannot build it because it does not know what is in the customer's copier room. Audit evidence: equipment.leaseExpiresDate is rendered in exactly ONE place today (CustomerEquipment.tsx:345, a badge) and generates zero pipeline. Depends on COP-M04 + COP-M05. Overlaps the existing renewal auto-quote generator (US-SUPER-010) — reuse its T12-actuals and CPC re-tiering logic rather than duplicating it, and see COP-M06. [GATED 2026-08-11 (loop triage): blocked on COP-M00 (via COP-M04/M05). Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11836,7 +11836,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Depends on COP-M05. The honest-gaps criterion matters: a TCO story built on silently-defaulted rates is worse than no TCO story, because the rep will be corrected in front of the customer.",
+      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Depends on COP-M05. The honest-gaps criterion matters: a TCO story built on silently-defaulted rates is worse than no TCO story, because the rep will be corrected in front of the customer. [GATED 2026-08-11 (loop triage): blocked on COP-M00 (via COP-M05). Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11854,7 +11854,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Audit evidence: LineItemManager.tsx maps 'equipment' to product_models; nothing in the quote-builder tree reads the equipment table. Depends on COP-M05 (+ COP-B05 for the assessment hand-off). Respect the QUOTE-016/017/019/020 invariants documented in CLAUDE.md.",
+      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Audit evidence: LineItemManager.tsx maps 'equipment' to product_models; nothing in the quote-builder tree reads the equipment table. Depends on COP-M05 (+ COP-B05 for the assessment hand-off). Respect the QUOTE-016/017/019/020 invariants documented in CLAUDE.md. [GATED 2026-08-11 (loop triage): blocked on COP-M00 (via COP-M05). Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11872,7 +11872,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Builds on US-SUPER-010 (renewal_auto_quotes, renewal_autoquote_settings, renewal_suppressions). Coordinate with COP-B04 so a lease/contract-end play and a renewal draft do not both create a deal for the same contract.",
+      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Builds on US-SUPER-010 (renewal_auto_quotes, renewal_autoquote_settings, renewal_suppressions). Coordinate with COP-B04 so a lease/contract-end play and a renewal draft do not both create a deal for the same contract. [GATED 2026-08-11 (loop triage): blocked on COP-M00 (via COP-M04). Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11890,7 +11890,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Hard sequencing note: COP-E01 must preserve the reusable parts of TerritoryManagement.tsx before deleting it, or this story restarts from scratch. [SALVAGE NOTE from COP-E01, 2026-08-11: TerritoryManagement.tsx (700 lines) was deleted at parent commit b0c3790 — recover with `git show b0c3790:client/src/pages/TerritoryManagement.tsx`. Do NOT resurrect it as-is: it was phantom-wired and could never have worked. It called /api/territories, /api/territories/stats and /api/territories/types, NONE of which exist — the real API is /api/sales-territories/* in server/routes-lead-assignment.ts (GET list, GET :id, POST, PUT :id, DELETE :id) over the sales_territories table in shared/lead-assignment-schema.ts. It also called apiRequest(url, {method:'DELETE'}), the object-options form, while this codebase's apiRequest signature is apiRequest(url, 'METHOD', body) — so every mutation was broken too. Useful to mine for its Territory interface and UI layout only; rebuild the data layer against the real endpoints.]",
+      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Hard sequencing note: COP-E01 must preserve the reusable parts of TerritoryManagement.tsx before deleting it, or this story restarts from scratch. [SALVAGE NOTE from COP-E01, 2026-08-11: TerritoryManagement.tsx (700 lines) was deleted at parent commit b0c3790 — recover with `git show b0c3790:client/src/pages/TerritoryManagement.tsx`. Do NOT resurrect it as-is: it was phantom-wired and could never have worked. It called /api/territories, /api/territories/stats and /api/territories/types, NONE of which exist — the real API is /api/sales-territories/* in server/routes-lead-assignment.ts (GET list, GET :id, POST, PUT :id, DELETE :id) over the sales_territories table in shared/lead-assignment-schema.ts. It also called apiRequest(url, {method:'DELETE'}), the object-options form, while this codebase's apiRequest signature is apiRequest(url, 'METHOD', body) — so every mutation was broken too. Useful to mine for its Territory interface and UI layout only; rebuild the data layer against the real endpoints.] [GATED 2026-08-11 (loop triage): blocked on COP-M00 (via COP-M04). Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11908,7 +11908,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Audit evidence: business_records.competitorName (schema.ts:1416), mainCompetitors (:1616), churnReason including competitor_switch (:1413). Depends on COP-M04.",
+      "notes": "[PHASE 3 / WEDGE] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Audit evidence: business_records.competitorName (schema.ts:1416), mainCompetitors (:1616), churnReason including competitor_switch (:1413). Depends on COP-M04. [GATED 2026-08-11 (loop triage): blocked on COP-M00 (via COP-M04). Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11926,7 +11926,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 4 / ENGAGEMENT] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Consent/retention is a legal requirement in two-party-consent jurisdictions, not a nice-to-have — hence opt-in by default.",
+      "notes": "[PHASE 4 / ENGAGEMENT] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Consent/retention is a legal requirement in two-party-consent jurisdictions, not a nice-to-have — hence opt-in by default. [ENVIRONMENT-BLOCKED 2026-08-11 (loop triage): needs a telephony provider account and credentials — cannot be built or verified in this container.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11978,7 +11978,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 4 / ENABLEMENT] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. The write-back criterion is what separates this from a notes template — it is how discovery becomes data the radar and forecast can use.",
+      "notes": "[PHASE 4 / ENABLEMENT] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. The write-back criterion is what separates this from a notes template — it is how discovery becomes data the radar and forecast can use. [GATED 2026-08-11 (loop triage): blocked on COP-M00. Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -11996,7 +11996,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 4 / ENGAGEMENT] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Supersedes CRMX-016. Follow the public-calculator precedent for unauthenticated edge functions: the Coolify dispatcher enforces auth per-handler and ignores config.toml verify_jwt, so \"public\" means the handler never calls auth.getUser.",
+      "notes": "[PHASE 4 / ENGAGEMENT] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Supersedes CRMX-016. Follow the public-calculator precedent for unauthenticated edge functions: the Coolify dispatcher enforces auth per-handler and ignores config.toml verify_jwt, so \"public\" means the handler never calls auth.getUser. [GATED 2026-08-11 (loop triage): blocked on COP-M00. Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -12014,7 +12014,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 4 / ARCH] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. This is CRMX-007 — carried forward unchanged; mark that story as folded into this one. Highest-risk consolidation in the CRM (companies is referenced by ~58 files) which is why it sits in Phase 4 behind the surface work, per docs/crm-canonical-model.md.",
+      "notes": "[PHASE 4 / ARCH] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. This is CRMX-007 — carried forward unchanged; mark that story as folded into this one. Highest-risk consolidation in the CRM (companies is referenced by ~58 files) which is why it sits in Phase 4 behind the surface work, per docs/crm-canonical-model.md. [GATED 2026-08-11 (loop triage): blocked on COP-B00. Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
@@ -12049,7 +12049,7 @@
       ],
       "priority": 1,
       "passes": false,
-      "notes": "[PHASE 4 / REPORTING] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Depends on COP-M04 + COP-M07. The recurring/one-time split matters commercially: a copier forecast that blends box revenue with CPC streams is not decision-grade.",
+      "notes": "[PHASE 4 / REPORTING] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Depends on COP-M04 + COP-M07. The recurring/one-time split matters commercially: a copier forecast that blends box revenue with CPC streams is not decision-grade. [GATED 2026-08-11 (loop triage): blocked on COP-M00 (via COP-M04) + COP-M07. Not started — recorded so the backlog reflects the real dependency rather than looking merely untouched.]",
       "category": "crm-copier-overhaul"
     },
     {
