@@ -245,7 +245,8 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Prospects', path: '/prospects', icon: Users, group: 'Work' },
       { title: 'Customers', path: '/customers', icon: UserCheck, group: 'Work' },
       { title: 'Contacts', path: '/contacts', icon: Users, group: 'Work' },
-      { title: 'Opportunities', path: '/opportunities', icon: Target, group: 'Work' },
+      // COP-E07: the object is a Deal. Route unchanged (COP-E04 collapses the URLs).
+      { title: 'Deals', path: '/opportunities', icon: Target, group: 'Work' },
       { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp, group: 'Work' },
 
       {

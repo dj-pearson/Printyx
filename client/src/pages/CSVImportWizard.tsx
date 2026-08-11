@@ -127,8 +127,8 @@ const ENTITY_TYPES = [
   },
   {
     id: 'opportunities',
-    name: 'Opportunities',
-    description: 'Import sales opportunities',
+    name: 'Deals',
+    description: 'Import sales deals',
     icon: FileText,
   },
   {

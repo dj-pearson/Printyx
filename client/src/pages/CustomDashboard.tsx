@@ -154,7 +154,7 @@ const WIDGET_DEFINITIONS: WidgetDefinition[] = [
   {
     id: 'open-opportunities',
     type: 'stat',
-    title: 'Open Opportunities',
+    title: 'Open Deals',
     description: 'Total value of open deals',
     icon: Target,
     category: 'metrics',
@@ -201,7 +201,7 @@ const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     id: 'sales-pipeline',
     type: 'bar-chart',
     title: 'Sales Pipeline',
-    description: 'Opportunities by stage',
+    description: 'Deals by stage',
     icon: BarChart3,
     category: 'charts',
     defaultSize: 'large',

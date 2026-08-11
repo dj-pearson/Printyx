@@ -11529,8 +11529,8 @@
         "npm run check && npm run lint pass."
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "[PHASE 0 / VOCAB] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. docs/crm-canonical-model.md (CRMX-002) already ruled \"deals\" canonical and \"opportunities\" a deprecated SF-mirror; this makes the UI agree. Do NOT delete the opportunities table — it is sanctioned sync staging.",
+      "passes": true,
+      "notes": "[PHASE 0 / VOCAB] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. docs/crm-canonical-model.md (CRMX-002) already ruled \"deals\" canonical and \"opportunities\" a deprecated SF-mirror; this makes the UI agree. Do NOT delete the opportunities table — it is sanctioned sync staging. [DONE 2026-08-11: renamed 6 user-facing surfaces to Deal/Deals — desktop sidebar, mobile navigation drawer, CustomDashboard 'Open Deals' stat + 'Deals by stage' chart description, CustomReportBuilder data source + 'Deal Name' field, CSVImportWizard import entity. DELIBERATELY LEFT: ExternalIntegrationsDashboard's 'Opportunity Sync' toggle — that is Salesforce's own object name on a Salesforce sync setting, so renaming it would be wrong; and ordinary English uses (savings/growth/upsell/optimization 'opportunities') which are not the CRM object. AC3 verified untouched: the opportunities table (schema.ts:1567) and POST /api/opportunities/:id/convert-to-deal (routes-opportunities.ts:198) both intact. AC4: no onboarding/tour/help copy referenced the object. The CrmObjectType union keeps 'opportunities' but now carries a banner that it is sync-staging only and must never gain its own label or nav entry; the registry already aliases it to dealsConfig. Routes are unchanged — /opportunities still resolves; COP-E04 collapses the URLs.]",
       "category": "crm-copier-overhaul"
     },
     {
