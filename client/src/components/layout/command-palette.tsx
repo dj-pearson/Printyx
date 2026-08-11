@@ -84,12 +84,26 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   });
 
   // Quick actions
+  // COP-I02: every "Create ..." entry below points at a surface that ACTUALLY
+  // honours ?action=new (CrmIndexShell consumes it and opens the create dialog).
+  // Before this story the param was read by nobody, so these entries just moved
+  // you to a list page and did nothing.
   const quickActions: SearchResult[] = [
+    {
+      id: 'new-deal',
+      type: 'action',
+      title: 'Create New Deal',
+      url: '/crm/deals?action=new',
+      icon: <Plus className="h-4 w-4" />,
+    },
     {
       id: 'new-lead',
       type: 'action',
+      // Points at the CURRENT nav destination, not /crm/leads. Sending users to
+      // the shell pages is COP-M01's job and is gated on COP-B00, so this entry
+      // deliberately follows navigation rather than getting ahead of it.
       title: 'Create New Lead',
-      url: '/leads?action=new',
+      url: '/leads-management?action=new',
       icon: <Plus className="h-4 w-4" />,
     },
     {
@@ -109,15 +123,18 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     {
       id: 'new-ticket',
       type: 'action',
-      title: 'Create Service Request',
-      url: '/service-hub?action=new',
+      // TODO(service): ServiceHub does not consume ?action=new, so this
+      // navigates rather than opening a form. Labelled for what it does.
+      title: 'Open Service Hub',
+      url: '/service-hub',
       icon: <Wrench className="h-4 w-4" />,
     },
     {
       id: 'new-invoice',
       type: 'action',
-      title: 'Generate Invoice',
-      url: '/invoices?action=new',
+      // TODO(billing): Invoices does not consume ?action=new — see above.
+      title: 'Open Invoices',
+      url: '/invoices',
       icon: <DollarSign className="h-4 w-4" />,
     },
     {

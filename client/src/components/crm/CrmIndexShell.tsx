@@ -60,6 +60,7 @@ import { exportToCSV, type ExportColumn } from '@/lib/export-utils';
 import { apiRequest } from '@/lib/queryClient';
 import { resolveVisibleColumns, buildColumnCatalog } from '@/lib/crm-columns';
 import { useCustomFields, type CustomFieldObjectType } from '@/hooks/useCustomFields';
+import { useCreateFromUrl } from '@/hooks/useCreateFromUrl';
 import { cn } from '@/lib/utils';
 
 const CUSTOM_FIELD_OBJECT_TYPES: CustomFieldObjectType[] = [
@@ -443,6 +444,9 @@ export function CrmIndexShell({
     customFieldDefs,
     toast,
   ]);
+
+  // COP-I02: the command palette's "Create ..." entries hand off via ?action=new.
+  useCreateFromUrl(onCreateNew);
 
   // COP-I04: clear everything narrowing the view, so a "no matches" empty state
   // can offer the one action that brings the rows back. Distinct from the
