@@ -12068,6 +12068,212 @@
       "passes": true,
       "notes": "[PHASE 4 / TRUST] Source: docs/crm-copier-overhaul.md (copier CRM overhaul audit, 2026-08-10), grounded in a direct read of the CRM client/server/schema trees rather than the docs. Extends CRMX-001 (which established the rule) to the surfaces this overhaul touches. CLAUDE.md batches 9 and 12 document the exact failure mode: PlatformAnalytics.tsx reads flat keys while the edge fn returns a nested shape, so the page silently shows mock data. [DONE 2026-08-11 for CRM/sales scope. THE STORY'S OWN PREMISE WAS WRONG: it assumed the pattern was `|| mock` fallbacks. Not one instance in this repo had that shape — every real case hid inside a try/catch, invisible to that grep. FOUND AND FIXED: (1) components/customer/customer-360-view.tsx — DELETED. Zero importers, and it fabricated a customer's healthScore 89, lifetimeValue $125,000, contractValue $2,400, firstTimeFixRate 94% and monthlyUsage 125,000 as their real 360 view. (2) components/dashboards/role-dashboards.tsx (562 lines) — DELETED. Zero importers; SalesRepDashboard invented a $487,000 pipeline, $125,000 closing this week and a full stage breakdown. The LIVE pages under pages/dashboards/* were audited and are clean. (3) analytics/PredictiveInsights.tsx and analytics/AnomalyDetection.tsx — both reachable from the sidebar via /advanced-analytics, both with ZERO useQuery/apiRequest calls: 100% invented risk scores and metrics, never connected to anything. Reduced each to a NotConnectedState. (4) TodayDashboard's generateMockTodayData was removed in COP-B01. NEW: client/src/components/ui/not-connected-state.tsx — the honest state for a surface with NO data source, deliberately distinct from EmptyState ('the query returned nothing' vs 'the query does not exist'). GUARD (AC5): scripts/check-no-mock-fallbacks.mjs + `npm run check:no-mocks`. It catches mock identifiers AND catch-blocks that return invented data, and was regression-tested — 11 problems before the fixes, 0 after. IMPORTANT REFINEMENT: it does NOT flag a catch that re-fetches real endpoints, because that is legitimate degradation (role-dashboards fell back to /api/service-tickets and computed genuine counts); the test is whether the block goes back to the server for its answer. STILL OPEN (out of CRM/sales scope): ConversationalAIDashboard, DeploymentReadiness, EnhancedReportsHub, MobileInventoryScanner, MeetingToProposalDashboard (routed but in no nav) and calendar/CalendarView (mockEvents, zero fetches) all still carry mock identifiers — widen the guard's DIRS list as those are cleaned.]",
       "category": "crm-copier-overhaul"
+    },
+    {
+      "id": "LEGAL-001",
+      "title": "Enforce cookie consent: gate Sentry Session Replay and all non-essential telemetry",
+      "description": "As a visitor, when I decline non-essential cookies I need that choice to actually take effect, because today the consent banner records a decision that nothing reads: hasConsent() in client/src/lib/cookie-consent.ts:128 is never called anywhere in the codebase, while Sentry Session Replay initializes unconditionally at boot in client/src/main.tsx:24 and records 10% of all sessions plus 100% of error sessions before any consent is given.",
+      "acceptanceCriteria": [
+        "Sentry Session Replay is NOT initialized until hasConsent('analytics') returns true; error reporting without replay may remain if it is justified as strictly necessary and that justification is written into the Cookie Policy.",
+        "Sentry replay starts on consent grant (listen for CONSENT_CHANGE_EVENT) and stops/flushes on consent withdrawal, without requiring a page reload.",
+        "Every other non-essential script, pixel, or SDK added anywhere in client/ is routed through hasConsent(); a repo-wide grep confirms no ungated non-essential telemetry remains.",
+        "Global Privacy Control is honored at runtime, not just in the stored record: a GPC signal suppresses analytics and marketing categories before any script loads.",
+        "A CI guard (script + npm script, wired like scripts/check-edge-paths) fails when a known telemetry SDK is initialized outside a consent gate, so the pattern cannot be reintroduced.",
+        "A unit test asserts hasConsent() default-denies for analytics/preferences/marketing when no record exists and when the stored record version is stale.",
+        "Sentry is named in Privacy Policy section 2, in the Cookie Policy category table, and in Subprocessors.tsx (this overlaps LEGAL-007; whichever story lands first satisfies it).",
+        "The Cookie Policy claim 'Non-essential cookies are not set until you agree to them' is true as shipped, verified by loading the marketing site with a clean profile and confirming no Sentry replay request fires before consent.",
+        "npm run check && npm run lint && npm run build pass."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "[LEGAL / P0] Highest-exposure finding of the compliance audit. A consent banner that records a choice and ignores it is worse than no banner: it documents that the obligation was known. This is the fact pattern behind the CIPA session-replay litigation wave (Cal. Penal Code 631/632, $5,000 statutory per violation) and EU ePrivacy/GDPR Art. 6(1)(a) enforcement. Evidence: hasConsent defined at client/src/lib/cookie-consent.ts:128, zero call sites (grep -rn hasConsent client/src excluding the lib itself returns nothing). Sentry.init at client/src/main.tsx:24 with replayIntegration, replaysSessionSampleRate 0.1, replaysOnErrorSampleRate 1.0. Banner IS mounted (client/src/App.tsx:1272) and the consent model itself (GPC handling, versioning, default-deny) is well built; only the enforcement layer is missing. Note the module's own header comment already states the requirement it violates."
+    },
+    {
+      "id": "LEGAL-002",
+      "title": "Remove or substantiate fabricated testimonials and case studies (FTC 16 CFR 465)",
+      "description": "As the company, we need every published customer claim to be real or plainly labeled, because the homepage carries three invented testimonials under a heading that calls them 'Real feedback from copier dealers' and the case studies page attributes specific dollar results to three named companies, with no substantiation and no disclaimer anywhere.",
+      "acceptanceCriteria": [
+        "Every testimonial in client/src/pages/marketing/Homepage.tsx:233-258 is either (a) replaced with a real, attributable customer quote held on file with written permission, or (b) removed entirely. Relabeling an invented quote as 'illustrative' is NOT acceptable for first-person testimonials.",
+        "Every named-company case study in client/src/pages/marketing/CaseStudies.tsx:41-92 (MidAtlantic Office Solutions, Pacific Print Services, Southern Business Systems) is either backed by a real customer with documented consent, or removed. Confirm none of those names belongs to a real business before any interim state ships.",
+        "The heading at Homepage.tsx:667 ('Real feedback from copier dealers who switched') is removed or made accurate.",
+        "Aggregate performance claims that survive (30-40% emergency call reduction, 15-25% profitability, 4-7 month payback, 4.8/5 mobile rating, 90%+ technician satisfaction) each have a written basis recorded in the story notes or docs/, or are removed. FTC requires substantiation for the claim as reasonably interpreted, including typicality.",
+        "If modeled or projected figures are retained anywhere, they are labeled as projections at the point of the claim (not in a footer), state the assumptions, and do not use first-person customer voice.",
+        "No aggregateRating or Review schema.org markup is emitted for fabricated ratings; client/src/lib/schemaMarkup.ts is checked for call sites that would publish invented ratings to search engines.",
+        "A short docs/marketing-claims-substantiation.md records, per surviving claim, the source and date of its support.",
+        "npm run check && npm run build pass."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "[LEGAL / P0] FTC Rule on the Use of Consumer Reviews and Testimonials, 16 CFR Part 465, effective October 2024. Civil penalty up to $53,088 per violation. Fabricated results attributed to named companies is the clearest violation category in the rule, and any real business bearing one of those names has an independent Lanham Act / defamation claim. Evidence: Homepage.tsx:233-258 (three testimonials, 5-star ratings, metrics badges: '35% fewer emergencies', '10+ hrs/week saved', '40% less travel time'), Homepage.tsx:667 ('Real feedback...'), CaseStudies.tsx:41-92 (named companies with $47,000 saved / $1.2M additional profit / 92% satisfaction), CaseStudies.tsx:181-188 (30-40% and 15-25% headline stats). grep for 'illustrative|hypothetical|representative example' across client/src/pages/marketing returns zero. THIS STORY NEEDS A HUMAN DECISION: replace with real customers or delete. Do not invent substitute copy. If no real customers exist yet, deletion is the only compliant option and the sections should be replaced with product-capability content."
+    },
+    {
+      "id": "LEGAL-003",
+      "title": "Actually delete uploaded objects from storage when a file is deleted",
+      "description": "As a customer, when I delete a file I need the bytes gone, because the file-storage edge function deletes the database row and leaves the storage object orphaned forever: the removal call at supabase/functions/file-storage/index.ts:288 is commented out with a note saying 'In production, also delete from Supabase Storage'.",
+      "acceptanceCriteria": [
+        "supabase/functions/file-storage/index.ts DELETE handler removes the storage object before (or transactionally with) the row delete, matching the correct implementation already present at supabase/functions/files/index.ts:220.",
+        "Storage removal failure does not silently succeed: the endpoint returns an error, or records a durable retry/tombstone that a sweeper drains. A dangling object must never be reported to the caller as a completed deletion.",
+        "Both file endpoints are audited for parity of delete semantics, and the divergence is resolved (one shared helper, or one endpoint deprecated) so behavior does not depend on which URL the client happens to call.",
+        "Every other edge function that uploads to storage (branding-profiles, blog-assets, qbr, meeting-transcription recordings) is audited for a matching delete path; each one either removes its objects on delete or is listed in the story notes as a follow-up with a reason.",
+        "A backfill script identifies storage objects with no owning row and reports counts per bucket. It reports by default and only purges behind an explicit flag.",
+        "An integration or edge test asserts that after DELETE, a subsequent fetch of the storage path 404s.",
+        "npm run check && npm run lint pass; deno check passes on every edge function touched."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "[LEGAL / P0] Directly contradicts the deletion right stated in Privacy Policy section 6.1 ('Delete or deactivate your account', 'Signed-in users can export their data and delete...'). Promising deletion and retaining the data is a straightforward FTC Section 5 deceptive-practice theory and a GDPR Art. 17 failure. Evidence: supabase/functions/file-storage/index.ts:277-301, storage removal commented out at line 288; correct sibling at supabase/functions/files/index.ts:207-225. Both write to the 'files' bucket. Note the edge path normalization rule in CLAUDE.md when touching either function."
+    },
+    {
+      "id": "LEGAL-004",
+      "title": "Extend GDPR erasure to storage objects, not just database rows",
+      "description": "As a data subject exercising the right to erasure, I need my uploaded content deleted too, because server/services/gdpr-erasure-service.ts anonymizes database columns and never touches Supabase Storage, so documents, logos, attachments, meeting recordings, and QBR artifacts survive a completed erasure request intact.",
+      "acceptanceCriteria": [
+        "The erasure service enumerates and deletes (or irreversibly anonymizes) storage objects belonging to the subject across every bucket in use: files, branding-assets, meeting-recordings, qbr artifacts, blog-assets.",
+        "Objects that must be retained under an Art. 17(3) exemption are retained deliberately, with the exemption named in the erasure report notes, in the same style as the existing backup and audit-log notes at lines ~280-283.",
+        "The erasure result payload reports storage objects deleted per bucket alongside the existing per-table row counts, so the completion record is honest about scope.",
+        "Erasure is idempotent: a second run over the same subject succeeds and reports zero remaining objects.",
+        "A test covers a subject with at least one object in at least two buckets and asserts the objects are unreachable afterward.",
+        "The 'Backups excluded from surgical erasure' note is reviewed and kept accurate for storage objects as well as rows.",
+        "npm run check && npm run test pass."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "[LEGAL / P1] Evidence: server/services/gdpr-erasure-service.ts has no storage/bucket references at all (grep for storage|bucket|attachment|upload returns only profileImageUrl:null at line 147). It anonymizes users and businessRecords and documents its exemptions well, so the structure to extend is already there. Depends on LEGAL-003 landing a reliable object-delete helper; sequence 003 first. Bucket inventory from the audit: 'files' (files + file-storage fns), 'branding-assets' (branding-profiles/index.ts), 'meeting-recordings' (meeting-transcription/handlers/recordings.ts:15), qbr artifacts (QBR_STORAGE_BUCKET, default 'qbr-artifacts' in the edge fn and 'qbr' in server/routes-qbr.ts:373 -- note the two defaults disagree, which is its own bug), 'blog-assets'."
+    },
+    {
+      "id": "LEGAL-005",
+      "title": "Implement the 30-day post-termination data deletion the Privacy Policy promises",
+      "description": "As the company, we need to do what the Privacy Policy says, because section 5.2 commits to deleting or anonymizing account and business data within 30 days of subscription termination and no job in the codebase implements that: the retention engine only covers eleven named tables, none of which are tenant account data or storage.",
+      "acceptanceCriteria": [
+        "A scheduled job identifies tenants whose subscription terminated more than 30 days ago and deletes or anonymizes their account and business data, including storage objects.",
+        "Records subject to a longer statutory hold keep their stated retention and are excluded by rule, not by omission: invoices and financial records 7 years, security and audit logs 7 years, support communications 3 years, exactly as Privacy Policy section 5.2 states.",
+        "The 30-day window is an export grace period as promised: the tenant can still export during it, and export access is what ends at day 30 alongside the deletion.",
+        "The job is registered with the existing cron surface (server/services/cron-service.ts, alongside runScheduledRetention) rather than a new scheduler.",
+        "The job is dry-run by default with an explicit flag to execute, logs what it would delete, and writes an audit record per tenant processed.",
+        "A test with a fixture tenant terminated 31 days ago asserts the correct tables and buckets are cleared and the exempt categories are untouched.",
+        "Privacy Policy section 5.2 is reviewed against what the job actually does, and either the code or the wording is corrected so they match exactly.",
+        "npm run check && npm run test pass."
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "[LEGAL / P1] Evidence: Privacy Policy section 5.2 at client/src/pages/legal/PrivacyPolicy.tsx:262-272 promises 'for the life of your subscription and up to 30 days after termination, during which you may export your data, after which it is deleted or anonymized'. server/services/data-retention-service.ts IS wired to cron (server/services/cron-service.ts:81 imports runScheduledRetention) and works, but DEFAULT_RETENTION_PERIODS covers only audit_logs, data_access_logs, payment_audit_trail, security_sessions, gdpr_requests, incidents, change_requests, service_tickets, emails, notifications, temp_files. No tenant-termination trigger exists (grep for '30 days' in server/ returns only unrelated billing and briefing windows). Extend the existing service rather than building a parallel one."
+    },
+    {
+      "id": "LEGAL-006",
+      "title": "Audit storage bucket visibility and move QBR artifacts off public URLs",
+      "description": "As a customer, my quarterly business review documents must not be readable by anyone holding the URL, because both QBR code paths call getPublicUrl() on artifacts that contain customer usage and spend data, and no migration in the repo establishes what the QBR bucket's visibility actually is.",
+      "acceptanceCriteria": [
+        "The live visibility of every bucket is captured and recorded in docs/: files, branding-assets, meeting-recordings, blog-assets, and the QBR bucket. This is the first task in the story because the rest depends on it.",
+        "QBR artifacts are served via createSignedUrl with a short expiry instead of getPublicUrl, at both supabase/functions/qbr/index.ts:455 and server/routes-qbr.ts:384.",
+        "The QBR bucket is private. If it is currently public, existing artifact paths are treated as potentially disclosed and that is stated plainly in the story notes for a breach-assessment decision.",
+        "The QBR bucket name disagreement is fixed: the edge function defaults to 'qbr-artifacts' and the Express route defaults to 'qbr'. One canonical name, set in both.",
+        "The 'files' bucket is confirmed private, since it holds arbitrary customer uploads; if any code path returns a public URL for it, that path is converted to signed URLs.",
+        "blog-assets staying public is confirmed as deliberate (marketing images) and branding-assets staying public is confirmed as deliberate (tenant logos), each with a one-line rationale in the docs note. Neither should hold anything else.",
+        "A migration or documented setup step pins each bucket's public flag so the state is reproducible rather than whatever was clicked in a dashboard, following the pattern of drizzle/migrations/_backfill_blog_assets_bucket.sql.",
+        "npm run check passes; deno check passes on every edge function touched."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "[LEGAL / P1] UNVERIFIED AT AUDIT TIME: getPublicUrl() returns a URL string regardless of bucket visibility, so the repo alone cannot prove the QBR bucket is public. Confirm against the live project before treating this as an incident. Evidence: supabase/functions/qbr/index.ts:450-456 and server/routes-qbr.ts:373-384 both getPublicUrl. Known public: blog-assets (drizzle/migrations/_backfill_blog_assets_bucket.sql:19 sets public=true, deliberate), branding-assets (supabase/functions/branding-profiles/index.ts:151 createBucket public:true, tenant logos). Handled correctly already: meeting recordings use server-side download() at supabase/functions/meeting-transcription/handlers/recordings.ts:217, not public URLs."
+    },
+    {
+      "id": "LEGAL-007",
+      "title": "Complete the subprocessor list and disclose AI processors in the Privacy Policy",
+      "description": "As a customer bound by our DPA, I need an accurate list of who processes our data, because Subprocessors.tsx names four vendors while the platform actually sends customer content to roughly a dozen, including OpenAI and Anthropic for document OCR, CSV refinement, meeting transcription, and proposal generation, neither of which is disclosed anywhere.",
+      "acceptanceCriteria": [
+        "client/src/pages/legal/Subprocessors.tsx lists every third party that receives customer or personal data, each with purpose, data categories, and processing location. Verified against the codebase, not from memory.",
+        "At minimum the list adds: OpenAI, Anthropic, Sentry, Twilio, ZoomInfo, Apollo.io, DataForSEO, Microsoft (Graph), Intuit (QuickBooks), Google (Places, OAuth), Mailchimp. Each entry is confirmed against a real call site before it is listed.",
+        "The Privacy Policy states plainly which product features send customer content to AI processors, what content goes, and that it is not used to train third-party models (verified against the actual vendor terms in force, or the claim is not made).",
+        "Privacy Policy section 3.5 (Automated Decision-Making) is kept and extended rather than replaced; it is already accurate about lead scoring and predictive service being decision-support under Art. 22.",
+        "A CI guard cross-references outbound third-party API hosts and *_API_KEY environment variables against the subprocessor list and fails when a vendor appears in code but not in the list.",
+        "The subprocessor page carries a last-updated date and a stated change-notification mechanism, since enterprise DPAs typically require advance notice of new subprocessors.",
+        "npm run check && npm run build pass."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "[LEGAL / P1] For enterprise customers an undisclosed subprocessor is usually a breach of our own DPA, separate from the GDPR Art. 13/14 and international-transfer exposure. Evidence: client/src/pages/legal/Subprocessors.tsx lists only Supabase, Google Cloud Platform, Stripe, Twilio SendGrid. Actual outbound hosts found in server/ and supabase/functions/: api.openai.com, api.anthropic.com, api.twilio.com, api.zoominfo.com, api.apollo.io, api.dataforseo.com, graph.microsoft.com, login.microsoftonline.com, quickbooks.api.intuit.com, places.googleapis.com, accounts.google.com, us1.api.mailchimp.com, plus Sentry from the frontend bundle. Credentials in use: ANTHROPIC_API_KEY, CLAUDE_API_KEY, OPENAI_API_KEY, TWILIO_AUTH_TOKEN, SENDGRID_API_KEY, GOOGLE_PLACES_API_KEY, MICROSOFT_CLIENT_SECRET, GOOGLE_CLIENT_SECRET, APPLE_CLIENT_SECRET, STRIPE_SECRET_KEY. Good news already in place: ZoomInfo and Apollo.io ARE named in the Privacy Policy at lines 88-96; this story is about the subprocessor page and the AI gap."
+    },
+    {
+      "id": "LEGAL-008",
+      "title": "Article 14 notice for contacts sourced from data enrichment",
+      "description": "As a person whose contact record was bought from ZoomInfo or Apollo rather than given by me, I have a right to be told you hold my data, and today nothing in the platform generates that notice or tracks which records came from enrichment rather than from the customer.",
+      "acceptanceCriteria": [
+        "Enrichment-sourced contact records are marked with their provenance (source provider and acquisition date) at write time in the enrichment paths, so indirectly-collected records are distinguishable from customer-supplied ones.",
+        "A privacy notice is reachable for those data subjects covering the GDPR Art. 14 elements: identity of the controller, categories of data, source, purposes, legal basis, retention, and their rights.",
+        "Objection and erasure requests from an enriched contact are routable through the existing GDPR request flow without requiring an account.",
+        "Suppression is durable: an erased or objecting contact is not silently re-added by the next enrichment run.",
+        "The division of controller/processor responsibility between Printyx and its tenants for enrichment data is written down in docs/ and reflected in the DPA page, since the tenant is often the controller here.",
+        "npm run check && npm run test pass."
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "[LEGAL / P2] The harder half of the data-provider question: disclosure to CUSTOMERS is already adequate (Privacy Policy lines 88-96 name ZoomInfo and Apollo.io), disclosure to the DATA SUBJECTS whose records were purchased is entirely absent. GDPR Art. 14 gives a one-month notice window from acquisition. Enrichment call sites: server/services/lead-intelligence-service.ts, server/routes-data-enrichment.ts, server/services/integrations-service.ts, server/routes-integrations-real.ts. Note the canonical CRM object model (docs/crm-canonical-model.md): contacts are companyContacts, companies are business_records. Scope the provenance columns to the canonical tables only. This one warrants counsel input on the controller/processor split before implementation."
+    },
+    {
+      "id": "LEGAL-009",
+      "title": "Capture consent before recording meetings",
+      "description": "As a participant in a recorded meeting, I need to be asked, because supabase/functions/meeting-transcription uploads and stores audio with no consent capture anywhere in the flow, and eleven US states require all-party consent to record a conversation.",
+      "acceptanceCriteria": [
+        "Recording cannot start without an affirmative, recorded consent step; the consent record persists with timestamp, actor, and scope, using the existing consent surface (server/services/consent-management-service.ts, consentRecords) rather than a new one.",
+        "Participants are given notice before capture begins, not after.",
+        "The consent state is queryable and exportable per recording, so a later dispute can be answered with evidence.",
+        "Recordings that cannot be tied to a consent record are identified; the story notes state how many exist and what is being done about them.",
+        "Retention for recordings and derived transcripts is defined and enforced by the retention engine, matching whatever the Privacy Policy states.",
+        "Erasure of a participant removes or anonymizes their recordings and transcripts (coordinate with LEGAL-004 rather than duplicating the object-deletion logic).",
+        "npm run check && npm run test pass; deno check passes on the edge functions touched."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "[LEGAL / P1] Not on the original question list; surfaced during the audit and carries real statutory damages. All-party-consent states include California (Penal Code 632, $5,000 statutory per violation under CIPA), Illinois, Florida, Pennsylvania, Washington, Massachusetts, Maryland, Michigan, Montana, Nevada, New Hampshire, Connecticut, Delaware, Oregon (varies by call type). Evidence: grep -i consent across supabase/functions/meeting-transcription, server/routes-meeting*, and client/src/pages/MeetingTranscription.tsx returns zero hits. Storage bucket 'meeting-recordings' at supabase/functions/meeting-transcription/handlers/recordings.ts:15. The consent infrastructure to build on already exists at server/services/consent-management-service.ts (recordConsent, withdrawal handling, audit)."
+    },
+    {
+      "id": "LEGAL-010",
+      "title": "Verify or remove the SOC 2 Type II compliance claim",
+      "description": "As the company, we cannot assert a certification we do not hold, because 'SOC 2 Type II compliance' appears as a security measure in the Privacy Policy itself and 'SOC 2 compliance' appears on a marketing page, and nothing in the repo evidences a current Type II report.",
+      "acceptanceCriteria": [
+        "Confirm whether a current SOC 2 Type II report exists, with the auditor and observation period recorded.",
+        "If it exists: keep the claim, and state the report type and period wherever it appears rather than the bare phrase.",
+        "If it does not exist: remove the claim from client/src/pages/legal/PrivacyPolicy.tsx:257 and client/src/pages/marketing/ModernArchitecture.tsx:343, and replace it with the controls actually in place, which are real and worth stating (row-level security, encryption at rest and in transit, MFA, RBAC, audit logging).",
+        "If a Type II audit is underway, any interim wording says exactly that ('SOC 2 Type II audit in progress, report expected <date>') and never implies a completed certification.",
+        "Every other certification or framework claim in client/src is checked the same way (ISO 27001, PCI DSS, HIPAA, 'GDPR compliant'), and each is substantiated or removed.",
+        "A CI grep guard fails the build when an unapproved certification claim string is reintroduced.",
+        "npm run check && npm run build pass."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "[LEGAL / P1] A false certification claim is a clean FTC Section 5 deceptive-practice case and this one sits inside a legal document, which is the worst place for it. Evidence: client/src/pages/legal/PrivacyPolicy.tsx:257 ('SOC 2 Type II compliance and industry-standard security frameworks', listed among security measures in section 5.1) and client/src/pages/marketing/ModernArchitecture.tsx:343 ('Row-level security, encrypted data at rest and in transit, SOC 2 compliance...'). NEEDS A HUMAN ANSWER: does the report exist? Do not guess. If unanswered when this story is picked up, remove the claim, since removing a true claim is recoverable and keeping a false one is not."
+    },
+    {
+      "id": "LEGAL-011",
+      "title": "Send a cancellation confirmation and keep a durable cancellation record",
+      "description": "As a subscriber who just cancelled, I need written confirmation, because several state auto-renewal statutes require an acknowledgement of cancellation and no cancellation email is sent today, even though the cancellation flow itself is well built.",
+      "acceptanceCriteria": [
+        "Cancelling sends an immediate confirmation email stating what was cancelled, whether it takes effect immediately or at period end, the exact effective date, and what happens to the customer's data afterward.",
+        "The confirmation is also visible in-app, so it does not depend on email delivery succeeding.",
+        "A durable cancellation record is written (who, when, immediate vs period-end, effective date), retrievable later as evidence that cancellation was honored.",
+        "The data-handling sentence in the email matches the actual post-termination behavior implemented in LEGAL-005; if that story has not landed, the email states current behavior truthfully rather than the aspirational policy.",
+        "A test asserts both cancellation modes produce a record and enqueue a confirmation.",
+        "npm run check && npm run test pass."
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "[LEGAL / P3] The cancellation flow itself PASSED the audit and needs no redesign: client/src/pages/SubscriptionSettings.tsx:205-235 offers cancel-immediately and cancel-at-period-end in one dialog, reachable self-serve, same medium as signup, with no retention gauntlet. That satisfies the click-to-cancel structure. The only gap is the acknowledgement: grep for cancel + email/notification in server/services/subscription-service.ts returns nothing. Cancel API at server/routes-subscriptions.ts:242. Notification helper to reuse: SubscriptionService.createNotification with channels ['in_app','email'], as used by the trial reminders at subscription-service.ts:780."
+    },
+    {
+      "id": "LEGAL-012",
+      "title": "Crisis-response guardrail before any AI surface is exposed outside authentication",
+      "description": "As the company, we need a defined safety response before an AI conversational surface can reach anyone outside our authenticated B2B users, because no crisis handling exists anywhere in the codebase and the chatbot is one route change away from being public.",
+      "acceptanceCriteria": [
+        "A documented policy states which AI surfaces may be exposed unauthenticated and what safety handling each requires before that can happen.",
+        "System prompts for any conversational surface include instructions to respond to self-harm, crisis, or emergency disclosures with appropriate resources and to not continue the sales or support script in that turn.",
+        "The response surfaces region-appropriate crisis resources (988 Suicide and Crisis Lifeline in the US) rather than a generic deflection.",
+        "A CI or review guard flags removal of requireAuth from any chatbot or conversational AI route, so public exposure is a deliberate decision rather than a diff nobody noticed.",
+        "Tests cover a handful of crisis-phrasing inputs and assert the guardrail response, so a prompt edit cannot silently drop it.",
+        "npm run check && npm run test pass."
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "[LEGAL / P3, deliberately low] Correctly scoped as low priority TODAY: the chatbot is authenticated internal B2B (every route in server/routes-chatbot.ts uses requireAuth + resolveTenant, e.g. line 831), there is no public widget, and the only unauthenticated surface is the marketing ROI calculator (supabase/functions/public-calculator), which is not conversational. grep for self-harm|suicide|crisis|988|hotline across server, supabase/functions, and client/src returns zero. This becomes urgent the day the chatbot is exposed to end customers or a public widget ships; the CI guard is the part worth having now, because it converts a silent risk into a visible decision."
     }
   ]
 }
