@@ -120,11 +120,21 @@ const BUCKET_SPECS: BucketSpec[] = [
     subjectColumns: ['uploaded_by', 'user_id'],
     appliesTo: ['user'],
   },
+  // qbr_reports IS in the Drizzle schema (shared/qbr-schema.ts) and stores two
+  // artifacts per row, so it gets two specs. The columns are pdf_url/html_url;
+  // an earlier draft of this file guessed 'artifact_url', which does not exist.
   {
     bucket: process.env.QBR_STORAGE_BUCKET || 'qbr-artifacts',
     table: 'qbr_reports',
-    pathColumn: 'artifact_url',
-    subjectColumns: ['customer_id', 'business_record_id'],
+    pathColumn: 'pdf_url',
+    subjectColumns: ['customer_id'],
+    appliesTo: ['contact', 'customer', 'lead'],
+  },
+  {
+    bucket: process.env.QBR_STORAGE_BUCKET || 'qbr-artifacts',
+    table: 'qbr_reports',
+    pathColumn: 'html_url',
+    subjectColumns: ['customer_id'],
     appliesTo: ['contact', 'customer', 'lead'],
   },
   {
