@@ -9,7 +9,7 @@ const BlogIndex = () => {
       slug: 'ai-predictive-maintenance-vs-reactive-service',
       title: 'Why AI-Powered Predictive Maintenance Beats Reactive Service (2025 Guide)',
       description:
-        'Discover how modern AI-powered predictive maintenance systems are revolutionizing copier dealer operations, reducing emergency calls by 30-40%, and dramatically improving customer satisfaction.',
+        'Modern AI-powered predictive maintenance scores which machines are heading for a failure, so copier dealers can schedule the visit instead of scrambling for it.',
       category: 'AI & Technology',
       date: 'January 15, 2025',
       readTime: '12 min read',
@@ -29,7 +29,7 @@ const BlogIndex = () => {
     },
     {
       slug: 'dynamic-pricing-ai-copier-dealers',
-      title: 'How Copier Dealers Increase Profitability 15-25% with Dynamic Pricing AI',
+      title: 'What Dynamic Pricing AI Actually Does for Copier Contract Margins',
       description:
         'Discover how AI-powered dynamic pricing helps copier dealers optimize contract pricing, identify underpriced accounts, and automatically maximize margins without losing customers.',
       category: 'Revenue Optimization',

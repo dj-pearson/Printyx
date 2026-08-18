@@ -155,13 +155,11 @@ function generateSoftwareApplicationSchema(config: SEORouteConfig): Record<strin
       priceCurrency: 'USD',
       description: 'Free trial available',
     },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '4.8',
-      ratingCount: 150,
-      bestRating: '5',
-      worstRating: '1',
-    },
+    // LEGAL-002: a hardcoded aggregateRating of 4.8 from 150 ratings was
+    // emitted here on every page using this schema. No such reviews exist, and
+    // fabricated AggregateRating is exactly what search engines surface as star
+    // ratings in results. Do not add one back without real, countable reviews;
+    // schema.org markup is a claim to the public like any other.
   };
 }
 
@@ -258,14 +256,15 @@ function generateFAQPageSchema(config: SEORouteConfig): Record<string, unknown> 
     '@type': 'FAQPage',
     name: config.title.split(' | ')[0],
     description: config.description,
-    mainEntity: config.faqItems?.map((item) => ({
-      '@type': 'Question',
-      name: item.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: item.answer,
-      },
-    })) || [],
+    mainEntity:
+      config.faqItems?.map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.answer,
+        },
+      })) || [],
     isPartOf: {
       '@type': 'WebSite',
       '@id': `${SITE_URL}/#website`,
@@ -284,14 +283,15 @@ function generateHowToSchema(config: SEORouteConfig): Record<string, unknown> {
     description: config.description,
     image: config.ogImage || DEFAULT_OG_IMAGE,
     totalTime: config.howToEstimatedTime,
-    step: config.howToSteps?.map((step, index) => ({
-      '@type': 'HowToStep',
-      position: index + 1,
-      name: step.name,
-      text: step.text,
-      ...(step.image && { image: step.image }),
-      url: `${SITE_URL}${config.path}#step-${index + 1}`,
-    })) || [],
+    step:
+      config.howToSteps?.map((step, index) => ({
+        '@type': 'HowToStep',
+        position: index + 1,
+        name: step.name,
+        text: step.text,
+        ...(step.image && { image: step.image }),
+        url: `${SITE_URL}${config.path}#step-${index + 1}`,
+      })) || [],
   };
 }
 
@@ -438,9 +438,12 @@ function applySEO(config: SEORouteConfig, dynamicData?: DynamicSEOData): () => v
   }
 
   // Robots - enhanced with max-snippet directives for rich results
-  setMeta('robots', config.noindex
-    ? 'noindex, nofollow'
-    : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
+  setMeta(
+    'robots',
+    config.noindex
+      ? 'noindex, nofollow'
+      : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+  );
 
   // Canonical URL
   const canonical = getOrCreateLink('canonical');

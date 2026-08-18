@@ -232,8 +232,8 @@ const EAutomateVsModernPlatformsBlogPost = () => {
                   <li>Daily retraining with new data</li>
                 </ul>
                 <p className="text-gray-800 font-semibold mt-4">
-                  Result: 80%+ accuracy predicting equipment failures 30 days ahead—impossible on
-                  legacy architecture.
+                  Result: failure risk scored per machine ahead of the call, which legacy
+                  architecture cannot do at all.
                 </p>
               </div>
             </div>
@@ -441,13 +441,14 @@ const EAutomateVsModernPlatformsBlogPost = () => {
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
                     <span className="text-gray-700">
-                      <strong>Predictive maintenance</strong> prevents 30-40% of emergency calls
+                      <strong>Predictive maintenance</strong> turns emergency call-outs into
+                      scheduled work
                     </span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
                     <span className="text-gray-700">
-                      <strong>Dynamic pricing</strong> increases margins 15-25%
+                      <strong>Dynamic pricing</strong> shows margin per contract before renewal
                     </span>
                   </li>
                   <li className="flex items-start">
@@ -617,7 +618,7 @@ const EAutomateVsModernPlatformsBlogPost = () => {
                 Why AI-Powered Predictive Maintenance Beats Reactive Service
               </h4>
               <p className="text-gray-600 text-sm">
-                Learn how predictive AI reduces emergency calls by 30-40%
+                How predictive AI turns emergency call-outs into scheduled work
               </p>
             </a>
             <a
@@ -625,7 +626,7 @@ const EAutomateVsModernPlatformsBlogPost = () => {
               className="block p-6 border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-lg transition-all"
             >
               <h4 className="font-bold text-gray-900 mb-2">
-                How Copier Dealers Increase Profitability 15-25% with Dynamic Pricing AI
+                What Dynamic Pricing AI Actually Does for Copier Contract Margins
               </h4>
               <p className="text-gray-600 text-sm">
                 Discover how AI optimizes contract pricing automatically

@@ -302,7 +302,7 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
     keywords: [
       'copier dealer success stories',
       'MPS case studies',
-      'dealer software testimonials',
+      'copier dealer software comparison',
       'Printyx customers',
     ],
     ogType: 'article',
@@ -477,19 +477,23 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
     faqItems: [
       {
         question: 'What is the best alternative to E-Automate for copier dealers?',
-        answer: 'Printyx is a modern cloud-based alternative to ConnectWise E-Automate. It provides all the same dealer management capabilities (CRM, service dispatch, billing, inventory) with added AI-powered predictive intelligence, mobile-first design, and no on-premise infrastructure requirements.',
+        answer:
+          'Printyx is a modern cloud-based alternative to ConnectWise E-Automate. It provides all the same dealer management capabilities (CRM, service dispatch, billing, inventory) with added AI-powered predictive intelligence, mobile-first design, and no on-premise infrastructure requirements.',
       },
       {
         question: 'How does Printyx compare to E-Automate?',
-        answer: 'Printyx offers a 2-3 year technical advantage over E-Automate with modern cloud architecture, AI-powered predictive maintenance, mobile-first field service tools, and real-time analytics. Unlike E-Automate, Printyx requires no server maintenance or IT overhead.',
+        answer:
+          'Printyx offers a 2-3 year technical advantage over E-Automate with modern cloud architecture, AI-powered predictive maintenance, mobile-first field service tools, and real-time analytics. Unlike E-Automate, Printyx requires no server maintenance or IT overhead.',
       },
       {
         question: 'Can I migrate from E-Automate to Printyx?',
-        answer: 'Yes, Printyx provides migration tools and dedicated support to help dealers transition from E-Automate. The migration process includes data import for customers, contracts, equipment, and service history.',
+        answer:
+          'Yes, Printyx provides migration tools and dedicated support to help dealers transition from E-Automate. The migration process includes data import for customers, contracts, equipment, and service history.',
       },
       {
         question: 'Does Printyx work with the same equipment manufacturers as E-Automate?',
-        answer: 'Yes, Printyx integrates with all major copier manufacturers including Canon, Ricoh, HP, Konica Minolta, Xerox, and more. The Integration Marketplace provides pre-built connectors for manufacturer APIs and data feeds.',
+        answer:
+          'Yes, Printyx integrates with all major copier manufacturers including Canon, Ricoh, HP, Konica Minolta, Xerox, and more. The Integration Marketplace provides pre-built connectors for manufacturer APIs and data feeds.',
       },
     ],
   },
@@ -516,23 +520,28 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
     faqItems: [
       {
         question: 'How much does Printyx cost for copier dealers?',
-        answer: 'Printyx starts at $49/user/month for the Starter plan (up to 10 users) and $79/user/month for the Professional plan with full feature access. Enterprise pricing is custom for large multi-location operations. All plans include a free trial with no credit card required.',
+        answer:
+          'Printyx starts at $49/user/month for the Starter plan (up to 10 users) and $79/user/month for the Professional plan with full feature access. Enterprise pricing is custom for large multi-location operations. All plans include a free trial with no credit card required.',
       },
       {
         question: 'Is there a free trial available?',
-        answer: 'Yes, Printyx offers a free trial with no credit card required. You can explore all features before committing to a paid plan.',
+        answer:
+          'Yes, Printyx offers a free trial with no credit card required. You can explore all features before committing to a paid plan.',
       },
       {
         question: 'How does Printyx pricing compare to E-Automate?',
-        answer: 'Printyx eliminates the need for on-premise servers, IT staff for maintenance, and per-module licensing fees. Most dealers see 15-25% total cost savings compared to E-Automate when factoring in infrastructure and support costs.',
+        answer:
+          'Printyx eliminates the need for on-premise servers, IT staff for maintenance, and per-module licensing fees. We do not publish a comparative cost-savings percentage, because we have not measured one across a customer base; price it against your own infrastructure and support costs.',
       },
       {
         question: 'What is included in each Printyx plan?',
-        answer: 'All plans include CRM, service dispatch, billing, and reporting. The Professional plan adds AI-powered predictive intelligence, advanced analytics, custom workflows, and priority support. Enterprise adds multi-location management and dedicated success managers.',
+        answer:
+          'All plans include CRM, service dispatch, billing, and reporting. The Professional plan adds AI-powered predictive intelligence, advanced analytics, custom workflows, and priority support. Enterprise adds multi-location management and dedicated success managers.',
       },
       {
         question: 'Can I switch plans or cancel anytime?',
-        answer: 'Yes, you can upgrade or downgrade your plan at any time. There are no long-term contracts required, and you can cancel with 30 days notice.',
+        answer:
+          'Yes, you can upgrade or downgrade your plan at any time. There are no long-term contracts required, and you can cancel with 30 days notice.',
       },
     ],
   },
@@ -562,7 +571,8 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
   {
     path: '/accessibility',
     title: 'Accessibility Statement | Printyx',
-    description: 'Printyx accessibility commitment. How we ensure our platform is accessible to all users.',
+    description:
+      'Printyx accessibility commitment. How we ensure our platform is accessible to all users.',
     ogType: 'website',
     schema: 'WebPage',
     priority: 0.3,
@@ -732,16 +742,61 @@ export const APP_ROUTES_SEO: SEORouteConfig[] = [
     breadcrumbs: [{ label: 'Dashboard', path: '/' }, { label: 'Settings' }],
   },
   // Index pruning: additional authenticated/thin routes that must be noindexed
-  { path: '/onboarding', title: 'Onboarding | Printyx', description: 'Set up your Printyx account.', noindex: true },
-  { path: '/tenant-setup', title: 'Tenant Setup | Printyx', description: 'Configure your organization.', noindex: true },
-  { path: '/billing', title: 'Billing | Printyx', description: 'Manage billing and invoices.', noindex: true },
-  { path: '/invoices', title: 'Invoices | Printyx', description: 'View and manage invoices.', noindex: true },
-  { path: '/quotes', title: 'Quotes | Printyx', description: 'Manage quotes and proposals.', noindex: true },
-  { path: '/crm', title: 'CRM | Printyx', description: 'Customer relationship management.', noindex: true },
+  {
+    path: '/onboarding',
+    title: 'Onboarding | Printyx',
+    description: 'Set up your Printyx account.',
+    noindex: true,
+  },
+  {
+    path: '/tenant-setup',
+    title: 'Tenant Setup | Printyx',
+    description: 'Configure your organization.',
+    noindex: true,
+  },
+  {
+    path: '/billing',
+    title: 'Billing | Printyx',
+    description: 'Manage billing and invoices.',
+    noindex: true,
+  },
+  {
+    path: '/invoices',
+    title: 'Invoices | Printyx',
+    description: 'View and manage invoices.',
+    noindex: true,
+  },
+  {
+    path: '/quotes',
+    title: 'Quotes | Printyx',
+    description: 'Manage quotes and proposals.',
+    noindex: true,
+  },
+  {
+    path: '/crm',
+    title: 'CRM | Printyx',
+    description: 'Customer relationship management.',
+    noindex: true,
+  },
   { path: '/admin', title: 'Admin | Printyx', description: 'Administration panel.', noindex: true },
-  { path: '/root-admin', title: 'Root Admin | Printyx', description: 'Platform administration.', noindex: true },
-  { path: '/database-management', title: 'Database Management | Printyx', description: 'Database tools.', noindex: true },
-  { path: '/role-management', title: 'Role Management | Printyx', description: 'Manage roles and permissions.', noindex: true },
+  {
+    path: '/root-admin',
+    title: 'Root Admin | Printyx',
+    description: 'Platform administration.',
+    noindex: true,
+  },
+  {
+    path: '/database-management',
+    title: 'Database Management | Printyx',
+    description: 'Database tools.',
+    noindex: true,
+  },
+  {
+    path: '/role-management',
+    title: 'Role Management | Printyx',
+    description: 'Manage roles and permissions.',
+    noindex: true,
+  },
 ];
 
 /**
@@ -812,11 +867,28 @@ export function getSEOConfig(path: string): SEORouteConfig | null {
   // Index pruning: default noindex for any authenticated/internal paths
   // This prevents thin or auto-generated pages from diluting domain quality signals
   const noindexPrefixes = [
-    '/admin', '/root-admin', '/settings', '/dashboard', '/onboarding',
-    '/tenant-setup', '/billing', '/invoices', '/quotes', '/crm',
-    '/deals', '/service-dispatch', '/service-hub', '/inventory',
-    '/reports', '/database-management', '/role-management', '/gpt5-dashboard',
-    '/proposal-', '/mobile-field-service', '/ai-hub', '/ai-',
+    '/admin',
+    '/root-admin',
+    '/settings',
+    '/dashboard',
+    '/onboarding',
+    '/tenant-setup',
+    '/billing',
+    '/invoices',
+    '/quotes',
+    '/crm',
+    '/deals',
+    '/service-dispatch',
+    '/service-hub',
+    '/inventory',
+    '/reports',
+    '/database-management',
+    '/role-management',
+    '/gpt5-dashboard',
+    '/proposal-',
+    '/mobile-field-service',
+    '/ai-hub',
+    '/ai-',
   ];
   if (noindexPrefixes.some((prefix) => path.startsWith(prefix))) {
     return {

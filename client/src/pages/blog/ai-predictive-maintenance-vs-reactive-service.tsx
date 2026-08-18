@@ -6,7 +6,7 @@ const AIPredictiveMaintenanceBlogPost = () => {
   return (
     <BlogPostLayout
       title="Why AI-Powered Predictive Maintenance Beats Reactive Service (2025 Guide)"
-      description="Discover how modern AI-powered predictive maintenance systems are revolutionizing copier dealer operations, reducing emergency calls by 30-40%, and dramatically improving customer satisfaction."
+      description="Modern AI-powered predictive maintenance scores which machines are heading for a failure, so copier dealers can schedule the visit instead of scrambling for it."
       author="Printyx Team"
       date="January 15, 2025"
       readTime="12 min read"
@@ -49,8 +49,8 @@ const AIPredictiveMaintenanceBlogPost = () => {
                   </div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-gray-900">30-40%</div>
-                  <div className="text-gray-700">Reduction in emergency service calls</div>
+                  <div className="text-3xl font-bold text-gray-900">Scheduled</div>
+                  <div className="text-gray-700">Call-outs planned instead of reactive</div>
                 </div>
               </div>
               <div className="flex items-start space-x-3">
@@ -60,8 +60,8 @@ const AIPredictiveMaintenanceBlogPost = () => {
                   </div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-gray-900">80%+</div>
-                  <div className="text-gray-700">Accuracy predicting failures 30 days ahead</div>
+                  <div className="text-3xl font-bold text-gray-900">Per machine</div>
+                  <div className="text-gray-700">Failure risk scored across the fleet</div>
                 </div>
               </div>
             </div>
@@ -222,7 +222,8 @@ const AIPredictiveMaintenanceBlogPost = () => {
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
                     <span className="text-gray-700">
-                      <strong>30-40% fewer emergency calls</strong> through proactive maintenance
+                      <strong>Fewer emergency call-outs</strong> as work shifts to scheduled
+                      maintenance
                     </span>
                   </li>
                   <li className="flex items-start">
@@ -270,33 +271,26 @@ const AIPredictiveMaintenanceBlogPost = () => {
             </Card>
           </div>
 
-          <Card className="bg-gradient-to-r from-purple-100 to-blue-100 border-2 border-purple-300 my-8">
+          {/* LEGAL-002: a fabricated "Case Study: Mid-Sized Dealer Results"
+              stood here, carrying the same invented figures as the removed named
+              case studies (180 -> 112 calls, $47,000 saved, 3.8 -> 4.4 CSAT). No
+              such dealer exists. Do not replace it with an illustrative or
+              composite one. */}
+          <Card className="my-8">
             <CardContent className="p-6">
               <h4 className="text-xl font-bold text-gray-900 mb-3">
-                Case Study: Mid-Sized Dealer Results
+                What this is worth depends on your fleet
               </h4>
-              <p className="text-gray-800 mb-4">
-                A 15-technician dealer in the Southeast implemented AI predictive maintenance in Q1
-                2024. Six months later:
+              <p className="text-gray-800">
+                We have no measured customer outcomes to report yet, so this article does not quote
+                any. What a shift from reactive to predictive service saves you turns on three
+                numbers you already have: your monthly emergency call volume, your fully-loaded cost
+                per call-out, and the average age of your fleet. Put those into the{' '}
+                <a href="/roi-calculator" className="text-blue-600 underline">
+                  ROI calculator
+                </a>{' '}
+                and you get a projection built from your inputs, labeled as a projection.
               </p>
-              <ul className="space-y-2 text-gray-800">
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-purple-600 rounded-full mr-3"></div>
-                  Emergency calls dropped from 180/month to 112/month (38% reduction)
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-purple-600 rounded-full mr-3"></div>
-                  Service costs decreased by $47,000 annually
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-purple-600 rounded-full mr-3"></div>
-                  Customer satisfaction increased from 3.8 to 4.4 (out of 5)
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-purple-600 rounded-full mr-3"></div>
-                  Contract renewal rate improved from 82% to 91%
-                </li>
-              </ul>
             </CardContent>
           </Card>
         </section>
@@ -478,7 +472,7 @@ const AIPredictiveMaintenanceBlogPost = () => {
             <ul className="space-y-2 text-lg">
               <li className="flex items-center">
                 <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0" />
-                30-40% reduction in emergency service calls
+                Emergency call-outs shift to scheduled maintenance
               </li>
               <li className="flex items-center">
                 <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0" />
@@ -526,7 +520,7 @@ const AIPredictiveMaintenanceBlogPost = () => {
               className="block p-6 border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-lg transition-all"
             >
               <h4 className="font-bold text-gray-900 mb-2">
-                How Copier Dealers Increase Profitability 15-25% with Dynamic Pricing AI
+                What Dynamic Pricing AI Actually Does for Copier Contract Margins
               </h4>
               <p className="text-gray-600 text-sm">
                 Learn how AI optimizes contract pricing for maximum margins

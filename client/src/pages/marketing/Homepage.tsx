@@ -39,7 +39,7 @@ const Homepage = () => {
     title:
       'Printyx - AI-Powered Dealer Management Platform for Copier Dealers | Predictive Intelligence',
     description:
-      "Transform your copier dealer operations with Printyx's AI-native platform. Predict equipment failures 30 days ahead, automate workflows, and increase profitability by 15-25%. Modern cloud architecture with 2-3 year technical advantage over legacy systems like E-Automate.",
+      "Transform your copier dealer operations with Printyx's AI-native platform. Predict equipment failures ahead of time, automate workflows, and see contract profitability per machine. Modern cloud architecture with 2-3 year technical advantage over legacy systems like E-Automate.",
     keywords: [
       'copier dealer management',
       'dealer management system',
@@ -78,13 +78,15 @@ const Homepage = () => {
         generateSoftwareApplicationSchema({
           name: 'Printyx Platform',
           description:
-            'The first AI-native dealer management platform designed to predict failures, automate service workflows, and maximize profitability for modern copier dealers. Features include predictive equipment failure detection (94% accuracy), dynamic contract profitability analysis, smart service dispatch with AI routing, and natural language CRM.',
+            'The first AI-native dealer management platform designed to predict failures, automate service workflows, and maximize profitability for modern copier dealers. Features include predictive equipment failure detection, dynamic contract profitability analysis, smart service dispatch with AI routing, and natural language CRM.',
           category: 'BusinessApplication',
           os: 'Web, iOS, Android',
           price: 'Contact for pricing',
           currency: 'USD',
-          rating: 4.9,
-          ratingCount: 127,
+          // LEGAL-002: rating 4.9 / ratingCount 127 were removed. No such
+          // reviews exist, and generateSoftwareApplicationSchema only emits
+          // aggregateRating when both are supplied, so omitting them keeps the
+          // fabricated stars out of search results.
         }),
 
         // FAQ Schema
@@ -93,12 +95,12 @@ const Homepage = () => {
             question:
               'What makes Printyx different from E-Automate and other legacy dealer management systems?',
             answer:
-              'Printyx is built on modern cloud-native architecture (React, PostgreSQL, AI/ML) launched in 2024, giving us a 2-3 year technical lead. Unlike legacy systems, we offer AI-powered predictive intelligence that prevents equipment failures 30 days in advance with 94% accuracy, dynamic pricing optimization that increases margins 15-25%, and an offline-first mobile app. Legacy systems are reactive; Printyx is predictive.',
+              'Printyx is built on modern cloud-native architecture (React, PostgreSQL, AI/ML) launched in 2024, giving us a 2-3 year technical lead. Unlike legacy systems, we offer AI-powered predictive intelligence that flags equipment likely to fail before it does, dynamic pricing recommendations that surface underpriced contracts, and an offline-first mobile app. Legacy systems are reactive; Printyx is predictive.',
           },
           {
             question: 'How does the AI predictive equipment failure detection work?',
             answer:
-              'Our AI analyzes service history, usage patterns, equipment age, supply levels, and error codes to predict failures 30 days in advance with 80%+ accuracy. This prevents 30-40% of emergency service calls through proactive maintenance, automated parts pre-ordering, and technician scheduling before customers experience downtime.',
+              'Our AI analyzes service history, usage patterns, equipment age, supply levels, and error codes to flag equipment likely to fail before it does, so maintenance, parts pre-ordering and technician scheduling can happen ahead of the customer noticing anything. We do not publish accuracy or call-reduction figures because we have not measured them across a customer base yet.',
           },
           {
             question:
@@ -119,7 +121,7 @@ const Homepage = () => {
           {
             question: 'What kind of ROI can we expect from switching to Printyx?',
             answer:
-              'Dealers report 15-25% profitability increase through AI pricing optimization, 30-40% fewer emergency service calls via predictive maintenance, 60% reduction in manual data entry through automation, and 40% reduction in technician travel time with AI route optimization. Most dealers achieve positive ROI within 3-6 months.',
+              'We do not publish outcome figures yet. Printyx is early and has no measured results across a customer base, so any percentage we quoted would be invented. What the platform does: AI pricing optimization surfaces underpriced contracts, predictive maintenance flags equipment before it fails, automation removes manual data entry, and route optimization tightens technician scheduling. Model your own numbers in the ROI calculator and test them against your data in a free trial.',
           },
         ]),
       ],
@@ -135,11 +137,11 @@ const Homepage = () => {
       icon: TrendingUp,
       title: 'Predictive Equipment Failure Detection',
       description:
-        'AI analyzes service history, usage patterns, and equipment data to predict failures 30 days in advance. Prevent 30-40% of emergency service calls with proactive maintenance.',
+        'AI analyzes service history, usage patterns, and equipment data to predict failures 30 days in advance. Turn emergency call-outs into scheduled maintenance.',
       color: 'bg-gradient-to-br from-blue-500 to-blue-600',
       benefits: [
-        '80%+ prediction accuracy',
-        '30-day failure warning',
+        'Failure risk scored per machine',
+        'Advance warning before the call comes in',
         'Automated parts pre-ordering',
       ],
       badge: 'AI-Powered Intelligence',
@@ -148,7 +150,7 @@ const Homepage = () => {
       icon: BarChart3,
       title: 'Dynamic Contract Profitability Engine',
       description:
-        'Real-time profitability analysis with AI-powered pricing recommendations. Identify underpriced contracts and optimize margins automatically. Increase profitability by 15-25%.',
+        'Real-time profitability analysis with AI-powered pricing recommendations. Identify underpriced contracts and see margin per contract as it changes.',
       color: 'bg-gradient-to-br from-green-500 to-green-600',
       benefits: [
         'Real-time margin tracking',
@@ -227,33 +229,6 @@ const Homepage = () => {
       description:
         'Deep understanding of copier dealer operations from meter billing quirks to service dispatch realities. Every feature designed for real workflows, not abstract ERP concepts. Defensible through execution excellence.',
       highlight: 'Industry-Specific',
-    },
-  ];
-
-  const testimonials = [
-    {
-      name: 'Regional Copier Dealer',
-      role: '50+ technicians, Southeast US',
-      content:
-        'We cut emergency service calls by 35% in the first quarter using predictive maintenance. The AI caught equipment failures we would have completely missed.',
-      rating: 5,
-      metric: '35% fewer emergencies',
-    },
-    {
-      name: 'Multi-Location Dealer Group',
-      role: '8 locations, Midwest',
-      content:
-        'The unified dashboard replaced 4 different tools we were juggling. Our operations team saves over 10 hours per week on reporting alone.',
-      rating: 5,
-      metric: '10+ hrs/week saved',
-    },
-    {
-      name: 'Growing Dealer Partner',
-      role: 'Startup to 30 techs in 2 years',
-      content:
-        'The mobile-first field service app works everywhere - even in basements with no signal. Our techs actually want to use it, which is a first.',
-      rating: 5,
-      metric: '40% less travel time',
     },
   ];
 
@@ -467,31 +442,50 @@ const Homepage = () => {
             ))}
           </div>
 
-          {/* ROI Stats */}
-          <div className="mt-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-12 text-white">
-            <div className="text-center mb-12">
-              <h3 className="text-3xl font-bold mb-4">Measurable Business Impact</h3>
-              <p className="text-xl text-blue-100">
-                Real results from copier dealers using Printyx
+          {/* What the platform does. No outcome percentages: see LEGAL-002. */}
+          <div className="mt-20 rounded-3xl border border-gray-200 bg-gray-50 p-12">
+            <div className="mb-10 max-w-3xl">
+              <h3 className="mb-4 text-3xl font-bold text-gray-900">Where the money shows up</h3>
+              <p className="text-lg text-gray-700 leading-relaxed">
+                We have not been running long enough to publish outcome figures across a customer
+                base, so we are not going to quote any. Here is what the platform actually does,
+                which you can check on your own data during a trial.
               </p>
             </div>
-            <div className="grid md:grid-cols-4 gap-8 text-center">
+            <div className="grid gap-8 md:grid-cols-2">
               <div>
-                <div className="text-5xl font-bold mb-2">15-25%</div>
-                <div className="text-blue-100">Profitability Increase</div>
+                <p className="font-semibold text-gray-900">Emergency calls become scheduled work</p>
+                <p className="mt-1 text-gray-700">
+                  Service history, meter velocity and error codes flag machines heading for a
+                  failure, so the visit is planned rather than urgent.
+                </p>
               </div>
               <div>
-                <div className="text-5xl font-bold mb-2">30-40%</div>
-                <div className="text-blue-100">Fewer Emergency Calls</div>
+                <p className="font-semibold text-gray-900">Every contract shows its own margin</p>
+                <p className="mt-1 text-gray-700">
+                  Equipment cost, service history, supplies and technician time roll up per
+                  contract, so underpriced agreements surface before renewal instead of after.
+                </p>
               </div>
               <div>
-                <div className="text-5xl font-bold mb-2">60%</div>
-                <div className="text-blue-100">Less Manual Work</div>
+                <p className="font-semibold text-gray-900">Manual data entry drops out</p>
+                <p className="mt-1 text-gray-700">
+                  Meter reads, billing runs and dispatch notes flow between modules instead of being
+                  rekeyed between systems.
+                </p>
               </div>
               <div>
-                <div className="text-5xl font-bold mb-2">80%+</div>
-                <div className="text-blue-100">Failure Prediction Accuracy</div>
+                <p className="font-semibold text-gray-900">Technicians work offline</p>
+                <p className="mt-1 text-gray-700">
+                  The field app holds its state without a signal, which matters in the basements and
+                  back rooms where the machines actually live.
+                </p>
               </div>
+            </div>
+            <div className="mt-10">
+              <Button variant="outline" onClick={() => (window.location.href = '/roi-calculator')}>
+                Model it on your own numbers
+              </Button>
             </div>
           </div>
         </div>
@@ -599,7 +593,7 @@ const Homepage = () => {
                   <div>
                     <p className="font-semibold text-gray-900">Predictive Intelligence</p>
                     <p className="text-sm text-gray-700">
-                      AI predicts failures 30 days ahead. Prevent 30-40% of emergencies.
+                      AI flags failures ahead of time. Schedule the work instead of scrambling.
                     </p>
                   </div>
                 </div>
@@ -621,7 +615,8 @@ const Homepage = () => {
                   <div>
                     <p className="font-semibold text-gray-900">AI-Powered Pricing</p>
                     <p className="text-sm text-gray-700">
-                      Dynamic pricing engine. Increase margins 15-25% automatically.
+                      Dynamic pricing engine. See margin per contract and what a renewal should
+                      cost.
                     </p>
                   </div>
                 </div>
@@ -653,57 +648,6 @@ const Homepage = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonials" className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <Badge className="mb-4 bg-blue-100 text-blue-800 border-blue-300 text-base px-4 py-2">
-              Dealer Success Stories
-            </Badge>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              What Our Customers Say
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Real feedback from copier dealers who switched to predictive operations and never
-              looked back.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card
-                key={index}
-                className={`transform transition-all duration-700 hover:shadow-lg border-2 hover:border-blue-300 ${
-                  isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-                }`}
-              >
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <span key={i} className="text-yellow-400 text-xl">
-                          ★
-                        </span>
-                      ))}
-                    </div>
-                    {testimonial.metric && (
-                      <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
-                        {testimonial.metric}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-gray-700 mb-4 italic text-lg">"{testimonial.content}"</p>
-                  <div>
-                    <p className="font-semibold text-gray-900">{testimonial.name}</p>
-                    <p className="text-sm text-gray-600">{testimonial.role}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="py-24 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 relative overflow-hidden">
         {/* Background Pattern */}
@@ -727,8 +671,8 @@ const Homepage = () => {
             Switch to Modern Architecture Today.
           </h2>
           <p className="text-xl text-blue-100 mb-10 max-w-3xl mx-auto leading-relaxed">
-            Join forward-thinking dealers who chose predictive intelligence over legacy systems.
-            Increase profitability by 15-25% while competitors struggle with outdated technology.
+            Join forward-thinking dealers who chose predictive intelligence over legacy systems. See
+            what every contract actually earns while competitors are still exporting spreadsheets.
           </p>
 
           {/* Value Props */}
@@ -781,7 +725,7 @@ const Homepage = () => {
               {
                 question: 'What is Printyx and how does it help copier dealers?',
                 answer:
-                  'Printyx is an AI-powered dealer management platform built specifically for copier dealers. It replaces legacy systems with predictive intelligence that forecasts equipment failures, optimizes contract pricing, and automates service dispatch to increase dealer profitability by 15-25%.',
+                  'Printyx is an AI-powered dealer management platform built specifically for copier dealers. It replaces legacy systems with predictive intelligence that forecasts equipment failures, optimizes contract pricing, and automates service dispatch.',
               },
               {
                 question: 'How does Printyx compare to E-Automate for copier dealer management?',
@@ -792,7 +736,7 @@ const Homepage = () => {
                 question:
                   'Can Printyx predict copier and printer equipment failures before they happen?',
                 answer:
-                  'Yes. Printyx uses machine learning to analyze service history, usage patterns, and equipment data to predict failures up to 30 days in advance with 80%+ accuracy. This prevents 30-40% of emergency service calls through proactive maintenance scheduling and automated parts pre-ordering.',
+                  'Yes. Printyx uses machine learning to analyze service history, usage patterns, and equipment data to flag equipment likely to fail ahead of time, so maintenance and parts pre-ordering can be scheduled rather than reactive. We do not publish an accuracy figure because we have not measured one across a customer base.',
               },
               {
                 question: 'Does Printyx offer a mobile app for field service technicians?',
@@ -899,7 +843,7 @@ const Homepage = () => {
               <ul className="space-y-2 text-sm">
                 <li>
                   <a
-                    href="#testimonials"
+                    href="/case-studies"
                     className="text-gray-400 hover:text-white transition-colors"
                   >
                     Customer Stories

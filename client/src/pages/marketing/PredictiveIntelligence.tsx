@@ -18,17 +18,17 @@ const predictiveIntelFaqs = [
   {
     question: 'What is predictive maintenance for copiers and how does it work?',
     answer:
-      'Predictive maintenance for copiers uses AI and machine learning to analyze service history, meter readings, error codes, and equipment data to predict device failures before they happen. Printyx achieves 80%+ prediction accuracy with 30-day advance warning, allowing dealers to schedule proactive maintenance and reduce emergency calls by 30-40%.',
+      'Predictive maintenance for copiers uses AI and machine learning to analyze service history, meter readings, error codes, and equipment data to predict device failures before they happen. Printyx scores failure risk per machine so the work can be scheduled before the customer reports a fault.',
   },
   {
     question: 'How accurate is AI-powered copier failure prediction?',
     answer:
-      'Printyx predictive maintenance achieves over 80% accuracy in predicting copier and printer failures. The system analyzes multiple data sources including service request patterns, usage velocity changes, equipment age, historical failure data, and error code combinations to generate component-level predictions with specific timelines.',
+      'Printyx does not publish a prediction-accuracy figure, because we have not measured one across a customer base and will not quote a number we cannot support. The system analyzes multiple data sources including service request patterns, usage velocity changes, equipment age, historical failure data, and error code combinations to generate component-level predictions with specific timelines.',
   },
   {
     question: 'Can predictive maintenance reduce service costs for copier dealers?',
     answer:
-      'Yes. Copier dealers using Printyx predictive intelligence see an average 20% decrease in total service costs. A mid-sized dealer with 15 technicians saved $47,000 annually through 38% fewer emergency calls, optimized scheduling, and automated parts ordering. Most dealers achieve ROI within 4-7 months.',
+      'It should, because a scheduled visit costs less than an emergency call-out and catching a part early avoids the cascade failure around it. We have no measured customer figures to quote yet, so model it on your own call volume and service costs in the ROI calculator rather than on a number we invented.',
   },
   {
     question: 'How is Printyx predictive intelligence different from PrintFleet or FMAudit?',
@@ -52,7 +52,7 @@ const PredictiveIntelligence = () => {
           '@type': 'WebPage',
           name: 'Predictive Intelligence for Copier Dealers - Stop Reacting, Start Predicting',
           description:
-            'Transform your copier dealership with AI-powered predictive intelligence. Prevent equipment failures 30 days in advance, reduce emergency calls by 30-40%, and optimize operations with machine learning.',
+            'Transform your copier dealership with AI-powered predictive intelligence. Flag equipment failures before they happen, turn emergency call-outs into scheduled work, and optimize operations with machine learning.',
           url: 'https://printyx.net/predictive-intelligence',
           mainEntity: {
             '@type': 'SoftwareApplication',
@@ -229,7 +229,7 @@ const PredictiveIntelligence = () => {
                           Predict failures 30 days in advance
                         </strong>
                         <p className="text-gray-600 text-sm">
-                          80%+ accuracy using ML pattern recognition
+                          Component-level risk scoring from ML pattern recognition
                         </p>
                       </div>
                     </li>
@@ -237,7 +237,7 @@ const PredictiveIntelligence = () => {
                       <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
                       <div>
                         <strong className="text-gray-900">
-                          30-40% reduction in emergency calls
+                          Emergency calls become scheduled work
                         </strong>
                         <p className="text-gray-600 text-sm">
                           Proactive maintenance prevents catastrophic failures
@@ -361,63 +361,32 @@ const PredictiveIntelligence = () => {
           </div>
         </section>
 
-        {/* Results Section */}
-        <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold mb-4">Real Results from Real Dealers</h2>
-              <p className="text-xl text-blue-100 max-w-3xl mx-auto">
-                Dealers who implement predictive intelligence see dramatic improvements across every
-                metric
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-4 gap-8">
-              <div className="text-center">
-                <div className="text-5xl font-bold mb-2">30-40%</div>
-                <div className="text-blue-100">Reduction in emergency service calls</div>
-              </div>
-              <div className="text-center">
-                <div className="text-5xl font-bold mb-2">20%</div>
-                <div className="text-blue-100">Decrease in total service costs</div>
-              </div>
-              <div className="text-center">
-                <div className="text-5xl font-bold mb-2">25%</div>
-                <div className="text-blue-100">Reduction in customer downtime</div>
-              </div>
-              <div className="text-center">
-                <div className="text-5xl font-bold mb-2">80%+</div>
-                <div className="text-blue-100">Prediction accuracy rate</div>
-              </div>
-            </div>
-
-            <Card className="mt-12 bg-white/10 backdrop-blur-sm border-2 border-white/20">
-              <CardContent className="p-8">
-                <h3 className="text-2xl font-bold mb-4">Case Study: Mid-Sized Dealer</h3>
-                <p className="text-blue-100 mb-4">
-                  A 15-technician dealer in the Southeast implemented predictive intelligence in Q1
-                  2024:
-                </p>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex items-center">
-                    <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0" />
-                    <span>Emergency calls: 180/month → 112/month (38% reduction)</span>
-                  </div>
-                  <div className="flex items-center">
-                    <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0" />
-                    <span>Service costs decreased $47,000 annually</span>
-                  </div>
-                  <div className="flex items-center">
-                    <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0" />
-                    <span>Customer satisfaction: 3.8 → 4.4 (out of 5)</span>
-                  </div>
-                  <div className="flex items-center">
-                    <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0" />
-                    <span>Contract renewal rate: 82% → 91%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {/* LEGAL-002: was "Real Results from Real Dealers" - four invented
+            metrics plus a "Case Study: Mid-Sized Dealer" carrying the same
+            fabricated numbers as the removed named case studies ($47,000,
+            3.8 -> 4.4 CSAT, 82% -> 91% renewal). None of it was measured.
+            Replaced with the mechanism, which is checkable. */}
+        <section className="py-20 border-t border-gray-200">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">What we will not tell you</h2>
+            <p className="text-lg text-gray-700 leading-relaxed mb-6">
+              How much this saves you. We have not been running long enough to measure outcomes
+              across a customer base, and a percentage with no dealers behind it is just a number we
+              picked. Every vendor in this category has a page like this one full of them.
+            </p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">What we can tell you</h3>
+            <p className="text-gray-700 leading-relaxed mb-4">
+              The mechanism, which you can check yourself during a trial. Printyx reads service
+              history, meter velocity, error-code sequences and equipment age, and scores which
+              machines are heading for a failure. A scheduled visit is cheaper than an emergency
+              call-out, and a part caught early does not take the assembly around it with it. How
+              much that is worth depends on your call volume, your labor cost and your fleet age.
+            </p>
+            <p className="text-gray-700 leading-relaxed">
+              Put those three numbers into the ROI calculator and you will get a projection built
+              from your inputs, clearly labeled as a projection, rather than someone else&apos;s
+              result presented as yours.
+            </p>
           </div>
         </section>
 

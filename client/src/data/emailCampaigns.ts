@@ -79,7 +79,7 @@ export const dripCampaign: EmailTemplate[] = [
     id: 'predictive-intelligence',
     dayOffset: 4,
     subject: 'How AI Predicts Equipment Failures 30 Days in Advance',
-    preheader: "30-40% reduction in emergency calls. Here's how it works.",
+    preheader: "Emergency call-outs become scheduled work. Here's how it works.",
     content: {
       greeting: 'Hi there,',
       body: [
@@ -88,7 +88,7 @@ export const dripCampaign: EmailTemplate[] = [
         '1. **Service History** - Timing, frequency, parts used across your entire fleet\n2. **Meter Patterns** - Usage velocity changes that precede failures\n3. **Equipment Specs** - Age, model, known failure patterns\n4. **Technician Notes** - Structured and unstructured service observations',
         'The ML algorithms find patterns humans miss. For example:\n• Meter velocity decreases often indicate fuser failures 15-20 days before they happen\n• Specific error code combinations predict drum replacements with 92% accuracy\n• Service frequency acceleration signals declining equipment health',
         'The result? You get predictions like: "87% probability this fuser fails within 15-20 days. Schedule preventive maintenance now and save $170 vs emergency repair."',
-        '**Real dealer results:**\n• 30-40% reduction in emergency service calls\n• 80%+ prediction accuracy\n• 20% decrease in total service costs',
+        '**What that changes:**\n• Emergency call-outs become scheduled maintenance\n• Parts are ordered before the machine stops\n• Technician routes are planned, not reshuffled\n\nWe do not publish outcome percentages, because we have not measured them across a customer base yet.',
         "But here's the key: This requires modern ML infrastructure that can't be bolted onto legacy systems. Their database schemas weren't designed for time-series analysis. They lack GPU acceleration for model training. They can't support automated retraining pipelines.",
         "**That's an 18-24 month rebuild minimum** - and we keep innovating while they play catch-up.",
         'See it in action on your trial dashboard.',
@@ -105,7 +105,7 @@ export const dripCampaign: EmailTemplate[] = [
     id: 'contract-profitability',
     dayOffset: 6,
     subject: 'Which of Your Contracts Are Losing Money? (AI Knows)',
-    preheader: '15-25% profitability increase through dynamic pricing intelligence.',
+    preheader: 'See which contracts actually make money, before the renewal.',
     content: {
       greeting: 'Hi there,',
       body: [
@@ -115,7 +115,7 @@ export const dripCampaign: EmailTemplate[] = [
         '**Real-time margin tracking** per contract\nSee exactly which contracts make money—factoring in equipment cost, service history, supplies, and technician time.',
         '**Predictive profitability forecasts**\nOur AI predicts next 12 months costs based on equipment age, usage patterns, and historical service data. Know which contracts will decline before they do.',
         '**Dynamic pricing recommendations**\n"Reprice this contract at +12% at renewal" or "This contract will be underwater in 6 months—exit or reprice +25% minimum."',
-        '**Real dealer results:**\n• Pacific Print Services: $1.2M additional annual profit\n• 23% increase in average contract margins\n• 147 contracts repriced at renewal\n• 6-month payback period',
+        "**What that changes:**\n• Margin is visible per contract, not just per invoice\n• Underpriced agreements surface before renewal, not after\n• Repricing is based on that contract's real service history\n\nWe have no customer figures to quote yet. Model it on your own book in the ROI calculator.",
         "You're probably sitting on $200K-$800K in hidden profit right now. The AI will show you exactly where.",
         'Check your contract profitability dashboard during your trial.',
       ],
@@ -192,11 +192,11 @@ export const dripCampaign: EmailTemplate[] = [
       greeting: 'Hi there,',
       body: [
         "Your 14-day Printyx trial ends in 2 days. Here's what you need to know.",
-        "**What you've experienced:**\n• 30-40% reduction potential in emergency service calls\n• AI-powered contract profitability insights\n• Modern cloud architecture 2-3 years ahead of legacy systems\n• Integration marketplace connecting your ecosystem\n• Purpose-built dealer workflows",
+        "**What you've had access to:**\n• Predictive maintenance that flags failures before the call comes in\n• AI-powered contract profitability insights\n• Modern cloud architecture\n• Integration marketplace connecting your ecosystem\n• Purpose-built dealer workflows",
         "**What happens if you don't subscribe:**\n• You lose access to predictive intelligence (back to reactive mode)\n• Your data stays safe, but you can't access the platform\n• AI predictions stop (emergency calls will increase)\n• Contract profitability insights disappear",
         '**What happens if you subscribe:**\n• Immediate full access continues\n• Data migration support (if coming from e-automate)\n• Dedicated onboarding specialist\n• Priority support\n• Weekly feature updates',
         "**Pricing is transparent:**\n$100/user/month for unlimited features. No hidden fees, no surprise charges. Everything you've seen in the trial is included.",
-        '**Real dealer ROI:**\n• 6-7 month average payback period\n• $200K-$800K additional annual profit\n• 4-7 month migration timeline',
+        '**Working out the ROI:** payback depends on your call volume, contract count and how long since those contracts were last priced. The ROI calculator projects it from your numbers; we do not publish averages we have not measured.',
         "Ready to make the switch? Subscribe now and we'll ensure a smooth transition.",
       ],
       cta: {
@@ -232,12 +232,12 @@ export const subjectLineVariants = {
   ],
   predictive: [
     'How AI Predicts Equipment Failures 30 Days in Advance',
-    '30-40% Fewer Emergency Calls with Predictive Intelligence',
+    'Turn Emergency Call-Outs Into Scheduled Work',
     'See Equipment Failures Before They Happen (AI-Powered)',
   ],
   pricing: [
     'Which of Your Contracts Are Losing Money? (AI Knows)',
     'Hidden Profit in Your Contracts: $200K-$800K Revealed by AI',
-    'Dynamic Pricing AI Increased Profitability 15-25%',
+    'Find Out Which Contracts Are Actually Losing Money',
   ],
 };
