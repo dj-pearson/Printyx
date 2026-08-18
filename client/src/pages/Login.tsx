@@ -199,7 +199,7 @@ export default function Login() {
                 <div>
                   <h3 className="text-white font-semibold">Enterprise Security</h3>
                   <p className="text-sm text-blue-200/50 mt-0.5">
-                    Multi-tenant isolation, RBAC, and SOC 2 compliance
+                    Multi-tenant isolation, RBAC, and encryption in transit and at rest
                   </p>
                 </div>
               </div>

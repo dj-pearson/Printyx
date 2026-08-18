@@ -330,7 +330,7 @@ export default function PrivacyPolicy() {
                       <li>End-to-end encryption for data in transit and at rest</li>
                       <li>Multi-factor authentication and role-based access controls</li>
                       <li>Regular security audits and vulnerability assessments</li>
-                      <li>SOC 2 Type II compliance and industry-standard security frameworks</li>
+                      <li>Row-level security enforcing tenant isolation on every query</li>
                       <li>Secure data centers with physical and network security measures</li>
                     </ul>
                   </div>

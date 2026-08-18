@@ -57,6 +57,8 @@ jobs:
         run: npm run check:telemetry
       - name: Subprocessor list matches code (LEGAL-007)
         run: npm run check:subprocessors
+      - name: No unapproved certification claims (LEGAL-010)
+        run: npm run check:certifications
       - run: npm run build
       - name: Server bundle check (PA-050)
         run: npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server-bundle-check.mjs

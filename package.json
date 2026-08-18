@@ -136,7 +136,8 @@
     "storage:orphans": "tsx scripts/report-orphaned-storage-objects.ts",
     "storage:audit": "tsx scripts/audit-storage-buckets.ts",
     "check:subprocessors": "node scripts/check-subprocessors.mjs",
-    "recordings:consent-coverage": "tsx scripts/report-recording-consent-coverage.ts"
+    "recordings:consent-coverage": "tsx scripts/report-recording-consent-coverage.ts",
+    "check:certifications": "node scripts/check-certification-claims.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
