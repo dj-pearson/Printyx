@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { createModuleLogger } from '../lib/logger';
+import { withCrisisGuardrail } from '../lib/crisis-response';
 const log = createModuleLogger('gpt5-service');
 
 // Configuration for different use cases in the Printyx platform
@@ -292,8 +293,10 @@ Format as actionable insights for service management.`;
    * Generate customer support response
    */
   async generateSupportResponse(customerQuery: string, customerContext?: any) {
-    const prompt = `You are a helpful customer support representative for a copier dealer. 
-    
+    // LEGAL-012: a support surface takes free text from a person, so it can
+    // receive a disclosure the product has no business answering past.
+    const prompt = `${withCrisisGuardrail('You are a helpful customer support representative for a copier dealer.')}
+
 Customer Query: ${customerQuery}
 ${customerContext ? `Customer Context: ${JSON.stringify(customerContext, null, 2)}` : ''}
 

@@ -138,7 +138,8 @@
     "check:subprocessors": "node scripts/check-subprocessors.mjs",
     "recordings:consent-coverage": "tsx scripts/report-recording-consent-coverage.ts",
     "check:certifications": "node scripts/check-certification-claims.mjs",
-    "purge:plan": "tsx scripts/report-tenant-purge-plan.ts"
+    "purge:plan": "tsx scripts/report-tenant-purge-plan.ts",
+    "check:ai-safety": "node scripts/check-ai-safety.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

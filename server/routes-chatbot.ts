@@ -71,6 +71,7 @@ import {
   users,
   CHATBOT_PLATFORMS,
 } from '@shared/schema';
+import { crisisResponse, detectsCrisis } from './lib/crisis-response';
 
 const log = createModuleLogger('routes-chatbot');
 
@@ -838,6 +839,15 @@ export function registerChatbotRoutes(app: Express) {
         return res.status(400).json({ message: 'Invalid input', errors: parsed.error.flatten() });
       }
       const { question, platformUserId, platform, channel } = parsed.data;
+
+      // LEGAL-012: deterministic crisis check, before any retrieval or model
+      // call. A system-prompt instruction is a request to a model; this is not.
+      // It runs first so the answer does not depend on prompt wording surviving
+      // a model swap or a long conversation, and it does not continue with
+      // product content in the same reply.
+      if (detectsCrisis(question)) {
+        return res.json({ answer: crisisResponse(), crisisResponse: true });
+      }
 
       // Resolve the mapped Printyx user (RBAC subject).
       let printyxUserId: string | null = null;
