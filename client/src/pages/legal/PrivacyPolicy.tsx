@@ -197,8 +197,26 @@ export default function PrivacyPolicy() {
                     </p>
                   </div>
                   <div>
+                    <h3 className="font-medium mb-2">3.6 Recorded Meetings and Calls</h3>
+                    <p className="text-gray-700 leading-relaxed">
+                      Where the platform is used to record a meeting or a service call, everyone on
+                      the call must be told and must agree before recording starts. Many US states
+                      require the agreement of every party, not just the person doing the recording.
+                      The platform will not accept a recording unless the person uploading it
+                      records how consent was obtained and from whom, and that record is kept
+                      alongside the recording so it can be produced later. Recordings and their
+                      transcripts are retained for two years unless deleted sooner, and are removed
+                      when a participant exercises their right to erasure. If you did not agree to
+                      being recorded, contact the company that organized the meeting, or{' '}
+                      <a href="mailto:privacy@printyx.net" className="text-blue-600 underline">
+                        privacy@printyx.net
+                      </a>
+                      .
+                    </p>
+                  </div>
+                  <div>
                     <h3 className="font-medium mb-2">
-                      3.6 AI Processing and Third-Party AI Providers
+                      3.7 AI Processing and Third-Party AI Providers
                     </h3>
                     <p className="text-gray-700 leading-relaxed mb-2">
                       Several features send your content to third-party AI providers to be
