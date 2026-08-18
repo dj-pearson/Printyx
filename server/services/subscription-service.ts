@@ -14,8 +14,12 @@ import {
   NewTenantSubscription,
   NewSubscriptionEvent,
   NewSubscriptionNotification,
+  users,
 } from '@shared/schema';
 import { eq, and, sql, gte, lte, desc } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+
+const log = createModuleLogger('subscription-service');
 
 /**
  * SUBSCRIPTION SERVICE
@@ -490,26 +494,71 @@ export class SubscriptionService {
         .where(eq(tenantSubscriptions.id, subscription.id));
     }
 
-    // Create event
+    const effectiveDate = immediate ? now : subscription.currentPeriodEnd;
+
+    // LEGAL-011: the durable record. This already existed, but recorded only
+    // `immediate` and a date. A cancellation record has to answer, months later
+    // and to someone hostile, exactly what was cancelled and when it took
+    // effect, so it now carries the mode, the effective date, the plan and
+    // whether the customer was told.
+    let confirmationSent = false;
+    let confirmationError: string | undefined;
+
+    // Resolve who to tell before writing the event, so the event records the
+    // real outcome rather than an intention.
+    let recipientEmail: string | undefined;
+    let tenantName = 'your organization';
+    try {
+      const tenant = await db.query.tenants.findFirst({ where: eq(tenants.id, tenantId) });
+      if (tenant?.name) tenantName = tenant.name;
+      const adminUser = await db.query.users.findFirst({ where: eq(users.tenantId, tenantId) });
+      if (adminUser?.email) recipientEmail = adminUser.email;
+    } catch (err) {
+      log.error('Failed to resolve recipient for cancellation confirmation', err);
+    }
+
+    if (recipientEmail) {
+      const { sendCancellationConfirmation } = await import('./cancellation-confirmation');
+      const result = await sendCancellationConfirmation({
+        recipientEmail,
+        tenantName,
+        immediate,
+        effectiveDate,
+      });
+      confirmationSent = result.sent;
+      confirmationError = result.error;
+    } else {
+      confirmationError = 'no recipient email found for tenant';
+      log.error(`Cancellation for tenant ${tenantId}: ${confirmationError}`);
+    }
+
     await this.createEvent({
       tenantId,
       subscriptionId: subscription.id,
       eventType: 'canceled',
       data: {
         immediate,
-        cancelDate: immediate ? now : subscription.currentPeriodEnd,
+        cancelDate: effectiveDate,
+        effectiveDate: effectiveDate.toISOString(),
+        mode: immediate ? 'immediate' : 'end_of_period',
+        canceledAt: now.toISOString(),
+        planId: subscription.planId,
+        confirmationSent,
+        confirmationRecipient: recipientEmail ?? null,
+        confirmationError: confirmationError ?? null,
       },
     });
 
-    // Send notification
+    // In-app copy of the same confirmation, so it does not depend on email
+    // delivery succeeding.
     await this.createNotification({
       tenantId,
       type: 'subscription_canceled',
       priority: 'high',
       title: 'Subscription Canceled',
       message: immediate
-        ? 'Your subscription has been canceled immediately.'
-        : `Your subscription will end on ${subscription.currentPeriodEnd.toLocaleDateString()}.`,
+        ? `Your subscription was canceled immediately and access ended on ${effectiveDate.toLocaleDateString()}. You will not be charged again.`
+        : `Your subscription is canceled and will not renew. You keep access until ${effectiveDate.toLocaleDateString()}. You will not be charged again.`,
       actionUrl: '/settings/subscription',
       actionText: 'Reactivate',
       channels: ['in_app', 'email'],
