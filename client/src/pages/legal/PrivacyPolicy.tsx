@@ -196,6 +196,50 @@ export default function PrivacyPolicy() {
                       a decision that significantly affects you.
                     </p>
                   </div>
+                  <div>
+                    <h3 className="font-medium mb-2">
+                      3.6 AI Processing and Third-Party AI Providers
+                    </h3>
+                    <p className="text-gray-700 leading-relaxed mb-2">
+                      Several features send your content to third-party AI providers to be
+                      processed. This is worth stating plainly, because it means the content leaves
+                      our systems:
+                    </p>
+                    <ul className="list-disc pl-6 space-y-2 text-gray-700">
+                      <li>
+                        <strong>Recorded calls and meetings (OpenAI):</strong> where you record a
+                        service call or a meeting, the audio is sent to OpenAI to be transcribed.
+                        The recording of the conversation itself leaves our systems.
+                      </li>
+                      <li>
+                        <strong>Knowledge search (OpenAI):</strong> knowledge-base content is sent
+                        to OpenAI to generate the embeddings that make it searchable.
+                      </li>
+                      <li>
+                        <strong>Imported files (Anthropic):</strong> when AI-assisted import cleanup
+                        is used, the contents of the file you upload are sent to Anthropic.
+                      </li>
+                      <li>
+                        <strong>Business reviews and in-product assistants (Anthropic):</strong> the
+                        fleet, usage and service data summarized in a quarterly business review, and
+                        the questions and context you put to an in-product assistant, are sent to
+                        Anthropic.
+                      </li>
+                    </ul>
+                    <p className="text-gray-700 leading-relaxed mt-2">
+                      Both providers are listed on our{' '}
+                      <a href="/subprocessors" className="text-blue-600 underline">
+                        Subprocessors
+                      </a>{' '}
+                      page with the data categories involved, and both process data in the United
+                      States. Whether your data may be used to train their models is governed by the
+                      commercial terms in force between Printyx and each provider; contact{' '}
+                      <a href="mailto:privacy@printyx.net" className="text-blue-600 underline">
+                        privacy@printyx.net
+                      </a>{' '}
+                      for the current position before relying on it.
+                    </p>
+                  </div>
                 </div>
               </div>
 
