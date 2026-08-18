@@ -41,6 +41,12 @@ const SUBPROCESSORS: Subprocessor[] = [
     purpose: 'Transactional and marketing email delivery',
     location: 'United States',
   },
+  {
+    name: 'Sentry',
+    purpose:
+      'Application error reporting (strictly necessary), plus performance tracing and session replay where analytics cookies are allowed',
+    location: 'United States',
+  },
 ];
 
 export default function Subprocessors() {

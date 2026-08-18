@@ -124,9 +124,17 @@ export function hasDecided(): boolean {
 /**
  * Gate for non-essential scripts/pixels. Returns false (deny) until the visitor
  * has explicitly granted the category. `essential` is always allowed.
+ *
+ * A live GPC signal is authoritative and overrides a stored grant for the
+ * opt-out categories (LEGAL-001). CPRA treats GPC as a valid opt-out of
+ * sale/sharing, so we honor the signal the browser is sending right now rather
+ * than a grant recorded before it was turned on. The banner tells GPC visitors
+ * that analytics and marketing are off. Erring toward not collecting is the
+ * recoverable direction; collecting against a live opt-out is not.
  */
 export function hasConsent(category: CookieCategory): boolean {
   if (category === 'essential') return true;
+  if (getGpcSignal() && GPC_OPT_OUT_CATEGORIES.includes(category)) return false;
   const consent = getConsent();
   if (!consent) return false; // default-deny
   return consent.categories[category] === true;

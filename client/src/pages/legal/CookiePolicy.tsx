@@ -24,7 +24,7 @@ export default function CookiePolicy() {
             <Cookie className="h-7 w-7 text-primary" aria-hidden="true" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Cookie Policy</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Last Updated: July 23, 2026</p>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Last Updated: August 17, 2026</p>
         </div>
 
         <Card>
@@ -70,12 +70,26 @@ export default function CookiePolicy() {
                     and remembering your cookie choices. These do not require consent and cannot be
                     switched off.
                   </p>
+                  <p className="mt-2">
+                    This category also covers error reporting (Sentry). When the application
+                    crashes, we receive the error and the technical context needed to fix it. We
+                    treat this as strictly necessary because without it a fault in production is
+                    invisible to us and we cannot keep the service secure and available. It records
+                    the fault, not your behavior on the site.
+                  </p>
                 </div>
                 <div>
                   <h3 className="font-medium text-gray-900 dark:text-white">Analytics</h3>
                   <p>
                     Help us understand how the site is used (aggregated usage and performance
                     measurement) so we can improve it. Set only with your consent.
+                  </p>
+                  <p className="mt-2">
+                    This includes performance tracing and session replay (Sentry). Session replay
+                    reconstructs how a page behaved during a problem; text and form inputs are
+                    masked and media is blocked before anything leaves your browser, so the replay
+                    shows the interaction rather than your content. Neither is loaded until you
+                    allow analytics, and both stop when you withdraw that consent.
                   </p>
                 </div>
                 <div>

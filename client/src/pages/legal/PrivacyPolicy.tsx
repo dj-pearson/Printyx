@@ -82,6 +82,20 @@ export default function PrivacyPolicy() {
                         <strong>Location Data:</strong> General geographic location based on IP
                         address for service optimization
                       </li>
+                      <li>
+                        <strong>Error and Performance Data:</strong> When the application fails we
+                        receive the error, its technical context, and the page it happened on,
+                        through our error-reporting provider (Sentry). We treat this as strictly
+                        necessary to keep the service secure and available, so it is not tied to
+                        your cookie choices. Performance tracing and session replay are separate,
+                        are covered by the analytics category, and are not loaded unless you allow
+                        analytics cookies. Replay masks text and form inputs and blocks media before
+                        anything leaves your browser. See our{' '}
+                        <a href="/cookies" className="text-blue-600 underline">
+                          Cookie Policy
+                        </a>
+                        .
+                      </li>
                     </ul>
                   </div>
                   <div>

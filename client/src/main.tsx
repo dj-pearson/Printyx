@@ -9,56 +9,13 @@ import 'nprogress/nprogress.css';
 import { queryClient } from '@/lib/queryClient';
 import { initializePWA } from '@/lib/pwa';
 import { configErrors } from '@/lib/config';
+import { initTelemetry } from '@/lib/telemetry';
 import ConfigErrorScreen from '@/components/ConfigErrorScreen';
 
-// Initialize Sentry for frontend error tracking.
-// The Printyx Sentry DSN is a public identifier (it ships in this browser
-// bundle by design), so it is safe to commit as a default. An explicit
-// VITE_SENTRY_DSN always overrides it; the baked-in default only applies in
-// production builds so local dev doesn't report to the shared project.
-const DEFAULT_SENTRY_DSN =
-  'https://dcc5602397f3cdc991f4c4aabed199b4@o4510398791352320.ingest.us.sentry.io/4511770291273728';
-const SENTRY_DSN =
-  import.meta.env.VITE_SENTRY_DSN || (import.meta.env.PROD ? DEFAULT_SENTRY_DSN : undefined);
-if (SENTRY_DSN) {
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    environment: import.meta.env.MODE || 'development',
-    release: import.meta.env.VITE_APP_VERSION || '1.0.0',
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      // CR-016: mask all text + inputs in session replay so customer PII is not
-      // captured. blockAllMedia also enabled to avoid recording uploaded media.
-      Sentry.replayIntegration({
-        maskAllText: true,
-        maskAllInputs: true,
-        blockAllMedia: true,
-      }),
-    ],
-    tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
-    beforeSend(event) {
-      // Strip sensitive data from breadcrumbs
-      if (event.breadcrumbs) {
-        event.breadcrumbs = event.breadcrumbs.map((bc) => {
-          if (bc.data?.url && typeof bc.data.url === 'string') {
-            try {
-              const url = new URL(bc.data.url, window.location.origin);
-              url.searchParams.delete('token');
-              url.searchParams.delete('key');
-              bc.data.url = url.toString();
-            } catch {
-              // keep original
-            }
-          }
-          return bc;
-        });
-      }
-      return event;
-    },
-  });
-}
+// Telemetry boots through the consent gate (LEGAL-001): error reporting is
+// strictly necessary and starts immediately, while performance tracing and
+// session replay wait for analytics consent. See client/src/lib/telemetry.ts.
+initTelemetry();
 
 // Error Boundary to catch React rendering errors (with Sentry capture)
 class ErrorBoundary extends Component<
