@@ -132,7 +132,8 @@
     "check:security": "npm audit --audit-level=high && tsx scripts/supply-chain-check.ts && tsx scripts/dependency-check.ts",
     "check:node": "node scripts/check-node-version.mjs",
     "check:telemetry": "node scripts/check-telemetry-consent.mjs",
-    "verify:telemetry": "node scripts/verify-telemetry-consent.mjs"
+    "verify:telemetry": "node scripts/verify-telemetry-consent.mjs",
+    "storage:orphans": "tsx scripts/report-orphaned-storage-objects.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
