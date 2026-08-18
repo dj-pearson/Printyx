@@ -35,6 +35,11 @@ import {
   companyContacts,
   enhancedContacts,
 } from '../../shared/schema';
+import {
+  createStorageErasureClient,
+  eraseSubjectStorageObjects,
+  type StorageErasureResult,
+} from './gdpr-storage-erasure';
 
 export type ErasureSubjectType = 'user' | 'contact' | 'customer' | 'lead';
 
@@ -55,6 +60,12 @@ export interface ErasureResult {
   anonymized: Record<string, number>;
   /** Total rows affected across all tables. */
   totalRows: number;
+  /**
+   * Per-bucket outcome for uploaded objects (LEGAL-004). Reported alongside the
+   * row counts because an erasure record that covers only the database
+   * overstates what was actually erased.
+   */
+  storage: StorageErasureResult;
   /** Human-readable notes about scope, exemptions, and retained records. */
   notes: string[];
 }
@@ -132,7 +143,16 @@ export class GdprErasureService {
       notes.push(
         'Subject id not found in live user or CRM tables for this tenant; no live records to anonymize (may already be erased or exist only in aged-out backups).',
       );
-      return { anonymized, totalRows: 0, notes };
+      return {
+        anonymized,
+        totalRows: 0,
+        storage: {
+          buckets: [],
+          totalRemoved: 0,
+          notes: ['Subject not resolved; no storage erasure attempted.'],
+        },
+        notes,
+      };
     }
 
     // --- Platform/user subject -------------------------------------------------
@@ -276,8 +296,30 @@ export class GdprErasureService {
       );
     }
 
+    // --- Uploaded objects (LEGAL-004) -----------------------------------------
+    // Anonymizing rows leaves the files. Documents, recordings and reports live
+    // in Supabase Storage and are reached through the service client, not
+    // Drizzle, because most of the tables referencing them are drift tables that
+    // exist in no schema or migration.
+    const storageClient = await createStorageErasureClient();
+    const storage = await eraseSubjectStorageObjects(
+      storageClient,
+      tenantId,
+      subjectType,
+      subjectId,
+    );
+    notes.push(...storage.notes);
+
+    // LEGAL-004: this note used to cover database backups only, and was carried
+    // over unchanged when storage erasure was added. It does not transfer:
+    // pg_dump archives do not contain storage objects, so "ages out under the
+    // backup retention schedule" is not true of a bucket. Say what is actually
+    // the case for each.
     notes.push(
-      'Backups excluded from surgical erasure. Backup archives age out under the retention schedule and are never selectively restored for the erased subject.',
+      'Database backups excluded from surgical erasure. Backup archives age out under the documented retention schedule and are never selectively restored for the erased subject.',
+    );
+    notes.push(
+      'Storage objects are NOT covered by database backups (pg_dump does not include bucket contents), so removal above is the only deletion step for them and there is no backup copy ageing out behind it. Any object reported as failed or unlinked above therefore still exists.',
     );
     notes.push(
       'Security audit logs retained for legal-obligation / integrity purposes (Art. 17(3)(b)); they record system actions, not marketing profile data.',
@@ -285,7 +327,7 @@ export class GdprErasureService {
 
     const totalRows = Object.values(anonymized).reduce((sum, n) => sum + n, 0);
 
-    return { anonymized, totalRows, notes };
+    return { anonymized, totalRows, storage, notes };
   }
 }
 
