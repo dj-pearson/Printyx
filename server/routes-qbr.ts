@@ -43,6 +43,11 @@ import {
   serviceTickets,
   contracts,
 } from '@shared/schema';
+import {
+  QBR_BUCKET,
+  withSignedArtifacts,
+  withSignedArtifactsAll,
+} from './services/qbr-artifact-storage';
 
 const log = createModuleLogger('routes-qbr');
 
@@ -370,19 +375,21 @@ async function uploadArtifact(
   try {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const bucket = process.env.QBR_STORAGE_BUCKET || 'qbr';
     if (!url || !key) return null;
     const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(url, key);
     const { error } = await supabase.storage
-      .from(bucket)
+      .from(QBR_BUCKET)
       .upload(filename, buffer, { contentType, upsert: true });
     if (error) {
       log.warn({ err: error.message }, 'Artifact upload failed; storing null URL');
       return null;
     }
-    const { data } = supabase.storage.from(bucket).getPublicUrl(filename);
-    return data?.publicUrl ?? null;
+    // LEGAL-006: store the storage KEY, not a public URL. QBR decks carry a
+    // customer's fleet, usage and spend; getPublicUrl() made them readable by
+    // anyone with the link, permanently. Reads mint a short-lived signed URL.
+    // A signed URL cannot be stored instead, because it would expire in place.
+    return filename;
   } catch (error: any) {
     log.warn({ err: error?.message }, 'Artifact upload unavailable; storing null URL');
     return null;
@@ -781,7 +788,9 @@ export function registerQbrRoutes(app: Express) {
         : [];
       const nameMap = new Map(names.map((n) => [n.id, n.companyName]));
 
-      const data = rows.map((r) => ({ ...r, companyName: nameMap.get(r.customerId) ?? null }));
+      const data = await withSignedArtifactsAll(
+        rows.map((r) => ({ ...r, companyName: nameMap.get(r.customerId) ?? null })),
+      );
       res.json({ data, total: data.length });
     } catch (error: any) {
       log.error('Failed to list QBRs:', error);
@@ -892,7 +901,7 @@ export function registerQbrRoutes(app: Express) {
         where: and(eq(businessRecords.id, row.customerId), eq(businessRecords.tenantId, tenantId)),
         columns: { companyName: true },
       });
-      res.json({ ...row, companyName: customer?.companyName ?? null });
+      res.json(await withSignedArtifacts({ ...row, companyName: customer?.companyName ?? null }));
     } catch (error: any) {
       log.error('Failed to load QBR:', error);
       res.status(500).json({ message: 'Failed to load QBR', error: error?.message });

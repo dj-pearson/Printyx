@@ -82,6 +82,20 @@ export default function PrivacyPolicy() {
                         <strong>Location Data:</strong> General geographic location based on IP
                         address for service optimization
                       </li>
+                      <li>
+                        <strong>Error and Performance Data:</strong> When the application fails we
+                        receive the error, its technical context, and the page it happened on,
+                        through our error-reporting provider (Sentry). We treat this as strictly
+                        necessary to keep the service secure and available, so it is not tied to
+                        your cookie choices. Performance tracing and session replay are separate,
+                        are covered by the analytics category, and are not loaded unless you allow
+                        analytics cookies. Replay masks text and form inputs and blocks media before
+                        anything leaves your browser. See our{' '}
+                        <a href="/cookies" className="text-blue-600 underline">
+                          Cookie Policy
+                        </a>
+                        .
+                      </li>
                     </ul>
                   </div>
                   <div>
@@ -182,6 +196,68 @@ export default function PrivacyPolicy() {
                       a decision that significantly affects you.
                     </p>
                   </div>
+                  <div>
+                    <h3 className="font-medium mb-2">3.6 Recorded Meetings and Calls</h3>
+                    <p className="text-gray-700 leading-relaxed">
+                      Where the platform is used to record a meeting or a service call, everyone on
+                      the call must be told and must agree before recording starts. Many US states
+                      require the agreement of every party, not just the person doing the recording.
+                      The platform will not accept a recording unless the person uploading it
+                      records how consent was obtained and from whom, and that record is kept
+                      alongside the recording so it can be produced later. Recordings and their
+                      transcripts are retained for two years unless deleted sooner, and are removed
+                      when a participant exercises their right to erasure. If you did not agree to
+                      being recorded, contact the company that organized the meeting, or{' '}
+                      <a href="mailto:privacy@printyx.net" className="text-blue-600 underline">
+                        privacy@printyx.net
+                      </a>
+                      .
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="font-medium mb-2">
+                      3.7 AI Processing and Third-Party AI Providers
+                    </h3>
+                    <p className="text-gray-700 leading-relaxed mb-2">
+                      Several features send your content to third-party AI providers to be
+                      processed. This is worth stating plainly, because it means the content leaves
+                      our systems:
+                    </p>
+                    <ul className="list-disc pl-6 space-y-2 text-gray-700">
+                      <li>
+                        <strong>Recorded calls and meetings (OpenAI):</strong> where you record a
+                        service call or a meeting, the audio is sent to OpenAI to be transcribed.
+                        The recording of the conversation itself leaves our systems.
+                      </li>
+                      <li>
+                        <strong>Knowledge search (OpenAI):</strong> knowledge-base content is sent
+                        to OpenAI to generate the embeddings that make it searchable.
+                      </li>
+                      <li>
+                        <strong>Imported files (Anthropic):</strong> when AI-assisted import cleanup
+                        is used, the contents of the file you upload are sent to Anthropic.
+                      </li>
+                      <li>
+                        <strong>Business reviews and in-product assistants (Anthropic):</strong> the
+                        fleet, usage and service data summarized in a quarterly business review, and
+                        the questions and context you put to an in-product assistant, are sent to
+                        Anthropic.
+                      </li>
+                    </ul>
+                    <p className="text-gray-700 leading-relaxed mt-2">
+                      Both providers are listed on our{' '}
+                      <a href="/subprocessors" className="text-blue-600 underline">
+                        Subprocessors
+                      </a>{' '}
+                      page with the data categories involved, and both process data in the United
+                      States. Whether your data may be used to train their models is governed by the
+                      commercial terms in force between Printyx and each provider; contact{' '}
+                      <a href="mailto:privacy@printyx.net" className="text-blue-600 underline">
+                        privacy@printyx.net
+                      </a>{' '}
+                      for the current position before relying on it.
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -254,7 +330,7 @@ export default function PrivacyPolicy() {
                       <li>End-to-end encryption for data in transit and at rest</li>
                       <li>Multi-factor authentication and role-based access controls</li>
                       <li>Regular security audits and vulnerability assessments</li>
-                      <li>SOC 2 Type II compliance and industry-standard security frameworks</li>
+                      <li>Row-level security enforcing tenant isolation on every query</li>
                       <li>Secure data centers with physical and network security measures</li>
                     </ul>
                   </div>
@@ -268,8 +344,10 @@ export default function PrivacyPolicy() {
                     <ul className="list-disc pl-6 space-y-2 text-gray-700">
                       <li>
                         <strong>Account &amp; business data:</strong> for the life of your
-                        subscription and up to 30 days after termination, during which you may
-                        export your data, after which it is deleted or anonymized.
+                        subscription and for 30 days after it ends. That window is your opportunity
+                        to export; after it closes, export access ends and the data is deleted,
+                        apart from the categories listed below, which are held for the periods
+                        stated against them.
                       </li>
                       <li>
                         <strong>Invoices &amp; financial records:</strong> up to 7 years, as

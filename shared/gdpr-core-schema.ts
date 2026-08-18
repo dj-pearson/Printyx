@@ -35,6 +35,10 @@ export const consentTypeEnum = pgEnum('consent_type', [
   'transactional',
   'research',
   'automated_decisions',
+  // LEGAL-009: consent to record a meeting or service call. Eleven US states
+  // require every party to agree before a conversation is recorded. Added by
+  // drizzle/migrations/_recording_consent.sql, which is hand-run.
+  'recording',
 ]);
 
 export const consentStatusEnum = pgEnum('consent_status', [

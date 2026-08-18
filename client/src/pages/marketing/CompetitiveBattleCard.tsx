@@ -8,7 +8,7 @@ const battleCardFaqs = [
   {
     question: 'What is the best alternative to E-Automate for copier dealers?',
     answer:
-      'Printyx is the leading modern alternative to ConnectWise E-Automate. Built on cloud-native architecture in 2024, Printyx offers AI-powered predictive maintenance, mobile-first field service, and real-time analytics that legacy systems cannot match. Dealers switching from E-Automate typically see 15-25% profitability increases within 6 months.',
+      'Printyx is the leading modern alternative to ConnectWise E-Automate. Built on cloud-native architecture in 2024, Printyx offers AI-powered predictive maintenance, mobile-first field service, and real-time analytics that legacy systems cannot match. Printyx does not publish switching outcome figures, having not measured them across a customer base yet.',
   },
   {
     question: 'How does Printyx compare to E-Automate for service dispatch?',
@@ -28,7 +28,7 @@ const battleCardFaqs = [
   {
     question: 'Does Printyx have AI capabilities that E-Automate lacks?',
     answer:
-      'Yes. Printyx includes AI-powered predictive maintenance (80%+ accuracy, 30-day advance failure prediction), dynamic pricing optimization, and contract profitability analysis. E-Automate has no AI or machine learning capabilities. Printyx maintains a 2-3 year technical advantage in AI/ML infrastructure.',
+      'Yes. Printyx includes AI-powered predictive maintenance that scores failure risk per machine ahead of the call, dynamic pricing optimization, and contract profitability analysis. E-Automate has no AI or machine learning capabilities. Printyx maintains a 2-3 year technical advantage in AI/ML infrastructure.',
   },
 ];
 
@@ -56,11 +56,11 @@ const CompetitiveBattleCard = () => {
     {
       category: 'Predictive Intelligence',
       printyx: [
-        'AI-powered failure prediction (80%+ accuracy)',
-        '30 days advance warning',
+        'AI-powered failure prediction',
+        'Advance warning before the machine fails',
         'Component-level predictions',
         'Automated preventive actions',
-        '30-40% emergency call reduction',
+        'Emergency call-outs become scheduled work',
         'GPU-accelerated ML pipeline',
       ],
       competitor: [
@@ -99,7 +99,7 @@ const CompetitiveBattleCard = () => {
         'Dynamic pricing recommendations',
         'Per-contract profitability',
         'Automatic repricing alerts',
-        '15-25% margin improvement',
+        'Margin visible per contract, not just per invoice',
       ],
       competitor: [
         'No profitability insights',
@@ -219,16 +219,22 @@ const CompetitiveBattleCard = () => {
                   <div className="text-sm text-gray-700">Technical advantage lead time</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-green-600 mb-1">30-40%</div>
-                  <div className="text-sm text-gray-700">Emergency call reduction</div>
+                  <div className="text-3xl font-bold text-gray-900 mb-1">Predictive</div>
+                  <div className="text-sm text-gray-700">
+                    Failure risk scored per machine, not reactive dispatch
+                  </div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-purple-600 mb-1">15-25%</div>
-                  <div className="text-sm text-gray-700">Profitability increase</div>
+                  <div className="text-3xl font-bold text-gray-900 mb-1">Per contract</div>
+                  <div className="text-sm text-gray-700">
+                    Margin rolled up from equipment, service, supplies and labor
+                  </div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-orange-600 mb-1">6-8 weeks</div>
-                  <div className="text-sm text-gray-700">Migration timeline</div>
+                  <div className="text-3xl font-bold text-gray-900 mb-1">Offline-first</div>
+                  <div className="text-sm text-gray-700">
+                    Field app holds state without a signal
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -313,9 +319,11 @@ const CompetitiveBattleCard = () => {
                 <div>
                   <h4 className="font-bold text-gray-900 mb-2">💰 Hidden Profit in Contracts</h4>
                   <p className="text-gray-700 text-sm">
-                    "Most dealers have 20-30% of contracts underwater without knowing it. Our AI
-                    shows exactly which contracts lose money and predicts future profitability. One
-                    dealer found $1.2M in hidden profit opportunities."
+                    "Most dealers cannot tell you which individual contracts lose money, because
+                    equipment cost, service history, supplies and technician time live in different
+                    systems. Our AI rolls them up per contract and predicts where profitability is
+                    heading, so underpriced agreements surface before renewal. We have no published
+                    customer figures yet - offer the ROI calculator and a trial on their own data."
                   </p>
                 </div>
 
@@ -372,10 +380,13 @@ const CompetitiveBattleCard = () => {
                 <div>
                   <h4 className="font-bold text-gray-900 mb-2">❓ "Migration sounds risky"</h4>
                   <p className="text-gray-700 text-sm">
-                    <strong>Response:</strong> "We've migrated dozens of dealers from e-automate
-                    with 100% data preservation. Our team handles the entire process: data
-                    extraction, validation, import, and team training. Southern Business Systems
-                    completed their migration in 6 weeks with zero downtime. Want to talk to them?"
+                    <strong>Response:</strong> "Our team handles the whole process: data extraction,
+                    mapping, validation against your existing records, import, and team training.
+                    How long it takes depends on how much history you carry and how clean it is, so
+                    we scope it per dealer rather than quoting a standard timeline. We can run the
+                    extraction against a copy of your data first so you see exactly what comes
+                    across before committing." Do not cite customer names, migration timelines or
+                    reference calls that have not been agreed with that customer.
                   </p>
                 </div>
 

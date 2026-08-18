@@ -10,6 +10,7 @@ import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { createLogger } from '../../_shared/logger.ts';
 import { transcribe, TranscriptionUnavailableError } from '../_stt.ts';
+import { recordRecordingConsent, validateConsentAssertion } from '../_consent.ts';
 
 const log = createLogger('meeting-transcription-recordings');
 const STORAGE_BUCKET = 'meeting-recordings';
@@ -23,6 +24,51 @@ export async function handleRecordings(req: Request, ctx: HandlerCtx): Promise<R
   // POST /upload
   if (method === 'POST' && first === 'upload') {
     return await handleUpload(req, ctx);
+  }
+
+  // GET /recordings/:id/consent
+  // LEGAL-009: the consent behind a recording has to be answerable on demand.
+  // A dispute about whether someone agreed to be recorded arrives months later,
+  // and "we always ask" is not evidence.
+  if (method === 'GET' && first === 'recordings' && second && third === 'consent') {
+    const { data, error } = await db
+      .from('consent_records')
+      .select(
+        'id, consent_type, status, legal_basis, source, source_details, proof_type, consent_text, processing_purposes, data_categories, given_at, withdrawn_at, notes, created_by, ip_address, user_agent',
+      )
+      .eq('tenant_id', auth.tenantId)
+      .eq('consent_type', 'recording')
+      .eq('proof_reference', second)
+      .maybeSingle();
+
+    if (error) {
+      return errorResponse(500, 'Failed to fetch recording consent', req, {
+        code: 'DB_ERROR',
+        details: error.message,
+        requestId,
+      });
+    }
+
+    if (!data) {
+      // Explicit, not a 404: "there is no consent on file for this recording" is
+      // a meaningful answer and the caller needs to be able to act on it.
+      return jsonResponse(
+        {
+          recordingId: second,
+          consented: false,
+          reason:
+            'No consent record found. This recording predates consent capture or was created outside the upload endpoint.',
+        },
+        200,
+        req,
+      );
+    }
+
+    return jsonResponse(
+      { recordingId: second, consented: data.status === 'given', consent: data },
+      200,
+      req,
+    );
   }
 
   // GET /meetings/:meetingId/recordings
@@ -100,6 +146,19 @@ async function handleUpload(req: Request, ctx: HandlerCtx): Promise<Response> {
     });
   }
 
+  // LEGAL-009: no consent, no recording. Checked before any row is written and
+  // before a single byte is stored, because the point is not to record first and
+  // paper it over afterwards. Eleven US states require every party to agree, and
+  // the person recorded has their own claim regardless of what the customer
+  // agreed to in their contract with us.
+  const consentCheck = validateConsentAssertion(form);
+  if (!consentCheck.ok || !consentCheck.assertion) {
+    return errorResponse(400, consentCheck.error ?? 'Recording consent is required', req, {
+      code: 'CONSENT_REQUIRED',
+      requestId,
+    });
+  }
+
   // Insert metadata row first so we have the id for the storage path.
   const { data: row, error: insertErr } = await db
     .from('meeting_recordings')
@@ -127,6 +186,30 @@ async function handleUpload(req: Request, ctx: HandlerCtx): Promise<Response> {
     });
   }
 
+  // Write the consent evidence before the audio exists. If this fails the
+  // recording does not happen: audio with nothing to show that anyone agreed to
+  // it is the exact position this story exists to get out of. The metadata row
+  // is rolled back so a refused upload leaves nothing behind.
+  const consent = await recordRecordingConsent(db, {
+    tenantId: auth.tenantId,
+    userId: auth.userId,
+    recordingId: row.id,
+    meetingId,
+    assertion: consentCheck.assertion,
+    ipAddress: req.headers.get('x-forwarded-for'),
+    userAgent: req.headers.get('user-agent'),
+  });
+
+  if (!consent.ok) {
+    await db.from('meeting_recordings').delete().eq('id', row.id);
+    log.error({ recordingId: row.id, meetingId, error: consent.error }, 'consent_record_failed');
+    return errorResponse(500, 'Could not record consent; recording refused', req, {
+      code: 'CONSENT_WRITE_FAILED',
+      details: consent.error,
+      requestId,
+    });
+  }
+
   const ext = format || 'mp4';
   const path = `${auth.tenantId}/${row.id}.${ext}`;
 
@@ -138,8 +221,12 @@ async function handleUpload(req: Request, ctx: HandlerCtx): Promise<Response> {
     });
 
   if (uploadErr) {
-    // Roll back the metadata row so we don't leave orphans.
+    // Roll back the metadata row so we don't leave orphans. The consent record
+    // goes too: it attests to a recording that does not exist, and leaving it
+    // would make the coverage report claim a recording is covered when there is
+    // nothing there.
     await db.from('meeting_recordings').delete().eq('id', row.id);
+    await db.from('consent_records').delete().eq('id', consent.consentRecordId);
     return errorResponse(500, 'Failed to upload recording audio', req, {
       code: 'STORAGE_ERROR',
       details: uploadErr.message,

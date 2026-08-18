@@ -758,59 +758,30 @@ export default function BusinessProcessOptimization() {
 
               <TabsContent value="compliance" className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Compliance Standards */}
+                  {/* LEGAL-010: this card hardcoded "Compliant" badges for ISO 9001:2015
+                      and SOC 2 Type II with invented scores, audit dates and
+                      non-conformity counts. None of it came from data. Removed rather
+                      than left where someone could quote it to a customer or an auditor. */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Shield className="h-5 w-5" />
                         Compliance Standards
                       </CardTitle>
-                      <CardDescription>Current compliance status and audit results</CardDescription>
+                      <CardDescription>Not tracked in the platform</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-4">
-                        <div className="p-4 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="font-medium">ISO 9001:2015</div>
-                            <Badge className="bg-green-100 text-green-800">Compliant</Badge>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                            <div>
-                              Score: <span className="font-medium">96.7%</span>
-                            </div>
-                            <div>
-                              Last Audit: <span className="font-medium">Nov 2024</span>
-                            </div>
-                            <div>
-                              Non-conformities: <span className="font-medium">2</span>
-                            </div>
-                            <div>
-                              Next Audit: <span className="font-medium">Nov 2025</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-4 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="font-medium">SOC 2 Type II</div>
-                            <Badge className="bg-green-100 text-green-800">Compliant</Badge>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                            <div>
-                              Score: <span className="font-medium">94.2%</span>
-                            </div>
-                            <div>
-                              Last Audit: <span className="font-medium">Sep 2024</span>
-                            </div>
-                            <div>
-                              Non-conformities: <span className="font-medium">1</span>
-                            </div>
-                            <div>
-                              Next Audit: <span className="font-medium">Sep 2025</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <p className="text-sm text-gray-600">
+                        This card previously showed certification badges, audit scores and
+                        non-conformity counts that were hardcoded rather than measured. Printyx does
+                        not hold a SOC 2 or ISO report, and nothing here tracks one.
+                      </p>
+                      <p className="mt-3 text-sm text-gray-600">
+                        If you need to answer a compliance question, use the security controls
+                        actually implemented in the platform: tenant isolation via row-level
+                        security, encryption in transit and at rest, multi-factor authentication,
+                        role-based access control, and audit logging.
+                      </p>
                     </CardContent>
                   </Card>
 

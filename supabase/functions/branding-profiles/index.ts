@@ -22,6 +22,7 @@ import { z } from 'https://esm.sh/zod@3.22.4';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { removeStoragePrefix } from '../_shared/storage-delete.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -381,6 +382,24 @@ async function deleteProfile(admin: Admin, tenantId: string, id: string, req: Re
   if (beforeErr) return createCorsResponse({ error: beforeErr.message }, 500, req);
   if (!before) return createCorsResponse({ error: 'Profile not found' }, 404, req);
 
+  // LEGAL-003: this used to hard-delete the row and leave every uploaded logo
+  // in the bucket forever. Logo keys are minted with a fresh uuid per upload and
+  // only the public URL is stored, so listing the profile's prefix is the only
+  // way to find them. Clear the bytes before dropping the row: while the row
+  // exists the objects are still reachable and retryable.
+  const removal = await removeStoragePrefix(admin, BUCKET, `${tenantId}/${id}`);
+  if (!removal.ok) {
+    console.error('branding-profiles: logo removal failed', { tenantId, id, error: removal.error });
+    return createCorsResponse(
+      {
+        error: 'Failed to delete branding assets from storage',
+        detail: 'The profile was kept so its logos are not orphaned. Retry the delete.',
+      },
+      500,
+      req,
+    );
+  }
+
   const { error } = await admin
     .from('company_branding_profiles')
     .delete()
@@ -388,7 +407,7 @@ async function deleteProfile(admin: Admin, tenantId: string, id: string, req: Re
     .eq('id', id);
 
   if (error) return createCorsResponse({ error: error.message }, 500, req);
-  return createCorsResponse({ deleted: true, id }, 200, req);
+  return createCorsResponse({ deleted: true, id, logosRemoved: removal.removed.length }, 200, req);
 }
 
 async function setDefault(admin: Admin, tenantId: string, id: string, req: Request) {
@@ -464,6 +483,20 @@ async function uploadLogo(admin: Admin, tenantId: string, id: string, req: Reque
   });
   if (upErr) {
     return createCorsResponse({ error: `Upload failed: ${upErr.message}` }, 500, req);
+  }
+
+  // LEGAL-003: each upload mints a new uuid key, so without this every previous
+  // logo stayed in the bucket indefinitely - publicly readable, and invisible to
+  // the app because only the newest URL is stored. Clear the predecessors,
+  // keeping the object just written. A failure here is not worth failing the
+  // upload over; the orphan reporter will catch what is left behind.
+  const cleanup = await removeStoragePrefix(admin, BUCKET, `${tenantId}/${id}`, [path]);
+  if (!cleanup.ok) {
+    console.warn('branding-profiles: superseded logo cleanup failed', {
+      tenantId,
+      id,
+      error: cleanup.error,
+    });
   }
 
   const { data: pub } = admin.storage.from(BUCKET).getPublicUrl(path);

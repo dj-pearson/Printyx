@@ -130,7 +130,16 @@
     "audit:deps": "tsx scripts/dependency-check.ts",
     "audit:errors": "tsx scripts/audit/error-tracker.ts",
     "check:security": "npm audit --audit-level=high && tsx scripts/supply-chain-check.ts && tsx scripts/dependency-check.ts",
-    "check:node": "node scripts/check-node-version.mjs"
+    "check:node": "node scripts/check-node-version.mjs",
+    "check:telemetry": "node scripts/check-telemetry-consent.mjs",
+    "verify:telemetry": "node scripts/verify-telemetry-consent.mjs",
+    "storage:orphans": "tsx scripts/report-orphaned-storage-objects.ts",
+    "storage:audit": "tsx scripts/audit-storage-buckets.ts",
+    "check:subprocessors": "node scripts/check-subprocessors.mjs",
+    "recordings:consent-coverage": "tsx scripts/report-recording-consent-coverage.ts",
+    "check:certifications": "node scripts/check-certification-claims.mjs",
+    "purge:plan": "tsx scripts/report-tenant-purge-plan.ts",
+    "check:ai-safety": "node scripts/check-ai-safety.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

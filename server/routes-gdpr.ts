@@ -303,13 +303,50 @@ export function registerGdprRoutes(app: Express) {
           .map(([table, count]) => `${table}=${count}`)
           .join(', ');
 
+        // LEGAL-004: uploaded objects are part of the erasure, so they are part
+        // of the completion record too. A summary built from row counts alone
+        // overstates what was erased.
+        const storageSummary = erasure.storage.buckets
+          .filter((b) => b.removed > 0 || b.failed > 0)
+          .map((b) => `${b.bucket}=${b.removed}${b.failed > 0 ? ` (${b.failed} FAILED)` : ''}`)
+          .join(', ');
+
+        const storageIncomplete = erasure.storage.buckets.some((b) => b.failed > 0);
+
+        // This route's existing principle is that a failure leaves the request
+        // in_progress rather than falsely reporting completion. Objects we
+        // identified and could not delete are exactly that case: the subject's
+        // files are still there, so the erasure is not done.
+        if (storageIncomplete) {
+          await db
+            .update(gdprRequests)
+            .set({
+              status: 'in_progress',
+              processingNotes: `Database anonymization succeeded (${erasureSummary || 'none'}, total ${erasure.totalRows}) but storage erasure was INCOMPLETE: ${storageSummary}. Request left in_progress for retry. ${erasure.notes.join(' ')}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(gdprRequests.id, requestId));
+
+          log.error(
+            `Deletion request ${requestId}: storage erasure incomplete (${storageSummary}); left in_progress`,
+          );
+
+          return res.status(500).json({
+            message:
+              'Data erasure incomplete: some uploaded objects could not be deleted. Request left in progress for retry.',
+            rowsAnonymized: erasure.totalRows,
+            storage: erasure.storage.buckets,
+            notes: erasure.notes,
+          });
+        }
+
         // Mark as completed
         await db
           .update(gdprRequests)
           .set({
             status: 'completed',
             completionDate: new Date(),
-            processingNotes: `Data erasure executed by admin ${requestingUserId}. Rows anonymized: ${erasureSummary || 'none'} (total ${erasure.totalRows}). Categories: ${dataCategories.join(', ')}. Systems: ${affectedSystems.join(', ')}. ${erasure.notes.join(' ')}`,
+            processingNotes: `Data erasure executed by admin ${requestingUserId}. Rows anonymized: ${erasureSummary || 'none'} (total ${erasure.totalRows}). Storage objects removed: ${storageSummary || 'none'} (total ${erasure.storage.totalRemoved}). Categories: ${dataCategories.join(', ')}. Systems: ${affectedSystems.join(', ')}. ${erasure.notes.join(' ')}`,
             updatedAt: new Date(),
           })
           .where(eq(gdprRequests.id, requestId));
@@ -328,6 +365,8 @@ export function registerGdprRoutes(app: Express) {
             affectedSystems,
             rowsAnonymized: erasure.anonymized,
             totalRowsAnonymized: erasure.totalRows,
+            storageObjectsRemoved: erasure.storage.totalRemoved,
+            storageByBucket: erasure.storage.buckets,
             executedAt: new Date().toISOString(),
           },
           ipAddress: req.ip || 'unknown',

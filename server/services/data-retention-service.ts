@@ -34,6 +34,14 @@ const DEFAULT_RETENTION_PERIODS: Record<string, number> = {
   emails: 730, // 2 years
   notifications: 90, // 90 days
   temp_files: 7, // 7 days
+  // LEGAL-009: recorded conversations and the transcripts derived from them.
+  // Two years by default because a recording is the most sensitive artifact the
+  // platform holds and the least often needed after the fact. Erasure of the
+  // audio object itself is handled by the GDPR storage erasure path
+  // (server/services/gdpr-storage-erasure.ts), so this governs the metadata and
+  // transcript rows; the two need to stay in step.
+  meeting_recordings: 730, // 2 years
+  meeting_transcriptions: 730, // 2 years
 };
 
 // Tables that support archival before purge

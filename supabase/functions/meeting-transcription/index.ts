@@ -15,6 +15,13 @@
  *   GET  /analytics/content                            — content aggregates
  *   POST /speakers/profile                             — upsert speaker label
  *   POST /recordings/:recordingId/process              — run STT via _stt.ts
+ *   GET  /recordings/:recordingId/consent              — consent on file (LEGAL-009)
+ *
+ * POST /upload REQUIRES consent fields and refuses the recording without them:
+ *   consentConfirmed=true, consentMethod=verbal|written|checkbox|in_meeting_announcement,
+ *   consentParticipants=<comma or newline separated names>, consentNoticeText=<optional>
+ * See _consent.ts for why, and drizzle/migrations/_recording_consent.sql, which
+ * is hand-run and must be applied before uploads will work.
  *
  * Transcription provider is controlled by TRANSCRIPTION_PROVIDER env:
  *   `stub` (default) — returns placeholder text; useful for dev without spend

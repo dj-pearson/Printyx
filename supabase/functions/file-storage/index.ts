@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { removeStorageObjects } from '../_shared/storage-delete.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -283,9 +284,28 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .single();
 
+      // LEGAL-003: the storage removal used to be commented out here, so the
+      // row was deleted and the object kept forever while the caller was told
+      // the file was gone. Remove the bytes FIRST: if that fails we still have
+      // the row pointing at the object, which is recoverable. Dropping the row
+      // first and then failing loses the only reference to it.
       if (file?.storage_path) {
-        // In production, also delete from Supabase Storage
-        // await admin.storage.from('files').remove([file.storage_path]);
+        const removal = await removeStorageObjects(admin, 'files', [file.storage_path]);
+        if (!removal.ok) {
+          console.error('file-storage: storage removal failed', {
+            fileId,
+            tenantId,
+            error: removal.error,
+          });
+          return createCorsResponse(
+            {
+              error: 'Failed to delete file from storage',
+              detail: 'The file record was kept so the object is not orphaned. Retry the delete.',
+            },
+            500,
+            req,
+          );
+        }
       }
 
       const { error } = await admin

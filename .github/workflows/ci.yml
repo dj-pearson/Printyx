@@ -53,6 +53,14 @@ jobs:
         run: npm run check:edge-paths
       - name: Proxy-override parity (PA-019)
         run: npm run check:proxy-overrides
+      - name: Telemetry consent gate (LEGAL-001)
+        run: npm run check:telemetry
+      - name: Subprocessor list matches code (LEGAL-007)
+        run: npm run check:subprocessors
+      - name: No unapproved certification claims (LEGAL-010)
+        run: npm run check:certifications
+      - name: Conversational AI auth + crisis guardrail (LEGAL-012)
+        run: npm run check:ai-safety
       - run: npm run build
       - name: Server bundle check (PA-050)
         run: npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server-bundle-check.mjs

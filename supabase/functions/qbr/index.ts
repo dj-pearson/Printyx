@@ -48,10 +48,25 @@ const QUARTER_RE = /^\d{4}-Q[1-4]$/;
 const PATCH_STATUSES = new Set(['draft', 'reviewed']);
 
 /** Row -> the camelCase shape CustomerQbrs.tsx types. */
-const toReport = (row: Record<string, unknown>, companyName: string | null = null) => ({
-  ...toCamelShallow(row),
-  companyName,
-});
+/**
+ * LEGAL-006: every read path goes through here, which is why the signing lives
+ * here rather than at each return. QBR decks carry a customer's fleet, usage and
+ * spend, and pdf_url/html_url used to hold permanent public URLs. They now hold
+ * storage KEYS, and a short-lived signed URL is minted per read. Historical rows
+ * still hold a full public URL, so toArtifactKey accepts either shape.
+ */
+const toReport = async (
+  admin: ReturnType<typeof createSupabaseServiceClient>,
+  row: Record<string, unknown>,
+  companyName: string | null = null,
+) => {
+  const mapped = toCamelShallow(row) as Record<string, unknown>;
+  const [pdfUrl, htmlUrl] = await Promise.all([
+    signArtifact(admin, mapped.pdfUrl as string | null),
+    signArtifact(admin, mapped.htmlUrl as string | null),
+  ]);
+  return { ...mapped, pdfUrl, htmlUrl, companyName };
+};
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -171,8 +186,10 @@ export default async function handler(req: Request) {
         tenantId,
         (data ?? []).map((r: Record<string, unknown>) => String(r.customer_id)),
       );
-      const rows = (data ?? []).map((r: Record<string, unknown>) =>
-        toReport(r, names.get(String(r.customer_id)) ?? null),
+      const rows = await Promise.all(
+        (data ?? []).map((r: Record<string, unknown>) =>
+          toReport(admin, r, names.get(String(r.customer_id)) ?? null),
+        ),
       );
       return createCorsResponse({ data: rows, total: rows.length }, 200, req);
     }
@@ -193,7 +210,7 @@ export default async function handler(req: Request) {
         .maybeSingle();
       if (error) throw error;
       if (!data) return createCorsResponse({ message: 'QBR report not found' }, 404, req);
-      return createCorsResponse(toReport(data), 200, req);
+      return createCorsResponse(await toReport(admin, data), 200, req);
     }
 
     // --- GET /:id --------------------------------------------------------
@@ -209,7 +226,7 @@ export default async function handler(req: Request) {
 
       const names = await companyNames(admin, tenantId, [String(data.customer_id)]);
       return createCorsResponse(
-        toReport(data, names.get(String(data.customer_id)) ?? null),
+        await toReport(admin, data, names.get(String(data.customer_id)) ?? null),
         200,
         req,
       );
@@ -270,7 +287,7 @@ export default async function handler(req: Request) {
         .select()
         .maybeSingle();
       if (error) throw error;
-      return createCorsResponse(toReport(data ?? {}), 200, req);
+      return createCorsResponse(await toReport(admin, data ?? {}), 200, req);
     }
 
     return createCorsResponse({ error: 'Not found' }, 404, req);
@@ -447,13 +464,68 @@ async function uploadArtifact(
   contentType: string,
 ): Promise<string | null> {
   try {
-    const bucket = Deno.env.get('QBR_STORAGE_BUCKET') || 'qbr-artifacts';
     const { error } = await admin.storage
-      .from(bucket)
+      .from(qbrBucket())
       .upload(path, bytes, { contentType, upsert: true });
     if (error) return null;
-    const { data } = admin.storage.from(bucket).getPublicUrl(path);
-    return data?.publicUrl ?? null;
+    // LEGAL-006: persist the storage KEY. A signed URL cannot be stored because
+    // it would expire in place; reads mint a fresh one.
+    return path;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One canonical bucket name. The Express route defaulted to 'qbr' and this
+ * function to 'qbr-artifacts', so the two halves of the same feature disagreed
+ * about where decks live. If the live bucket is named 'qbr', set
+ * QBR_STORAGE_BUCKET rather than editing this default.
+ */
+function qbrBucket(): string {
+  return Deno.env.get('QBR_STORAGE_BUCKET') || 'qbr-artifacts';
+}
+
+/** How long a minted artifact link stays valid. */
+const QBR_SIGNED_URL_TTL_SECONDS = 15 * 60;
+
+/** Accept a bare key (written now) or a public URL (written before LEGAL-006). */
+function toArtifactKey(value: string | null | undefined): string | null {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const marker = `/${qbrBucket()}/`;
+  const at = raw.indexOf(marker);
+  if (at >= 0) return raw.slice(at + marker.length).split('?')[0];
+  if (/^https?:\/\//i.test(raw)) {
+    const publicMarker = '/object/public/';
+    const pub = raw.indexOf(publicMarker);
+    if (pub >= 0) {
+      const rest = raw.slice(pub + publicMarker.length).split('?')[0];
+      const slash = rest.indexOf('/');
+      return slash >= 0 ? rest.slice(slash + 1) : rest;
+    }
+    return null;
+  }
+  return raw.replace(/^\/+/, '').split('?')[0];
+}
+
+/**
+ * Mint a time-limited link. Returns null rather than falling back to a public
+ * URL: a broken link is a support ticket, an unauthenticated permanent link to
+ * a customer's financials is what this story exists to remove.
+ */
+async function signArtifact(
+  admin: ReturnType<typeof createSupabaseServiceClient>,
+  value: string | null | undefined,
+): Promise<string | null> {
+  const key = toArtifactKey(value);
+  if (!key) return null;
+  try {
+    const { data, error } = await admin.storage
+      .from(qbrBucket())
+      .createSignedUrl(key, QBR_SIGNED_URL_TTL_SECONDS);
+    if (error) return null;
+    return data?.signedUrl ?? null;
   } catch {
     return null;
   }

@@ -3,6 +3,7 @@ import { db } from '../db';
 import { eq, and, sql, desc, asc } from 'drizzle-orm';
 import ClaudeAIService from './claude-ai-service';
 import { createModuleLogger } from '../lib/logger';
+import { withCrisisGuardrail } from '../lib/crisis-response';
 const log = createModuleLogger('ai-employee-service');
 
 // Mock schemas - in real implementation these would come from shared/ai-employee-schema.ts
@@ -434,7 +435,11 @@ class AIEmployeeService {
 
     // Use AI to analyze the support request
     const response = await this.claudeAIService.generateCompletion({
-      system: `You are a customer support AI specialist. Analyze the support request and provide a comprehensive response with solution steps.`,
+      // LEGAL-012: free-text support content from a person can carry a
+      // disclosure; the guardrail travels with the prompt.
+      system: withCrisisGuardrail(
+        'You are a customer support AI specialist. Analyze the support request and provide a comprehensive response with solution steps.',
+      ),
       messages: [
         {
           role: 'user',

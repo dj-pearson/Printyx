@@ -47,6 +47,7 @@ import {
   machineClassOf,
   dealMatches,
 } from '@shared/deal-desk-margin';
+import { withCrisisGuardrail } from './lib/crisis-response';
 
 /** proposalType values that represent a financed/leased deal. */
 const FINANCED_PROPOSAL_TYPES = new Set(['equipment_lease', 'lease', 'financed', 'fmv_lease']);
@@ -708,7 +709,8 @@ export function registerDealDeskCopilotRoutes(app: Express) {
             .map((l) => `- ${l.productName ?? 'item'} x${l.quantity ?? 1}`)
             .join('\n');
           const prompt =
-            `You are a deal-desk advisor for a copier/MFP dealer. Predict the buyer's likely ` +
+            withCrisisGuardrail('You are a deal-desk advisor for a copier/MFP dealer.') +
+            `\n\nPredict the buyer's likely ` +
             `objections to this quote and give a concise suggested rep response for each.\n\n` +
             `Customer: ${customer?.companyName ?? 'Unknown'} (industry: ${customer?.industry ?? 'n/a'}, territory: ${customer?.territory ?? 'n/a'}).\n` +
             `Open service tickets: ${openTickets}. Past-due AR: $${Math.round(pastDue)}.\n` +

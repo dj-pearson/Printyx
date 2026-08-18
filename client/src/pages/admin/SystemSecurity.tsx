@@ -396,58 +396,28 @@ export default function SystemSecurity() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <h4 className="font-semibold">Compliance Standards</h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span>SOC 2 Type II</span>
-                          <Badge variant="outline" className="text-green-600 border-green-200">
-                            Compliant
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>ISO 27001</span>
-                          <Badge variant="outline" className="text-green-600 border-green-200">
-                            Compliant
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>GDPR</span>
-                          <Badge variant="outline" className="text-green-600 border-green-200">
-                            Compliant
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>CCPA</span>
-                          <Badge variant="outline" className="text-orange-600 border-orange-200">
-                            In Progress
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h4 className="font-semibold">Last Audit Results</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span>Security Controls</span>
-                          <span className="font-semibold text-green-600">98/100</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Data Protection</span>
-                          <span className="font-semibold text-green-600">95/100</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Access Controls</span>
-                          <span className="font-semibold text-green-600">99/100</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Incident Response</span>
-                          <span className="font-semibold text-orange-600">87/100</span>
-                        </div>
-                      </div>
-                    </div>
+                  {/* LEGAL-010: this panel hardcoded "Compliant" badges for SOC 2 Type II,
+                      ISO 27001, GDPR and CCPA, plus invented audit scores (98/100, 95/100,
+                      99/100, 87/100). None of it came from data. An admin reading it would
+                      reasonably answer a customer security questionnaire with it, which is
+                      how a fabricated dashboard turns into a written misrepresentation.
+                      Nothing tracks certification status today, so this says so. */}
+                  <div className="rounded-lg border border-dashed p-6">
+                    <h4 className="font-semibold text-foreground">
+                      Certification status is not tracked here
+                    </h4>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      This panel previously showed compliance badges and audit scores that were
+                      hardcoded rather than measured. They have been removed rather than left to be
+                      quoted to a customer.
+                    </p>
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      Printyx does not currently hold a SOC 2 or ISO 27001 report. The controls that
+                      are in place and verifiable in the platform are row-level security enforcing
+                      tenant isolation, encryption in transit and at rest, multi-factor
+                      authentication, role-based access control, and audit logging. For a customer
+                      security questionnaire, answer from those, not from a badge.
+                    </p>
                   </div>
 
                   <div className="space-y-3">

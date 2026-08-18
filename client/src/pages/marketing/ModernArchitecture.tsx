@@ -340,7 +340,7 @@ const ModernArchitecture = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">Enterprise Security</h3>
                   <p className="text-gray-600">
-                    Row-level security, encrypted data at rest and in transit, SOC 2 compliance, and
+                    Row-level security, encrypted data at rest and in transit, MFA, RBAC, and
                     granular role-based access control.
                   </p>
                 </CardContent>

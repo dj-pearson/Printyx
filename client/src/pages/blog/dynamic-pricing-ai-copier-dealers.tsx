@@ -5,7 +5,7 @@ import { CheckCircle, TrendingUp, DollarSign, AlertCircle, Target } from 'lucide
 const DynamicPricingAIBlogPost = () => {
   return (
     <BlogPostLayout
-      title="How Copier Dealers Increase Profitability 15-25% with Dynamic Pricing AI (2025 Guide)"
+      title="What Dynamic Pricing AI Actually Does for Copier Contract Margins (2025 Guide)"
       description="Discover how AI-powered dynamic pricing helps copier dealers optimize contract pricing, identify underpriced accounts, and automatically maximize margins without losing customers."
       author="Printyx Revenue Team"
       date="January 10, 2025"
@@ -27,9 +27,9 @@ const DynamicPricingAIBlogPost = () => {
         {/* Introduction */}
         <section>
           <p className="text-lg">
-            Most copier dealers are leaving 15-25% of potential profit on the table. Not because
-            they're bad at sales—but because pricing contracts manually is impossible to do
-            optimally.
+            Most copier dealers cannot say which of their contracts make money. Not because they're
+            bad at sales, but because the cost side of a contract is spread across systems that
+            never talk to each other.
           </p>
           <p className="text-lg mt-4">
             You're juggling dozens of variables: equipment costs, service history, customer usage
@@ -55,8 +55,8 @@ const DynamicPricingAIBlogPost = () => {
                   </div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-gray-900">15-25%</div>
-                  <div className="text-gray-700">Profitability increase</div>
+                  <div className="text-3xl font-bold text-gray-900">Per contract</div>
+                  <div className="text-gray-700">Margin visible, not just per invoice</div>
                 </div>
               </div>
               <div className="flex items-start space-x-3">
@@ -345,8 +345,8 @@ const DynamicPricingAIBlogPost = () => {
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
                     <span className="text-gray-700">
-                      <strong>15-25% increase in average contract margin</strong> through
-                      optimization
+                      <strong>Underpriced contracts surface before renewal</strong> rather than
+                      after, when the money is already gone
                     </span>
                   </li>
                   <li className="flex items-start">
@@ -396,36 +396,24 @@ const DynamicPricingAIBlogPost = () => {
             </Card>
           </div>
 
-          <Card className="bg-gradient-to-r from-purple-100 to-blue-100 border-2 border-purple-300 my-8">
+          <Card className="my-8">
             <CardContent className="p-6">
+              {/* LEGAL-002: a fabricated "Case Study: 40-Technician Dealer" stood
+                  here with invented before/after margins and a "$1.2M additional
+                  annual profit" result. No such dealer exists. Do not replace it
+                  with an illustrative one. */}
               <h4 className="text-xl font-bold text-gray-900 mb-3">
-                Case Study: 40-Technician Dealer
+                What this is worth depends on your book
               </h4>
-              <p className="text-gray-800 mb-4">
-                A dealer in the Midwest implemented dynamic pricing AI in Q2 2024. One year later:
-              </p>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <p className="font-semibold text-gray-900 mb-2">Before AI Pricing:</p>
-                  <ul className="space-y-1 text-gray-800 text-sm">
-                    <li>• Average contract margin: 18.3%</li>
-                    <li>• 127 contracts below 15% margin</li>
-                    <li>• 43 contracts actually unprofitable</li>
-                    <li>• Quote generation: 45 min average</li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900 mb-2">After AI Pricing:</p>
-                  <ul className="space-y-1 text-gray-800 text-sm">
-                    <li>• Average contract margin: 24.7%</li>
-                    <li>• Only 12 contracts below 15% (legacy)</li>
-                    <li>• Zero unprofitable new contracts</li>
-                    <li>• Quote generation: 8 min average</li>
-                  </ul>
-                </div>
-              </div>
-              <p className="text-gray-900 font-bold mt-4 text-lg">
-                Result: $1.2M additional annual profit from pricing optimization alone
+              <p className="text-gray-800">
+                We have no measured customer outcomes to report yet, so this article does not quote
+                any. What repricing finds in your book depends on how many contracts you hold, how
+                long since they were last priced, and how far your service costs have moved since.
+                The{' '}
+                <a href="/roi-calculator" className="text-blue-600 underline">
+                  ROI calculator
+                </a>{' '}
+                projects it from your figures and shows its working.
               </p>
             </CardContent>
           </Card>
@@ -704,7 +692,7 @@ const DynamicPricingAIBlogPost = () => {
             <ul className="space-y-2 text-lg">
               <li className="flex items-center">
                 <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0" />
-                15-25% improvement in average contract margin
+                Margin visible per contract, before the renewal not after
               </li>
               <li className="flex items-center">
                 <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0" />
@@ -745,7 +733,7 @@ const DynamicPricingAIBlogPost = () => {
                 Why AI-Powered Predictive Maintenance Beats Reactive Service
               </h4>
               <p className="text-gray-600 text-sm">
-                Learn how predictive AI reduces emergency calls by 30-40%
+                How predictive AI turns emergency call-outs into scheduled work
               </p>
             </a>
             <a

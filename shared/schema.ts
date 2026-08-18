@@ -9077,6 +9077,9 @@ export * from './blog-platform-api-schema';
 // Public meeting booking pages (Calendly-style self-scheduling — CRMX-016)
 export * from './booking-schema';
 
+// LEGAL-008: Article 14 provenance + durable suppression for enrichment-sourced records.
+export * from './data-provenance-schema';
+
 // ============================================================================
 // MOBILE APP LOGS (cross-tenant diagnostic data)
 // ============================================================================
