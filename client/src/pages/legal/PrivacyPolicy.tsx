@@ -344,8 +344,10 @@ export default function PrivacyPolicy() {
                     <ul className="list-disc pl-6 space-y-2 text-gray-700">
                       <li>
                         <strong>Account &amp; business data:</strong> for the life of your
-                        subscription and up to 30 days after termination, during which you may
-                        export your data, after which it is deleted or anonymized.
+                        subscription and for 30 days after it ends. That window is your opportunity
+                        to export; after it closes, export access ends and the data is deleted,
+                        apart from the categories listed below, which are held for the periods
+                        stated against them.
                       </li>
                       <li>
                         <strong>Invoices &amp; financial records:</strong> up to 7 years, as

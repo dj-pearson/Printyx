@@ -94,6 +94,34 @@ export class CronService {
     }, DAY_IN_MS);
     this.intervals.push(retentionInterval);
 
+    // LEGAL-005: post-termination tenant purge. The Privacy Policy commits to
+    // deleting account and business data within 30 days of termination, with
+    // stated statutory holds. REPORT-ONLY by default, exactly like the retention
+    // job above: deleting a customer's entire history is not something a
+    // scheduled task should start doing because it shipped. Opt in with
+    // TENANT_PURGE_ENABLED=true after reviewing a dry-run report, because the
+    // table list is derived from the schema and a newly added table is included
+    // automatically.
+    const tenantPurgeInterval = setInterval(async () => {
+      try {
+        const { runScheduledTenantPurge } = await import('./tenant-purge-service');
+        const dryRun = process.env.TENANT_PURGE_ENABLED !== 'true';
+        const r = await runScheduledTenantPurge(dryRun);
+        if (r.tenantsDue > 0) {
+          log.info(
+            `[CRON] Tenant purge (${dryRun ? 'report-only' : 'execute'}): ` +
+              `${r.tenantsPurged}/${r.tenantsDue} terminated tenants processed, ` +
+              `${r.totalRowsDeleted} rows` +
+              (r.errors.length ? `, ${r.errors.length} errors` : ''),
+          );
+        }
+        for (const e of r.errors) log.error(`[CRON] Tenant purge: ${e}`);
+      } catch (error) {
+        log.error('[CRON] Tenant purge tick failed:', error);
+      }
+    }, DAY_IN_MS);
+    this.intervals.push(tenantPurgeInterval);
+
     log.info(`[CRON] Initialized ${this.intervals.length} scheduled tasks`);
   }
 
