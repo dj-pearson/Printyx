@@ -29,6 +29,7 @@ import {
 import { centralizedApolloContacts, tenantApolloLeads } from '@shared/apollo-schema';
 import { eq, and, desc, gte, sql, inArray } from 'drizzle-orm';
 import { storage } from '../storage';
+import { isSuppressed, recordProvenance } from './data-provenance-service';
 
 // Types for lead intelligence
 export interface LeadScoreResult {
@@ -56,6 +57,15 @@ export interface EnrichmentResult {
   fieldsUpdated: string[];
   apolloContactId?: string;
   confidence: number;
+  /**
+   * LEGAL-008: true when enrichment was refused because the contact is on the
+   * suppression list after an objection or erasure request. Distinct from
+   * `enriched: false`, which just means no provider match was found - the caller
+   * needs to be able to tell "we found nothing" from "we are not allowed to look".
+   */
+  suppressed?: boolean;
+  /** Why enrichment was refused, when it was. */
+  reason?: string;
 }
 
 export interface LeadIntelligence {
@@ -337,6 +347,22 @@ class LeadIntelligenceService {
       throw new Error('Lead not found or access denied');
     }
 
+    // LEGAL-008: never re-acquire someone who objected or was erased. Deleting
+    // the row is not enough on its own - the next enrichment run would fetch
+    // the same person from the same provider and quietly undo the erasure. The
+    // check is here, before any provider data is applied, and fails closed.
+    if (await isSuppressed(tenantId, lead.email)) {
+      return {
+        enriched: false,
+        source: 'apollo',
+        fieldsUpdated: [],
+        confidence: 0,
+        suppressed: true,
+        reason:
+          'This contact is on the suppression list following an objection or erasure request and must not be re-enriched.',
+      };
+    }
+
     // Check if we have any Apollo data for this lead by email or company
     const fieldsUpdated: string[] = [];
     let apolloContactId: string | undefined;
@@ -407,6 +433,19 @@ class LeadIntelligenceService {
             await db.update(businessRecords).set(updates).where(eq(businessRecords.id, leadId));
 
             enriched = true;
+
+            // LEGAL-008: this record now contains data the subject never gave
+            // us, which starts an Article 14 clock. Recording where it came
+            // from and when is what makes the notice possible at all.
+            await recordProvenance({
+              tenantId,
+              subjectType: 'company',
+              subjectId: leadId,
+              subjectEmail: lead.email,
+              source: 'apollo',
+              sourceRecordId: apolloContact.apolloId,
+              fieldsAcquired: fieldsUpdated,
+            });
           }
 
           // Create or update tenant lead record
