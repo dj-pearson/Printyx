@@ -98,8 +98,14 @@ export async function handleRequests(req: Request, ctx: HandlerCtx): Promise<Res
     const row = mapRequest(body);
     row.tenant_id = auth.tenantId;
     row.created_by = auth.userId;
-    if (!row.request_number || !row.title || !row.provider) {
-      return errorResponse(400, 'request_number, title, provider required', req, {
+    // request_number is NOT NULL and unique per tenant. A client cannot safely
+    // invent one, so generate it here when the caller omits it — the create form
+    // has no field for it and previously 400'd on every submit.
+    if (!row.request_number) {
+      row.request_number = `SIG-${Date.now().toString(36).toUpperCase()}`;
+    }
+    if (!row.title || !row.provider) {
+      return errorResponse(400, 'title and provider are required', req, {
         code: 'VALIDATION_ERROR',
         requestId,
       });

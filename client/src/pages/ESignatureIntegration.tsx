@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,19 +67,13 @@ interface SignatureRequest {
   requestedDate: Date;
   expirationDate: Date;
   signedDate?: Date;
-  documentUrl: string;
-  signatureUrl?: string;
-  remindersSent: number;
-  lastReminderDate?: Date;
-  contractValue?: number;
-  contractDuration?: number;
-  signers: Array<{
-    name: string;
-    email: string;
-    role: string;
-    status: string;
-    signedDate?: Date;
-  }>;
+  // Real columns on signature_requests. There is no document url, signature
+  // url, reminder count, last-reminder date or contract value/duration column
+  // on the table, so those fields are gone rather than always-empty.
+  reminderEnabled: boolean;
+  reminderDays: number | null;
+  totalSigners: number;
+  signersCompleted: number;
   createdAt: Date;
 }
 
@@ -139,8 +133,11 @@ const STATUS_COLORS = ['#ffc658', '#82ca9d', '#ff7c7c', '#8884d8'];
 // this page was built against a camelCase mock (documentName/requestedDate/
 // customerName/remindersSent...). Reading those keys off the real rows produced
 // Invalid Dates and blank status/title. Map the real columns here; the list
-// endpoint carries no customer name (only customer_id), so customerName is a
-// follow-up backend join — it degrades to empty rather than crashing.
+// endpoint carries no customer name (only customer_id), so the name is resolved
+// against the customer list this page already loads, keyed by that id. It is
+// done client-side deliberately: signature_requests.customer_id could reference
+// either `customers` or `business_records` (the COP-B00 contradiction), and
+// guessing wrong in a backend join would be worse than looking it up here.
 
 const toValidDate = (v: unknown): Date => (v ? new Date(v as string) : new Date(0));
 
@@ -159,26 +156,46 @@ function normalizeSignatureStatus(value: unknown): SignatureRequest['status'] {
   }
 }
 
-function mapSignatureRequest(r: any): SignatureRequest {
+/**
+ * Exactly what supabase/functions/signatures/handlers/analytics.ts returns.
+ * Two fields are honest zeros there rather than estimates: totalContractValue
+ * has no backing column, and byDocumentType groups by `provider` because
+ * signature_requests has no document_type column.
+ */
+interface SignatureAnalytics {
+  totalRequests: number;
+  pendingRequests: number;
+  completedRequests: number;
+  completionRate: number;
+  averageSigningTime: number;
+  totalContractValue: number;
+  signingSpeedAnalysis: {
+    within24Hours: number;
+    within48Hours: number;
+    within1Week: number;
+    moreThan1Week: number;
+  };
+  byDocumentType: Array<{ type: string; count: number; completed: number }>;
+}
+
+function mapSignatureRequest(r: any, customerNames?: Map<string, string>): SignatureRequest {
   return {
     id: r.id,
     documentName: r.title ?? r.request_number ?? 'Untitled document',
     documentType: r.provider ?? 'esignature',
     businessRecordId: r.customer_id ?? '',
-    customerName: r.customer_name ?? r.customerName ?? '',
+    customerName:
+      r.customer_name ?? r.customerName ?? customerNames?.get(r.customer_id ?? '') ?? '',
     customerEmail: r.customer_email ?? r.customerEmail ?? '',
     status: normalizeSignatureStatus(r.status),
     requestedBy: r.created_by ?? '',
     requestedDate: toValidDate(r.sent_at ?? r.created_at),
     expirationDate: toValidDate(r.expires_at),
     signedDate: r.completed_at ? toValidDate(r.completed_at) : undefined,
-    documentUrl: '',
-    signatureUrl: undefined,
-    remindersSent: 0,
-    lastReminderDate: undefined,
-    contractValue: undefined,
-    contractDuration: undefined,
-    signers: [],
+    reminderEnabled: r.reminder_enabled ?? false,
+    reminderDays: r.reminder_days ?? null,
+    totalSigners: r.total_signers ?? 0,
+    signersCompleted: r.signers_completed ?? 0,
     createdAt: toValidDate(r.created_at),
   };
 }
@@ -189,14 +206,11 @@ export default function ESignatureIntegration() {
   const queryClient = useQueryClient();
   const { register, handleSubmit, reset, setValue, watch } = useForm();
 
-  // Fetch signature requests
-  const { data: signatureRequests = [], isLoading: requestsLoading } = useQuery<
-    unknown,
-    Error,
-    SignatureRequest[]
-  >({
+  // Fetch signature requests. The rows stay raw here and are mapped in a memo
+  // below, because the mapping needs the customer list and a `select` callback
+  // would capture a stale copy of it.
+  const { data: rawRequests, isLoading: requestsLoading } = useQuery<unknown>({
     queryKey: ['/api/signatures/requests'],
-    select: (data) => (Array.isArray(data) ? data.map(mapSignatureRequest) : []),
   });
 
   // Fetch signature templates
@@ -215,8 +229,17 @@ export default function ESignatureIntegration() {
     queryKey: ['/api/demos/customers'], // Reuse customers endpoint
   });
 
+  const signatureRequests = useMemo<SignatureRequest[]>(() => {
+    const names = new Map<string, string>(
+      (customers ?? [])
+        .filter((c: any) => c?.id)
+        .map((c: any) => [String(c.id), c.companyName ?? c.company_name ?? '']),
+    );
+    return Array.isArray(rawRequests) ? rawRequests.map((r) => mapSignatureRequest(r, names)) : [];
+  }, [rawRequests, customers]);
+
   // Fetch signature analytics
-  const { data: analytics } = useQuery({
+  const { data: analytics } = useQuery<SignatureAnalytics>({
     queryKey: ['/api/signatures/analytics'],
   });
 
@@ -255,11 +278,16 @@ export default function ESignatureIntegration() {
   });
 
   const onSubmit = (data: any) => {
+    // Only the columns the API accepts (handlers/requests.ts mapRequest). It
+    // requires title and provider, and turns expirationDays into expires_at
+    // here because the table stores an absolute timestamp, not a day count.
+    const days = parseInt(data.expirationDays) || 30;
     createRequestMutation.mutate({
-      ...data,
-      contractValue: data.contractValue ? parseFloat(data.contractValue) : null,
-      contractDuration: data.contractDuration ? parseInt(data.contractDuration) : null,
-      expirationDays: parseInt(data.expirationDays) || 30,
+      title: data.title,
+      provider: data.provider,
+      customerId: data.customerId || undefined,
+      emailSubject: data.emailSubject || undefined,
+      expiresAt: new Date(Date.now() + days * 86400000).toISOString(),
     });
   };
 
@@ -331,8 +359,8 @@ export default function ESignatureIntegration() {
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="businessRecordId">Customer</Label>
-                    <Select onValueChange={(value) => setValue('businessRecordId', value)}>
+                    <Label htmlFor="customerId">Customer</Label>
+                    <Select onValueChange={(value) => setValue('customerId', value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select customer" />
                       </SelectTrigger>
@@ -347,28 +375,26 @@ export default function ESignatureIntegration() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="documentType">Document Type</Label>
-                    <Select onValueChange={(value) => setValue('documentType', value)}>
+                    <Label htmlFor="provider">Provider</Label>
+                    {/* signature_requests has no document_type column; `provider`
+                        is the only categorical column on the table, and it is what
+                        the analytics endpoint groups by. */}
+                    <Select onValueChange={(value) => setValue('provider', value)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue placeholder="Select provider" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="service_agreement">Service Agreement</SelectItem>
-                        <SelectItem value="equipment_lease">Equipment Lease</SelectItem>
-                        <SelectItem value="maintenance_contract">Maintenance Contract</SelectItem>
-                        <SelectItem value="proposal">Proposal</SelectItem>
-                        <SelectItem value="work_order">Work Order</SelectItem>
+                        <SelectItem value="docusign">DocuSign</SelectItem>
+                        <SelectItem value="adobe_sign">Adobe Sign</SelectItem>
+                        <SelectItem value="hellosign">Dropbox Sign</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="documentName">Document Name</Label>
-                  <Input
-                    placeholder="Service Agreement - ABC Corporation"
-                    {...register('documentName')}
-                  />
+                  <Label htmlFor="title">Document Title</Label>
+                  <Input placeholder="Service Agreement - ABC Corporation" {...register('title')} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -394,21 +420,12 @@ export default function ESignatureIntegration() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="contractValue">Contract Value ($)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="85000.00"
-                      {...register('contractValue')}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="contractDuration">Duration (months)</Label>
-                    <Input type="number" placeholder="36" {...register('contractDuration')} />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emailSubject">Email Subject (Optional)</Label>
+                  <Input
+                    placeholder="Please sign: Service Agreement"
+                    {...register('emailSubject')}
+                  />
                 </div>
 
                 <div className="flex justify-end gap-2">
@@ -537,11 +554,9 @@ export default function ESignatureIntegration() {
                               {format(request.expirationDate, 'MMM dd, yyyy')}
                             </div>
                             <div>
-                              <span className="font-medium">Value:</span>
+                              <span className="font-medium">Signers:</span>
                               <br />
-                              {request.contractValue
-                                ? `$${request.contractValue.toLocaleString()}`
-                                : 'N/A'}
+                              {request.signersCompleted} of {request.totalSigners}
                             </div>
                           </div>
 
@@ -552,11 +567,10 @@ export default function ESignatureIntegration() {
                             </div>
                           )}
 
-                          {request.remindersSent > 0 && (
+                          {request.reminderEnabled && (
                             <div className="mt-2 text-sm text-gray-500">
-                              {request.remindersSent} reminder(s) sent
-                              {request.lastReminderDate &&
-                                ` • Last: ${format(request.lastReminderDate, 'MMM dd')}`}
+                              Automatic reminders on
+                              {request.reminderDays ? ` • every ${request.reminderDays} days` : ''}
                             </div>
                           )}
                         </div>
