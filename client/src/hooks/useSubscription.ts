@@ -82,11 +82,15 @@ export interface SubscriptionStatus {
  * The obvious repair — swap fetch for apiRequest — makes it WORSE for most of
  * these, because apiRequest routes to the edge function host and the
  * subscriptions edge function does not implement most of these paths. It serves
- * plans, usage, invoices, features, change-plan, the root list/create, and
- * :id / :id/cancel / :id/resume. It has NO current, notifications,
- * notifications/:id/dismiss, create, upgrade, cancel (as a bare path),
- * convert-trial, stripe/config or checkout. Converting those would take them
- * from "works in dev, 404 in prod" to "404 in both".
+ * plans, usage, invoices, features, change-plan, the root list/create,
+ * :id / :id/cancel / :id/resume, and — ported under PROD-004 — current,
+ * notifications and notifications/:id/dismiss. Those three now go through
+ * apiRequest.
+ *
+ * It still has NO create, upgrade, cancel (as a bare path), convert-trial,
+ * stripe/config or checkout. Converting those would take them from "works in
+ * dev, 404 in prod" to "404 in both". The last two need Stripe in the edge
+ * environment.
  *
  * Express (server/routes-subscriptions.ts) is the complete implementation, and
  * /api/subscriptions is not proxied, so dev works and only production is blind.
@@ -161,15 +165,8 @@ export function useSubscriptionNotifications() {
   return useQuery({
     queryKey: ['subscription', 'notifications'],
     queryFn: async () => {
-      const response = await fetch('/api/subscriptions/notifications', {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
-      }
-
-      return response.json();
+      // PROD-004: ported to the edge function alongside /current.
+      return apiRequest('/api/subscriptions/notifications');
     },
     staleTime: 1 * 60 * 1000, // 1 minute
   });
@@ -304,16 +301,8 @@ export function useDismissNotification() {
 
   return useMutation({
     mutationFn: async (notificationId: string) => {
-      const response = await fetch(`/api/subscriptions/notifications/${notificationId}/dismiss`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to dismiss notification');
-      }
-
-      return response.json();
+      // PROD-004: ported to the edge function alongside /current.
+      return apiRequest(`/api/subscriptions/notifications/${notificationId}/dismiss`, 'POST');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription', 'notifications'] });

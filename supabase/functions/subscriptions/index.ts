@@ -441,6 +441,67 @@ export default async function handler(req: Request) {
     }
 
     // ========================================================================
+    // GET  /subscriptions/notifications            - the banner's alert list
+    // POST /subscriptions/notifications/:id/dismiss
+    //
+    // PROD-004: both were Express-only, so the banner had no notifications in
+    // production and dismissing one did nothing. Ported straight across — the
+    // filter (this tenant, this user, not already dismissed) and the 50-row cap
+    // match server/routes-subscriptions.ts, and the body is { notifications }
+    // exactly as the hook expects.
+    // ========================================================================
+    if (req.method === 'GET' && secondSegment === 'notifications' && !thirdSegment) {
+      let query = admin
+        .from('subscription_notifications')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .neq('status', 'dismissed')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      // Express narrows to the caller when it knows them; so do we.
+      if (user?.id) query = query.eq('user_id', user.id);
+
+      const { data: notifications, error } = await query;
+
+      if (error) {
+        console.error('Error fetching subscription notifications:', error);
+        return createCorsResponse(
+          { error: 'Failed to fetch notifications', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse({ notifications: notifications ?? [] }, 200, req);
+    }
+
+    if (
+      req.method === 'POST' &&
+      secondSegment === 'notifications' &&
+      thirdSegment &&
+      parts[2] === 'dismiss'
+    ) {
+      const nowIso = new Date().toISOString();
+      const { error } = await admin
+        .from('subscription_notifications')
+        .update({ status: 'dismissed', dismissed_at: nowIso, updated_at: nowIso })
+        .eq('id', thirdSegment)
+        .eq('tenant_id', tenantId);
+
+      if (error) {
+        console.error('Error dismissing subscription notification:', error);
+        return createCorsResponse(
+          { error: 'Failed to dismiss notification', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse({ success: true }, 200, req);
+    }
+
+    // ========================================================================
     // GET /subscriptions/current - the shape SubscriptionBanner reads
     //
     // PROD-004: this endpoint existed only on Express, and SubscriptionBanner is
