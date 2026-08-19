@@ -8,6 +8,7 @@ import {
   invoices,
   equipment,
   contracts,
+  dealStages,
 } from '@shared/schema';
 import { ilike, or, and, eq } from 'drizzle-orm';
 import type { Request, Response } from 'express';
@@ -106,7 +107,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
             phone: businessRecords.primaryContactPhone,
             recordType: businessRecords.recordType,
             status: businessRecords.status,
-            estimatedValue: businessRecords.estimatedValue,
+            estimatedValue: businessRecords.estimatedAmount,
             urlSlug: businessRecords.urlSlug,
           })
           .from(businessRecords)
@@ -164,19 +165,28 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
         const rows = await db
           .select({
             id: deals.id,
-            name: deals.name,
-            value: deals.value,
-            stage: deals.stage,
+            name: deals.title,
+            value: deals.amount,
+            stage: dealStages.name,
             status: deals.status,
             expectedCloseDate: deals.expectedCloseDate,
-            companyName: businessRecords.companyName,
+            // deals carries its own denormalized company_name; business_records is
+            // joined through customer_id, the same FK the invoice and equipment
+            // branches below use.
+            companyName: deals.companyName,
+            accountName: businessRecords.companyName,
           })
           .from(deals)
-          .leftJoin(businessRecords, eq(deals.businessRecordId, businessRecords.id))
+          .leftJoin(businessRecords, eq(deals.customerId, businessRecords.id))
+          .leftJoin(dealStages, eq(deals.stageId, dealStages.id))
           .where(
             and(
               eq(deals.tenantId, tenantId),
-              or(ilike(deals.name, searchTerm), ilike(businessRecords.companyName, searchTerm)),
+              or(
+                ilike(deals.title, searchTerm),
+                ilike(deals.companyName, searchTerm),
+                ilike(businessRecords.companyName, searchTerm),
+              ),
             ),
           )
           .limit(limit);
@@ -184,7 +194,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
         for (const deal of rows) {
           const title = deal.name || 'Unnamed Deal';
           const subtitle = [
-            deal.companyName,
+            deal.companyName || deal.accountName,
             deal.stage,
             deal.expectedCloseDate
               ? `Close: ${new Date(deal.expectedCloseDate).toLocaleDateString()}`
@@ -221,9 +231,10 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
           const rows = await db
             .select({
               id: businessRecordActivities.id,
-              title: businessRecordActivities.title,
-              type: businessRecordActivities.type,
-              status: businessRecordActivities.status,
+              title: businessRecordActivities.subject,
+              type: businessRecordActivities.activityType,
+              // No status column on this table; outcome is the closest real field.
+              status: businessRecordActivities.outcome,
               dueDate: businessRecordActivities.dueDate,
               companyName: businessRecords.companyName,
             })
@@ -236,8 +247,8 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
               and(
                 eq(businessRecordActivities.tenantId, tenantId),
                 or(
-                  ilike(businessRecordActivities.title, searchTerm),
-                  ilike(businessRecordActivities.notes, searchTerm),
+                  ilike(businessRecordActivities.subject, searchTerm),
+                  ilike(businessRecordActivities.description, searchTerm),
                 ),
               ),
             )
@@ -285,7 +296,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
               companyName: businessRecords.companyName,
             })
             .from(quotes)
-            .leftJoin(businessRecords, eq(quotes.businessRecordId, businessRecords.id))
+            .leftJoin(businessRecords, eq(quotes.customerId, businessRecords.id))
             .where(
               and(
                 eq(quotes.tenantId, tenantId),

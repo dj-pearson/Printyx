@@ -165,7 +165,7 @@ describe('CR-029: universal search', () => {
     ]);
   });
 
-  it('returns all six entity types, sorted by relevance, from six queries', async () => {
+  it('returns all seven entity types, sorted by relevance, from seven queries', async () => {
     const res = await request(buildApp()).get('/api/universal-search?q=zeta');
     expect(res.status).toBe(200);
 
@@ -179,17 +179,17 @@ describe('CR-029: universal search', () => {
     expect([...rel]).toEqual([...rel].sort((a, b) => b - a));
     expect(res.body[0].type).toBe('customer');
 
-    // All six entity searches issued exactly one query.
-    expect(state.queryCount).toBe(6);
+    // All seven entity searches issued exactly one query.
+    expect(state.queryCount).toBe(7);
   });
 
   it('serves an identical repeat query from cache (no new queries)', async () => {
     const app = buildApp();
     await request(app).get('/api/universal-search?q=cachekey');
-    expect(state.queryCount).toBe(6);
+    expect(state.queryCount).toBe(7);
     await request(app).get('/api/universal-search?q=cachekey');
     // Second call hits the cache — no additional queries.
-    expect(state.queryCount).toBe(6);
+    expect(state.queryCount).toBe(7);
   });
 
   it('degrades gracefully when an optional table errors', async () => {

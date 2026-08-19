@@ -304,6 +304,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // it was rewritten to /api/search to match the canonical edge function.
     '/api/search': 'search',
 
+    // COP-I05 later pointed the command palette back at /api/universal-search,
+    // which no edge function served — global search 404'd in production. The
+    // universal-search function is the prod implementation; this entry makes dev
+    // exercise it too. server/routes-universal-search.ts stays as the network-
+    // error fallback.
+    '/api/universal-search': 'universal-search',
+
     // AUDIT-015: ai-search. REQUIRED, not defensive — without this entry dev 404s.
     //
     // Nothing in Express serves /api/ai-search/*. The legacy router
