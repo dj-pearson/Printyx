@@ -3,6 +3,10 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import {
+  toEnrichedContactRow,
+  UNPERSISTED_ENRICHMENT_FIELDS,
+} from '../_shared/enriched-contact.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -54,7 +58,8 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
-      if (source) query = query.eq('source', source);
+      // enrichment_source, not source.
+      if (source) query = query.eq('enrichment_source', source);
       if (status) query = query.eq('status', status);
 
       const { data: contacts, error } = await query;
@@ -250,29 +255,25 @@ export default async function handler(req: Request) {
       // Process ZoomInfo contacts for import
       const contacts = body.contacts || [];
       const importedContacts = [];
+      const failures: string[] = [];
 
       for (const contact of contacts) {
-        const { data, error } = await admin
+        const { data, error: importError } = await admin
           .from('enriched_contacts')
-          .insert({
-            tenant_id: tenantId,
-            source: 'zoominfo',
-            external_id: contact.id,
-            first_name: contact.firstName,
-            last_name: contact.lastName,
-            email: contact.email,
-            phone: contact.phone,
-            title: contact.title,
-            company_name: contact.company,
-            raw_data: contact,
-            status: 'imported',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
+          .insert(toEnrichedContactRow('zoominfo', contact, tenantId, new Date().toISOString()))
           .select()
           .single();
 
-        if (!error && data) {
+        // COP-M01: this read `!error`, which is a DIFFERENT variable declared
+        // earlier in the handler — the loop's own error was never checked. With
+        // the insert naming six columns that do not exist, every contact failed
+        // and the endpoint reported a clean "imported 0".
+        if (importError) {
+          console.error('Error importing enriched contact:', importError);
+          failures.push(importError.message);
+          continue;
+        }
+        if (data) {
           importedContacts.push(data);
         }
       }
@@ -282,6 +283,9 @@ export default async function handler(req: Request) {
           imported: importedContacts.length,
           total: contacts.length,
           contacts: importedContacts,
+          failed: failures.length,
+          failures: failures.slice(0, 5),
+          unpersisted: UNPERSISTED_ENRICHMENT_FIELDS,
         },
         200,
         req,
@@ -299,29 +303,25 @@ export default async function handler(req: Request) {
 
       const contacts = body.contacts || [];
       const importedContacts = [];
+      const failures: string[] = [];
 
       for (const contact of contacts) {
-        const { data, error } = await admin
+        const { data, error: importError } = await admin
           .from('enriched_contacts')
-          .insert({
-            tenant_id: tenantId,
-            source: 'apollo',
-            external_id: contact.id,
-            first_name: contact.first_name,
-            last_name: contact.last_name,
-            email: contact.email,
-            phone: contact.phone_numbers?.[0],
-            title: contact.title,
-            company_name: contact.organization?.name,
-            raw_data: contact,
-            status: 'imported',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
+          .insert(toEnrichedContactRow('apollo', contact, tenantId, new Date().toISOString()))
           .select()
           .single();
 
-        if (!error && data) {
+        // COP-M01: this read `!error`, which is a DIFFERENT variable declared
+        // earlier in the handler — the loop's own error was never checked. With
+        // the insert naming six columns that do not exist, every contact failed
+        // and the endpoint reported a clean "imported 0".
+        if (importError) {
+          console.error('Error importing enriched contact:', importError);
+          failures.push(importError.message);
+          continue;
+        }
+        if (data) {
           importedContacts.push(data);
         }
       }
@@ -331,6 +331,9 @@ export default async function handler(req: Request) {
           imported: importedContacts.length,
           total: contacts.length,
           contacts: importedContacts,
+          failed: failures.length,
+          failures: failures.slice(0, 5),
+          unpersisted: UNPERSISTED_ENRICHMENT_FIELDS,
         },
         200,
         req,

@@ -3,6 +3,10 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import {
+  toEnrichedContactRow,
+  UNPERSISTED_ENRICHMENT_FIELDS,
+} from '../_shared/enriched-contact.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -53,7 +57,8 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
-      if (source) query = query.eq('source', source);
+      // enrichment_source, not source.
+      if (source) query = query.eq('enrichment_source', source);
 
       const { data: contacts, error } = await query;
 
@@ -231,31 +236,37 @@ export default async function handler(req: Request) {
       const body = await req.json();
       const contacts = body.contacts || [];
       const imported: any[] = [];
+      const failures: string[] = [];
 
       for (const contact of contacts) {
-        const { data } = await admin
+        const { data, error: importError } = await admin
           .from('enriched_contacts')
-          .insert({
-            tenant_id: tenantId,
-            source: 'zoominfo',
-            external_id: contact.id,
-            first_name: contact.firstName,
-            last_name: contact.lastName,
-            email: contact.email,
-            phone: contact.phone,
-            title: contact.title,
-            company_name: contact.company,
-            raw_data: contact,
-            status: 'imported',
-            created_at: new Date().toISOString(),
-          })
+          .insert(toEnrichedContactRow('zoominfo', contact, tenantId, new Date().toISOString()))
           .select()
           .single();
 
+        if (importError) {
+          console.error('Error importing enriched contact:', importError);
+          failures.push(importError.message);
+          continue;
+        }
         if (data) imported.push(data);
       }
 
-      return createCorsResponse({ imported: imported.length, total: contacts.length }, 200, req);
+      // COP-M01: these inserts named six columns the table does not have, so
+      // every one failed — and nothing checked the error, so the endpoint
+      // reported "imported 0" and moved on. Failures are surfaced now.
+      return createCorsResponse(
+        {
+          imported: imported.length,
+          total: contacts.length,
+          failed: failures.length,
+          failures: failures.slice(0, 5),
+          unpersisted: UNPERSISTED_ENRICHMENT_FIELDS,
+        },
+        failures.length > 0 && imported.length === 0 ? 500 : 200,
+        req,
+      );
     }
 
     // POST /enrichment/import/apollo/contacts
@@ -268,31 +279,37 @@ export default async function handler(req: Request) {
       const body = await req.json();
       const contacts = body.contacts || [];
       const imported: any[] = [];
+      const failures: string[] = [];
 
       for (const contact of contacts) {
-        const { data } = await admin
+        const { data, error: importError } = await admin
           .from('enriched_contacts')
-          .insert({
-            tenant_id: tenantId,
-            source: 'apollo',
-            external_id: contact.id,
-            first_name: contact.first_name,
-            last_name: contact.last_name,
-            email: contact.email,
-            phone: contact.phone_numbers?.[0],
-            title: contact.title,
-            company_name: contact.organization?.name,
-            raw_data: contact,
-            status: 'imported',
-            created_at: new Date().toISOString(),
-          })
+          .insert(toEnrichedContactRow('apollo', contact, tenantId, new Date().toISOString()))
           .select()
           .single();
 
+        if (importError) {
+          console.error('Error importing enriched contact:', importError);
+          failures.push(importError.message);
+          continue;
+        }
         if (data) imported.push(data);
       }
 
-      return createCorsResponse({ imported: imported.length, total: contacts.length }, 200, req);
+      // COP-M01: these inserts named six columns the table does not have, so
+      // every one failed — and nothing checked the error, so the endpoint
+      // reported "imported 0" and moved on. Failures are surfaced now.
+      return createCorsResponse(
+        {
+          imported: imported.length,
+          total: contacts.length,
+          failed: failures.length,
+          failures: failures.slice(0, 5),
+          unpersisted: UNPERSISTED_ENRICHMENT_FIELDS,
+        },
+        failures.length > 0 && imported.length === 0 ? 500 : 200,
+        req,
+      );
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
