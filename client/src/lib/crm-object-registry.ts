@@ -513,8 +513,13 @@ const companiesConfig: CrmObjectConfig = {
   detailPath: '/companies',
   hasBoardView: false,
   fields: [
+    // COP-M01: these are the REAL companies columns (shared/schema.ts, migration
+    // 0000). This block used to name `name`, `city`, `state` and `employeeCount`;
+    // the real columns are businessName, billingCity, billingState and employees.
+    // Company Name was the FIRST column of the table and rendered blank against
+    // both backends.
     {
-      field: 'name',
+      field: 'businessName',
       label: 'Company Name',
       type: 'text',
       sortable: true,
@@ -538,10 +543,16 @@ const companiesConfig: CrmObjectConfig = {
       editable: true,
       width: 'min-w-[140px]',
     },
-    { field: 'city', label: 'City', type: 'text', sortable: true, width: 'min-w-[120px]' },
-    { field: 'state', label: 'State', type: 'text', sortable: true, width: 'min-w-[100px]' },
+    { field: 'billingCity', label: 'City', type: 'text', sortable: true, width: 'min-w-[120px]' },
     {
-      field: 'employeeCount',
+      field: 'billingState',
+      label: 'State',
+      type: 'text',
+      sortable: true,
+      width: 'min-w-[100px]',
+    },
+    {
+      field: 'employees',
       label: 'Employees',
       type: 'number',
       sortable: true,
@@ -556,7 +567,15 @@ const companiesConfig: CrmObjectConfig = {
     },
     { field: 'createdAt', label: 'Created', type: 'date', sortable: true, width: 'min-w-[130px]' },
   ],
-  defaultColumns: ['name', 'industry', 'website', 'phone', 'city', 'state', 'employeeCount'],
+  defaultColumns: [
+    'businessName',
+    'industry',
+    'website',
+    'phone',
+    'billingCity',
+    'billingState',
+    'employees',
+  ],
   quickFilters: [
     {
       field: 'industry',
@@ -588,10 +607,9 @@ const companiesConfig: CrmObjectConfig = {
   ],
   defaultViews: [
     { name: 'All Companies', isDefault: true },
-    {
-      name: 'My Companies',
-      filterDefinition: [{ field: 'ownerId', operator: 'eq', value: '__CURRENT_USER__' }],
-    },
+    // No 'My Companies' view: companies has no owner column keyed on a user id.
+    // The nearest thing is businessOwner, a free-text person's name, which
+    // __CURRENT_USER__ can never equal — the view was guaranteed to be empty.
     { name: 'Recently Modified', sortConfig: { field: 'updatedAt', direction: 'desc' } },
   ],
 };

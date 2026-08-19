@@ -21,6 +21,12 @@ import {
   companyDuplicateCheckSchema,
   idParamSchema,
 } from './lib/crm-validation';
+import {
+  compareRecords,
+  COMPANY_LIST_SPEC,
+  matchesSearch,
+  parseCrmListQuery,
+} from './lib/crm-list-query';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-companies');
 
@@ -46,47 +52,34 @@ export function registerCompaniesRoutes(app: Express) {
           return res.status(401).json({ message: 'Authentication required' });
         }
 
-        const search = String((req.query as any)?.search || '');
-        const recordType = (req.query as any)?.recordType as string | undefined;
-        const status = (req.query as any)?.status as string | undefined;
-        const limitParam = (req.query as any)?.limit;
-        const offsetParam = (req.query as any)?.offset;
+        // COP-M01: this ignored sortBy/sortOrder entirely (so the CRM table's
+        // column headers did nothing), searched businessName only while the edge
+        // function searched six columns, and filtered on `recordType`/`status`
+        // — neither of which is a column on companies. The real ones are
+        // businessRecordType and activity, which is what the edge function has
+        // always matched on. Semantics now come from the shared spec.
+        const q = parseCrmListQuery((req.query as any) || {}, COMPANY_LIST_SPEC);
+        const recordType = q.filters.recordType || q.filters.businessRecordType;
 
         const allCompanies = await storage.getCompanies(tenantId);
 
-        // Apply filters
-        let filtered = allCompanies;
+        const filtered = (allCompanies as any[])
+          .filter((c) => matchesSearch(COMPANY_LIST_SPEC, c, q.search))
+          .filter((c) => (q.filters.industry ? c.industry === q.filters.industry : true))
+          .filter((c) => (q.filters.status ? c.activity === q.filters.status : true))
+          .filter((c) => (recordType ? c.businessRecordType === recordType : true))
+          .sort((a, b) => compareRecords(a, b, q.sortField, q.ascending));
 
-        if (search) {
-          filtered = filtered.filter((c: any) =>
-            (c.businessName || '').toLowerCase().includes(search.toLowerCase()),
-          );
-        }
-
-        if (recordType) {
-          filtered = filtered.filter((c: any) => c.recordType === recordType);
-        }
-
-        if (status) {
-          filtered = filtered.filter((c: any) => c.status === status);
-        }
-
-        // Compute total before pagination
         const total = filtered.length;
-
-        // Apply limit/offset pagination
-        const limit = limitParam !== undefined ? parseInt(String(limitParam), 10) : undefined;
-        const offset = offsetParam !== undefined ? parseInt(String(offsetParam), 10) : 0;
-
-        if (limit !== undefined) {
-          filtered = filtered.slice(offset, offset + limit);
-        } else if (offset > 0) {
-          filtered = filtered.slice(offset);
-        }
+        const page = filtered.slice(q.offset, q.offset + q.limit);
 
         res.json({
-          data: filtered,
-          pagination: { total, limit: limit ?? filtered.length, offset },
+          data: page,
+          total,
+          page: q.page,
+          limit: q.limit,
+          // Kept for the callers that read pagination.total rather than total.
+          pagination: { total, limit: q.limit, offset: q.offset },
         });
       } catch (error) {
         log.error('Error fetching companies:', error);

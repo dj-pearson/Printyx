@@ -13,36 +13,43 @@
 // supabase/functions/_shared/contact-list-query.ts. This suite imports both.
 import { describe, it, expect } from 'vitest';
 
-import * as node from '../../lib/contact-list-query';
-import * as edge from '../../../supabase/functions/_shared/contact-list-query';
+import * as node from '../../lib/crm-list-query';
+import * as edge from '../../../supabase/functions/_shared/crm-list-query';
 
 const bothParsers = [
-  ['node', node.parseContactListQuery] as const,
-  ['edge', edge.parseContactListQuery] as const,
+  ['node', (q: any) => node.parseCrmListQuery(q, node.CONTACT_LIST_SPEC)] as const,
+  ['edge', (q: any) => edge.parseCrmListQuery(q, edge.CONTACT_LIST_SPEC)] as const,
 ];
 
 function parseBoth(qs: string) {
-  const a = node.parseContactListQuery(new URLSearchParams(qs));
-  const b = edge.parseContactListQuery(new URLSearchParams(qs));
+  const a = node.parseCrmListQuery(new URLSearchParams(qs), node.CONTACT_LIST_SPEC);
+  const b = edge.parseCrmListQuery(new URLSearchParams(qs), edge.CONTACT_LIST_SPEC);
+  expect(b).toEqual(a);
+  return a;
+}
+
+function parseCompaniesBoth(qs: string) {
+  const a = node.parseCrmListQuery(new URLSearchParams(qs), node.COMPANY_LIST_SPEC);
+  const b = edge.parseCrmListQuery(new URLSearchParams(qs), edge.COMPANY_LIST_SPEC);
   expect(b).toEqual(a);
   return a;
 }
 
 describe('the sort whitelist matches across copies', () => {
   it('CONTACT_SORT_FIELDS is identical', () => {
-    expect(edge.CONTACT_SORT_FIELDS).toEqual(node.CONTACT_SORT_FIELDS);
+    expect(edge.CONTACT_LIST_SPEC.sortFields).toEqual(node.CONTACT_LIST_SPEC.sortFields);
   });
 
   it('every mapped column is snake_case', () => {
-    for (const column of Object.values(node.CONTACT_SORT_FIELDS)) {
+    for (const column of Object.values(node.CONTACT_LIST_SPEC.sortFields)) {
       expect(column).toMatch(/^[a-z][a-z0-9_]*$/);
     }
   });
 
   it('defaults and limits are identical', () => {
-    expect(edge.DEFAULT_CONTACT_SORT_FIELD).toBe(node.DEFAULT_CONTACT_SORT_FIELD);
-    expect(edge.DEFAULT_CONTACT_PAGE_SIZE).toBe(node.DEFAULT_CONTACT_PAGE_SIZE);
-    expect(edge.MAX_CONTACT_PAGE_SIZE).toBe(node.MAX_CONTACT_PAGE_SIZE);
+    expect(edge.CONTACT_LIST_SPEC.defaultSortField).toBe(node.CONTACT_LIST_SPEC.defaultSortField);
+    expect(edge.CONTACT_LIST_SPEC.defaultLimit).toBe(node.CONTACT_LIST_SPEC.defaultLimit);
+    expect(edge.MAX_CRM_PAGE_SIZE).toBe(node.MAX_CRM_PAGE_SIZE);
   });
 
   it.each([
@@ -58,8 +65,8 @@ describe('the sort whitelist matches across copies', () => {
     ['id; drop table company_contacts', 'createdAt'],
     ['', 'createdAt'],
   ])('resolveContactSortField(%j) -> %j in both copies', (raw, expected) => {
-    expect(node.resolveContactSortField(raw)).toBe(expected);
-    expect(edge.resolveContactSortField(raw)).toBe(expected);
+    expect(node.resolveSortField(node.CONTACT_LIST_SPEC, raw)).toBe(expected);
+    expect(edge.resolveSortField(edge.CONTACT_LIST_SPEC, raw)).toBe(expected);
   });
 });
 
@@ -74,7 +81,6 @@ describe('parseContactListQuery', () => {
       sortColumn: 'last_name',
       ascending: true,
       search: 'alvarez',
-      companyId: null,
     });
   });
 
@@ -117,7 +123,7 @@ describe('parseContactListQuery', () => {
 
   it('treats "all" as no filter, matching the quick-filter placeholder', () => {
     const q = parseBoth('department=all&leadStatus=all&ownerId=all&companyId=all');
-    expect(q).toMatchObject({
+    expect(q.filters).toEqual({
       department: null,
       leadStatus: null,
       ownerId: null,
@@ -127,7 +133,7 @@ describe('parseContactListQuery', () => {
 
   it('keeps real filter values', () => {
     const q = parseBoth('department=sales&leadStatus=qualified&companyId=c-42&ownerId=u-7');
-    expect(q).toMatchObject({
+    expect(q.filters).toEqual({
       department: 'sales',
       leadStatus: 'qualified',
       companyId: 'c-42',
@@ -145,8 +151,8 @@ describe('parseContactListQuery', () => {
   });
 
   it('reads the first value when a plain object holds an array', () => {
-    expect(node.parseContactListQuery({ limit: ['10', '99'] }).limit).toBe(10);
-    expect(edge.parseContactListQuery({ limit: ['10', '99'] }).limit).toBe(10);
+    expect(node.parseCrmListQuery({ limit: ['10', '99'] }, node.CONTACT_LIST_SPEC).limit).toBe(10);
+    expect(edge.parseCrmListQuery({ limit: ['10', '99'] }, edge.CONTACT_LIST_SPEC).limit).toBe(10);
   });
 });
 
@@ -167,34 +173,38 @@ describe('sanitizeContactSearch', () => {
     [null, ''],
     [undefined, ''],
   ])('sanitizeContactSearch(%j) -> %j in both copies', (raw, expected) => {
-    expect(node.sanitizeContactSearch(raw as any)).toBe(expected);
-    expect(edge.sanitizeContactSearch(raw as any)).toBe(expected);
+    expect(node.sanitizeSearchTerm(raw as any)).toBe(expected);
+    expect(edge.sanitizeSearchTerm(raw as any)).toBe(expected);
   });
 
   it('caps the term at 100 characters', () => {
     const long = 'x'.repeat(500);
-    expect(node.sanitizeContactSearch(long)).toHaveLength(100);
-    expect(edge.sanitizeContactSearch(long)).toHaveLength(100);
+    expect(node.sanitizeSearchTerm(long)).toHaveLength(100);
+    expect(edge.sanitizeSearchTerm(long)).toHaveLength(100);
   });
 
   it('a sanitized term can never close the or() grammar', () => {
-    const term = node.sanitizeContactSearch('a,b(c)d%e');
+    const term = node.sanitizeSearchTerm('a,b(c)d%e');
     expect(term).not.toMatch(/[,()%*\\"']/);
-    expect(node.buildContactSearchOr(term)).toBe(edge.buildContactSearchOr(term));
+    expect(node.buildSearchOr(node.CONTACT_LIST_SPEC, term)).toBe(
+      edge.buildSearchOr(edge.CONTACT_LIST_SPEC, term),
+    );
   });
 });
 
 describe('buildContactSearchOr', () => {
   it('searches first name, last name and email', () => {
-    expect(node.buildContactSearchOr('lee')).toBe(
+    expect(node.buildSearchOr(node.CONTACT_LIST_SPEC, 'lee')).toBe(
       'first_name.ilike.%lee%,last_name.ilike.%lee%,email.ilike.%lee%',
     );
-    expect(edge.buildContactSearchOr('lee')).toBe(node.buildContactSearchOr('lee'));
+    expect(edge.buildSearchOr(edge.CONTACT_LIST_SPEC, 'lee')).toBe(
+      node.buildSearchOr(node.CONTACT_LIST_SPEC, 'lee'),
+    );
   });
 
   it('is empty for an empty term, so the caller can skip the filter', () => {
-    expect(node.buildContactSearchOr('')).toBe('');
-    expect(edge.buildContactSearchOr('')).toBe('');
+    expect(node.buildSearchOr(node.CONTACT_LIST_SPEC, '')).toBe('');
+    expect(edge.buildSearchOr(edge.CONTACT_LIST_SPEC, '')).toBe('');
   });
 });
 
@@ -213,27 +223,31 @@ describe('contactMatchesSearch mirrors the PostgREST filter', () => {
     ['vance', 1],
     ['nobody', 0],
   ])('search %j matches %i row(s)', (term, count) => {
-    const t = node.sanitizeContactSearch(term);
-    expect(rows.filter((r) => node.contactMatchesSearch(r, t))).toHaveLength(count);
-    expect(rows.filter((r) => edge.contactMatchesSearch(r, t))).toHaveLength(count);
+    const t = node.sanitizeSearchTerm(term);
+    expect(rows.filter((r) => node.matchesSearch(node.CONTACT_LIST_SPEC, r, t))).toHaveLength(
+      count,
+    );
+    expect(rows.filter((r) => edge.matchesSearch(edge.CONTACT_LIST_SPEC, r, t))).toHaveLength(
+      count,
+    );
   });
 
   it('an empty term matches everything', () => {
-    expect(rows.every((r) => node.contactMatchesSearch(r, ''))).toBe(true);
-    expect(rows.every((r) => edge.contactMatchesSearch(r, ''))).toBe(true);
+    expect(rows.every((r) => node.matchesSearch(node.CONTACT_LIST_SPEC, r, ''))).toBe(true);
+    expect(rows.every((r) => edge.matchesSearch(edge.CONTACT_LIST_SPEC, r, ''))).toBe(true);
   });
 
   it('does not match on fields the or() filter leaves out', () => {
     const row = { firstName: 'Rosa', lastName: 'Alvarez', email: 'r@x.example', title: 'Manager' };
-    expect(node.contactMatchesSearch(row, 'manager')).toBe(false);
-    expect(edge.contactMatchesSearch(row, 'manager')).toBe(false);
+    expect(node.matchesSearch(node.CONTACT_LIST_SPEC, row, 'manager')).toBe(false);
+    expect(edge.matchesSearch(edge.CONTACT_LIST_SPEC, row, 'manager')).toBe(false);
   });
 });
 
 describe('compareContacts', () => {
   const sortBoth = (rows: any[], field: string, asc: boolean) => {
-    const a = [...rows].sort((x, y) => node.compareContacts(x, y, field, asc));
-    const b = [...rows].sort((x, y) => edge.compareContacts(x, y, field, asc));
+    const a = [...rows].sort((x, y) => node.compareRecords(x, y, field, asc));
+    const b = [...rows].sort((x, y) => edge.compareRecords(x, y, field, asc));
     expect(b).toEqual(a);
     return a;
   };
@@ -278,5 +292,97 @@ describe('compareContacts', () => {
       false,
       true,
     ]);
+  });
+});
+
+// ─── Companies ─────────────────────────────────────────────────────────────
+
+describe('COMPANY_LIST_SPEC', () => {
+  it('is identical across copies', () => {
+    expect(edge.COMPANY_LIST_SPEC).toEqual(node.COMPANY_LIST_SPEC);
+  });
+
+  // The bug this pins: the companies edge function searched
+  // `email.ilike.%term%`, and companies has no email column, so PostgREST
+  // answered 42703 and every company search — the CRM page and the quote
+  // builder's customer picker alike — came back 500.
+  it('does not search a column the companies table does not have', () => {
+    expect(node.COMPANY_LIST_SPEC.searchColumns).not.toContain('email');
+    expect(node.COMPANY_LIST_SPEC.searchFields).not.toContain('email');
+  });
+
+  it('pairs every physical search column with its camelCase field', () => {
+    for (const spec of [node.CONTACT_LIST_SPEC, node.COMPANY_LIST_SPEC]) {
+      expect(spec.searchFields).toHaveLength(spec.searchColumns.length);
+      spec.searchColumns.forEach((column, i) => {
+        const camel = column.replace(/_([a-z])/g, (_m, c) => c.toUpperCase());
+        expect(spec.searchFields[i]).toBe(camel);
+      });
+    }
+  });
+
+  it('parses the query the CRM companies table sends', () => {
+    const q = parseCompaniesBoth('limit=25&offset=0&sortBy=businessName&sortOrder=asc');
+    expect(q).toMatchObject({
+      limit: 25,
+      offset: 0,
+      sortField: 'businessName',
+      sortColumn: 'business_name',
+      ascending: true,
+    });
+  });
+
+  it('keeps the endpoint default of 100 when no limit is sent', () => {
+    expect(parseCompaniesBoth('').limit).toBe(100);
+    // Contacts keep their own smaller default; the spec carries it, not the parser.
+    expect(parseBoth('').limit).toBe(25);
+  });
+
+  it('falls back to createdAt for a field companies does not have', () => {
+    // These are the names the registry used to bind, and they are not columns.
+    for (const raw of ['name', 'city', 'state', 'employeeCount', 'ownerId']) {
+      expect(node.resolveSortField(node.COMPANY_LIST_SPEC, raw)).toBe('createdAt');
+      expect(edge.resolveSortField(edge.COMPANY_LIST_SPEC, raw)).toBe('createdAt');
+    }
+  });
+
+  it('resolves the real column names the registry now binds', () => {
+    const spec = node.COMPANY_LIST_SPEC;
+    expect(spec.sortFields.businessName).toBe('business_name');
+    expect(spec.sortFields.billingCity).toBe('billing_city');
+    expect(spec.sortFields.billingState).toBe('billing_state');
+    expect(spec.sortFields.employees).toBe('employees');
+  });
+
+  it('reads the industry, status and record-type filters', () => {
+    const q = parseCompaniesBoth('industry=manufacturing&status=Active&recordType=Customer');
+    expect(q.filters).toEqual({
+      industry: 'manufacturing',
+      status: 'Active',
+      recordType: 'Customer',
+      businessRecordType: null,
+    });
+  });
+
+  it('builds a search across the real company columns', () => {
+    const or = node.buildSearchOr(node.COMPANY_LIST_SPEC, 'ridgeline');
+    expect(or).toBe(
+      'business_name.ilike.%ridgeline%,phone.ilike.%ridgeline%,customer_number.ilike.%ridgeline%,' +
+        'industry.ilike.%ridgeline%,billing_city.ilike.%ridgeline%,billing_state.ilike.%ridgeline%',
+    );
+    expect(edge.buildSearchOr(edge.COMPANY_LIST_SPEC, 'ridgeline')).toBe(or);
+  });
+
+  it('matches the same rows in memory as the or() filter names', () => {
+    const rows = [
+      { businessName: 'Ridgeline Dental', billingCity: 'Ames', customerNumber: '10243' },
+      { businessName: 'Northgate Clinic', billingCity: 'Des Moines', customerNumber: '10244' },
+    ];
+    const hit = (term: string) =>
+      rows.filter((r) => node.matchesSearch(node.COMPANY_LIST_SPEC, r, term));
+    expect(hit('ridgeline')).toHaveLength(1);
+    expect(hit('des moines')).toHaveLength(1);
+    expect(hit('10243')).toHaveLength(1);
+    expect(hit('nothing')).toHaveLength(0);
   });
 });

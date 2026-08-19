@@ -12,13 +12,13 @@
 // is exactly the request the CRM contacts table makes — and since
 // /api/company-contacts is proxied to this function in dev too, that page listed
 // nothing anywhere. It is now an optional filter, and limit/offset/search/sortBy
-// are honoured. The query string is parsed by _shared/contact-list-query.ts,
-// which server/lib/contact-list-query.ts mirrors for the Express side.
+// are honoured. The query string is parsed by _shared/crm-list-query.ts, which
+// server/lib/crm-list-query.ts mirrors for the Express side.
 
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
-import { buildContactSearchOr, parseContactListQuery } from '../_shared/contact-list-query.ts';
+import { buildSearchOr, CONTACT_LIST_SPEC, parseCrmListQuery } from '../_shared/crm-list-query.ts';
 
 /**
  * snake_case row -> the camelCase shape the CRM table and the record layout read.
@@ -111,19 +111,19 @@ export default async function handler(req: Request) {
 
     // GET /company-contacts - list, optionally narrowed to one company
     if (req.method === 'GET' && !contactId) {
-      const q = parseContactListQuery(url.searchParams);
+      const q = parseCrmListQuery(url.searchParams, CONTACT_LIST_SPEC);
 
       let query = admin
         .from('company_contacts')
         .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId);
 
-      if (q.companyId) query = query.eq('company_id', q.companyId);
-      if (q.department) query = query.eq('department', q.department);
-      if (q.leadStatus) query = query.eq('lead_status', q.leadStatus);
-      if (q.ownerId) query = query.eq('owner_id', q.ownerId);
+      if (q.filters.companyId) query = query.eq('company_id', q.filters.companyId);
+      if (q.filters.department) query = query.eq('department', q.filters.department);
+      if (q.filters.leadStatus) query = query.eq('lead_status', q.filters.leadStatus);
+      if (q.filters.ownerId) query = query.eq('owner_id', q.filters.ownerId);
 
-      const searchOr = buildContactSearchOr(q.search);
+      const searchOr = buildSearchOr(CONTACT_LIST_SPEC, q.search);
       if (searchOr) query = query.or(searchOr);
 
       query = query

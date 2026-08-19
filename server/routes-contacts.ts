@@ -25,10 +25,11 @@ import {
   companyQuerySchema,
 } from './lib/crm-validation';
 import {
-  compareContacts,
-  contactMatchesSearch,
-  parseContactListQuery,
-} from './lib/contact-list-query';
+  compareRecords,
+  CONTACT_LIST_SPEC,
+  matchesSearch,
+  parseCrmListQuery,
+} from './lib/crm-list-query';
 import { createModuleLogger } from './lib/logger';
 import { enhanceUserContext, requirePermission } from './middleware/rbac-route-helper';
 const log = createModuleLogger('routes-contacts');
@@ -63,19 +64,19 @@ export function registerContactsRoutes(app: Express) {
           return res.status(401).json({ message: 'Authentication required' });
         }
 
-        const q = parseContactListQuery((req.query as any) || {});
+        const q = parseCrmListQuery((req.query as any) || {}, CONTACT_LIST_SPEC);
 
-        const all = q.companyId
-          ? await storage.getCompanyContacts(q.companyId, tenantId)
+        const all = q.filters.companyId
+          ? await storage.getCompanyContacts(q.filters.companyId, tenantId)
           : await storage.getAllCompanyContacts(tenantId);
 
         const filtered = (all as any[])
-          .filter((c) => (q.department ? c.department === q.department : true))
-          .filter((c) => (q.leadStatus ? c.leadStatus === q.leadStatus : true))
-          .filter((c) => (q.ownerId ? c.ownerId === q.ownerId : true))
-          .filter((c) => contactMatchesSearch(c, q.search));
+          .filter((c) => (q.filters.department ? c.department === q.filters.department : true))
+          .filter((c) => (q.filters.leadStatus ? c.leadStatus === q.filters.leadStatus : true))
+          .filter((c) => (q.filters.ownerId ? c.ownerId === q.filters.ownerId : true))
+          .filter((c) => matchesSearch(CONTACT_LIST_SPEC, c, q.search));
 
-        const sorted = filtered.sort((a, b) => compareContacts(a, b, q.sortField, q.ascending));
+        const sorted = filtered.sort((a, b) => compareRecords(a, b, q.sortField, q.ascending));
 
         res.json({
           data: sorted.slice(q.offset, q.offset + q.limit),
