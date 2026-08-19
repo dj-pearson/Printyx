@@ -345,6 +345,10 @@ export function registerEdgeFunctionProxy(app: any) {
     // close flow 404'd in production. Dir name matches the URL segment.
     '/api/voice-ticket-close': 'voice-ticket-close',
 
+    // PROD-012: email-autopilot had no edge function, so the rep draft-review
+    // surface 404'd in production. Dir name matches the URL segment.
+    '/api/email-autopilot': 'email-autopilot',
+
     // AUDIT-015: ai-search. REQUIRED, not defensive — without this entry dev 404s.
     //
     // Nothing in Express serves /api/ai-search/*. The legacy router
