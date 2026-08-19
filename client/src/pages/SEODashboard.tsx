@@ -97,33 +97,49 @@ interface Keyword {
   priority: number;
 }
 
+// PROD-014: seo_competitor_analysis has no overall score and no active flag, so
+// neither is shown. `domain` is competitor_url and `backlinks` is
+// total_backlinks — both were read under names the table does not have.
 interface Competitor {
   id: string;
   domain: string;
-  overallScore?: number;
+  name?: string;
   organicKeywords?: number;
   monthlyTraffic?: number;
   domainAuthority?: number;
+  pageAuthority?: number;
   backlinks?: number;
-  isActive: boolean;
+  referringDomains?: number;
+  analyzedAt?: string;
 }
 
+// PROD-014: bound to the real seo_page_scores columns. technicalScore,
+// contentScore and performanceScore were read here and are not columns on that
+// table, so those three bars rendered empty on both backends.
 interface PageScore {
   id: string;
   url: string;
-  technicalScore?: number;
-  contentScore?: number;
-  performanceScore?: number;
+  title?: string;
+  seoScore?: number;
+  contentQuality?: number;
+  technicalSeo?: number;
+  userExperience?: number;
   mobileScore?: number;
-  lastChecked?: string;
+  accessibilityScore?: number;
+  wordCount?: number;
+  lastAnalyzed?: string;
 }
 
+// PROD-014: seo_alerts has no `type` column. What an alert is about is its
+// metric; `title` is the human line.
 interface Alert {
   id: string;
-  type: string;
+  title?: string;
+  metric?: string;
   severity: string;
   message: string;
   status: string;
+  url?: string;
   createdAt: string;
   resolvedAt?: string;
 }
@@ -246,9 +262,14 @@ export default function SEODashboard() {
     queryKey: ['/api/seo/competitors'],
   });
 
-  // Fetch page scores
+  // Fetch page scores.
+  //
+  // PROD-014: this read /api/seo/pages, which is a different resource — on
+  // Express it selects from a table that does not exist (a 500), and on the
+  // edge function it happened to answer from seo_page_scores. /api/seo/page-scores
+  // is the endpoint that holds these rows on both backends.
   const { data: pageScores = [] } = useQuery<PageScore[]>({
-    queryKey: ['/api/seo/pages'],
+    queryKey: ['/api/seo/page-scores'],
   });
 
   // Fetch alerts
@@ -1062,16 +1083,20 @@ export default function SEODashboard() {
                             <CardContent className="p-4">
                               <div className="flex justify-between items-center">
                                 <div>
-                                  <p className="font-medium">{competitor.domain}</p>
+                                  <p className="font-medium">
+                                    {competitor.name || competitor.domain}
+                                  </p>
                                   <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-                                    <span>Score: {competitor.overallScore || '-'}</span>
-                                    <span>Keywords: {competitor.organicKeywords || '-'}</span>
-                                    <span>DA: {competitor.domainAuthority || '-'}</span>
+                                    <span>Keywords: {competitor.organicKeywords ?? '-'}</span>
+                                    <span>DA: {competitor.domainAuthority ?? '-'}</span>
+                                    <span>Backlinks: {competitor.backlinks ?? '-'}</span>
                                   </div>
                                 </div>
-                                <Badge variant={competitor.isActive ? 'default' : 'secondary'}>
-                                  {competitor.isActive ? 'Active' : 'Inactive'}
-                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {competitor.analyzedAt
+                                    ? new Date(competitor.analyzedAt).toLocaleDateString()
+                                    : '-'}
+                                </span>
                               </div>
                             </CardContent>
                           </Card>
@@ -1102,24 +1127,24 @@ export default function SEODashboard() {
                               <p className="font-medium text-sm mb-2">{page.url}</p>
                               <div className="grid grid-cols-4 gap-2">
                                 <div>
-                                  <Label className="text-xs">Technical</Label>
-                                  <Progress value={page.technicalScore} className="h-2" />
-                                  <span className="text-xs">{page.technicalScore}</span>
+                                  <Label className="text-xs">SEO</Label>
+                                  <Progress value={page.seoScore ?? 0} className="h-2" />
+                                  <span className="text-xs">{page.seoScore ?? '-'}</span>
                                 </div>
                                 <div>
                                   <Label className="text-xs">Content</Label>
-                                  <Progress value={page.contentScore} className="h-2" />
-                                  <span className="text-xs">{page.contentScore}</span>
+                                  <Progress value={page.contentQuality ?? 0} className="h-2" />
+                                  <span className="text-xs">{page.contentQuality ?? '-'}</span>
                                 </div>
                                 <div>
-                                  <Label className="text-xs">Performance</Label>
-                                  <Progress value={page.performanceScore} className="h-2" />
-                                  <span className="text-xs">{page.performanceScore}</span>
+                                  <Label className="text-xs">Technical</Label>
+                                  <Progress value={page.technicalSeo ?? 0} className="h-2" />
+                                  <span className="text-xs">{page.technicalSeo ?? '-'}</span>
                                 </div>
                                 <div>
                                   <Label className="text-xs">Mobile</Label>
-                                  <Progress value={page.mobileScore} className="h-2" />
-                                  <span className="text-xs">{page.mobileScore}</span>
+                                  <Progress value={page.mobileScore ?? 0} className="h-2" />
+                                  <span className="text-xs">{page.mobileScore ?? '-'}</span>
                                 </div>
                               </div>
                             </CardContent>
@@ -1172,7 +1197,9 @@ export default function SEODashboard() {
                                       {alert.severity}
                                     </Badge>
                                     <div className="flex-1">
-                                      <p className="text-sm font-medium">{alert.type}</p>
+                                      <p className="text-sm font-medium">
+                                        {alert.title || alert.metric}
+                                      </p>
                                       <p className="text-sm text-muted-foreground">
                                         {alert.message}
                                       </p>

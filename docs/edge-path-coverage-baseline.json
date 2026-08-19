@@ -118,13 +118,8 @@
     ],
     "sales-pipeline": ["opportunities", "rep-metrics", "summary"],
     "seo": [
-      "alerts",
-      "audit",
-      "competitors",
       "content",
-      "crawl",
       "images",
-      "keywords",
       "links",
       "performance",
       "regenerate-llms",
