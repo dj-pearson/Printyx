@@ -25,6 +25,8 @@ import {
 import { Plus, FileText, Download, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { MainLayout } from '@/components/layout/main-layout';
+import { apiRequest } from '@/lib/queryClient';
+import { downloadDocumentAgreement } from '@/lib/document-export';
 
 interface QuoteLineItem {
   id: string;
@@ -136,14 +138,10 @@ export default function DocumentBuilder() {
 
   const createDocumentMutation = useMutation({
     mutationFn: async (documentData: DocumentData) => {
-      const res = await fetch('/api/documents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(documentData),
-      });
-      if (!res.ok) throw new Error('Failed to create document');
-      return res.json();
+      // apiRequest, not a bare fetch: a relative path skips getApiUrl (so it
+      // would hit the static origin in production) and cookies alone do not
+      // authenticate the documents edge function.
+      return apiRequest('/api/documents', 'POST', documentData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
@@ -153,22 +151,9 @@ export default function DocumentBuilder() {
     },
   });
 
-  const generatePDFMutation = useMutation({
+  const downloadAgreementMutation = useMutation({
     mutationFn: async (docId: string) => {
-      const res = await fetch(`/api/documents/${docId}/pdf`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to generate PDF');
-      const blob = await res.blob();
-
-      // Download the PDF
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `document-${docId}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
+      await downloadDocumentAgreement(docId);
     },
   });
 
@@ -639,8 +624,8 @@ export default function DocumentBuilder() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => generatePDFMutation.mutate(doc.id)}
-                        disabled={generatePDFMutation.isPending}
+                        onClick={() => downloadAgreementMutation.mutate(doc.id)}
+                        disabled={downloadAgreementMutation.isPending}
                       >
                         <Download className="w-4 h-4" />
                       </Button>

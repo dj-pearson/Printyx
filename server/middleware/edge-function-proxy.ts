@@ -324,6 +324,15 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/accessories': 'accessories',
     '/api/contract-tiered-rates': 'contract-tiered-rates',
 
+    // PROD-013: /api/documents (server/routes-documents.ts) had no edge
+    // function, so DocumentBuilder could not list, create or export agreements
+    // in production. NOTE this forwards the WHOLE prefix, which also covers the
+    // /generate, /batch-generate, /generated, /upload, /uploads and /ai-extract
+    // paths in routes-document-automation.ts — those have ZERO callers anywhere
+    // in client/src (checked), so nothing regresses, but a new caller for one of
+    // them needs a handler in the edge function, not just the Express route.
+    '/api/documents': 'documents',
+
     // AUDIT-015: ai-search. REQUIRED, not defensive — without this entry dev 404s.
     //
     // Nothing in Express serves /api/ai-search/*. The legacy router
