@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { useParams, useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -127,13 +128,7 @@ export default function PlatformDealDetail() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<Deal>) => {
-      const response = await fetch(`/api/platform-deals/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to update deal');
-      return response.json();
+      return apiRequest(`/api/platform-deals/${id}`, 'PATCH', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/platform-deals/${id}`] });
@@ -148,13 +143,7 @@ export default function PlatformDealDetail() {
   // Move stage mutation
   const moveStageMutation = useMutation({
     mutationFn: async (newStage: string) => {
-      const response = await fetch(`/api/platform-deals/${id}/move-stage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newStage }),
-      });
-      if (!response.ok) throw new Error('Failed to move deal');
-      return response.json();
+      return apiRequest(`/api/platform-deals/${id}/move-stage`, 'POST', { newStage });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/platform-deals/${id}`] });
@@ -168,13 +157,10 @@ export default function PlatformDealDetail() {
   // Close won mutation
   const closeWonMutation = useMutation({
     mutationFn: async (wonReason: string) => {
-      const response = await fetch(`/api/platform-deals/${id}/close-won`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wonReason, actualCloseDate: new Date().toISOString() }),
+      return apiRequest(`/api/platform-deals/${id}/close-won`, 'POST', {
+        wonReason,
+        actualCloseDate: new Date().toISOString(),
       });
-      if (!response.ok) throw new Error('Failed to close deal');
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/platform-deals/${id}`] });
@@ -188,13 +174,10 @@ export default function PlatformDealDetail() {
   // Close lost mutation
   const closeLostMutation = useMutation({
     mutationFn: async (lostReason: string) => {
-      const response = await fetch(`/api/platform-deals/${id}/close-lost`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lostReason, actualCloseDate: new Date().toISOString() }),
+      return apiRequest(`/api/platform-deals/${id}/close-lost`, 'POST', {
+        lostReason,
+        actualCloseDate: new Date().toISOString(),
       });
-      if (!response.ok) throw new Error('Failed to close deal');
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/platform-deals/${id}`] });
