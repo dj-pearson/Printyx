@@ -337,6 +337,10 @@ export function registerEdgeFunctionProxy(app: any) {
     // dashboard 404'd in production. Dir name matches the URL segment.
     '/api/renewal-autoquote': 'renewal-autoquote',
 
+    // PROD-012: voice-agent had no edge function, so the after-hours intake
+    // surface 404'd in production. Dir name matches the URL segment.
+    '/api/voice-agent': 'voice-agent',
+
     // AUDIT-015: ai-search. REQUIRED, not defensive — without this entry dev 404s.
     //
     // Nothing in Express serves /api/ai-search/*. The legacy router
