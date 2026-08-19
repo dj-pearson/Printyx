@@ -475,6 +475,13 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/public/booking': { fn: 'public-booking', pathPrefix: '/booking' },
     '/api/booking-pages': 'booking-pages',
 
+    // AI-001: /api/ai/gpt5/* → ai-gpt5 fn. Only the gpt5 sub-path is proxied;
+    // the rest of /api/ai (ai-routes-simple) stays on Express, which is correct
+    // because nothing in the frontend calls it. pathPrefix re-adds the /gpt5
+    // segment the mount strips, so the handler's normalizePath(..., 'gpt5')
+    // sees the same URL it sees in production.
+    '/api/ai/gpt5': { fn: 'ai-gpt5', pathPrefix: '/gpt5' },
+
     // EDGE-005c: phone-in-tickets. The search-companies/search-contacts/
     // equipment sub-routes the PhoneInTicketCreator calls were ported into the
     // phone-in-tickets edge fn (previously Express-only under the legacy

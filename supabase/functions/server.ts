@@ -211,6 +211,15 @@ await serve(
       functionName = 'public-booking';
     }
 
+    // AI-001: /api/ai/gpt5/* is served by the ai-gpt5 directory. There is no
+    // `ai` function (the Express router under /api/ai only ever ran in dev), so
+    // without this alias every GPT-5 dashboard call 404s here. stripSegments
+    // stays 1: the handler normalizes on 'gpt5', which survives the strip and
+    // is what the dev proxy re-adds via pathPrefix.
+    if (functionName === 'ai' && subPath[0] === 'gpt5') {
+      functionName = 'ai-gpt5';
+    }
+
     // AUDIT-012: the `leases` fn multiplexes four sibling top-level prefixes —
     // /leases/*, /lease-payments/*, /lease-renewals/*, /lease-dispositions/* —
     // but only the `leases` directory exists, so the other three 404'd here

@@ -73,7 +73,6 @@
     "warehouse-operations"
   ],
   "missingEdge": [
-    "ai",
     "business-process",
     "chatbot",
     "content",

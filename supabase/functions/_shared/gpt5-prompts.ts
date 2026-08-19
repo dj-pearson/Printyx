@@ -1,22 +1,23 @@
-import OpenAI from 'openai';
-import { createModuleLogger } from '../lib/logger';
-import { withCrisisGuardrail } from '../lib/crisis-response';
-const log = createModuleLogger('gpt5-service');
+/**
+ * GPT-5 prompt builders, model configs and response parsing (AI-001).
+ *
+ * Deno copy of the logic in server/services/gpt5-service.ts. The two are locked
+ * together by server/tests/unit/gpt5-prompts-parity.test.ts, which imports both
+ * and asserts identical output — a prompt edit that lands in only one file
+ * fails CI.
+ *
+ * Deliberately free of any OpenAI SDK dependency: the Node service talks to the
+ * API through the `openai` package and the edge function talks to the same REST
+ * endpoint through fetch, so the only thing that can be shared is the part that
+ * decides WHAT to send and how to read WHAT COMES BACK.
+ */
 
-// AI-001: the prompt text, the model configs, the request body and the response
-// parser below are mirrored in supabase/functions/_shared/gpt5-prompts.ts, which
-// the ai-gpt5 edge function uses to serve the same endpoints in production.
-// server/tests/unit/gpt5-prompts-parity.test.ts imports both and fails on drift.
+import { withCrisisGuardrail } from './crisis-response.ts';
 
-// Configuration for different use cases in the Printyx platform
-interface GPT5Config {
+export interface GPT5Config {
   model: 'gpt-5' | 'gpt-5-mini' | 'gpt-5-nano';
-  reasoning?: {
-    effort: 'minimal' | 'low' | 'medium' | 'high';
-  };
-  text?: {
-    verbosity: 'low' | 'medium' | 'high';
-  };
+  reasoning?: { effort: 'minimal' | 'low' | 'medium' | 'high' };
+  text?: { verbosity: 'low' | 'medium' | 'high' };
   tools?: Array<any>;
   allowedTools?: {
     type: 'allowed_tools';
@@ -25,51 +26,37 @@ interface GPT5Config {
   };
 }
 
-// Pre-configured settings for different Printyx use cases
 export const GPT5_CONFIGS = {
-  // For CRM lead analysis and customer insights
   LEAD_ANALYSIS: {
     model: 'gpt-5-mini' as const,
     reasoning: { effort: 'medium' as const },
     text: { verbosity: 'medium' as const },
   },
-
-  // For quote and proposal generation
   PROPOSAL_GENERATION: {
     model: 'gpt-5' as const,
     reasoning: { effort: 'high' as const },
     text: { verbosity: 'high' as const },
   },
-
-  // For service ticket analysis and predictive maintenance
   SERVICE_ANALYSIS: {
     model: 'gpt-5-mini' as const,
     reasoning: { effort: 'medium' as const },
     text: { verbosity: 'medium' as const },
   },
-
-  // For quick customer support responses
   CUSTOMER_SUPPORT: {
     model: 'gpt-5-nano' as const,
     reasoning: { effort: 'minimal' as const },
     text: { verbosity: 'low' as const },
   },
-
-  // For complex business analytics and forecasting
   BUSINESS_ANALYTICS: {
     model: 'gpt-5' as const,
     reasoning: { effort: 'high' as const },
     text: { verbosity: 'high' as const },
   },
-
-  // For code generation and technical tasks
   CODE_GENERATION: {
     model: 'gpt-5' as const,
     reasoning: { effort: 'minimal' as const },
     text: { verbosity: 'medium' as const },
   },
-
-  // For high-throughput classification tasks
   CLASSIFICATION: {
     model: 'gpt-5-nano' as const,
     reasoning: { effort: 'minimal' as const },
@@ -88,41 +75,6 @@ export const GPT5_CONFIG_DESCRIPTIONS: Record<GPT5ConfigName, string> = {
   CODE_GENERATION: 'For code generation and technical tasks',
   CLASSIFICATION: 'For high-throughput classification tasks',
 };
-
-// Custom tools for Printyx business operations
-export const PRINTYX_TOOLS = {
-  CRM_DATA_LOOKUP: {
-    type: 'custom' as const,
-    name: 'crm_data_lookup',
-    description:
-      'Looks up customer data, lead information, and business records from the Printyx CRM system',
-  },
-
-  EQUIPMENT_LOOKUP: {
-    type: 'custom' as const,
-    name: 'equipment_lookup',
-    description: 'Retrieves equipment information, service history, and maintenance data',
-  },
-
-  FINANCIAL_ANALYSIS: {
-    type: 'custom' as const,
-    name: 'financial_analysis',
-    description: 'Performs financial calculations, revenue analysis, and commission calculations',
-  },
-
-  PROPOSAL_BUILDER: {
-    type: 'custom' as const,
-    name: 'proposal_builder',
-    description:
-      'Generates professional proposals and quotes based on customer requirements and pricing data',
-  },
-
-  SERVICE_SCHEDULER: {
-    type: 'custom' as const,
-    name: 'service_scheduler',
-    description: 'Schedules service appointments and optimizes technician routes',
-  },
-} as const;
 
 // ── Prompt builders ────────────────────────────────────────────────────────
 
@@ -251,7 +203,7 @@ Before calling any tools, explain why you're generating this specific code appro
 
 // ── Request / response plumbing ────────────────────────────────────────────
 
-/** Body for the Responses API call. */
+/** Body for POST https://api.openai.com/v1/responses. */
 export function buildResponsesRequest(
   input: string,
   config: GPT5Config = GPT5_CONFIGS.LEAD_ANALYSIS,
@@ -272,12 +224,11 @@ export function buildResponsesRequest(
 /**
  * Pull the assistant text out of a Responses API result.
  *
- * This used to read `response.output?.content`, which is ALWAYS undefined:
- * `output` is an array of output items (reasoning items included), not an
- * object with a `content` string. Every endpoint therefore returned an empty
- * analysis/proposal/classification even when the API call succeeded. The SDK
- * exposes a flattened `output_text`; the raw REST payload the edge function
- * receives does not, so both shapes are handled.
+ * The obvious-looking `response.output.content` is always undefined: `output`
+ * is an ARRAY of output items (reasoning items included), not an object. The
+ * SDK exposes a flattened `output_text` convenience property, but the raw REST
+ * payload the edge function receives does not carry it, so both shapes are
+ * handled here.
  */
 export function extractResponseText(response: any): string {
   if (!response) return '';
@@ -310,180 +261,3 @@ export function extractResponseText(response: any): string {
   if (output && typeof output.content === 'string') return output.content;
   return '';
 }
-
-export class GPT5Service {
-  private openai: OpenAI | null = null;
-  private isEnabled: boolean = false;
-
-  constructor() {
-    if (!process.env.OPENAI_API_KEY) {
-      log.warn('[GPT5Service] OPENAI_API_KEY not set - AI features will be disabled');
-      return;
-    }
-
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-    this.isEnabled = true;
-  }
-
-  private checkEnabled() {
-    if (!this.isEnabled || !this.openai) {
-      return { success: false as const, error: 'OpenAI API key not configured' };
-    }
-    return null;
-  }
-
-  /**
-   * Generate response using GPT-5 Responses API
-   * Recommended for most use cases as it supports chain of thought passing
-   */
-  async generateResponse(
-    input: string,
-    config: GPT5Config = GPT5_CONFIGS.LEAD_ANALYSIS,
-    previousResponseId?: string,
-  ) {
-    const disabled = this.checkEnabled();
-    if (disabled) return disabled;
-
-    try {
-      const requestData = buildResponsesRequest(input, config, previousResponseId);
-
-      const response = await this.openai!.responses.create(requestData as any);
-
-      return {
-        success: true as const,
-        data: response,
-        responseId: response.id,
-        content: extractResponseText(response),
-        reasoning: (response as any).reasoning,
-        usage: response.usage,
-      };
-    } catch (error) {
-      log.error('GPT-5 Responses API error:', error);
-      return {
-        success: false as const,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
-    }
-  }
-
-  /**
-   * Generate response using Chat Completions API (fallback)
-   * Use when Responses API is not suitable for the use case
-   */
-  async generateChatCompletion(
-    messages: Array<{ role: string; content: string }>,
-    config: GPT5Config = GPT5_CONFIGS.LEAD_ANALYSIS,
-  ) {
-    const disabled = this.checkEnabled();
-    if (disabled) return disabled;
-
-    try {
-      const requestData: any = {
-        model: config.model,
-        messages,
-      };
-
-      // Add GPT-5 specific parameters for Chat Completions
-      if (config.reasoning?.effort) {
-        requestData.reasoning_effort = config.reasoning.effort;
-      }
-
-      if (config.text?.verbosity) {
-        requestData.verbosity = config.text.verbosity;
-      }
-
-      if (config.tools) {
-        requestData.tools = config.tools;
-      }
-
-      const response = await this.openai!.chat.completions.create(requestData);
-
-      return {
-        success: true as const,
-        data: response,
-        content: response.choices[0]?.message?.content || '',
-        usage: response.usage,
-      };
-    } catch (error) {
-      log.error('GPT-5 Chat Completions error:', error);
-      return {
-        success: false as const,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
-    }
-  }
-
-  /**
-   * Analyze customer lead for qualification and insights
-   */
-  async analyzeCustomerLead(leadData: any, customerHistory?: any) {
-    return this.generateResponse(
-      buildLeadAnalysisPrompt(leadData, customerHistory),
-      GPT5_CONFIGS.LEAD_ANALYSIS,
-    );
-  }
-
-  /**
-   * Generate professional proposal content
-   */
-  async generateProposal(customerData: any, equipmentRequirements: any, pricingData: any) {
-    return this.generateResponse(
-      buildProposalPrompt(customerData, equipmentRequirements, pricingData),
-      GPT5_CONFIGS.PROPOSAL_GENERATION,
-    );
-  }
-
-  /**
-   * Analyze service ticket for predictive maintenance insights
-   */
-  async analyzeServiceTicket(ticketData: any, equipmentHistory?: any) {
-    return this.generateResponse(
-      buildServiceAnalysisPrompt(ticketData, equipmentHistory),
-      GPT5_CONFIGS.SERVICE_ANALYSIS,
-    );
-  }
-
-  /**
-   * Generate customer support response
-   */
-  async generateSupportResponse(customerQuery: string, customerContext?: any) {
-    return this.generateResponse(
-      buildSupportResponsePrompt(customerQuery, customerContext),
-      GPT5_CONFIGS.CUSTOMER_SUPPORT,
-    );
-  }
-
-  /**
-   * Perform business analytics and forecasting
-   */
-  async analyzeBusinessMetrics(salesData: any, serviceData: any, timeframe: string) {
-    return this.generateResponse(
-      buildBusinessAnalyticsPrompt(salesData, serviceData, timeframe),
-      GPT5_CONFIGS.BUSINESS_ANALYTICS,
-    );
-  }
-
-  /**
-   * Classify and categorize customer inquiries
-   */
-  async classifyInquiry(inquiry: string) {
-    return this.generateResponse(
-      buildInquiryClassificationPrompt(inquiry),
-      GPT5_CONFIGS.CLASSIFICATION,
-    );
-  }
-
-  /**
-   * Generate code for automation tasks
-   */
-  async generateAutomationCode(requirements: string, codeType: 'javascript' | 'python' | 'sql') {
-    return this.generateResponse(
-      buildAutomationCodePrompt(requirements, codeType),
-      GPT5_CONFIGS.CODE_GENERATION,
-    );
-  }
-}
-
-export const gpt5Service = new GPT5Service();

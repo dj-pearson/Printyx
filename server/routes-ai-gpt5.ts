@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { gpt5Service, GPT5_CONFIGS } from './services/gpt5-service';
+import { gpt5Service, GPT5_CONFIGS, GPT5_CONFIG_DESCRIPTIONS } from './services/gpt5-service';
 import { z } from 'zod';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
@@ -402,15 +402,7 @@ router.get('/configs', async (req, res) => {
 
     res.json({
       configs: Object.keys(GPT5_CONFIGS),
-      descriptions: {
-        LEAD_ANALYSIS: 'For CRM lead analysis and customer insights',
-        PROPOSAL_GENERATION: 'For quote and proposal generation',
-        SERVICE_ANALYSIS: 'For service ticket analysis and predictive maintenance',
-        CUSTOMER_SUPPORT: 'For quick customer support responses',
-        BUSINESS_ANALYTICS: 'For complex business analytics and forecasting',
-        CODE_GENERATION: 'For code generation and technical tasks',
-        CLASSIFICATION: 'For high-throughput classification tasks',
-      },
+      descriptions: GPT5_CONFIG_DESCRIPTIONS,
     });
   } catch (error) {
     log.error('Config retrieval error:', error);
