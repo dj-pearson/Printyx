@@ -59,7 +59,8 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('end_date', { ascending: true });
 
-      if (status) query = query.eq('status', status);
+      // contract_status, not status.
+      if (status) query = query.eq('contract_status', status);
       if (customerId) query = query.eq('customer_id', customerId);
       if (expiringWithin) {
         const expiryDate = new Date(Date.now() + parseInt(expiringWithin) * 24 * 60 * 60 * 1000);
@@ -94,7 +95,7 @@ export default async function handler(req: Request) {
         `,
         )
         .eq('tenant_id', tenantId)
-        .eq('status', 'active')
+        .eq('contract_status', 'active')
         .lte('end_date', expiryDate.toISOString())
         .gte('end_date', new Date().toISOString())
         .order('end_date', { ascending: true });
@@ -149,21 +150,26 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && !contractId) {
       const body = await req.json();
 
+      // COP-M01: status, base_fee, sla_level, auto_renew, terms_and_conditions
+      // and created_by are none of them columns. service_contracts uses
+      // contract_status, monthly_base_rate, auto_renewal and contract_notes, and
+      // expresses the SLA as response_time_hours rather than a level name. There
+      // is no created_by. (terms_and_conditions and created_by sit in a
+      // named-variable payload, so check:phantom-cols did not flag them —
+      // reading did.)
       const contractData = {
         tenant_id: tenantId,
         customer_id: body.customerId || body.customer_id,
         contract_number: body.contractNumber || body.contract_number || `SC-${Date.now()}`,
         contract_type: body.contractType || body.contract_type || 'full_service',
-        status: body.status || 'draft',
+        contract_status: body.status || 'draft',
         start_date: body.startDate || body.start_date,
         end_date: body.endDate || body.end_date,
         billing_frequency: body.billingFrequency || body.billing_frequency || 'monthly',
-        base_fee: body.baseFee || body.base_fee || 0,
+        monthly_base_rate: body.baseFee ?? body.base_fee ?? 0,
         response_time_hours: body.responseTimeHours || body.response_time_hours || 24,
-        sla_level: body.slaLevel || body.sla_level || 'standard',
-        auto_renew: body.autoRenew || false,
-        terms_and_conditions: body.termsAndConditions || body.terms_and_conditions,
-        created_by: user.id,
+        auto_renewal: body.autoRenew ?? body.auto_renew ?? false,
+        contract_notes: body.termsAndConditions || body.terms_and_conditions || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -276,16 +282,16 @@ export default async function handler(req: Request) {
           customer_id: original.customer_id,
           contract_number: `${original.contract_number}-R`,
           contract_type: original.contract_type,
-          status: 'active',
+          contract_status: 'active',
           start_date: original.end_date,
           end_date: newEndDate,
           billing_frequency: original.billing_frequency,
-          base_fee: body.baseFee || body.base_fee || original.base_fee,
+          monthly_base_rate: body.baseFee ?? body.base_fee ?? original.monthly_base_rate,
+          bw_overage_rate: original.bw_overage_rate,
+          color_overage_rate: original.color_overage_rate,
           response_time_hours: original.response_time_hours,
-          sla_level: original.sla_level,
-          auto_renew: original.auto_renew,
-          previous_contract_id: contractId,
-          created_by: user.id,
+          auto_renewal: original.auto_renewal,
+          contract_notes: original.contract_notes,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -296,15 +302,13 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to renew contract' }, 500, req);
       }
 
-      // Update original contract status
+      // Update original contract status. There is no column linking a contract
+      // to its renewal, so the two are related only by the -R contract_number.
       await admin
         .from('service_contracts')
-        .update({
-          status: 'renewed',
-          renewed_contract_id: renewed.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', contractId);
+        .update({ contract_status: 'renewed', updated_at: new Date().toISOString() })
+        .eq('id', contractId)
+        .eq('tenant_id', tenantId);
 
       // Copy equipment coverage
       const { data: equipment } = await admin
@@ -322,7 +326,16 @@ export default async function handler(req: Request) {
         await admin.from('contract_equipment').insert(newEquipment);
       }
 
-      return createCorsResponse(renewed, 201, req);
+      return createCorsResponse(
+        {
+          ...renewed,
+          unpersisted: [
+            'previousContractId: service_contracts has no column linking a renewal to its predecessor',
+          ],
+        },
+        201,
+        req,
+      );
     }
 
     // POST /service-contracts/:id/cancel - Cancel contract
@@ -331,11 +344,11 @@ export default async function handler(req: Request) {
 
       const { data: contract, error } = await admin
         .from('service_contracts')
+        // Only contract_status exists; there is no cancellation_reason,
+        // cancelled_at or cancelled_by, so those are reported back rather than
+        // dropped.
         .update({
-          status: 'cancelled',
-          cancellation_reason: body.reason,
-          cancelled_at: new Date().toISOString(),
-          cancelled_by: user.id,
+          contract_status: 'cancelled',
           updated_at: new Date().toISOString(),
         })
         .eq('id', contractId)
@@ -344,10 +357,20 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
-        return createCorsResponse({ error: 'Failed to cancel contract' }, 500, req);
+        console.error('Error cancelling service contract:', error);
+        return createCorsResponse(
+          { error: 'Failed to cancel contract', details: error.message },
+          500,
+          req,
+        );
       }
 
-      return createCorsResponse(contract, 200, req);
+      const unpersisted = ['cancelledBy: service_contracts has no cancelled_by column'];
+      if (body.reason) {
+        unpersisted.push('reason: service_contracts has no cancellation_reason column');
+      }
+
+      return createCorsResponse({ ...contract, unpersisted }, 200, req);
     }
 
     // DELETE /service-contracts/:id - Delete contract
