@@ -52,8 +52,7 @@ export default async function handler(req: Request) {
         .select(
           `
           *,
-          vendor:vendor_id (id, name),
-          ordered_by_user:ordered_by (id, full_name)
+          vendor:vendor_id (id, name)
         `,
         )
         .eq('tenant_id', tenantId)
@@ -99,17 +98,28 @@ export default async function handler(req: Request) {
 
       const { data: order, error } = await admin
         .from('parts_orders')
+        // COP-M01: ticket_id, parts, total_cost, shipping_address, notes and
+        // ordered_by are none of them columns. parts_orders keys the ticket as
+        // service_ticket_id, holds the money in subtotal/tax/shipping/total,
+        // calls the address delivery_address and the free text
+        // special_instructions — and has no `parts` column at all, because the
+        // lines live in parts_order_items, which is what POST /:id/items is for.
+        // There is no ordered_by column either.
         .insert({
           tenant_id: tenantId,
           vendor_id: body.vendorId || body.vendor_id,
           analysis_id: body.analysisId || body.analysis_id,
-          ticket_id: body.ticketId || body.ticket_id,
-          parts: body.parts || [],
+          service_ticket_id: body.ticketId || body.ticket_id || body.serviceTicketId || null,
+          order_number: body.orderNumber || body.order_number || null,
           status: 'pending',
-          total_cost: body.totalCost || body.total_cost,
-          shipping_address: body.shippingAddress || body.shipping_address,
-          notes: body.notes,
-          ordered_by: user.id,
+          order_date: body.orderDate || body.order_date || new Date().toISOString(),
+          expected_delivery_date: body.expectedDeliveryDate || body.expected_delivery_date || null,
+          subtotal: body.subtotal ?? null,
+          total: body.total ?? body.totalCost ?? body.total_cost ?? null,
+          priority: body.priority || null,
+          delivery_address:
+            body.shippingAddress || body.shipping_address || body.deliveryAddress || null,
+          special_instructions: body.notes || body.specialInstructions || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -117,10 +127,20 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
-        return createCorsResponse({ error: 'Failed to create parts order' }, 500, req);
+        console.error('Error creating parts order:', error);
+        return createCorsResponse(
+          { error: 'Failed to create parts order', details: error.message },
+          500,
+          req,
+        );
       }
 
-      return createCorsResponse(order, 201, req);
+      const unpersisted =
+        body.parts && body.parts.length
+          ? ['parts: order lines belong in parts_order_items — POST /parts-orders/:id/items']
+          : [];
+
+      return createCorsResponse({ ...order, unpersisted }, 201, req);
     }
 
     // PATCH /parts-orders/:id - Update order
@@ -129,12 +149,15 @@ export default async function handler(req: Request) {
 
       const { data: order, error } = await admin
         .from('parts_orders')
+        // shipped_at, delivered_at and notes are not columns. The delivery date
+        // is actual_delivery_date; the free text is special_instructions; and a
+        // ship date has no column at all, which the tracking number stands in
+        // for.
         .update({
           status: body.status,
           tracking_number: body.trackingNumber || body.tracking_number,
-          shipped_at: body.shippedAt || body.shipped_at,
-          delivered_at: body.deliveredAt || body.delivered_at,
-          notes: body.notes,
+          actual_delivery_date: body.deliveredAt || body.delivered_at || null,
+          special_instructions: body.notes ?? undefined,
           updated_at: new Date().toISOString(),
         })
         .eq('id', orderId)
@@ -167,26 +190,48 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && orderId && subResource === 'items') {
       const body = await req.json();
 
-      const { data: item, error } = await admin
-        .from('parts_order_items')
-        .insert({
-          order_id: orderId,
-          part_id: body.partId || body.part_id,
-          part_number: body.partNumber || body.part_number,
-          description: body.description,
-          quantity: body.quantity || 1,
-          unit_cost: body.unitCost || body.unit_cost,
-          total_cost: body.totalCost || body.total_cost,
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+      // COP-M01, two faults. The columns: part_id, description, quantity,
+      // unit_cost and total_cost do not exist — they are part_number/part_name,
+      // part_description, quantity_ordered, unit_price and line_total — and
+      // tenant_id was never set. And the shape: ServiceTicketAnalysis.tsx posts
+      // { items: [...] }, while this only ever read a single flat body, so even
+      // with the right columns it would have stored nothing the caller sent.
+      const rawItems = Array.isArray(body.items) ? body.items : [body];
+      const now = new Date().toISOString();
+      const rows = rawItems.map((item: Record<string, any>) => ({
+        tenant_id: tenantId,
+        order_id: orderId,
+        part_number: item.partNumber ?? item.part_number ?? null,
+        part_name: item.partName ?? item.part_name ?? null,
+        part_description: item.partDescription ?? item.part_description ?? item.description ?? null,
+        quantity_ordered: Number(
+          item.quantityOrdered ?? item.quantity_ordered ?? item.quantity ?? 1,
+        ),
+        unit_price: item.unitPrice ?? item.unit_price ?? item.unitCost ?? item.unit_cost ?? null,
+        line_total: item.lineTotal ?? item.line_total ?? item.totalCost ?? item.total_cost ?? null,
+        discount_percent: item.discountPercent ?? item.discount_percent ?? null,
+        item_status: item.itemStatus ?? item.item_status ?? 'ordered',
+        expected_date: item.expectedDate ?? item.expected_date ?? null,
+        created_at: now,
+      }));
+
+      const { data: items, error } = await admin.from('parts_order_items').insert(rows).select();
 
       if (error) {
-        return createCorsResponse({ error: 'Failed to add order item' }, 500, req);
+        console.error('Error adding order items:', error);
+        return createCorsResponse(
+          { error: 'Failed to add order item', details: error.message },
+          500,
+          req,
+        );
       }
 
-      return createCorsResponse(item, 201, req);
+      // A single-item post still gets a single object back, as before.
+      return createCorsResponse(
+        Array.isArray(body.items) ? { items: items ?? [], added: items?.length ?? 0 } : items?.[0],
+        201,
+        req,
+      );
     }
 
     // DELETE /parts-orders/:id - Delete order
