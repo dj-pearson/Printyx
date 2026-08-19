@@ -73,6 +73,13 @@ import {
 } from '@shared/schema';
 import { crisisResponse, detectsCrisis } from './lib/crisis-response';
 
+import {
+  obfuscateCredential,
+  projectConnection,
+  projectQueryLogRow,
+  projectUserLink,
+} from './lib/chatbot-projection';
+
 const log = createModuleLogger('routes-chatbot');
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -125,9 +132,6 @@ interface ToolContext {
  * ADDRESS_BOOK_MASTER_KEY is absent, which would make /connect fail offline/dev.
  * We never return the decrypted value; reads expose only a tokensSet boolean.
  */
-function obfuscateCredential(plaintext: string): string {
-  return Buffer.from(plaintext, 'utf8').toString('base64');
-}
 
 // ---------------------------------------------------------------------------
 // Platform reply adapter — STUB (read-only v1)
@@ -735,31 +739,6 @@ async function composeAnswer(question: string, result: ToolResult): Promise<stri
 // Connection projection (never echo tokens)
 // ---------------------------------------------------------------------------
 
-function projectConnection(row: {
-  id: string;
-  platform: string;
-  teamId: string;
-  teamName: string | null;
-  encryptedTokens: unknown;
-  enabled: boolean;
-  installedByUserId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}) {
-  const tokens = (row.encryptedTokens ?? {}) as Record<string, unknown>;
-  return {
-    id: row.id,
-    platform: row.platform,
-    teamId: row.teamId,
-    teamName: row.teamName,
-    enabled: row.enabled,
-    installedByUserId: row.installedByUserId,
-    tokensSet: typeof tokens.botToken === 'string' && tokens.botToken.length > 0,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Audit
 // ---------------------------------------------------------------------------
@@ -1110,7 +1089,8 @@ export function registerChatbotRoutes(app: Express) {
         .from(chatbotUserLinks)
         .where(eq(chatbotUserLinks.tenantId, tenantId))
         .orderBy(desc(chatbotUserLinks.createdAt));
-      res.json({ data: rows, total: rows.length });
+      const data = rows.map(projectUserLink);
+      res.json({ data, total: data.length });
     } catch (error: any) {
       log.error('Failed to list links:', error);
       res.status(500).json({ message: 'Failed to list links', error: error?.message });
@@ -1162,7 +1142,7 @@ export function registerChatbotRoutes(app: Express) {
         userId,
         extra: { platform, platformUserId, verified },
       });
-      res.status(201).json(row);
+      res.status(201).json(projectUserLink(row));
     } catch (error: any) {
       log.error('Failed to create link:', error);
       res.status(500).json({ message: 'Failed to create link', error: error?.message });
@@ -1201,7 +1181,8 @@ export function registerChatbotRoutes(app: Express) {
         .where(eq(chatbotQueryLog.tenantId, tenantId))
         .orderBy(desc(chatbotQueryLog.createdAt))
         .limit(200);
-      res.json({ data: rows, total: rows.length });
+      const data = rows.map(projectQueryLogRow);
+      res.json({ data, total: data.length });
     } catch (error: any) {
       log.error('Failed to list query log:', error);
       res.status(500).json({ message: 'Failed to list query log', error: error?.message });
