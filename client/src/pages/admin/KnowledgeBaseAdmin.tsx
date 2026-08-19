@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Link } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -97,9 +98,7 @@ export default function KnowledgeBaseAdmin() {
       if (searchQuery) params.append('search', searchQuery);
       params.append('limit', '50');
 
-      const response = await fetch(`/api/knowledge-base/articles?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch articles');
-      return response.json();
+      return apiRequest(`/api/knowledge-base/articles?${params}`);
     },
   });
 
@@ -107,9 +106,7 @@ export default function KnowledgeBaseAdmin() {
   const { data: categories } = useQuery<Category[]>({
     queryKey: ['/api/knowledge-base/categories', 'admin'],
     queryFn: async () => {
-      const response = await fetch('/api/knowledge-base/categories');
-      if (!response.ok) throw new Error('Failed to fetch categories');
-      return response.json();
+      return apiRequest('/api/knowledge-base/categories');
     },
   });
 
@@ -117,20 +114,22 @@ export default function KnowledgeBaseAdmin() {
   const { data: analytics } = useQuery<Analytics>({
     queryKey: ['/api/knowledge-base/analytics'],
     queryFn: async () => {
-      const response = await fetch('/api/knowledge-base/analytics');
-      if (!response.ok) throw new Error('Failed to fetch analytics');
-      return response.json();
+      return apiRequest('/api/knowledge-base/analytics');
     },
   });
 
   // Publish article mutation
   const publishMutation = useMutation({
     mutationFn: async (articleId: string) => {
-      const response = await fetch(`/api/knowledge-base/articles/${articleId}/publish`, {
-        method: 'PATCH',
+      // There is no /publish endpoint on either backend — this used to 404
+      // everywhere, not just in production. Publishing is a status change on the
+      // article itself, which PUT /articles/:id already accepts.
+      return apiRequest(`/api/knowledge-base/articles/${articleId}`, 'PUT', {
+        status: 'published',
+        publishedAt: new Date().toISOString(),
+        changeType: 'publish',
+        changeDescription: 'Published from the knowledge base admin',
       });
-      if (!response.ok) throw new Error('Failed to publish article');
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/knowledge-base/articles'] });
@@ -152,11 +151,12 @@ export default function KnowledgeBaseAdmin() {
   // Archive article mutation
   const archiveMutation = useMutation({
     mutationFn: async (articleId: string) => {
-      const response = await fetch(`/api/knowledge-base/articles/${articleId}/archive`, {
-        method: 'PATCH',
+      // Likewise there is no /archive endpoint; archiving is a status change.
+      return apiRequest(`/api/knowledge-base/articles/${articleId}`, 'PUT', {
+        status: 'archived',
+        changeType: 'archive',
+        changeDescription: 'Archived from the knowledge base admin',
       });
-      if (!response.ok) throw new Error('Failed to archive article');
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/knowledge-base/articles'] });
@@ -177,11 +177,7 @@ export default function KnowledgeBaseAdmin() {
   // Delete article mutation
   const deleteMutation = useMutation({
     mutationFn: async (articleId: string) => {
-      const response = await fetch(`/api/knowledge-base/articles/${articleId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete article');
-      return response.json();
+      return apiRequest(`/api/knowledge-base/articles/${articleId}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/knowledge-base/articles'] });

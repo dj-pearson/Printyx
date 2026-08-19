@@ -102,15 +102,6 @@
     "client/src/pages/UniversalProductImport.tsx:/api/import/ai/map-columns",
     "client/src/pages/UniversalProductImport.tsx:/api/import/preview-mapping",
     "client/src/pages/UniversalProductImport.tsx:/api/import/upload",
-    "client/src/pages/admin/ArticleEditor.tsx:/api/knowledge-base/articles/__DYN__",
-    "client/src/pages/admin/ArticleEditor.tsx:/api/knowledge-base/articles/__DYN__/publish",
-    "client/src/pages/admin/ArticleEditor.tsx:/api/knowledge-base/categories",
-    "client/src/pages/admin/KnowledgeBaseAdmin.tsx:/api/knowledge-base/analytics",
-    "client/src/pages/admin/KnowledgeBaseAdmin.tsx:/api/knowledge-base/articles/__DYN__",
-    "client/src/pages/admin/KnowledgeBaseAdmin.tsx:/api/knowledge-base/articles/__DYN__/archive",
-    "client/src/pages/admin/KnowledgeBaseAdmin.tsx:/api/knowledge-base/articles/__DYN__/publish",
-    "client/src/pages/admin/KnowledgeBaseAdmin.tsx:/api/knowledge-base/articles?__DYN__",
-    "client/src/pages/admin/KnowledgeBaseAdmin.tsx:/api/knowledge-base/categories",
     "client/src/pages/admin/TenantManagement.tsx:/api/admin/tenants"
   ]
 }
