@@ -3,6 +3,7 @@
 // Routes:
 //   GET /company-contacts - List tenant contacts (paginated, searchable, sortable)
 //   GET /company-contacts?companyId=xxx - the same list narrowed to one company
+//   GET /company-contacts/:id - Single contact
 //   POST /company-contacts - Create new contact
 //   PUT /company-contacts/:id - Update contact
 //   DELETE /company-contacts/:id - Delete contact
@@ -150,6 +151,31 @@ export default async function handler(req: Request) {
         200,
         req,
       );
+    }
+
+    // GET /company-contacts/:id - single contact (the CRM row-click target)
+    if (req.method === 'GET' && contactId) {
+      const { data: contact, error } = await admin
+        .from('company_contacts')
+        .select('*')
+        .eq('id', contactId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching contact:', error);
+        return createCorsResponse(
+          { error: 'Failed to fetch contact', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      if (!contact) {
+        return createCorsResponse({ error: 'Contact not found' }, 404, req);
+      }
+
+      return createCorsResponse(toContactResponse(contact), 200, req);
     }
 
     // POST /company-contacts - Create new contact

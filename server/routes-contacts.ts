@@ -90,26 +90,37 @@ export function registerContactsRoutes(app: Express) {
     },
   );
 
-  // GET /api/company-contacts/:companyId - Legacy endpoint for backward compatibility
+  // GET /api/company-contacts/:id - single contact, the CRM row-click target
+  //
+  // COP-M01: this path used to be a list-by-company. It had no caller, and it
+  // could not have had one in either environment: /api/company-contacts is
+  // proxied to the edge function in dev (so Express never saw the request) and
+  // the edge function had no GET-with-id branch at all, so production answered
+  // 405. The list-by-company case is served by GET /api/company-contacts?companyId=,
+  // which both backends now support, so the path param is free to mean what the
+  // rest of the API means by it.
   app.get(
-    '/api/company-contacts/:companyId',
+    '/api/company-contacts/:id',
     resolveTenant,
-    validate({ params: companyIdParamSchema }),
+    validate({ params: idParamSchema }),
     async (req: any, res) => {
       try {
         const user = req.user as any;
         const tenantId = user.tenantId || getTenantId(req);
-        const { companyId } = req.params;
+        const { id } = req.params;
 
         if (!tenantId) {
           return res.status(401).json({ message: 'Authentication required' });
         }
 
-        const contacts = await storage.getCompanyContacts(companyId, tenantId);
-        res.json(contacts);
+        const contact = await storage.getCompanyContact(id, tenantId);
+        if (!contact) {
+          return res.status(404).json({ error: 'Contact not found' });
+        }
+        res.json(contact);
       } catch (error) {
-        log.error('Error fetching company contacts:', error);
-        res.status(500).json({ error: 'Failed to fetch company contacts' });
+        log.error('Error fetching company contact:', error);
+        res.status(500).json({ error: 'Failed to fetch company contact' });
       }
     },
   );

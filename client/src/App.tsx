@@ -173,6 +173,7 @@ const WorkflowStepPage = React.lazy(() => import('@/pages/workflows/WorkflowStep
 const CrmDealsPage = React.lazy(() => import('@/pages/CrmDealsPage'));
 const CrmLeadsPage = React.lazy(() => import('@/pages/CrmLeadsPage'));
 const CrmContactsPage = React.lazy(() => import('@/pages/CrmContactsPage'));
+const ContactDetail = React.lazy(() => import('@/pages/ContactDetail'));
 const CrmCompaniesPage = React.lazy(() => import('@/pages/CrmCompaniesPage'));
 const CompanyDetail = React.lazy(() => import('@/pages/CompanyDetail'));
 const ProductHubUnified = React.lazy(() => import('@/pages/ProductHubUnified'));
@@ -661,6 +662,7 @@ function Router() {
                 <Route path="/crm/deals/:id" component={DealDetail} />
                 <Route path="/crm/leads" component={CrmLeadsPage} />
                 <Route path="/crm/contacts" component={CrmContactsPage} />
+                <Route path="/crm/contacts/:id" component={ContactDetail} />
                 <Route path="/crm/companies" component={CrmCompaniesPage} />
                 <Route path="/leads" component={LeadsPage} />
                 <Route path="/prospects" component={ProspectsPage} />

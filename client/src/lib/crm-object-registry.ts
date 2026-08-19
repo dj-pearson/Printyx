@@ -364,7 +364,11 @@ const contactsConfig: CrmObjectConfig = {
   labelPlural: 'Contacts',
   icon: 'Users',
   apiEndpoint: '/api/company-contacts',
-  detailPath: '/contacts',
+  // COP-M01/COP-E04: the canonical contact record path. This pointed at
+  // '/contacts', which is the legacy Contacts.tsx index — there was no
+  // /contacts/:id route, so every row click landed on NotFound. /crm/contacts/:id
+  // follows the deals precedent above.
+  detailPath: '/crm/contacts',
   hasBoardView: false,
   fields: [
     {

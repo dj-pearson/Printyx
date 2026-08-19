@@ -22,6 +22,13 @@ import {
   Network,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import {
+  formatRecordAddress,
+  pick,
+  pickBool,
+  pickList,
+  type RawRecord as Raw,
+} from '@/lib/crm/record-fields';
 
 /**
  * Company detail page for /companies/:id — the row-click target of CrmCompaniesPage
@@ -32,35 +39,6 @@ import { format } from 'date-fns';
  * function returns raw PostgREST snake_case rows plus nested joins. Every read
  * goes through `pick()` so the page renders against either one.
  */
-
-type Raw = Record<string, unknown>;
-
-function pick(row: Raw | undefined, ...keys: string[]): string | null {
-  if (!row) return null;
-  for (const k of keys) {
-    const v = row[k];
-    if (v !== undefined && v !== null && v !== '') return String(v);
-  }
-  return null;
-}
-
-function pickBool(row: Raw | undefined, ...keys: string[]): boolean {
-  if (!row) return false;
-  for (const k of keys) {
-    const v = row[k];
-    if (typeof v === 'boolean') return v;
-  }
-  return false;
-}
-
-function pickList(row: Raw | undefined, ...keys: string[]): Raw[] {
-  if (!row) return [];
-  for (const k of keys) {
-    const v = row[k];
-    if (Array.isArray(v)) return v as Raw[];
-  }
-  return [];
-}
 
 function formatDate(value: string | null): string | null {
   if (!value) return null;
@@ -104,19 +82,6 @@ function Field({
       </div>
     </div>
   );
-}
-
-function formatAddress(
-  company: Raw | undefined,
-  prefix: 'billing' | 'shipping' | 'mailing',
-): string | null {
-  const street = pick(company, `${prefix}Address`, `${prefix}_address`);
-  const city = pick(company, `${prefix}City`, `${prefix}_city`);
-  const state = pick(company, `${prefix}State`, `${prefix}_state`);
-  const zip = pick(company, `${prefix}Zip`, `${prefix}_zip`);
-  const cityLine = [[city, state].filter(Boolean).join(', '), zip].filter(Boolean).join(' ').trim();
-  const parts = [street, cityLine].filter((p): p is string => Boolean(p && p.trim()));
-  return parts.length ? parts.join('\n') : null;
 }
 
 function contactName(contact: Raw): string {
@@ -175,8 +140,8 @@ export default function CompanyDetail() {
   const name = pick(company, 'businessName', 'business_name') || 'Untitled company';
   const recordType = pick(company, 'businessRecordType', 'business_record_type');
   const site = pick(company, 'businessSite', 'business_site');
-  const billing = formatAddress(company, 'billing');
-  const shipping = formatAddress(company, 'shipping');
+  const billing = formatRecordAddress(company, 'billing');
+  const shipping = formatRecordAddress(company, 'shipping');
   const contacts = pickList(company, 'companyContacts', 'company_contacts');
   const createdAt = formatDateTime(pick(company, 'createdAt', 'created_at'));
   const updatedAt = formatDateTime(pick(company, 'updatedAt', 'updated_at'));
