@@ -241,7 +241,7 @@ export default async function handler(req: Request) {
         .select('*')
         .eq('company_id', companyId)
         .eq('tenant_id', tenantId)
-        .order('is_primary', { ascending: false });
+        .order('is_primary_contact', { ascending: false });
 
       if (error) {
         console.error('[COMPANIES] Error fetching contacts:', error);
@@ -395,7 +395,12 @@ export default async function handler(req: Request) {
           phone: contact.phone,
           title: contact.title,
           department: contact.department,
-          is_primary: contact.is_primary !== undefined ? contact.is_primary : index === 0,
+          // Real column is is_primary_contact; callers have historically sent is_primary.
+          is_primary_contact:
+            contact.is_primary_contact ??
+            contact.is_primary ??
+            contact.isPrimaryContact ??
+            index === 0,
           created_at: new Date().toISOString(),
         }));
 
@@ -553,7 +558,8 @@ export default async function handler(req: Request) {
         phone: body.phone,
         title: body.title,
         department: body.department,
-        is_primary: body.is_primary || false,
+        is_primary_contact:
+          body.is_primary_contact ?? body.is_primary ?? body.isPrimaryContact ?? false,
         created_at: new Date().toISOString(),
       };
 

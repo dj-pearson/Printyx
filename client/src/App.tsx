@@ -174,6 +174,7 @@ const CrmDealsPage = React.lazy(() => import('@/pages/CrmDealsPage'));
 const CrmLeadsPage = React.lazy(() => import('@/pages/CrmLeadsPage'));
 const CrmContactsPage = React.lazy(() => import('@/pages/CrmContactsPage'));
 const CrmCompaniesPage = React.lazy(() => import('@/pages/CrmCompaniesPage'));
+const CompanyDetail = React.lazy(() => import('@/pages/CompanyDetail'));
 const ProductHubUnified = React.lazy(() => import('@/pages/ProductHubUnified'));
 const EquipmentLifecycleHub = React.lazy(() => import('@/pages/EquipmentLifecycleHub'));
 const PurchaseOrders = React.lazy(() => import('@/pages/PurchaseOrders'));
@@ -808,6 +809,7 @@ function Router() {
                 <Route path="/mobile-field-operations" component={MobileFieldOperations} />
                 <Route path="/leads/:slug" component={LeadDetail} />
                 <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
+                <Route path="/companies/:id" component={CompanyDetail} />
                 <Route path="/company-contacts" component={CompanyContacts} />
                 <Route path="/sales-reports" component={Reports} />
                 <Route path="/service-reports" component={Reports} />
