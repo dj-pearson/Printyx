@@ -13,8 +13,13 @@
 import { describe, it, expect } from 'vitest';
 import { getTableColumns } from 'drizzle-orm';
 
-import { companies, companyContacts } from '@shared/schema';
-import { COMPANY_LIST_SPEC, CONTACT_LIST_SPEC, type CrmListSpec } from '../../lib/crm-list-query';
+import { companies, companyContacts, deals } from '@shared/schema';
+import {
+  COMPANY_LIST_SPEC,
+  CONTACT_LIST_SPEC,
+  DEAL_LIST_SPEC,
+  type CrmListSpec,
+} from '../../lib/crm-list-query';
 
 /** Physical column names on a Drizzle table. */
 function physicalColumns(table: any): Set<string> {
@@ -29,6 +34,7 @@ function tsColumns(table: any): Set<string> {
 const cases: Array<[string, CrmListSpec, any]> = [
   ['contacts', CONTACT_LIST_SPEC, companyContacts],
   ['companies', COMPANY_LIST_SPEC, companies],
+  ['deals', DEAL_LIST_SPEC, deals],
 ];
 
 describe.each(cases)('%s list spec', (_name, spec, table) => {
@@ -85,6 +91,31 @@ describe('the guard actually catches a phantom column', () => {
     for (const real of ['business_name', 'billing_city', 'billing_state', 'employees']) {
       expect(physical.has(real)).toBe(true);
     }
+  });
+
+  it('confirms the deals columns the edge function used to write are not there', () => {
+    const dealColumns = physicalColumns(deals);
+    // Every one of these appeared in the handler's insert, update or search.
+    for (const phantom of [
+      'deal_name',
+      'deal_value',
+      'stage',
+      'next_step',
+      'business_record_id',
+      'created_by',
+      'closed_date',
+    ]) {
+      expect(dealColumns.has(phantom)).toBe(false);
+    }
+    for (const real of ['title', 'amount', 'stage_id', 'owner_id', 'created_by_id']) {
+      expect(dealColumns.has(real)).toBe(true);
+    }
+  });
+
+  it('confirms stage_id and created_by_id are NOT NULL, so an insert must set them', () => {
+    const columns = getTableColumns(deals) as Record<string, { name: string; notNull: boolean }>;
+    expect(columns.stageId.notNull).toBe(true);
+    expect(columns.createdById.notNull).toBe(true);
   });
 
   it('confirms company_contacts has no is_active column', () => {

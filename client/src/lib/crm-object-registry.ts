@@ -87,8 +87,14 @@ const dealsConfig: CrmObjectConfig = {
       editable: true,
       width: 'min-w-[250px]',
     },
+    // COP-M01: `value`, `customerName` and `assignedToName` were not columns on
+    // `deals` (migration 0000: amount, company_name, owner_id). Amount and
+    // Company rendered blank; Owner had no backing data at all, since the deals
+    // handler deliberately avoids FK embeds and so cannot resolve owner_id to a
+    // name — that column is removed rather than faked, and the contact name,
+    // which IS stored on the deal, takes its place.
     {
-      field: 'value',
+      field: 'amount',
       label: 'Amount',
       type: 'currency',
       sortable: true,
@@ -120,17 +126,19 @@ const dealsConfig: CrmObjectConfig = {
       width: 'min-w-[130px]',
     },
     {
-      field: 'assignedToName',
-      label: 'Owner',
+      field: 'primaryContactName',
+      label: 'Contact',
       type: 'text',
       sortable: true,
+      editable: true,
       width: 'min-w-[150px]',
     },
     {
-      field: 'customerName',
+      field: 'companyName',
       label: 'Company',
       type: 'text',
       sortable: true,
+      editable: true,
       width: 'min-w-[180px]',
     },
     { field: 'status', label: 'Status', type: 'badge', sortable: true, width: 'min-w-[100px]' },
@@ -146,12 +154,12 @@ const dealsConfig: CrmObjectConfig = {
   ],
   defaultColumns: [
     'title',
-    'value',
+    'amount',
     'stage',
     'probability',
     'expectedCloseDate',
-    'assignedToName',
-    'customerName',
+    'primaryContactName',
+    'companyName',
   ],
   quickFilters: [
     {
@@ -188,7 +196,7 @@ const dealsConfig: CrmObjectConfig = {
     { name: 'All Deals', isDefault: true },
     {
       name: 'My Deals',
-      filterDefinition: [{ field: 'assignedToId', operator: 'eq', value: '__CURRENT_USER__' }],
+      filterDefinition: [{ field: 'ownerId', operator: 'eq', value: '__CURRENT_USER__' }],
     },
     { name: 'Recently Modified', sortConfig: { field: 'updatedAt', direction: 'desc' } },
   ],

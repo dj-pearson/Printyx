@@ -2,6 +2,64 @@
 // Handles sales deals and opportunities management
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { buildSearchOr, DEAL_LIST_SPEC, parseCrmListQuery } from '../_shared/crm-list-query.ts';
+import {
+  buildStageNameMap,
+  findStageId,
+  resolveStageId,
+  type DealStageRow,
+} from '../_shared/deal-stage.ts';
+
+/** The tenant's pipeline stages. Small table; read once per request. */
+async function loadStages(admin: any, tenantId: string): Promise<DealStageRow[]> {
+  const { data, error } = await admin
+    .from('deal_stages')
+    .select('id, name, sort_order, is_active')
+    .eq('tenant_id', tenantId);
+  if (error) {
+    console.error('Error loading deal stages:', error);
+    return [];
+  }
+  return (data ?? []) as DealStageRow[];
+}
+
+/**
+ * Raw snake row -> the shape the CRM table and the deal pages read.
+ *
+ * The handler selects '*', so it was returning business_name-style keys while
+ * the registry named camelCase ones; Amount, Stage, Close Date, Company and
+ * Created were all blank. Aliases are ADDED to the spread, so anything already
+ * reading the snake keys keeps working. `stage` is the stage NAME, mapped from
+ * stage_id in memory rather than through an FK embed — this handler avoids
+ * embeds on purpose (the deals FKs are not reliably in the schema cache).
+ */
+function toDealResponse(deal: any, stageNames: Record<string, string>) {
+  return {
+    ...deal,
+    title: deal.title,
+    amount: deal.amount,
+    stageId: deal.stage_id,
+    stage: stageNames[deal.stage_id] ?? null,
+    ownerId: deal.owner_id,
+    customerId: deal.customer_id,
+    companyName: deal.company_name,
+    dealType: deal.deal_type,
+    expectedCloseDate: deal.expected_close_date,
+    actualCloseDate: deal.actual_close_date,
+    primaryContactName: deal.primary_contact_name,
+    primaryContactEmail: deal.primary_contact_email,
+    primaryContactPhone: deal.primary_contact_phone,
+    productsInterested: deal.products_interested,
+    estimatedMonthlyValue: deal.estimated_monthly_value,
+    lostReason: deal.lost_reason,
+    lastActivityDate: deal.last_activity_date,
+    nextFollowUpDate: deal.next_follow_up_date,
+    createdById: deal.created_by_id,
+    customFields: deal.custom_fields,
+    createdAt: deal.created_at,
+    updatedAt: deal.updated_at,
+  };
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -145,18 +203,31 @@ export default async function handler(req: Request) {
 
     // ─── Bulk ops (EDGE-005b) — POST /deals/bulk-update | /deals/bulk-delete ──
     // Ported from legacy Express /api/deals-management/deals/bulk-{update,delete}.
+    // COP-M01: this used to name deal_name, deal_value, stage and next_step.
+    // None of them are columns on `deals` (migration 0000: title, amount,
+    // stage_id, and no next_step at all), so a bulk update touching any of them
+    // came back 42703. Aliases for the names callers actually send are kept, but
+    // every VALUE below is a real column.
     const BULK_FIELD_MAP: Record<string, string> = {
-      dealName: 'deal_name',
+      title: 'title',
+      dealName: 'title',
       description: 'description',
-      dealValue: 'deal_value',
-      value: 'deal_value',
-      stage: 'stage',
+      amount: 'amount',
+      dealValue: 'amount',
+      value: 'amount',
+      stageId: 'stage_id',
       status: 'status',
+      priority: 'priority',
       probability: 'probability',
       expectedCloseDate: 'expected_close_date',
+      actualCloseDate: 'actual_close_date',
       ownerId: 'owner_id',
+      customerId: 'customer_id',
+      companyName: 'company_name',
       source: 'source',
-      nextStep: 'next_step',
+      dealType: 'deal_type',
+      lostReason: 'lost_reason',
+      notes: 'notes',
     };
 
     if (req.method === 'POST' && dealId === 'bulk-update') {
@@ -200,12 +271,12 @@ export default async function handler(req: Request) {
 
     // GET /deals - List deals
     if (req.method === 'GET' && !dealId) {
-      const stage = url.searchParams.get('stage');
-      const ownerId = url.searchParams.get('ownerId') || url.searchParams.get('owner_id');
-      const search = url.searchParams.get('search');
-      const page = parseInt(url.searchParams.get('page') || '1');
-      const limit = parseInt(url.searchParams.get('limit') || '50');
-      const offset = (page - 1) * limit;
+      // COP-M01: the search filter named deal_name (42703 -> 500 on every
+      // search) and the stage filter named a `stage` column that does not exist;
+      // sortBy/sortOrder were ignored entirely. All three now come from the
+      // shared spec.
+      const q = parseCrmListQuery(url.searchParams, DEAL_LIST_SPEC);
+      const ownerId = q.filters.ownerId || url.searchParams.get('owner_id');
 
       // Select deals without FK joins to avoid schema cache errors
       // (business_records table is deprecated, FK may not exist)
@@ -213,34 +284,46 @@ export default async function handler(req: Request) {
         .from('deals')
         .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
-        .order('expected_close_date', { ascending: true })
-        .range(offset, offset + limit - 1);
+        .order(q.sortColumn, { ascending: q.ascending })
+        .range(q.offset, q.offset + q.limit - 1);
 
-      if (stage) {
-        query = query.eq('stage', stage);
+      const stages = await loadStages(admin, tenantId);
+
+      // `stage` carries a slug from the hardcoded picker, so match it against the
+      // tenant's own stages rather than comparing it to an id. findStageId does
+      // NOT fall back to a default: an unrecognized slug must return nothing,
+      // not a different column of the board.
+      const requestedStage = q.filters.stageId || q.filters.stage;
+      if (requestedStage) {
+        query = query.eq('stage_id', findStageId(stages, requestedStage) ?? '');
       }
 
-      if (ownerId) {
-        query = query.eq('owner_id', ownerId);
-      }
+      if (ownerId) query = query.eq('owner_id', ownerId);
+      if (q.filters.status) query = query.eq('status', q.filters.status);
+      if (q.filters.priority) query = query.eq('priority', q.filters.priority);
+      if (q.filters.customerId) query = query.eq('customer_id', q.filters.customerId);
 
-      if (search) {
-        query = query.or(`deal_name.ilike.%${search}%,description.ilike.%${search}%`);
-      }
+      const searchOr = buildSearchOr(DEAL_LIST_SPEC, q.search);
+      if (searchOr) query = query.or(searchOr);
 
       const { data: deals, error, count } = await query;
 
       if (error) {
         console.error('Error fetching deals:', error);
-        return createCorsResponse({ error: 'Failed to fetch deals' }, 500, req);
+        return createCorsResponse(
+          { error: 'Failed to fetch deals', details: error.message },
+          500,
+          req,
+        );
       }
 
+      const stageNames = buildStageNameMap(stages);
       return createCorsResponse(
         {
-          data: deals || [],
+          data: (deals || []).map((deal: any) => toDealResponse(deal, stageNames)),
           total: count || 0,
-          page,
-          limit,
+          page: q.page,
+          limit: q.limit,
         },
         200,
         req,
@@ -262,29 +345,64 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Deal not found' }, 404, req);
       }
 
-      return createCorsResponse(deal, 200, req);
+      const stageNames = buildStageNameMap(await loadStages(admin, tenantId));
+      return createCorsResponse(toDealResponse(deal, stageNames), 200, req);
     }
 
     // POST /deals - Create deal
     if (req.method === 'POST') {
       const body = await req.json();
 
-      const dealData = {
+      // COP-M01: this used to insert business_record_id, deal_name, deal_value,
+      // stage, next_step and created_by — six columns `deals` does not have —
+      // while omitting stage_id and created_by_id, which are NOT NULL. Creating
+      // a deal from the CRM page could not succeed in dev or production.
+      const title = body.title || body.dealName || body.deal_name;
+      if (!title) {
+        return createCorsResponse({ error: 'title is required' }, 400, req);
+      }
+
+      const stages = await loadStages(admin, tenantId);
+      const stageId = resolveStageId(stages, body.stageId || body.stage_id || body.stage);
+      if (!stageId) {
+        return createCorsResponse(
+          {
+            error:
+              'No pipeline stages are configured for this tenant, so a deal cannot be created yet.',
+            code: 'NO_DEAL_STAGES',
+          },
+          400,
+          req,
+        );
+      }
+
+      const amount = body.amount ?? body.value ?? body.dealValue ?? body.deal_value ?? 0;
+
+      const dealData: Record<string, any> = {
         tenant_id: tenantId,
-        business_record_id: body.businessRecordId || body.business_record_id,
-        deal_name: body.dealName || body.deal_name,
+        title,
         description: body.description || null,
-        deal_value: body.dealValue || body.deal_value || 0,
-        stage: body.stage || 'prospecting',
-        probability: body.probability || 10,
+        amount,
+        stage_id: stageId,
+        probability: body.probability ?? 10,
         expected_close_date: body.expectedCloseDate || body.expected_close_date || null,
         owner_id: body.ownerId || body.owner_id || user.id,
+        customer_id: body.customerId || body.customer_id || null,
+        company_name: body.companyName || body.company_name || null,
+        priority: body.priority || 'medium',
         source: body.source || null,
-        next_step: body.nextStep || body.next_step || null,
-        created_by: user.id,
+        deal_type: body.dealType || body.deal_type || null,
+        primary_contact_name: body.primaryContactName || body.primary_contact_name || null,
+        primary_contact_email: body.primaryContactEmail || body.primary_contact_email || null,
+        primary_contact_phone: body.primaryContactPhone || body.primary_contact_phone || null,
+        notes: body.notes || null,
+        created_by_id: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+      if (body.customFields || body.custom_fields) {
+        dealData.custom_fields = body.customFields || body.custom_fields;
+      }
 
       const { data: deal, error } = await admin.from('deals').insert(dealData).select().single();
 
@@ -293,7 +411,8 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create deal', details: error }, 500, req);
       }
 
-      return createCorsResponse(deal, 201, req);
+      const stageNames = buildStageNameMap(stages);
+      return createCorsResponse(toDealResponse(deal, stageNames), 201, req);
     }
 
     // PATCH /deals/:id - Update deal
@@ -304,24 +423,22 @@ export default async function handler(req: Request) {
         updated_at: new Date().toISOString(),
       };
 
-      const fieldMap: Record<string, string> = {
-        dealName: 'deal_name',
-        description: 'description',
-        dealValue: 'deal_value',
-        stage: 'stage',
-        probability: 'probability',
-        expectedCloseDate: 'expected_close_date',
-        ownerId: 'owner_id',
-        source: 'source',
-        nextStep: 'next_step',
-        closedDate: 'closed_date',
-        lostReason: 'lost_reason',
-      };
+      // Same correction as the bulk map: every value is a real column. The old
+      // map wrote deal_name, deal_value, stage, next_step and closed_date, so an
+      // edit that touched the deal's name, amount or stage failed.
+      const fieldMap: Record<string, string> = BULK_FIELD_MAP;
 
       for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
         if (body[camelKey] !== undefined || body[snakeKey] !== undefined) {
           updateData[snakeKey] = body[camelKey] !== undefined ? body[camelKey] : body[snakeKey];
         }
+      }
+
+      // A stage slug has to become a stage_id; an id passes straight through.
+      const requestedStage = body.stageId ?? body.stage_id ?? body.stage;
+      if (requestedStage !== undefined && requestedStage !== null && requestedStage !== '') {
+        const resolved = resolveStageId(await loadStages(admin, tenantId), String(requestedStage));
+        if (resolved) updateData.stage_id = resolved;
       }
 
       const { data: deal, error } = await admin

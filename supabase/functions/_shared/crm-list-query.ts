@@ -19,6 +19,10 @@ export interface CrmListSpec {
    *  rather than reaching either database as an identifier. */
   sortFields: Record<string, string>;
   defaultSortField: string;
+  /** Direction used when the caller sends no sortOrder. Defaults to descending
+   *  (newest first), which is right for a created-at default but not for a
+   *  close-date one. */
+  defaultAscending?: boolean;
   defaultLimit: number;
   /** Physical columns for the PostgREST or() search. Every one must exist. */
   searchColumns: string[];
@@ -104,6 +108,49 @@ export const COMPANY_LIST_SPEC: CrmListSpec = {
   filterKeys: ['industry', 'status', 'recordType', 'businessRecordType'],
 };
 
+/**
+ * Deals.
+ *
+ * The names here are the ones migration 0000 actually created. The deals edge
+ * function had been written against a different table entirely — deal_name,
+ * deal_value, stage, next_step, business_record_id, created_by — none of which
+ * exist on `deals` (they are title, amount, stage_id, owner_id, created_by_id).
+ * Searching deals therefore came back 500 (or=(deal_name.ilike...) is 42703) and
+ * creating one could never insert.
+ */
+export const DEAL_LIST_SPEC: CrmListSpec = {
+  sortFields: {
+    title: 'title',
+    description: 'description',
+    amount: 'amount',
+    probability: 'probability',
+    expectedCloseDate: 'expected_close_date',
+    actualCloseDate: 'actual_close_date',
+    status: 'status',
+    priority: 'priority',
+    ownerId: 'owner_id',
+    customerId: 'customer_id',
+    companyName: 'company_name',
+    stageId: 'stage_id',
+    source: 'source',
+    dealType: 'deal_type',
+    primaryContactName: 'primary_contact_name',
+    estimatedMonthlyValue: 'estimated_monthly_value',
+    lastActivityDate: 'last_activity_date',
+    nextFollowUpDate: 'next_follow_up_date',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+  },
+  defaultSortField: 'expectedCloseDate',
+  // Soonest close date first, which is what the handler did before it took its
+  // ordering from this spec.
+  defaultAscending: true,
+  defaultLimit: 50,
+  searchColumns: ['title', 'company_name', 'primary_contact_name', 'description'],
+  searchFields: ['title', 'companyName', 'primaryContactName', 'description'],
+  filterKeys: ['stageId', 'stage', 'ownerId', 'status', 'priority', 'customerId'],
+};
+
 export interface CrmListQuery {
   search: string;
   limit: number;
@@ -170,6 +217,13 @@ export function resolveSortField(spec: CrmListSpec, raw: string): string {
   return spec.defaultSortField;
 }
 
+function resolveAscending(raw: string | null | undefined, spec: CrmListSpec): boolean {
+  const value = String(raw ?? '').toLowerCase();
+  if (value === 'asc') return true;
+  if (value === 'desc') return false;
+  return spec.defaultAscending === true;
+}
+
 export function parseCrmListQuery(
   source: URLSearchParams | Record<string, unknown>,
   spec: CrmListSpec,
@@ -197,7 +251,7 @@ export function parseCrmListQuery(
     page: Math.floor(offset / limit) + 1,
     sortField,
     sortColumn: spec.sortFields[sortField],
-    ascending: String(get('sortOrder') ?? '').toLowerCase() === 'asc',
+    ascending: resolveAscending(get('sortOrder'), spec),
     filters,
   };
 }
