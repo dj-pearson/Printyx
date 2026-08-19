@@ -451,7 +451,10 @@ router.post('/proposals/:proposalId/send', async (req: Request, res: Response) =
       .set({
         status: 'sent',
         sentAt: new Date(),
-        sentVia,
+        // Column is sentVia; the request body field is sendVia. The shorthand
+        // `sentVia,` referenced an undeclared name, so this endpoint threw a
+        // ReferenceError on every call.
+        sentVia: sendVia,
         updatedAt: new Date(),
       })
       .where(and(eq(renewalProposals.id, proposalId), eq(renewalProposals.tenantId, tenantId)))

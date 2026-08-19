@@ -247,12 +247,15 @@ router.get('/trial-funnel', async (req, res) => {
 
     const funnelData = await Promise.all(
       stages.map(async (stage) => {
-        const count = await db
+        // `const count` shadowed drizzle's count() aggregate and was referenced
+        // inside its own initializer, so this threw "Cannot access 'count'
+        // before initialization" and the whole funnel endpoint failed.
+        const rows = await db
           .select({ count: count() })
           .from(conversionFunnelEvents)
           .where(eq(conversionFunnelEvents.stage, stage));
 
-        return { stage, count: count[0]?.count || 0 };
+        return { stage, count: rows[0]?.count || 0 };
       }),
     );
 
