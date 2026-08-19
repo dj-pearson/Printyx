@@ -1,4 +1,4 @@
-// PROD-004 parity lock.
+// PROD-014 parity lock.
 //
 // GET /api/subscriptions/current is what SubscriptionBanner reads, and that
 // banner is mounted in App.tsx — it runs on every page. The endpoint existed
@@ -301,5 +301,47 @@ describe('buildSubscriptionStatus', () => {
     const status = node.buildSubscriptionStatus(subscription, PLAN, null, NOW);
     expect(status.isOverLimit).toBe(false);
     expect(edge.buildSubscriptionStatus(subscription, PLAN, null, NOW)).toEqual(status);
+  });
+});
+
+describe('nextPeriodEnd parity', () => {
+  // POST /api/subscriptions/convert-trial was Express-only too, so converting a
+  // trial did nothing in production. Both backends now write the renewal date,
+  // and a customer whose renewal lands on a different day depending on which
+  // backend answered is a billing dispute, so the calendar arithmetic is pinned.
+  const cases: Array<[string, string | null | undefined, string]> = [
+    ['annual', 'annual', '2027-08-19'],
+    ['monthly', 'monthly', '2026-09-19'],
+    ['unset cycle falls back to monthly', null, '2026-09-19'],
+    ['unknown cycle falls back to monthly', 'weekly', '2026-09-19'],
+  ];
+
+  it.each(cases)('%s', (_label, cycle, expectedDay) => {
+    const nodeEnd = node.nextPeriodEnd(NOW, cycle);
+    const edgeEnd = edge.nextPeriodEnd(NOW, cycle);
+    expect(edgeEnd.getTime()).toBe(nodeEnd.getTime());
+    expect(
+      `${nodeEnd.getFullYear()}-${String(nodeEnd.getMonth() + 1).padStart(2, '0')}-${String(
+        nodeEnd.getDate(),
+      ).padStart(2, '0')}`,
+    ).toBe(expectedDay);
+  });
+
+  it('rolls a month end forward the same way on both sides', () => {
+    // Jan 31 + 1 month has no Feb 31; Date normalizes it into March. That has
+    // always been production's behaviour — the point is that it stays identical,
+    // not that it is elegant.
+    const jan31 = new Date(2026, 0, 31, 12);
+    expect(edge.nextPeriodEnd(jan31, 'monthly').getTime()).toBe(
+      node.nextPeriodEnd(jan31, 'monthly').getTime(),
+    );
+    expect(node.nextPeriodEnd(jan31, 'monthly').getMonth()).toBe(2); // March
+  });
+
+  it('leaves a leap day on Feb 29 -> Feb 28 identically', () => {
+    const feb29 = new Date(2028, 1, 29, 12);
+    expect(edge.nextPeriodEnd(feb29, 'annual').getTime()).toBe(
+      node.nextPeriodEnd(feb29, 'annual').getTime(),
+    );
   });
 });

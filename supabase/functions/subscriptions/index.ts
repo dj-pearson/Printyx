@@ -2,7 +2,9 @@
 // Handles subscription management for tenants
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
-import { buildSubscriptionStatus } from '../_shared/subscription-status.ts';
+import { buildSubscriptionStatus, nextPeriodEnd } from '../_shared/subscription-status.ts';
+import { buildCancellationEmail } from '../_shared/cancellation-email.ts';
+import { sendEmail } from '../email-marketing/_sendgrid.ts';
 import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
@@ -444,7 +446,7 @@ export default async function handler(req: Request) {
     // GET  /subscriptions/notifications            - the banner's alert list
     // POST /subscriptions/notifications/:id/dismiss
     //
-    // PROD-004: both were Express-only, so the banner had no notifications in
+    // PROD-014: both were Express-only, so the banner had no notifications in
     // production and dismissing one did nothing. Ported straight across — the
     // filter (this tenant, this user, not already dismissed) and the 50-row cap
     // match server/routes-subscriptions.ts, and the body is { notifications }
@@ -504,7 +506,7 @@ export default async function handler(req: Request) {
     // ========================================================================
     // GET /subscriptions/current - the shape SubscriptionBanner reads
     //
-    // PROD-004: this endpoint existed only on Express, and SubscriptionBanner is
+    // PROD-014: this endpoint existed only on Express, and SubscriptionBanner is
     // mounted in App.tsx — so on every page in production the banner asked for a
     // plan/usage/trial state that nothing answered. The arithmetic (limit merge,
     // overage test, day counts) comes from _shared/subscription-status.ts, which
@@ -786,6 +788,298 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ subscription: updatedSubscription }, 200, req);
+    }
+
+    // ========================================================================
+    // POST /subscriptions/cancel - Cancel the tenant's subscription
+    //
+    // PROD-014: SubscriptionSettings.tsx posts here, not to :id/cancel, and no
+    // edge function answered the path — so in production the Cancel button 404'd
+    // and the subscription stayed active. The tenant row update, the
+    // cancellation event and the acknowledgement email all come from
+    // SubscriptionService.cancelSubscription; the email body is shared with the
+    // Node copy via _shared/cancellation-email.ts (LEGAL-011 wants both
+    // backends to say the same thing).
+    // ========================================================================
+    if (req.method === 'POST' && secondSegment === 'cancel' && !thirdSegment) {
+      const body = await req.json().catch(() => ({}));
+      const immediate = body.immediate === true;
+
+      const { data: subscription, error: fetchError } = await admin
+        .from('tenant_subscriptions')
+        .select('*, plan:subscription_plans(*)')
+        .eq('tenant_id', tenantId)
+        .in('status', ['active', 'trialing', 'past_due'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error loading subscription to cancel:', fetchError);
+        return createCorsResponse(
+          { error: 'Failed to cancel subscription', message: fetchError.message },
+          500,
+          req,
+        );
+      }
+      if (!subscription) {
+        return createCorsResponse(
+          { error: 'Failed to cancel subscription', message: 'No active subscription found' },
+          404,
+          req,
+        );
+      }
+
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const subscriptionUpdate: Record<string, unknown> = {
+        canceled_at: nowIso,
+        updated_at: nowIso,
+      };
+      if (immediate) {
+        subscriptionUpdate.status = 'canceled';
+        subscriptionUpdate.ended_at = nowIso;
+      } else {
+        subscriptionUpdate.cancel_at = subscription.current_period_end;
+      }
+
+      const { error: updateError } = await admin
+        .from('tenant_subscriptions')
+        .update(subscriptionUpdate)
+        .eq('id', subscription.id)
+        .eq('tenant_id', tenantId);
+
+      if (updateError) {
+        console.error('Error canceling subscription:', updateError);
+        return createCorsResponse(
+          { error: 'Failed to cancel subscription', message: updateError.message },
+          500,
+          req,
+        );
+      }
+
+      // Express only touches the tenant row on an immediate cancellation; an
+      // end-of-period cancellation leaves the tenant active until it lapses.
+      if (immediate) {
+        const { error: tenantError } = await admin
+          .from('tenants')
+          .update({
+            subscription: 'canceled',
+            billing_status: 'canceled',
+            is_active: false,
+            updated_at: nowIso,
+          })
+          .eq('id', tenantId);
+        if (tenantError) console.error('Error deactivating tenant on cancel:', tenantError);
+      }
+
+      const effectiveDate = immediate
+        ? now
+        : subscription.current_period_end
+          ? new Date(subscription.current_period_end)
+          : now;
+
+      // Resolve the recipient before writing the event, so the event records
+      // what actually happened rather than what was intended.
+      let confirmationSent = false;
+      let confirmationError: string | undefined;
+      let recipientEmail: string | undefined;
+      let tenantName = 'your organization';
+
+      const { data: tenantRow } = await admin
+        .from('tenants')
+        .select('name')
+        .eq('id', tenantId)
+        .maybeSingle();
+      if (tenantRow?.name) tenantName = tenantRow.name;
+
+      const { data: adminUser } = await admin
+        .from('users')
+        .select('email')
+        .eq('tenant_id', tenantId)
+        .not('email', 'is', null)
+        .limit(1)
+        .maybeSingle();
+      if (adminUser?.email) recipientEmail = adminUser.email;
+
+      if (recipientEmail) {
+        try {
+          const { subject, html, text } = buildCancellationEmail({
+            recipientEmail,
+            tenantName,
+            planName: subscription.plan?.name,
+            immediate,
+            effectiveDate,
+          });
+          await sendEmail({
+            to: recipientEmail,
+            from: Deno.env.get('DEFAULT_FROM_EMAIL') || 'noreply@printyx.net',
+            subject,
+            html,
+            text,
+          });
+          confirmationSent = true;
+        } catch (err) {
+          // A cancellation that succeeded must not report failure because the
+          // mail server was down — but the miss is recorded, not swallowed.
+          confirmationError = err instanceof Error ? err.message : String(err);
+          console.error('Cancellation confirmation email failed:', confirmationError);
+        }
+      } else {
+        confirmationError = 'no recipient email found for tenant';
+        console.error(`Cancellation for tenant ${tenantId}: ${confirmationError}`);
+      }
+
+      await admin.from('subscription_events').insert({
+        tenant_id: tenantId,
+        subscription_id: subscription.id,
+        event_type: 'canceled',
+        user_id: user.id,
+        data: {
+          immediate,
+          cancelDate: effectiveDate.toISOString(),
+          effectiveDate: effectiveDate.toISOString(),
+          mode: immediate ? 'immediate' : 'end_of_period',
+          canceledAt: nowIso,
+          planId: subscription.plan_id,
+          confirmationSent,
+          confirmationRecipient: recipientEmail ?? null,
+          confirmationError: confirmationError ?? null,
+        },
+        created_at: nowIso,
+      });
+
+      // In-app copy of the same confirmation, so it does not depend on email
+      // delivery succeeding.
+      await admin.from('subscription_notifications').insert({
+        tenant_id: tenantId,
+        user_id: user.id,
+        type: 'subscription_canceled',
+        priority: 'high',
+        title: 'Subscription Canceled',
+        message: immediate
+          ? `Your subscription was canceled immediately and access ended on ${effectiveDate.toLocaleDateString()}. You will not be charged again.`
+          : `Your subscription is canceled and will not renew. You keep access until ${effectiveDate.toLocaleDateString()}. You will not be charged again.`,
+        action_url: '/settings/subscription',
+        action_text: 'Reactivate',
+        channels: ['in_app', 'email'],
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+
+      return createCorsResponse(
+        {
+          message: immediate
+            ? 'Subscription canceled immediately'
+            : 'Subscription will be canceled at the end of the current period',
+        },
+        200,
+        req,
+      );
+    }
+
+    // ========================================================================
+    // POST /subscriptions/convert-trial - Turn a trial into a paid subscription
+    //
+    // PROD-014: Express-only, so in production a trialing tenant could not
+    // convert. The renewal date comes from nextPeriodEnd() in
+    // _shared/subscription-status.ts, which the Node service also calls — a
+    // customer whose renewal lands on a different day depending on which
+    // backend answered is a billing dispute.
+    // ========================================================================
+    if (req.method === 'POST' && secondSegment === 'convert-trial' && !thirdSegment) {
+      const { data: subscription, error: fetchError } = await admin
+        .from('tenant_subscriptions')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'trialing')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error loading trial subscription:', fetchError);
+        return createCorsResponse(
+          { error: 'Failed to convert trial', message: fetchError.message },
+          500,
+          req,
+        );
+      }
+      if (!subscription) {
+        return createCorsResponse(
+          { error: 'Failed to convert trial', message: 'No trial subscription found' },
+          404,
+          req,
+        );
+      }
+
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const newPeriodEnd = nextPeriodEnd(now, subscription.billing_cycle);
+
+      const { data: updatedSubscription, error: updateError } = await admin
+        .from('tenant_subscriptions')
+        .update({
+          status: 'active',
+          is_trialing: false,
+          current_period_start: nowIso,
+          current_period_end: newPeriodEnd.toISOString(),
+          updated_at: nowIso,
+        })
+        .eq('id', subscription.id)
+        .eq('tenant_id', tenantId)
+        .select('*')
+        .single();
+
+      if (updateError) {
+        console.error('Error converting trial:', updateError);
+        return createCorsResponse(
+          { error: 'Failed to convert trial', message: updateError.message },
+          500,
+          req,
+        );
+      }
+
+      const { error: tenantError } = await admin
+        .from('tenants')
+        .update({ subscription: 'active', billing_status: 'current', updated_at: nowIso })
+        .eq('id', tenantId);
+      if (tenantError) console.error('Error updating tenant after trial conversion:', tenantError);
+
+      await admin.from('subscription_events').insert({
+        tenant_id: tenantId,
+        subscription_id: subscription.id,
+        event_type: 'trial_converted',
+        user_id: user.id,
+        data: {
+          trialEndDate: subscription.trial_end_date,
+          conversionDate: nowIso,
+        },
+        created_at: nowIso,
+      });
+
+      await admin.from('subscription_notifications').insert({
+        tenant_id: tenantId,
+        user_id: user.id,
+        type: 'trial_converted',
+        priority: 'normal',
+        title: 'Trial Converted!',
+        message: 'Your trial has been successfully converted to a paid subscription.',
+        action_url: '/settings/subscription',
+        action_text: 'View Subscription',
+        channels: ['in_app', 'email'],
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+
+      return createCorsResponse(
+        {
+          subscription: updatedSubscription,
+          message: 'Trial converted to paid subscription successfully',
+        },
+        200,
+        req,
+      );
     }
 
     // ========================================================================

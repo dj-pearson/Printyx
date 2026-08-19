@@ -21,6 +21,7 @@ import {
   computeOverages,
   daysUntil,
   mergeLimits,
+  nextPeriodEnd,
   readUsage,
   trialDaysRemaining,
 } from '../lib/subscription-status';
@@ -261,7 +262,7 @@ export class SubscriptionService {
       ),
     });
 
-    // PROD-004: the limit merge, the overage test (storage compares GB against
+    // PROD-014: the limit merge, the overage test (storage compares GB against
     // MB) and the day counts now live in lib/subscription-status.ts, which the
     // subscriptions edge function mirrors so /subscriptions/current answers the
     // same way in production. Behaviour here is unchanged.
@@ -542,10 +543,7 @@ export class SubscriptionService {
     }
 
     const now = new Date();
-    const newPeriodEnd =
-      subscription.billingCycle === 'annual'
-        ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())
-        : new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const newPeriodEnd = nextPeriodEnd(now, subscription.billingCycle);
 
     // Update subscription
     const [updatedSubscription] = await db

@@ -1,5 +1,5 @@
 /**
- * Subscription status arithmetic (PROD-004).
+ * Subscription status arithmetic (PROD-014).
  *
  * GET /api/subscriptions/current is what SubscriptionBanner reads, and that
  * banner is mounted in App.tsx — it runs on every page. The endpoint existed
@@ -150,4 +150,19 @@ export function buildSubscriptionStatus(
     trialDaysRemaining: trialDaysRemaining(subscription, now),
     features: (plan.features as string[]) ?? [],
   };
+}
+
+/**
+ * The period end a trial conversion writes (PROD-014).
+ *
+ * Calendar arithmetic, not 30/365 days: an annual cycle lands on the same day
+ * next year, a monthly one on the same day next month. Date rolls a
+ * nonexistent day forward (Jan 31 + 1 month is Mar 3), which is the behaviour
+ * production has had all along — pinned here so the two copies can't drift
+ * into different renewal dates for the same customer.
+ */
+export function nextPeriodEnd(now: Date, billingCycle: string | null | undefined): Date {
+  return billingCycle === 'annual'
+    ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())
+    : new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
 }

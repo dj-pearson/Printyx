@@ -72,7 +72,7 @@ export interface SubscriptionStatus {
 }
 
 /**
- * PROD-004 — READ BEFORE "FIXING" THE FETCHES BELOW.
+ * PROD-014 — READ BEFORE "FIXING" THE FETCHES BELOW.
  *
  * Every call in this file is a bare relative fetch, so in production it resolves
  * against the origin serving the static bundle rather than the API. SubscriptionBanner
@@ -83,14 +83,13 @@ export interface SubscriptionStatus {
  * these, because apiRequest routes to the edge function host and the
  * subscriptions edge function does not implement most of these paths. It serves
  * plans, usage, invoices, features, change-plan, the root list/create,
- * :id / :id/cancel / :id/resume, and — ported under PROD-004 — current,
- * notifications and notifications/:id/dismiss. Those three now go through
- * apiRequest.
+ * :id / :id/cancel / :id/resume, and — ported under PROD-014 — current,
+ * notifications, notifications/:id/dismiss, the bare cancel path and
+ * convert-trial. Those go through apiRequest.
  *
- * It still has NO create, upgrade, cancel (as a bare path), convert-trial,
- * stripe/config or checkout. Converting those would take them from "works in
- * dev, 404 in prod" to "404 in both". The last two need Stripe in the edge
- * environment.
+ * It still has NO create, upgrade, stripe/config or checkout. Converting those
+ * would take them from "works in dev, 404 in prod" to "404 in both". The last
+ * two need Stripe in the edge environment, which is a deployment decision.
  *
  * Express (server/routes-subscriptions.ts) is the complete implementation, and
  * /api/subscriptions is not proxied, so dev works and only production is blind.
@@ -105,7 +104,7 @@ export function useSubscription() {
   return useQuery<SubscriptionStatus>({
     queryKey: ['subscription', 'current'],
     queryFn: async () => {
-      // PROD-004: `current` is now implemented on the subscriptions edge
+      // PROD-014: `current` is now implemented on the subscriptions edge
       // function too, so this call goes through apiRequest and reaches the API
       // in production. The other calls in this file are still bare fetches on
       // purpose — the block above lists which paths the edge function does not
@@ -165,7 +164,7 @@ export function useSubscriptionNotifications() {
   return useQuery({
     queryKey: ['subscription', 'notifications'],
     queryFn: async () => {
-      // PROD-004: ported to the edge function alongside /current.
+      // PROD-014: ported to the edge function alongside /current.
       return apiRequest('/api/subscriptions/notifications');
     },
     staleTime: 1 * 60 * 1000, // 1 minute
@@ -245,19 +244,14 @@ export function useCancelSubscription() {
 
   return useMutation({
     mutationFn: async (immediate: boolean = false) => {
-      const response = await fetch('/api/subscriptions/cancel', {
+      // PROD-014: the bare /cancel path is now served by the subscriptions edge
+      // function as well, including the acknowledgement email LEGAL-011 added,
+      // so this reaches the API in production instead of 404ing against the
+      // static origin.
+      return apiRequest('/api/subscriptions/cancel', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ immediate }),
-        credentials: 'include',
+        body: { immediate },
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to cancel subscription');
-      }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
@@ -273,19 +267,12 @@ export function useConvertTrial() {
 
   return useMutation({
     mutationFn: async (paymentMethodId?: string) => {
-      const response = await fetch('/api/subscriptions/convert-trial', {
+      // PROD-014: ported to the edge function; the renewal date it writes comes
+      // from the same nextPeriodEnd() the Node service uses.
+      return apiRequest('/api/subscriptions/convert-trial', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentMethodId }),
-        credentials: 'include',
+        body: { paymentMethodId },
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to convert trial');
-      }
-
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
@@ -301,7 +288,7 @@ export function useDismissNotification() {
 
   return useMutation({
     mutationFn: async (notificationId: string) => {
-      // PROD-004: ported to the edge function alongside /current.
+      // PROD-014: ported to the edge function alongside /current.
       return apiRequest(`/api/subscriptions/notifications/${notificationId}/dismiss`, 'POST');
     },
     onSuccess: () => {
