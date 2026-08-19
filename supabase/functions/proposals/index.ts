@@ -61,6 +61,8 @@ import { renderProposalPDF } from './_pdf.ts';
 import { sendEmail } from '../email-marketing/_sendgrid.ts';
 import { renderTemplate, type MergeData } from '../_shared/proposal-merge.ts';
 
+import { effectiveDiscountPct, lineNetTotal, toDiscountedLine } from '../_shared/quote-math.ts';
+
 const log = createLogger('proposals');
 
 // Uint8Array -> base64 (chunked to avoid call-stack limits on large PDFs).
@@ -1866,14 +1868,14 @@ export default async function handler(req: Request) {
               .select('quantity, unit_price, discount')
               .eq('proposal_id', subMatch[1])
               .eq('tenant_id', ctx.tenantId);
-            let gross = 0;
-            let lineDiscounts = 0;
-            for (const it of gateItems ?? []) {
-              gross += (toNum(it.quantity) || 1) * toNum(it.unit_price);
-              lineDiscounts += toNum(it.discount);
-            }
-            const effectivePct =
-              gross > 0 ? ((lineDiscounts + toNum(cur.discount_amount)) / gross) * 100 : 0;
+            // Canonical formula, not a local re-derivation: the inline version
+            // used `(quantity || 1)`, so a zero/null-quantity line counted as one
+            // unit, inflating gross and shrinking the effective discount — the
+            // guardrail was more permissive than the figure shown in the builder.
+            const effectivePct = effectiveDiscountPct(
+              (gateItems ?? []).map(toDiscountedLine),
+              toNum(cur.discount_amount),
+            );
             if (effectivePct > maxDiscount) {
               return errorResponse(
                 409,
@@ -2206,7 +2208,7 @@ export default async function handler(req: Request) {
       const lineTotal = (it: Record<string, any>) =>
         it.total_price !== null && it.total_price !== undefined && it.total_price !== ''
           ? toNum(it.total_price)
-          : (toNum(it.quantity) || 1) * toNum(it.unit_price) - toNum(it.discount);
+          : lineNetTotal(toDiscountedLine(it));
       const oneTimeTotal = items
         .filter((it: Record<string, any>) => !it.is_recurring)
         .reduce((s: number, it: Record<string, any>) => s + lineTotal(it), 0);
