@@ -2,7 +2,19 @@
 // Handles commission plans and calculations
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { toNumber } from '../_shared/quote-math.ts';
 import { normalizePath } from '../_shared/path.ts';
+
+/**
+ * A deal's amount as a number.
+ *
+ * deals.amount is numeric(12,2) and PostgREST returns numeric as a STRING, so
+ * `sum + row.amount` concatenates instead of adding — a commission total of
+ * "01500.002400.00" rather than 3900.
+ */
+function dealAmount(deal: { amount?: unknown }): number {
+  return toNumber(deal?.amount);
+}
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -122,26 +134,39 @@ export default async function handler(req: Request) {
       const periodEnd = new Date(periodStart);
       periodEnd.setMonth(periodEnd.getMonth() + 1);
 
+      // COP-M01: deal_value and closed_at are not columns on `deals` — they are
+      // amount and actual_close_date. PostgREST answered 42703, `deals` came back
+      // undefined, and the handler returned an empty commission list rather than
+      // an error, so every rep's calculated commission was silently zero.
       let query = admin
         .from('deals')
-        .select('id, owner_id, deal_value, closed_at')
+        .select('id, owner_id, amount, actual_close_date')
         .eq('tenant_id', tenantId)
         .eq('status', 'won')
-        .gte('closed_at', periodStart.toISOString())
-        .lt('closed_at', periodEnd.toISOString());
+        .gte('actual_close_date', periodStart.toISOString())
+        .lt('actual_close_date', periodEnd.toISOString());
 
       if (employeeId) {
         query = query.eq('owner_id', employeeId);
       }
 
-      const { data: deals } = await query;
+      const { data: deals, error: dealsError } = await query;
+
+      if (dealsError) {
+        console.error('Error loading won deals for commission calculation:', dealsError);
+        return createCorsResponse(
+          { error: 'Failed to calculate commissions', details: dealsError.message },
+          500,
+          req,
+        );
+      }
 
       // Group by employee and calculate commissions
       const employeeMap = new Map<string, { totalSales: number; dealCount: number }>();
       (deals || []).forEach((deal: any) => {
         const current = employeeMap.get(deal.owner_id) || { totalSales: 0, dealCount: 0 };
         employeeMap.set(deal.owner_id, {
-          totalSales: current.totalSales + (deal.deal_value || 0),
+          totalSales: current.totalSales + dealAmount(deal),
           dealCount: current.dealCount + 1,
         });
       });
@@ -193,13 +218,13 @@ export default async function handler(req: Request) {
 
       const { data: deals } = await admin
         .from('deals')
-        .select('deal_value')
+        .select('amount')
         .eq('tenant_id', tenantId)
         .eq('owner_id', user.id)
         .eq('status', 'won')
-        .gte('closed_at', periodStart.toISOString());
+        .gte('actual_close_date', periodStart.toISOString());
 
-      const totalSales = deals?.reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0) || 0;
+      const totalSales = (deals ?? []).reduce((sum: number, d: any) => sum + dealAmount(d), 0);
       const baseCommission = totalSales * 0.05;
 
       return createCorsResponse(

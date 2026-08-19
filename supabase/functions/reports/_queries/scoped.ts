@@ -7,6 +7,7 @@
 // + grouping helpers here.
 
 import type { SupabaseClient } from '../../_shared/db.ts';
+import { USER_NAME_COLUMNS, userDisplayName, type UserNameColumns } from './user-names.ts';
 
 export type Unit = 'region' | 'location';
 
@@ -15,9 +16,8 @@ export interface UnitRow {
   name: string;
 }
 
-export interface UserUnitRow {
+export interface UserUnitRow extends UserNameColumns {
   id: string;
-  name: string | null;
   primary_location_id: string | null;
 }
 
@@ -56,7 +56,7 @@ export async function fetchUsersWithUnits(
 ): Promise<UserUnitRow[]> {
   const { data, error } = await db
     .from('users')
-    .select('id, name, primary_location_id')
+    .select(`${USER_NAME_COLUMNS}, primary_location_id`)
     .eq('tenant_id', tenantId);
   if (error) throw new Error(`fetchUsersWithUnits: ${error.message}`);
   return (data ?? []) as UserUnitRow[];

@@ -8,6 +8,7 @@
 // the SELECT, not the JS loops.
 
 import type { SupabaseClient } from '../../_shared/db.ts';
+import { USER_NAME_COLUMNS, userDisplayName, type UserNameColumns } from './user-names.ts';
 
 export interface WarehouseOperation {
   id: string;
@@ -58,7 +59,7 @@ export async function fetchTechNames(
   ids: string[],
 ): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();
-  const { data, error } = await db.from('users').select('id, name').in('id', ids);
+  const { data, error } = await db.from('users').select(USER_NAME_COLUMNS).in('id', ids);
   if (error) throw new Error(`fetchTechNames: ${error.message}`);
-  return new Map((data ?? []).map((u) => [u.id as string, (u.name as string | null) ?? 'Unknown']));
+  return new Map((data ?? []).map((u) => [u.id as string, userDisplayName(u as UserNameColumns)]));
 }

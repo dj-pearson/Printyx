@@ -3,6 +3,18 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toNumber } from '../_shared/quote-math.ts';
+
+/**
+ * Total of a set of deal amounts.
+ *
+ * deals.amount is numeric(12,2), and PostgREST returns numeric as a STRING —
+ * `0 + row.amount` would concatenate rather than add, so every caller has to
+ * coerce. Doing it here means no caller can forget.
+ */
+function sumAmounts(rows: Array<{ amount?: unknown }> | null | undefined): number {
+  return (rows ?? []).reduce((sum, row) => sum + toNumber(row?.amount), 0);
+}
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -45,10 +57,24 @@ export default async function handler(req: Request) {
 
     // GET /dashboards/sales - Sales dashboard data
     if (req.method === 'GET' && dashboardType === 'sales') {
-      const { data: deals } = await admin
+      // COP-M01: this selected deal_value and stage. Neither is a column on
+      // `deals` (they are amount and stage_id), so PostgREST answered 42703, the
+      // destructured data came back undefined, and every figure below fell
+      // through `|| 0` — the dashboard showed a pipeline of zeroes rather than an
+      // error. `stage` was selected and never read, so it is simply gone.
+      const { data: deals, error: dealsError } = await admin
         .from('deals')
-        .select('id, deal_value, status, stage, created_at')
+        .select('id, amount, status, created_at')
         .eq('tenant_id', tenantId);
+
+      if (dealsError) {
+        console.error('Error loading deals for sales dashboard:', dealsError);
+        return createCorsResponse(
+          { error: 'Failed to load sales dashboard', details: dealsError.message },
+          500,
+          req,
+        );
+      }
 
       const allDeals = deals || [];
       const openDeals = allDeals.filter((d: any) => d.status === 'open');
@@ -56,8 +82,8 @@ export default async function handler(req: Request) {
 
       return createCorsResponse(
         {
-          totalPipeline: openDeals.reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0),
-          totalWon: wonDeals.reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0),
+          totalPipeline: sumAmounts(openDeals),
+          totalWon: sumAmounts(wonDeals),
           dealCount: allDeals.length,
           openCount: openDeals.length,
           wonCount: wonDeals.length,
@@ -112,7 +138,7 @@ export default async function handler(req: Request) {
           .eq('tenant_id', tenantId)
           .eq('status', 'customer'),
         admin.from('deals').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-        admin.from('deals').select('deal_value').eq('tenant_id', tenantId).eq('status', 'won'),
+        admin.from('deals').select('amount').eq('tenant_id', tenantId).eq('status', 'won'),
         admin
           .from('service_tickets')
           .select('*', { count: 'exact', head: true })
@@ -120,8 +146,7 @@ export default async function handler(req: Request) {
           .in('status', ['new', 'open', 'assigned']),
       ]);
 
-      const totalRevenue =
-        revenue?.reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0) || 0;
+      const totalRevenue = sumAmounts(revenue);
 
       return createCorsResponse(
         {
@@ -162,7 +187,7 @@ export default async function handler(req: Request) {
             .gte('created_at', todayStart.toISOString()),
           admin
             .from('deals')
-            .select('id, deal_value')
+            .select('id, amount')
             .eq('tenant_id', tenantId)
             .gte('created_at', todayStart.toISOString()),
         ]);
@@ -172,8 +197,7 @@ export default async function handler(req: Request) {
           activitiesCount: todayActivities?.length || 0,
           newTickets: todayTickets?.length || 0,
           newDeals: todayDeals?.length || 0,
-          newDealValue:
-            todayDeals?.reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0) || 0,
+          newDealValue: sumAmounts(todayDeals),
         },
         200,
         req,

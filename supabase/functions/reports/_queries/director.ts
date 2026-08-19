@@ -23,6 +23,7 @@
 // don't typically exceed a few thousand rows.
 
 import type { SupabaseClient } from '../../_shared/db.ts';
+import { USER_NAME_COLUMNS, userDisplayName, type UserNameColumns } from './user-names.ts';
 
 export interface OpportunityRow {
   id: string;
@@ -45,9 +46,8 @@ export interface ServiceCallRow {
   assigned_technician_id: string | null;
 }
 
-export interface UserLocationRow {
+export interface UserLocationRow extends UserNameColumns {
   id: string;
-  name: string | null;
   primary_location_id: string | null;
 }
 
@@ -114,7 +114,7 @@ export async function fetchUsersWithLocations(
 ): Promise<UserLocationRow[]> {
   const { data, error } = await db
     .from('users')
-    .select('id, name, primary_location_id')
+    .select(`${USER_NAME_COLUMNS}, primary_location_id`)
     .eq('tenant_id', tenantId);
   if (error) throw new Error(`fetchUsersWithLocations: ${error.message}`);
   return (data ?? []) as UserLocationRow[];

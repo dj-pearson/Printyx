@@ -381,20 +381,22 @@ async function cachedLeadManagement(req: Request, ctx: HandlerCtx): Promise<Resp
       // on the schema variant; we try owner_id first.
       const { data: leads, error } = await db
         .from('business_records')
-        .select('id, record_type, status, owner_id, created_at, lead_status')
+        .select('id, record_type, status, owner_id, created_at')
         .eq('tenant_id', auth.tenantId)
         .in('record_type', ['lead', 'customer'])
         .gte('created_at', range.start.toISOString())
         .lte('created_at', range.end.toISOString());
       if (error) throw new Error(`fetchLeads: ${error.message}`);
 
+      // COP-M01: this also selected lead_status, which business_records does
+      // not have — the lifecycle column IS `status` (already selected here), and
+      // this query throws on error, so the whole team report 500'd.
       type LeadRow = {
         id: string;
         record_type: string;
         status: string | null;
         owner_id: string | null;
         created_at: string;
-        lead_status: string | null;
       };
       const rows = ((leads ?? []) as LeadRow[]).filter(
         (r) => r.owner_id && ids.includes(r.owner_id),
@@ -422,7 +424,7 @@ async function cachedLeadManagement(req: Request, ctx: HandlerCtx): Promise<Resp
         if (!m) continue;
         if (r.record_type === 'lead') {
           m.leadsCreated += 1;
-          if (r.lead_status === 'qualified' || r.lead_status === 'proposal') m.leadsQualified += 1;
+          if (r.status === 'qualified' || r.status === 'proposal') m.leadsQualified += 1;
         } else if (r.record_type === 'customer') {
           m.customersCreated += 1;
           m.leadsConverted += 1;

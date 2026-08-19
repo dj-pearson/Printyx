@@ -624,24 +624,29 @@ async function teamPerformance(ctx: HandlerCtx): Promise<unknown> {
 // ─── pipeline-funnel ───────────────────────────────────────────────────────
 //
 // Counts deals + value per stage from deal_stages. Conversion rates are
-// computed assuming sequential progression in `order_index` — approximate
+// computed assuming sequential progression in `sort_order` — approximate
 // because the schema doesn't track stage transitions.
+//
+// COP-M01: this asked for stage_name and order_index. deal_stages has `name`
+// and `sort_order`, so the query answered 42703, `stages` came back empty and
+// the handler silently fell through to its no-stages-configured fallback —
+// every tenant's funnel was three status buckets rather than their pipeline.
 
 async function pipelineFunnel(ctx: HandlerCtx): Promise<unknown> {
   const { auth, db } = ctx;
   const [stagesRes, dealsRes] = await Promise.all([
     db
       .from('deal_stages')
-      .select('id, stage_name, order_index')
+      .select('id, name, sort_order')
       .eq('tenant_id', auth.tenantId)
-      .order('order_index', { ascending: true }),
+      .order('sort_order', { ascending: true }),
     db.from('deals').select('stage_id, amount, status').eq('tenant_id', auth.tenantId),
   ]);
 
   const stages = (stagesRes.data ?? []) as Array<{
     id: string;
-    stage_name: string;
-    order_index: number | null;
+    name: string;
+    sort_order: number | null;
   }>;
   const deals = (dealsRes.data ?? []) as Array<{
     stage_id: string;
@@ -667,7 +672,7 @@ async function pipelineFunnel(ctx: HandlerCtx): Promise<unknown> {
     const subset = deals.filter((d) => d.stage_id === s.id);
     const prevCount = idx === 0 ? subset.length : null;
     return {
-      stage: s.stage_name,
+      stage: s.name,
       value: Math.round(subset.reduce((s, d) => s + Number(d.amount ?? 0), 0)),
       count: subset.length,
       conversionRate: prevCount === null ? 0 : 100,
