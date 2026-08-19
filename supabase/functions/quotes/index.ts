@@ -9,6 +9,17 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
+/**
+ * The company's primary contact, or its first, from an embedded
+ * company_contacts list. companies itself has no email column — the address
+ * book is company_contacts.
+ */
+function primaryContact(company: any): { email?: string | null; phone?: string | null } | null {
+  const contacts = Array.isArray(company?.company_contacts) ? company.company_contacts : [];
+  if (contacts.length === 0) return null;
+  return contacts.find((c: any) => c?.is_primary_contact) ?? contacts[0];
+}
+
 export default async function handler(req: Request) {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
@@ -123,17 +134,24 @@ export default async function handler(req: Request) {
           let createdByUser = null;
 
           if (quote.customer_id) {
+            // COP-M01: this asked companies for an `email` column that does not
+            // exist, so the select 42703'd and every quote came back with a null
+            // customer. The contact details live on company_contacts, which is
+            // where they are read from now.
             const { data: company } = await admin
               .from('companies')
-              .select('id, business_name, phone, email')
+              .select(
+                'id, business_name, phone, company_contacts(email, phone, is_primary_contact)',
+              )
               .eq('id', quote.customer_id)
               .eq('tenant_id', tenantId)
               .maybeSingle();
             if (company) {
+              const contact = primaryContact(company);
               customer = {
                 id: company.id,
                 company_name: company.business_name,
-                primary_contact_email: company.email,
+                primary_contact_email: contact?.email ?? null,
               };
             }
           }
@@ -175,17 +193,18 @@ export default async function handler(req: Request) {
         const { data: company } = await admin
           .from('companies')
           .select(
-            'id, business_name, phone, email, billing_address, billing_city, billing_state, billing_zip',
+            'id, business_name, phone, billing_address, billing_city, billing_state, billing_zip, company_contacts(email, phone, is_primary_contact)',
           )
           .eq('id', quote.customer_id)
           .eq('tenant_id', tenantId)
           .maybeSingle();
         if (company) {
+          const contact = primaryContact(company);
           customer = {
             id: company.id,
             company_name: company.business_name,
-            primary_contact_email: company.email,
-            primary_contact_phone: company.phone,
+            primary_contact_email: contact?.email ?? null,
+            primary_contact_phone: contact?.phone ?? company.phone,
             address_line1: company.billing_address,
             city: company.billing_city,
             state: company.billing_state,
@@ -199,7 +218,7 @@ export default async function handler(req: Request) {
       if (quote.created_by) {
         const { data: userRecord } = await admin
           .from('users')
-          .select('id, first_name, last_name, email, phone')
+          .select('id, first_name, last_name, email')
           .eq('id', quote.created_by)
           .maybeSingle();
         createdByUser = userRecord;

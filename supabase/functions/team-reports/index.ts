@@ -3,6 +3,15 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toNumber } from '../_shared/quote-math.ts';
+import { displayName, USER_NAME_COLUMNS, type UserRow } from '../_shared/user-profile.ts';
+
+// COP-M01: this file addressed business_records as deal_value / assigned_to /
+// pipeline_stage. The columns are estimated_deal_value, assigned_sales_rep and
+// sales_stage, so every query here answered 42703, `deals` came back undefined,
+// and each report returned zeroes through `|| 0` rather than an error. Note
+// estimated_deal_value is numeric, which PostgREST returns as a STRING — the
+// sums coerce through toNumber, or they would concatenate.
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -83,17 +92,20 @@ export default async function handler(req: Request) {
       // Get deals by team
       const { data: deals } = await admin
         .from('business_records')
-        .select('deal_value, status')
+        .select('estimated_deal_value, status')
         .eq('tenant_id', tenantId)
-        .in('assigned_to', memberIds)
+        .in('assigned_sales_rep', memberIds)
         .gte('created_at', startDate.toISOString());
 
       const totalDealValue = (deals || []).reduce(
-        (sum: number, d: any) => sum + (d.deal_value || 0),
+        (sum: number, d: any) => sum + toNumber(d.estimated_deal_value),
         0,
       );
       const wonDeals = (deals || []).filter((d: any) => d.status === 'won');
-      const wonValue = wonDeals.reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0);
+      const wonValue = wonDeals.reduce(
+        (sum: number, d: any) => sum + toNumber(d.estimated_deal_value),
+        0,
+      );
 
       return createCorsResponse(
         {
@@ -119,7 +131,7 @@ export default async function handler(req: Request) {
       if (metric === 'deals') {
         query = admin
           .from('business_records')
-          .select('assigned_to, deal_value')
+          .select('assigned_sales_rep, estimated_deal_value')
           .eq('tenant_id', tenantId)
           .eq('status', 'won')
           .gte('created_at', startDate.toISOString());
@@ -136,11 +148,11 @@ export default async function handler(req: Request) {
       // Aggregate by user
       const userStats = new Map<string, { count: number; value: number }>();
       (records || []).forEach((r: any) => {
-        const userId = r.assigned_to || r.user_id;
+        const userId = r.assigned_sales_rep || r.user_id;
         const current = userStats.get(userId) || { count: 0, value: 0 };
         userStats.set(userId, {
           count: current.count + 1,
-          value: current.value + (r.deal_value || 0),
+          value: current.value + toNumber(r.estimated_deal_value),
         });
       });
 
@@ -148,7 +160,7 @@ export default async function handler(req: Request) {
       const userIds = Array.from(userStats.keys());
       const { data: users } = await admin
         .from('users')
-        .select('id, email, full_name')
+        .select(`${USER_NAME_COLUMNS}, email`)
         .in('id', userIds);
 
       const leaderboard = Array.from(userStats.entries())
@@ -156,7 +168,7 @@ export default async function handler(req: Request) {
           const userInfo = users?.find((u: any) => u.id === userId);
           return {
             userId,
-            name: userInfo?.full_name || userInfo?.email || 'Unknown',
+            name: displayName(userInfo as UserRow, userInfo?.email || 'Unknown'),
             count: stats.count,
             value: stats.value,
           };
@@ -205,25 +217,28 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && reportType === 'pipeline') {
       const { data: deals } = await admin
         .from('business_records')
-        .select('status, deal_value, pipeline_stage')
+        .select('status, estimated_deal_value, sales_stage')
         .eq('tenant_id', tenantId)
         .eq('record_type', 'opportunity');
 
       // Group by stage
       const byStage = new Map<string, { count: number; value: number }>();
       (deals || []).forEach((d: any) => {
-        const stage = d.pipeline_stage || d.status || 'unknown';
+        const stage = d.sales_stage || d.status || 'unknown';
         const current = byStage.get(stage) || { count: 0, value: 0 };
         byStage.set(stage, {
           count: current.count + 1,
-          value: current.value + (d.deal_value || 0),
+          value: current.value + toNumber(d.estimated_deal_value),
         });
       });
 
       return createCorsResponse(
         {
           totalDeals: deals?.length || 0,
-          totalValue: (deals || []).reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0),
+          totalValue: (deals || []).reduce(
+            (sum: number, d: any) => sum + toNumber(d.estimated_deal_value),
+            0,
+          ),
           byStage: Array.from(byStage.entries()).map(([stage, stats]) => ({
             stage,
             count: stats.count,
@@ -254,9 +269,9 @@ export default async function handler(req: Request) {
       // Get user's deals
       const { data: deals } = await admin
         .from('business_records')
-        .select('deal_value, status, created_at')
+        .select('estimated_deal_value, status, created_at')
         .eq('tenant_id', tenantId)
-        .eq('assigned_to', userId)
+        .eq('assigned_sales_rep', userId)
         .gte('created_at', startDate.toISOString());
 
       const wonDeals = (deals || []).filter((d: any) => d.status === 'won');
@@ -271,8 +286,14 @@ export default async function handler(req: Request) {
           wonDeals: wonDeals.length,
           lostDeals: lostDeals.length,
           pendingDeals: (deals?.length || 0) - wonDeals.length - lostDeals.length,
-          totalValue: (deals || []).reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0),
-          wonValue: wonDeals.reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0),
+          totalValue: (deals || []).reduce(
+            (sum: number, d: any) => sum + toNumber(d.estimated_deal_value),
+            0,
+          ),
+          wonValue: wonDeals.reduce(
+            (sum: number, d: any) => sum + toNumber(d.estimated_deal_value),
+            0,
+          ),
           winRate: deals?.length ? Math.round((wonDeals.length / deals.length) * 100) : 0,
         },
         200,
@@ -298,14 +319,14 @@ export default async function handler(req: Request) {
 
           const { data: deals } = await admin
             .from('business_records')
-            .select('deal_value, status')
+            .select('estimated_deal_value, status')
             .eq('tenant_id', tenantId)
-            .in('assigned_to', memberIds)
+            .in('assigned_sales_rep', memberIds)
             .gte('created_at', startDate.toISOString());
 
           const wonValue = (deals || [])
             .filter((d: any) => d.status === 'won')
-            .reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0);
+            .reduce((sum: number, d: any) => sum + toNumber(d.estimated_deal_value), 0);
 
           return {
             teamId: team.id,
