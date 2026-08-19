@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { parseBulkIds } from '../_shared/bulk-ops.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -213,6 +214,45 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(updatedModel, 200, req);
+    }
+
+    // ========================================================================
+    // DELETE /product-models/bulk-delete - delete many at once
+    //
+    // PROD-014: there was no branch for this, so the request fell through to
+    // the :id delete below and the action word became the id — a delete where
+    // id = 'bulk-delete'. `id` is a varchar, so that matches nothing, PostgREST
+    // reports no error, and the function answered 200. The user was told the
+    // bulk delete succeeded and nothing was deleted. It has to stay ABOVE the
+    // :id branch.
+    // ========================================================================
+    if (req.method === 'DELETE' && modelId === 'bulk-delete') {
+      const body = await req.json().catch(() => ({}));
+      const parsed = parseBulkIds(body);
+      if (!parsed.ok) {
+        return createCorsResponse({ error: 'IDs array is required' }, 400, req);
+      }
+
+      // .select() so the count reported is what was actually removed, not what
+      // was asked for — the difference is the bug this branch exists to fix.
+      const { data: deleted, error } = await admin
+        .from('product_models')
+        .delete()
+        .eq('tenant_id', tenantId)
+        .in('id', parsed.ids)
+        .select('id');
+
+      if (error) {
+        console.error('Error bulk deleting product models:', error);
+        return createCorsResponse({ error: 'Failed to bulk delete product models' }, 500, req);
+      }
+
+      const deletedCount = (deleted ?? []).length;
+      return createCorsResponse(
+        { message: `Successfully deleted ${deletedCount} product models`, deletedCount },
+        200,
+        req,
+      );
     }
 
     // DELETE /product-models/:id - Delete product model

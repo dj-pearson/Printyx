@@ -61,6 +61,9 @@ jobs:
         run: npm run check:phantom-cols
       - name: Edge path-normalization ratchet (EDGE-002e)
         run: npm run check:edge-paths
+
+      - name: Edge path-coverage ratchet (PROD-014)
+        run: npm run check:edge-coverage
       - name: Proxy-override parity (PA-019)
         run: npm run check:proxy-overrides
       - name: Telemetry consent gate (LEGAL-001)
