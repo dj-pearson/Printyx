@@ -103,7 +103,9 @@ router.post('/:id/pdf', requireTenant, async (req: any, res) => {
 });
 
 // Generate HTML content for document
-function generateDocumentHTML(doc: any): string {
+// Exported so server/tests/unit/document-html-parity.test.ts can assert this and
+// the Deno copy in supabase/functions/_shared/document-html.ts render identically.
+export function generateDocumentHTML(doc: any): string {
   const lineItems = doc.lineItems || [];
   const total = lineItems.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0);
 
