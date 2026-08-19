@@ -57,6 +57,8 @@ jobs:
         run: npm run check:throwing-types
       - name: Duplicate physical-table ratchet
         run: npm run check:dup-tables
+      - name: Phantom PostgREST column ratchet (COP-M01)
+        run: npm run check:phantom-cols
       - name: Edge path-normalization ratchet (EDGE-002e)
         run: npm run check:edge-paths
       - name: Proxy-override parity (PA-019)
