@@ -276,6 +276,19 @@ export function CrmDataTable({
           return <span className="text-xs">{value}</span>;
         }
       case 'badge':
+        // COP-M01: a boolean flag column (contacts.isPrimaryContact) used to
+        // render the literal "true"/"false". Show the column's own label when
+        // the flag is set and nothing when it is not, which is what a reader
+        // scanning the column is looking for.
+        if (typeof value === 'boolean') {
+          return value ? (
+            <Badge variant="secondary" className="text-[10px] font-normal">
+              {field.label}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground text-xs">-</span>
+          );
+        }
         return (
           <Badge variant="secondary" className="text-[10px] font-normal">
             {typeof value === 'string'

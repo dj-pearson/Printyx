@@ -24,6 +24,11 @@ import {
   contactIdParamSchema,
   companyQuerySchema,
 } from './lib/crm-validation';
+import {
+  compareContacts,
+  contactMatchesSearch,
+  parseContactListQuery,
+} from './lib/contact-list-query';
 import { createModuleLogger } from './lib/logger';
 import { enhanceUserContext, requirePermission } from './middleware/rbac-route-helper';
 const log = createModuleLogger('routes-contacts');
@@ -37,7 +42,14 @@ export function registerContactsRoutes(app: Express) {
   // Company Contacts API routes
   // ============================================
 
-  // GET /api/company-contacts - fetch all contacts, optionally filtered by companyId
+  // GET /api/company-contacts - list tenant contacts, optionally narrowed by companyId
+  //
+  // COP-M01: this used to return every contact in the tenant as a bare array and
+  // ignore limit/offset/search/sortBy, while the company-contacts edge function
+  // 400'd on the same request for want of a companyId. Both now read the query
+  // through the shared parser and return the same envelope. The filtering runs
+  // in memory, matching the /api/companies handler above it — the row counts
+  // here are per-tenant contact lists, not a scan.
   app.get(
     '/api/company-contacts',
     resolveTenant,
@@ -51,17 +63,26 @@ export function registerContactsRoutes(app: Express) {
           return res.status(401).json({ message: 'Authentication required' });
         }
 
-        const companyId = String((req.query as any)?.companyId || '');
+        const q = parseContactListQuery((req.query as any) || {});
 
-        if (companyId) {
-          // Fetch contacts for specific company
-          const contacts = await storage.getCompanyContacts(companyId, tenantId);
-          res.json(contacts);
-        } else {
-          // Fetch all contacts
-          const contacts = await storage.getAllCompanyContacts(tenantId);
-          res.json(contacts);
-        }
+        const all = q.companyId
+          ? await storage.getCompanyContacts(q.companyId, tenantId)
+          : await storage.getAllCompanyContacts(tenantId);
+
+        const filtered = (all as any[])
+          .filter((c) => (q.department ? c.department === q.department : true))
+          .filter((c) => (q.leadStatus ? c.leadStatus === q.leadStatus : true))
+          .filter((c) => (q.ownerId ? c.ownerId === q.ownerId : true))
+          .filter((c) => contactMatchesSearch(c, q.search));
+
+        const sorted = filtered.sort((a, b) => compareContacts(a, b, q.sortField, q.ascending));
+
+        res.json({
+          data: sorted.slice(q.offset, q.offset + q.limit),
+          total: sorted.length,
+          page: q.page,
+          limit: q.limit,
+        });
       } catch (error) {
         log.error('Error fetching company contacts:', error);
         res.status(500).json({ error: 'Failed to fetch company contacts' });
