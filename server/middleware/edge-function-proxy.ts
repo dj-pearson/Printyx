@@ -341,6 +341,10 @@ export function registerEdgeFunctionProxy(app: any) {
     // surface 404'd in production. Dir name matches the URL segment.
     '/api/voice-agent': 'voice-agent',
 
+    // PROD-012: voice-ticket-close had no edge function, so the field-tech voice
+    // close flow 404'd in production. Dir name matches the URL segment.
+    '/api/voice-ticket-close': 'voice-ticket-close',
+
     // AUDIT-015: ai-search. REQUIRED, not defensive — without this entry dev 404s.
     //
     // Nothing in Express serves /api/ai-search/*. The legacy router
