@@ -71,6 +71,29 @@ export interface SubscriptionStatus {
 }
 
 /**
+ * PROD-004 — READ BEFORE "FIXING" THE FETCHES BELOW.
+ *
+ * Every call in this file is a bare relative fetch, so in production it resolves
+ * against the origin serving the static bundle rather than the API. SubscriptionBanner
+ * is mounted in App.tsx itself, so this runs on every page and none of it answers
+ * in production.
+ *
+ * The obvious repair — swap fetch for apiRequest — makes it WORSE for most of
+ * these, because apiRequest routes to the edge function host and the
+ * subscriptions edge function does not implement most of these paths. It serves
+ * plans, usage, invoices, features, change-plan, the root list/create, and
+ * :id / :id/cancel / :id/resume. It has NO current, notifications,
+ * notifications/:id/dismiss, create, upgrade, cancel (as a bare path),
+ * convert-trial, stripe/config or checkout. Converting those would take them
+ * from "works in dev, 404 in prod" to "404 in both".
+ *
+ * Express (server/routes-subscriptions.ts) is the complete implementation, and
+ * /api/subscriptions is not proxied, so dev works and only production is blind.
+ * Closing this needs those endpoints ported — SubscriptionService.getSubscriptionStatus
+ * carries the limit/usage/overage logic and Stripe is involved — which is its
+ * own story, not a call-site edit.
+ */
+/**
  * Fetch current subscription status
  */
 export function useSubscription() {

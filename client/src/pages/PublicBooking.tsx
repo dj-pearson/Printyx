@@ -5,6 +5,15 @@
  * booking. Slots are rendered in the visitor's local timezone.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { getApiUrl } from '@/lib/config';
+
+// PROD-004: these are UNAUTHENTICATED pages, so the calls below go through
+// getApiUrl rather than apiRequest. getApiUrl is what turns /api/x into the edge
+// function host in production — a bare relative fetch resolves against whatever
+// origin serves the static bundle, which is not the API, so every one of these
+// 404'd for real visitors while working in dev. apiRequest would fix the URL too
+// but also attaches a Bearer token and throws on a non-2xx, and these handlers
+// are public and use res.ok to tell "not found" from "found".
 
 interface Branding {
   companyName?: string;
@@ -114,7 +123,7 @@ export default function PublicBooking() {
     let active = true;
     (async () => {
       try {
-        const res = await fetch(`/api/public/booking/${encodeURIComponent(slug)}`);
+        const res = await fetch(getApiUrl(`/api/public/booking/${encodeURIComponent(slug)}`));
         if (!res.ok) {
           if (active) setNotFound(true);
           return;
@@ -139,7 +148,9 @@ export default function PublicBooking() {
     setSlotsLoading(true);
     try {
       const res = await fetch(
-        `/api/public/booking/${encodeURIComponent(slug)}/availability?date=${date}&timezone=${encodeURIComponent(visitorTz)}`,
+        getApiUrl(
+          `/api/public/booking/${encodeURIComponent(slug)}/availability?date=${date}&timezone=${encodeURIComponent(visitorTz)}`,
+        ),
       );
       if (res.ok) {
         const data = (await res.json()) as { slots: Slot[] };
@@ -161,7 +172,7 @@ export default function PublicBooking() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/public/booking/${encodeURIComponent(slug)}`, {
+      const res = await fetch(getApiUrl(`/api/public/booking/${encodeURIComponent(slug)}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
