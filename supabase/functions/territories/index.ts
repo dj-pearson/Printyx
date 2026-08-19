@@ -167,7 +167,7 @@ export default async function handler(req: Request) {
         .select(
           `
           *,
-          owner:users!sales_territories_owner_id_fkey(id, first_name, last_name, email, phone)
+          owner:users!sales_territories_owner_id_fkey(id, first_name, last_name, email)
         `,
         )
         .eq('id', territoryId)

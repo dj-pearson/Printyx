@@ -58,7 +58,7 @@ export default async function handler(req: Request) {
           `
           *,
           customer:business_records!service_appointments_customer_id_fkey(id, company_name, primary_contact_name, primary_contact_phone, address_line1, city, state),
-          technician:users!service_appointments_technician_id_fkey(id, first_name, last_name, email, phone)
+          technician:users!service_appointments_technician_id_fkey(id, first_name, last_name, email)
         `,
           { count: 'exact' },
         )
@@ -113,7 +113,7 @@ export default async function handler(req: Request) {
           `
           *,
           customer:business_records!service_appointments_customer_id_fkey(id, company_name, primary_contact_name, primary_contact_phone, primary_contact_email, address_line1, address_line2, city, state, postal_code),
-          technician:users!service_appointments_technician_id_fkey(id, first_name, last_name, email, phone),
+          technician:users!service_appointments_technician_id_fkey(id, first_name, last_name, email),
           equipment:equipment(id, serial_number, model_number, manufacturer)
         `,
         )

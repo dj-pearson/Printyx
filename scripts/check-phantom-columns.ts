@@ -184,6 +184,31 @@ function scan(source: string): Ref[] {
     }
   }
 
+  // Columns INSIDE an embed belong to the embedded relation, not to the table
+  // the chain is on. Two bad ones (contracts.name, contracts.value) were found
+  // by reading rather than by this check, which is what prompted it.
+  for (const m of source.matchAll(/\.select\(\s*(['`])([^'`]+)\1/g)) {
+    // `relation(...)`, `alias:relation(...)` and PostgREST's disambiguating
+    // `relation!constraint_name(...)` all name the same table.
+    for (const embed of m[2].matchAll(/([a-z_][a-z0-9_]*)(?:!\w+)?\s*\(([^()]*)\)/g)) {
+      const relation = embed[1];
+      const columns = tableColumns.get(relation);
+      if (!columns || ambiguousTables.has(relation)) continue;
+      if (embed[2].includes('*')) continue;
+      for (const raw of embed[2].split(',')) {
+        const token = raw.trim().split(':').pop()?.trim() ?? '';
+        if (!token || !looksLikeColumn(token)) continue;
+        if (columns.has(token)) continue;
+        refs.push({
+          table: relation,
+          column: token,
+          line: lineAt(source, m.index ?? 0),
+          kind: 'embed',
+        });
+      }
+    }
+  }
+
   // .select('a, b, c') and .select(`a, b, roles ( … )`).
   //
   // Backtick selects were invisible in the first version of this check, and they
