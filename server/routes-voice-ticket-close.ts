@@ -340,8 +340,14 @@ export function rankSkuCandidates(
     .sort((a, b) => b.score - a.score)
     .slice(0, topN);
 
+  // Never auto-select when the top score is tied. A generic word like "toner"
+  // or "cartridge" scores 1 against every toner in the catalogue (0.5 substring
+  // + 0.5 full token overlap), and picking candidates[0] silently deducted the
+  // FIRST match from the technician's truck — black toner when they may have
+  // fitted cyan. An ambiguous match asks the tech instead of guessing.
+  const ambiguous = candidates.length > 1 && candidates[0].score === candidates[1].score;
   const chosenSku =
-    candidates.length > 0 && candidates[0].score >= SKU_AUTO_MATCH_THRESHOLD
+    candidates.length > 0 && !ambiguous && candidates[0].score >= SKU_AUTO_MATCH_THRESHOLD
       ? candidates[0].sku
       : null;
 

@@ -111,15 +111,21 @@ describe('voice ticket close SKU matcher parity', () => {
     expect(result.chosenSku).toBe('DR-512');
   });
 
-  // Recorded, not asserted around: a single word that appears in a description
-  // scores 1 (0.5 substring + 0.5 full token overlap), so saying just
-  // "cartridge" auto-selects the first toner. Shared behaviour on both sides; a
-  // fix belongs in both copies at once.
-  it('scores a single common word at 1, auto-selecting the first match', () => {
-    const result = edgeRank('cartridge', INVENTORY);
+  // A generic word still scores 1 against every matching part, but a tie no
+  // longer auto-selects: it used to silently deduct the FIRST match from the
+  // truck (black toner when the tech may have fitted cyan).
+  it.each(['cartridge', 'toner'])('does not auto-select an ambiguous tie: "%s"', (spoken) => {
+    const result = edgeRank(spoken, INVENTORY);
     expect(result.candidates[0].score).toBe(1);
-    expect(result.chosenSku).toBe('TN-514K');
-    expect(result).toEqual(expressRank('cartridge', INVENTORY));
+    expect(result.candidates[1].score).toBe(1);
+    expect(result.chosenSku).toBeNull();
+    expect(result).toEqual(expressRank(spoken, INVENTORY));
+  });
+
+  it('still auto-selects when the top score is unambiguous', () => {
+    expect(edgeRank('black toner', INVENTORY).chosenSku).toBe('TN-514K');
+    expect(edgeRank('TN-514K', INVENTORY).chosenSku).toBe('TN-514K');
+    expect(edgeRank('drum unit', INVENTORY).chosenSku).toBe('DR-512');
   });
 
   it('ranks candidates by descending score', () => {
