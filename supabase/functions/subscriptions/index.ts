@@ -2,7 +2,13 @@
 // Handles subscription management for tenants
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
-import { buildSubscriptionStatus, nextPeriodEnd } from '../_shared/subscription-status.ts';
+import {
+  buildSubscriptionStatus,
+  isUpgradeAmount,
+  nextPeriodEnd,
+  planAmount,
+  resolveTrialPeriod,
+} from '../_shared/subscription-status.ts';
 import { buildCancellationEmail } from '../_shared/cancellation-email.ts';
 import { sendEmail } from '../email-marketing/_sendgrid.ts';
 import { normalizePath } from '../_shared/path.ts';
@@ -788,6 +794,331 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ subscription: updatedSubscription }, 200, req);
+    }
+
+    // ========================================================================
+    // POST /subscriptions/create - Start a subscription for the tenant
+    //
+    // PROD-014: Express-only, so in production nothing could start a
+    // subscription. Note the frontend sends a plan SLUG, not the plan id the
+    // change-plan branch above takes — resolving by id here would reject every
+    // real request.
+    // ========================================================================
+    if (req.method === 'POST' && secondSegment === 'create' && !thirdSegment) {
+      const body = await req.json().catch(() => ({}));
+      const planSlug = body.planSlug || body.plan_slug;
+      const billingCycle = body.billingCycle || body.billing_cycle;
+      const startTrial = body.startTrial !== false && body.start_trial !== false;
+
+      if (!planSlug || !billingCycle) {
+        return createCorsResponse(
+          { error: 'Missing required fields: planSlug, billingCycle' },
+          400,
+          req,
+        );
+      }
+      if (!['monthly', 'annual'].includes(billingCycle)) {
+        return createCorsResponse(
+          { error: 'Invalid billing cycle. Must be "monthly" or "annual"' },
+          400,
+          req,
+        );
+      }
+
+      // Refusing a second subscription is what keeps a tenant from being billed
+      // twice; Express checks the same two statuses.
+      const { data: existing } = await admin
+        .from('tenant_subscriptions')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .in('status', ['active', 'trialing'])
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        return createCorsResponse(
+          {
+            error: 'Tenant already has an active subscription',
+            message: 'Use the upgrade endpoint to change plans',
+          },
+          400,
+          req,
+        );
+      }
+
+      const { data: plan, error: planError } = await admin
+        .from('subscription_plans')
+        .select('*')
+        .eq('slug', planSlug)
+        .maybeSingle();
+
+      if (planError) {
+        console.error('Error loading plan:', planError);
+        return createCorsResponse(
+          { error: 'Failed to create subscription', message: planError.message },
+          500,
+          req,
+        );
+      }
+      if (!plan) {
+        return createCorsResponse(
+          { error: 'Failed to create subscription', message: `Plan not found: ${planSlug}` },
+          404,
+          req,
+        );
+      }
+      if (!plan.is_active || !plan.is_visible) {
+        return createCorsResponse(
+          { error: 'Failed to create subscription', message: `Plan is not available: ${planSlug}` },
+          400,
+          req,
+        );
+      }
+
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const { isTrialing, trialEndDate, currentPeriodEnd } = resolveTrialPeriod(
+        plan,
+        startTrial,
+        billingCycle,
+        now,
+      );
+      const amount = planAmount(plan, billingCycle);
+
+      const { data: subscription, error: insertError } = await admin
+        .from('tenant_subscriptions')
+        .insert({
+          tenant_id: tenantId,
+          plan_id: plan.id,
+          status: isTrialing ? 'trialing' : 'active',
+          billing_cycle: billingCycle,
+          billing_interval: 1,
+          start_date: nowIso,
+          current_period_start: nowIso,
+          current_period_end: currentPeriodEnd.toISOString(),
+          is_trialing: isTrialing,
+          trial_start_date: isTrialing ? nowIso : null,
+          trial_end_date: isTrialing && trialEndDate ? trialEndDate.toISOString() : null,
+          amount: amount.toFixed(2),
+          currency: 'USD',
+          discount_amount: '0.00',
+          discount_percent: 0,
+          is_free: false,
+          custom_pricing: false,
+          usage_based_billing: false,
+          created_at: nowIso,
+          updated_at: nowIso,
+        })
+        .select('*')
+        .single();
+
+      if (insertError) {
+        console.error('Error creating subscription:', insertError);
+        return createCorsResponse(
+          { error: 'Failed to create subscription', message: insertError.message },
+          500,
+          req,
+        );
+      }
+
+      const { error: tenantError } = await admin
+        .from('tenants')
+        .update({
+          plan: planSlug,
+          subscription: subscription.status,
+          billing_status: isTrialing ? 'trialing' : 'pending',
+          updated_at: nowIso,
+        })
+        .eq('id', tenantId);
+      if (tenantError) console.error('Error updating tenant after create:', tenantError);
+
+      await admin.from('subscription_events').insert({
+        tenant_id: tenantId,
+        subscription_id: subscription.id,
+        event_type: isTrialing ? 'trial_started' : 'created',
+        user_id: user.id,
+        to_plan: planSlug,
+        data: {
+          plan: planSlug,
+          billingCycle,
+          amount,
+          trialDays: plan.trial_days,
+        },
+        created_at: nowIso,
+      });
+
+      await admin.from('subscription_notifications').insert({
+        tenant_id: tenantId,
+        user_id: user.id,
+        type: isTrialing ? 'trial_started' : 'subscription_created',
+        priority: 'normal',
+        title: isTrialing ? 'Trial Started!' : 'Subscription Activated',
+        message: isTrialing
+          ? `Your ${plan.trial_days}-day trial of the ${plan.name} plan has started. Explore all features!`
+          : `Your ${plan.name} subscription is now active. Welcome aboard!`,
+        action_url: '/settings/subscription',
+        action_text: 'View Subscription',
+        channels: ['in_app', 'email'],
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+
+      return createCorsResponse(
+        { subscription, message: 'Subscription created successfully' },
+        201,
+        req,
+      );
+    }
+
+    // ========================================================================
+    // POST /subscriptions/upgrade - Move the tenant to a different plan
+    //
+    // PROD-014: Express-only. Distinct from change-plan above, which takes a
+    // plan id and creates a subscription when there is none; this takes the
+    // SLUG the frontend sends and requires an existing subscription, matching
+    // SubscriptionService.changeSubscription.
+    // ========================================================================
+    if (req.method === 'POST' && secondSegment === 'upgrade' && !thirdSegment) {
+      const body = await req.json().catch(() => ({}));
+      const newPlanSlug = body.newPlanSlug || body.new_plan_slug;
+      const requestedCycle = body.billingCycle || body.billing_cycle;
+      const immediate = body.immediate !== false;
+
+      if (!newPlanSlug) {
+        return createCorsResponse({ error: 'Missing required field: newPlanSlug' }, 400, req);
+      }
+
+      // Express refuses a scheduled change rather than pretending to book one.
+      if (!immediate) {
+        return createCorsResponse(
+          {
+            error: 'Failed to upgrade subscription',
+            message: 'Scheduled plan changes not yet implemented',
+          },
+          501,
+          req,
+        );
+      }
+
+      const { data: currentSubscription, error: currentError } = await admin
+        .from('tenant_subscriptions')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .in('status', ['active', 'trialing', 'past_due'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (currentError) {
+        console.error('Error loading subscription to upgrade:', currentError);
+        return createCorsResponse(
+          { error: 'Failed to upgrade subscription', message: currentError.message },
+          500,
+          req,
+        );
+      }
+      if (!currentSubscription) {
+        return createCorsResponse(
+          { error: 'Failed to upgrade subscription', message: 'No active subscription found' },
+          404,
+          req,
+        );
+      }
+
+      const { data: newPlan } = await admin
+        .from('subscription_plans')
+        .select('*')
+        .eq('slug', newPlanSlug)
+        .maybeSingle();
+
+      if (!newPlan) {
+        return createCorsResponse(
+          {
+            error: 'Failed to upgrade subscription',
+            message: `Plan not found: ${newPlanSlug}`,
+          },
+          404,
+          req,
+        );
+      }
+
+      const { data: currentPlan } = await admin
+        .from('subscription_plans')
+        .select('slug')
+        .eq('id', currentSubscription.plan_id)
+        .maybeSingle();
+
+      const newBillingCycle = requestedCycle || currentSubscription.billing_cycle;
+      const newAmount = planAmount(newPlan, newBillingCycle);
+      const now = new Date();
+      const nowIso = now.toISOString();
+
+      const { data: subscription, error: updateError } = await admin
+        .from('tenant_subscriptions')
+        .update({
+          plan_id: newPlan.id,
+          billing_cycle: newBillingCycle,
+          amount: newAmount.toFixed(2),
+          updated_at: nowIso,
+        })
+        .eq('id', currentSubscription.id)
+        .eq('tenant_id', tenantId)
+        .select('*')
+        .single();
+
+      if (updateError) {
+        console.error('Error upgrading subscription:', updateError);
+        return createCorsResponse(
+          { error: 'Failed to upgrade subscription', message: updateError.message },
+          500,
+          req,
+        );
+      }
+
+      const { error: tenantError } = await admin
+        .from('tenants')
+        .update({ plan: newPlanSlug, updated_at: nowIso })
+        .eq('id', tenantId);
+      if (tenantError) console.error('Error updating tenant after upgrade:', tenantError);
+
+      // A subscription with no recorded amount would otherwise compare NaN and
+      // read as a downgrade; the shared helper treats absent as zero.
+      const isUpgrade = isUpgradeAmount(newAmount, currentSubscription.amount);
+
+      await admin.from('subscription_events').insert({
+        tenant_id: tenantId,
+        subscription_id: currentSubscription.id,
+        event_type: isUpgrade ? 'upgraded' : 'downgraded',
+        user_id: user.id,
+        from_plan: currentPlan?.slug ?? null,
+        to_plan: newPlanSlug,
+        data: {
+          fromAmount: currentSubscription.amount,
+          toAmount: newAmount,
+          billingCycle: newBillingCycle,
+        },
+        created_at: nowIso,
+      });
+
+      await admin.from('subscription_notifications').insert({
+        tenant_id: tenantId,
+        user_id: user.id,
+        type: isUpgrade ? 'plan_upgraded' : 'plan_downgraded',
+        priority: 'normal',
+        title: isUpgrade ? 'Plan Upgraded!' : 'Plan Changed',
+        message: `Your subscription has been ${isUpgrade ? 'upgraded' : 'changed'} to the ${newPlan.name} plan.`,
+        action_url: '/settings/subscription',
+        action_text: 'View Details',
+        channels: ['in_app', 'email'],
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+
+      return createCorsResponse(
+        { subscription, message: 'Subscription updated successfully' },
+        200,
+        req,
+      );
     }
 
     // ========================================================================

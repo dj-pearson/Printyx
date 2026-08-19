@@ -20,8 +20,11 @@ import { eq, and, sql, gte, lte, desc } from 'drizzle-orm';
 import {
   computeOverages,
   daysUntil,
+  isUpgradeAmount,
   mergeLimits,
   nextPeriodEnd,
+  planAmount,
+  resolveTrialPeriod,
   readUsage,
   trialDaysRemaining,
 } from '../lib/subscription-status';
@@ -116,27 +119,16 @@ export class SubscriptionService {
     const now = new Date();
     const startDate = now;
 
-    let isTrialing = false;
-    let trialEndDate = null;
-    let currentPeriodEnd = new Date();
-
-    if (startTrial && plan.trialEnabled && (plan.trialDays ?? 0) > 0) {
-      isTrialing = true;
-      trialEndDate = new Date(now.getTime() + (plan.trialDays ?? 0) * 24 * 60 * 60 * 1000);
-      currentPeriodEnd = trialEndDate;
-    } else {
-      // No trial, set period end based on billing cycle
-      if (billingCycle === 'annual') {
-        currentPeriodEnd = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
-      } else {
-        currentPeriodEnd = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
-      }
-    }
+    const { isTrialing, trialEndDate, currentPeriodEnd } = resolveTrialPeriod(
+      plan,
+      startTrial,
+      billingCycle,
+      now,
+    );
 
     // Calculate amount
-    const baseAmount =
-      billingCycle === 'annual' ? parseFloat(plan.annualPrice) : parseFloat(plan.monthlyPrice);
-    let amount = baseAmount;
+    const baseAmount = planAmount(plan, billingCycle);
+    const amount = baseAmount;
 
     // Apply discount if provided
     let discountId = null;
@@ -334,10 +326,7 @@ export class SubscriptionService {
     }
 
     const newBillingCycle = billingCycle || currentSubscription.billingCycle;
-    const newAmount =
-      newBillingCycle === 'annual'
-        ? parseFloat(newPlan.annualPrice)
-        : parseFloat(newPlan.monthlyPrice);
+    const newAmount = planAmount(newPlan, newBillingCycle);
 
     if (immediate) {
       // Immediate change - update current subscription
@@ -361,7 +350,7 @@ export class SubscriptionService {
         .where(eq(tenants.id, tenantId));
 
       // Create event
-      const isUpgrade = newAmount > parseFloat(currentSubscription.amount);
+      const isUpgrade = isUpgradeAmount(newAmount, currentSubscription.amount);
       await this.createEvent({
         tenantId,
         subscriptionId: currentSubscription.id,

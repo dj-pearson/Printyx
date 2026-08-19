@@ -345,3 +345,109 @@ describe('nextPeriodEnd parity', () => {
     );
   });
 });
+
+describe('planAmount parity', () => {
+  const plan = { monthly_price: '49.00', annual_price: '490.00' };
+  const drizzlePlan = { monthlyPrice: '49.00', annualPrice: '490.00' };
+
+  it('reads the snake_case row PostgREST returns', () => {
+    expect(edge.planAmount(plan, 'monthly')).toBe(49);
+    expect(node.planAmount(plan, 'monthly')).toBe(49);
+    expect(edge.planAmount(plan, 'annual')).toBe(490);
+  });
+
+  it('reads the camelCase row Drizzle returns', () => {
+    expect(edge.planAmount(drizzlePlan, 'annual')).toBe(490);
+    expect(node.planAmount(drizzlePlan, 'annual')).toBe(490);
+  });
+
+  it('parses rather than concatenates, on both sides', () => {
+    // numeric arrives as a STRING from both backends. A copy that skipped the
+    // parse would produce '49.00' + 0 rather than 49.
+    expect(typeof edge.planAmount(plan, 'monthly')).toBe('number');
+    expect(typeof node.planAmount(plan, 'monthly')).toBe('number');
+  });
+
+  it('treats an unknown cycle as monthly and a missing price as zero', () => {
+    expect(edge.planAmount(plan, 'weekly')).toBe(node.planAmount(plan, 'weekly'));
+    expect(edge.planAmount(plan, 'weekly')).toBe(49);
+    expect(edge.planAmount({}, 'monthly')).toBe(0);
+    expect(node.planAmount(null, 'monthly')).toBe(0);
+  });
+});
+
+describe('isUpgradeAmount parity', () => {
+  it('compares the numeric strings both backends return', () => {
+    expect(edge.isUpgradeAmount(10, '9.00')).toBe(true);
+    expect(node.isUpgradeAmount(10, '9.00')).toBe(true);
+    expect(edge.isUpgradeAmount(9, '10.00')).toBe(false);
+    expect(node.isUpgradeAmount(9, '10.00')).toBe(false);
+  });
+
+  it('is false for an unchanged price', () => {
+    expect(edge.isUpgradeAmount(49, '49.00')).toBe(false);
+    expect(node.isUpgradeAmount(49, '49.00')).toBe(false);
+  });
+
+  it('treats a missing current amount as zero rather than as NaN', () => {
+    // This is the case the helper exists for. `10 > undefined` is NaN-false, so
+    // an unparsed comparison calls a move onto a paid plan a downgrade and tells
+    // the customer their plan merely changed. A bare `>` handles the ordinary
+    // string case on its own — coercion covers it — which is why the guard is
+    // here and not in the comparison.
+    expect(edge.isUpgradeAmount(10, undefined)).toBe(true);
+    expect(node.isUpgradeAmount(10, undefined)).toBe(true);
+    expect(10 > (undefined as unknown as number)).toBe(false);
+    expect(edge.isUpgradeAmount(1, null)).toBe(node.isUpgradeAmount(1, null));
+    expect(edge.isUpgradeAmount(1, null)).toBe(true);
+    expect(edge.isUpgradeAmount(0, undefined)).toBe(false);
+  });
+});
+
+describe('resolveTrialPeriod parity', () => {
+  const trialPlan = { trial_enabled: true, trial_days: 14 };
+
+  it('starts a trial only when all three conditions hold', () => {
+    // Asked for, enabled by the plan, and a positive number of days. Loosening
+    // any of these gives free time away on a plan that does not offer it.
+    const cases: Array<[any, boolean]> = [
+      [{ trial_enabled: true, trial_days: 14 }, true],
+      [{ trial_enabled: false, trial_days: 14 }, false],
+      [{ trial_enabled: true, trial_days: 0 }, false],
+      [{ trial_enabled: true }, false],
+      [{}, false],
+    ];
+    for (const [plan, expected] of cases) {
+      const e = edge.resolveTrialPeriod(plan, true, 'monthly', NOW);
+      const n = node.resolveTrialPeriod(plan, true, 'monthly', NOW);
+      expect(e.isTrialing).toBe(expected);
+      expect(n.isTrialing).toBe(expected);
+    }
+    expect(edge.resolveTrialPeriod(trialPlan, false, 'monthly', NOW).isTrialing).toBe(false);
+    expect(node.resolveTrialPeriod(trialPlan, false, 'monthly', NOW).isTrialing).toBe(false);
+  });
+
+  it('ends the first period at the trial end when trialing', () => {
+    const e = edge.resolveTrialPeriod(trialPlan, true, 'annual', NOW);
+    const n = node.resolveTrialPeriod(trialPlan, true, 'annual', NOW);
+    expect(e.currentPeriodEnd.getTime()).toBe(n.currentPeriodEnd.getTime());
+    expect(e.trialEndDate!.getTime()).toBe(e.currentPeriodEnd.getTime());
+    // 14 days of trial, not a year, even on an annual cycle.
+    expect(e.currentPeriodEnd.getTime() - NOW.getTime()).toBe(14 * 86_400_000);
+  });
+
+  it('falls back to the billing cycle when not trialing', () => {
+    const e = edge.resolveTrialPeriod({ trial_enabled: false }, true, 'annual', NOW);
+    const n = node.resolveTrialPeriod({ trial_enabled: false }, true, 'annual', NOW);
+    expect(e.currentPeriodEnd.getTime()).toBe(n.currentPeriodEnd.getTime());
+    expect(e.currentPeriodEnd.getTime()).toBe(edge.nextPeriodEnd(NOW, 'annual').getTime());
+    expect(e.trialEndDate).toBeNull();
+  });
+
+  it('reads the camelCase plan Drizzle returns', () => {
+    const e = edge.resolveTrialPeriod({ trialEnabled: true, trialDays: 7 }, true, 'monthly', NOW);
+    const n = node.resolveTrialPeriod({ trialEnabled: true, trialDays: 7 }, true, 'monthly', NOW);
+    expect(e.isTrialing).toBe(true);
+    expect(e.currentPeriodEnd.getTime()).toBe(n.currentPeriodEnd.getTime());
+  });
+});

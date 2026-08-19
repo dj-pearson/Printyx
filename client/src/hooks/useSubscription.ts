@@ -84,12 +84,13 @@ export interface SubscriptionStatus {
  * subscriptions edge function does not implement most of these paths. It serves
  * plans, usage, invoices, features, change-plan, the root list/create,
  * :id / :id/cancel / :id/resume, and — ported under PROD-014 — current,
- * notifications, notifications/:id/dismiss, the bare cancel path and
- * convert-trial. Those go through apiRequest.
+ * notifications, notifications/:id/dismiss, the bare cancel path,
+ * convert-trial, create and upgrade. Those go through apiRequest.
  *
- * It still has NO create, upgrade, stripe/config or checkout. Converting those
- * would take them from "works in dev, 404 in prod" to "404 in both". The last
- * two need Stripe in the edge environment, which is a deployment decision.
+ * It still has NO stripe/config or checkout, which need Stripe credentials in
+ * the edge environment — a deployment decision rather than code. Converting
+ * those two call sites would take them from "works in dev, 404 in prod" to
+ * "404 in both".
  *
  * Express (server/routes-subscriptions.ts) is the complete implementation, and
  * /api/subscriptions is not proxied, so dev works and only production is blind.
@@ -184,19 +185,9 @@ export function useCreateSubscription() {
       startTrial?: boolean;
       discountCode?: string;
     }) => {
-      const response = await fetch('/api/subscriptions/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create subscription');
-      }
-
-      return response.json();
+      // PROD-014: ported to the edge function. It resolves the plan by SLUG,
+      // which is what this sends — the older change-plan path takes an id.
+      return apiRequest('/api/subscriptions/create', { method: 'POST', body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
@@ -216,19 +207,9 @@ export function useUpgradeSubscription() {
       billingCycle?: 'monthly' | 'annual';
       immediate?: boolean;
     }) => {
-      const response = await fetch('/api/subscriptions/upgrade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to upgrade subscription');
-      }
-
-      return response.json();
+      // PROD-014: ported to the edge function, so changing plans works in
+      // production instead of 404ing against the static origin.
+      return apiRequest('/api/subscriptions/upgrade', { method: 'POST', body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription'] });

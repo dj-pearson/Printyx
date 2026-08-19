@@ -166,3 +166,75 @@ export function nextPeriodEnd(now: Date, billingCycle: string | null | undefined
     ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())
     : new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
 }
+
+/**
+ * What a plan costs for a billing cycle (PROD-014).
+ *
+ * PostgREST returns `numeric` as a STRING while Drizzle returns it as one too,
+ * so both sides have to parse rather than compare. Doing it here means a price
+ * can't end up string-concatenated on one backend and added on the other.
+ */
+export function planAmount(
+  plan: Record<string, any> | null | undefined,
+  billingCycle: string | null | undefined,
+): number {
+  const raw =
+    billingCycle === 'annual'
+      ? (plan?.annual_price ?? plan?.annualPrice)
+      : (plan?.monthly_price ?? plan?.monthlyPrice);
+  const n = typeof raw === 'number' ? raw : Number.parseFloat(String(raw ?? ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Whether a plan change is an upgrade, by price.
+ *
+ * The current amount arrives as a string from both backends. `>` would coerce
+ * it, so the ordinary case is not the hazard — a MISSING amount is. `10 >
+ * undefined` is NaN-false, so a subscription with no recorded amount would be
+ * called a downgrade, and the customer moving onto a paid plan would be told
+ * their plan changed rather than upgraded. Absent reads as zero here, and both
+ * backends decide it the same way.
+ */
+export function isUpgradeAmount(
+  newAmount: number,
+  currentAmount: string | number | null | undefined,
+): boolean {
+  const current =
+    typeof currentAmount === 'number'
+      ? currentAmount
+      : Number.parseFloat(String(currentAmount ?? ''));
+  return newAmount > (Number.isFinite(current) ? current : 0);
+}
+
+/**
+ * The trial decision a new subscription starts from (PROD-014).
+ *
+ * A trial needs all three: the caller asked for one, the plan enables them, and
+ * the plan states a positive number of days. Loosening any of those gives away
+ * free time on a plan that does not offer it; tightening them bills someone on
+ * day one of what the pricing page called a trial.
+ */
+export function resolveTrialPeriod(
+  plan: Record<string, any> | null | undefined,
+  startTrial: boolean,
+  billingCycle: string | null | undefined,
+  now: Date,
+): { isTrialing: boolean; trialEndDate: Date | null; currentPeriodEnd: Date } {
+  const trialEnabled = plan?.trial_enabled ?? plan?.trialEnabled;
+  const rawDays = plan?.trial_days ?? plan?.trialDays;
+  const parsedDays =
+    typeof rawDays === 'number' ? rawDays : Number.parseInt(String(rawDays ?? ''), 10);
+  const trialDays = Number.isFinite(parsedDays) ? parsedDays : 0;
+
+  if (startTrial && trialEnabled && trialDays > 0) {
+    const trialEndDate = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
+    return { isTrialing: true, trialEndDate, currentPeriodEnd: trialEndDate };
+  }
+
+  return {
+    isTrialing: false,
+    trialEndDate: null,
+    currentPeriodEnd: nextPeriodEnd(now, billingCycle),
+  };
+}
