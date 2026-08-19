@@ -311,6 +311,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // error fallback.
     '/api/universal-search': 'universal-search',
 
+    // PROD-014: white-label had no edge function, so WhiteLabelDashboard could
+    // neither load nor save branding in production. Dir name matches the URL
+    // segment, so a plain entry is enough — no server.ts override needed.
+    '/api/white-label': 'white-label',
+
     // AUDIT-015: ai-search. REQUIRED, not defensive — without this entry dev 404s.
     //
     // Nothing in Express serves /api/ai-search/*. The legacy router

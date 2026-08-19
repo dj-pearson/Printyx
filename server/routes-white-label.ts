@@ -1,6 +1,7 @@
 import type { Express } from 'express';
 import { db } from './db';
 import { whiteLabelService } from './services/white-label-service';
+import { getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-white-label');
 
@@ -12,12 +13,18 @@ import {
 } from '@shared/schema';
 
 export function registerWhiteLabelRoutes(app: Express) {
+  // Tenant comes from getTenantId (resolveTenant -> JWT -> session), not from a
+  // raw x-tenant-id read. resolveTenant already rejects a header that disagrees
+  // with the JWT, so the old read was not exploitable — but it returned a 400 on
+  // any request that did not happen to send the header, and it is the pattern
+  // CLAUDE.md forbids.
+
   /**
    * Get white-label configuration for current tenant
    */
   app.get('/api/white-label/config', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
@@ -41,7 +48,7 @@ export function registerWhiteLabelRoutes(app: Express) {
    */
   app.put('/api/white-label/config', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
@@ -74,7 +81,7 @@ export function registerWhiteLabelRoutes(app: Express) {
    */
   app.post('/api/white-label/verify-domain', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       const { domain } = req.body;
 
       if (!tenantId) {
@@ -110,7 +117,7 @@ export function registerWhiteLabelRoutes(app: Express) {
    */
   app.get('/api/white-label/email-templates', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
@@ -133,7 +140,7 @@ export function registerWhiteLabelRoutes(app: Express) {
    */
   app.get('/api/white-label/email-templates/:templateKey', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       const { templateKey } = req.params;
 
       if (!tenantId) {
@@ -158,7 +165,7 @@ export function registerWhiteLabelRoutes(app: Express) {
    */
   app.put('/api/white-label/email-templates/:templateKey', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       const { templateKey } = req.params;
 
       if (!tenantId) {
@@ -196,7 +203,7 @@ export function registerWhiteLabelRoutes(app: Express) {
    */
   app.delete('/api/white-label/email-templates/:templateId', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       const { templateId } = req.params;
 
       if (!tenantId) {
@@ -237,7 +244,7 @@ export function registerWhiteLabelRoutes(app: Express) {
    */
   app.post('/api/white-label/apply-preset/:presetSlug', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       const { presetSlug } = req.params;
 
       if (!tenantId) {
@@ -262,7 +269,7 @@ export function registerWhiteLabelRoutes(app: Express) {
    */
   app.get('/api/white-label/css', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
@@ -289,7 +296,7 @@ export function registerWhiteLabelRoutes(app: Express) {
    */
   app.post('/api/white-label/email-templates/:templateKey/preview', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       const { templateKey } = req.params;
       const { variables } = req.body;
 
