@@ -352,38 +352,48 @@ function validateSoftwareProductData(row: any): any {
 export function registerProductsCrudRoutes(app: Express) {
   // ============= PRODUCT MODELS CRUD =============
 
-  app.get('/api/product-models', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.get(
+    '/api/product-models',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.VIEW]),
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        // Use master product models for product browsing (includes Production category)
+        const models = await storage.browseMasterProducts({});
+        res.json(models);
+      } catch (error) {
+        log.error('Error fetching product models:', error);
+        res.status(500).json({ message: 'Failed to fetch product models' });
       }
-      // Use master product models for product browsing (includes Production category)
-      const models = await storage.browseMasterProducts({});
-      res.json(models);
-    } catch (error) {
-      log.error('Error fetching product models:', error);
-      res.status(500).json({ message: 'Failed to fetch product models' });
-    }
-  });
+    },
+  );
 
-  app.get('/api/product-models/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.get(
+    '/api/product-models/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.VIEW]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const model = await storage.getProductModel(id, tenantId);
+        if (!model) {
+          return res.status(404).json({ message: 'Product model not found' });
+        }
+        res.json(model);
+      } catch (error) {
+        log.error('Error fetching product model:', error);
+        res.status(500).json({ message: 'Failed to fetch product model' });
       }
-      const model = await storage.getProductModel(id, tenantId);
-      if (!model) {
-        return res.status(404).json({ message: 'Product model not found' });
-      }
-      res.json(model);
-    } catch (error) {
-      log.error('Error fetching product model:', error);
-      res.status(500).json({ message: 'Failed to fetch product model' });
-    }
-  });
+    },
+  );
 
   app.post(
     '/api/product-models',
@@ -1251,31 +1261,41 @@ export function registerProductsCrudRoutes(app: Express) {
   // ============= ACCOUNTING API ROUTES =============
 
   // Vendors Management
-  app.get('/api/vendors', async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const vendors = await storage.getVendors(tenantId);
-      res.json(vendors);
-    } catch (error) {
-      log.error('Error fetching vendors:', error);
-      res.status(500).json({ message: 'Failed to fetch vendors' });
-    }
-  });
-
-  app.get('/api/vendors/:id', async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const { id } = req.params;
-      const vendor = await storage.getVendor(id, tenantId);
-      if (!vendor) {
-        return res.status(404).json({ message: 'Vendor not found' });
+  app.get(
+    '/api/vendors',
+    ctx,
+    can([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
+    async (req, res) => {
+      try {
+        const { tenantId } = (req as any).user || {};
+        const vendors = await storage.getVendors(tenantId);
+        res.json(vendors);
+      } catch (error) {
+        log.error('Error fetching vendors:', error);
+        res.status(500).json({ message: 'Failed to fetch vendors' });
       }
-      res.json(vendor);
-    } catch (error) {
-      log.error('Error fetching vendor:', error);
-      res.status(500).json({ message: 'Failed to fetch vendor' });
-    }
-  });
+    },
+  );
+
+  app.get(
+    '/api/vendors/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
+    async (req, res) => {
+      try {
+        const { tenantId } = (req as any).user || {};
+        const { id } = req.params;
+        const vendor = await storage.getVendor(id, tenantId);
+        if (!vendor) {
+          return res.status(404).json({ message: 'Vendor not found' });
+        }
+        res.json(vendor);
+      } catch (error) {
+        log.error('Error fetching vendor:', error);
+        res.status(500).json({ message: 'Failed to fetch vendor' });
+      }
+    },
+  );
 
   app.post('/api/vendors', ctx, can([PERMISSIONS.INVENTORY.ITEM.CREATE]), async (req, res) => {
     try {
@@ -1387,18 +1407,22 @@ export function registerProductsCrudRoutes(app: Express) {
 
   // ============= PURCHASE ORDERS =============
 
-  app.get('/api/purchase-orders', async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const filter = String((req.query as any)?.filter || '');
-      // Fall back to storage if no filter, else run filtered DB query
-      if (!filter) {
-        const purchaseOrders = await storage.getPurchaseOrders(tenantId);
-        return res.json(purchaseOrders);
-      }
-      if (filter === 'variance_gt_2x') {
-        const result = await db.$client.query(
-          `SELECT * FROM purchase_orders
+  app.get(
+    '/api/purchase-orders',
+    ctx,
+    can([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
+    async (req, res) => {
+      try {
+        const { tenantId } = (req as any).user || {};
+        const filter = String((req.query as any)?.filter || '');
+        // Fall back to storage if no filter, else run filtered DB query
+        if (!filter) {
+          const purchaseOrders = await storage.getPurchaseOrders(tenantId);
+          return res.json(purchaseOrders);
+        }
+        if (filter === 'variance_gt_2x') {
+          const result = await db.$client.query(
+            `SELECT * FROM purchase_orders
            WHERE tenant_id = $1
              AND approved_date IS NOT NULL
              AND expected_date IS NOT NULL
@@ -1406,18 +1430,19 @@ export function registerProductsCrudRoutes(app: Express) {
              AND (DATE_PART('day', expected_date - approved_date)) > 2 * GREATEST(1, DATE_PART('day', expected_date - order_date))
            ORDER BY created_at DESC
            LIMIT 200`,
-          [tenantId],
-        );
-        return res.json(result.rows);
+            [tenantId],
+          );
+          return res.json(result.rows);
+        }
+        // Unknown filter -> default list
+        const purchaseOrders = await storage.getPurchaseOrders(tenantId);
+        res.json(purchaseOrders);
+      } catch (error) {
+        log.error('Error fetching purchase orders:', error);
+        res.status(500).json({ message: 'Failed to fetch purchase orders' });
       }
-      // Unknown filter -> default list
-      const purchaseOrders = await storage.getPurchaseOrders(tenantId);
-      res.json(purchaseOrders);
-    } catch (error) {
-      log.error('Error fetching purchase orders:', error);
-      res.status(500).json({ message: 'Failed to fetch purchase orders' });
-    }
-  });
+    },
+  );
 
   app.post(
     '/api/purchase-orders',

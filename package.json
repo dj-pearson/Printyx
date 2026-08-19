@@ -21,6 +21,7 @@
     "check:routes": "node scripts/check-route-ownership.mjs",
     "check:nav": "node scripts/check-nav-targets.mjs",
     "check:raw-fetch": "node scripts/check-raw-api-fetch.mjs",
+    "check:dup-routes": "node scripts/check-duplicate-routes.mjs",
     "check:edge-paths": "node scripts/check-edge-path-normalization.mjs",
     "check:proxy-overrides": "node scripts/check-proxy-overrides.mjs",
     "check:migrations": "node scripts/check-migration-journal.mjs",

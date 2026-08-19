@@ -51,6 +51,8 @@ jobs:
         run: npm run check:nav
       - name: Raw-fetch ratchet (PROD-013)
         run: npm run check:raw-fetch
+      - name: Duplicate route-registration ratchet
+        run: npm run check:dup-routes
       - name: Edge path-normalization ratchet (EDGE-002e)
         run: npm run check:edge-paths
       - name: Proxy-override parity (PA-019)
