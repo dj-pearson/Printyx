@@ -73,12 +73,10 @@
     "warehouse-operations"
   ],
   "missingEdge": [
-    "accessories",
     "ai",
     "business-process",
     "chatbot",
     "content",
-    "contract-tiered-rates",
     "documents",
     "email-autopilot",
     "erp-integration",

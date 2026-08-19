@@ -316,6 +316,14 @@ export function registerEdgeFunctionProxy(app: any) {
     // segment, so a plain entry is enough — no server.ts override needed.
     '/api/white-label': 'white-label',
 
+    // PROD-013: neither domain had an edge function. /api/accessories is the
+    // accessory<->model compatibility join behind the EnhancedProductAccessories
+    // dialog (the accessories themselves live in product-accessories);
+    // /api/contract-tiered-rates backs the MeterBilling rate table. Dir names
+    // match the URL segments, so plain entries are enough.
+    '/api/accessories': 'accessories',
+    '/api/contract-tiered-rates': 'contract-tiered-rates',
+
     // AUDIT-015: ai-search. REQUIRED, not defensive — without this entry dev 404s.
     //
     // Nothing in Express serves /api/ai-search/*. The legacy router
