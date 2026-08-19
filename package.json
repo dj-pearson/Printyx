@@ -23,6 +23,7 @@
     "check:raw-fetch": "node scripts/check-raw-api-fetch.mjs",
     "check:dup-routes": "node scripts/check-duplicate-routes.mjs",
     "check:throwing-types": "node scripts/check-throwing-types.mjs",
+    "check:dup-tables": "node scripts/check-duplicate-tables.mjs",
     "check:edge-paths": "node scripts/check-edge-path-normalization.mjs",
     "check:proxy-overrides": "node scripts/check-proxy-overrides.mjs",
     "check:migrations": "node scripts/check-migration-journal.mjs",

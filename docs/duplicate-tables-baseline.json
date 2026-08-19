@@ -1,0 +1,9 @@
+{
+  "note": "Duplicate physical-table ratchet. scripts/check-duplicate-tables.mjs fails CI when a table name is newly declared by two different shared/*.ts Drizzle schemas. Both compile, shared/schema.ts re-exports both, and an explicit named re-export silently decides which definition consumers of @shared/schema receive — while only one shape can exist in the database. Run with --list to see the declaration sites. Shrink this list, never grow it: node scripts/check-duplicate-tables.mjs --update-baseline",
+  "allowed": [
+    "blog_posts :: blog-schema.ts|content-marketing-schema.ts",
+    "client_activity_logs :: client-monitor-schema.ts|printyx-client-schema.ts",
+    "dashboard_layouts :: reporting-schema.ts|schema-dashboard.ts",
+    "location_history :: gps-tracking-schema.ts|mobile-service-schema.ts"
+  ]
+}

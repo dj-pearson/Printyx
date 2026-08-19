@@ -55,6 +55,8 @@ jobs:
         run: npm run check:dup-routes
       - name: Runtime-throwing type errors (hard gate)
         run: npm run check:throwing-types
+      - name: Duplicate physical-table ratchet
+        run: npm run check:dup-tables
       - name: Edge path-normalization ratchet (EDGE-002e)
         run: npm run check:edge-paths
       - name: Proxy-override parity (PA-019)
