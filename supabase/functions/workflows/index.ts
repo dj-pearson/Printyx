@@ -81,7 +81,14 @@ export default async function handler(req: Request) {
       // Get related data
       const [{ data: triggers }, { data: steps }, { data: versions }] = await Promise.all([
         admin.from('workflow_triggers').select('*').eq('workflow_id', workflowId),
-        admin.from('workflow_steps').select('*').eq('workflow_id', workflowId).order('step_order'),
+        // COP-M01: `workflow_steps` is a DIFFERENT table — a session step log
+        // keyed on session_id. The automation steps live in
+        // workflow_steps_automation, ordered by order_index.
+        admin
+          .from('workflow_steps_automation')
+          .select('*')
+          .eq('workflow_id', workflowId)
+          .order('order_index'),
         admin
           .from('workflow_versions')
           .select('*')
@@ -105,14 +112,18 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && !workflowId) {
       const body = await req.json();
 
+      // COP-M01: `workflows` carries no trigger — triggers are rows in
+      // workflow_triggers (type, event_name, payload_mapping). Writing them here
+      // failed the insert outright.
       const workflowData = {
         tenant_id: tenantId,
         name: body.name,
-        description: body.description,
+        description: body.description ?? null,
+        category: body.category ?? null,
         status: body.status || 'draft',
-        trigger_type: body.triggerType || body.trigger_type,
-        trigger_config: body.triggerConfig || body.trigger_config || {},
+        is_template: body.isTemplate ?? body.is_template ?? false,
         created_by: user.id,
+        last_modified_by: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -125,21 +136,56 @@ export default async function handler(req: Request) {
 
       if (error) {
         console.error('Error creating workflow:', error);
-        return createCorsResponse({ error: 'Failed to create workflow' }, 500, req);
+        return createCorsResponse(
+          { error: 'Failed to create workflow', details: error.message },
+          500,
+          req,
+        );
       }
 
-      return createCorsResponse(workflow, 201, req);
+      // A requested trigger becomes a workflow_triggers row rather than being
+      // dropped. Reported, not swallowed, if it fails — a workflow with no
+      // trigger never fires, and that is not something to discover later.
+      const triggerType = body.triggerType || body.trigger_type;
+      const warnings: string[] = [];
+      if (triggerType) {
+        const { error: triggerError } = await admin.from('workflow_triggers').insert({
+          workflow_id: workflow.id,
+          type: triggerType,
+          event_name: body.eventName || body.event_name || null,
+          payload_mapping: body.triggerConfig || body.trigger_config || null,
+          enabled: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+        if (triggerError) {
+          console.error('Error creating workflow trigger:', triggerError);
+          warnings.push(`trigger not created: ${triggerError.message}`);
+        }
+      }
+
+      return createCorsResponse({ ...workflow, warnings }, 201, req);
     }
 
     // PUT /workflows/:id - Update workflow
     if (req.method === 'PUT' && workflowId && !subResource) {
       const body = await req.json();
 
+      // Whitelisted rather than spread: `...body` handed PostgREST whatever the
+      // caller sent, so one unknown key took the whole update down with a 42703.
+      const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      for (const field of ['name', 'description', 'category', 'status'] as const) {
+        if (body[field] !== undefined) update[field] = body[field];
+      }
+      if (body.isTemplate ?? body.is_template) {
+        update.is_template = body.isTemplate ?? body.is_template;
+      }
+      update.last_modified_by = user.id;
+
       const { data: workflow, error } = await admin
         .from('workflows')
         .update({
-          ...body,
-          updated_at: new Date().toISOString(),
+          ...update,
         })
         .eq('id', workflowId)
         .eq('tenant_id', tenantId)
@@ -158,9 +204,9 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && workflowId && subResource === 'activate') {
       const { data: workflow, error } = await admin
         .from('workflows')
+        // There is no activated_at column; status plus updated_at is the record.
         .update({
           status: 'active',
-          activated_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', workflowId)
@@ -196,35 +242,30 @@ export default async function handler(req: Request) {
     }
 
     // POST /workflows/:id/execute - Manually execute workflow
+    //
+    // COP-M01, and this one is deliberately NOT repaired into a working insert.
+    // It wrote trigger_type and trigger_data (neither is a column on
+    // workflow_executions) and, more to the point, inserted the row with
+    // status:'running' and no workflow_version_id, no context and no dedupe_key.
+    //
+    // workflow_executions is the durable runtime's table (CRMX-008). Executions
+    // are created by enrollment, claimed atomically queued|paused -> running, and
+    // resumed by the boot-started sweeper against context._runtime. A row hand-
+    // written as `running` would be one the sweeper cannot resume and that the
+    // dedupe index cannot protect. Making this insert succeed would wire a second
+    // trigger path into a runtime whose documented single seam is
+    // dispatchWorkflowEvent, so the endpoint refuses and says where to go.
     if (req.method === 'POST' && workflowId && subResource === 'execute') {
-      const body = await req.json();
-
-      // Create execution record
-      const { data: execution, error } = await admin
-        .from('workflow_executions')
-        .insert({
-          workflow_id: workflowId,
-          tenant_id: tenantId,
-          status: 'running',
-          trigger_type: 'manual',
-          trigger_data: body.triggerData || {},
-          started_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return createCorsResponse({ error: 'Failed to execute workflow' }, 500, req);
-      }
-
       return createCorsResponse(
         {
-          executionId: execution.id,
-          status: 'running',
-          message: 'Workflow execution started',
+          error:
+            'Manual execution is not available here. workflow_executions is owned by the durable ' +
+            'workflow runtime, which creates executions through enrollment and claims them ' +
+            'atomically; a row inserted directly cannot be resumed or deduplicated.',
+          code: 'USE_WORKFLOW_RUNTIME',
+          use: 'dispatchWorkflowEvent(tenantId, eventName, payload, { dedupeKey }) — see server/services/workflow-runtime.ts',
         },
-        200,
+        501,
         req,
       );
     }

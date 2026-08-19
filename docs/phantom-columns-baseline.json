@@ -113,11 +113,6 @@
     "supabase/functions/lead-assignment-rules/index.ts:lead_assignment_rules.assigned_users",
     "supabase/functions/lead-assignment-rules/index.ts:lead_assignment_rules.conditions",
     "supabase/functions/lead-assignment-rules/index.ts:lead_assignment_rules.name",
-    "supabase/functions/manufacturer-integrations/index.ts:equipment.model",
-    "supabase/functions/manufacturer-integrations/index.ts:manufacturer_integrations.disconnected_at",
-    "supabase/functions/manufacturer-integrations/index.ts:manufacturer_integrations.error_message",
-    "supabase/functions/manufacturer-integrations/index.ts:manufacturer_integrations.last_sync_at",
-    "supabase/functions/manufacturer-integrations/index.ts:manufacturer_integrations.manufacturer_name",
     "supabase/functions/manufacturer-integrations/index.ts:supplies.manufacturer",
     "supabase/functions/manufacturer-integrations/index.ts:supplies.part_number",
     "supabase/functions/manufacturer-orders/handlers/analytics.ts:manufacturer_orders.actual_delivery_date",
@@ -239,11 +234,6 @@
     "supabase/functions/validate/index.ts:service_tickets.technician_id",
     "supabase/functions/validate/index.ts:service_tickets.time_spent",
     "supabase/functions/validate/index.ts:service_tickets.work_performed",
-    "supabase/functions/voice-agent/index.ts:alert_configurations.recipient_user_id",
-    "supabase/functions/workflows/index.ts:workflow_executions.trigger_data",
-    "supabase/functions/workflows/index.ts:workflow_executions.trigger_type",
-    "supabase/functions/workflows/index.ts:workflow_steps.step_order",
-    "supabase/functions/workflows/index.ts:workflow_steps.workflow_id",
-    "supabase/functions/workflows/index.ts:workflows.activated_at"
+    "supabase/functions/voice-agent/index.ts:alert_configurations.recipient_user_id"
   ]
 }

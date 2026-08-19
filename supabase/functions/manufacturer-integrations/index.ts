@@ -48,7 +48,7 @@ export default async function handler(req: Request) {
         .from('manufacturer_integrations')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('manufacturer_name', { ascending: true });
+        .order('manufacturer', { ascending: true });
 
       return createCorsResponse(integrations || [], 200, req);
     }
@@ -57,15 +57,19 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && manufacturer === 'status') {
       const { data: integrations } = await admin
         .from('manufacturer_integrations')
-        .select('manufacturer_name, is_active, last_sync_at, error_message')
+        // COP-M01: last_sync_at and manufacturer_name were not columns (they are
+        // last_sync and manufacturer). There is no error_message column either,
+        // so the status map reports the sync state it can see rather than an
+        // error field that never existed.
+        .select('manufacturer, is_active, last_sync, status')
         .eq('tenant_id', tenantId);
 
       const statusMap: Record<string, any> = {};
       (integrations || []).forEach((i: any) => {
-        statusMap[i.manufacturer_name] = {
+        statusMap[i.manufacturer] = {
           connected: i.is_active,
-          lastSync: i.last_sync_at,
-          error: i.error_message,
+          lastSync: i.last_sync,
+          syncStatus: i.status ?? null,
         };
       });
 
@@ -78,7 +82,7 @@ export default async function handler(req: Request) {
         .from('manufacturer_integrations')
         .select('*')
         .eq('tenant_id', tenantId)
-        .eq('manufacturer_name', manufacturer)
+        .eq('manufacturer', manufacturer)
         .single();
 
       if (!integration) {
@@ -112,7 +116,7 @@ export default async function handler(req: Request) {
         .from('manufacturer_integrations')
         .upsert({
           tenant_id: tenantId,
-          manufacturer_name: manufacturer,
+          manufacturer: manufacturer,
           api_key: body.apiKey || body.api_key,
           api_secret: body.apiSecret || body.api_secret,
           client_id: body.clientId || body.client_id,
@@ -148,13 +152,13 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && manufacturer && endpoint === 'disconnect') {
       const { error } = await admin
         .from('manufacturer_integrations')
+        // No disconnected_at column; is_active plus updated_at is the record.
         .update({
           is_active: false,
-          disconnected_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('tenant_id', tenantId)
-        .eq('manufacturer_name', manufacturer);
+        .eq('manufacturer', manufacturer);
 
       if (error) {
         return createCorsResponse({ error: 'Failed to disconnect' }, 500, req);
@@ -180,7 +184,7 @@ export default async function handler(req: Request) {
         .from('manufacturer_sync_logs')
         .insert({
           tenant_id: tenantId,
-          manufacturer_name: manufacturer,
+          manufacturer: manufacturer,
           sync_type: syncType,
           status: 'pending',
           started_at: new Date().toISOString(),
@@ -194,11 +198,11 @@ export default async function handler(req: Request) {
       await admin
         .from('manufacturer_integrations')
         .update({
-          last_sync_at: new Date().toISOString(),
+          last_sync: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('tenant_id', tenantId)
-        .eq('manufacturer_name', manufacturer);
+        .eq('manufacturer', manufacturer);
 
       return createCorsResponse(
         {
@@ -220,7 +224,7 @@ export default async function handler(req: Request) {
         .select('*')
         .eq('tenant_id', tenantId)
         .ilike('manufacturer', `%${manufacturer}%`)
-        .order('model', { ascending: true });
+        .order('model_number', { ascending: true });
 
       return createCorsResponse(devices || [], 200, req);
     }
@@ -243,7 +247,7 @@ export default async function handler(req: Request) {
         .from('manufacturer_sync_logs')
         .select('*')
         .eq('tenant_id', tenantId)
-        .eq('manufacturer_name', manufacturer)
+        .eq('manufacturer', manufacturer)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -256,7 +260,7 @@ export default async function handler(req: Request) {
         .from('manufacturer_integrations')
         .select('*')
         .eq('tenant_id', tenantId)
-        .eq('manufacturer_name', manufacturer)
+        .eq('manufacturer', manufacturer)
         .single();
 
       if (!integration || !integration.is_active) {
