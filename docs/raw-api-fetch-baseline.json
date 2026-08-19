@@ -20,7 +20,6 @@
     "client/src/hooks/useSubscription.ts:/api/subscriptions/checkout/session/__DYN__",
     "client/src/hooks/useSubscription.ts:/api/subscriptions/convert-trial",
     "client/src/hooks/useSubscription.ts:/api/subscriptions/create",
-    "client/src/hooks/useSubscription.ts:/api/subscriptions/current",
     "client/src/hooks/useSubscription.ts:/api/subscriptions/notifications",
     "client/src/hooks/useSubscription.ts:/api/subscriptions/notifications/__DYN__/dismiss",
     "client/src/hooks/useSubscription.ts:/api/subscriptions/plans",

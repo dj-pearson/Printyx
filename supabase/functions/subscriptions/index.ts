@@ -2,6 +2,7 @@
 // Handles subscription management for tenants
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { buildSubscriptionStatus } from '../_shared/subscription-status.ts';
 import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
@@ -437,6 +438,76 @@ export default async function handler(req: Request) {
           req,
         );
       }
+    }
+
+    // ========================================================================
+    // GET /subscriptions/current - the shape SubscriptionBanner reads
+    //
+    // PROD-004: this endpoint existed only on Express, and SubscriptionBanner is
+    // mounted in App.tsx — so on every page in production the banner asked for a
+    // plan/usage/trial state that nothing answered. The arithmetic (limit merge,
+    // overage test, day counts) comes from _shared/subscription-status.ts, which
+    // server/lib/subscription-status.ts mirrors, so both backends agree.
+    // ========================================================================
+    if (req.method === 'GET' && secondSegment === 'current') {
+      const { data: subscription, error } = await admin
+        .from('tenant_subscriptions')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .in('status', ['active', 'trialing', 'past_due'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching current subscription:', error);
+        return createCorsResponse(
+          { error: 'Failed to fetch subscription status', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      if (!subscription) {
+        // Same body Express returns, so the hook's `hasSubscription` check works
+        // identically against either backend.
+        return createCorsResponse(
+          { hasSubscription: false, message: 'No active subscription' },
+          200,
+          req,
+        );
+      }
+
+      const { data: plan, error: planError } = await admin
+        .from('subscription_plans')
+        .select('*')
+        .eq('id', subscription.plan_id)
+        .maybeSingle();
+
+      if (planError || !plan) {
+        console.error('Plan not found for subscription:', planError);
+        return createCorsResponse(
+          { error: 'Plan not found for subscription', code: 'PLAN_NOT_FOUND' },
+          500,
+          req,
+        );
+      }
+
+      const nowIso = new Date().toISOString();
+      const { data: usage } = await admin
+        .from('usage_metrics')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .lte('period_start', nowIso)
+        .gte('period_end', nowIso)
+        .limit(1)
+        .maybeSingle();
+
+      return createCorsResponse(
+        buildSubscriptionStatus(subscription, plan, usage, new Date()),
+        200,
+        req,
+      );
     }
 
     // ========================================================================

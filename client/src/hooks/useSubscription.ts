@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 
 /**
  * Subscription Hook
@@ -100,15 +101,12 @@ export function useSubscription() {
   return useQuery<SubscriptionStatus>({
     queryKey: ['subscription', 'current'],
     queryFn: async () => {
-      const response = await fetch('/api/subscriptions/current', {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch subscription');
-      }
-
-      return response.json();
+      // PROD-004: `current` is now implemented on the subscriptions edge
+      // function too, so this call goes through apiRequest and reaches the API
+      // in production. The other calls in this file are still bare fetches on
+      // purpose — the block above lists which paths the edge function does not
+      // implement, and converting those would break them in dev as well.
+      return apiRequest<SubscriptionStatus>('/api/subscriptions/current');
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
