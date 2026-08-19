@@ -226,6 +226,9 @@ export default async function handler(req: Request) {
         const offset =
           page > 0 ? (page - 1) * limit : parseInt(url.searchParams.get('offset') || '0');
 
+        // COP-M01: this list also asked for created_at. customer_service_requests
+        // has submitted_at (already selected, and what the ORDER BY uses) and no
+        // created_at, so the whole list 42703'd for one column nothing read.
         let query = admin
           .from('customer_service_requests')
           .select(
@@ -251,7 +254,6 @@ export default async function handler(req: Request) {
             completed_at,
             customer_rating,
             customer_feedback,
-            created_at,
             updated_at
           `,
             { count: 'exact' },

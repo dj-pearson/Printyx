@@ -129,6 +129,31 @@ function tableFor(froms: Array<{ index: number; table: string }>, index: number)
   return current;
 }
 
+/**
+ * Drop `relation ( … )` embeds from a select list, along with the relation name
+ * itself — those are PostgREST joins, not columns on this table.
+ */
+function stripEmbeds(list: string): string {
+  let out = '';
+  let depth = 0;
+  for (const ch of list) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    else if (depth === 0) out += ch;
+  }
+  // A relation name is whatever preceded the paren; it is left as a bare token,
+  // so drop any token that the original text followed with '('.
+  const embedded = new Set([...list.matchAll(/([a-z_][a-z0-9_]*)\s*\(/g)].map((m) => m[1]));
+  return (
+    out
+      .split(',')
+      // The alias comes first in `alias:relation(...)`, so resolve the token to
+      // the name that actually followed the paren before deciding.
+      .filter((token) => !embedded.has(token.trim().split(':').pop()?.trim() ?? ''))
+      .join(',')
+  );
+}
+
 function scan(source: string): Ref[] {
   const refs: Ref[] = [];
   const froms = [...source.matchAll(/\.from\(\s*'([a-z0-9_]+)'\s*\)/g)].map((m) => ({
@@ -158,10 +183,16 @@ function scan(source: string): Ref[] {
     }
   }
 
-  // .select('a, b, c') — skip '*' and embedded relations, which are not columns.
-  for (const m of source.matchAll(/\.select\(\s*'([^']+)'/g)) {
-    const list = m[1];
-    if (list.includes('*') || list.includes('(')) continue;
+  // .select('a, b, c') and .select(`a, b, roles ( … )`).
+  //
+  // Backtick selects were invisible in the first version of this check, and they
+  // are exactly where the long multi-line column lists live — /user/profile named
+  // six phantom columns inside one. Embedded relations are stripped rather than
+  // skipping the whole list, so the top-level columns around an embed still get
+  // checked. A '*' anywhere means the list is not an enumeration of columns.
+  for (const m of source.matchAll(/\.select\(\s*(['`])([^'`]+)\1/g)) {
+    const list = stripEmbeds(m[2]);
+    if (list.includes('*')) continue;
     for (const raw of list.split(',')) {
       const token = raw.trim().split(':').pop()?.trim() ?? '';
       if (token) push(m.index ?? 0, token, 'select');

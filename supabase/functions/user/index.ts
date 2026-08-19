@@ -2,6 +2,12 @@
 // Handles current user profile and preferences
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import {
+  buildUserProfileUpdate,
+  toUserProfile,
+  USER_PROFILE_COLUMNS,
+  type UserRow,
+} from '../_shared/user-profile.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -36,24 +42,16 @@ export default async function handler(req: Request) {
 
     // GET /user or /user/profile - Get current user profile
     if (req.method === 'GET' && (!endpoint || endpoint === 'profile')) {
+      // COP-M01: this list named name, avatar_url, phone, department, job_title,
+      // timezone and locale. `users` has none of them (first_name/last_name,
+      // profile_image_url, and a metadata jsonb for the rest), so the select
+      // 42703'd, the error branch below fired on every request, and the settings
+      // page rendered whatever the JWT happened to carry.
       const { data: profile, error } = await admin
         .from('users')
         .select(
           `
-          id,
-          email,
-          name,
-          avatar_url,
-          phone,
-          tenant_id,
-          role_id,
-          department,
-          job_title,
-          timezone,
-          locale,
-          last_login_at,
-          created_at,
-          updated_at,
+          ${USER_PROFILE_COLUMNS},
           roles (
             id,
             name,
@@ -83,10 +81,9 @@ export default async function handler(req: Request) {
       return createCorsResponse(
         {
           ...profile,
+          ...toUserProfile(profile as UserRow),
           tenantId: profile?.tenant_id,
           roleId: profile?.role_id,
-          avatarUrl: profile?.avatar_url,
-          jobTitle: profile?.job_title,
           lastLoginAt: profile?.last_login_at,
           createdAt: profile?.created_at,
           updatedAt: profile?.updated_at,
@@ -174,34 +171,37 @@ export default async function handler(req: Request) {
     if (req.method === 'PUT' && endpoint === 'profile') {
       const body = await req.json();
 
+      // Read the current metadata first: the profile fields that have no column
+      // live there, and a partial update must not wipe the ones it does not
+      // mention.
+      const { data: existing } = await admin
+        .from('users')
+        .select('metadata')
+        .eq('id', user.id)
+        .maybeSingle();
+
       const updateData: Record<string, any> = {
+        ...buildUserProfileUpdate(body, (existing?.metadata ?? null) as Record<string, unknown>),
         updated_at: new Date().toISOString(),
       };
-
-      // Only allow certain fields to be updated
-      if (body.name !== undefined) updateData.name = body.name;
-      if (body.phone !== undefined) updateData.phone = body.phone;
-      if (body.avatarUrl !== undefined) updateData.avatar_url = body.avatarUrl;
-      if (body.avatar_url !== undefined) updateData.avatar_url = body.avatar_url;
-      if (body.department !== undefined) updateData.department = body.department;
-      if (body.jobTitle !== undefined) updateData.job_title = body.jobTitle;
-      if (body.job_title !== undefined) updateData.job_title = body.job_title;
-      if (body.timezone !== undefined) updateData.timezone = body.timezone;
-      if (body.locale !== undefined) updateData.locale = body.locale;
 
       const { data: profile, error } = await admin
         .from('users')
         .update(updateData)
         .eq('id', user.id)
-        .select()
+        .select(USER_PROFILE_COLUMNS)
         .single();
 
       if (error) {
         console.error('Error updating user profile:', error);
-        return createCorsResponse({ error: 'Failed to update profile' }, 500, req);
+        return createCorsResponse(
+          { error: 'Failed to update profile', details: error.message },
+          500,
+          req,
+        );
       }
 
-      return createCorsResponse(profile, 200, req);
+      return createCorsResponse(toUserProfile(profile as UserRow), 200, req);
     }
 
     // PUT /user/preferences - Update user preferences
@@ -271,11 +271,12 @@ export default async function handler(req: Request) {
     // GET /user/settings - Get all user settings (combined profile + preferences)
     if (req.method === 'GET' && endpoint === 'settings') {
       // Get user profile
-      const { data: profile } = await admin
+      const { data: profileRow } = await admin
         .from('users')
-        .select('id, email, name, phone, department, job_title, timezone, avatar_url')
+        .select(USER_PROFILE_COLUMNS)
         .eq('id', user.id)
         .single();
+      const profile = toUserProfile(profileRow as UserRow);
 
       // Get user preferences/settings
       const { data: settings } = await admin
@@ -287,17 +288,17 @@ export default async function handler(req: Request) {
       // Combine into expected format
       const userSettings = {
         id: user.id,
-        firstName: profile?.name?.split(' ')[0] || '',
-        lastName: profile?.name?.split(' ').slice(1).join(' ') || '',
-        email: profile?.email || user.email,
-        phone: profile?.phone || '',
-        jobTitle: profile?.job_title || '',
-        department: profile?.department || '',
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        email: profile.email || user.email,
+        phone: profile.phone,
+        jobTitle: profile.jobTitle,
+        department: profile.department,
         bio: settings?.bio || '',
-        avatar: profile?.avatar_url || '',
+        avatar: profile.avatarUrl,
         theme: settings?.theme || 'system',
         language: settings?.language || 'en',
-        timezone: profile?.timezone || 'America/New_York',
+        timezone: profile.timezone || 'America/New_York',
         dateFormat: settings?.date_format || 'MM/dd/yyyy',
         timeFormat: settings?.time_format || '12',
         currency: settings?.currency || 'USD',
