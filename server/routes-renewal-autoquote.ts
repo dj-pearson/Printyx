@@ -49,20 +49,22 @@ const log = createModuleLogger('routes-renewal-autoquote');
 // Helpers
 // ---------------------------------------------------------------------------
 
-function num(v: unknown): number {
+export function num(v: unknown): number {
   if (v == null) return 0;
   const n = typeof v === 'number' ? v : parseFloat(String(v));
   return Number.isFinite(n) ? n : 0;
 }
 
-interface CpcTier {
+export interface CpcTier {
   minVolume: number;
   maxVolume: number | null;
   cpc: number;
 }
 
 /** Pick the CPC tier whose volume band contains `vol`; fall back to the highest. */
-function pickTier(tiers: CpcTier[], vol: number): CpcTier | null {
+// Exported so server/tests/unit/renewal-retier.test.ts can assert this and the
+// Deno copy in supabase/functions/_shared/renewal-retier.ts stay identical.
+export function pickTier(tiers: CpcTier[], vol: number): CpcTier | null {
   if (tiers.length === 0) return null;
   const sorted = [...tiers].sort((a, b) => a.minVolume - b.minVolume);
   for (const t of sorted) {

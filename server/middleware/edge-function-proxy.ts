@@ -333,6 +333,10 @@ export function registerEdgeFunctionProxy(app: any) {
     // them needs a handler in the edge function, not just the Express route.
     '/api/documents': 'documents',
 
+    // PROD-011: renewal-autoquote had no edge function, so the whole renewal
+    // dashboard 404'd in production. Dir name matches the URL segment.
+    '/api/renewal-autoquote': 'renewal-autoquote',
+
     // AUDIT-015: ai-search. REQUIRED, not defensive — without this entry dev 404s.
     //
     // Nothing in Express serves /api/ai-search/*. The legacy router
