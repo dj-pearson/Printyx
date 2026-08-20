@@ -442,7 +442,10 @@ export default async function handler(req: Request) {
           .order('created_at', { ascending: false }),
         admin
           .from('seo_keywords')
-          .select('keyword, current_position, previous_position, search_volume')
+          // seo_keywords has no previous_position column — rank history lives in
+          // seo_keyword_history — so naming it here nulled this whole query and
+          // the gain/loss counters below silently read 0.
+          .select('id, keyword, current_position, search_volume')
           .eq('tenant_id', tenantId)
           .limit(20),
         admin
@@ -479,18 +482,40 @@ export default async function handler(req: Request) {
           );
         }, 0) || 0;
 
-      // Calculate keyword performance
+      // Calculate keyword performance.
+      //
+      // The baseline is each keyword's EARLIEST recorded position inside the
+      // selected period, so a "gain" means the rank improved over that period
+      // rather than since some unspecified earlier reading.
+      const keywordIds = (keywords.data ?? []).map((k: any) => k.id).filter(Boolean);
+      const baselinePosition = new Map<string, number>();
+      if (keywordIds.length > 0) {
+        const { data: history } = await admin
+          .from('seo_keyword_history')
+          .select('keyword_id, position, recorded_at')
+          .in('keyword_id', keywordIds)
+          .gte('recorded_at', startDate.toISOString())
+          .order('recorded_at', { ascending: true });
+        for (const row of history ?? []) {
+          // Ascending by recorded_at, so the first row seen per keyword is the
+          // oldest one in the window.
+          if (!baselinePosition.has(row.keyword_id) && typeof row.position === 'number') {
+            baselinePosition.set(row.keyword_id, row.position);
+          }
+        }
+      }
+
       const keywordGains =
-        keywords.data?.filter(
-          (k) =>
-            k.current_position && k.previous_position && k.current_position < k.previous_position,
-        ).length || 0;
+        keywords.data?.filter((k: any) => {
+          const before = baselinePosition.get(k.id);
+          return k.current_position && before && k.current_position < before;
+        }).length || 0;
 
       const keywordLosses =
-        keywords.data?.filter(
-          (k) =>
-            k.current_position && k.previous_position && k.current_position > k.previous_position,
-        ).length || 0;
+        keywords.data?.filter((k: any) => {
+          const before = baselinePosition.get(k.id);
+          return k.current_position && before && k.current_position > before;
+        }).length || 0;
 
       // Calculate Core Web Vitals averages
       const mobileVitals = coreWebVitals.data?.filter((v) => v.device === 'mobile') || [];

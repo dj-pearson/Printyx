@@ -1766,7 +1766,9 @@ export default async function handler(req: Request) {
           .select('*')
           .eq('proposal_id', proposalId)
           .eq('tenant_id', ctx.tenantId)
-          .order('order_index', { ascending: true });
+          // The column is display_order; the write path two handlers down and
+          // loadProposalSections both already use it.
+          .order('display_order', { ascending: true });
         if (error) {
           return errorResponse(500, 'Failed to fetch sections', req, {
             code: 'DB_ERROR',

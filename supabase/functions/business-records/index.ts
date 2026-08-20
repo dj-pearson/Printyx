@@ -31,14 +31,16 @@ function mapCompanyToBusinessRecord(company: any): any {
     primary_contact_name: company.company_contacts?.[0]?.first_name
       ? `${company.company_contacts[0].first_name} ${company.company_contacts[0].last_name || ''}`.trim()
       : null,
-    primaryContactEmail: company.company_contacts?.[0]?.email || company.email,
-    primary_contact_email: company.company_contacts?.[0]?.email || company.email,
+    // No `|| company.email` fallback: companies has no email column. Email is a
+    // company_contacts field, which is where the write paths below put it.
+    primaryContactEmail: company.company_contacts?.[0]?.email ?? null,
+    primary_contact_email: company.company_contacts?.[0]?.email ?? null,
     primaryContactPhone: company.company_contacts?.[0]?.phone || company.phone,
     primary_contact_phone: company.company_contacts?.[0]?.phone || company.phone,
     contactName: company.company_contacts?.[0]?.first_name
       ? `${company.company_contacts[0].first_name} ${company.company_contacts[0].last_name || ''}`.trim()
       : null,
-    email: company.email,
+    email: company.company_contacts?.[0]?.email ?? null,
     phone: company.phone,
     city: company.billing_city,
     state: company.billing_state,
@@ -283,9 +285,30 @@ export default async function handler(req: Request) {
         }
 
         if (search) {
-          query = query.or(
-            `business_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,customer_number.ilike.%${search}%,industry.ilike.%${search}%,billing_city.ilike.%${search}%`,
-          );
+          // `companies` has no email column, so naming it here made EVERY search
+          // a 42703. Email lives on company_contacts and is searched by
+          // resolving matching contacts to their company ids first.
+          const safe = search.replace(/[,()]/g, ' ');
+          const clauses = [
+            `business_name.ilike.%${safe}%`,
+            `phone.ilike.%${safe}%`,
+            `customer_number.ilike.%${safe}%`,
+            `industry.ilike.%${safe}%`,
+            `billing_city.ilike.%${safe}%`,
+          ];
+          const { data: contactMatches } = await admin
+            .from('company_contacts')
+            .select('company_id')
+            .eq('tenant_id', tenantId)
+            .ilike('email', `%${safe}%`)
+            .limit(200);
+          const companyIds = [
+            ...new Set((contactMatches ?? []).map((c: any) => c.company_id).filter(Boolean)),
+          ];
+          if (companyIds.length > 0) {
+            clauses.push(`id.in.(${companyIds.join(',')})`);
+          }
+          query = query.or(clauses.join(','));
         }
 
         query = query.range(offset, offset + limit - 1);
@@ -381,7 +404,8 @@ export default async function handler(req: Request) {
         tenant_id: tenantId,
         business_name: body.companyName || body.company_name || body.name || body.businessName,
         phone: body.phone,
-        email: body.email || body.primaryContactEmail || body.primary_contact_email,
+        // No email here: companies has no email column, and setting it made
+        // EVERY create a 42703. The address below carries it to the contact row.
         website: body.website,
         billing_address:
           body.address || body.addressLine1 || body.address_line1 || body.billing_address,
@@ -419,15 +443,23 @@ export default async function handler(req: Request) {
         body.primary_contact_name?.split(' ').slice(1).join(' ') ||
         body.contactName?.split(' ').slice(1).join(' ');
 
-      if (contactFirstName) {
+      const contactEmail =
+        body.email || body.primaryContactEmail || body.primary_contact_email || body.contactEmail;
+      const contactPhone =
+        body.primaryContactPhone || body.primary_contact_phone || body.contactPhone;
+
+      // Also insert when only an email came in: companies cannot hold one, so
+      // without a contact row the submitted email would be dropped silently.
+      if (contactFirstName || contactEmail) {
         await admin.from('company_contacts').insert({
           tenant_id: tenantId,
           company_id: company.id,
-          first_name: contactFirstName,
+          first_name: contactFirstName ?? null,
           last_name: contactLastName || '',
-          email: body.primaryContactEmail || body.primary_contact_email || body.contactEmail,
-          phone: body.primaryContactPhone || body.primary_contact_phone || body.contactPhone,
-          is_primary: true,
+          email: contactEmail,
+          phone: contactPhone,
+          // The column is is_primary_contact; is_primary does not exist.
+          is_primary_contact: true,
           created_at: new Date().toISOString(),
         });
       }
@@ -469,7 +501,9 @@ export default async function handler(req: Request) {
         updateData.business_name = body.companyName || body.company_name || body.name;
       }
       if (body.phone) updateData.phone = body.phone;
-      if (body.email) updateData.email = body.email;
+      // body.email is deliberately NOT put on updateData: companies has no email
+      // column, so this took the whole update down. It is applied to the primary
+      // contact after the company update succeeds.
       if (body.website) updateData.website = body.website;
       if (body.industry) updateData.industry = body.industry;
       if (body.status || body.lead_status) updateData.activity = body.status || body.lead_status;
@@ -496,6 +530,35 @@ export default async function handler(req: Request) {
       if (error) {
         console.error('Error updating company (via business-records):', error);
         return createCorsResponse({ error: 'Failed to update record' }, 500, req);
+      }
+
+      const newEmail = body.email || body.primaryContactEmail || body.primary_contact_email;
+      if (newEmail) {
+        const { data: primaryContact } = await admin
+          .from('company_contacts')
+          .select('id')
+          .eq('company_id', recordId)
+          .eq('tenant_id', tenantId)
+          .order('is_primary_contact', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (primaryContact?.id) {
+          await admin
+            .from('company_contacts')
+            .update({ email: newEmail, updated_at: new Date().toISOString() })
+            .eq('id', primaryContact.id)
+            .eq('tenant_id', tenantId);
+        } else {
+          await admin.from('company_contacts').insert({
+            tenant_id: tenantId,
+            company_id: recordId,
+            last_name: '',
+            email: newEmail,
+            is_primary_contact: true,
+            created_at: new Date().toISOString(),
+          });
+        }
       }
 
       return createCorsResponse(mapCompanyToBusinessRecord(updated), 200, req);

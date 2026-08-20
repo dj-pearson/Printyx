@@ -162,8 +162,11 @@ export default async function handler(req: Request) {
       if (isActive !== null && isActive !== undefined) {
         // Check if any tier is active
         if (isActive === 'true') {
+          // The tiers on product_models are new / upgrade / lexmark. There are no
+          // refurb, demo or rental columns, so the old filter 42703'd and the
+          // "active only" catalog view returned an error instead of products.
           query = query.or(
-            'new_active.eq.true,refurb_active.eq.true,demo_active.eq.true,rental_active.eq.true',
+            'new_active.eq.true,upgrade_active.eq.true,lexmark_active.eq.true,is_active.eq.true',
           );
         }
       }
@@ -226,6 +229,20 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && resource === 'models') {
       const body = await req.json();
 
+      // product_models carries THREE pricing tiers — new / upgrade / lexmark —
+      // and this handler was written against a different set (new / refurb /
+      // demo / rental). Only refurb_active, demo_active and rental_active were
+      // visible to check:phantom-cols, because the payload is a named variable;
+      // the whole refurb_*, demo_* and rental_* families are equally absent, so
+      // every create here was a 42703. They are reported rather than guessed
+      // onto upgrade_*/lexmark_*, which mean something else.
+      const PHANTOM_TIER_PREFIXES = ['refurb', 'demo', 'rental'];
+      const unpersisted = PHANTOM_TIER_PREFIXES.filter((tier) =>
+        Object.keys(body).some((k) => k.toLowerCase().startsWith(tier)),
+      ).map(
+        (tier) => `${tier}*: product_models has no ${tier} tier (tiers are new/upgrade/lexmark)`,
+      );
+
       const modelData = {
         tenant_id: tenantId,
         product_code: body.productCode || body.product_code,
@@ -250,39 +267,37 @@ export default async function handler(req: Request) {
         new_rep_markup_percentage:
           body.newRepMarkupPercentage || body.new_rep_markup_percentage || null,
         new_rep_cost: body.newRepCost || body.new_rep_cost || null,
+        new_rep_price: body.newRepPrice || body.new_rep_price || null,
         new_suggested_retail: body.newSuggestedRetail || body.new_suggested_retail || null,
-        // Refurb tier
-        refurb_active:
-          body.refurbActive !== undefined
-            ? body.refurbActive
-            : body.refurb_active !== undefined
-              ? body.refurb_active
+        // Upgrade tier
+        upgrade_active:
+          body.upgradeActive !== undefined
+            ? body.upgradeActive
+            : body.upgrade_active !== undefined
+              ? body.upgrade_active
               : false,
-        refurb_dealer_cost: body.refurbDealerCost || body.refurb_dealer_cost || null,
-        refurb_rep_markup_percentage:
-          body.refurbRepMarkupPercentage || body.refurb_rep_markup_percentage || null,
-        refurb_rep_cost: body.refurbRepCost || body.refurb_rep_cost || null,
-        refurb_suggested_retail: body.refurbSuggestedRetail || body.refurb_suggested_retail || null,
-        // Demo tier
-        demo_active:
-          body.demoActive !== undefined
-            ? body.demoActive
-            : body.demo_active !== undefined
-              ? body.demo_active
+        upgrade_dealer_cost: body.upgradeDealerCost || body.upgrade_dealer_cost || null,
+        upgrade_rep_markup_percentage:
+          body.upgradeRepMarkupPercentage || body.upgrade_rep_markup_percentage || null,
+        upgrade_rep_cost: body.upgradeRepCost || body.upgrade_rep_cost || null,
+        upgrade_rep_price: body.upgradeRepPrice || body.upgrade_rep_price || null,
+        upgrade_suggested_retail:
+          body.upgradeSuggestedRetail || body.upgrade_suggested_retail || null,
+        // Lexmark tier
+        lexmark_active:
+          body.lexmarkActive !== undefined
+            ? body.lexmarkActive
+            : body.lexmark_active !== undefined
+              ? body.lexmark_active
               : false,
-        demo_dealer_cost: body.demoDealerCost || body.demo_dealer_cost || null,
-        demo_rep_markup_percentage:
-          body.demoRepMarkupPercentage || body.demo_rep_markup_percentage || null,
-        demo_rep_cost: body.demoRepCost || body.demo_rep_cost || null,
-        demo_suggested_retail: body.demoSuggestedRetail || body.demo_suggested_retail || null,
-        // Rental tier
-        rental_active:
-          body.rentalActive !== undefined
-            ? body.rentalActive
-            : body.rental_active !== undefined
-              ? body.rental_active
-              : false,
-        rental_monthly_rate: body.rentalMonthlyRate || body.rental_monthly_rate || null,
+        lexmark_dealer_cost: body.lexmarkDealerCost || body.lexmark_dealer_cost || null,
+        lexmark_rep_markup_percentage:
+          body.lexmarkRepMarkupPercentage || body.lexmark_rep_markup_percentage || null,
+        lexmark_rep_cost: body.lexmarkRepCost || body.lexmark_rep_cost || null,
+        lexmark_rep_price: body.lexmarkRepPrice || body.lexmark_rep_price || null,
+        lexmark_suggested_retail:
+          body.lexmarkSuggestedRetail || body.lexmark_suggested_retail || null,
+        is_active: body.isActive !== undefined ? body.isActive : true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -302,7 +317,11 @@ export default async function handler(req: Request) {
         );
       }
 
-      return createCorsResponse(model, 201, req);
+      return createCorsResponse(
+        unpersisted.length > 0 ? { ...model, unpersisted } : model,
+        201,
+        req,
+      );
     }
 
     // PATCH /catalog/models/:id - Update product model
@@ -330,19 +349,24 @@ export default async function handler(req: Request) {
         newDealerCost: 'new_dealer_cost',
         newRepMarkupPercentage: 'new_rep_markup_percentage',
         newRepCost: 'new_rep_cost',
+        newRepPrice: 'new_rep_price',
         newSuggestedRetail: 'new_suggested_retail',
-        refurbActive: 'refurb_active',
-        refurbDealerCost: 'refurb_dealer_cost',
-        refurbRepMarkupPercentage: 'refurb_rep_markup_percentage',
-        refurbRepCost: 'refurb_rep_cost',
-        refurbSuggestedRetail: 'refurb_suggested_retail',
-        demoActive: 'demo_active',
-        demoDealerCost: 'demo_dealer_cost',
-        demoRepMarkupPercentage: 'demo_rep_markup_percentage',
-        demoRepCost: 'demo_rep_cost',
-        demoSuggestedRetail: 'demo_suggested_retail',
-        rentalActive: 'rental_active',
-        rentalMonthlyRate: 'rental_monthly_rate',
+        // Same three tiers as the create above: new / upgrade / lexmark. The
+        // refurb, demo and rental entries that used to be here named no columns,
+        // so any edit touching one took the whole update down with a 42703.
+        upgradeActive: 'upgrade_active',
+        upgradeDealerCost: 'upgrade_dealer_cost',
+        upgradeRepMarkupPercentage: 'upgrade_rep_markup_percentage',
+        upgradeRepCost: 'upgrade_rep_cost',
+        upgradeRepPrice: 'upgrade_rep_price',
+        upgradeSuggestedRetail: 'upgrade_suggested_retail',
+        lexmarkActive: 'lexmark_active',
+        lexmarkDealerCost: 'lexmark_dealer_cost',
+        lexmarkRepMarkupPercentage: 'lexmark_rep_markup_percentage',
+        lexmarkRepCost: 'lexmark_rep_cost',
+        lexmarkRepPrice: 'lexmark_rep_price',
+        lexmarkSuggestedRetail: 'lexmark_suggested_retail',
+        isActive: 'is_active',
       };
 
       for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {

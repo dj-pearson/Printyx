@@ -94,7 +94,9 @@ export default async function handler(req: Request) {
       }
       if (category && category !== 'all') query = query.eq('category', category);
       if (manufacturer && manufacturer !== 'all') query = query.eq('manufacturer', manufacturer);
-      if (status && status !== 'all') query = query.eq('status', status);
+      // product_models has no `status` column — availability is the boolean
+      // is_active — so filtering on status 42703'd the whole list.
+      if (status && status !== 'all') query = query.eq('is_active', status === 'active');
 
       let page = 1;
       let limit = 50;

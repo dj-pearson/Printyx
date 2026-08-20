@@ -107,9 +107,28 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(
-          `business_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,customer_number.ilike.%${search}%`,
-        );
+        // `companies` has no email column — email lives on company_contacts — so
+        // naming it here made EVERY customer search a 42703. Email search is kept
+        // by resolving matching contacts to their company ids first.
+        const safe = search.replace(/[,()]/g, ' ');
+        const clauses = [
+          `business_name.ilike.%${safe}%`,
+          `phone.ilike.%${safe}%`,
+          `customer_number.ilike.%${safe}%`,
+        ];
+        const { data: contactMatches } = await admin
+          .from('company_contacts')
+          .select('company_id')
+          .eq('tenant_id', tenantId)
+          .ilike('email', `%${safe}%`)
+          .limit(200);
+        const companyIds = [
+          ...new Set((contactMatches ?? []).map((c: any) => c.company_id).filter(Boolean)),
+        ];
+        if (companyIds.length > 0) {
+          clauses.push(`id.in.(${companyIds.join(',')})`);
+        }
+        query = query.or(clauses.join(','));
       }
 
       const { data: companies, error, count } = await query;
@@ -132,7 +151,8 @@ export default async function handler(req: Request) {
           primaryContactName: contactData.first_name
             ? `${contactData.first_name} ${contactData.last_name || ''}`.trim()
             : null,
-          primaryContactEmail: contactData.email || company.email,
+          // No `|| company.email` fallback: companies has no email column.
+          primaryContactEmail: contactData.email ?? null,
           primaryContactPhone: contactData.phone || company.phone,
           city: company.billing_city,
           state: company.billing_state,
@@ -186,7 +206,8 @@ export default async function handler(req: Request) {
         primaryContactName: contactData.first_name
           ? `${contactData.first_name} ${contactData.last_name || ''}`.trim()
           : null,
-        primaryContactEmail: contactData.email || company.email,
+        // No `|| company.email` fallback: companies has no email column.
+        primaryContactEmail: contactData.email ?? null,
         primaryContactPhone: contactData.phone || company.phone,
         city: company.billing_city,
         state: company.billing_state,

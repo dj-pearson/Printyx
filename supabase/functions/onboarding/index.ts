@@ -110,13 +110,14 @@ export default async function handler(req: Request) {
           .select('*')
           .eq('checklist_id', checklistId)
           .eq('tenant_id', tenantId)
-          .order('order_index', { ascending: true }),
+          .order('section_order', { ascending: true }),
         admin
           .from('onboarding_tasks')
           .select('*')
           .eq('checklist_id', checklistId)
           .eq('tenant_id', tenantId)
-          .order('task_order', { ascending: true }),
+          .order('section_id', { ascending: true })
+          .order('priority', { ascending: true }),
       ]);
 
       if (checklist.error) {
@@ -159,7 +160,7 @@ export default async function handler(req: Request) {
         .select('*')
         .eq('checklist_id', checklistId)
         .eq('tenant_id', tenantId)
-        .order('order_index', { ascending: true });
+        .order('section_order', { ascending: true });
 
       if (error) {
         console.error('Error fetching sections:', error);
@@ -176,7 +177,8 @@ export default async function handler(req: Request) {
         .select('*')
         .eq('checklist_id', checklistId)
         .eq('tenant_id', tenantId)
-        .order('task_order', { ascending: true });
+        .order('section_id', { ascending: true })
+        .order('priority', { ascending: true });
 
       if (error) {
         console.error('Error fetching tasks:', error);
@@ -260,12 +262,14 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && checklistId && subResource === 'sections') {
       const body = await req.json();
 
+      // Real columns: section_order, section_description. There is no
+      // order_index and no section_content, so this insert always 42703'd.
       const sectionData = {
         tenant_id: tenantId,
         checklist_id: checklistId,
         section_title: body.sectionTitle || body.section_title,
-        section_content: body.sectionContent || body.section_content || null,
-        order_index: body.orderIndex || body.order_index || 0,
+        section_description: body.sectionContent || body.section_content || null,
+        section_order: body.orderIndex || body.order_index || 0,
       };
 
       const { data: section, error } = await admin
@@ -286,14 +290,17 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && checklistId && subResource === 'tasks') {
       const body = await req.json();
 
+      // onboarding_tasks has no ordering column of its own — it sequences by
+      // section_id then priority — and completion is the `status` string, not an
+      // is_completed flag with a completed_by. All four of those names were
+      // 42703s. taskOrder is reported below rather than dropped silently.
       const taskData = {
         tenant_id: tenantId,
         checklist_id: checklistId,
         task_title: body.taskTitle || body.task_title,
         task_description: body.taskDescription || body.task_description || null,
-        task_order: body.taskOrder || body.task_order || 0,
-        is_completed: false,
-        completed_by: null,
+        priority: body.priority || 'medium',
+        status: 'pending',
         completed_at: null,
       };
 
@@ -308,7 +315,12 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to add task' }, 500, req);
       }
 
-      return createCorsResponse(task, 201, req);
+      const unpersisted =
+        body.taskOrder !== undefined || body.task_order !== undefined
+          ? ['taskOrder: onboarding_tasks sequences by section_id + priority, not an order column']
+          : [];
+
+      return createCorsResponse(unpersisted.length > 0 ? { ...task, unpersisted } : task, 201, req);
     }
 
     // PATCH /onboarding/:id - Update checklist
