@@ -33,7 +33,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 import type {
   CompanyPricingSettings,
@@ -88,7 +88,7 @@ export default function PricingManagement() {
     queryKey: ['/api/pricing/products'],
     queryFn: async () => {
       const response = await apiRequest('/api/pricing/products', 'GET');
-      return (response || []).map((pricing: any) => ({
+      return extractRecords(response).map((pricing: any) => ({
         ...pricing,
         id: pricing.id,
         productId: pricing.product_id || pricing.productId || '',
@@ -104,7 +104,7 @@ export default function PricingManagement() {
     queryKey: ['/api/products/all'],
     queryFn: async () => {
       const response = await apiRequest('/api/products/all', 'GET');
-      return (response || []).map((product: any) => ({
+      return extractRecords(response).map((product: any) => ({
         ...product,
         id: product.id,
         productName: product.product_name || product.productName || '',

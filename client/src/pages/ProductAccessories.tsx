@@ -40,7 +40,7 @@ import {
   type InsertProductAccessory,
   type ProductModel,
 } from '@shared/schema';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 
@@ -58,7 +58,7 @@ export default function ProductAccessories() {
     queryKey: ['/api/product-accessories'],
     queryFn: async () => {
       const response = await apiRequest('/api/product-accessories', 'GET');
-      return (response || []).map((accessory: any) => ({
+      return extractRecords(response).map((accessory: any) => ({
         ...accessory,
         id: accessory.id,
         accessoryName: accessory.accessory_name || accessory.accessoryName || '',
@@ -72,7 +72,7 @@ export default function ProductAccessories() {
     queryKey: ['/api/product-models'],
     queryFn: async () => {
       const response = await apiRequest('/api/product-models', 'GET');
-      return (response || []).map((model: any) => ({
+      return extractRecords(response).map((model: any) => ({
         ...model,
         id: model.id,
         modelNumber: model.model_number || model.modelNumber || '',

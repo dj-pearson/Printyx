@@ -143,7 +143,7 @@ export default function MeterReadings() {
       const response = await apiRequest(path, 'GET');
       // The Express route returns raw snake_case rows (SELECT *); normalize to the
       // camelCase Drizzle column names the page renders against.
-      return (response || []).map((reading: any) => ({
+      return extractRecords(response).map((reading: any) => ({
         ...reading,
         id: reading.id,
         equipmentId: reading.equipment_id ?? reading.equipmentId ?? '',
@@ -165,7 +165,7 @@ export default function MeterReadings() {
     queryKey: ['/api/equipment'],
     queryFn: async () => {
       const response = await apiRequest('/api/equipment', 'GET');
-      return (response || []).map((equip: any) => ({
+      return extractRecords(response).map((equip: any) => ({
         ...equip,
         id: equip.id,
         serialNumber: equip.serial_number ?? equip.serialNumber ?? '',

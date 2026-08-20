@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { type ServiceTicket } from '@shared/schema';
 import {
   Select,
@@ -100,7 +100,7 @@ export default function ServiceHub() {
     enabled: isAuthenticated,
     queryFn: async () => {
       const response = await apiRequest('/api/service-tickets', 'GET');
-      return (response || []).map((t: any) => ({
+      return extractRecords(response).map((t: any) => ({
         ...t,
         id: t.id,
         ticketNumber: t.ticket_number || t.ticketNumber || '',
@@ -125,7 +125,7 @@ export default function ServiceHub() {
     enabled: isAuthenticated,
     queryFn: async () => {
       const response = await apiRequest('/api/phone-in-tickets', 'GET');
-      return (response || []).map((t: any) => ({
+      return extractRecords(response).map((t: any) => ({
         ...t,
         id: t.id,
         callerName: t.caller_name || t.callerName || '',

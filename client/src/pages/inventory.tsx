@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,7 +65,7 @@ export default function Inventory() {
     queryKey: ['/api/inventory'],
     queryFn: async () => {
       const response = await apiRequest('/api/inventory', 'GET');
-      return (response || []).map((item: any) => ({
+      return extractRecords(response).map((item: any) => ({
         ...item,
         id: item.id,
         createdAt: item.createdAt || item.createdAt || '',
@@ -106,7 +106,9 @@ export default function Inventory() {
       // Search filter
       const term = searchTerm.trim().toLowerCase();
       const matchesSearch =
-        !term || item.name?.toLowerCase().includes(term) || item.partNumber?.toLowerCase().includes(term);
+        !term ||
+        item.name?.toLowerCase().includes(term) ||
+        item.partNumber?.toLowerCase().includes(term);
 
       // Stock status filter
       const itemStockStatus = getStockStatus(item.quantityOnHand, item.reorderPoint);
@@ -372,7 +374,9 @@ export default function Inventory() {
                           <p className="text-xs text-gray-500 uppercase tracking-wide">
                             Current Stock
                           </p>
-                          <p className="text-lg font-semibold text-gray-900">{item.quantityOnHand}</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {item.quantityOnHand}
+                          </p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide">Unit Cost</p>

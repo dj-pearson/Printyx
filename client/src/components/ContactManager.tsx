@@ -65,7 +65,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 
 interface Contact {
   id: string;
@@ -124,7 +124,7 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
     queryFn: async () => {
       const response = await apiRequest(`/api/companies/${companyId}/contacts`, 'GET');
       // Transform snake_case API response to camelCase for component
-      return (response || []).map((c: any) => ({
+      return extractRecords(response).map((c: any) => ({
         id: c.id,
         firstName: c.firstName || '',
         lastName: c.lastName || '',

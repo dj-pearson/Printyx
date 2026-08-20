@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { Link } from 'wouter';
 import {
   BookOpen,
@@ -51,7 +51,7 @@ export default function KnowledgeBase() {
     queryKey: ['/api/knowledge-base/categories'],
     queryFn: async () => {
       const response = await apiRequest('/api/knowledge-base/categories', 'GET');
-      return (response || []).map((category: any) => ({
+      return extractRecords(response).map((category: any) => ({
         ...category,
         id: category.id,
         categoryName: category.category_name || category.categoryName || '',

@@ -37,7 +37,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 import MainLayout from '@/components/layout/main-layout';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -151,7 +151,7 @@ export default function PurchaseOrders() {
       }
       const path = `/api/purchase-orders${params.toString() ? `?${params.toString()}` : ''}`;
       const response = await apiRequest(path, 'GET');
-      return (response || []).map((po: any) => ({
+      return extractRecords(response).map((po: any) => ({
         ...po,
         id: po.id,
         poNumber: po.po_number || po.poNumber || '',
@@ -170,7 +170,7 @@ export default function PurchaseOrders() {
     queryKey: ['/api/vendors'],
     queryFn: async () => {
       const response = await apiRequest('/api/vendors', 'GET');
-      return (response || []).map((vendor: any) => ({
+      return extractRecords(response).map((vendor: any) => ({
         ...vendor,
         id: vendor.id,
         vendorName: vendor.vendor_name || vendor.vendorName || '',

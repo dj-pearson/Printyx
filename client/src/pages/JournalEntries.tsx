@@ -34,7 +34,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import type { JournalEntry } from '@shared/schema';
 
 // Form schema for journal entries
@@ -69,7 +69,7 @@ export default function JournalEntries() {
     queryKey: ['/api/journal-entries'],
     queryFn: async () => {
       const response = await apiRequest('/api/journal-entries', 'GET');
-      return (response || []).map((entry: any) => ({
+      return extractRecords(response).map((entry: any) => ({
         ...entry,
         id: entry.id,
         entryNumber: entry.entry_number || entry.entryNumber || '',

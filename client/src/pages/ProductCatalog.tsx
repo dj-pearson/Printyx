@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest, apiFormRequest } from '@/lib/queryClient';
+import { apiRequest, apiFormRequest, extractRecords } from '@/lib/queryClient';
 import {
   Search,
   Package,
@@ -109,7 +109,7 @@ export default function ProductCatalog() {
     queryKey: ['/api/enabled-products'],
     queryFn: async () => {
       const response = await apiRequest('/api/enabled-products');
-      return (response || []).map((product: any) => ({
+      return extractRecords(response).map((product: any) => ({
         ...product,
         id: product.id,
         masterProductId: product.master_product_id || product.masterProductId || '',

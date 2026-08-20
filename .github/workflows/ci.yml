@@ -63,6 +63,8 @@ jobs:
         run: npm run check:identical-fallback
       - name: Shadowed-Express ratchet (PROD-008)
         run: npm run check:shadowed-express
+      - name: Unwrapped API response (hard gate, PROD-008)
+        run: npm run check:unwrapped-response
       - name: Edge path-normalization ratchet (EDGE-002e)
         run: npm run check:edge-paths
 

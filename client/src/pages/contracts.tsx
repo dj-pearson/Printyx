@@ -105,7 +105,7 @@ export default function Contracts() {
       params.append('status', 'accepted');
       params.append('limit', '50');
       const response = await apiRequest(`/api/quotes?${params.toString()}`);
-      return (response || []).map((quote: any) => ({
+      return extractRecords(response).map((quote: any) => ({
         ...quote,
         id: quote.id,
         quoteNumber: quote.quoteNumber || '',
