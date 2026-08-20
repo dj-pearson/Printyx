@@ -40,9 +40,13 @@ const baselinePath = join(repo, 'docs', 'permission-vocabulary-baseline.json');
 const update = process.argv.includes('--update-baseline');
 const list = process.argv.includes('--list');
 const triage = process.argv.includes('--triage');
+const vocab = process.argv.includes('--vocabularies');
 
 const HELPER = 'server/middleware/rbac-route-helper.ts';
 const SEEDER = 'server/database-updater/seeders/rbac-seeder.ts';
+// The seeder rbac-initializer.ts runs for a NEW TENANT. It is not the one
+// `npm run seed:rbac` invokes, and it uses a third vocabulary again.
+const TENANT_SEEDER = 'server/enhanced-rbac-seeder.ts';
 
 /** Permission codes the seeder actually creates in the `permissions` table. */
 function seededCodes() {
@@ -118,6 +122,33 @@ const key = (f) => `${f.route} (${f.file})`;
  * frontend call it? The answer decides how urgent the fix is, and it is not
  * what you would guess. See the block printed at the end.
  */
+/**
+ * --vocabularies: the three permission namespaces and how little they overlap.
+ * This is the root cause of every unsatisfiable gate, and it is derivable from
+ * the repo alone - no database needed.
+ */
+if (vocab) {
+  const codes = (file, re) =>
+    new Set([...readFileSync(join(repo, file), 'utf8').matchAll(re)].map((m) => m[1]));
+  const gates = codes(HELPER, /[A-Z_]+:\s*['"]([a-z_]+\.[a-z_.]+)['"]/g);
+  const seedCmd = codes(SEEDER, /code: ['"]([a-z_]+\.[a-z_.]+)['"]/g);
+  const tenantInit = codes(TENANT_SEEDER, /code: ['"]([a-z_.]+)['"]/g);
+  const shared = (a, b) => [...a].filter((x) => b.has(x)).length;
+
+  console.log('Permission vocabularies:');
+  console.log(`  route gates       ${String(gates.size).padStart(4)}  ${HELPER}`);
+  console.log(`  npm run seed:rbac ${String(seedCmd.size).padStart(4)}  ${SEEDER}`);
+  console.log(`  new-tenant init   ${String(tenantInit.size).padStart(4)}  ${TENANT_SEEDER}`);
+  console.log('');
+  console.log(`  gates that seed:rbac can satisfy:      ${shared(gates, seedCmd)}`);
+  console.log(`  gates that new-tenant init satisfies:  ${shared(gates, tenantInit)}`);
+  console.log(`  overlap between the two seeders:       ${shared(seedCmd, tenantInit)}`);
+  console.log('');
+  console.log('  rbac-initializer.ts is what runs for a new tenant, so that last');
+  console.log('  column is the one a real customer gets.');
+  process.exit(0);
+}
+
 if (triage) {
   const proxySrc = readFileSync(join(repo, 'server/middleware/edge-function-proxy.ts'), 'utf8');
   const block = proxySrc.slice(
