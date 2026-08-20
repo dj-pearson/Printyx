@@ -61,6 +61,8 @@ jobs:
         run: npm run check:phantom-cols
       - name: Identical-fallback ratchet (AUDIT-011)
         run: npm run check:identical-fallback
+      - name: Shadowed-Express ratchet (PROD-008)
+        run: npm run check:shadowed-express
       - name: Edge path-normalization ratchet (EDGE-002e)
         run: npm run check:edge-paths
 

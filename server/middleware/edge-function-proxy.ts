@@ -478,6 +478,24 @@ export function registerEdgeFunctionProxy(app: any) {
     // DELETE), so the Express pair is retired and this makes dev match prod.
     '/api/contracts': 'contracts',
 
+    // PROD-008: leases. The edge fn was already the canonical implementation -
+    // its header says so, and AUDIT-012 added the server.ts aliases that make
+    // the three sibling prefixes resolve in prod - but nothing ever proxied dev
+    // or retired server/routes/lease-routes.ts, so dev kept running the 28
+    // Express endpoints. Leases.tsx did `(response || []).map(...)` against the
+    // edge fn's { data, total, page, limit }, which is a TypeError, so the page
+    // threw on load in production.
+    //
+    // The three siblings need the object form: the mount strips their prefix,
+    // but server.ts aliases them with stripSegments = 0 because that segment is
+    // the leases dispatcher's discriminator, so pathPrefix has to put it back.
+    // ('/api/lease-payments' is NOT repeated here - SUPA-011 already added it
+    // above. A duplicate key is silently last-wins at runtime; tsc caught it
+    // with TS1117, which is the only reason it did not ship.)
+    '/api/leases': 'leases',
+    '/api/lease-renewals': { fn: 'leases', pathPrefix: '/lease-renewals' },
+    '/api/lease-dispositions': { fn: 'leases', pathPrefix: '/lease-dispositions' },
+
     // EDGE-005a: accounts-payable / accounts-receivable. The frontend calls the
     // FLAT /api/accounts-{payable,receivable}[/:id] shape (list/create at root,
     // get/update/delete on /:id). The edge handlers were rewritten to serve that

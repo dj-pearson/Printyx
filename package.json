@@ -26,6 +26,7 @@
     "check:dup-tables": "node scripts/check-duplicate-tables.mjs",
     "check:phantom-cols": "tsx scripts/check-phantom-columns.ts",
     "check:identical-fallback": "node scripts/check-identical-fallback.mjs",
+    "check:shadowed-express": "node scripts/check-shadowed-express.mjs",
     "check:edge-paths": "node scripts/check-edge-path-normalization.mjs",
     "check:edge-coverage": "node scripts/check-edge-path-coverage.mjs",
     "check:proxy-overrides": "node scripts/check-proxy-overrides.mjs",

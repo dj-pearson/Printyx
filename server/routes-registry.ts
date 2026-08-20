@@ -544,7 +544,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     './routes/ai-documentation-routes',
     './routes/ai-search-knowledge-routes',
     './routes/ai-employee-routes',
-    './routes/lease-routes',
     './routes/signature-routes',
     './routes/field-service-routes',
     './routes/email-marketing-routes',

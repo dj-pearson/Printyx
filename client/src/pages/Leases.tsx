@@ -25,7 +25,7 @@ import {
   Clock,
 } from 'lucide-react';
 import MainLayout from '@/components/layout/main-layout';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 
 type Lease = {
   id: string;
@@ -52,7 +52,10 @@ export default function Leases() {
     queryKey: ['/api/leases'],
     queryFn: async () => {
       const response = await apiRequest('/api/leases', 'GET');
-      return (response || []).map((lease: any) => ({
+      // extractRecords, not `(response || []).map`: the leases edge function
+      // returns { data, total, page, limit }, and .map on that object is a
+      // TypeError that took the whole page down in production.
+      return extractRecords(response).map((lease: any) => ({
         ...lease,
         id: lease.id,
         leaseNumber: lease.lease_number || lease.leaseNumber || '',
