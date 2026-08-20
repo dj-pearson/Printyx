@@ -260,9 +260,9 @@ export default function ProposalBuilder() {
       return extractRecords(response).map((proposal: any) => ({
         ...proposal,
         id: proposal.id,
-        quoteNumber: proposal.quoteNumber || proposal.quoteNumber || '',
+        quoteNumber: proposal.quote_number || proposal.quoteNumber || '',
         businessRecordId: proposal.business_record_id || proposal.businessRecordId || '',
-        createdAt: proposal.createdAt || proposal.createdAt || '',
+        createdAt: proposal.created_at || proposal.createdAt || '',
       }));
     },
     enabled: true,
@@ -276,7 +276,7 @@ export default function ProposalBuilder() {
       return extractRecords(response).map((record: any) => ({
         ...record,
         id: record.id,
-        businessName: record.businessName || record.businessName || '',
+        businessName: record.business_name || record.businessName || '',
         businessRecordType: record.business_record_type || record.businessRecordType || '',
       }));
     },

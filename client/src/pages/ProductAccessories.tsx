@@ -62,8 +62,8 @@ export default function ProductAccessories() {
         ...accessory,
         id: accessory.id,
         accessoryName: accessory.accessory_name || accessory.accessoryName || '',
-        createdAt: accessory.createdAt || accessory.createdAt || '',
-        updatedAt: accessory.updatedAt || accessory.updatedAt || '',
+        createdAt: accessory.created_at || accessory.createdAt || '',
+        updatedAt: accessory.updated_at || accessory.updatedAt || '',
       }));
     },
   });
@@ -75,7 +75,7 @@ export default function ProductAccessories() {
       return (response || []).map((model: any) => ({
         ...model,
         id: model.id,
-        modelNumber: model.modelNumber || model.modelNumber || '',
+        modelNumber: model.model_number || model.modelNumber || '',
         modelName: model.model_name || model.modelName || '',
       }));
     },
@@ -154,7 +154,6 @@ export default function ProductAccessories() {
   });
 
   const onSubmit = (data: InsertProductAccessory) => {
-
     // Remove tenantId from client data - server will add it
     const { tenantId, ...submitData } = data;
     createAccessoryMutation.mutate(submitData as InsertProductAccessory);
@@ -244,9 +243,7 @@ export default function ProductAccessories() {
           <div className="flex items-center gap-2">
             <Tag className="h-4 w-4 text-muted-foreground" />
             <Badge variant="outline">{accessory.category}</Badge>
-            {accessory.manufacturer && (
-              <Badge variant="outline">{accessory.manufacturer}</Badge>
-            )}
+            {accessory.manufacturer && <Badge variant="outline">{accessory.manufacturer}</Badge>}
           </div>
 
           {accessory.description && (
@@ -699,10 +696,7 @@ export default function ProductAccessories() {
                     <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button
-                      type="submit"
-                      disabled={createAccessoryMutation.isPending}
-                    >
+                    <Button type="submit" disabled={createAccessoryMutation.isPending}>
                       {createAccessoryMutation.isPending ? 'Creating...' : 'Create Accessory'}
                     </Button>
                   </div>
@@ -917,7 +911,9 @@ export default function ProductAccessories() {
                           <FormControl>
                             <Switch checked={!!field.value} onCheckedChange={field.onChange} />
                           </FormControl>
-                          <FormLabel className="text-sm font-medium">Available for All Models</FormLabel>
+                          <FormLabel className="text-sm font-medium">
+                            Available for All Models
+                          </FormLabel>
                         </FormItem>
                       )}
                     />

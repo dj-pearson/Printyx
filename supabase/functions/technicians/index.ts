@@ -209,7 +209,7 @@ export default async function handler(req: Request) {
 
       const technicianData = {
         tenant_id: tenantId,
-        user_id: body.user_id || body.user_id || null,
+        user_id: body.userId || body.user_id || null,
         first_name: body.firstName || body.first_name,
         last_name: body.lastName || body.last_name,
         email: body.email,

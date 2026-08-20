@@ -159,8 +159,8 @@ export default function PurchaseOrders() {
         orderDate: po.order_date || po.orderDate || '',
         expectedDate: po.expected_date || po.expectedDate || null,
         receivedDate: po.received_date || po.receivedDate || null,
-        createdAt: po.createdAt || po.createdAt || '',
-        updatedAt: po.updatedAt || po.updatedAt || '',
+        createdAt: po.created_at || po.createdAt || '',
+        updatedAt: po.updated_at || po.updatedAt || '',
       }));
     },
   });
@@ -174,7 +174,7 @@ export default function PurchaseOrders() {
         ...vendor,
         id: vendor.id,
         vendorName: vendor.vendor_name || vendor.vendorName || '',
-        createdAt: vendor.createdAt || vendor.createdAt || '',
+        createdAt: vendor.created_at || vendor.createdAt || '',
       }));
     },
   });

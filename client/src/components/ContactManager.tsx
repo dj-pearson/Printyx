@@ -140,14 +140,14 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
         leadStatus: c.lead_status || c.status || 'active',
         lastContactDate: c.last_contact_date || c.lastContactDate,
         nextFollowUpDate: c.next_follow_up_date || c.nextFollowUpDate,
-        ownerId: c.ownerId || c.ownerId || '',
+        ownerId: c.owner_id || c.ownerId || '',
         ownerName: c.owner_name || c.ownerName || '',
         favoriteContentType: c.favorite_content_type || c.favoriteContentType,
         preferredChannels: c.preferred_channels || c.preferredChannels || [],
         reportsTo: c.reports_to || c.reportsTo,
         contactRoles: c.contact_roles || c.contactRoles || [],
-        createdAt: c.createdAt || c.createdAt || new Date().toISOString(),
-        updatedAt: c.updatedAt || c.updatedAt || new Date().toISOString(),
+        createdAt: c.created_at || c.createdAt || new Date().toISOString(),
+        updatedAt: c.updated_at || c.updatedAt || new Date().toISOString(),
       }));
     },
   });

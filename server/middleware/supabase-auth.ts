@@ -231,8 +231,11 @@ function transformPayloadToUser(payload: JWTPayload): SupabaseUser {
     teamId: appMetadata.teamId,
     accessScope: appMetadata.accessScope || 'own',
     isPlatformUser: appMetadata.isPlatformUser || false,
-    firstName: userMetadata.firstName || userMetadata.firstName,
-    lastName: userMetadata.lastName || userMetadata.lastName,
+    // signup/index.ts writes user_metadata as { first_name, last_name }, so the
+    // snake keys are the ones actually present; the camel ones are a fallback
+    // for tokens minted elsewhere.
+    firstName: userMetadata.first_name || userMetadata.firstName,
+    lastName: userMetadata.last_name || userMetadata.lastName,
     exp: payload.exp,
     iat: payload.iat,
   };
