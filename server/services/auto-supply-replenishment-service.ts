@@ -52,6 +52,131 @@ interface DashboardMetrics {
 /**
  * Analyze supply level and predict depletion using AI
  */
+/**
+ * EDGE-002g parity surface.
+ *
+ * The edge function needs the same prompt and the same deterministic fallback,
+ * and Node/Deno cannot share a module. These expose what this service computes
+ * inline so that server/tests/unit/supply-analysis-parity.test.ts can assert the
+ * Deno copy in supabase/functions/_shared/supply-analysis.ts stays identical.
+ */
+export interface SupplyAnalysisInput {
+  supplyType?: string | null;
+  supplyName?: string | null;
+  currentLevel?: number | null;
+  capacityPages?: number | null;
+  model?: string | null;
+  location?: string | null;
+  dailyUsageAverage?: string | number | null;
+  weeklyUsageAverage?: string | number | null;
+  monthlyUsageAverage?: string | number | null;
+  usageTrend?: string | null;
+  reorderThreshold?: number | null;
+}
+
+export interface SupplyUsageReading {
+  dateRecorded: string | Date;
+  pagesSinceLastReading?: number | null;
+}
+
+export function supplyPriorityFor(
+  daysUntilDepletion: number | null,
+): 'low' | 'medium' | 'high' | 'urgent' | 'critical' {
+  if (daysUntilDepletion === null) return 'low';
+  if (daysUntilDepletion <= 3) return 'critical';
+  if (daysUntilDepletion <= 7) return 'urgent';
+  if (daysUntilDepletion <= 14) return 'high';
+  if (daysUntilDepletion <= 30) return 'medium';
+  return 'low';
+}
+
+export function buildSupplyAnalysisPrompt(
+  supply: SupplyAnalysisInput,
+  usageHistory: SupplyUsageReading[],
+  now: number,
+): string {
+  const daysCovered =
+    usageHistory.length > 0
+      ? Math.ceil(
+          (now - new Date(usageHistory[usageHistory.length - 1].dateRecorded).getTime()) /
+            (1000 * 60 * 60 * 24),
+        )
+      : 0;
+
+  return `Analyze this copier/printer supply status and provide predictions:
+
+Supply Information:
+- Type: ${supply.supplyType}
+- Name: ${supply.supplyName}
+- Current Level: ${supply.currentLevel}%
+- Capacity: ${supply.capacityPages || 'Unknown'} pages
+- Model: ${supply.model}
+- Location: ${supply.location || 'Unknown'}
+
+Usage Data:
+- Daily Average: ${supply.dailyUsageAverage || 'N/A'} pages
+- Weekly Average: ${supply.weeklyUsageAverage || 'N/A'} pages
+- Monthly Average: ${supply.monthlyUsageAverage || 'N/A'} pages
+- Usage Trend: ${supply.usageTrend || 'Unknown'}
+
+Historical Data Points: ${usageHistory.length} readings over ${daysCovered} days
+
+Please analyze and provide:
+1. Predicted depletion date (YYYY-MM-DD format or "Unable to predict")
+2. Confidence score (0-100)
+3. Usage pattern classification (stable/increasing/decreasing/erratic)
+4. Risk level (low/medium/high/critical)
+5. Specific recommendation (monitor/order_soon/order_now/urgent)
+6. Key factors affecting prediction
+
+Format your response as JSON:
+{
+  "depletionDate": "YYYY-MM-DD or null",
+  "confidenceScore": 85,
+  "usagePattern": "stable",
+  "riskLevel": "medium",
+  "recommendation": "order_soon",
+  "summary": "Brief analysis summary",
+  "factors": ["factor1", "factor2", "factor3"]
+}`;
+}
+
+export function heuristicSupplyAnalysis(
+  supply: SupplyAnalysisInput,
+  dailyUsage: number,
+  now: number,
+): SupplyAnalysisResult {
+  const currentLevel = supply.currentLevel ?? 0;
+
+  let depletionDate: Date | null = null;
+  let daysUntilDepletion: number | null = null;
+
+  if (dailyUsage > 0 && currentLevel > 0 && supply.capacityPages) {
+    const pagesRemaining = (supply.capacityPages * currentLevel) / 100;
+    daysUntilDepletion = Math.ceil(pagesRemaining / dailyUsage);
+    depletionDate = new Date(now + daysUntilDepletion * 24 * 60 * 60 * 1000);
+  }
+
+  const priority = supplyPriorityFor(daysUntilDepletion);
+  const shouldOrder = currentLevel <= (supply.reorderThreshold || 20);
+
+  return {
+    currentLevel,
+    predictedDepletionDate: depletionDate,
+    daysUntilDepletion,
+    confidenceScore: 60,
+    aiAnalysis: {
+      summary: 'Automatic analysis based on usage patterns',
+      usagePattern: supply.usageTrend || 'stable',
+      riskLevel: priority === 'critical' || priority === 'urgent' ? 'high' : 'medium',
+      recommendation: shouldOrder ? 'order_now' : 'monitor',
+      factors: ['Current level', 'Usage trend', 'Historical data'],
+    },
+    shouldOrder,
+    priority,
+  };
+}
+
 export async function analyzeSupplyLevel(
   tenantId: number,
   supplyMonitoringId: number,
@@ -232,7 +357,7 @@ Format your response as JSON:
 /**
  * Calculate average daily usage from history
  */
-function calculateAverageUsage(history: any[]): number {
+export function calculateAverageUsage(history: any[]): number {
   if (history.length < 2) return 0;
 
   const validReadings = history.filter((h) => h.pagesSinceLastReading > 0);

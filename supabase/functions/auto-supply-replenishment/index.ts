@@ -4,6 +4,15 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
+import { generateCompletion } from '../_shared/anthropic.ts';
+import {
+  buildSupplyAnalysisPrompt,
+  calculateAverageUsage,
+  heuristicSupplyAnalysis,
+  supplyPriorityFor,
+  type SupplyAnalysisInput,
+  type SupplyUsageReading,
+} from '../_shared/supply-analysis.ts';
 import { toNumber } from '../_shared/quote-math.ts';
 
 export default async function handler(req: Request) {
@@ -162,28 +171,181 @@ export default async function handler(req: Request) {
       return createCorsResponse(toCamel(orders ?? []), 200, req);
     }
 
-    // POST /auto-supply-replenishment/analyze-all - NOT PORTED YET.
+    // POST /auto-supply-replenishment/analyze-all
     //
-    // Same call as contract-renewal's: the Express implementation runs an
-    // Anthropic analysis per monitored supply to predict depletion, writes the
-    // prediction back to supply_monitoring, and places auto-orders when the
-    // rules allow. A 501 naming the gap beats both the prod 404 this used to be
-    // and a partial port that would report analysing supplies it never ordered
-    // for. _shared/anthropic.ts is the Deno client (CLAUDE_API_KEY).
+    // Scores every monitored supply, writes the prediction back, and places an
+    // auto-order where the supply allows it. Unlike contract-renewal's
+    // analyze-all this is a COMPLETE port: the ordering half
+    // (createAutoSupplyOrder) involves no model call, just data, so there was
+    // nothing to leave out.
+    //
+    // Prompt and deterministic fallback come from _shared/supply-analysis.ts,
+    // locked to the Express service by
+    // server/tests/unit/supply-analysis-parity.test.ts. With no CLAUDE_API_KEY
+    // the heuristic is the only path that runs — and it decides whether toner is
+    // bought, so the two copies agreeing is not cosmetic.
     if (req.method === 'POST' && endpoint === 'analyze-all') {
-      return createCorsResponse(
-        {
-          error: 'Bulk supply analysis is not available on the edge function yet',
-          code: 'ANALYZE_ALL_NOT_PORTED',
-          details:
-            'Needs the AI depletion prediction and auto-order placement from ' +
-            'server/services/auto-supply-replenishment-service.ts, and CLAUDE_API_KEY in the ' +
-            'edge environment. The dashboard read endpoints (/dashboard, /low-supplies, ' +
-            '/orders) are served.',
-        },
-        501,
-        req,
-      );
+      const now = Date.now();
+
+      const { data: supplies, error: suppliesError } = await admin
+        .from('supply_monitoring')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'monitoring');
+
+      if (suppliesError) {
+        console.error('Error loading supplies to analyze:', suppliesError);
+        return createCorsResponse({ error: 'Failed to load supplies' }, 500, req);
+      }
+
+      const results: Array<Record<string, unknown>> = [];
+      let ordersCreated = 0;
+
+      for (const row of supplies ?? []) {
+        const supply = toCamel<SupplyAnalysisInput>(row);
+
+        const { data: historyRows } = await admin
+          .from('supply_usage_history')
+          .select('date_recorded, pages_since_last_reading')
+          .eq('tenant_id', tenantId)
+          .eq('supply_monitoring_id', row.id)
+          .order('date_recorded', { ascending: false })
+          .limit(90);
+        const usageHistory = toCamel<SupplyUsageReading[]>(historyRows ?? []);
+
+        const dailyUsage = supply.dailyUsageAverage
+          ? parseFloat(String(supply.dailyUsageAverage))
+          : calculateAverageUsage(usageHistory);
+
+        let analysis = heuristicSupplyAnalysis(supply, dailyUsage, now);
+        let analysedBy: 'model' | 'heuristic' = 'heuristic';
+
+        try {
+          const text = await generateCompletion({
+            max_tokens: 1024,
+            messages: [
+              { role: 'user', content: buildSupplyAnalysisPrompt(supply, usageHistory, now) },
+            ],
+          });
+          const parsed = JSON.parse(text);
+          const depletion = parsed.depletionDate ? new Date(parsed.depletionDate) : null;
+          const days = depletion
+            ? Math.ceil((depletion.getTime() - now) / (1000 * 60 * 60 * 24))
+            : null;
+          const priority = supplyPriorityFor(days);
+          analysis = {
+            currentLevel: supply.currentLevel ?? 0,
+            predictedDepletionDate: depletion,
+            daysUntilDepletion: days,
+            confidenceScore: parsed.confidenceScore ?? 70,
+            aiAnalysis: {
+              summary: parsed.summary,
+              usagePattern: parsed.usagePattern,
+              riskLevel: parsed.riskLevel,
+              recommendation: parsed.recommendation,
+              factors: parsed.factors,
+            },
+            shouldOrder:
+              parsed.recommendation === 'order_now' || parsed.recommendation === 'urgent',
+            priority,
+          };
+          analysedBy = 'model';
+        } catch (modelError) {
+          console.warn(
+            'Supply model analysis unavailable, using heuristic:',
+            modelError instanceof Error ? modelError.message : modelError,
+          );
+        }
+
+        const { error: updateError } = await admin
+          .from('supply_monitoring')
+          .update({
+            predicted_depletion_date: analysis.predictedDepletionDate?.toISOString() ?? null,
+            days_until_depletion: analysis.daysUntilDepletion,
+            confidence_score: analysis.confidenceScore,
+            ai_analysis: analysis.aiAnalysis,
+            priority: analysis.priority,
+            status: analysis.shouldOrder ? 'low' : 'monitoring',
+            last_checked_at: new Date(now).toISOString(),
+            updated_at: new Date(now).toISOString(),
+          })
+          .eq('id', row.id)
+          .eq('tenant_id', tenantId);
+
+        if (updateError) {
+          console.error('Error writing supply analysis:', updateError);
+          results.push({
+            supplyId: row.id,
+            serialNumber: row.serial_number,
+            supplyName: row.supply_name,
+            error: updateError.message,
+          });
+          continue;
+        }
+
+        let orderCreated = false;
+        if (analysis.shouldOrder && row.auto_order_enabled) {
+          // Never place a second order while one is already moving.
+          const { data: existingOrder } = await admin
+            .from('auto_supply_orders')
+            .select('id')
+            .eq('tenant_id', tenantId)
+            .eq('supply_monitoring_id', row.id)
+            .in('status', ['order_placed', 'order_confirmed', 'in_transit'])
+            .limit(1)
+            .maybeSingle();
+
+          if (!existingOrder) {
+            const orderNumber = `AUTO-${now}-${crypto.randomUUID().slice(0, 9).toUpperCase()}`;
+            const { error: orderError } = await admin.from('auto_supply_orders').insert({
+              tenant_id: tenantId,
+              supply_monitoring_id: row.id,
+              equipment_id: row.equipment_id,
+              serial_number: row.serial_number,
+              order_number: orderNumber,
+              supply_type: row.supply_type,
+              supply_name: row.supply_name,
+              part_number: row.part_number ?? null,
+              quantity: row.reorder_quantity || 1,
+              status: 'order_placed',
+              priority: analysis.priority,
+              triggered_by: 'ai_prediction',
+              prevented_emergency:
+                analysis.priority === 'critical' || analysis.priority === 'urgent',
+              order_date: new Date(now).toISOString(),
+              // Express estimates delivery at a 3-day lead time.
+              estimated_delivery_date: new Date(now + 3 * 24 * 60 * 60 * 1000).toISOString(),
+            });
+
+            if (orderError) {
+              console.error('Error placing auto supply order:', orderError);
+            } else {
+              orderCreated = true;
+              ordersCreated++;
+              await admin
+                .from('supply_monitoring')
+                .update({
+                  status: 'order_placed',
+                  last_ordered_at: new Date(now).toISOString(),
+                  updated_at: new Date(now).toISOString(),
+                })
+                .eq('id', row.id)
+                .eq('tenant_id', tenantId);
+            }
+          }
+        }
+
+        results.push({
+          supplyId: row.id,
+          serialNumber: row.serial_number,
+          supplyName: row.supply_name,
+          analysedBy,
+          analysis,
+          orderCreated,
+        });
+      }
+
+      return createCorsResponse({ analyzed: results.length, ordersCreated, results }, 200, req);
     }
 
     // GET /auto-supply-replenishment/rules - List replenishment rules
