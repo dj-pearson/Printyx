@@ -468,6 +468,87 @@ export default async function handler(req: Request) {
       return createCorsResponse(consent, 201, req);
     }
 
+    // ─── Compliance dashboard stats (EDGE-002h) ─────────────────────────────
+    //
+    // GdprComplianceDashboard.tsx calls /dpa/stats and /deduplication/stats.
+    // Neither existed on the edge function OR on Express, so both 404'd on both
+    // backends - a feature rather than a port. Both are computable: the tables
+    // are already there and carry what the cards read.
+    //
+    // Note the routing: these are two-segment paths, so they match on
+    // endpoint + requestId, where requestId happens to be the sub-resource.
+
+    // GET /gdpr/dpa/stats
+    if (req.method === 'GET' && endpoint === 'dpa' && requestId === 'stats') {
+      const { data: agreements, error } = await admin
+        .from('data_processing_agreements')
+        .select('status, expiration_date')
+        .eq('tenant_id', tenantId);
+
+      if (error) {
+        console.error('Error fetching DPA stats:', error);
+        return createCorsResponse({ error: 'Failed to fetch DPA statistics' }, 500, req);
+      }
+
+      const rows = agreements ?? [];
+      const byStatus: Record<string, number> = {};
+      for (const row of rows) {
+        const status = String((row as any).status ?? 'unknown');
+        byStatus[status] = (byStatus[status] ?? 0) + 1;
+      }
+
+      // "Expiring in" is the 90-day window the renewal reminder works to.
+      const now = Date.now();
+      const ninetyDays = now + 90 * 24 * 60 * 60 * 1000;
+      const expiringIn = rows.filter((r: any) => {
+        if (!r.expiration_date) return false;
+        const at = new Date(r.expiration_date).getTime();
+        return at >= now && at <= ninetyDays;
+      }).length;
+
+      // Compliance checks that have not been signed off yet.
+      const { count: pendingCompliance } = await admin
+        .from('dpa_compliance_checks')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .is('approval_date', null);
+
+      return createCorsResponse(
+        {
+          totalDpas: rows.length,
+          byStatus,
+          expiringIn,
+          pendingCompliance: pendingCompliance ?? 0,
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /gdpr/deduplication/stats
+    if (req.method === 'GET' && endpoint === 'deduplication' && requestId === 'stats') {
+      const countOf = async (
+        client: typeof admin,
+        table: string,
+        apply: (q: any) => any,
+      ): Promise<number> => {
+        const { count } = await apply(
+          client.from(table).select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+        );
+        return count ?? 0;
+      };
+
+      const [totalMatches, pendingMatches, mergedRecords] = await Promise.all([
+        countOf(admin, 'duplicate_matches', (q) => q),
+        countOf(admin, 'duplicate_matches', (q) => q.eq('status', 'pending')),
+        // A merge is recorded by merged_record_id being set, not by a status
+        // value, so this counts the rows that actually resulted in one.
+        countOf(admin, 'duplicate_matches', (q) => q.not('merged_record_id', 'is', null)),
+      ]);
+
+      return createCorsResponse({ totalMatches, pendingMatches, mergedRecords }, 200, req);
+    }
+
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
   } catch (error) {
     console.error('Unexpected error in gdpr function:', error);

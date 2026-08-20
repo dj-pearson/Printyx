@@ -249,6 +249,68 @@ export default async function handler(req: Request) {
       return createCorsResponse({ success: true, message: 'QuickBooks disconnected' }, 200, req);
     }
 
+    // GET /quickbooks/entities (EDGE-002h)
+    //
+    // A static capability list - the entity types the integration knows how to
+    // sync, and the ones it has field mappings for. Kept in step with
+    // server/quickbooks-mapping.ts (SUPPORTED_QB_ENTITIES and the top-level
+    // keys of QUICKBOOKS_FIELD_MAPPINGS); this is configuration, not data, so
+    // there is nothing to query.
+    if (req.method === 'GET' && endpoint === 'entities') {
+      return createCorsResponse(
+        {
+          supported_entities: [
+            'Customer',
+            'Vendor',
+            'Item',
+            'Invoice',
+            'Bill',
+            'Payment',
+            'Account',
+            'Employee',
+          ],
+          field_mappings: ['Customer', 'Vendor', 'Item', 'Invoice'],
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /quickbooks/connect - MUST STAY ON EXPRESS.
+    //
+    // This starts the Intuit OAuth flow, and the flow is session-bound in a way
+    // an edge function cannot reproduce:
+    //
+    //   - it generates a CSRF `state` and stores it in req.session
+    //     (qb_oauth_state), which /api/quickbooks/callback then compares
+    //     against the value Intuit returns. Moving the initiator away from the
+    //     session that holds the state would leave that check comparing
+    //     against nothing - it would not fail loudly, it would stop protecting
+    //     anything.
+    //   - the redirect_uri it registers points at the Express host, so the
+    //     callback lands there regardless.
+    //   - the refresh token also lives in the session (qb_refresh_token), so
+    //     the whole token lifecycle is on that host.
+    //
+    // Making this portable means moving OAuth state and tokens into a table -
+    // a redesign of the credential flow, not a port, and one worth doing
+    // deliberately rather than as a side effect of a migration story.
+    if (req.method === 'GET' && endpoint === 'connect') {
+      return createCorsResponse(
+        {
+          error: 'QuickBooks OAuth must be started from the Express host',
+          code: 'OAUTH_STATE_IS_SESSION_BOUND',
+          details:
+            'GET /api/quickbooks/connect stores a CSRF state in the server session and ' +
+            '/api/quickbooks/callback verifies it there; the refresh token is held the same ' +
+            'way. Serving the initiator from an edge function would break that verification ' +
+            'silently. Porting it requires moving OAuth state and tokens into a table first.',
+        },
+        501,
+        req,
+      );
+    }
+
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
   } catch (error) {
     console.error('Unexpected error in quickbooks function:', error);
