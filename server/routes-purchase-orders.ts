@@ -3,11 +3,7 @@ import { z } from 'zod';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-purchase-orders');
 
-import {
-  insertPurchaseOrderSchema,
-  insertPurchaseOrderItemSchema,
-  insertVendorSchema,
-} from '@shared/schema';
+import { insertPurchaseOrderSchema, insertPurchaseOrderItemSchema } from '@shared/schema';
 import { storage } from './storage';
 import { isAuthenticated } from './replitAuth';
 // RBAC Integration
@@ -73,25 +69,10 @@ const updatePurchaseOrderItemSchema = z
   })
   .strict();
 
-const updateVendorSchema = z
-  .object({
-    name: z.string().min(1).optional(),
-    contactName: z.string().nullable().optional(),
-    email: z.string().email().nullable().optional(),
-    phone: z.string().nullable().optional(),
-    address: z.string().nullable().optional(),
-    website: z.string().url().nullable().optional(),
-    paymentTerms: z.string().nullable().optional(),
-    notes: z.string().nullable().optional(),
-    status: z.string().optional(),
-  })
-  .strict();
-
 export function registerPurchaseOrderRoutes(app: Express) {
   // Apply authentication and RBAC context to all purchase order routes
   // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires
   app.use('/api/purchase-orders', isAuthenticated, enhanceUserContext);
-  app.use('/api/vendors', isAuthenticated, enhanceUserContext);
 
   // Purchase Orders CRUD routes - requires inventory PO view permission
   app.get(
@@ -374,119 +355,10 @@ export function registerPurchaseOrderRoutes(app: Express) {
   );
 
   // Vendors CRUD routes - requires purchase order view permission
-  app.get(
-    '/api/vendors',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
-    authed(async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = getTenantId(req)!;
-        const vendors = await storage.getVendors(tenantId);
-        res.json(vendors);
-      } catch (error) {
-        log.error('Error fetching vendors:', error);
-        res.status(500).json({ error: 'Failed to fetch vendors' });
-      }
-    }),
-  );
-
-  app.get(
-    '/api/vendors/:id',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
-    authed(async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = getTenantId(req)!;
-        const { id } = req.params;
-
-        const vendor = await storage.getVendor(id, tenantId);
-        if (!vendor) {
-          return res.status(404).json({ error: 'Vendor not found' });
-        }
-
-        res.json(vendor);
-      } catch (error) {
-        log.error('Error fetching vendor:', error);
-        res.status(500).json({ error: 'Failed to fetch vendor' });
-      }
-    }),
-  );
-
-  app.post(
-    '/api/vendors',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
-    authed(async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = getTenantId(req)!;
-
-        const validatedData = insertVendorSchema.parse({
-          ...req.body,
-          tenantId,
-        });
-
-        const vendor = await storage.createVendor(validatedData);
-        res.json(vendor);
-      } catch (error: any) {
-        log.error('Error creating vendor:', error);
-        if (error.name === 'ZodError') {
-          res.status(400).json({ error: 'Invalid data', details: error.errors });
-        } else {
-          res.status(500).json({ error: 'Failed to create vendor' });
-        }
-      }
-    }),
-  );
-
-  app.put(
-    '/api/vendors/:id',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
-    authed(async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = getTenantId(req)!;
-        const { id } = req.params;
-
-        const validatedData = updateVendorSchema.parse(req.body);
-
-        const vendor = await storage.updateVendor(id, validatedData, tenantId);
-        if (!vendor) {
-          return res.status(404).json({ error: 'Vendor not found' });
-        }
-
-        res.json(vendor);
-      } catch (error: any) {
-        log.error('Error updating vendor:', error);
-        if (error.name === 'ZodError') {
-          res.status(400).json({ error: 'Invalid data', details: error.errors });
-        } else {
-          res.status(500).json({ error: 'Failed to update vendor' });
-        }
-      }
-    }),
-  );
-
-  app.delete(
-    '/api/vendors/:id',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.DELETE]),
-    authed(async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = getTenantId(req)!;
-        const { id } = req.params;
-
-        const success = await storage.deleteVendor(id, tenantId);
-        if (!success) {
-          return res.status(404).json({ error: 'Vendor not found' });
-        }
-
-        res.json({ success: true });
-      } catch (error) {
-        log.error('Error deleting vendor:', error);
-        res.status(500).json({ error: 'Failed to delete vendor' });
-      }
-    }),
-  );
+  // ── /api/vendors: RETIRED (PROD-008b) ─────────────────────────────────────
+  //
+  // This file's five vendor handlers duplicated routes-products-crud.ts's five,
+  // and both sets were shadowed by the /api/vendors proxy. See the banner there.
 
   // Purchase Order statistics - requires view permission
   app.get(

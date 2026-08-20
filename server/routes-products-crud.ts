@@ -970,89 +970,13 @@ export function registerProductsCrudRoutes(app: Express) {
   // ============= ACCOUNTING API ROUTES =============
 
   // Vendors Management
-  app.get(
-    '/api/vendors',
-    ctx,
-    can([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
-    async (req, res) => {
-      try {
-        const { tenantId } = (req as any).user || {};
-        const vendors = await storage.getVendors(tenantId);
-        res.json(vendors);
-      } catch (error) {
-        log.error('Error fetching vendors:', error);
-        res.status(500).json({ message: 'Failed to fetch vendors' });
-      }
-    },
-  );
-
-  app.get(
-    '/api/vendors/:id',
-    ctx,
-    can([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
-    async (req, res) => {
-      try {
-        const { tenantId } = (req as any).user || {};
-        const { id } = req.params;
-        const vendor = await storage.getVendor(id, tenantId);
-        if (!vendor) {
-          return res.status(404).json({ message: 'Vendor not found' });
-        }
-        res.json(vendor);
-      } catch (error) {
-        log.error('Error fetching vendor:', error);
-        res.status(500).json({ message: 'Failed to fetch vendor' });
-      }
-    },
-  );
-
-  app.post('/api/vendors', ctx, can([PERMISSIONS.INVENTORY.ITEM.CREATE]), async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const vendorData = { ...req.body, tenantId };
-      const newVendor = await storage.createVendor(vendorData);
-      res.status(201).json(newVendor);
-    } catch (error) {
-      log.error('Error creating vendor:', error);
-      res.status(500).json({ message: 'Failed to create vendor' });
-    }
-  });
-
-  app.patch('/api/vendors/:id', ctx, can([PERMISSIONS.INVENTORY.ITEM.UPDATE]), async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const { id } = req.params;
-      const updatedVendor = await storage.updateVendor(id, req.body, tenantId);
-      if (!updatedVendor) {
-        return res.status(404).json({ message: 'Vendor not found' });
-      }
-      res.json(updatedVendor);
-    } catch (error) {
-      log.error('Error updating vendor:', error);
-      res.status(500).json({ message: 'Failed to update vendor' });
-    }
-  });
-
-  app.delete(
-    '/api/vendors/:id',
-    ctx,
-    can([PERMISSIONS.INVENTORY.ITEM.DELETE]),
-    async (req, res) => {
-      try {
-        const { tenantId } = (req as any).user || {};
-        const { id } = req.params;
-        const success = await storage.deleteVendor(id, tenantId);
-        if (success) {
-          res.json({ message: 'Vendor deleted successfully' });
-        } else {
-          res.status(404).json({ message: 'Vendor not found' });
-        }
-      } catch (error) {
-        log.error('Error deleting vendor:', error);
-        res.status(500).json({ message: 'Failed to delete vendor' });
-      }
-    },
-  );
+  // ── /api/vendors: RETIRED (PROD-008b) ─────────────────────────────────────
+  //
+  // GET list, GET /:id, POST, PATCH /:id and DELETE /:id lived here, and
+  // routes-purchase-orders.ts registered its own copy of all five. /api/vendors
+  // is proxied to the vendors edge function, which covers every one, so neither
+  // set ran on either host - and which of the two would have won was decided
+  // only by the order of register*(app) calls in routes-registry.ts.
 
   // Accounts Payable Management
   app.get('/api/accounts-payable', async (req, res) => {
