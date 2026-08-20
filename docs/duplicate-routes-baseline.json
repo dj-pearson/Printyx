@@ -57,17 +57,10 @@
     "POST /api/import/upload :: server/routes-csv-import.ts|server/routes-import.ts",
     "POST /api/integrations :: server/routes-integrations-real.ts|server/routes-integrations.ts",
     "POST /api/integrations/:id/test :: server/routes-integrations-real.ts|server/routes-integrations.ts",
-    "POST /api/managed-services/import :: server/routes-catalog-csv.ts|server/routes-products-crud.ts",
-    "POST /api/product-accessories/import :: server/routes-catalog-csv.ts|server/routes-products-crud.ts",
     "POST /api/product-models :: server/routes-product-models.ts|server/routes-products-crud.ts",
     "POST /api/product-models/:modelId/cpc-rates :: server/routes-catalog-csv.ts|server/routes-products-crud.ts",
-    "POST /api/product-models/import :: server/routes-catalog-csv.ts|server/routes-products-crud.ts",
-    "POST /api/professional-services/import :: server/routes-catalog-csv.ts|server/routes-products-crud.ts",
     "POST /api/purchase-orders :: server/routes-products-crud.ts|server/routes-purchase-orders.ts",
     "POST /api/seo/settings :: server/routes-seo-core.ts|server/routes-seo.ts",
-    "POST /api/service-products/import :: server/routes-catalog-csv.ts|server/routes-products-crud.ts",
-    "POST /api/software-products/import :: server/routes-catalog-csv.ts|server/routes-products-crud.ts",
-    "POST /api/supplies/import :: server/routes-catalog-csv.ts|server/routes-products-crud.ts",
     "POST /api/vendors :: server/routes-products-crud.ts|server/routes-purchase-orders.ts",
     "PUT /api/integrations/:id :: server/routes-integrations-real.ts|server/routes-integrations.ts"
   ]

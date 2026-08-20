@@ -65,7 +65,6 @@
     ],
     "leads": ["geocode", "import-eda", "map-data"],
     "maintenance": ["analytics", "auto-generate", "predictions", "templates"],
-    "managed-services": ["import"],
     "manufacturer-integrations": ["audit-logs", "stats"],
     "mobile": ["dashboard", "jobs", "route-optimization", "service-report"],
     "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"],
@@ -97,10 +96,7 @@
       "technician-performance"
     ],
     "pricing": ["approval", "approvals", "calculate-rep-cost", "margin-report", "visibility"],
-    "product-accessories": ["import"],
-    "product-models": ["import"],
     "products": ["all"],
-    "professional-services": ["import"],
     "proposals": ["equipment-packages", "proposal-templates"],
     "purchase-orders": ["generate-from-suggestions", "stats", "suggestions"],
     "quickbooks": ["connect", "entities"],
@@ -130,7 +126,6 @@
       "structured-data"
     ],
     "subscriptions": ["checkout", "portal", "preview-upgrade", "setup-intent", "stripe"],
-    "supplies": ["import"],
     "tasks": ["ai-schedule"],
     "technician-management": ["dashboard"],
     "warehouse-operations": ["stats"]

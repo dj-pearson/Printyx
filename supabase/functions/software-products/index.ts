@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { parseBulkIds } from '../_shared/bulk-ops.ts';
+import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -44,6 +45,27 @@ export default async function handler(req: Request) {
     const pathParts = url.pathname.split('/').filter(Boolean);
     // Server strips function name, so /software-products/import becomes /import
     const productId = pathParts[0]; // Get ID or action from path
+
+    // ====================================================================
+    // POST /software-products/import - bulk CSV import
+    //
+    // PROD-014: this existed only on Express, so catalog import 404'd in
+    // production. The spec, the CSV parser and the row validation are shared
+    // with the client and Express, so the same file imports identically on
+    // either backend. It must precede the generic POST create branch, or the
+    // upload is treated as a single product. Reads the path segment directly
+    // rather than the id variable below, which is declared after this point —
+    // naming it here is a temporal-dead-zone ReferenceError at runtime that no
+    // bundler flags.
+    // ====================================================================
+    if (req.method === 'POST' && pathParts[0] === 'import') {
+      const csvText = await readUploadedCsv(req);
+      if (!csvText) {
+        return createCorsResponse({ message: 'No file uploaded' }, 400, req);
+      }
+      const outcome = await importCatalogCsv(admin, 'software-products', tenantId, csvText);
+      return createCorsResponse(outcome, 200, req);
+    }
 
     // GET /software-products - paginated list (or distinct categories)
     if (req.method === 'GET' && !productId) {
