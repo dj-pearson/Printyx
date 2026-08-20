@@ -8,7 +8,11 @@ import { toCamel } from '../_shared/case.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
 import {
   buildRenewalAnalysisPrompt,
+  buildRenewalPricingPrompt,
+  buildRenewalProposalRow,
   heuristicRenewalAnalysis,
+  heuristicRenewalPricing,
+  type ProposalContractInput,
   type RenewalAnalysisInput,
 } from '../_shared/renewal-analysis.ts';
 
@@ -394,16 +398,18 @@ export default async function handler(req: Request) {
     // heuristic Express uses — so this endpoint works with or without the key
     // rather than depending on one nobody has verified is set.
     //
-    // Proposal auto-generation is NOT part of this. Express creates a renewal
-    // proposal when auto_send_proposals is on and the action is send_proposal;
-    // that path needs a second AI prompt plus the renewal_proposals write, and
-    // is the remaining slice. Contracts that would have had one are counted and
-    // returned as proposalsSkipped so the caller is not told work happened that
-    // did not.
+    // Proposal auto-generation is included: when auto_send_proposals is on and
+    // the action is send_proposal, a renewal_proposals row is written and the
+    // tracking record is marked. Its pricing has the same shape as the analysis
+    // above — model first, rule-based pricing when that is unavailable — and
+    // both live in the same parity-locked module, because these numbers are the
+    // price a customer is quoted.
     if (req.method === 'POST' && endpoint === 'analyze-all') {
       const { data: rules } = await admin
         .from('renewal_automation_rules')
-        .select('renewal_window_days, auto_send_proposals')
+        .select(
+          'renewal_window_days, auto_send_proposals, max_discount_percent, min_price_increase_percent, max_price_increase_percent',
+        )
         .eq('tenant_id', tenantId)
         .maybeSingle();
       const renewalWindowDays = rules?.renewal_window_days ?? 90;
@@ -422,7 +428,8 @@ export default async function handler(req: Request) {
       }
 
       const results: Array<Record<string, unknown>> = [];
-      let proposalsSkipped = 0;
+      let proposalsCreated = 0;
+      const now = Date.now();
 
       for (const row of contracts ?? []) {
         const contract = toCamel<RenewalAnalysisInput & { id: string }>(row);
@@ -472,8 +479,8 @@ export default async function handler(req: Request) {
             opportunity_factors: analysis.opportunityFactors,
             recommended_action: analysis.recommendedAction,
             confidence_score: analysis.confidenceScore,
-            last_analyzed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+            last_analyzed_at: new Date(now).toISOString(),
+            updated_at: new Date(now).toISOString(),
           })
           .eq('id', row.id)
           .eq('tenant_id', tenantId);
@@ -489,12 +496,93 @@ export default async function handler(req: Request) {
           continue;
         }
 
+        let proposalCreated = false;
         if (
           rules?.auto_send_proposals &&
           analysis.recommendedAction === 'send_proposal' &&
           !row.proposal_generated
         ) {
-          proposalsSkipped++;
+          const currentMrr = toNumber(row.monthly_recurring_revenue) || 0;
+          const currentAcv = toNumber(row.annual_contract_value) || currentMrr * 12;
+          const pricingRules = {
+            maxDiscountPercent: rules.max_discount_percent,
+            minPriceIncreasePercent: rules.min_price_increase_percent,
+            maxPriceIncreasePercent: rules.max_price_increase_percent,
+          };
+
+          let recommendations = heuristicRenewalPricing(analysis, currentMrr, pricingRules);
+          try {
+            const pricingText = await generateCompletion({
+              max_tokens: 2048,
+              messages: [
+                {
+                  role: 'user',
+                  content: buildRenewalPricingPrompt(
+                    analysis,
+                    currentMrr,
+                    currentAcv,
+                    pricingRules,
+                  ),
+                },
+              ],
+            });
+            const priced = JSON.parse(pricingText);
+            recommendations = {
+              proposedMrr: priced.proposedMrr,
+              proposedAcv: priced.proposedAcv,
+              proposedTermMonths: priced.proposedTermMonths,
+              discountPercentage: priced.discountPercentage,
+              incentiveOffered: priced.incentiveOffered ?? null,
+              incentiveValue: priced.incentiveValue ?? 0,
+              pricingStrategy: {
+                reasoning: priced.pricingReasoning,
+                competitivePosition: priced.competitivePosition,
+                valueJustification: priced.valueJustification,
+              },
+              upsellOpportunities: priced.upsellOpportunities || [],
+            };
+          } catch (pricingError) {
+            console.warn(
+              'Renewal model pricing unavailable, using rule-based pricing:',
+              pricingError instanceof Error ? pricingError.message : pricingError,
+            );
+          }
+
+          const proposalNumber = `REN-${now}-${crypto.randomUUID().slice(0, 9).toUpperCase()}`;
+          const proposalRow = buildRenewalProposalRow(
+            contract as ProposalContractInput,
+            analysis,
+            recommendations,
+            proposalNumber,
+            now,
+          );
+
+          const { error: proposalError } = await admin.from('renewal_proposals').insert({
+            ...proposalRow,
+            tenant_id: tenantId,
+            contract_renewal_tracking_id: row.id,
+          });
+
+          if (proposalError) {
+            console.error('Error creating renewal proposal:', proposalError);
+          } else {
+            proposalCreated = true;
+            proposalsCreated++;
+            await admin
+              .from('contract_renewal_tracking')
+              .update({
+                proposal_generated: true,
+                proposal_generated_at: new Date(now).toISOString(),
+                proposed_mrr: recommendations.proposedMrr.toString(),
+                proposed_acv: recommendations.proposedAcv.toString(),
+                proposed_term_months: recommendations.proposedTermMonths,
+                proposed_discount: recommendations.discountPercentage.toString(),
+                upsell_opportunities: recommendations.upsellOpportunities,
+                updated_at: new Date(now).toISOString(),
+              })
+              .eq('id', row.id)
+              .eq('tenant_id', tenantId);
+          }
         }
 
         results.push({
@@ -503,24 +591,15 @@ export default async function handler(req: Request) {
           customerName: row.customer_name,
           analysedBy,
           analysis,
+          proposalCreated,
         });
       }
 
       return createCorsResponse(
         {
           analyzed: results.length,
-          proposalsCreated: 0,
-          proposalsSkipped,
+          proposalsCreated,
           results,
-          ...(proposalsSkipped > 0
-            ? {
-                unported: [
-                  `proposalsSkipped: ${proposalsSkipped} contract(s) would have had a renewal ` +
-                    'proposal generated. Proposal auto-generation is not on the edge function ' +
-                    'yet; the scores above are written either way.',
-                ],
-              }
-            : {}),
         },
         200,
         req,

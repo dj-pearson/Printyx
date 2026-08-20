@@ -170,3 +170,165 @@ describe('renewal analysis parity (Express service vs edge _shared)', () => {
     );
   });
 });
+
+// ─── Pricing half (proposal slice) ───────────────────────────────────────────
+//
+// These decide MONEY - the MRR a customer is quoted, the discount, the term and
+// the proposal's dates. A drift here does not misreport a dashboard; it sends a
+// customer the wrong price.
+
+const NOW = Date.parse('2026-08-20T12:00:00.000Z');
+
+const RULES = [
+  {
+    name: 'schema defaults',
+    rules: {
+      maxDiscountPercent: '15.00',
+      minPriceIncreasePercent: '2.00',
+      maxPriceIncreasePercent: '10.00',
+    },
+  },
+  {
+    name: 'tenant caps BELOW the hardcoded clamps - 5% discount, 1% increase',
+    rules: {
+      maxDiscountPercent: '5',
+      minPriceIncreasePercent: '0.5',
+      maxPriceIncreasePercent: '1',
+    },
+  },
+  {
+    name: 'all null - falls back to 15 and 5',
+    rules: {
+      maxDiscountPercent: null,
+      minPriceIncreasePercent: null,
+      maxPriceIncreasePercent: null,
+    },
+  },
+  { name: 'empty rules object', rules: {} },
+];
+
+const MRRS = [0, 1, 1234.56, 98765.43];
+
+describe('renewal pricing parity (Express service vs edge _shared)', () => {
+  // One analysis per risk band, since pricing branches on it.
+  const analyses = ([10, 40, 60, 80, 95] as const).map((p) => {
+    const risk = edge.renewalRiskFor(p);
+    return {
+      risk,
+      analysis: {
+        renewalProbability: p,
+        churnRiskScore: 100 - p,
+        renewalRisk: risk,
+        recommendedAction: edge.recommendedActionFor(risk),
+        aiAnalysis: {
+          summary: 'summary',
+          strengths: ['s1', 's2'],
+          concerns: ['c1'],
+          opportunities: ['o1', 'o2'],
+          recommendedStrategy: 'strategy',
+        },
+        riskFactors: ['c1'],
+        opportunityFactors: ['o1', 'o2'],
+        confidenceScore: 70,
+      } as edge.RenewalAnalysisResult,
+    };
+  });
+
+  describe('buildRenewalPricingPrompt', () => {
+    for (const { risk, analysis } of analyses) {
+      for (const { name, rules } of RULES) {
+        it(`renders identical prompt text: ${risk} / ${name}`, () => {
+          expect(edge.buildRenewalPricingPrompt(analysis, 2400, 28800, rules)).toBe(
+            node.buildRenewalPricingPrompt(analysis, 2400, 28800, rules),
+          );
+        });
+      }
+    }
+  });
+
+  describe('heuristicRenewalPricing', () => {
+    for (const { risk, analysis } of analyses) {
+      for (const { name, rules } of RULES) {
+        for (const mrr of MRRS) {
+          it(`prices identically: ${risk} / ${name} / mrr ${mrr}`, () => {
+            expect(edge.heuristicRenewalPricing(analysis, mrr, rules)).toEqual(
+              node.heuristicRenewalPricing(analysis, mrr, rules),
+            );
+          });
+        }
+      }
+    }
+  });
+
+  describe('buildRenewalProposalRow', () => {
+    const CONTRACTS: Array<{ name: string; contract: edge.ProposalContractInput }> = [
+      {
+        name: 'full contract',
+        contract: {
+          contractType: 'service',
+          customerName: 'Northgate Dental',
+          contractId: 'ct-1',
+          customerId: 'cu-1',
+          startDate: '2024-09-01T00:00:00.000Z',
+          endDate: '2026-09-01T00:00:00.000Z',
+          monthlyRecurringRevenue: '2400.00',
+          annualContractValue: '28800.00',
+        },
+      },
+      {
+        name: 'no dates - term and proposed window unknown',
+        contract: {
+          contractType: 'maintenance',
+          customerName: 'No Dates Ltd',
+          contractId: 'ct-2',
+          customerId: 'cu-2',
+          startDate: null,
+          endDate: null,
+          monthlyRecurringRevenue: '900',
+          annualContractValue: null,
+        },
+      },
+      {
+        name: 'no MRR - discount amount must be 0, not NaN',
+        contract: {
+          contractType: 'service',
+          customerName: 'Zero MRR Inc',
+          contractId: 'ct-3',
+          customerId: 'cu-3',
+          startDate: '2025-01-01T00:00:00.000Z',
+          endDate: '2026-01-01T00:00:00.000Z',
+          monthlyRecurringRevenue: null,
+          annualContractValue: null,
+        },
+      },
+      { name: 'empty contract', contract: {} },
+    ];
+
+    for (const { risk, analysis } of analyses) {
+      for (const { name, contract } of CONTRACTS) {
+        it(`builds an identical row: ${risk} / ${name}`, () => {
+          const recs = edge.heuristicRenewalPricing(analysis, 2400, RULES[0].rules);
+          expect(
+            edge.buildRenewalProposalRow(contract, analysis, recs, 'REN-FIXED-1', NOW),
+          ).toEqual(node.buildRenewalProposalRow(contract, analysis, recs, 'REN-FIXED-1', NOW));
+        });
+      }
+    }
+
+    it('never produces NaN in a money field', () => {
+      const { analysis } = analyses[0];
+      const recs = edge.heuristicRenewalPricing(analysis, 0, RULES[0].rules);
+      const row = edge.buildRenewalProposalRow(CONTRACTS[2].contract, analysis, recs, 'X', NOW);
+      for (const key of [
+        'proposed_mrr',
+        'proposed_acv',
+        'discount_percentage',
+        'discount_amount',
+        'incentive_value',
+        'upsell_value',
+      ]) {
+        expect(String(row[key])).not.toContain('NaN');
+      }
+    });
+  });
+});

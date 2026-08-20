@@ -209,3 +209,193 @@ export function heuristicRenewalAnalysis(contract: RenewalAnalysisInput): Renewa
     confidenceScore: 60,
   };
 }
+
+// ─── Renewal pricing (EDGE-002g proposal slice) ──────────────────────────────
+//
+// Everything below decides MONEY - the MRR a customer is quoted, the discount
+// and the term - so both copies agreeing matters more here than anywhere else
+// in this module.
+
+/** The renewal_automation_rules fields pricing reads, in camelCase. */
+export interface RenewalPricingRules {
+  maxDiscountPercent?: string | number | null;
+  minPriceIncreasePercent?: string | number | null;
+  maxPriceIncreasePercent?: string | number | null;
+}
+
+export interface ProposalRecommendations {
+  proposedMrr: number;
+  proposedAcv: number;
+  proposedTermMonths: number;
+  discountPercentage: number;
+  incentiveOffered: string | null;
+  incentiveValue: number;
+  pricingStrategy: {
+    reasoning: string;
+    competitivePosition: string;
+    valueJustification: string;
+  };
+  upsellOpportunities: Array<{ service: string; value: number; rationale: string }>;
+}
+
+/** The pricing prompt. Kept identical on both sides. */
+export function buildRenewalPricingPrompt(
+  analysis: RenewalAnalysisResult,
+  currentMrr: number,
+  currentAcv: number,
+  rules: RenewalPricingRules,
+): string {
+  return `Generate optimal renewal pricing for this contract:
+
+Current Contract:
+- MRR: $${currentMrr}
+- ACV: $${currentAcv}
+- Renewal Probability: ${analysis.renewalProbability}%
+- Churn Risk: ${analysis.renewalRisk}
+
+Analysis:
+- Strengths: ${analysis.aiAnalysis.strengths.join(', ')}
+- Concerns: ${analysis.aiAnalysis.concerns.join(', ')}
+- Opportunities: ${analysis.aiAnalysis.opportunities.join(', ')}
+
+Pricing Constraints:
+- Max Discount: ${rules.maxDiscountPercent}%
+- Min Price Increase: ${rules.minPriceIncreasePercent}%
+- Max Price Increase: ${rules.maxPriceIncreasePercent}%
+
+Recommend:
+1. New MRR and ACV
+2. Discount percentage (if any)
+3. Contract term length (12-60 months)
+4. Incentive offering (if needed)
+5. Pricing strategy rationale
+6. Up to 3 upsell opportunities with values
+
+Format as JSON:
+{
+  "proposedMrr": 5000,`;
+}
+
+/**
+ * Rule-based pricing, used whenever the model call is unavailable or fails.
+ *
+ * High risk buys a discount (capped at the lower of the tenant maximum and 10%);
+ * low risk takes an increase (capped at the lower of the tenant maximum and 3%).
+ * With no CLAUDE_API_KEY this is the only pricing anyone gets.
+ */
+export function heuristicRenewalPricing(
+  analysis: RenewalAnalysisResult,
+  currentMrr: number,
+  rules: RenewalPricingRules,
+): ProposalRecommendations {
+  let proposedMrr = currentMrr;
+  let discountPercentage = 0;
+  let incentiveOffered: string | null = null;
+  const incentiveValue = 0;
+
+  if (analysis.renewalRisk === 'high' || analysis.renewalRisk === 'very_high') {
+    discountPercentage = Math.min(parseFloat(String(rules.maxDiscountPercent ?? '15')), 10);
+    proposedMrr = currentMrr * (1 - discountPercentage / 100);
+    incentiveOffered = 'Loyalty discount for continued partnership';
+  } else if (analysis.renewalRisk === 'very_low' || analysis.renewalRisk === 'low') {
+    const increasePercent = Math.min(parseFloat(String(rules.maxPriceIncreasePercent ?? '5')), 3);
+    proposedMrr = currentMrr * (1 + increasePercent / 100);
+  }
+
+  return {
+    proposedMrr,
+    proposedAcv: proposedMrr * 12,
+    proposedTermMonths: 24,
+    discountPercentage,
+    incentiveOffered,
+    incentiveValue,
+    pricingStrategy: {
+      reasoning: 'Risk-based pricing strategy',
+      competitivePosition: 'Competitive with market rates',
+      valueJustification: 'Continued service excellence and reliability',
+    },
+    upsellOpportunities: [],
+  };
+}
+
+/** The contract_renewal_tracking fields the proposal row is built from. */
+export interface ProposalContractInput extends RenewalAnalysisInput {
+  contractId?: string | null;
+  customerId?: string | null;
+  startDate?: string | Date | null;
+  endDate?: string | Date | null;
+}
+
+/**
+ * The renewal_proposals row, as snake_case columns ready for PostgREST.
+ *
+ * Pure: `now` and `proposalNumber` are arguments rather than being generated
+ * inside, so every derived date and money figure is assertable.
+ */
+export function buildRenewalProposalRow(
+  contract: ProposalContractInput,
+  analysis: RenewalAnalysisResult,
+  recommendations: ProposalRecommendations,
+  proposalNumber: string,
+  now: number,
+): Record<string, unknown> {
+  const proposalDate = new Date(now);
+  const expirationDate = new Date(now + 30 * 24 * 60 * 60 * 1000);
+  const proposedStartDate = contract.endDate ? new Date(contract.endDate) : null;
+  const proposedEndDate = proposedStartDate
+    ? new Date(
+        proposedStartDate.getTime() + recommendations.proposedTermMonths * 30 * 24 * 60 * 60 * 1000,
+      )
+    : null;
+
+  const currentMrrNumber = contract.monthlyRecurringRevenue
+    ? parseFloat(String(contract.monthlyRecurringRevenue))
+    : 0;
+  const discountAmount = contract.monthlyRecurringRevenue
+    ? ((currentMrrNumber * recommendations.discountPercentage) / 100) * 12
+    : 0;
+
+  const currentTermMonths =
+    contract.endDate && contract.startDate
+      ? Math.ceil(
+          (new Date(contract.endDate).getTime() - new Date(contract.startDate).getTime()) /
+            (30 * 24 * 60 * 60 * 1000),
+        )
+      : null;
+
+  return {
+    contract_id: contract.contractId ?? null,
+    customer_id: contract.customerId ?? null,
+    customer_name: contract.customerName ?? null,
+    proposal_number: proposalNumber,
+    proposal_date: proposalDate.toISOString(),
+    expiration_date: expirationDate.toISOString(),
+    current_mrr: contract.monthlyRecurringRevenue ?? null,
+    current_acv: contract.annualContractValue ?? null,
+    current_term_months: currentTermMonths,
+    proposed_mrr: recommendations.proposedMrr.toString(),
+    proposed_acv: recommendations.proposedAcv.toString(),
+    proposed_term_months: recommendations.proposedTermMonths,
+    proposed_start_date: proposedStartDate ? proposedStartDate.toISOString() : null,
+    proposed_end_date: proposedEndDate ? proposedEndDate.toISOString() : null,
+    base_price: contract.monthlyRecurringRevenue ?? null,
+    discount_percentage: recommendations.discountPercentage.toString(),
+    discount_amount: discountAmount.toString(),
+    incentive_offered: recommendations.incentiveOffered ?? null,
+    incentive_value: recommendations.incentiveValue.toString(),
+    ai_pricing_strategy: recommendations.pricingStrategy,
+    competitive_analysis: { analysis: 'Market-competitive pricing' },
+    value_proposition: analysis.aiAnalysis,
+    risk_mitigation: { concerns: analysis.riskFactors },
+    base_services_included: ['Standard service agreement', 'Equipment maintenance'],
+    additional_services_offered: recommendations.upsellOpportunities,
+    upsell_value: recommendations.upsellOpportunities
+      .reduce((sum, opp) => sum + opp.value, 0)
+      .toString(),
+    executive_summary: `We value your partnership and are pleased to present this renewal proposal for your ${contract.contractType}.`,
+    services_summary: 'Continued comprehensive service coverage for all equipment.',
+    pricing_summary: `Proposed MRR: $${recommendations.proposedMrr.toFixed(2)} | ACV: $${recommendations.proposedAcv.toFixed(2)}`,
+    status: 'draft',
+    generated_by: 'ai_autopilot',
+  };
+}
