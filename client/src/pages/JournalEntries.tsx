@@ -76,7 +76,7 @@ export default function JournalEntries() {
         entryDate: entry.entry_date || entry.entryDate || '',
         totalDebit: entry.total_debit || entry.totalDebit || 0,
         totalCredit: entry.total_credit || entry.totalCredit || 0,
-        createdAt: entry.createdAt || entry.createdAt || '',
+        createdAt: entry.created_at || entry.createdAt || '',
       }));
     },
   });

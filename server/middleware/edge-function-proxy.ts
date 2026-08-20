@@ -453,6 +453,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // /api/workflow-events and is untouched.
     '/api/workflow-automation': 'workflow-automation',
 
+    // PROD-008: journal-entries. Dev ran the Express handlers in
+    // routes-financial.ts while prod ran the edge fn, and the two disagreed on
+    // the list shape, the create payload and the update verb - so the live page
+    // threw on load, every edit 404'd, and every entry was saved with zero
+    // totals. The edge fn is now the single implementation and this makes dev
+    // match it. Only /api/journal-entries moves; /api/chart-of-accounts stays
+    // on Express in the same file.
+    '/api/journal-entries': 'journal-entries',
+
     // EDGE-005a: accounts-payable / accounts-receivable. The frontend calls the
     // FLAT /api/accounts-{payable,receivable}[/:id] shape (list/create at root,
     // get/update/delete on /:id). The edge handlers were rewritten to serve that
