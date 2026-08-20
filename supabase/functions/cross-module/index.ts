@@ -248,14 +248,24 @@ export default async function handler(req: Request) {
       if (autoInvoice && serviceTicketId) {
         // Create an invoice
         const invoiceNumber = `INV-${Date.now()}`;
+        // invoices has no service_ticket_id column: external_customer_id carries
+        // the ticket id, exactly as billing/handlers/service-entries.ts does it.
+        // Naming service_ticket_id made this a 42703, so a ticket could never be
+        // turned into an invoice. invoice_status is the real status column;
+        // `status` also exists and both are set here to match the billing path.
         const { data: invoice, error: invError } = await admin
           .from('invoices')
           .insert({
             tenant_id: tenantId,
             customer_id: customerId,
             invoice_number: invoiceNumber,
-            service_ticket_id: serviceTicketId,
+            external_customer_id: serviceTicketId ? String(serviceTicketId) : null,
+            invoice_notes: serviceTicketId ? `Service ticket ${serviceTicketId}` : null,
             total_amount: totalAmount,
+            amount_paid: '0',
+            balance_due: totalAmount,
+            invoice_type: 'service',
+            invoice_status: 'draft',
             status: 'draft',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),

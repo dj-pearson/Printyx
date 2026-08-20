@@ -111,17 +111,22 @@ export default async function handler(req: Request) {
     }
 
     // POST /mobile-field/check-in - Check in at customer location
+    //
+    // service_tickets carries no check_in_time or check_in_location, so writing
+    // them made every check-in a 42703 — a technician arriving on site could not
+    // record it at all. mobile_service_sessions is the table built for this
+    // (check_in_latitude/longitude/address/timestamp, hours, status), with
+    // time_tracking_entries logging the arrival/departure events against it.
     if (req.method === 'POST' && endpoint === 'check-in') {
       const body = await req.json();
-      const { ticketId, latitude, longitude } = body;
+      const { ticketId, latitude, longitude, address } = body;
+      const checkedInAt = new Date().toISOString();
 
       const { data: ticket, error } = await admin
         .from('service_tickets')
         .update({
           status: 'on_site',
-          check_in_time: new Date().toISOString(),
-          check_in_location: { latitude, longitude },
-          updated_at: new Date().toISOString(),
+          updated_at: checkedInAt,
         })
         .eq('id', ticketId)
         .eq('tenant_id', tenantId)
@@ -133,11 +138,46 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to check in' }, 500, req);
       }
 
+      const { data: session, error: sessionError } = await admin
+        .from('mobile_service_sessions')
+        .insert({
+          tenant_id: tenantId,
+          service_ticket_id: ticketId,
+          technician_id: user.id,
+          check_in_latitude: latitude ?? null,
+          check_in_longitude: longitude ?? null,
+          check_in_address: address ?? null,
+          check_in_timestamp: checkedInAt,
+          status: 'checked_in',
+          created_at: checkedInAt,
+          updated_at: checkedInAt,
+        })
+        .select()
+        .single();
+
+      if (sessionError) {
+        console.error('Error opening mobile service session:', sessionError);
+      } else if (session?.id) {
+        // 'arrival' is a check_in_type enum value; the enum is
+        // arrival|departure|break_start|break_end.
+        await admin.from('time_tracking_entries').insert({
+          tenant_id: tenantId,
+          session_id: session.id,
+          latitude: latitude ?? null,
+          longitude: longitude ?? null,
+          address: address ?? null,
+          check_in_type: 'arrival',
+          timestamp: checkedInAt,
+          created_at: checkedInAt,
+        });
+      }
+
       return createCorsResponse(
         {
           success: true,
           ticket,
-          checkedInAt: new Date().toISOString(),
+          sessionId: session?.id ?? null,
+          checkedInAt,
         },
         200,
         req,
@@ -149,17 +189,21 @@ export default async function handler(req: Request) {
       const body = await req.json();
       const { ticketId, latitude, longitude, notes, partsUsed, laborHours } = body;
 
+      const checkedOutAt = new Date().toISOString();
+
+      // Same as check-in: check_out_time and check_out_location are not columns
+      // on service_tickets. Everything else here is real (resolution_notes,
+      // parts_used, labor_hours, resolved_at), so only the two GPS fields move
+      // to the session row.
       const { data: ticket, error } = await admin
         .from('service_tickets')
         .update({
           status: 'completed',
-          check_out_time: new Date().toISOString(),
-          check_out_location: { latitude, longitude },
           resolution_notes: notes,
           parts_used: partsUsed || [],
           labor_hours: laborHours,
-          resolved_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          resolved_at: checkedOutAt,
+          updated_at: checkedOutAt,
         })
         .eq('id', ticketId)
         .eq('tenant_id', tenantId)
@@ -171,11 +215,58 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to check out' }, 500, req);
       }
 
+      // Close the session this ticket's check-in opened.
+      const { data: openSession } = await admin
+        .from('mobile_service_sessions')
+        .select('id, check_in_timestamp')
+        .eq('tenant_id', tenantId)
+        .eq('service_ticket_id', ticketId)
+        .eq('technician_id', user.id)
+        .is('check_out_timestamp', null)
+        .order('check_in_timestamp', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (openSession?.id) {
+        const startedAt = openSession.check_in_timestamp
+          ? new Date(openSession.check_in_timestamp as string).getTime()
+          : null;
+        const totalHours = startedAt
+          ? Math.round(((new Date(checkedOutAt).getTime() - startedAt) / 3_600_000) * 100) / 100
+          : null;
+
+        await admin
+          .from('mobile_service_sessions')
+          .update({
+            check_out_latitude: latitude ?? null,
+            check_out_longitude: longitude ?? null,
+            check_out_timestamp: checkedOutAt,
+            total_hours: totalHours,
+            working_hours: laborHours ?? totalHours,
+            service_notes: notes ?? null,
+            status: 'completed',
+            updated_at: checkedOutAt,
+          })
+          .eq('id', openSession.id)
+          .eq('tenant_id', tenantId);
+
+        await admin.from('time_tracking_entries').insert({
+          tenant_id: tenantId,
+          session_id: openSession.id,
+          latitude: latitude ?? null,
+          longitude: longitude ?? null,
+          check_in_type: 'departure',
+          timestamp: checkedOutAt,
+          created_at: checkedOutAt,
+        });
+      }
+
       return createCorsResponse(
         {
           success: true,
           ticket,
-          checkedOutAt: new Date().toISOString(),
+          sessionId: openSession?.id ?? null,
+          checkedOutAt,
         },
         200,
         req,
@@ -238,27 +329,30 @@ export default async function handler(req: Request) {
       const body = await req.json();
       const { ticketId, hours, description, activityType } = body;
 
-      const { data: timeEntry, error } = await admin
-        .from('time_entries')
-        .insert({
-          tenant_id: tenantId,
-          ticket_id: ticketId,
-          user_id: user.id,
-          hours,
-          description,
-          activity_type: activityType || 'service',
-          entry_date: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error logging time:', error);
-        return createCorsResponse({ error: 'Failed to log time' }, 500, req);
-      }
-
-      return createCorsResponse(timeEntry, 201, req);
+      // time_entries is the PROJECT time tracker: task_id, user_id, description,
+      // hours, entry_date, started_at, is_running. It has no ticket_id and no
+      // activity_type, so this insert was a 42703 and no field time was ever
+      // logged. Ticket time is not a spelling difference away — it lives on the
+      // visit, as mobile_service_sessions.working_hours (set at check-out) — so
+      // this refuses and says where the hours belong rather than filing the
+      // entry against a task id it does not have.
+      void hours;
+      void description;
+      void activityType;
+      return createCorsResponse(
+        {
+          error: 'Ticket time is not logged through time_entries',
+          code: 'TIME_ENTRIES_ARE_TASK_SCOPED',
+          details:
+            'time_entries links to task_id, not to a service ticket, and has no activity_type. ' +
+            'Hours for a ticket visit are recorded on mobile_service_sessions (working_hours, ' +
+            'set by /mobile-field/check-out) for ticket ' +
+            String(ticketId) +
+            '.',
+        },
+        501,
+        req,
+      );
     }
 
     // GET /mobile-field/parts-inventory - Get available parts

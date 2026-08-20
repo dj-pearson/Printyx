@@ -45,13 +45,19 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && endpoint === 'recommendations') {
       const ticketId = url.searchParams.get('ticketId');
 
-      // Get available technicians
+      // Get available technicians.
+      //
+      // This asked `users` for name, skills, current_location and status. None
+      // of those are columns on users (it has first_name/last_name and
+      // is_active), so the query 42703'd and the recommendation list was always
+      // empty. `technicians` is the table that actually holds skills,
+      // current_location and is_available.
       const { data: technicians } = await admin
-        .from('users')
-        .select('id, name, skills, current_location')
+        .from('technicians')
+        .select('id, user_id, first_name, last_name, skills, current_location')
         .eq('tenant_id', tenantId)
-        .eq('role', 'technician')
-        .eq('status', 'available');
+        .eq('is_active', true)
+        .eq('is_available', true);
 
       // Get ticket details if provided
       let ticket = null;
@@ -68,7 +74,7 @@ export default async function handler(req: Request) {
       // Generate recommendations (simplified scoring)
       const recommendations = (technicians || []).map((tech: any, index: number) => ({
         technicianId: tech.id,
-        technicianName: tech.name,
+        technicianName: [tech.first_name, tech.last_name].filter(Boolean).join(' ').trim() || null,
         score: 100 - index * 10,
         estimatedArrival: new Date(Date.now() + (30 + index * 15) * 60000).toISOString(),
         distance: 5 + index * 2,
@@ -156,10 +162,13 @@ export default async function handler(req: Request) {
 
       const { data: ticket, error } = await admin
         .from('service_tickets')
+        // service_tickets has no assigned_at column — its timestamps are
+        // scheduled_date, resolved_at, created_at and updated_at — so including
+        // it made every auto-assign a 42703. updated_at moves on assignment and
+        // is the closest real signal; the dedicated timestamp needs a migration.
         .update({
           assigned_technician_id: technicianId,
           status: 'assigned',
-          assigned_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', ticketId)

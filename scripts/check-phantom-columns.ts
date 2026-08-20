@@ -196,7 +196,40 @@ function collectFroms(source: string): Array<{ index: number; table: string | nu
       table: literal && !isStorage ? literal[1] : null,
     });
   }
+
+  // helper(client, 'table', (q) => q.eq(...)) — the table is an ARGUMENT and the
+  // filters live in a callback, so positional attribution blamed them on
+  // whatever .from() came earlier. daily-briefing's countRows() helper produced
+  // three such false reports, each naming a column that is real on the table
+  // actually queried. The callback region is scoped to the named table, then
+  // whatever was in effect before the call is restored at its closing paren.
+  for (const m of source.matchAll(/\b\w+\(\s*[\w.]+\s*,\s*'([a-z0-9_]+)'\s*,\s*(?=\()/g)) {
+    const table = m[1];
+    if (!tableColumns.has(table)) continue;
+    const start = m.index ?? 0;
+    const end = matchingParen(source, source.indexOf('(', start));
+    if (end < 0) continue;
+    const restore = tableFor(out, start);
+    out.push({ index: start, table });
+    out.push({ index: end, table: restore });
+  }
+
+  out.sort((a, b) => a.index - b.index);
   return out;
+}
+
+/** Index of the ')' closing the '(' at `open`, or -1. */
+function matchingParen(source: string, open: number): number {
+  if (open < 0) return -1;
+  let depth = 0;
+  for (let i = open; i < source.length; i++) {
+    if (source[i] === '(') depth++;
+    else if (source[i] === ')') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
 }
 
 /** Column literals sitting after a `.from(...)` this check could not resolve. */
