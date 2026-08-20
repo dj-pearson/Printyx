@@ -442,6 +442,17 @@ export function registerEdgeFunctionProxy(app: any) {
     // /api/client-metrics/* stays on Express (routes-client-monitoring.ts).
     '/api/monitoring-clients': 'monitoring-clients',
 
+    // PROD-014: workflow-automation dashboard. Nothing served this prefix on
+    // the functions host, so AutopilotDashboard.tsx and WorkflowAutomation.tsx
+    // 404'd in production. The two Express handlers that answered in dev
+    // (routes-workflow-mobile.ts, routes-sample-data.ts) returned the same
+    // invented figures for every tenant, so the new edge fn derives the
+    // dashboard from the real CRMX-008 runtime tables instead and this entry
+    // makes dev match prod. Only /api/workflow-automation is forwarded - the
+    // registered runtime router lives at /api/workflows, /api/executions and
+    // /api/workflow-events and is untouched.
+    '/api/workflow-automation': 'workflow-automation',
+
     // EDGE-005a: accounts-payable / accounts-receivable. The frontend calls the
     // FLAT /api/accounts-{payable,receivable}[/:id] shape (list/create at root,
     // get/update/delete on /:id). The edge handlers were rewritten to serve that
