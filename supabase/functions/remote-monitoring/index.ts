@@ -45,24 +45,23 @@ export default async function handler(req: Request) {
       const status = url.searchParams.get('status');
       const customerId = url.searchParams.get('customerId');
 
+      // monitored_devices has no equipment_id, so the equipment embed failed the
+      // WHOLE query — the device list never loaded. It also has no status column
+      // and names the customer client_id. The device row already carries
+      // serial_number, manufacturer and model, so the embed had nothing to add.
       let query = admin
         .from('monitored_devices')
-        .select(
-          `
-          *,
-          equipment:equipment_id (
-            id,
-            name,
-            serial_number,
-            model
-          )
-        `,
-        )
+        .select('*')
         .eq('tenant_id', tenantId)
         .order('last_seen', { ascending: false });
 
-      if (status) query = query.eq('status', status);
-      if (customerId) query = query.eq('customer_id', customerId);
+      // Reachability is not stored as a status string: `enabled` says whether
+      // the device is polled and consecutive_failures says whether polling is
+      // currently working.
+      if (status === 'online') query = query.eq('enabled', true).eq('consecutive_failures', 0);
+      if (status === 'offline') query = query.gt('consecutive_failures', 0);
+      if (status === 'disabled') query = query.eq('enabled', false);
+      if (customerId) query = query.eq('client_id', customerId);
 
       const { data: devices, error } = await query;
 
@@ -86,8 +85,11 @@ export default async function handler(req: Request) {
         .order('created_at', { ascending: false });
 
       if (severity) query = query.eq('severity', severity);
-      if (acknowledged === 'false') query = query.eq('acknowledged', false);
-      if (acknowledged === 'true') query = query.eq('acknowledged', true);
+      // device_alerts records WHEN an alert was acknowledged (acknowledged_at /
+      // acknowledged_by); there is no boolean `acknowledged` column, so both of
+      // these filters 42703'd.
+      if (acknowledged === 'false') query = query.is('acknowledged_at', null);
+      if (acknowledged === 'true') query = query.not('acknowledged_at', 'is', null);
 
       const { data: alerts, error } = await query.limit(100);
 
@@ -106,23 +108,27 @@ export default async function handler(req: Request) {
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId);
 
+      // "Online" is derived, not stored: a device being polled with no run of
+      // failures behind it. The old .eq('status','online') was a 42703, so this
+      // dashboard reported zero devices online however many were up.
       const { count: onlineDevices } = await admin
         .from('monitored_devices')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
-        .eq('status', 'online');
+        .eq('enabled', true)
+        .eq('consecutive_failures', 0);
 
       const { count: activeAlerts } = await admin
         .from('device_alerts')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
-        .eq('acknowledged', false);
+        .is('acknowledged_at', null);
 
       const { count: criticalAlerts } = await admin
         .from('device_alerts')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
-        .eq('acknowledged', false)
+        .is('acknowledged_at', null)
         .eq('severity', 'critical');
 
       return createCorsResponse(
@@ -179,19 +185,37 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && endpoint === 'devices') {
       const body = await req.json();
 
+      // Seven of this payload's names were phantom — equipment_id, customer_id,
+      // device_type, status, monitoring_enabled, poll_interval and created_at —
+      // so registering a device always failed. Only customer_id and status were
+      // visible to check:phantom-cols, the payload being a named variable. The
+      // real columns are client_id, enabled, polling_interval and added_at, and
+      // a device identifies its hardware directly (serial_number, manufacturer,
+      // model) rather than through an equipment FK.
       const deviceData = {
         tenant_id: tenantId,
-        equipment_id: body.equipmentId || body.equipment_id,
-        customer_id: body.customerId || body.customer_id,
+        client_id: body.customerId || body.customer_id || body.clientId || null,
+        serial_number: body.serialNumber || body.serial_number || null,
         ip_address: body.ipAddress || body.ip_address,
         hostname: body.hostname,
-        device_type: body.deviceType || body.device_type,
-        status: 'pending',
-        monitoring_enabled: true,
-        poll_interval: body.pollInterval || body.poll_interval || 300,
-        created_at: new Date().toISOString(),
+        device_name: body.deviceName || body.device_name || null,
+        manufacturer: body.manufacturer ?? null,
+        model: body.model ?? null,
+        enabled: true,
+        polling_interval: body.pollInterval || body.poll_interval || 300,
+        added_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+
+      const unpersisted = [];
+      if (body.equipmentId || body.equipment_id) {
+        unpersisted.push(
+          'equipmentId: monitored_devices has no equipment FK; identify the device by serial_number',
+        );
+      }
+      if (body.deviceType || body.device_type) {
+        unpersisted.push('deviceType: monitored_devices has no device_type column');
+      }
 
       const { data: device, error } = await admin
         .from('monitored_devices')
@@ -204,15 +228,20 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to register device' }, 500, req);
       }
 
-      return createCorsResponse(device, 201, req);
+      return createCorsResponse(
+        unpersisted.length > 0 ? { ...device, unpersisted } : device,
+        201,
+        req,
+      );
     }
 
     // POST /remote-monitoring/alerts/:id/acknowledge - Acknowledge alert
     if (req.method === 'POST' && endpoint === 'alerts' && deviceId && parts[2] === 'acknowledge') {
       const { data: alert, error } = await admin
         .from('device_alerts')
+        // acknowledged_at being set IS the acknowledgement; there is no boolean
+        // column, so this update 42703'd and no alert could be acknowledged.
         .update({
-          acknowledged: true,
           acknowledged_by: user.id,
           acknowledged_at: new Date().toISOString(),
         })

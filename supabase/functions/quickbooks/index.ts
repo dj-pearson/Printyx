@@ -4,6 +4,27 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 
+/**
+ * The id of this tenant's QuickBooks row in `integrations`.
+ *
+ * integration_sync_logs links to a provider through integration_id and has no
+ * integration_type column of its own, so every read and write here needs this
+ * first. `integrations` is not in any Drizzle schema, but /status already
+ * depends on it, so this reuses that rather than adding a second unverified
+ * dependency. Returns null when there is no connection, which the callers treat
+ * as "no history" rather than as an error.
+ */
+// deno-lint-ignore no-explicit-any
+async function quickbooksIntegrationId(admin: any, tenantId: string): Promise<string | null> {
+  const { data } = await admin
+    .from('integrations')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('integration_type', 'quickbooks')
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -60,13 +81,24 @@ export default async function handler(req: Request) {
     }
 
     // GET /quickbooks/sync-history - Get sync history
+    //
+    // integration_sync_logs names no provider: it has integration_id (the row in
+    // `integrations`), sync_type, entity_type, records_fetched/created/updated/
+    // failed, started_at and completed_at. Filtering on integration_type and
+    // ordering by created_at were both 42703s, so sync history never loaded.
+    // The provider is resolved through the same integrations row /status reads.
     if (req.method === 'GET' && endpoint === 'sync-history') {
+      const integrationId = await quickbooksIntegrationId(admin, tenantId);
+      if (!integrationId) {
+        return createCorsResponse([], 200, req);
+      }
+
       const { data: history } = await admin
         .from('integration_sync_logs')
         .select('*')
         .eq('tenant_id', tenantId)
-        .eq('integration_type', 'quickbooks')
-        .order('created_at', { ascending: false })
+        .eq('integration_id', integrationId)
+        .order('started_at', { ascending: false })
         .limit(50);
 
       return createCorsResponse(history || [], 200, req);
@@ -82,11 +114,11 @@ export default async function handler(req: Request) {
         .from('integration_sync_logs')
         .insert({
           tenant_id: tenantId,
-          integration_type: 'quickbooks',
+          integration_id: await quickbooksIntegrationId(admin, tenantId),
           sync_type: 'invoices',
           status: 'pending',
-          records_count: invoiceIds?.length || 0,
-          created_at: new Date().toISOString(),
+          records_fetched: invoiceIds?.length || 0,
+          started_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -113,11 +145,11 @@ export default async function handler(req: Request) {
         .from('integration_sync_logs')
         .insert({
           tenant_id: tenantId,
-          integration_type: 'quickbooks',
+          integration_id: await quickbooksIntegrationId(admin, tenantId),
           sync_type: 'customers',
           status: 'pending',
-          records_count: customerIds?.length || 0,
-          created_at: new Date().toISOString(),
+          records_fetched: customerIds?.length || 0,
+          started_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -142,10 +174,10 @@ export default async function handler(req: Request) {
         .from('integration_sync_logs')
         .insert({
           tenant_id: tenantId,
-          integration_type: 'quickbooks',
+          integration_id: await quickbooksIntegrationId(admin, tenantId),
           sync_type: 'payments',
           status: 'pending',
-          created_at: new Date().toISOString(),
+          started_at: new Date().toISOString(),
         })
         .select()
         .single();

@@ -176,27 +176,42 @@ export default async function handler(req: Request) {
         );
       }
 
-      // Assign the lead
-      const assigneeId = matchedRule.assign_to_user_id || matchedRule.assign_to_team_id;
+      // Assign the lead.
+      //
+      // business_records has none of assigned_to, routing_rule_id or routed_at,
+      // so every routed lead failed to actually be assigned. Ownership is
+      // owner_id + assigned_sales_rep, set together the way
+      // sales-rep-assignments does it. A rule pointing at a TEAM has nowhere to
+      // land — there is no team column on the record — so that case is reported
+      // rather than written into the rep field, which would be wrong.
+      const assignedUserId = matchedRule.assign_to_user_id ?? null;
+      const assigneeId = assignedUserId || matchedRule.assign_to_team_id;
+      const unpersisted: string[] = [
+        'routingRuleId / routedAt: business_records records neither which rule routed it nor when',
+      ];
 
-      if (leadId) {
+      if (leadId && assignedUserId) {
         await admin
           .from('business_records')
           .update({
-            assigned_to: assigneeId,
-            routing_rule_id: matchedRule.id,
-            routed_at: new Date().toISOString(),
+            owner_id: assignedUserId,
+            assigned_sales_rep: assignedUserId,
             updated_at: new Date().toISOString(),
           })
           .eq('id', leadId)
           .eq('tenant_id', tenantId);
+      } else if (leadId) {
+        unpersisted.push(
+          'assignToTeamId: business_records has no team column; only a user can own a record',
+        );
       }
 
       return createCorsResponse(
         {
-          routed: true,
+          routed: Boolean(leadId && assignedUserId),
           rule: matchedRule,
           assignedTo: assigneeId,
+          unpersisted,
         },
         200,
         req,
@@ -205,24 +220,32 @@ export default async function handler(req: Request) {
 
     // GET /auto-lead-routing/stats - Get routing statistics
     if (req.method === 'GET' && endpoint === 'stats') {
+      // Per-rule counts are not derivable: business_records does not record
+      // which rule routed it (no routing_rule_id), so this query 42703'd and the
+      // stats were always empty. What CAN be counted honestly is how many
+      // records currently have an owner.
       const { data: routedLeads } = await admin
         .from('business_records')
-        .select('routing_rule_id, assigned_to')
+        .select('owner_id')
         .eq('tenant_id', tenantId)
-        .not('routing_rule_id', 'is', null);
+        .not('owner_id', 'is', null);
 
-      // Group by rule
+      // Grouped by owner rather than by rule, for the reason above.
       const ruleStats = new Map<string, number>();
       (routedLeads || []).forEach((lead: any) => {
-        if (lead.routing_rule_id) {
-          ruleStats.set(lead.routing_rule_id, (ruleStats.get(lead.routing_rule_id) || 0) + 1);
+        if (lead.owner_id) {
+          ruleStats.set(lead.owner_id, (ruleStats.get(lead.owner_id) || 0) + 1);
         }
       });
 
       return createCorsResponse(
         {
           totalRouted: routedLeads?.length || 0,
+          // Keyed by owner, not by rule — see the query above. The key name is
+          // kept so the response shape does not change under callers.
           byRule: Array.from(ruleStats.entries()).map(([ruleId, count]) => ({ ruleId, count })),
+          byRuleUnavailable:
+            'business_records has no routing_rule_id column; these counts are by owner',
         },
         200,
         req,

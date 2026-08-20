@@ -51,7 +51,9 @@ export default async function handler(req: Request) {
         .from('chart_of_accounts')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('account_number', { ascending: true });
+        // The column is account_code; account_number does not exist, so this
+        // ordering 42703'd and the whole account list failed.
+        .order('account_code', { ascending: true });
 
       if (accountType) query = query.eq('account_type', accountType);
       if (active === 'true') query = query.eq('is_active', true);
@@ -86,7 +88,7 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && accountId === 'summary') {
       const { data: accounts } = await admin
         .from('chart_of_accounts')
-        .select('account_type, balance')
+        .select('account_type, current_balance')
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
 
@@ -101,7 +103,7 @@ export default async function handler(req: Request) {
       (accounts || []).forEach((acc: any) => {
         const type = acc.account_type as keyof typeof summary;
         if (summary[type] !== undefined) {
-          summary[type] += acc.balance || 0;
+          summary[type] += Number(acc.current_balance) || 0;
         }
       });
 
@@ -138,17 +140,22 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && !accountId) {
       const body = await req.json();
 
+      // Four of this payload's names were phantom — account_number, sub_type,
+      // balance and created_by — so every account create was a 42703. Only
+      // account_number and balance were visible to check:phantom-cols, the
+      // payload being a named variable. chart_of_accounts has no created_by.
       const accountData = {
         tenant_id: tenantId,
-        account_number: body.accountNumber || body.account_number,
+        account_code: body.accountNumber || body.account_number || body.accountCode,
         account_name: body.accountName || body.account_name,
         account_type: body.accountType || body.account_type,
-        sub_type: body.subType || body.sub_type,
-        description: body.description,
-        parent_account_id: body.parentAccountId || body.parent_account_id,
+        account_subtype: body.subType || body.sub_type || body.accountSubtype || null,
+        description: body.description ?? null,
+        parent_account_id: body.parentAccountId || body.parent_account_id || null,
         is_active: body.isActive !== false,
-        balance: 0,
-        created_by: user.id,
+        current_balance: 0,
+        debit_balance: 0,
+        credit_balance: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -205,15 +212,20 @@ export default async function handler(req: Request) {
 
     // DELETE /chart-of-accounts/:id - Delete account (only if balance is 0)
     if (req.method === 'DELETE' && accountId) {
-      // Check balance first
+      // Check balance first.
+      //
+      // This read `balance`, which is not a column, so account.balance was
+      // always undefined and the guard NEVER fired: an account holding a
+      // non-zero balance could be deleted outright. That is a data-integrity
+      // bug, not just a failed request. The real column is current_balance.
       const { data: account } = await admin
         .from('chart_of_accounts')
-        .select('balance')
+        .select('current_balance')
         .eq('id', accountId)
         .eq('tenant_id', tenantId)
         .single();
 
-      if (account?.balance && account.balance !== 0) {
+      if (Number(account?.current_balance) !== 0) {
         return createCorsResponse(
           { error: 'Cannot delete account with non-zero balance' },
           400,
