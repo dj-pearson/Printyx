@@ -379,6 +379,126 @@ export default async function handler(req: Request) {
       return createCorsResponse(pendingTasks, 200, req);
     }
 
+    // GET /root-admin/signups-analytics
+    if (req.method === 'GET' && endpoint === 'signups-analytics') {
+      const startParam = url.searchParams.get('startDate');
+      const endParam = url.searchParams.get('endDate');
+      const start = startParam
+        ? new Date(startParam)
+        : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const end = endParam ? new Date(endParam) : new Date();
+
+      // GROUP BY and AVG are not expressible in PostgREST, so the rows come
+      // back and are aggregated here - the same split every dashboard endpoint
+      // ported in this story-family has needed.
+      const { data: rows, error } = await admin
+        .from('platform_signups')
+        .select('status, source, qualification_score')
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString());
+
+      if (error) {
+        console.error('Error fetching signup analytics:', error);
+        return createCorsResponse({ error: 'Failed to fetch analytics' }, 500, req);
+      }
+
+      const signups = rows ?? [];
+      const byStatus: Record<string, number> = {};
+      const bySource: Record<string, number> = {};
+      let scoreTotal = 0;
+      let scoreCount = 0;
+
+      for (const row of signups) {
+        const status = (row as any).status ?? 'unknown';
+        const source = (row as any).source ?? 'unknown';
+        byStatus[status] = (byStatus[status] ?? 0) + 1;
+        bySource[source] = (bySource[source] ?? 0) + 1;
+        const score = (row as any).qualification_score;
+        if (typeof score === 'number') {
+          scoreTotal += score;
+          scoreCount++;
+        }
+      }
+
+      const activated = byStatus['activated'] ?? 0;
+
+      return createCorsResponse(
+        {
+          totalSignups: signups.length,
+          byStatus,
+          bySource,
+          // Express selects { avg: qualificationScore } and reads [0].avg,
+          // which is the FIRST row's score, not an average - the field name and
+          // the card above it both promise a mean. Computed properly here.
+          avgQualificationScore: scoreCount > 0 ? scoreTotal / scoreCount : 0,
+          conversionRate: signups.length > 0 ? ((activated / signups.length) * 100).toFixed(2) : 0,
+          dateRange: { start, end },
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /root-admin/trial-funnel
+    if (req.method === 'GET' && endpoint === 'trial-funnel') {
+      const STAGES = [
+        'signup_created',
+        'email_verified',
+        'trial_started',
+        'first_data_created',
+        'feature_used',
+        'demo_completed',
+        'upgrade_attempted',
+        'upgraded',
+      ];
+
+      // conversion_funnel_events is keyed by signup_id and carries no
+      // tenant_id; root-admin is platform-scoped, and Express does not filter
+      // by tenant here either.
+      const counts = await Promise.all(
+        STAGES.map(async (stage) => {
+          const { count } = await admin
+            .from('conversion_funnel_events')
+            .select('id', { count: 'exact', head: true })
+            .eq('stage', stage);
+          return { stage, count: count ?? 0 };
+        }),
+      );
+
+      const funnel = counts.map((item, index) => ({
+        ...item,
+        dropoffPercent:
+          index > 0 && counts[index - 1].count > 0
+            ? (((counts[index - 1].count - item.count) / counts[index - 1].count) * 100).toFixed(2)
+            : 0,
+      }));
+
+      return createCorsResponse({ funnel }, 200, req);
+    }
+
+    // GET /root-admin/high-value-signups
+    if (req.method === 'GET' && endpoint === 'high-value-signups') {
+      const minScore = parseInt(url.searchParams.get('minScore') || '70', 10) || 70;
+      const limit = Math.min(
+        100,
+        Math.max(1, parseInt(url.searchParams.get('limit') || '20', 10) || 20),
+      );
+
+      const { data: signups, error } = await admin
+        .from('platform_signups')
+        .select('*')
+        .gte('qualification_score', minScore)
+        .order('qualification_score', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching high-value signups:', error);
+        return createCorsResponse({ error: 'Failed to fetch high-value signups' }, 500, req);
+      }
+
+      return createCorsResponse({ data: toCamel(signups ?? []) }, 200, req);
+    }
+
     // ─── Not portable to an edge function ───────────────────────────────────
     //
     // These three do not read tenant tables — they introspect POSTGRES ITSELF:
