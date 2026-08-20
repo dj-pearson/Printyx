@@ -2,6 +2,12 @@
 // Queries the deals table and maps to opportunity-style response format
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { dashboardRollup, byStageRollup } from '../_shared/opportunity-rollups.ts';
+
+// Rollup endpoints fold rows in the function because PostgREST has no GROUP BY
+// or SUM. The cap keeps a large tenant from pulling an unbounded page into
+// memory; past it the dashboard under-reports rather than timing out.
+const ROLLUP_ROW_CAP = 10000;
 
 // Map a deal record to the opportunity response format
 // Field names use snake_case — iOS decoder uses convertFromSnakeCase to map to camelCase Swift properties
@@ -93,6 +99,70 @@ export default async function handler(req: Request) {
     // Normalize: strip function name from path if the relay preserved it
     const pathParts = rawParts[0] === 'opportunities' ? rawParts.slice(1) : rawParts;
     const opportunityId = pathParts[0];
+    // The sub-resource after the id: 'stage' on a pipeline move,
+    // 'convert-to-deal' on the legacy bridge. Read explicitly so those paths
+    // cannot fall through to the plain /:id handlers below - a POST to
+    // /:id/convert-to-deal used to land on the create branch and open a second
+    // deal from an empty body.
+    const subResource = pathParts[1];
+
+    // GET /opportunities/dashboard - pipeline counts and value
+    if (req.method === 'GET' && opportunityId === 'dashboard') {
+      const { data, error } = await admin
+        .from('deals')
+        .select('amount, priority')
+        .eq('tenant_id', tenantId)
+        .limit(ROLLUP_ROW_CAP);
+
+      if (error) {
+        console.error('Error fetching opportunities dashboard:', error);
+        return createCorsResponse({ error: 'Failed to fetch opportunities dashboard' }, 500, req);
+      }
+
+      return createCorsResponse(dashboardRollup(data ?? []), 200, req);
+    }
+
+    // GET /opportunities/by-stage - count and value per pipeline stage
+    if (req.method === 'GET' && opportunityId === 'by-stage') {
+      const { data, error } = await admin
+        .from('deals')
+        .select('amount, status, deal_stage:deal_stages!stage_id(name)')
+        .eq('tenant_id', tenantId)
+        .limit(ROLLUP_ROW_CAP);
+
+      if (error) {
+        console.error('Error fetching opportunities by stage:', error);
+        return createCorsResponse({ error: 'Failed to fetch opportunities by stage' }, 500, req);
+      }
+
+      return createCorsResponse(byStageRollup(data ?? []), 200, req);
+    }
+
+    // POST /opportunities/:id/convert-to-deal - legacy bridge, now a no-op.
+    //
+    // The Express copy read a business_records row and INSERTED a deal from it.
+    // This function has always backed opportunities with the deals table, so
+    // the record the caller wants already is the deal and converting it would
+    // duplicate it. Answer with the deal so an old client's success path still
+    // works, and 404 when there is nothing under that id.
+    if (req.method === 'POST' && opportunityId && subResource === 'convert-to-deal') {
+      const { data: deal, error } = await admin
+        .from('deals')
+        .select('*')
+        .eq('id', opportunityId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error resolving opportunity for conversion:', error);
+        return createCorsResponse({ error: 'Failed to convert opportunity' }, 500, req);
+      }
+      if (!deal) {
+        return createCorsResponse({ error: 'Opportunity not found' }, 404, req);
+      }
+
+      return createCorsResponse(mapDealToOpportunity(deal), 200, req);
+    }
 
     // GET /opportunities - List opportunities (from deals table)
     if (req.method === 'GET' && !opportunityId) {
@@ -257,7 +327,15 @@ export default async function handler(req: Request) {
       // and the list filter matches on status — so fold any of these into
       // status (lowercased to match the stage-name filter convention).
       const incomingStage = body.stage ?? body.sales_stage ?? body.salesStage;
-      if (incomingStage !== undefined && incomingStage !== null && incomingStage !== '') {
+      const hasStage =
+        incomingStage !== undefined && incomingStage !== null && incomingStage !== '';
+      // PATCH /:id/stage is stage-only: without one there is nothing to do, and
+      // silently writing just updated_at would report a move that never
+      // happened. The plain /:id update keeps accepting a body with no stage.
+      if (subResource === 'stage' && !hasStage) {
+        return createCorsResponse({ error: 'stage is required' }, 400, req);
+      }
+      if (hasStage) {
         updateData.status = String(incomingStage).toLowerCase();
       }
 

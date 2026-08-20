@@ -5,7 +5,6 @@
 export { registerDealsManagementRoutes } from '../routes-deals-management';
 // registerDealDeskRoutes — migrated to supabase/functions/deal-desk/
 export { registerDealTagRoutes } from '../routes-deal-tags';
-export { registerOpportunitiesRoutes } from '../routes-opportunities';
 // registerPipelineConfigurationRoutes — migrated to supabase/functions/pipeline-config/
 // setupSalesPipelineRoutes — migrated to supabase/functions/sales-pipeline/
 export { registerLeadAssignmentRoutes } from '../routes-lead-assignment';

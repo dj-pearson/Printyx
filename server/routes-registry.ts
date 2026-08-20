@@ -69,7 +69,6 @@ import {
   registerDealsManagementRoutes,
   // registerDealDeskRoutes — migrated to supabase/functions/deal-desk/
   registerDealTagRoutes,
-  registerOpportunitiesRoutes,
   // registerPipelineConfigurationRoutes — migrated to supabase/functions/pipeline-config/
   // setupSalesPipelineRoutes — migrated to supabase/functions/sales-pipeline/
   registerLeadAssignmentRoutes,
@@ -199,7 +198,6 @@ import { registerPortalServiceRoutes } from './routes-portal-service';
 import { registerServiceKnowledgeRoutes } from './routes-service-knowledge';
 import { registerVoiceTicketCloseRoutes } from './routes-voice-ticket-close';
 import { registerChatbotRoutes } from './routes-chatbot';
-import { registerVoiceAgentRoutes } from './routes-voice-agent';
 import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
@@ -620,7 +618,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use(webFormsRoutes);
   app.use(emailSequencesRoutes);
   registerDealsManagementRoutes(app);
-  registerOpportunitiesRoutes(app);
   // registerDealDeskRoutes(app) — migrated to supabase/functions/deal-desk/
   // registerPipelineConfigurationRoutes(app) — migrated to supabase/functions/pipeline-config/
   registerTechnicianManagementRoutes(app);
@@ -638,7 +635,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerServiceKnowledgeRoutes(app);
   registerVoiceTicketCloseRoutes(app);
   registerChatbotRoutes(app);
-  registerVoiceAgentRoutes(app);
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
   registerSalesHandoffRoutes(app);
