@@ -22,7 +22,6 @@ import {
 
 import {
   registerBillingCoreRoutes,
-  registerFinancialRoutes,
   registerFinancialForecastingRoutes,
   registerCommissionRoutes,
   registerQuickBooksRoutes,
@@ -671,7 +670,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerCommissionRoutes(app);
   registerCatalogRoutes(app);
   registerAnalyticsRoutes(app);
-  registerFinancialRoutes(app);
   registerRenewalManagementRoutes(app);
 
   // ─── Sales Forecasting ────────────────────────────────────────────

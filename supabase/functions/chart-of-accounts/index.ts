@@ -3,6 +3,12 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import {
+  toAccountColumns,
+  validateNewAccount,
+  isDeletable,
+  SERVER_OWNED_COLUMNS,
+} from '../_shared/chart-of-accounts-contract.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -138,21 +144,30 @@ export default async function handler(req: Request) {
 
     // POST /chart-of-accounts - Create account
     if (req.method === 'POST' && !accountId) {
-      const body = await req.json();
+      const body = await req.json().catch(() => null);
 
-      // Four of this payload's names were phantom — account_number, sub_type,
-      // balance and created_by — so every account create was a 42703. Only
-      // account_number and balance were visible to check:phantom-cols, the
+      // Four of this payload's names used to be phantom - account_number,
+      // sub_type, balance and created_by - so every account create was a 42703.
+      // Only account_number and balance were visible to check:phantom-cols, the
       // payload being a named variable. chart_of_accounts has no created_by.
+      // The camel-to-column mapping now lives in the shared contract module.
+      const { columns, ignored } = toAccountColumns(body);
+      for (const owned of SERVER_OWNED_COLUMNS) delete columns[owned];
+
+      const validation = validateNewAccount(columns);
+      if (!validation.ok) {
+        return createCorsResponse(
+          { error: 'Invalid account', errors: validation.errors },
+          400,
+          req,
+        );
+      }
+
       const accountData = {
+        ...columns,
         tenant_id: tenantId,
-        account_code: body.accountNumber || body.account_number || body.accountCode,
-        account_name: body.accountName || body.account_name,
-        account_type: body.accountType || body.account_type,
-        account_subtype: body.subType || body.sub_type || body.accountSubtype || null,
-        description: body.description ?? null,
-        parent_account_id: body.parentAccountId || body.parent_account_id || null,
-        is_active: body.isActive !== false,
+        // Balances are derived from posted journal activity, never supplied by
+        // the client.
         current_balance: 0,
         debit_balance: 0,
         credit_balance: 0,
@@ -171,26 +186,44 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create account', details: error }, 500, req);
       }
 
-      return createCorsResponse(account, 201, req);
+      return createCorsResponse(ignored.length > 0 ? { ...account, ignored } : account, 201, req);
     }
 
-    // PUT /chart-of-accounts/:id - Update account
-    if (req.method === 'PUT' && accountId && !subResource) {
-      const body = await req.json();
+    // PATCH|PUT /chart-of-accounts/:id - Update account.
+    //
+    // PATCH is the verb ChartOfAccounts.tsx sends; only PUT was implemented, so
+    // every edit 404'd in production (and 404'd in dev too, where Express had no
+    // /:id handler at all). PUT is kept as an alias.
+    if ((req.method === 'PATCH' || req.method === 'PUT') && accountId && !subResource) {
+      const body = await req.json().catch(() => null);
+
+      // This used to spread the request body straight into the update. The page
+      // sends camelCase, none of which are columns, so the statement failed even
+      // once it was reachable.
+      const { columns, ignored } = toAccountColumns(body);
+      for (const owned of SERVER_OWNED_COLUMNS) delete columns[owned];
+
+      if (Object.keys(columns).length === 0) {
+        return createCorsResponse({ error: 'No updatable fields supplied', ignored }, 400, req);
+      }
 
       const { data: account, error } = await admin
         .from('chart_of_accounts')
-        .update({ ...body, updated_at: new Date().toISOString() })
+        .update({ ...columns, updated_at: new Date().toISOString() })
         .eq('id', accountId)
         .eq('tenant_id', tenantId)
         .select()
         .single();
 
       if (error) {
+        console.error('Error updating account:', error);
         return createCorsResponse({ error: 'Failed to update account' }, 500, req);
       }
+      if (!account) {
+        return createCorsResponse({ error: 'Account not found' }, 404, req);
+      }
 
-      return createCorsResponse(account, 200, req);
+      return createCorsResponse(ignored.length > 0 ? { ...account, ignored } : account, 200, req);
     }
 
     // POST /chart-of-accounts/:id/deactivate - Deactivate account
@@ -225,7 +258,14 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .single();
 
-      if (Number(account?.current_balance) !== 0) {
+      // A missing account is a 404. The old guard read Number(undefined) = NaN
+      // for it and answered "cannot delete account with non-zero balance",
+      // which is both the wrong status and a misleading reason.
+      if (!account) {
+        return createCorsResponse({ error: 'Account not found' }, 404, req);
+      }
+
+      if (!isDeletable(account.current_balance)) {
         return createCorsResponse(
           { error: 'Cannot delete account with non-zero balance' },
           400,

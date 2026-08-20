@@ -462,6 +462,14 @@ export function registerEdgeFunctionProxy(app: any) {
     // on Express in the same file.
     '/api/journal-entries': 'journal-entries',
 
+    // PROD-008: chart-of-accounts, the other half of the retired
+    // routes-financial.ts. Editing an account was broken on BOTH hosts - Express
+    // never had a /:id handler, and the edge fn implemented PUT while the page
+    // sends PATCH - so this closes a dead feature rather than only aligning two
+    // live ones. With both prefixes proxied, routes-financial.ts has no routes
+    // left and is deleted.
+    '/api/chart-of-accounts': 'chart-of-accounts',
+
     // EDGE-005a: accounts-payable / accounts-receivable. The frontend calls the
     // FLAT /api/accounts-{payable,receivable}[/:id] shape (list/create at root,
     // get/update/delete on /:id). The edge handlers were rewritten to serve that

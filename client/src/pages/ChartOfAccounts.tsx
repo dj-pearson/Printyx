@@ -82,7 +82,7 @@ export default function ChartOfAccounts() {
         accountName: account.account_name || account.accountName || '',
         accountType: account.account_type || account.accountType || '',
         parentAccountId: account.parent_account_id || account.parentAccountId || null,
-        createdAt: account.createdAt || account.createdAt || '',
+        createdAt: account.created_at || account.createdAt || '',
       }));
     },
   });
