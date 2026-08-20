@@ -89,10 +89,26 @@ export default async function handler(req: Request) {
       result = await handleBulk(req, { ...ctx, pathParts: parts.slice(1) });
     } else if (parts.length >= 2 && parts[1] === 'comments') {
       result = await handleComments(req, { ...ctx, pathParts: parts });
-    } else if (parts.length >= 2 && parts[1] === 'time-entry') {
+    } else if (parts.length >= 2 && (parts[1] === 'time-entry' || parts[1] === 'time')) {
+      // TaskTimeTracker.tsx posts the manual entry to /:id/time; only
+      // /:id/time-entry was routed, so every manual entry 404'd.
       result = await handleTimeEntries(req, { ...ctx, pathParts: ['create', parts[0]] });
+    } else if (parts.length >= 3 && parts[1] === 'time-entries') {
+      // Delete carries the entry id at parts[2]. The old dispatcher forwarded
+      // ['list', taskId] for every /time-entries path and dropped it.
+      result = await handleTimeEntries(req, {
+        ...ctx,
+        pathParts: ['delete', parts[0], parts[2]],
+      });
     } else if (parts.length >= 2 && parts[1] === 'time-entries') {
       result = await handleTimeEntries(req, { ...ctx, pathParts: ['list', parts[0]] });
+    } else if (parts.length >= 3 && parts[1] === 'timer') {
+      // /:id/timer/start and /:id/timer/stop. Neither existed here, so the
+      // whole timer was dead while Express's working copy sat shadowed.
+      result = await handleTimeEntries(req, {
+        ...ctx,
+        pathParts: [`timer-${parts[2]}`, parts[0]],
+      });
     } else {
       result = await handleTasks(req, ctx);
     }
