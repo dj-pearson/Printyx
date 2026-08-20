@@ -4186,6 +4186,22 @@
       "category": "edge-migration"
     },
     {
+      "id": "EDGE-002g-remainder",
+      "title": "Predictive dispatch needs a schema before it can have an analysis engine",
+      "description": "As a service manager, I need predictive failure analysis to run on tables that exist, because the Express implementation it would be ported from queries three tables that no Drizzle schema declares and no migration creates - so both /predictive-dispatch/analyze/:serialNumber and /analyze-all fail at runtime today, on Express as well as on the edge function. Split out of EDGE-002g, which is a PORTING story: there is nothing here to port, only to build.",
+      "acceptanceCriteria": [
+        "Confirm the finding before designing anything: server/routes-predictive-service-dispatch.ts references service_calls_enhanced (38x), equipment_metrics (18x) and technician_resources_enhanced (3x); none appear in shared/*.ts and no drizzle/migrations/*.sql creates them",
+        "Decide per table whether it should exist at all, or whether the real data already lives in service_calls, device_metrics and technicians - the read endpoints rebuilt in EDGE-002g use exactly those and cover most of the dashboard",
+        "For anything that must exist, add the Drizzle schema plus a GENERATED migration (npm run db:generate, never a hand-dropped .sql - see SUPA-005 and COP-M00)",
+        "Only then build the analysis: prediction over device_metrics history writing equipment_failure_predictions, with a deterministic fallback so it works without CLAUDE_API_KEY (follow the parity-lock pattern in supabase/functions/_shared/renewal-analysis.ts and supply-analysis.ts)",
+        "Fill the fields EDGE-002g had to report as unbacked, or delete them from the page: dashboard costSavings / downtimePreventedHours / uptimeImprovement / partsAutoOrdered, AtRiskDevice fuserLife / drumLife, TechnicianPerformance maxWorkload / avgResponseTime / territories",
+        "Retire or repair server/routes-predictive-service-dispatch.ts - it is also the ~69-error file the QUALITY-002 note defers"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "[SPLIT OUT OF EDGE-002g 2026-08-20, after that story delivered its other three domains and rebuilt this one's READ endpoints from real tables. Kept separate because EDGE-002g is about porting Express handlers to edge functions, and this is not portable - the source is broken.\n\nEVIDENCE, verified rather than inherited from the CLAUDE.md note that flagged this file for its tsc errors: grepped every .sql under drizzle/ and every shared/*.ts. service_calls_enhanced, equipment_metrics and technician_resources_enhanced are created NOWHERE. Similar-sounding tables that DO exist: service_calls, service_call_analysis, device_metrics, equipment_failure_predictions, technicians, technician_locations, technician_ticket_sessions.\n\nWHAT IS ALREADY DONE, so this story does not redo it: /dashboard, /devices-at-risk and /technician-performance are served from equipment_failure_predictions + equipment + device_metrics + technicians + service_calls. Every field with no source is named in an \"unbacked\" array on the response rather than filled with a plausible number. Two fields are OMITTED rather than zeroed, because the page reds fuserLife below 20 and a placeholder 0 would raise a critical alarm on every device. Only the two analyze endpoints are unserved; they return 501 PREDICTIVE_ANALYSIS_NEEDS_SCHEMA naming this gap.]"
+    },
+    {
       "id": "EDGE-002h",
       "title": "Port missing endpoints to commission, equipment, gdpr, manufacturer-integrations, oid-mappings, performance, platform-deals, parts-orders, products, purchase-orders, quickbooks, rbac, remote-monitoring, social-media, supplies, warehouse-operations",
       "description": "Each of these edge functions has partial coverage — typically CRUD on the main resource works, but some sub-routes (/test, /export, /:id/items, /devices-at-risk, etc.) are missing or have a different naming convention. Port the missing endpoints OR add URL aliasing in the dispatcher.",
