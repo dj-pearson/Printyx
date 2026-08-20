@@ -1139,6 +1139,177 @@ export default async function handler(req: Request) {
       );
     }
 
+    // GET /purchase-orders/suggestions/low-stock (EDGE-002h)
+    //
+    // Express's version cannot run. It selects inventoryItems.currentStock and
+    // inventoryItems.supplier - neither is a field on the only inventory_items
+    // definition in shared/ - and its raw WHERE clause names current_stock and
+    // supplier, so PostgREST's equivalent would be a 42703. The real columns
+    // are quantity_on_hand and primary_vendor. Express also aliases
+    // quantityOnOrder to currentStock and reorderQuantity to reorderPoint,
+    // which the table has as their own columns, so those are read properly here
+    // rather than duplicated.
+    if (req.method === 'GET' && poId === 'suggestions' && subResource === 'low-stock') {
+      const { data: items, error } = await admin
+        .from('inventory_items')
+        .select(
+          'id, name, item_description, part_number, quantity_on_hand, quantity_on_order, reorder_point, reorder_quantity, unit_cost, primary_vendor',
+        )
+        .eq('tenant_id', tenantId)
+        .not('reorder_point', 'is', null)
+        .gt('reorder_point', 0)
+        .not('primary_vendor', 'is', null)
+        .order('primary_vendor', { ascending: true })
+        .order('name', { ascending: true })
+        .limit(500);
+
+      if (error) {
+        console.error('Error building low-stock suggestions:', error);
+        return createCorsResponse({ message: 'Failed to build suggestions' }, 500, req);
+      }
+
+      // PostgREST cannot compare two columns, so the at-or-below-reorder test
+      // happens here rather than in the filter.
+      const low = (items ?? []).filter(
+        (it: any) => Number(it.quantity_on_hand ?? 0) <= Number(it.reorder_point ?? 0),
+      );
+
+      if (low.length === 0) {
+        return createCorsResponse({ groups: [] }, 200, req);
+      }
+
+      const { data: vendorRows } = await admin
+        .from('vendors')
+        .select('id, vendor_name')
+        .eq('tenant_id', tenantId);
+      const vendorIdByName = new Map(
+        (vendorRows ?? []).map((v: any) => [String(v.vendor_name ?? '').toLowerCase(), v.id]),
+      );
+
+      const groupsMap = new Map<string, any>();
+      for (const it of low as any[]) {
+        const key = String(it.primary_vendor ?? '').toLowerCase();
+        if (!key) continue;
+        if (!groupsMap.has(key)) {
+          groupsMap.set(key, {
+            vendorName: it.primary_vendor,
+            vendorId: vendorIdByName.get(key) ?? null,
+            items: [],
+          });
+        }
+        groupsMap.get(key).items.push({
+          inventoryItemId: it.id,
+          partNumber: it.part_number,
+          itemDescription: it.item_description || it.name,
+          recommendedQty: Number(it.reorder_quantity) || 0,
+          unitCost: it.unit_cost || 0,
+        });
+      }
+
+      return createCorsResponse({ groups: [...groupsMap.values()] }, 200, req);
+    }
+
+    // POST /purchase-orders/generate-from-suggestions
+    //
+    // One draft PO per vendor group, with its line items. Groups without a
+    // resolved vendorId are skipped, as Express does - a PO with no vendor is
+    // not useful, and inventory_items only records the vendor by NAME.
+    if (req.method === 'POST' && poId === 'generate-from-suggestions') {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const groups = body.groups;
+
+      if (!Array.isArray(groups) || groups.length === 0) {
+        return createCorsResponse({ message: 'No groups provided' }, 400, req);
+      }
+
+      const now = Date.now();
+      const createdPoIds: string[] = [];
+      const skipped: string[] = [];
+
+      for (let i = 0; i < groups.length; i++) {
+        const group: any = groups[i];
+        if (!group?.vendorId || !Array.isArray(group.items) || group.items.length === 0) {
+          skipped.push(group?.vendorName ?? `group ${i + 1}`);
+          continue;
+        }
+
+        let subtotal = 0;
+        const lineItems = group.items.map((it: any, idx: number) => {
+          const quantity = Number(it.quantity ?? it.recommendedQty ?? 0);
+          const unitPrice = Number(it.unitCost ?? 0);
+          const totalPrice = quantity * unitPrice;
+          subtotal += totalPrice;
+          return {
+            tenant_id: tenantId,
+            line_number: idx + 1,
+            item_description: it.itemDescription || it.partNumber || 'Item',
+            item_code: it.partNumber ?? null,
+            quantity,
+            unit_price: unitPrice,
+            total_price: totalPrice,
+            created_at: new Date(now).toISOString(),
+          };
+        });
+
+        const { data: po, error: poError } = await admin
+          .from('purchase_orders')
+          .insert({
+            tenant_id: tenantId,
+            po_number: `PO-${now}-${i + 1}`,
+            vendor_id: group.vendorId,
+            requested_by: user.id,
+            order_date: body.orderDate
+              ? new Date(body.orderDate as string).toISOString()
+              : new Date(now).toISOString(),
+            expected_date: body.expectedDate
+              ? new Date(body.expectedDate as string).toISOString()
+              : null,
+            description:
+              (body.description as string) ||
+              `Auto-generated from low stock for ${group.vendorName || group.vendorId}`,
+            subtotal,
+            tax_amount: 0,
+            shipping_amount: 0,
+            total_amount: subtotal,
+            status: 'draft',
+            created_by: user.id,
+            created_at: new Date(now).toISOString(),
+            updated_at: new Date(now).toISOString(),
+          })
+          .select()
+          .single();
+
+        if (poError || !po) {
+          console.error('Error creating purchase order from suggestions:', poError);
+          skipped.push(group.vendorName ?? group.vendorId);
+          continue;
+        }
+
+        const { error: itemsError } = await admin
+          .from('purchase_order_items')
+          .insert(lineItems.map((li: any) => ({ ...li, purchase_order_id: po.id })));
+
+        if (itemsError) {
+          console.error('Error creating purchase order items:', itemsError);
+        }
+
+        createdPoIds.push(po.id as string);
+      }
+
+      return createCorsResponse(
+        {
+          success: true,
+          created: createdPoIds.length,
+          purchaseOrderIds: createdPoIds,
+          ...(skipped.length > 0
+            ? { skipped, skippedReason: 'no resolved vendorId, or the insert failed' }
+            : {}),
+        },
+        201,
+        req,
+      );
+    }
+
     // Method not allowed
     return createCorsResponse({ error: 'Method not allowed' }, 405, req);
   } catch (error) {
