@@ -1087,6 +1087,58 @@ export default async function handler(req: Request) {
       return createCorsResponse({ success: true, message: 'Purchase order deleted' }, 200, req);
     }
 
+    // GET /purchase-orders/stats/summary (EDGE-002h)
+    //
+    // PurchaseOrders.tsx reads total, draft, pending, approved, ordered,
+    // received, cancelled, totalValue and pendingValue. Express fetches every
+    // PO and filters in JS; the counts are done server-side here, and only the
+    // rows needed for the two money totals come back.
+    if (req.method === 'GET' && poId === 'stats' && subResource === 'summary') {
+      const STATUSES = ['draft', 'pending', 'approved', 'ordered', 'received', 'cancelled'];
+
+      const countOf = async (
+        client: typeof admin,
+        table: string,
+        apply: (q: any) => any,
+      ): Promise<number> => {
+        const { count } = await apply(
+          client.from(table).select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+        );
+        return count ?? 0;
+      };
+
+      const [total, ...statusCounts] = await Promise.all([
+        countOf(admin, 'purchase_orders', (q) => q),
+        ...STATUSES.map((st) => countOf(admin, 'purchase_orders', (q) => q.eq('status', st))),
+      ]);
+
+      // SUM has no PostgREST equivalent, so the amounts come back to be added.
+      const { data: amountRows } = await admin
+        .from('purchase_orders')
+        .select('status, total_amount')
+        .eq('tenant_id', tenantId);
+
+      const PENDING_STATUSES = new Set(['pending', 'approved', 'ordered']);
+      let totalValue = 0;
+      let pendingValue = 0;
+      for (const row of amountRows ?? []) {
+        const amount = parseFloat(String((row as any).total_amount ?? '0')) || 0;
+        totalValue += amount;
+        if (PENDING_STATUSES.has(String((row as any).status))) pendingValue += amount;
+      }
+
+      return createCorsResponse(
+        {
+          total,
+          ...Object.fromEntries(STATUSES.map((st, i) => [st, statusCounts[i]])),
+          totalValue,
+          pendingValue,
+        },
+        200,
+        req,
+      );
+    }
+
     // Method not allowed
     return createCorsResponse({ error: 'Method not allowed' }, 405, req);
   } catch (error) {

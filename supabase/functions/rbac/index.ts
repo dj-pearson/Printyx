@@ -206,6 +206,112 @@ export default async function handler(req: Request) {
     }
 
     // Method/endpoint not found
+    // ─── RBAC status and org units (EDGE-002h) ──────────────────────────────
+
+    // GET /rbac/status
+    //
+    // RoleManagement.tsx gates the whole page on this: initialized false shows
+    // a setup prompt, true shows the role manager.
+    if (req.method === 'GET' && endpoint === 'status') {
+      const { count: roleCount } = await admin
+        .from('enhanced_roles')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId);
+
+      if ((roleCount ?? 0) === 0) {
+        return createCorsResponse(
+          {
+            initialized: false,
+            recommendation: 'Initialize RBAC system to enable advanced role management',
+            actions: [
+              'Define organizational structure',
+              'Set up role hierarchy',
+              'Configure permissions',
+              'Assign initial roles',
+            ],
+          },
+          200,
+          req,
+        );
+      }
+
+      const { count: unitCount } = await admin
+        .from('organizational_units')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId);
+
+      return createCorsResponse(
+        {
+          initialized: true,
+          stats: {
+            totalRoles: roleCount ?? 0,
+            organizationalUnits: unitCount ?? 0,
+          },
+          recommendation: 'RBAC system is active and ready for management',
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /rbac/organizational-units
+    //
+    // Express returns { units, hierarchy, totalCount } but its hierarchy is
+    // ALWAYS EMPTY: it builds the tree by filtering on node.parentUnitId, while
+    // the raw `SELECT *` behind it returns snake_case, so parentUnitId is
+    // undefined on every row and nothing ever matches a parent. The column is
+    // parent_unit_id. Built here off the real key, so the tree is populated.
+    if (req.method === 'GET' && endpoint === 'organizational-units') {
+      const { data: units, error } = await admin
+        .from('organizational_units')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        // lft is the nested-set left bound, so this is the tree's own order.
+        .order('lft', { ascending: true });
+
+      if (error) {
+        console.error('Organizational units fetch error:', error);
+        return createCorsResponse({ error: 'Internal server error' }, 500, req);
+      }
+
+      const rows = units ?? [];
+      const buildTree = (parentId: string | null): any[] =>
+        rows
+          .filter((node: any) => (node.parent_unit_id ?? null) === parentId)
+          .map((node: any) => ({ ...node, children: buildTree(node.id) }));
+
+      return createCorsResponse(
+        { units: rows, hierarchy: buildTree(null), totalCount: rows.length },
+        200,
+        req,
+      );
+    }
+
+    // POST /rbac/seed - NOT PORTED YET.
+    //
+    // Express seeds an organizational unit plus a full role set that varies by
+    // dealerType - roughly 160 lines of literal role definitions with hierarchy
+    // levels and departments. It is mechanical to port but it decides what
+    // permissions a tenant's roles carry, so a transcription slip would hand
+    // someone the wrong access. It gets its own pass rather than a rushed one,
+    // and it is a one-time initialisation that dev can still run through
+    // Express in the meantime.
+    if (req.method === 'POST' && endpoint === 'seed') {
+      return createCorsResponse(
+        {
+          error: 'RBAC seeding is not available on the edge function yet',
+          code: 'RBAC_SEED_NOT_PORTED',
+          details:
+            'server/routes-enhanced-rbac.ts POST /seed creates the default organizational unit ' +
+            'and the per-dealerType role set. Porting it verbatim matters more than porting it ' +
+            'quickly, because the seeded roles define tenant permissions.',
+        },
+        501,
+        req,
+      );
+    }
+
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
   } catch (error) {
     console.error('Unexpected error in rbac function:', error);
