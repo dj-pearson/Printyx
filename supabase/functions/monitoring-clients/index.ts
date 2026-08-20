@@ -755,6 +755,80 @@ export default async function handler(req: Request) {
       return createCorsResponse({ commands }, 200, req);
     }
 
+    // ── discovered devices ───────────────────────────────────────────
+    // Devices the agent found on the customer LAN but has not registered
+    // yet. Ported from the Express handler this story retires; the agent
+    // ingest on Express still writes the rows.
+    if (req.method === 'GET' && clientId && action === 'discovered-devices') {
+      const client = await findClientForTenant(admin, clientId, tenantId);
+      if (!client) return createCorsResponse({ message: 'Client not found' }, 404, req);
+
+      const { data: rows, error } = await admin
+        .from('client_discovered_devices')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('client_id', client.id)
+        .order('last_seen', { ascending: false });
+      if (error) {
+        return createCorsResponse(
+          { message: 'Failed to list discovered devices', detail: error.message },
+          500,
+          req,
+        );
+      }
+      const devices = (rows || []).map((r: any) => ({
+        id: r.id,
+        ipAddress: r.ip_address,
+        macAddress: r.mac_address,
+        serialNumber: r.serial_number,
+        manufacturer: r.manufacturer,
+        model: r.model,
+        protocol: r.protocol,
+        capabilities: r.capabilities,
+        isRegistered: r.is_registered,
+        registeredDeviceId: r.registered_device_id,
+        firstDiscovered: r.first_discovered,
+        lastSeen: r.last_seen,
+      }));
+      return createCorsResponse({ devices }, 200, req);
+    }
+
+    // ── activity log ─────────────────────────────────────────────────
+    // Columns are the post-0001 shape: event_type/severity/event_data, NOT
+    // the activity/status/details that shared/client-monitor-schema.ts still
+    // declares (migration 0001_complete_zombie dropped those six columns and
+    // narrowed tenant_id to integer). That is why this filters on client_id
+    // alone - the client was already tenant-checked above, and comparing a
+    // uuid tenantId against an integer column errors at the database.
+    if (req.method === 'GET' && clientId && action === 'activity') {
+      const client = await findClientForTenant(admin, clientId, tenantId);
+      if (!client) return createCorsResponse({ message: 'Client not found' }, 404, req);
+
+      const limit = Math.min(Number(url.searchParams.get('limit')) || 100, 500);
+      const { data: rows, error } = await admin
+        .from('client_activity_logs')
+        .select('id, client_id, event_type, event_data, severity, message, timestamp')
+        .eq('client_id', client.id)
+        .order('timestamp', { ascending: false })
+        .limit(limit);
+      if (error) {
+        return createCorsResponse(
+          { message: 'Failed to list activity', detail: error.message },
+          500,
+          req,
+        );
+      }
+      const activity = (rows || []).map((r: any) => ({
+        id: r.id,
+        eventType: r.event_type,
+        eventData: r.event_data,
+        severity: r.severity,
+        message: r.message,
+        timestamp: r.timestamp,
+      }));
+      return createCorsResponse({ activity }, 200, req);
+    }
+
     // ── update (partial) ─────────────────────────────────────────────
     // Toggles/edits on an existing client. autoUpdate + autoOrderEnabled live
     // in the JSON config blob (read-modify-write); customerId/location/
