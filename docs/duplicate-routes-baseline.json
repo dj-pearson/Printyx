@@ -4,7 +4,6 @@
     "DELETE /api/product-models/:id :: server/routes-product-models.ts|server/routes-products-crud.ts",
     "DELETE /api/vendors/:id :: server/routes-products-crud.ts|server/routes-purchase-orders.ts",
     "GET /api/business-process/dashboard :: server/routes-business-process-optimization.ts|server/routes-sample-data.ts",
-    "GET /api/business-records :: server/routes-business-records.ts|server/routes-onboarding.ts",
     "GET /api/commission/calculations :: server/routes-commission.ts|server/routes-operations-extended.ts",
     "GET /api/commission/disputes :: server/routes-commission.ts|server/routes-operations-extended.ts",
     "GET /api/customer-success/health-scores :: server/routes-customer-success.ts|server/routes-sample-data.ts",

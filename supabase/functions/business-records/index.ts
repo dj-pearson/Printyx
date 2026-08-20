@@ -68,6 +68,7 @@ export default async function handler(req: Request) {
   const pathParts = rawParts[0] === 'business-records' ? rawParts.slice(1) : rawParts;
   const recordId = pathParts[0]; // The UUID or 'stats'
   const subResource = pathParts[1]; // activities, contacts, overview, etc.
+  const subResourceId = pathParts[2]; // e.g. the contact id on /:id/contacts/:contactId
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -197,6 +198,31 @@ export default async function handler(req: Request) {
         }
 
         return createCorsResponse(activities || [], 200, req);
+      }
+
+      // A SINGLE contact: /:id/contacts/:contactId. Must be matched before the
+      // list branch below, which has no third-segment guard and would answer a
+      // single-contact request with the whole array. QuoteTransformer.tsx:244
+      // requests exactly this path through the default queryFn and types the
+      // result as one Contact, so it was reading firstName off an array and
+      // rendering blank contact fields into a generated proposal.
+      if (subResource === 'contacts' && recordId && subResourceId) {
+        const { data: contact, error } = await admin
+          .from('company_contacts')
+          .select('*')
+          .eq('id', subResourceId)
+          .eq('company_id', recordId)
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching contact:', error);
+          return createCorsResponse({ error: 'Failed to fetch contact' }, 500, req);
+        }
+        if (!contact) {
+          return createCorsResponse({ error: 'Contact not found' }, 404, req);
+        }
+        return createCorsResponse(contact, 200, req);
       }
 
       if (subResource === 'contacts' && recordId) {

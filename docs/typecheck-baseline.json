@@ -1,4 +1,4 @@
 {
   "note": "QUALITY-002 tsc-error ratchet baseline. scripts/check-types.mjs fails CI only when the error count grows above `total`. Lower it (never raise it) as debt is fixed: node scripts/check-types.mjs --update-baseline.",
-  "total": 998
+  "total": 992
 }
