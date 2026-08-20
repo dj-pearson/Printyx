@@ -26,7 +26,6 @@ const log = createModuleLogger('routes-workflow-mobile');
 
 import {
   insertDealStageSchema,
-  insertDealActivitySchema,
   businessRecords,
   locations,
   regions,
@@ -677,30 +676,19 @@ export function registerWorkflowMobileRoutes(app: Express) {
   // ============= DEAL MANAGEMENT ROUTES =============
 
   // Get all deals with optional filtering
-  app.get('/api/deals', async (req: any, res) => {
-    // Authentication check using unified auth helpers
-    const userId = getUserId(req);
-    if (!userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-
-    const user = await storage.getUser(userId);
-    if (!user?.tenantId) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-    try {
-      const tenantId = user.tenantId;
-      const stageId = String((req.query as any)?.stageId || '');
-      const search = String((req.query as any)?.search || '');
-      const leadId = String((req.query as any)?.leadId || '');
-
-      const deals = await storage.getDeals(tenantId, stageId, search, leadId);
-      res.json(deals);
-    } catch (error) {
-      log.error('Error fetching deals:', error);
-      res.status(500).json({ message: 'Failed to fetch deals' });
-    }
-  });
+  // ── /api/deals: RETIRED (PROD-008b) ───────────────────────────────────────
+  //
+  // GET /api/deals, PUT /api/deals/:id/stage and the two /:id/activities
+  // handlers lived here, alongside GET/POST /:id and POST from routes-deals.ts.
+  // /api/deals is proxied to supabase/functions/deals, which covers all of
+  // them, so none ran on either host.
+  //
+  // The stage handler was the last thing keeping this cluster: it held the only
+  // deal.stage_changed dispatch, and deleting it would have removed the seam
+  // rather than the duplicate. CRMX-008a ported that into the edge function's
+  // PATCH/PUT branch first.
+  //
+  // /api/deal-stages below is NOT proxied and still runs here.
 
   /**
    * NOTE: The following routes have been migrated to routes-deals.ts:
@@ -712,23 +700,6 @@ export function registerWorkflowMobileRoutes(app: Express) {
    */
 
   // Update deal stage (for drag and drop)
-  app.put('/api/deals/:id/stage', async (req: any, res) => {
-    try {
-      const tenantId = req.user.tenantId;
-      const dealId = req.params.id;
-      const { stageId } = req.body;
-
-      const deal = await storage.updateDealStage(dealId, stageId, tenantId);
-      if (!deal) {
-        return res.status(404).json({ message: 'Deal not found' });
-      }
-
-      res.json(deal);
-    } catch (error) {
-      log.error('Error updating deal stage:', error);
-      res.status(500).json({ message: 'Failed to update deal stage' });
-    }
-  });
 
   // Deal Stages Routes
 
@@ -855,48 +826,8 @@ export function registerWorkflowMobileRoutes(app: Express) {
   // Deal Activities Routes
 
   // Get activities for a deal
-  app.get(
-    '/api/deals/:id/activities',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-        const dealId = req.params.id;
-
-        const activities = await storage.getDealActivities(dealId, tenantId);
-        res.json(activities);
-      } catch (error) {
-        log.error('Error fetching deal activities:', error);
-        res.status(500).json({ message: 'Failed to fetch deal activities' });
-      }
-    },
-  );
 
   // Create deal activity
-  app.post(
-    '/api/deals/:id/activities',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-        const dealId = req.params.id;
-        const userId = req.user.id;
-
-        const activityData = insertDealActivitySchema.parse({
-          ...req.body,
-          tenantId,
-          dealId,
-          userId,
-        });
-
-        const activity = await storage.createDealActivity(activityData);
-        res.status(201).json(activity);
-      } catch (error) {
-        log.error('Error creating deal activity:', error);
-        res.status(500).json({ message: 'Failed to create deal activity' });
-      }
-    },
-  );
 
   // ============= CUSTOMER DETAIL ROUTES =============
 

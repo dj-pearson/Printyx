@@ -66,7 +66,6 @@ import {
 } from './domains/crm';
 
 import {
-  registerDealsRoutes,
   registerDealsManagementRoutes,
   // registerDealDeskRoutes — migrated to supabase/functions/deal-desk/
   registerDealTagRoutes,
@@ -651,7 +650,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
   registerSalesHandoffRoutes(app);
-  registerDealsRoutes(app);
   registerCommissionRoutes(app);
   registerCatalogRoutes(app);
   registerAnalyticsRoutes(app);
