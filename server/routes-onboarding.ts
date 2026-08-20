@@ -448,46 +448,9 @@ async function getQuoteLineItems(req: Request, res: Response) {
   }
 }
 
-async function getCompanyContacts(req: Request, res: Response) {
-  try {
-    const user = req.user as any;
-    const { businessRecordId } = req.params;
-
-    if (!user?.tenantId) {
-      return res.status(400).json({ error: 'Tenant ID is required' });
-    }
-
-    const tenantId = user.tenantId;
-
-    // First get the business record to find the company
-    const businessRecord = await db
-      .select()
-      .from(businessRecords)
-      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.id, businessRecordId)))
-      .limit(1)
-      .execute();
-
-    if (!businessRecord.length) {
-      return res.status(404).json({ error: 'Business record not found' });
-    }
-
-    // For now, return the business record contact info as primary contact
-    // This can be enhanced when company_contacts table is properly linked
-    const primaryContact = {
-      id: businessRecord[0].id,
-      first_name: businessRecord[0].firstName,
-      last_name: businessRecord[0].lastName,
-      email: businessRecord[0].email,
-      phone: businessRecord[0].phone,
-      is_primary: true,
-    };
-
-    res.json([primaryContact]);
-  } catch (error) {
-    log.error('Error fetching company contacts:', error);
-    res.status(500).json({ error: 'Failed to fetch company contacts' });
-  }
-}
+// getCompanyContacts served GET /api/companies/:id/contacts here. PROD-008b
+// retired that registration (proxied to the edge function); it had no other
+// caller.
 
 export function registerOnboardingRoutes(app: Express): void {
   const pdfService = new OnboardingPDFService();
@@ -857,7 +820,10 @@ export function registerOnboardingRoutes(app: Express): void {
   // separately. The remaining three below are on unproxied prefixes.
   app.get('/api/quotes', searchQuotes);
   app.get('/api/quotes/:quoteId/line-items', getQuoteLineItems);
-  app.get('/api/companies/:businessRecordId/contacts', getCompanyContacts);
+  // PROD-008b: GET /api/companies/:id/contacts was registered here too and is
+  // proxied to the companies edge function, so it never ran. It was also the
+  // second of three registrations of that path (routes-contacts.ts has the
+  // other), which check:dup-routes tracks separately.
 
   // ─── Setup Wizard State ──────────────────────────────────────────
   // In-memory store for wizard state (keyed by tenantId:userId)

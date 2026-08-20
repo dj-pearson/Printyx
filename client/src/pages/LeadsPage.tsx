@@ -8,7 +8,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractPagination } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateFromUrl } from '@/hooks/useCreateFromUrl';
 import { MainLayout } from '@/components/layout/main-layout';
@@ -304,10 +304,10 @@ export default function LeadsPage() {
       ]);
 
       return {
-        total: totalResp?.pagination?.total || 0,
-        newCount: newResp?.pagination?.total || 0,
-        contactedCount: contactedResp?.pagination?.total || 0,
-        qualifiedCount: qualifiedResp?.pagination?.total || 0,
+        total: extractPagination(totalResp).total,
+        newCount: extractPagination(newResp).total,
+        contactedCount: extractPagination(contactedResp).total,
+        qualifiedCount: extractPagination(qualifiedResp).total,
       };
     },
     staleTime: 60_000,

@@ -7,26 +7,12 @@
  */
 
 import type { Express } from 'express';
-import { storage } from './storage';
 import { isAuthenticated } from './replitAuth';
-import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
-import { getUserId, getTenantId } from './utils/auth-helpers';
-import { insertCompanySchema } from '@shared/schema';
+import { resolveTenant } from './middleware/tenancy';
+import { getTenantId } from './utils/auth-helpers';
 import { validate } from './middleware/enhanced-validation';
-import {
-  companyQuerySchema,
-  companyCreateSchema,
-  companyUpdateSchema,
-  companyMergeSchema,
-  companyDuplicateCheckSchema,
-  idParamSchema,
-} from './lib/crm-validation';
-import {
-  compareRecords,
-  COMPANY_LIST_SPEC,
-  matchesSearch,
-  parseCrmListQuery,
-} from './lib/crm-list-query';
+import { companyDuplicateCheckSchema } from './lib/crm-validation';
+import { matchesSearch } from './lib/crm-list-query';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-companies');
 
@@ -39,191 +25,32 @@ export function registerCompaniesRoutes(app: Express) {
   // ============================================
 
   // GET /api/companies - List all companies with optional search
-  app.get(
-    '/api/companies',
-    resolveTenant,
-    validate({ query: companyQuerySchema }),
-    async (req: any, res) => {
-      try {
-        const user = req.user as any;
-        const tenantId = user.tenantId || getTenantId(req);
-
-        if (!tenantId) {
-          return res.status(401).json({ message: 'Authentication required' });
-        }
-
-        // COP-M01: this ignored sortBy/sortOrder entirely (so the CRM table's
-        // column headers did nothing), searched businessName only while the edge
-        // function searched six columns, and filtered on `recordType`/`status`
-        // — neither of which is a column on companies. The real ones are
-        // businessRecordType and activity, which is what the edge function has
-        // always matched on. Semantics now come from the shared spec.
-        const q = parseCrmListQuery((req.query as any) || {}, COMPANY_LIST_SPEC);
-        const recordType = q.filters.recordType || q.filters.businessRecordType;
-
-        const allCompanies = await storage.getCompanies(tenantId);
-
-        const filtered = (allCompanies as any[])
-          .filter((c) => matchesSearch(COMPANY_LIST_SPEC, c, q.search))
-          .filter((c) => (q.filters.industry ? c.industry === q.filters.industry : true))
-          .filter((c) => (q.filters.status ? c.activity === q.filters.status : true))
-          .filter((c) => (recordType ? c.businessRecordType === recordType : true))
-          .sort((a, b) => compareRecords(a, b, q.sortField, q.ascending));
-
-        const total = filtered.length;
-        const page = filtered.slice(q.offset, q.offset + q.limit);
-
-        res.json({
-          data: page,
-          total,
-          page: q.page,
-          limit: q.limit,
-          // Kept for the callers that read pagination.total rather than total.
-          pagination: { total, limit: q.limit, offset: q.offset },
-        });
-      } catch (error) {
-        log.error('Error fetching companies:', error);
-        res.status(500).json({ message: 'Failed to fetch companies' });
-      }
-    },
-  );
+  // ── /api/companies: PARTLY RETIRED (PROD-008b) ────────────────────────────
+  //
+  // Seven handlers lived here and are gone: GET list, GET /:id, POST, PUT /:id,
+  // DELETE /:id, GET /duplicates/scan and POST /merge. /api/companies is in
+  // crmProxies and the proxy registers first, so none ran in dev; production
+  // never reaches Express. The companies edge function covers all seven - PUT
+  // was added there as an alias for PATCH, because this file registered PUT and
+  // the edge function had only PATCH.
+  //
+  // STILL HERE: GET /duplicates/details and POST /check-duplicate have no edge
+  // counterpart. Neither has a frontend caller, but deleting them removes
+  // capability rather than a duplicate, so they stay bannered and baselined.
 
   // GET /api/companies/:id - Get single company by ID
-  app.get(
-    '/api/companies/:id',
-    resolveTenant,
-    validate({ params: idParamSchema }),
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId || getTenantId(req);
-
-        if (!tenantId) {
-          return res.status(400).json({ message: 'Tenant ID is required' });
-        }
-
-        const company = await storage.getCompany(id, tenantId);
-        if (!company) {
-          return res.status(404).json({ message: 'Company not found' });
-        }
-        res.json(company);
-      } catch (error) {
-        log.error('Error fetching company:', error);
-        res.status(500).json({ message: 'Failed to fetch company' });
-      }
-    },
-  );
 
   // POST /api/companies - Create new company
-  app.post(
-    '/api/companies',
-    resolveTenant,
-    validate({ body: companyCreateSchema }),
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId || getTenantId(req);
-
-        if (!tenantId) {
-          return res.status(400).json({ message: 'Tenant ID is required' });
-        }
-
-        const validatedData = insertCompanySchema.parse({
-          ...req.body,
-          tenantId: tenantId,
-        });
-
-        const company = await storage.createCompany(validatedData as any);
-        res.status(201).json(company);
-      } catch (error: any) {
-        log.error('Error creating company:', error);
-        if (error.name === 'ZodError') {
-          res.status(400).json({ message: 'Validation failed', details: error.errors });
-        } else {
-          res.status(500).json({ message: 'Failed to create company' });
-        }
-      }
-    },
-  );
 
   // PUT /api/companies/:id - Update company
-  app.put(
-    '/api/companies/:id',
-    resolveTenant,
-    validate({ params: idParamSchema, body: companyUpdateSchema }),
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId || getTenantId(req);
-
-        if (!tenantId) {
-          return res.status(400).json({ message: 'Tenant ID is required' });
-        }
-
-        // Clean up undefined fields
-        const safeUpdate = { ...req.body } as any;
-        if (safeUpdate.department === undefined) delete safeUpdate.department;
-
-        const updatedCompany = await storage.updateCompany(id, safeUpdate, tenantId);
-        if (!updatedCompany) {
-          return res.status(404).json({ message: 'Company not found' });
-        }
-        res.json(updatedCompany);
-      } catch (error) {
-        log.error('Error updating company:', error);
-        res.status(500).json({ message: 'Failed to update company' });
-      }
-    },
-  );
 
   // DELETE /api/companies/:id - Delete company
-  app.delete(
-    '/api/companies/:id',
-    resolveTenant,
-    validate({ params: idParamSchema }),
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId || getTenantId(req);
-
-        if (!tenantId) {
-          return res.status(400).json({ message: 'Tenant ID is required' });
-        }
-
-        const deleted = await storage.deleteCompany(id, tenantId);
-        if (!deleted) {
-          return res.status(404).json({ message: 'Company not found' });
-        }
-        res.status(204).send();
-      } catch (error) {
-        log.error('Error deleting company:', error);
-        res.status(500).json({ message: 'Failed to delete company' });
-      }
-    },
-  );
 
   // ============================================
   // Company Deduplication API routes
   // ============================================
 
   // GET /api/companies/duplicates/scan - Scan for duplicate companies
-  app.get('/api/companies/duplicates/scan', resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || getTenantId(req);
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Dynamically import to avoid circular dependencies
-      const { findDuplicateGroups } = await import('./services/company-deduplication-service');
-      const summary = await findDuplicateGroups(tenantId);
-
-      res.json(summary);
-    } catch (error) {
-      log.error('Error scanning for duplicates:', error);
-      res.status(500).json({ message: 'Failed to scan for duplicates' });
-    }
-  });
 
   // GET /api/companies/duplicates/details - Get details for specific company IDs
   app.get('/api/companies/duplicates/details', resolveTenant, async (req: any, res) => {
@@ -252,60 +79,6 @@ export function registerCompaniesRoutes(app: Express) {
   });
 
   // POST /api/companies/merge - Merge duplicate companies
-  app.post(
-    '/api/companies/merge',
-    resolveTenant,
-    validate({ body: companyMergeSchema }),
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId || getTenantId(req);
-        const userId = getUserId(req);
-
-        if (!tenantId) {
-          return res.status(400).json({ message: 'Tenant ID is required' });
-        }
-
-        const { survivorId, duplicateIds } = req.body;
-
-        if (!survivorId) {
-          return res.status(400).json({ message: 'Survivor company ID is required' });
-        }
-
-        if (!duplicateIds || !Array.isArray(duplicateIds) || duplicateIds.length === 0) {
-          return res.status(400).json({ message: 'Duplicate company IDs are required (array)' });
-        }
-
-        // Prevent merging survivor into itself
-        if (duplicateIds.includes(survivorId)) {
-          return res
-            .status(400)
-            .json({ message: 'Survivor ID cannot be in the duplicate IDs list' });
-        }
-
-        const { mergeCompanies } = await import('./services/company-deduplication-service');
-        const result = await mergeCompanies(survivorId, duplicateIds, tenantId, userId);
-
-        if (!result.success) {
-          return res.status(500).json({
-            message: 'Merge failed',
-            error: result.error,
-          });
-        }
-
-        res.json({
-          success: true,
-          survivorId: result.survivorId,
-          mergedCount: result.mergedCompanyIds.length,
-          contactsMoved: result.contactsMoved,
-          activitiesMoved: result.activitiesMoved,
-          enhancedContactsMoved: result.enhancedContactsMoved,
-        });
-      } catch (error) {
-        log.error('Error merging companies:', error);
-        res.status(500).json({ message: 'Failed to merge companies' });
-      }
-    },
-  );
 
   // POST /api/companies/check-duplicate - Check if a company would be a duplicate
   app.post(

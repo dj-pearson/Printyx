@@ -623,7 +623,10 @@ export default async function handler(req: Request) {
     }
 
     // PATCH /companies/:id - Update company
-    if (req.method === 'PATCH' && companyId) {
+    // PUT is accepted as an alias for PATCH: the Express handler this replaces
+    // registered PUT /api/companies/:id, so any caller still using that verb
+    // would otherwise 404 once it is retired.
+    if ((req.method === 'PATCH' || req.method === 'PUT') && companyId) {
       const body = await req.json();
 
       const updateData = {
