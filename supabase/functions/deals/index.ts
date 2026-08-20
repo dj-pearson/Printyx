@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { buildSearchOr, DEAL_LIST_SPEC, parseCrmListQuery } from '../_shared/crm-list-query.ts';
+import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
 import {
   buildStageNameMap,
   findStageId,
@@ -452,6 +453,29 @@ export default async function handler(req: Request) {
       if (error) {
         console.error('Error updating deal:', error);
         return createCorsResponse({ error: 'Failed to update deal' }, 500, req);
+      }
+
+      // CRMX-008a: the deal.stage_changed trigger seam.
+      //
+      // It used to live only in server/routes-deals.ts, under a prefix this
+      // edge function is proxied for, so it ran on neither host and no workflow
+      // ever enrolled on a stage change. Dedupe by deal + new stage so a
+      // repeated PUT does not enrol twice; Safe so automation can never fail
+      // the update.
+      if (updateData.stage_id) {
+        await dispatchWorkflowEventSafe(
+          admin,
+          tenantId,
+          'deal.stage_changed',
+          {
+            dealId: deal.id,
+            recordId: deal.id,
+            stageId: deal.stage_id ?? updateData.stage_id,
+            status: deal.status,
+            amount: deal.amount,
+          },
+          { dedupeKey: `stage:${deal.id}:${updateData.stage_id}`, initiatedBy: user.id },
+        );
       }
 
       return createCorsResponse(deal, 200, req);

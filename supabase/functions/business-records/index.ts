@@ -3,6 +3,7 @@
 // Maintains the same response format expected by existing callers
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
 
 // Convert camelCase request body keys to snake_case for DB compatibility
 function camelToSnake(str: string): string {
@@ -466,7 +467,31 @@ export default async function handler(req: Request) {
         });
       }
 
-      return createCorsResponse(mapCompanyToBusinessRecord(company), 201, req);
+      // CRMX-008a: the record.created trigger seam.
+      //
+      // It used to live only in server/routes-business-records.ts, under a
+      // prefix this edge function is proxied for, so it ran on neither host and
+      // no workflow ever enrolled on a new record. The payload reads off the
+      // `companies` row this function actually writes - production CRM runs on
+      // companies, not business_records (COP-B00) - so the field names are the
+      // mapped ones, not the Express copy's.
+      const createdRecord = mapCompanyToBusinessRecord(company);
+      await dispatchWorkflowEventSafe(
+        admin,
+        tenantId,
+        'record.created',
+        {
+          recordId: company.id,
+          businessRecordId: company.id,
+          recordType: createdRecord.recordType,
+          companyName: createdRecord.companyName,
+          status: createdRecord.status,
+          ownerId: createdRecord.ownerId,
+        },
+        { dedupeKey: `created:${company.id}`, initiatedBy: user.id },
+      );
+
+      return createCorsResponse(createdRecord, 201, req);
     }
 
     if ((req.method === 'PATCH' || req.method === 'PUT') && recordId) {
@@ -563,7 +588,36 @@ export default async function handler(req: Request) {
         }
       }
 
-      return createCorsResponse(mapCompanyToBusinessRecord(updated), 200, req);
+      // CRMX-008a: the record.updated trigger seam.
+      //
+      // Keyed on the row's updated_at, matching the Express copy. Note what
+      // that actually buys, because the Express comment claims more: this
+      // handler SETS updated_at to now on every request, so a client retry
+      // produces a different key and does enrol again. The key guards a
+      // double-dispatch within one invocation, not a retry. Making it idempotent
+      // across retries needs a caller-supplied token, which no caller sends -
+      // left as ported rather than changed silently.
+      const updatedRecord = mapCompanyToBusinessRecord(updated);
+      await dispatchWorkflowEventSafe(
+        admin,
+        tenantId,
+        'record.updated',
+        {
+          recordId: updated.id,
+          businessRecordId: updated.id,
+          recordType: updatedRecord.recordType,
+          companyName: updatedRecord.companyName,
+          status: updatedRecord.status,
+          ownerId: updatedRecord.ownerId,
+          changedFields: Object.keys(updateData),
+        },
+        {
+          dedupeKey: `updated:${updated.id}:${updated.updated_at ?? ''}`,
+          initiatedBy: user.id,
+        },
+      );
+
+      return createCorsResponse(updatedRecord, 200, req);
     }
 
     if (req.method === 'DELETE' && recordId) {
