@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { toNumber } from '../_shared/quote-math.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toCamel } from '../_shared/case.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -71,29 +72,150 @@ export default async function handler(req: Request) {
       return createCorsResponse(contracts || [], 200, req);
     }
 
-    // GET /contract-renewal/expiring - Get expiring contracts
-    if (req.method === 'GET' && endpoint === 'expiring') {
-      const today = new Date().toISOString();
-      const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    // ─── Renewal-autopilot endpoints (EDGE-002g) ────────────────────────────
+    //
+    // ContractRenewalDashboard.tsx calls /dashboard, /at-risk, /expiring and
+    // /proposals. Only /expiring existed, and it was wrong three ways at once:
+    // it read `contracts` (the minimal billing table) rather than
+    // contract_renewal_tracking (what the autopilot and the Express service
+    // use), it returned an OBJECT where the page does useQuery<any[]> and calls
+    // .map, and it returned snake_case where the page reads customerName,
+    // contractNumber, daysUntilExpiration, renewalRisk and
+    // monthlyRecurringRevenue. A 200 with the wrong shape is worse than a 404,
+    // so /expiring is rebuilt here alongside the three missing endpoints.
+    //
+    // Rows go through toCamel because PostgREST returns snake_case while these
+    // pages were written against Drizzle's camelCase output.
 
-      const { data: contracts } = await admin
-        .from('contracts')
-        .select('*')
+    // GET /contract-renewal/dashboard - Metrics for the dashboard header
+    if (req.method === 'GET' && endpoint === 'dashboard') {
+      const { data: rules } = await admin
+        .from('renewal_automation_rules')
+        .select('renewal_window_days')
         .eq('tenant_id', tenantId)
-        .eq('status', 'active')
-        .gte('end_date', today)
-        .lte('end_date', thirtyDays)
-        .order('end_date', { ascending: true });
+        .maybeSingle();
+      const renewalWindowDays = rules?.renewal_window_days ?? 90;
+
+      const countOf = async (apply: (q: any) => any): Promise<number> => {
+        const { count } = await apply(
+          admin
+            .from('contract_renewal_tracking')
+            .select('id', { count: 'exact', head: true })
+            .eq('tenant_id', tenantId),
+        );
+        return count ?? 0;
+      };
+
+      const [activeContracts, expiringSoon, atRisk] = await Promise.all([
+        countOf((q) => q.eq('status', 'active')),
+        countOf((q) =>
+          q.lt('days_until_expiration', renewalWindowDays).gte('days_until_expiration', 0),
+        ),
+        countOf((q) => q.in('renewal_risk', ['high', 'very_high'])),
+      ]);
+
+      const { count: proposalsOutstanding } = await admin
+        .from('renewal_proposals')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .in('status', ['sent', 'viewed']);
+
+      // MRR at risk is a SUM, which PostgREST cannot do, so the at-risk rows
+      // come back and are added here — same as the Express service does it.
+      const { data: atRiskRows } = await admin
+        .from('contract_renewal_tracking')
+        .select('monthly_recurring_revenue')
+        .eq('tenant_id', tenantId)
+        .in('renewal_risk', ['high', 'very_high']);
+      const mrrAtRisk = (atRiskRows ?? []).reduce(
+        (sum: number, r: any) => sum + (toNumber(r.monthly_recurring_revenue) || 0),
+        0,
+      );
+
+      const { data: analytics } = await admin
+        .from('renewal_analytics')
+        .select('renewal_rate, mrr_retained, auto_renewal_success_rate')
+        .eq('tenant_id', tenantId)
+        .eq('period_type', 'monthly')
+        .order('period_end', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       return createCorsResponse(
         {
-          contracts: contracts || [],
-          count: contracts?.length || 0,
-          urgency: 'high',
+          activeContracts,
+          expiringSoon,
+          atRisk,
+          proposalsOutstanding: proposalsOutstanding ?? 0,
+          mrrAtRisk,
+          renewalRate: toNumber(analytics?.renewal_rate) || 0,
+          mrrRetained: toNumber(analytics?.mrr_retained) || 0,
+          autoRenewalSuccessRate: toNumber(analytics?.auto_renewal_success_rate) || 0,
         },
         200,
         req,
       );
+    }
+
+    // GET /contract-renewal/at-risk - Contracts most likely to churn
+    if (req.method === 'GET' && endpoint === 'at-risk') {
+      const { data: contracts, error } = await admin
+        .from('contract_renewal_tracking')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .in('renewal_risk', ['high', 'very_high'])
+        .order('churn_risk_score', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching at-risk contracts:', error);
+        return createCorsResponse({ error: 'Failed to fetch at-risk contracts' }, 500, req);
+      }
+
+      return createCorsResponse(toCamel(contracts ?? []), 200, req);
+    }
+
+    // GET /contract-renewal/expiring - Contracts inside the renewal window
+    if (req.method === 'GET' && endpoint === 'expiring') {
+      const days = parseInt(url.searchParams.get('days') || '90');
+
+      const { data: contracts, error } = await admin
+        .from('contract_renewal_tracking')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .lt('days_until_expiration', days)
+        .gte('days_until_expiration', 0)
+        .order('days_until_expiration', { ascending: true })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching expiring contracts:', error);
+        return createCorsResponse({ error: 'Failed to fetch expiring contracts' }, 500, req);
+      }
+
+      return createCorsResponse(toCamel(contracts ?? []), 200, req);
+    }
+
+    // GET /contract-renewal/proposals - Renewal proposals
+    if (req.method === 'GET' && endpoint === 'proposals' && !contractId) {
+      const status = url.searchParams.get('status');
+
+      let query = admin
+        .from('renewal_proposals')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (status) query = query.eq('status', status);
+
+      const { data: proposals, error } = await query;
+
+      if (error) {
+        console.error('Error fetching renewal proposals:', error);
+        return createCorsResponse({ error: 'Failed to fetch proposals' }, 500, req);
+      }
+
+      return createCorsResponse(toCamel(proposals ?? []), 200, req);
     }
 
     // GET /contract-renewal/stats - Get renewal statistics
@@ -252,6 +374,34 @@ export default async function handler(req: Request) {
       if (body.notes) unpersisted.push('notes: contracts has no churn_notes column');
 
       return createCorsResponse({ ...contract, unpersisted }, 200, req);
+    }
+
+    // POST /contract-renewal/analyze-all - NOT PORTED YET (EDGE-002g remainder).
+    //
+    // A 501 naming the gap rather than the prod 404 this used to be, and rather
+    // than a partial port: the Express implementation runs an Anthropic analysis
+    // per in-window contract, falls back to a heuristic when the model call
+    // fails, writes the scores back to contract_renewal_tracking, and — when
+    // autoSendProposals is on — generates and stores a renewal proposal. Porting
+    // only the analysis would leave the endpoint reporting work it did not do.
+    //
+    // The pieces are all available: _shared/anthropic.ts is the Deno client
+    // (CLAUDE_API_KEY), and the prompt, heuristic and proposal generation live in
+    // server/services/contract-renewal-service.ts.
+    if (req.method === 'POST' && endpoint === 'analyze-all') {
+      return createCorsResponse(
+        {
+          error: 'Bulk renewal analysis is not available on the edge function yet',
+          code: 'ANALYZE_ALL_NOT_PORTED',
+          details:
+            'Needs the AI analysis + heuristic fallback + proposal generation from ' +
+            'server/services/contract-renewal-service.ts, and CLAUDE_API_KEY in the edge ' +
+            'environment. The dashboard read endpoints (/dashboard, /at-risk, /expiring, ' +
+            '/proposals) are served.',
+        },
+        501,
+        req,
+      );
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
