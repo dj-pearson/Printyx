@@ -4,6 +4,14 @@ import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('pricing-service');
 
 import {
+  calculateRepCost as sharedCalculateRepCost,
+  discountPct as sharedDiscountPct,
+  grossMarginPct,
+  markupPct,
+  roleLevel as sharedRoleLevel,
+  validateMinimumMargin as sharedValidateMinimumMargin,
+} from '@shared/pricing-math';
+import {
   companyPricingSettings,
   enhancedProductPricing,
   productModels,
@@ -31,24 +39,16 @@ import {
  * 8. Guest
  */
 
-// Role levels for comparison
-const ROLE_LEVELS = {
-  'platform-admin': 1,
-  'super-admin': 2,
-  admin: 3,
-  manager: 4,
-  standard: 5,
-  support: 6,
-  'read-only': 7,
-  guest: 8,
-};
+// PROD-014: the role map moved to @shared/pricing-math so the pricing edge
+// function applies the same gate. The hyphenated keys are load-bearing — they
+// are compared against role names already stored.
 
 /**
  * Check if user can see dealer cost
  * Only managers and above can see dealer cost
  */
 export function canSeeDealerCost(userRole: string, settings?: CompanyPricingSettings): boolean {
-  const roleLevel = ROLE_LEVELS[userRole.toLowerCase() as keyof typeof ROLE_LEVELS] || 999;
+  const roleLevel = sharedRoleLevel(userRole);
 
   // Managers (level 4) and above can see dealer cost
   return roleLevel <= 4;
@@ -59,7 +59,7 @@ export function canSeeDealerCost(userRole: string, settings?: CompanyPricingSett
  * Sales reps and above can see rep cost (unless company settings restrict it)
  */
 export function canSeeRepCost(userRole: string, settings?: CompanyPricingSettings): boolean {
-  const roleLevel = ROLE_LEVELS[userRole.toLowerCase() as keyof typeof ROLE_LEVELS] || 999;
+  const roleLevel = sharedRoleLevel(userRole);
 
   // Standard users (sales reps, level 5) and above can see rep cost
   return roleLevel <= 5;
@@ -70,7 +70,7 @@ export function canSeeRepCost(userRole: string, settings?: CompanyPricingSetting
  * Only admins and above can edit dealer cost
  */
 export function canEditDealerCost(userRole: string): boolean {
-  const roleLevel = ROLE_LEVELS[userRole.toLowerCase() as keyof typeof ROLE_LEVELS] || 999;
+  const roleLevel = sharedRoleLevel(userRole);
 
   // Admins (level 3) and above can edit dealer cost
   return roleLevel <= 3;
@@ -82,7 +82,7 @@ export function canEditDealerCost(userRole: string): boolean {
  */
 export function canEditCustomerPrice(userRole: string, settings?: CompanyPricingSettings): boolean {
   // Managers and above can always edit
-  const roleLevel = ROLE_LEVELS[userRole.toLowerCase() as keyof typeof ROLE_LEVELS] || 999;
+  const roleLevel = sharedRoleLevel(userRole);
   if (roleLevel <= 4) return true;
 
   // For sales reps, check company settings
@@ -102,7 +102,7 @@ export function requiresApproval(
   settings?: CompanyPricingSettings,
 ): boolean {
   // Managers and above don't need approval
-  const roleLevel = ROLE_LEVELS[userRole.toLowerCase() as keyof typeof ROLE_LEVELS] || 999;
+  const roleLevel = sharedRoleLevel(userRole);
   if (roleLevel <= 4) return false;
 
   if (!settings) return true;
@@ -132,37 +132,33 @@ export function calculateRepCost(
   settings: CompanyPricingSettings | null,
   productCategory?: string,
 ): number {
-  let markupPercentage: number;
-
-  // 1. Use product-specific markup if provided
-  if (productMarkupPercentage !== null && productMarkupPercentage !== undefined) {
-    markupPercentage = productMarkupPercentage;
-  }
-  // 2. Check for category-specific markup override
-  else if (
-    settings?.categoryMarkupOverrides &&
-    productCategory &&
-    typeof settings.categoryMarkupOverrides === 'object'
-  ) {
-    const categoryOverrides = settings.categoryMarkupOverrides as Record<string, number>;
-    markupPercentage =
-      categoryOverrides[productCategory] ||
-      parseFloat(settings.defaultMarkupPercentage?.toString() || '13');
-  }
-  // 3. Fall back to company default
-  else {
-    markupPercentage = parseFloat(settings?.defaultMarkupPercentage?.toString() || '13');
-  }
-
-  return dealerCost * (1 + markupPercentage / 100);
+  return sharedCalculateRepCost(dealerCost, productMarkupPercentage, settings, productCategory);
 }
 
 /**
  * Calculate margin percentage
  */
 export function calculateMarginPercentage(customerPrice: number, cost: number): number {
-  if (cost === 0) return 0;
-  return ((customerPrice - cost) / cost) * 100;
+  return grossMarginPct(customerPrice, cost);
+}
+
+/**
+ * Markup %, relative to COST.
+ *
+ * This is what calculateMarginPercentage above used to return. It was named
+ * margin and computed markup, disagreeing with shared/quote-math.ts — the
+ * canonical definition the quote builder and both PDFs use. On a $110 price
+ * against a $100 cost the two read 10% and 9.09%, so a minimum-margin floor
+ * built on the old one would pass prices that break the policy it states.
+ *
+ * Nothing called it: validateMinimumMargin below and
+ * product-pricing-service.validatePriceChange are both imported and never
+ * invoked (every call site checked). A latent trap removed, not a live number
+ * changed. The quantity itself is real — rep cost is derived from a markup —
+ * so it keeps a name that says so.
+ */
+export function calculateMarkupPercentage(customerPrice: number, cost: number): number {
+  return markupPct(customerPrice, cost);
 }
 
 /**
@@ -172,8 +168,7 @@ export function calculateDiscountPercentage(
   originalPrice: number,
   discountedPrice: number,
 ): number {
-  if (originalPrice === 0) return 0;
-  return ((originalPrice - discountedPrice) / originalPrice) * 100;
+  return sharedDiscountPct(originalPrice, discountedPrice);
 }
 
 /**
@@ -184,23 +179,7 @@ export function validateMinimumMargin(
   dealerCost: number,
   settings: CompanyPricingSettings | null,
 ): { valid: boolean; message?: string; actualMargin: number; requiredMargin: number } {
-  const minMarginPercentage = parseFloat(settings?.minMarginPercentage?.toString() || '5');
-  const actualMargin = calculateMarginPercentage(customerPrice, dealerCost);
-
-  if (actualMargin < minMarginPercentage) {
-    return {
-      valid: false,
-      message: `Price below minimum margin. Required: ${minMarginPercentage}%, Actual: ${actualMargin.toFixed(2)}%`,
-      actualMargin,
-      requiredMargin: minMarginPercentage,
-    };
-  }
-
-  return {
-    valid: true,
-    actualMargin,
-    requiredMargin: minMarginPercentage,
-  };
+  return sharedValidateMinimumMargin(customerPrice, dealerCost, settings);
 }
 
 /**

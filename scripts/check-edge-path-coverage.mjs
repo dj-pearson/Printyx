@@ -109,7 +109,12 @@ export function computeCoverageGaps() {
     for (const file of row.callers.live) {
       let text;
       try {
-        text = readFileSync(file, 'utf8');
+        // Comments are stripped from the CLIENT too, not only the edge
+        // function. A path named in a comment is not a call: usePricingVisibility.ts
+        // explains in prose that /api/pricing/visibility used to be wrong, and
+        // that comment alone put a phantom entry in this baseline. A phantom
+        // entry is worse than a missing one — a real gap can hide among them.
+        text = stripComments(readFileSync(file, 'utf8'));
       } catch {
         continue;
       }

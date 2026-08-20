@@ -95,7 +95,6 @@
       "devices-at-risk",
       "technician-performance"
     ],
-    "pricing": ["approval", "approvals", "calculate-rep-cost", "margin-report", "visibility"],
     "products": ["all"],
     "proposals": ["equipment-packages", "proposal-templates"],
     "purchase-orders": ["generate-from-suggestions", "stats", "suggestions"],
