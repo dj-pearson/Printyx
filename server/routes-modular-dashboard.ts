@@ -17,34 +17,13 @@ import {
 // Supabase authentication middleware and helpers
 import { protectedRoute } from './middleware/supabase-auth';
 import { getUserId, getTenantId, getRoleId } from './utils/auth-helpers';
-
-// Role-based card permissions and availability
-const roleCardConfig = {
-  sales: {
-    defaultCards: ['personal_revenue', 'personal_deals', 'personal_leads'],
-    availableCards: ['team_revenue', 'company_customers', 'inventory_alerts', 'service_overview'],
-  },
-  sales_rep: {
-    defaultCards: ['personal_revenue', 'personal_deals', 'personal_leads'],
-    availableCards: ['team_revenue', 'company_customers', 'inventory_alerts'],
-  },
-  technician: {
-    defaultCards: ['personal_tickets', 'response_time', 'completion_rate'],
-    availableCards: ['team_tickets', 'company_customers', 'inventory_alerts', 'revenue_overview'],
-  },
-  service_manager: {
-    defaultCards: ['team_tickets', 'response_time', 'completion_rate', 'technician_performance'],
-    availableCards: ['company_revenue', 'company_customers', 'inventory_alerts'],
-  },
-  manager: {
-    defaultCards: ['business_overview', 'revenue_summary', 'customer_summary', 'service_summary'],
-    availableCards: [], // Managers get all cards by default
-  },
-  admin: {
-    defaultCards: ['business_overview', 'revenue_summary', 'customer_summary', 'service_summary'],
-    availableCards: [], // Admins get all cards by default
-  },
-};
+import {
+  buildCard,
+  formatCurrency,
+  parseEnabledParam,
+  resolveActiveCards,
+  roleCards,
+} from './lib/dashboard-cards';
 
 export function registerModularDashboardRoutes(app: Express) {
   // Get available card configurations for a role
@@ -54,8 +33,7 @@ export function registerModularDashboardRoutes(app: Express) {
       // Get user role from Supabase JWT or database lookup
       const reqAny = req as any;
       const userRole = reqAny.supabaseUser?.role || reqAny.user?.role || 'sales';
-      const config =
-        roleCardConfig[userRole as keyof typeof roleCardConfig] || roleCardConfig.sales;
+      const config = roleCards(userRole);
 
       res.json({
         role: userRole,
@@ -85,16 +63,11 @@ export function registerModularDashboardRoutes(app: Express) {
       const reqAny = req as any;
       const userRole = reqAny.supabaseUser?.role || reqAny.user?.role || 'sales';
       // Get enabled cards from query params
-      const enabledParam = req.query.enabled as string | undefined;
-      const enabledCards = enabledParam ? enabledParam.split(',') : [];
+      const enabledCards = parseEnabledParam(req.query.enabled as string | undefined);
 
-      // Get role configuration
-      const roleConfig =
-        roleCardConfig[userRole as keyof typeof roleCardConfig] || roleCardConfig.sales;
-      const activeCards = [
-        ...roleConfig.defaultCards,
-        ...enabledCards.filter((card) => roleConfig.availableCards.includes(card)),
-      ];
+      // Role config and the active-card resolution are shared with the edge
+      // function, so both backends build the same cards for the same role.
+      const { config: roleConfig, activeCards } = resolveActiveCards(userRole, enabledCards);
 
       const modules = [];
 
@@ -110,15 +83,9 @@ export function registerModularDashboardRoutes(app: Express) {
               and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`),
             );
 
-          modules.push({
-            id: 'personal_revenue',
-            category: 'sales',
-            title: 'Monthly Revenue',
-            value: `$${Number(revenueResult[0]?.total || 0).toLocaleString()}`,
-            subtitle: 'This month',
-            icon: 'DollarSign',
-            cardType: 'personal',
-          });
+          modules.push(
+            buildCard('personal_revenue', formatCurrency(Number(revenueResult[0]?.total || 0))),
+          );
         }
 
         // Personal Deals (for sales roles)
@@ -128,15 +95,7 @@ export function registerModularDashboardRoutes(app: Express) {
             .from(deals)
             .where(eq(deals.tenantId, tenantId));
 
-          modules.push({
-            id: 'personal_deals',
-            category: 'sales',
-            title: 'My Deals',
-            value: dealsResult[0]?.count || 0,
-            subtitle: 'Active opportunities',
-            icon: 'Target',
-            cardType: 'personal',
-          });
+          modules.push(buildCard('personal_deals', dealsResult[0]?.count || 0));
         }
 
         // Personal Leads (for sales roles)
@@ -148,15 +107,7 @@ export function registerModularDashboardRoutes(app: Express) {
               and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'lead')),
             );
 
-          modules.push({
-            id: 'personal_leads',
-            category: 'sales',
-            title: 'My Leads',
-            value: leadsResult[0]?.count || 0,
-            subtitle: 'New prospects',
-            icon: 'Users',
-            cardType: 'personal',
-          });
+          modules.push(buildCard('personal_leads', leadsResult[0]?.count || 0));
         }
 
         // Personal Service Tickets (for technicians)
@@ -166,15 +117,7 @@ export function registerModularDashboardRoutes(app: Express) {
             .from(serviceTickets)
             .where(eq(serviceTickets.tenantId, tenantId));
 
-          modules.push({
-            id: 'personal_tickets',
-            category: 'service',
-            title: 'My Tickets',
-            value: ticketsResult[0]?.count || 0,
-            subtitle: 'Assigned to me',
-            icon: 'Wrench',
-            cardType: 'personal',
-          });
+          modules.push(buildCard('personal_tickets', ticketsResult[0]?.count || 0));
         }
 
         // Team Revenue (optional for sales)
@@ -186,16 +129,11 @@ export function registerModularDashboardRoutes(app: Express) {
               and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`),
             );
 
-          modules.push({
-            id: 'team_revenue',
-            category: 'sales',
-            title: 'Team Revenue',
-            value: `$${Number(teamRevenueResult[0]?.total || 0).toLocaleString()}`,
-            subtitle: 'This month - all team',
-            icon: 'DollarSign',
-            cardType: 'team',
-            enabled: enabledCards.includes('team_revenue'),
-          });
+          modules.push(
+            buildCard('team_revenue', formatCurrency(Number(teamRevenueResult[0]?.total || 0)), {
+              enabled: enabledCards.includes('team_revenue'),
+            }),
+          );
         }
 
         // Company Customers (optional for lower roles)
@@ -210,16 +148,11 @@ export function registerModularDashboardRoutes(app: Express) {
               ),
             );
 
-          modules.push({
-            id: 'company_customers',
-            category: 'management',
-            title: 'Total Customers',
-            value: customersResult[0]?.count || 0,
-            subtitle: 'Company-wide',
-            icon: 'Users',
-            cardType: 'company',
-            enabled: enabledCards.includes('company_customers'),
-          });
+          modules.push(
+            buildCard('company_customers', customersResult[0]?.count || 0, {
+              enabled: enabledCards.includes('company_customers'),
+            }),
+          );
         }
 
         // Inventory Alerts (optional for operational roles)
@@ -227,18 +160,20 @@ export function registerModularDashboardRoutes(app: Express) {
           const lowStockResult = await db
             .select({ count: count() })
             .from(inventoryItems)
-            .where(and(eq(inventoryItems.tenantId, tenantId), sql`current_stock <= reorder_point`));
+            // PROD-014: this said `current_stock <= reorder_point`. There is no
+            // current_stock column on inventory_items — the quantity column is
+            // quantity_on_hand — so the fragment raised 42703, the surrounding
+            // catch swallowed it, and a user who switched this card on got a
+            // dashboard showing only "Dashboard Loading... ---", permanently.
+            .where(
+              and(eq(inventoryItems.tenantId, tenantId), sql`quantity_on_hand <= reorder_point`),
+            );
 
-          modules.push({
-            id: 'inventory_alerts',
-            category: 'operations',
-            title: 'Low Stock Items',
-            value: lowStockResult[0]?.count || 0,
-            subtitle: 'Need reordering',
-            icon: 'AlertCircle',
-            cardType: 'operational',
-            enabled: enabledCards.includes('inventory_alerts'),
-          });
+          modules.push(
+            buildCard('inventory_alerts', lowStockResult[0]?.count || 0, {
+              enabled: enabledCards.includes('inventory_alerts'),
+            }),
+          );
         }
 
         // Service Overview (optional for sales and other roles)
@@ -257,16 +192,12 @@ export function registerModularDashboardRoutes(app: Express) {
               ),
           ]);
 
-          modules.push({
-            id: 'service_overview',
-            category: 'service',
-            title: 'Service Overview',
-            value: openTickets[0]?.count || 0,
-            subtitle: `${totalTickets[0]?.count || 0} total tickets`,
-            icon: 'Wrench',
-            cardType: 'departmental',
-            enabled: enabledCards.includes('service_overview'),
-          });
+          modules.push(
+            buildCard('service_overview', openTickets[0]?.count || 0, {
+              subtitle: `${totalTickets[0]?.count || 0} total tickets`,
+              enabled: enabledCards.includes('service_overview'),
+            }),
+          );
         }
 
         // Revenue Overview (for technicians and other roles)
@@ -278,16 +209,11 @@ export function registerModularDashboardRoutes(app: Express) {
               and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`),
             );
 
-          modules.push({
-            id: 'revenue_overview',
-            category: 'management',
-            title: 'Company Revenue',
-            value: `$${Number(revenueResult[0]?.total || 0).toLocaleString()}`,
-            subtitle: 'This month',
-            icon: 'DollarSign',
-            cardType: 'company',
-            enabled: enabledCards.includes('revenue_overview'),
-          });
+          modules.push(
+            buildCard('revenue_overview', formatCurrency(Number(revenueResult[0]?.total || 0)), {
+              enabled: enabledCards.includes('revenue_overview'),
+            }),
+          );
         }
 
         // Business Overview for Management
@@ -323,19 +249,54 @@ export function registerModularDashboardRoutes(app: Express) {
               ),
           ]);
 
-          modules.push({
-            id: 'business_overview',
-            category: 'management',
-            title: 'Business Overview',
-            data: {
-              customers: customers[0]?.count || 0,
-              activeContracts: contracts_data[0]?.count || 0,
-              monthlyRevenue: Number(revenue[0]?.total || 0),
-              pendingTickets: tickets[0]?.count || 0,
-            },
-            icon: 'BarChart3',
-            cardType: 'executive',
-          });
+          modules.push(
+            buildCard('business_overview', 0, {
+              data: {
+                customers: customers[0]?.count || 0,
+                activeContracts: contracts_data[0]?.count || 0,
+                monthlyRevenue: Number(revenue[0]?.total || 0),
+                pendingTickets: tickets[0]?.count || 0,
+              },
+            }),
+          );
+        }
+
+        // A manager's other three default cards. roleCardConfig has always
+        // listed them and no branch ever built one, so three quarters of a
+        // manager's dashboard was blank here too — not only in production.
+        if (activeCards.includes('revenue_summary')) {
+          const revenueResult = await db
+            .select({ total: sum(invoices.totalAmount) })
+            .from(invoices)
+            .where(
+              and(eq(invoices.tenantId, tenantId), sql`created_at >= NOW() - INTERVAL '30 days'`),
+            );
+          modules.push(
+            buildCard('revenue_summary', formatCurrency(Number(revenueResult[0]?.total || 0))),
+          );
+        }
+
+        if (activeCards.includes('customer_summary')) {
+          const customersResult = await db
+            .select({ count: count() })
+            .from(businessRecords)
+            .where(
+              and(
+                eq(businessRecords.tenantId, tenantId),
+                eq(businessRecords.recordType, 'customer'),
+              ),
+            );
+          modules.push(buildCard('customer_summary', customersResult[0]?.count || 0));
+        }
+
+        if (activeCards.includes('service_summary')) {
+          const openResult = await db
+            .select({ count: count() })
+            .from(serviceTickets)
+            .where(
+              and(eq(serviceTickets.tenantId, tenantId), sql`status IN ('open', 'in_progress')`),
+            );
+          modules.push(buildCard('service_summary', openResult[0]?.count || 0));
         }
       } catch (queryError) {
         log.error('Error in individual queries:', queryError);
@@ -351,7 +312,7 @@ export function registerModularDashboardRoutes(app: Express) {
       }
 
       res.json({
-        modules,
+        modules: modules.filter(Boolean),
         userRole,
         roleConfig: {
           defaultCards: roleConfig.defaultCards,
