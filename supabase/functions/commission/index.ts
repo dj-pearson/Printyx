@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { toNumber } from '../_shared/quote-math.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toCamel } from '../_shared/case.ts';
 
 /**
  * A deal's amount as a number.
@@ -263,6 +264,318 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(plan, 201, req);
+    }
+
+    // ─── Disputes and analytics (EDGE-002h) ─────────────────────────────────
+
+    // GET /commission/disputes
+    //
+    // Express builds this with raw SQL that cannot run: it selects u.name
+    // (users has first_name/last_name, no name) and filters on cd.tenantId /
+    // orders by cd.createdAt - unquoted camelCase, which Postgres folds to
+    // tenantid and createdat, neither of which is a column. The table itself is
+    // real, so this is a rewrite against tenant_id / created_at.
+    if (req.method === 'GET' && endpoint === 'disputes' && !resourceId) {
+      const { data: disputes, error } = await admin
+        .from('commission_disputes')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching commission disputes:', error);
+        return createCorsResponse({ error: 'Failed to fetch commission disputes' }, 500, req);
+      }
+
+      const rows = disputes ?? [];
+      const employeeIds = [...new Set(rows.map((d: any) => d.employee_id).filter(Boolean))];
+      const calculationIds = [...new Set(rows.map((d: any) => d.calculation_id).filter(Boolean))];
+
+      const employeeNames = new Map<string, string>();
+      const periodNames = new Map<string, string>();
+
+      if (employeeIds.length > 0) {
+        const { data: users } = await admin
+          .from('users')
+          .select('id, first_name, last_name')
+          .in('id', employeeIds);
+        for (const u of users ?? []) {
+          employeeNames.set(
+            u.id as string,
+            [u.first_name, u.last_name].filter(Boolean).join(' ').trim(),
+          );
+        }
+      }
+
+      if (calculationIds.length > 0) {
+        const { data: calcs } = await admin
+          .from('commission_calculations')
+          .select('id, period_name')
+          .in('id', calculationIds);
+        for (const c of calcs ?? []) periodNames.set(c.id as string, c.period_name as string);
+      }
+
+      // The page reads disputeNumber, employeeName, calculationPeriod,
+      // disputeDetails, priority, status, resolution and createdAt.
+      return createCorsResponse(
+        rows.map((d: any) => ({
+          ...toCamel(d),
+          employeeName: employeeNames.get(d.employee_id) ?? null,
+          calculationPeriod: periodNames.get(d.calculation_id) ?? null,
+          disputeDetails: d.description,
+          resolution: d.resolution_notes,
+        })),
+        200,
+        req,
+      );
+    }
+
+    // POST /commission/disputes
+    if (req.method === 'POST' && endpoint === 'disputes') {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+
+      // Express writes dispute_amount and claimed_amount; the columns are
+      // disputed_amount and expected_amount, so its insert failed too.
+      const disputed = body.disputedAmount ?? body.disputed_amount ?? body.dispute_amount;
+      const expected = body.expectedAmount ?? body.expected_amount ?? body.claimed_amount;
+      const difference =
+        disputed !== undefined && expected !== undefined
+          ? Number(expected) - Number(disputed)
+          : null;
+
+      const { data: dispute, error } = await admin
+        .from('commission_disputes')
+        .insert({
+          tenant_id: tenantId,
+          dispute_number: `DIS-${Date.now()}`,
+          calculation_id: (body.calculationId ?? body.commission_calculation_id ?? null) as
+            | string
+            | null,
+          employee_id: (body.employeeId ?? body.employee_id ?? null) as string | null,
+          dispute_type: (body.disputeType ?? body.dispute_type ?? 'calculation') as string,
+          status: 'submitted',
+          priority: (body.priority ?? 'medium') as string,
+          disputed_amount: disputed ?? null,
+          expected_amount: expected ?? null,
+          difference,
+          description: (body.description ?? null) as string | null,
+          submitted_date: new Date().toISOString(),
+          submitted_by: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating commission dispute:', error);
+        return createCorsResponse(
+          { error: 'Failed to create dispute', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse(toCamel(dispute), 201, req);
+    }
+
+    // GET /commission/analytics
+    //
+    // Express returns a HARDCODED MOCK here - "John Smith", 245780, fixed
+    // monthly trends - and never touches the database. Porting that would have
+    // moved fabricated numbers onto a second backend, so this computes the same
+    // shape from commission_calculations, commission_disputes, commission_plans
+    // and users, all of which carry the columns needed.
+    //
+    // Aggregation happens in the handler because PostgREST expresses no SUM,
+    // AVG, GROUP BY or count(DISTINCT).
+    if (req.method === 'GET' && endpoint === 'analytics') {
+      const [calcRes, disputeRes] = await Promise.all([
+        admin
+          .from('commission_calculations')
+          .select(
+            'employee_id, plan_id, period_name, total_sales, quota_achievement, gross_commission, total_bonuses, total_adjustments, net_commission, status, calculation_period_start',
+          )
+          .eq('tenant_id', tenantId),
+        admin
+          .from('commission_disputes')
+          .select('status, submitted_date, actual_resolution')
+          .eq('tenant_id', tenantId),
+      ]);
+
+      const calcs = calcRes.data ?? [];
+      const num = (v: unknown) => toNumber(v) || 0;
+
+      const netTotal = calcs.reduce((sum: number, c: any) => sum + num(c.net_commission), 0);
+      const grossTotal = calcs.reduce((sum: number, c: any) => sum + num(c.gross_commission), 0);
+      const salesTotal = calcs.reduce((sum: number, c: any) => sum + num(c.total_sales), 0);
+      const employees = new Set(calcs.map((c: any) => c.employee_id).filter(Boolean));
+      const payouts = calcs.map((c: any) => num(c.net_commission));
+      const quotaValues = calcs
+        .map((c: any) => c.quota_achievement)
+        .filter((q: unknown) => q !== null && q !== undefined)
+        .map(num);
+
+      // Per employee, per plan and per period rollups.
+      const byEmployee = new Map<string, { total: number; quota: number[] }>();
+      const byPlan = new Map<
+        string,
+        { total: number; participants: Set<string>; quota: number[] }
+      >();
+      const byPeriod = new Map<string, { total: number; payouts: number[]; quota: number[] }>();
+
+      for (const c of calcs as any[]) {
+        if (c.employee_id) {
+          const e = byEmployee.get(c.employee_id) ?? { total: 0, quota: [] };
+          e.total += num(c.net_commission);
+          if (c.quota_achievement !== null && c.quota_achievement !== undefined) {
+            e.quota.push(num(c.quota_achievement));
+          }
+          byEmployee.set(c.employee_id, e);
+        }
+        if (c.plan_id) {
+          const pl = byPlan.get(c.plan_id) ?? { total: 0, participants: new Set(), quota: [] };
+          pl.total += num(c.net_commission);
+          if (c.employee_id) pl.participants.add(c.employee_id);
+          if (c.quota_achievement !== null && c.quota_achievement !== undefined) {
+            pl.quota.push(num(c.quota_achievement));
+          }
+          byPlan.set(c.plan_id, pl);
+        }
+        const period = c.period_name ?? 'Unknown';
+        const pd = byPeriod.get(period) ?? { total: 0, payouts: [], quota: [] };
+        pd.total += num(c.net_commission);
+        pd.payouts.push(num(c.net_commission));
+        if (c.quota_achievement !== null && c.quota_achievement !== undefined) {
+          pd.quota.push(num(c.quota_achievement));
+        }
+        byPeriod.set(period, pd);
+      }
+
+      const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+
+      const employeeIds = [...byEmployee.keys()];
+      const employeeNames = new Map<string, string>();
+      if (employeeIds.length > 0) {
+        const { data: users } = await admin
+          .from('users')
+          .select('id, first_name, last_name, role')
+          .in('id', employeeIds);
+        for (const u of users ?? []) {
+          employeeNames.set(
+            u.id as string,
+            [u.first_name, u.last_name].filter(Boolean).join(' ').trim(),
+          );
+        }
+      }
+
+      const planIds = [...byPlan.keys()];
+      const planNames = new Map<string, string>();
+      if (planIds.length > 0) {
+        const { data: plans } = await admin
+          .from('commission_plans')
+          .select('id, plan_name')
+          .eq('tenant_id', tenantId)
+          .in('id', planIds);
+        for (const pl of plans ?? []) planNames.set(pl.id as string, pl.plan_name as string);
+      }
+
+      const disputes = disputeRes.data ?? [];
+      const resolvedDisputes = disputes.filter((d: any) =>
+        ['resolved', 'closed'].includes(String(d.status ?? '').toLowerCase()),
+      );
+      const resolutionDays = resolvedDisputes
+        .filter((d: any) => d.submitted_date && d.actual_resolution)
+        .map(
+          (d: any) =>
+            (new Date(d.actual_resolution).getTime() - new Date(d.submitted_date).getTime()) /
+            86_400_000,
+        );
+
+      return createCorsResponse(
+        {
+          summary: {
+            totalCommissionPaid: netTotal,
+            // No rate column: derived as gross commission over total sales.
+            averageCommissionRate: salesTotal > 0 ? (grossTotal / salesTotal) * 100 : 0,
+            totalBonusesPaid: calcs.reduce((sum: number, c: any) => sum + num(c.total_bonuses), 0),
+            totalAdjustments: calcs.reduce(
+              (sum: number, c: any) => sum + num(c.total_adjustments),
+              0,
+            ),
+            participatingEmployees: employees.size,
+            topPerformerPayout: payouts.length ? Math.max(...payouts) : 0,
+            averagePayout: mean(payouts),
+          },
+          performance_metrics: {
+            quotaAchievementRate: mean(quotaValues),
+            // tierDistribution is omitted: no plan tier is recorded anywhere.
+          },
+          monthly_trends: [...byPeriod.entries()].map(([month, v]) => ({
+            month,
+            totalCommissions: v.total,
+            avgPayout: mean(v.payouts),
+            quotaAchievement: mean(v.quota),
+          })),
+          top_performers: [...byEmployee.entries()]
+            .sort((a, b) => b[1].total - a[1].total)
+            .slice(0, 10)
+            .map(([employeeId, v], index) => ({
+              employeeId,
+              name: employeeNames.get(employeeId) ?? null,
+              totalCommission: v.total,
+              quotaAchievement: mean(v.quota),
+              rank: index + 1,
+            })),
+          plan_performance: [...byPlan.entries()].map(([planId, v]) => ({
+            planId,
+            planName: planNames.get(planId) ?? null,
+            participants: v.participants.size,
+            avgPayout: v.participants.size ? v.total / v.participants.size : 0,
+            totalPayout: v.total,
+            avgQuotaAchievement: mean(v.quota),
+          })),
+          dispute_analysis: {
+            totalDisputes: disputes.length,
+            resolvedDisputes: resolvedDisputes.length,
+            pendingDisputes: disputes.length - resolvedDisputes.length,
+            averageResolutionTime: mean(resolutionDays),
+          },
+          unbacked: [
+            'performance_metrics.tierDistribution: no plan tier is recorded on commission_plans or commission_calculations',
+            'top_performers[].role: users.role is a system role, not the sales role this card implies',
+          ],
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /commission/calculate - NOT IMPLEMENTED ANYWHERE.
+    //
+    // CommissionManagement.tsx calls this, and there is no handler on Express
+    // either - it 404s on both backends, so this is a feature request rather
+    // than a porting gap. Saying so beats a bare 404.
+    //
+    // The schema for it does exist: commission_plans + commission_plan_tiers
+    // (tiered rates), commission_product_rates (per-product overrides),
+    // employee_commission_assignments (who is on which plan) and
+    // commission_sales_transactions (what to pay on), writing
+    // commission_calculations. Whoever builds it has the map.
+    if (req.method === 'POST' && endpoint === 'calculate') {
+      return createCorsResponse(
+        {
+          error: 'Commission calculation is not implemented',
+          code: 'COMMISSION_ENGINE_NOT_BUILT',
+          details:
+            'No handler exists on Express either, so this is a feature rather than a port. The ' +
+            'tables it would need are commission_plans, commission_plan_tiers, ' +
+            'commission_product_rates, employee_commission_assignments and ' +
+            'commission_sales_transactions, writing results to commission_calculations.',
+        },
+        501,
+        req,
+      );
     }
 
     // Method/endpoint not found
