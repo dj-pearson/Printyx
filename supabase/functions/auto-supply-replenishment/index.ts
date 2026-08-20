@@ -3,6 +3,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toCamel } from '../_shared/case.ts';
+import { toNumber } from '../_shared/quote-math.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -41,6 +43,148 @@ export default async function handler(req: Request) {
     const { parts } = normalizePath(url.pathname, 'auto-supply-replenishment');
     const endpoint = parts[0];
     const ruleId = parts[1];
+
+    // ─── Dashboard endpoints (EDGE-002g) ────────────────────────────────────
+    //
+    // AutoSupplyReplenishmentDashboard.tsx calls /dashboard, /low-supplies,
+    // /orders and /analyze-all. None existed here, so all four were hard 404s
+    // in production while dev fell back to the Express router mounted at
+    // routes-registry.ts. Ported from
+    // server/services/auto-supply-replenishment-service.ts.
+    //
+    // Rows go through toCamel: the page reads supply.{serialNumber, supplyType,
+    // supplyName, currentLevel, daysUntilDepletion, ...} and order.{orderNumber,
+    // orderDate, estimatedDeliveryDate, partNumber, ...}, while PostgREST
+    // returns snake_case.
+
+    // GET /auto-supply-replenishment/dashboard
+    if (req.method === 'GET' && endpoint === 'dashboard') {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      // Signature matches daily-briefing's countRows(client, 'table', apply):
+      // check:phantom-cols recognises that shape and scopes the callback's
+      // filters to the named table. With the client dropped it falls back to
+      // positional attribution and blames them on the previous .from().
+      const countOf = async (
+        client: typeof admin,
+        table: string,
+        apply: (q: any) => any,
+      ): Promise<number> => {
+        const { count } = await apply(
+          client.from(table).select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+        );
+        return count ?? 0;
+      };
+
+      const [equipmentRows, suppliesTracked, lowSupplies, urgentOrders, ordersThisMonth] =
+        await Promise.all([
+          // count(distinct equipment_id) has no PostgREST equivalent, so the
+          // ids come back and are de-duplicated here.
+          admin.from('supply_monitoring').select('equipment_id').eq('tenant_id', tenantId),
+          countOf(admin, 'supply_monitoring', (q) => q),
+          countOf(admin, 'supply_monitoring', (q) => q.lt('current_level', 20)),
+          countOf(admin, 'auto_supply_orders', (q) =>
+            q
+              .in('priority', ['urgent', 'critical'])
+              .in('status', ['order_placed', 'order_confirmed', 'in_transit']),
+          ),
+          countOf(admin, 'auto_supply_orders', (q) =>
+            q.gte('order_date', startOfMonth.toISOString()),
+          ),
+        ]);
+
+      const devicesMonitored = new Set(
+        (equipmentRows.data ?? []).map((r: any) => r.equipment_id).filter(Boolean),
+      ).size;
+
+      const { data: analytics } = await admin
+        .from('supply_replenishment_analytics')
+        .select('emergency_cost_savings, emergency_orders_prevented, average_lead_time')
+        .eq('tenant_id', tenantId)
+        .eq('period_type', 'monthly')
+        .order('period_end', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      return createCorsResponse(
+        {
+          devicesMonitored,
+          suppliesTracked,
+          lowSupplies,
+          urgentOrders,
+          ordersThisMonth,
+          projectedSavings: toNumber(analytics?.emergency_cost_savings) || 0,
+          emergenciesPrevented: analytics?.emergency_orders_prevented ?? 0,
+          // Express defaults this to 3.0 days when there is no analytics row.
+          averageLeadTime: toNumber(analytics?.average_lead_time) || 3.0,
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /auto-supply-replenishment/low-supplies
+    if (req.method === 'GET' && endpoint === 'low-supplies') {
+      const { data: supplies, error } = await admin
+        .from('supply_monitoring')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .lt('current_level', 20)
+        .order('current_level', { ascending: true })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching low supplies:', error);
+        return createCorsResponse({ error: 'Failed to fetch low supplies' }, 500, req);
+      }
+
+      return createCorsResponse(toCamel(supplies ?? []), 200, req);
+    }
+
+    // GET /auto-supply-replenishment/orders
+    if (req.method === 'GET' && endpoint === 'orders' && !ruleId) {
+      const limit = Math.min(parseInt(url.searchParams.get('limit') || '20', 10) || 20, 100);
+
+      const { data: orders, error } = await admin
+        .from('auto_supply_orders')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('order_date', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching supply orders:', error);
+        return createCorsResponse({ error: 'Failed to fetch orders' }, 500, req);
+      }
+
+      return createCorsResponse(toCamel(orders ?? []), 200, req);
+    }
+
+    // POST /auto-supply-replenishment/analyze-all - NOT PORTED YET.
+    //
+    // Same call as contract-renewal's: the Express implementation runs an
+    // Anthropic analysis per monitored supply to predict depletion, writes the
+    // prediction back to supply_monitoring, and places auto-orders when the
+    // rules allow. A 501 naming the gap beats both the prod 404 this used to be
+    // and a partial port that would report analysing supplies it never ordered
+    // for. _shared/anthropic.ts is the Deno client (CLAUDE_API_KEY).
+    if (req.method === 'POST' && endpoint === 'analyze-all') {
+      return createCorsResponse(
+        {
+          error: 'Bulk supply analysis is not available on the edge function yet',
+          code: 'ANALYZE_ALL_NOT_PORTED',
+          details:
+            'Needs the AI depletion prediction and auto-order placement from ' +
+            'server/services/auto-supply-replenishment-service.ts, and CLAUDE_API_KEY in the ' +
+            'edge environment. The dashboard read endpoints (/dashboard, /low-supplies, ' +
+            '/orders) are served.',
+        },
+        501,
+        req,
+      );
+    }
 
     // GET /auto-supply-replenishment/rules - List replenishment rules
     if (req.method === 'GET' && endpoint === 'rules' && !ruleId) {
