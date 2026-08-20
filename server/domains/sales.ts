@@ -11,7 +11,6 @@ export { registerOpportunitiesRoutes } from '../routes-opportunities';
 export { registerLeadAssignmentRoutes } from '../routes-lead-assignment';
 export { registerLeadMapRoutes } from '../routes-lead-map';
 export { registerAutoLeadRoutingRoutes } from '../routes-auto-lead-routing';
-export { registerSalesRepAssignmentRoutes } from '../routes-sales-rep-assignments';
 export { registerSalesHandoffRoutes } from '../routes-sales-handoff';
 export { registerRenewalManagementRoutes } from '../routes-renewal-management';
 export { default as contractRenewalRoutes } from '../routes-contract-renewal';

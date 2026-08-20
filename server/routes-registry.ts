@@ -75,7 +75,6 @@ import {
   registerLeadAssignmentRoutes,
   registerLeadMapRoutes,
   registerAutoLeadRoutingRoutes,
-  registerSalesRepAssignmentRoutes,
   registerSalesHandoffRoutes,
   registerRenewalManagementRoutes,
   contractRenewalRoutes,
@@ -632,7 +631,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerProductPricingRoutes(app);
   registerSoftwareProductsRoutes(app);
   registerLeadAssignmentRoutes(app);
-  registerSalesRepAssignmentRoutes(app);
   registerLeadMapRoutes(app);
   registerAutoLeadRoutingRoutes(app);
   registerPredictiveServiceDispatchRoutes(app);

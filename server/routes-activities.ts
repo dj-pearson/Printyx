@@ -10,7 +10,7 @@ import type { Express } from 'express';
 import { storage } from './storage';
 import { isAuthenticated } from './replitAuth';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-activities');
 
@@ -23,22 +23,18 @@ export function registerActivitiesRoutes(app: Express) {
   // ============================================
 
   // GET /api/activities - Get all activities for CRM dashboard
-  app.get('/api/activities', resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Get all activities across all business records for this tenant
-      const allActivities = await storage.getAllActivities(tenantId);
-      res.json(allActivities);
-    } catch (error) {
-      log.error('Error fetching all activities:', error);
-      res.status(500).json({ message: 'Failed to fetch activities' });
-    }
-  });
+  // ── /api/activities: PARTLY RETIRED (PROD-008b) ───────────────────────────
+  //
+  // GET list, POST, GET /:id, PUT /:id and DELETE /:id lived here. /api/activities
+  // is in crmProxies and the proxy registers first, so none of them ran in dev;
+  // production never reaches Express. The activities edge function covers all
+  // five, plus PATCH /:id/complete, which is the third path the frontend calls.
+  //
+  // STILL HERE and deliberately: GET /recent and GET /user/:userId have no edge
+  // counterpart and no frontend caller. Note what the proxy does to /recent - it
+  // reaches the edge function's GET /:id branch with activityId='recent', so it
+  // looks up an activity whose id is the literal string. Nothing calls it, but
+  // that is the failure mode if anything starts to.
 
   // GET /api/activities/recent - Get recent activities with pagination
   app.get('/api/activities/recent', resolveTenant, async (req: any, res) => {
@@ -66,98 +62,12 @@ export function registerActivitiesRoutes(app: Express) {
   });
 
   // POST /api/activities - Create new activity
-  app.post('/api/activities', resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      const userId = getUserId(req);
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const activityData = {
-        ...req.body,
-        tenantId,
-        createdBy: userId,
-        activityDate: req.body.activityDate || new Date(),
-      };
-
-      const newActivity = await storage.createActivity(activityData);
-      res.status(201).json(newActivity);
-    } catch (error) {
-      log.error('Error creating activity:', error);
-      res.status(500).json({ message: 'Failed to create activity' });
-    }
-  });
 
   // GET /api/activities/:id - Get single activity
-  app.get('/api/activities/:id', resolveTenant, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = getTenantId(req);
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const activity = await storage.getActivity(id, tenantId);
-
-      if (!activity) {
-        return res.status(404).json({ message: 'Activity not found' });
-      }
-
-      res.json(activity);
-    } catch (error) {
-      log.error('Error fetching activity:', error);
-      res.status(500).json({ message: 'Failed to fetch activity' });
-    }
-  });
 
   // PUT /api/activities/:id - Update activity
-  app.put('/api/activities/:id', resolveTenant, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = getTenantId(req);
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const updatedActivity = await storage.updateActivity(id, tenantId, req.body);
-
-      if (!updatedActivity) {
-        return res.status(404).json({ message: 'Activity not found' });
-      }
-
-      res.json(updatedActivity);
-    } catch (error) {
-      log.error('Error updating activity:', error);
-      res.status(500).json({ message: 'Failed to update activity' });
-    }
-  });
 
   // DELETE /api/activities/:id - Delete activity
-  app.delete('/api/activities/:id', resolveTenant, async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = getTenantId(req);
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const deleted = await storage.deleteActivity(id, tenantId);
-
-      if (!deleted) {
-        return res.status(404).json({ message: 'Activity not found' });
-      }
-
-      res.status(204).send();
-    } catch (error) {
-      log.error('Error deleting activity:', error);
-      res.status(500).json({ message: 'Failed to delete activity' });
-    }
-  });
 
   // GET /api/activities/user/:userId - Get activities by user
   app.get('/api/activities/user/:userId', resolveTenant, async (req: any, res) => {
