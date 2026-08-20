@@ -5,6 +5,12 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { toNumber } from '../_shared/quote-math.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
+import { generateCompletion } from '../_shared/anthropic.ts';
+import {
+  buildRenewalAnalysisPrompt,
+  heuristicRenewalAnalysis,
+  type RenewalAnalysisInput,
+} from '../_shared/renewal-analysis.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -376,30 +382,147 @@ export default async function handler(req: Request) {
       return createCorsResponse({ ...contract, unpersisted }, 200, req);
     }
 
-    // POST /contract-renewal/analyze-all - NOT PORTED YET (EDGE-002g remainder).
+    // POST /contract-renewal/analyze-all
     //
-    // A 501 naming the gap rather than the prod 404 this used to be, and rather
-    // than a partial port: the Express implementation runs an Anthropic analysis
-    // per in-window contract, falls back to a heuristic when the model call
-    // fails, writes the scores back to contract_renewal_tracking, and — when
-    // autoSendProposals is on — generates and stores a renewal proposal. Porting
-    // only the analysis would leave the endpoint reporting work it did not do.
+    // Scores every contract inside the renewal window and writes the result
+    // back to contract_renewal_tracking.
     //
-    // The pieces are all available: _shared/anthropic.ts is the Deno client
-    // (CLAUDE_API_KEY), and the prompt, heuristic and proposal generation live in
-    // server/services/contract-renewal-service.ts.
+    // The model call is best-effort: prompt and deterministic fallback both come
+    // from _shared/renewal-analysis.ts, which is locked to the Express service by
+    // server/tests/unit/renewal-analysis-parity.test.ts. With no CLAUDE_API_KEY
+    // configured the heuristic is the only path that runs, and it is the same
+    // heuristic Express uses — so this endpoint works with or without the key
+    // rather than depending on one nobody has verified is set.
+    //
+    // Proposal auto-generation is NOT part of this. Express creates a renewal
+    // proposal when auto_send_proposals is on and the action is send_proposal;
+    // that path needs a second AI prompt plus the renewal_proposals write, and
+    // is the remaining slice. Contracts that would have had one are counted and
+    // returned as proposalsSkipped so the caller is not told work happened that
+    // did not.
     if (req.method === 'POST' && endpoint === 'analyze-all') {
+      const { data: rules } = await admin
+        .from('renewal_automation_rules')
+        .select('renewal_window_days, auto_send_proposals')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      const renewalWindowDays = rules?.renewal_window_days ?? 90;
+
+      const { data: contracts, error: contractsError } = await admin
+        .from('contract_renewal_tracking')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'active')
+        .lt('days_until_expiration', renewalWindowDays)
+        .gte('days_until_expiration', 0);
+
+      if (contractsError) {
+        console.error('Error loading contracts to analyze:', contractsError);
+        return createCorsResponse({ error: 'Failed to load contracts' }, 500, req);
+      }
+
+      const results: Array<Record<string, unknown>> = [];
+      let proposalsSkipped = 0;
+
+      for (const row of contracts ?? []) {
+        const contract = toCamel<RenewalAnalysisInput & { id: string }>(row);
+        let analysis = heuristicRenewalAnalysis(contract);
+        let analysedBy: 'model' | 'heuristic' = 'heuristic';
+
+        try {
+          const text = await generateCompletion({
+            max_tokens: 2048,
+            messages: [{ role: 'user', content: buildRenewalAnalysisPrompt(contract) }],
+          });
+          const parsed = JSON.parse(text);
+          analysis = {
+            renewalProbability: parsed.renewalProbability,
+            churnRiskScore: parsed.churnRiskScore,
+            renewalRisk: parsed.renewalRisk,
+            recommendedAction: parsed.recommendedAction,
+            aiAnalysis: {
+              summary: parsed.summary,
+              strengths: parsed.strengths,
+              concerns: parsed.concerns,
+              opportunities: parsed.opportunities,
+              recommendedStrategy: parsed.recommendedStrategy,
+            },
+            riskFactors: parsed.concerns,
+            opportunityFactors: parsed.opportunities,
+            confidenceScore: parsed.confidenceScore || 70,
+          };
+          analysedBy = 'model';
+        } catch (modelError) {
+          // Missing key, transport failure or unparseable JSON all land here and
+          // keep the heuristic result already computed above.
+          console.warn(
+            'Renewal model analysis unavailable, using heuristic:',
+            modelError instanceof Error ? modelError.message : modelError,
+          );
+        }
+
+        const { error: updateError } = await admin
+          .from('contract_renewal_tracking')
+          .update({
+            renewal_probability: analysis.renewalProbability,
+            churn_risk_score: analysis.churnRiskScore,
+            renewal_risk: analysis.renewalRisk,
+            ai_analysis: analysis.aiAnalysis,
+            risk_factors: analysis.riskFactors,
+            opportunity_factors: analysis.opportunityFactors,
+            recommended_action: analysis.recommendedAction,
+            confidence_score: analysis.confidenceScore,
+            last_analyzed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', row.id)
+          .eq('tenant_id', tenantId);
+
+        if (updateError) {
+          console.error('Error writing renewal analysis:', updateError);
+          results.push({
+            contractId: row.id,
+            contractNumber: row.contract_number,
+            customerName: row.customer_name,
+            error: updateError.message,
+          });
+          continue;
+        }
+
+        if (
+          rules?.auto_send_proposals &&
+          analysis.recommendedAction === 'send_proposal' &&
+          !row.proposal_generated
+        ) {
+          proposalsSkipped++;
+        }
+
+        results.push({
+          contractId: row.id,
+          contractNumber: row.contract_number,
+          customerName: row.customer_name,
+          analysedBy,
+          analysis,
+        });
+      }
+
       return createCorsResponse(
         {
-          error: 'Bulk renewal analysis is not available on the edge function yet',
-          code: 'ANALYZE_ALL_NOT_PORTED',
-          details:
-            'Needs the AI analysis + heuristic fallback + proposal generation from ' +
-            'server/services/contract-renewal-service.ts, and CLAUDE_API_KEY in the edge ' +
-            'environment. The dashboard read endpoints (/dashboard, /at-risk, /expiring, ' +
-            '/proposals) are served.',
+          analyzed: results.length,
+          proposalsCreated: 0,
+          proposalsSkipped,
+          results,
+          ...(proposalsSkipped > 0
+            ? {
+                unported: [
+                  `proposalsSkipped: ${proposalsSkipped} contract(s) would have had a renewal ` +
+                    'proposal generated. Proposal auto-generation is not on the edge function ' +
+                    'yet; the scores above are written either way.',
+                ],
+              }
+            : {}),
         },
-        501,
+        200,
         req,
       );
     }

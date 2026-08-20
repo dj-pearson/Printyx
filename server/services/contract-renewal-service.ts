@@ -66,6 +66,164 @@ interface ProposalRecommendations {
 }
 
 /**
+ * EDGE-002g parity surface.
+ *
+ * The edge function needs the same prompt and the same deterministic fallback,
+ * and Node/Deno cannot share a module. These two wrappers expose what this
+ * service computes inline so that
+ * server/tests/unit/renewal-analysis-parity.test.ts can assert the Deno copy in
+ * supabase/functions/_shared/renewal-analysis.ts stays identical.
+ */
+export function buildRenewalAnalysisPrompt(contract: RenewalAnalysisInput): string {
+  return `Analyze this contract renewal opportunity and predict renewal likelihood:
+
+Contract Information:
+- Type: ${contract.contractType}
+- Customer: ${contract.customerName}
+- Days Until Expiration: ${contract.daysUntilExpiration}
+- Current MRR: $${contract.monthlyRecurringRevenue || 0}
+- Current ACV: $${contract.annualContractValue || 0}
+
+Customer Engagement Metrics:
+- NPS Score: ${contract.npsScore !== null && contract.npsScore !== undefined ? contract.npsScore : 'Unknown'}
+- Satisfaction Score: ${contract.satisfactionScore !== null && contract.satisfactionScore !== undefined ? contract.satisfactionScore + '/5' : 'Unknown'}
+- Last Interaction: ${contract.lastInteractionDate ? new Date(contract.lastInteractionDate).toLocaleDateString() : 'Unknown'}
+- Interaction Frequency: ${contract.interactionFrequency || 'Unknown'} per month
+- Support Tickets (90d): ${contract.supportTicketsLast90Days}
+- Escalations (90d): ${contract.escalationsLast90Days}
+
+Service Performance:
+- Equipment Count: ${contract.equipmentCount}
+- Average Uptime: ${contract.averageUptime || 'Unknown'}%
+- Service Calls (90d): ${contract.serviceCallsLast90Days}
+- Average Response Time: ${contract.averageResponseTime || 'Unknown'} hours
+- First Time Fix Rate: ${contract.firstTimeFixRate || 'Unknown'}%
+
+Please analyze and provide:
+1. Renewal probability (0-100)
+2. Churn risk score (0-100, higher = more risk)
+3. Risk classification (very_low/low/medium/high/very_high)
+4. Recommended action
+5. Key strengths (positive factors)
+6. Concerns (risk factors)
+7. Upsell opportunities
+8. Overall strategy recommendation
+
+Format response as JSON:
+{
+  "renewalProbability": 75,
+  "churnRiskScore": 25,
+  "renewalRisk": "low",
+  "recommendedAction": "send_proposal",
+  "summary": "Overall assessment",
+  "strengths": ["strength1", "strength2"],
+  "concerns": ["concern1", "concern2"],
+  "opportunities": ["opportunity1", "opportunity2"],
+  "recommendedStrategy": "Detailed strategy",
+  "confidenceScore": 85
+}`;
+}
+
+export interface RenewalAnalysisInput {
+  contractType?: string | null;
+  customerName?: string | null;
+  daysUntilExpiration?: number | null;
+  monthlyRecurringRevenue?: string | number | null;
+  annualContractValue?: string | number | null;
+  npsScore?: number | null;
+  satisfactionScore?: number | null;
+  lastInteractionDate?: string | Date | null;
+  interactionFrequency?: number | null;
+  supportTicketsLast90Days?: number | null;
+  escalationsLast90Days?: number | null;
+  equipmentCount?: number | null;
+  averageUptime?: string | number | null;
+  serviceCallsLast90Days?: number | null;
+  averageResponseTime?: string | number | null;
+  firstTimeFixRate?: string | number | null;
+}
+
+export function renewalRiskFor(
+  renewalProbability: number,
+): 'very_low' | 'low' | 'medium' | 'high' | 'very_high' {
+  if (renewalProbability >= 90) return 'very_low';
+  if (renewalProbability >= 70) return 'low';
+  if (renewalProbability >= 50) return 'medium';
+  if (renewalProbability >= 30) return 'high';
+  return 'very_high';
+}
+
+export function recommendedActionFor(
+  risk: 'very_low' | 'low' | 'medium' | 'high' | 'very_high',
+): RenewalAnalysisResult['recommendedAction'] {
+  if (risk === 'very_low' || risk === 'low') return 'send_proposal';
+  if (risk === 'medium') return 'schedule_call';
+  return 'escalate_to_sales';
+}
+
+export function heuristicRenewalAnalysis(contract: RenewalAnalysisInput): RenewalAnalysisResult {
+  let renewalProbability = 70;
+  let churnRiskScore = 30;
+  const riskFactors: string[] = [];
+  const opportunityFactors: string[] = [];
+
+  if (contract.satisfactionScore !== null && contract.satisfactionScore !== undefined) {
+    if (contract.satisfactionScore >= 4) {
+      renewalProbability += 15;
+      churnRiskScore -= 15;
+    } else if (contract.satisfactionScore <= 2) {
+      renewalProbability -= 20;
+      churnRiskScore += 20;
+      riskFactors.push('Low satisfaction score');
+    }
+  }
+
+  if ((contract.supportTicketsLast90Days ?? 0) > 10) {
+    renewalProbability -= 10;
+    churnRiskScore += 10;
+    riskFactors.push('High support ticket volume');
+  }
+
+  if ((contract.escalationsLast90Days ?? 0) > 2) {
+    renewalProbability -= 15;
+    churnRiskScore += 15;
+    riskFactors.push('Recent escalations');
+  }
+
+  if (contract.firstTimeFixRate && parseFloat(contract.firstTimeFixRate.toString()) < 80) {
+    renewalProbability -= 10;
+    churnRiskScore += 10;
+    riskFactors.push('Low first-time fix rate');
+  }
+
+  if ((contract.equipmentCount ?? 0) > 5) {
+    opportunityFactors.push('Large equipment fleet - potential for expanded services');
+  }
+
+  renewalProbability = Math.max(0, Math.min(100, renewalProbability));
+  churnRiskScore = Math.max(0, Math.min(100, churnRiskScore));
+
+  const renewalRisk = renewalRiskFor(renewalProbability);
+
+  return {
+    renewalProbability,
+    churnRiskScore,
+    renewalRisk,
+    recommendedAction: recommendedActionFor(renewalRisk),
+    aiAnalysis: {
+      summary: 'Heuristic analysis based on key metrics',
+      strengths: riskFactors.length === 0 ? ['Stable customer relationship'] : [],
+      concerns: riskFactors,
+      opportunities: opportunityFactors,
+      recommendedStrategy: 'Review customer engagement and address any concerns before renewal',
+    },
+    riskFactors,
+    opportunityFactors,
+    confidenceScore: 60,
+  };
+}
+
+/**
  * Analyze contract renewal likelihood using AI
  */
 export async function analyzeContractRenewal(
