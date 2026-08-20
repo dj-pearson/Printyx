@@ -131,7 +131,7 @@ export function estimateCost(durationSeconds: number): {
 const PHONE_RE = /(\+?\d[\d().\-\s]{8,}\d)/;
 
 /** Deterministic offline fallback intake extraction. */
-function fallbackSummary(transcript: string): IntakeSummary {
+export function fallbackSummary(transcript: string): IntakeSummary {
   const text = (transcript ?? '').trim();
   const phoneMatch = text.match(PHONE_RE);
   return {
@@ -315,7 +315,7 @@ interface BusinessHours {
 
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
-function parseHHMM(v: unknown): number | null {
+export function parseHHMM(v: unknown): number | null {
   if (typeof v !== 'string') return null;
   const m = /^(\d{1,2}):(\d{2})$/.exec(v.trim());
   if (!m) return null;
@@ -330,7 +330,7 @@ function parseHHMM(v: unknown): number | null {
  * hours. If businessHours is unset/malformed, returns false (treat ALL as
  * after-hours) so the agent answers.
  */
-function isWithinBusinessHours(businessHours: unknown, now = new Date()): boolean {
+export function isWithinBusinessHours(businessHours: unknown, now = new Date()): boolean {
   const bh = (businessHours ?? null) as BusinessHours | null;
   if (!bh || !bh.days || typeof bh.days !== 'object') return false;
   const dayKey = DAY_KEYS[now.getDay()];
@@ -365,7 +365,7 @@ async function aniLookup(tenantId: string, fromNumber?: string | null): Promise<
 // Priority mapping (voice P1/P2/P3 → service_tickets.priority)
 // ---------------------------------------------------------------------------
 
-function ticketPriority(p: VoiceCallPriority): string {
+export function ticketPriority(p: VoiceCallPriority): string {
   return p === 'P1' ? 'urgent' : p === 'P2' ? 'high' : 'medium';
 }
 

@@ -4,6 +4,15 @@
  * submits captures back. Rendered directly by App.tsx before the auth gate.
  */
 import { useEffect, useState, type FormEvent } from 'react';
+import { getApiUrl } from '@/lib/config';
+
+// PROD-014: these are UNAUTHENTICATED pages, so the calls below go through
+// getApiUrl rather than apiRequest. getApiUrl is what turns /api/x into the edge
+// function host in production — a bare relative fetch resolves against whatever
+// origin serves the static bundle, which is not the API, so every one of these
+// 404'd for real visitors while working in dev. apiRequest would fix the URL too
+// but also attaches a Bearer token and throws on a non-2xx, and these handlers
+// are public and use res.ok to tell "not found" from "found".
 
 interface PublicField {
   key: string;
@@ -55,7 +64,7 @@ export default function HostedFormPage() {
     let active = true;
     (async () => {
       try {
-        const res = await fetch(`/api/public/forms/${encodeURIComponent(token)}`);
+        const res = await fetch(getApiUrl(`/api/public/forms/${encodeURIComponent(token)}`));
         if (!res.ok) {
           if (active) setNotFound(true);
           return;
@@ -83,7 +92,7 @@ export default function HostedFormPage() {
       const utm = collectUtm();
       if (Object.keys(utm).length) body._utm = utm;
 
-      const res = await fetch(`/api/public/forms/${encodeURIComponent(token)}/submit`, {
+      const res = await fetch(getApiUrl(`/api/public/forms/${encodeURIComponent(token)}/submit`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

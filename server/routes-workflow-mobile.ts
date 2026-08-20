@@ -27,7 +27,6 @@ const log = createModuleLogger('routes-workflow-mobile');
 import {
   insertDealStageSchema,
   insertDealActivitySchema,
-  insertContractTieredRateSchema,
   businessRecords,
   locations,
   regions,
@@ -514,40 +513,14 @@ export function registerWorkflowMobileRoutes(app: Express) {
     }
   });
 
-  // ============= CONTRACT TIERED RATES =============
-
-  // Contract Tiered Rates Management
-  app.get('/api/contract-tiered-rates', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      const rates = await storage.getContractTieredRates(tenantId);
-      res.json(rates);
-    } catch (error) {
-      log.error('Error fetching contract tiered rates:', error);
-      res.status(500).json({ message: 'Failed to fetch contract tiered rates' });
-    }
-  });
-
-  app.post('/api/contract-tiered-rates', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      const validatedData = insertContractTieredRateSchema.parse({
-        ...req.body,
-        tenantId,
-      });
-      const rate = await storage.createContractTieredRate(validatedData);
-      res.json(rate);
-    } catch (error) {
-      log.error('Error creating contract tiered rate:', error);
-      res.status(500).json({ message: 'Failed to create contract tiered rate' });
-    }
-  });
+  // CONTRACT TIERED RATES: removed. This file registered a second, identical
+  // pair of /api/contract-tiered-rates handlers. registerProductsCrudRoutes runs
+  // first (routes-registry.ts), so Express always matched that copy and these
+  // were dead — but the products-crud POST gates on
+  // PERMISSIONS.FINANCE.BILLING.CONFIGURE and this copy had no permission check
+  // at all, so any reordering of registration would have silently dropped the
+  // RBAC gate. See server/routes-products-crud.ts and the contract-tiered-rates
+  // edge function.
 
   // ============= WORKFLOW RULES =============
 

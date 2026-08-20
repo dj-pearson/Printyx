@@ -17,6 +17,17 @@ import {
   users,
 } from '@shared/schema';
 import { eq, and, sql, gte, lte, desc } from 'drizzle-orm';
+import {
+  computeOverages,
+  daysUntil,
+  isUpgradeAmount,
+  mergeLimits,
+  nextPeriodEnd,
+  planAmount,
+  resolveTrialPeriod,
+  readUsage,
+  trialDaysRemaining,
+} from '../lib/subscription-status';
 import { createModuleLogger } from '../lib/logger';
 
 const log = createModuleLogger('subscription-service');
@@ -108,27 +119,16 @@ export class SubscriptionService {
     const now = new Date();
     const startDate = now;
 
-    let isTrialing = false;
-    let trialEndDate = null;
-    let currentPeriodEnd = new Date();
-
-    if (startTrial && plan.trialEnabled && (plan.trialDays ?? 0) > 0) {
-      isTrialing = true;
-      trialEndDate = new Date(now.getTime() + (plan.trialDays ?? 0) * 24 * 60 * 60 * 1000);
-      currentPeriodEnd = trialEndDate;
-    } else {
-      // No trial, set period end based on billing cycle
-      if (billingCycle === 'annual') {
-        currentPeriodEnd = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
-      } else {
-        currentPeriodEnd = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
-      }
-    }
+    const { isTrialing, trialEndDate, currentPeriodEnd } = resolveTrialPeriod(
+      plan,
+      startTrial,
+      billingCycle,
+      now,
+    );
 
     // Calculate amount
-    const baseAmount =
-      billingCycle === 'annual' ? parseFloat(plan.annualPrice) : parseFloat(plan.monthlyPrice);
-    let amount = baseAmount;
+    const baseAmount = planAmount(plan, billingCycle);
+    const amount = baseAmount;
 
     // Apply discount if provided
     let discountId = null;
@@ -254,63 +254,13 @@ export class SubscriptionService {
       ),
     });
 
-    const currentUsage = {
-      users: usage?.totalUsers || 0,
-      storage: usage?.storageUsedMb || 0,
-      apiCalls: usage?.apiCalls || 0,
-      locations: usage?.activeLocations || 0,
-      businessRecords: usage?.businessRecords || 0,
-    };
-
-    // Apply custom limits if set
-    const customLimits = (subscription.customLimits as any) || {};
-    const limits = {
-      users: customLimits.maxUsers || plan.maxUsers,
-      storage: customLimits.maxStorage || plan.maxStorage,
-      apiCalls: customLimits.maxApiCalls || plan.maxApiCalls,
-      locations: customLimits.maxLocations || plan.maxLocations,
-      businessRecords: customLimits.maxBusinessRecords || plan.maxBusinessRecords,
-    };
-
-    // Check for overages
-    const overageDetails: any = {};
-    let isOverLimit = false;
-
-    if (limits.users !== -1 && currentUsage.users > limits.users) {
-      overageDetails.users = currentUsage.users - limits.users;
-      isOverLimit = true;
-    }
-    if (limits.storage !== -1 && currentUsage.storage > limits.storage * 1024) {
-      // Convert GB to MB
-      overageDetails.storage = currentUsage.storage - limits.storage * 1024;
-      isOverLimit = true;
-    }
-    if (limits.apiCalls !== -1 && currentUsage.apiCalls > limits.apiCalls) {
-      overageDetails.apiCalls = currentUsage.apiCalls - limits.apiCalls;
-      isOverLimit = true;
-    }
-    if (limits.locations !== -1 && currentUsage.locations > limits.locations) {
-      overageDetails.locations = currentUsage.locations - limits.locations;
-      isOverLimit = true;
-    }
-    if (limits.businessRecords !== -1 && currentUsage.businessRecords > limits.businessRecords) {
-      overageDetails.businessRecords = currentUsage.businessRecords - limits.businessRecords;
-      isOverLimit = true;
-    }
-
-    // Calculate days until renewal
-    const daysUntilRenewal = Math.ceil(
-      (subscription.currentPeriodEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
-    );
-
-    // Calculate trial days remaining
-    let trialDaysRemaining = undefined;
-    if (subscription.isTrialing && subscription.trialEndDate) {
-      trialDaysRemaining = Math.max(
-        0,
-        Math.ceil((subscription.trialEndDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)),
-      );
-    }
+    // PROD-014: the limit merge, the overage test (storage compares GB against
+    // MB) and the day counts now live in lib/subscription-status.ts, which the
+    // subscriptions edge function mirrors so /subscriptions/current answers the
+    // same way in production. Behaviour here is unchanged.
+    const currentUsage = readUsage(usage as any);
+    const limits = mergeLimits(plan as any, subscription.customLimits as any);
+    const { isOverLimit, overageDetails } = computeOverages(currentUsage, limits);
 
     return {
       subscription,
@@ -319,9 +269,9 @@ export class SubscriptionService {
       limits,
       isOverLimit,
       overageDetails,
-      daysUntilRenewal,
+      daysUntilRenewal: daysUntil(subscription.currentPeriodEnd, now),
       isTrialing: subscription.isTrialing,
-      trialDaysRemaining,
+      trialDaysRemaining: trialDaysRemaining(subscription as any, now),
       features: plan.features as string[],
     };
   }
@@ -376,10 +326,7 @@ export class SubscriptionService {
     }
 
     const newBillingCycle = billingCycle || currentSubscription.billingCycle;
-    const newAmount =
-      newBillingCycle === 'annual'
-        ? parseFloat(newPlan.annualPrice)
-        : parseFloat(newPlan.monthlyPrice);
+    const newAmount = planAmount(newPlan, newBillingCycle);
 
     if (immediate) {
       // Immediate change - update current subscription
@@ -403,7 +350,7 @@ export class SubscriptionService {
         .where(eq(tenants.id, tenantId));
 
       // Create event
-      const isUpgrade = newAmount > parseFloat(currentSubscription.amount);
+      const isUpgrade = isUpgradeAmount(newAmount, currentSubscription.amount);
       await this.createEvent({
         tenantId,
         subscriptionId: currentSubscription.id,
@@ -585,10 +532,7 @@ export class SubscriptionService {
     }
 
     const now = new Date();
-    const newPeriodEnd =
-      subscription.billingCycle === 'annual'
-        ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate())
-        : new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const newPeriodEnd = nextPeriodEnd(now, subscription.billingCycle);
 
     // Update subscription
     const [updatedSubscription] = await db

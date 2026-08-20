@@ -173,7 +173,9 @@ const WorkflowStepPage = React.lazy(() => import('@/pages/workflows/WorkflowStep
 const CrmDealsPage = React.lazy(() => import('@/pages/CrmDealsPage'));
 const CrmLeadsPage = React.lazy(() => import('@/pages/CrmLeadsPage'));
 const CrmContactsPage = React.lazy(() => import('@/pages/CrmContactsPage'));
+const ContactDetail = React.lazy(() => import('@/pages/ContactDetail'));
 const CrmCompaniesPage = React.lazy(() => import('@/pages/CrmCompaniesPage'));
+const CompanyDetail = React.lazy(() => import('@/pages/CompanyDetail'));
 const ProductHubUnified = React.lazy(() => import('@/pages/ProductHubUnified'));
 const EquipmentLifecycleHub = React.lazy(() => import('@/pages/EquipmentLifecycleHub'));
 const PurchaseOrders = React.lazy(() => import('@/pages/PurchaseOrders'));
@@ -300,9 +302,6 @@ const DocumentManagement = React.lazy(() => import('@/pages/DocumentManagement')
 const MobileServiceApp = React.lazy(() => import('@/pages/MobileServiceApp'));
 const AdvancedAnalyticsDashboard = React.lazy(() => import('@/pages/AdvancedAnalyticsDashboard'));
 const BusinessProcessOptimization = React.lazy(() => import('@/pages/BusinessProcessOptimization'));
-const SecurityComplianceManagement = React.lazy(
-  () => import('@/pages/SecurityComplianceManagement'),
-);
 const IncidentResponseSystem = React.lazy(() => import('@/pages/IncidentResponseSystem'));
 const AIAnalyticsDashboard = React.lazy(() => import('@/pages/AIAnalyticsDashboard'));
 const IntegrationHub = React.lazy(() => import('@/pages/IntegrationHub'));
@@ -663,6 +662,7 @@ function Router() {
                 <Route path="/crm/deals/:id" component={DealDetail} />
                 <Route path="/crm/leads" component={CrmLeadsPage} />
                 <Route path="/crm/contacts" component={CrmContactsPage} />
+                <Route path="/crm/contacts/:id" component={ContactDetail} />
                 <Route path="/crm/companies" component={CrmCompaniesPage} />
                 <Route path="/leads" component={LeadsPage} />
                 <Route path="/prospects" component={ProspectsPage} />
@@ -808,6 +808,7 @@ function Router() {
                 <Route path="/mobile-field-operations" component={MobileFieldOperations} />
                 <Route path="/leads/:slug" component={LeadDetail} />
                 <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
+                <Route path="/companies/:id" component={CompanyDetail} />
                 <Route path="/company-contacts" component={CompanyContacts} />
                 <Route path="/sales-reports" component={Reports} />
                 <Route path="/service-reports" component={Reports} />
@@ -974,16 +975,6 @@ function Router() {
                   path="/business-process-optimization"
                   component={BusinessProcessOptimization}
                 />
-                <Route path="/security-compliance" component={SecurityComplianceManagement} />
-                <Route path="/security-compliance-management">
-                  {() => (
-                    <ProtectedRoute
-                      component={SecurityComplianceManagement}
-                      permissions={['audit.logs.view_location', 'compliance.reports.view']}
-                      minLevel={5}
-                    />
-                  )}
-                </Route>
                 <Route path="/customer-self-service-portal" component={CustomerSelfServicePortal} />
                 <Route path="/incident-response" component={IncidentResponseSystem} />
                 <Route path="/ai-analytics-dashboard" component={AIAnalyticsDashboard} />
@@ -1004,7 +995,6 @@ function Router() {
                 <Route path="/integration-hub" component={IntegrationHub} />
                 <Route path="/integrations" component={IntegrationHub} />
                 <Route path="/social-media-generator" component={SocialMediaGenerator} />
-                <Route path="/security-management" component={SecurityComplianceManagement} />
                 <Route path="/system-monitoring" component={SystemMonitoring} />
                 <Route path="/access-control" component={RoleManagement} />
                 <Route path="/role-management">

@@ -4,6 +4,15 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { db } from './db';
 import { createModuleLogger } from './lib/logger';
+import {
+  projectAlert,
+  projectAudit,
+  projectCompetitor,
+  projectCrawlResult,
+  projectKeyword,
+  projectPageScore,
+} from './lib/seo-projection';
+
 const log = createModuleLogger('routes-seo');
 
 import {
@@ -189,7 +198,7 @@ router.get('/api/seo/audit/history', async (req: any, res) => {
       .limit(limit)
       .offset(offset);
 
-    res.json(audits);
+    res.json(audits.map(projectAudit));
   } catch (error: any) {
     log.error('Error fetching audit history:', error);
     res.status(500).json({ message: 'An internal error occurred' });
@@ -275,7 +284,7 @@ router.get('/api/seo/keywords', async (req: any, res) => {
       .where(eq(seoKeywords.tenantId, tenantId))
       .orderBy(desc(seoKeywords.priority));
 
-    res.json(keywords);
+    res.json(keywords.map(projectKeyword));
   } catch (error: any) {
     log.error('Error fetching keywords:', error);
     res.status(500).json({ message: 'An internal error occurred' });
@@ -452,6 +461,46 @@ router.post('/api/seo/crawl', async (req: any, res) => {
 });
 
 // Get crawl results
+/**
+ * GET /api/seo/crawl/results — the latest crawl's pages.
+ *
+ * PROD-014: SEODashboard has always called this, and only the /:crawlId route
+ * below existed, so the request arrived with crawlId = 'results' and filtered
+ * crawl_id = 'results'. No crawl is ever given that id, so the panel returned
+ * [] forever — in dev as well as production. It has to stay ABOVE /:crawlId,
+ * or Express matches that first and the bug returns unchanged.
+ */
+router.get('/api/seo/crawl/results', async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID is required' });
+    }
+
+    const [latest] = await db
+      .select({ crawlId: seoCrawlResults.crawlId })
+      .from(seoCrawlResults)
+      .where(eq(seoCrawlResults.tenantId, tenantId))
+      .orderBy(desc(seoCrawlResults.crawledAt))
+      .limit(1);
+
+    if (!latest?.crawlId) return res.json([]);
+
+    const results = await db
+      .select()
+      .from(seoCrawlResults)
+      .where(
+        and(eq(seoCrawlResults.tenantId, tenantId), eq(seoCrawlResults.crawlId, latest.crawlId)),
+      )
+      .orderBy(asc(seoCrawlResults.crawlDepth));
+
+    res.json(results.map(projectCrawlResult));
+  } catch (error: any) {
+    log.error('Error fetching latest crawl results:', error);
+    res.status(500).json({ message: 'An internal error occurred' });
+  }
+});
+
 router.get('/api/seo/crawl/:crawlId', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
@@ -470,7 +519,7 @@ router.get('/api/seo/crawl/:crawlId', async (req: any, res) => {
       )
       .orderBy(asc(seoCrawlResults.crawlDepth));
 
-    res.json(results);
+    res.json(results.map(projectCrawlResult));
   } catch (error: any) {
     log.error('Error fetching crawl results:', error);
     res.status(500).json({ message: 'An internal error occurred' });
@@ -595,7 +644,7 @@ router.get('/api/seo/page-scores', async (req: any, res) => {
       .orderBy(desc(seoPageScores.lastAnalyzed))
       .limit(100);
 
-    res.json(scores);
+    res.json(scores.map(projectPageScore));
   } catch (error: any) {
     log.error('Error fetching page scores:', error);
     res.status(500).json({ message: 'An internal error occurred' });
@@ -1028,7 +1077,7 @@ router.get('/api/seo/alerts', async (req: any, res) => {
       .orderBy(desc(seoAlerts.createdAt))
       .limit(100);
 
-    res.json(alerts);
+    res.json(alerts.map(projectAlert));
   } catch (error: any) {
     log.error('Error fetching alerts:', error);
     res.status(500).json({ message: 'An internal error occurred' });
@@ -1179,7 +1228,7 @@ router.get('/api/seo/competitors', async (req: any, res) => {
       .orderBy(desc(seoCompetitorAnalysis.analyzedAt))
       .limit(20);
 
-    res.json(competitors);
+    res.json(competitors.map(projectCompetitor));
   } catch (error: any) {
     log.error('Error fetching competitors:', error);
     res.status(500).json({ message: 'An internal error occurred' });

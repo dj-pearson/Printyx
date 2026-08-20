@@ -69,7 +69,7 @@ export default async function handler(req: Request) {
             id, ticket_number, title, status, priority,
             customer:business_records!service_tickets_customer_id_fkey(id, company_name, primary_contact_name, primary_contact_phone)
           ),
-          technician:users!mobile_service_sessions_technician_id_fkey(id, first_name, last_name, email, phone)
+          technician:users!mobile_service_sessions_technician_id_fkey(id, first_name, last_name, email)
         `,
           { count: 'exact' },
         )
@@ -118,9 +118,9 @@ export default async function handler(req: Request) {
               id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone,
               address_line1, address_line2, city, state, postal_code
             ),
-            equipment:equipment(id, serial_number, model, manufacturer, location)
+            equipment:equipment(id, serial_number, model_number, manufacturer, location_description)
           ),
-          technician:users!mobile_service_sessions_technician_id_fkey(id, first_name, last_name, email, phone),
+          technician:users!mobile_service_sessions_technician_id_fkey(id, first_name, last_name, email),
           time_entries:time_tracking_entries(*)
         `,
         )
@@ -461,7 +461,7 @@ export default async function handler(req: Request) {
             id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone,
             address_line1, address_line2, city, state, postal_code
           ),
-          equipment:equipment(id, serial_number, model, manufacturer, location)
+          equipment:equipment(id, serial_number, model_number, manufacturer, location_description)
         `,
         )
         .eq('tenant_id', tenantId)

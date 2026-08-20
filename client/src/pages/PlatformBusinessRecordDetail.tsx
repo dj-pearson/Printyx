@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { useParams, useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -160,13 +161,7 @@ export default function PlatformBusinessRecordDetail() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<BusinessRecord>) => {
-      const response = await fetch(`/api/platform-crm/business-records/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to update record');
-      return response.json();
+      return apiRequest(`/api/platform-crm/business-records/${id}`, 'PATCH', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/platform-crm/business-records/${id}`] });

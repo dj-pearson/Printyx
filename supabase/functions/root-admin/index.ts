@@ -2,6 +2,7 @@
 // Provides root admin system management endpoints
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { USER_NAME_COLUMNS } from '../_shared/user-profile.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 
@@ -98,19 +99,33 @@ export default async function handler(req: Request) {
 
     // GET /root-admin/tenants - List all tenants
     if (req.method === 'GET' && endpoint === 'tenants' && !resourceId) {
+      // COP-M01: `tenants` has no status column — the flag is is_active. This
+      // select 42703'd, so the tenant list came back as an error for every root
+      // admin. `status` is still returned, derived, because the console reads it.
       const { data: tenants, error } = await admin
         .from('tenants')
         .select(
-          'id, name, status, subscription, last_activity, storage_used, api_calls, billing_status',
+          'id, name, is_active, subscription, last_activity, storage_used, api_calls, billing_status',
         )
         .order('last_activity', { ascending: false });
 
       if (error) {
         console.error('Error fetching tenants:', error);
-        return createCorsResponse({ error: 'Failed to fetch tenants' }, 500, req);
+        return createCorsResponse(
+          { error: 'Failed to fetch tenants', details: error.message },
+          500,
+          req,
+        );
       }
 
-      return createCorsResponse(tenants || [], 200, req);
+      return createCorsResponse(
+        (tenants ?? []).map((t: any) => ({
+          ...t,
+          status: t.is_active === false ? 'suspended' : 'active',
+        })),
+        200,
+        req,
+      );
     }
 
     // GET /root-admin/tenants/:id - Get single tenant
@@ -151,7 +166,7 @@ export default async function handler(req: Request) {
         count,
       } = await admin
         .from('users')
-        .select('id, name, email, tenant_id, role_id, last_login_at, created_at', {
+        .select(`${USER_NAME_COLUMNS}, email, tenant_id, role_id, last_login_at, created_at`, {
           count: 'exact',
         })
         .order('created_at', { ascending: false })
@@ -171,7 +186,8 @@ export default async function handler(req: Request) {
       const { data: logs } = await admin
         .from('audit_logs')
         .select('*')
-        .order('created_at', { ascending: false })
+        // audit_logs records `timestamp`, not created_at.
+        .order('timestamp', { ascending: false })
         .limit(limit);
 
       return createCorsResponse(logs || [], 200, req);
@@ -181,7 +197,9 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && endpoint === 'tenants' && resourceId && parts[2] === 'suspend') {
       const { error } = await admin
         .from('tenants')
-        .update({ status: 'suspended', updated_at: new Date().toISOString() })
+        // is_active, not status: writing `status` here silently updated nothing,
+        // so suspending a tenant reported success and left it running.
+        .update({ is_active: false, updated_at: new Date().toISOString() })
         .eq('id', resourceId);
 
       if (error) {
@@ -195,7 +213,7 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && endpoint === 'tenants' && resourceId && parts[2] === 'activate') {
       const { error } = await admin
         .from('tenants')
-        .update({ status: 'active', updated_at: new Date().toISOString() })
+        .update({ is_active: true, updated_at: new Date().toISOString() })
         .eq('id', resourceId);
 
       if (error) {

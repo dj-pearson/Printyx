@@ -488,10 +488,6 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['admin.settings.view'],
     minLevel: 3,
   },
-  '/security-compliance-management': {
-    requiredPermissions: ['audit.logs.view_location', 'compliance.reports.view'],
-    minLevel: 5,
-  },
   '/deployment-readiness': {
     requiredPermissions: ['admin.settings.update'],
     minLevel: 6,
@@ -840,14 +836,6 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/access-control': {
     requiredPermissions: ['admin.role.view', 'admin.role.create'],
     minLevel: 4,
-  },
-  '/security-compliance': {
-    requiredPermissions: ['audit.logs.view_location', 'compliance.reports.view'],
-    minLevel: 5,
-  },
-  '/security-management': {
-    requiredPermissions: ['audit.logs.view_location', 'compliance.reports.view'],
-    minLevel: 5,
   },
 
   // =====================================================================

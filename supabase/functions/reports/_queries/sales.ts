@@ -13,6 +13,7 @@
 //     degraded.
 
 import type { SupabaseClient } from '../../_shared/db.ts';
+import { USER_NAME_COLUMNS, userDisplayName, type UserNameColumns } from './user-names.ts';
 
 export interface OppRow {
   id: string;
@@ -76,9 +77,8 @@ export async function fetchActivities(
   return (data ?? []) as ActivityRow[];
 }
 
-export interface UserNameRow {
+export interface UserNameRow extends UserNameColumns {
   id: string;
-  name: string | null;
 }
 
 export async function fetchUserNames(
@@ -87,7 +87,7 @@ export async function fetchUserNames(
 ): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();
   const filtered = [...new Set(ids)];
-  const { data, error } = await db.from('users').select('id, name').in('id', filtered);
+  const { data, error } = await db.from('users').select(USER_NAME_COLUMNS).in('id', filtered);
   if (error) throw new Error(`fetchUserNames: ${error.message}`);
-  return new Map(((data ?? []) as UserNameRow[]).map((u) => [u.id, u.name ?? 'Unknown']));
+  return new Map(((data ?? []) as UserNameRow[]).map((u) => [u.id, userDisplayName(u)]));
 }

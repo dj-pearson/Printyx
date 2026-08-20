@@ -56,8 +56,13 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const { parts } = normalizePath(url.pathname, 'knowledge-base');
-    // parts: [...rest after function-name strip]
+    const { parts: rawParts } = normalizePath(url.pathname, 'knowledge-base');
+    // Every frontend caller addresses articles as /articles and /articles/:id,
+    // while this function was written flat (/ and /:id). Strip an OPTIONAL
+    // leading `articles` segment so both shapes resolve — the same idiom the
+    // signatures function uses for its optional `signature-` prefix (EDGE-005e).
+    // Without this the KB admin pages 404 on every article call in production.
+    const parts = rawParts[0] === 'articles' ? rawParts.slice(1) : rawParts;
     const resource = parts[0]; // Could be 'categories', 'popular', 'search', or article ID
     const subResource = parts[1]; // Could be 'rate' for articles or category ID
 
@@ -303,6 +308,57 @@ export default async function handler(req: Request) {
 
     // ==================== POPULAR ARTICLES ENDPOINT ====================
 
+    // GET /knowledge-base/analytics — admin dashboard tiles.
+    //
+    // Mirrors server/routes-knowledge-base.ts. PostgREST has no COUNT FILTER or
+    // AVG, so the tenant's articles are read once and the aggregates computed
+    // here rather than issuing five separate count queries.
+    if (req.method === 'GET' && resource === 'analytics' && !subResource) {
+      const [{ data: articleRows }, { data: categoryRows }] = await Promise.all([
+        admin
+          .from('knowledge_articles')
+          .select('id, title, status, view_count, average_rating')
+          .eq('tenant_id', tenantId),
+        admin.from('knowledge_categories').select('is_active').eq('tenant_id', tenantId),
+      ]);
+
+      const articles = (articleRows as Record<string, any>[]) || [];
+      const categories = (categoryRows as Record<string, any>[]) || [];
+      const ratings = articles
+        .map((a) => Number(a.average_rating))
+        .filter((n) => Number.isFinite(n));
+
+      return createCorsResponse(
+        {
+          articles: {
+            totalArticles: articles.length,
+            publishedArticles: articles.filter((a) => a.status === 'published').length,
+            draftArticles: articles.filter((a) => a.status === 'draft').length,
+            totalViews: articles.reduce((sum, a) => sum + (Number(a.view_count) || 0), 0),
+            averageRating: ratings.length
+              ? Math.round((ratings.reduce((x, y) => x + y, 0) / ratings.length) * 100) / 100
+              : 0,
+          },
+          categories: {
+            totalCategories: categories.length,
+            activeCategories: categories.filter((c) => c.is_active === true).length,
+          },
+          popularArticles: articles
+            .filter((a) => a.status === 'published')
+            .sort((a, b) => (Number(b.view_count) || 0) - (Number(a.view_count) || 0))
+            .slice(0, 10)
+            .map((a) => ({
+              id: a.id,
+              title: a.title,
+              viewCount: Number(a.view_count) || 0,
+              averageRating: Number(a.average_rating) || 0,
+            })),
+        },
+        200,
+        req,
+      );
+    }
+
     // GET /knowledge-base/popular - Get most viewed articles
     if (req.method === 'GET' && resource === 'popular') {
       const limit = parseInt(url.searchParams.get('limit') || '10');
@@ -498,9 +554,19 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch articles' }, 500, req);
       }
 
+      // Shape matches server/routes-knowledge-base.ts and what
+      // KnowledgeBaseAdmin.tsx reads (articlesData?.articles). `data` is kept as
+      // an alias so any older caller reading it still works.
       return createCorsResponse(
         {
+          articles: articles || [],
           data: articles || [],
+          pagination: {
+            page,
+            limit,
+            total: count || 0,
+            pages: Math.ceil((count || 0) / limit),
+          },
           total: count || 0,
           page,
           limit,
@@ -517,6 +583,7 @@ export default async function handler(req: Request) {
       resource !== 'categories' &&
       resource !== 'popular' &&
       resource !== 'search' &&
+      resource !== 'analytics' &&
       !subResource
     ) {
       const articleId = resource;
@@ -708,6 +775,7 @@ export default async function handler(req: Request) {
       resource !== 'categories' &&
       resource !== 'popular' &&
       resource !== 'search' &&
+      resource !== 'analytics' &&
       !subResource
     ) {
       const articleId = resource;
@@ -824,6 +892,7 @@ export default async function handler(req: Request) {
       resource !== 'categories' &&
       resource !== 'popular' &&
       resource !== 'search' &&
+      resource !== 'analytics' &&
       !subResource
     ) {
       const articleId = resource;

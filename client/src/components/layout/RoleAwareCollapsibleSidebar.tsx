@@ -181,7 +181,10 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Role Management', path: '/role-management', icon: Shield },
       { title: 'Security & Permissions', path: '/admin/root-admin-security', icon: Shield },
       { title: 'Disposable Email Blocklist', path: '/admin/disposable-emails', icon: Shield },
-      { title: 'Audit & Compliance', path: '/security-compliance-management', icon: FileText },
+      // Points at the real audit viewer (AuditLogViewer -> /api/audit-logs -> the
+      // audit_logs table). It used to point at SecurityComplianceManagement, whose
+      // data was entirely fabricated; that page is gone.
+      { title: 'Audit & Compliance', path: '/admin/audit-logs', icon: FileText },
       { title: 'System Dashboard', path: '/root-admin-dashboard', icon: Activity },
       { title: 'Database Management', path: '/database-management', icon: Database },
       { title: 'Platform Analytics', path: '/admin/platform-analytics', icon: BarChart3 },
@@ -502,7 +505,6 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/workflow*',
       '/business-process*',
       '/document-management*',
-      '/security-compliance*',
       '/deployment*',
       '/customer-number*',
       '/seo*',

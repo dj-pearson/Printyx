@@ -2,7 +2,44 @@
 // Handles user administration
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { sanitizeSearchTerm } from '../_shared/crm-list-query.ts';
+import { buildUserProfileUpdate, USER_PROFILE_COLUMNS } from '../_shared/user-profile.ts';
 import { normalizePath } from '../_shared/path.ts';
+
+/**
+ * is_active plus a lifecycle timestamp.
+ *
+ * COP-M01: the handler wrote status / activated_at / deactivated_at. `users` has
+ * none of the three — the flag is is_active, and there is no column for either
+ * stamp. They go in the metadata jsonb, which is where /user/profile already
+ * keeps the fields with no column. metadata is a single column, so it is read
+ * first: writing a bare object would delete the user's phone and job title.
+ */
+async function withLifecycleStamp(
+  admin: any,
+  tenantId: string,
+  userId: string,
+  stamp: 'activatedAt' | 'deactivatedAt',
+  isActive: boolean,
+): Promise<Record<string, unknown>> {
+  const now = new Date().toISOString();
+  const { data: existing } = await admin
+    .from('users')
+    .select('metadata')
+    .eq('id', userId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+
+  return {
+    is_active: isActive,
+    metadata: {
+      ...((existing?.metadata ?? {}) as Record<string, unknown>),
+      [stamp]: now,
+      status: isActive ? 'active' : 'inactive',
+    },
+    updated_at: now,
+  };
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -57,12 +94,22 @@ export default async function handler(req: Request) {
         `,
         )
         .eq('tenant_id', tenantId)
-        .order('full_name', { ascending: true });
+        // COP-M01: `users` has no full_name and no status. The name is
+        // first_name/last_name and the flag is is_active, so ordering, filtering
+        // and searching all 42703'd here — this list returned an error for every
+        // tenant.
+        .order('last_name', { ascending: true })
+        .order('first_name', { ascending: true });
 
-      if (status) query = query.eq('status', status);
+      if (status) query = query.eq('is_active', status === 'active');
       if (roleId) query = query.eq('role_id', roleId);
       if (search) {
-        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+        const term = sanitizeSearchTerm(search);
+        if (term) {
+          query = query.or(
+            `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`,
+          );
+        }
       }
 
       const { data: users, error } = await query;
@@ -96,16 +143,22 @@ export default async function handler(req: Request) {
       const body = await req.json();
 
       // Create user in database
+      // COP-M01: full_name, status, phone, job_title, department and created_by
+      // are none of them columns. The invite lands as an inactive user with the
+      // profile extras in metadata, which is where /user/profile already keeps
+      // them.
+      const profile = buildUserProfileUpdate(body, null);
       const userData = {
         tenant_id: tenantId,
         email: body.email,
-        full_name: body.fullName || body.full_name,
         role_id: body.roleId || body.role_id,
-        status: 'pending',
-        phone: body.phone,
-        job_title: body.jobTitle || body.job_title,
-        department: body.department,
-        created_by: user.id,
+        is_active: false,
+        ...profile,
+        metadata: {
+          ...((profile.metadata as Record<string, unknown>) ?? {}),
+          status: 'pending',
+          invitedBy: user.id,
+        },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -132,20 +185,28 @@ export default async function handler(req: Request) {
     if (req.method === 'PUT' && userId && !subResource) {
       const body = await req.json();
 
-      const { data: userData, error } = await admin
+      // metadata is a single jsonb column, so read it before a partial update or
+      // the fields this call does not mention are deleted.
+      const { data: existing } = await admin
         .from('users')
-        .update({
-          full_name: body.fullName || body.full_name || body.fullName,
-          role_id: body.roleId || body.role_id,
-          phone: body.phone,
-          job_title: body.jobTitle || body.job_title,
-          department: body.department,
-          status: body.status,
-          updated_at: new Date().toISOString(),
-        })
+        .select('metadata')
         .eq('id', userId)
         .eq('tenant_id', tenantId)
-        .select()
+        .maybeSingle();
+
+      const update: Record<string, unknown> = {
+        ...buildUserProfileUpdate(body, (existing?.metadata ?? null) as Record<string, unknown>),
+        updated_at: new Date().toISOString(),
+      };
+      if (body.roleId || body.role_id) update.role_id = body.roleId || body.role_id;
+      if (body.status !== undefined) update.is_active = body.status === 'active';
+
+      const { data: userData, error } = await admin
+        .from('users')
+        .update(update)
+        .eq('id', userId)
+        .eq('tenant_id', tenantId)
+        .select(USER_PROFILE_COLUMNS)
         .single();
 
       if (error) {
@@ -159,11 +220,7 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && userId && subResource === 'activate') {
       const { data: userData, error } = await admin
         .from('users')
-        .update({
-          status: 'active',
-          activated_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        .update(await withLifecycleStamp(admin, tenantId, userId, 'activatedAt', true))
         .eq('id', userId)
         .eq('tenant_id', tenantId)
         .select()
@@ -180,11 +237,7 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && userId && subResource === 'deactivate') {
       const { data: userData, error } = await admin
         .from('users')
-        .update({
-          status: 'inactive',
-          deactivated_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        .update(await withLifecycleStamp(admin, tenantId, userId, 'deactivatedAt', false))
         .eq('id', userId)
         .eq('tenant_id', tenantId)
         .select()
@@ -255,7 +308,8 @@ export default async function handler(req: Request) {
         .select('*')
         .eq('user_id', userId)
         .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
+        // audit_logs records `timestamp`, not created_at.
+        .order('timestamp', { ascending: false })
         .limit(50);
 
       return createCorsResponse(activities || [], 200, req);

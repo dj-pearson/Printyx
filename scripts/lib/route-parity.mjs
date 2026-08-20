@@ -189,10 +189,21 @@ export function computeParity(repo = repoDefault) {
   // 2. Proxy-map prefixes (dev → edge).
   const proxyPath = join(repo, 'server/middleware/edge-function-proxy.ts');
   const proxySrc = existsSync(proxyPath) ? readFileSync(proxyPath, 'utf-8') : '';
-  const proxied = new Set([
-    ...[...proxySrc.matchAll(/'\/api\/([a-z0-9-]+)'/g)].map((m) => m[1]),
-    ...PROXY_REDIRECTS,
-  ]);
+  const proxyPrefixes = [...proxySrc.matchAll(/'\/api\/([a-z0-9-]+(?:\/[a-z0-9-]+)*)'/g)].map(
+    (m) => m[1],
+  );
+  const proxied = new Set([...proxyPrefixes.filter((p) => !p.includes('/')), ...PROXY_REDIRECTS]);
+  // Multi-segment proxy entries ('/api/ai/gpt5', '/api/public/calculator') only
+  // align PART of a domain. Kept separately so a domain is credited as aligned
+  // only when every live frontend path under it sits inside a proxied sub-path
+  // — otherwise adding an unproxied sibling call would silently pass.
+  const subProxied = new Map(); // domain -> string[] of '<domain>/<sub>' prefixes
+  for (const prefix of proxyPrefixes) {
+    if (!prefix.includes('/')) continue;
+    const domain = prefix.split('/')[0];
+    if (!subProxied.has(domain)) subProxied.set(domain, []);
+    subProxied.get(domain).push(prefix);
+  }
 
   // 3. Frontend-called /api/* segments.
   //
@@ -216,6 +227,7 @@ export function computeParity(repo = repoDefault) {
   const frontendCalls = new Set();
   const liveFrontendCalls = new Set();
   const callerFiles = new Map(); // domain -> { live: string[], dead: string[] }
+  const liveFrontendPaths = new Map(); // domain -> Set of full '<domain>/<sub>' paths
   for (const file of clientFiles) {
     let src;
     try {
@@ -224,8 +236,12 @@ export function computeParity(repo = repoDefault) {
       continue;
     }
     const isLive = liveFiles.has(file);
-    for (const m of src.matchAll(/['"`]\/api\/([a-z0-9-]+)/g)) {
+    for (const m of src.matchAll(/['"`]\/api\/([a-z0-9-]+)((?:\/[^'"`?\s]*)?)/g)) {
       const d = m[1];
+      if (isLive) {
+        if (!liveFrontendPaths.has(d)) liveFrontendPaths.set(d, new Set());
+        liveFrontendPaths.get(d).add(`${d}${m[2] || ''}`);
+      }
       frontendCalls.add(d);
       if (!callerFiles.has(d)) callerFiles.set(d, { live: [], dead: [] });
       const bucket = callerFiles.get(d);
@@ -310,11 +326,23 @@ export function computeParity(repo = repoDefault) {
 
   const domains = new Set([...frontendCalls, ...edgeFns, ...expressServed]);
 
+  // True when the domain has no edge fn of its own but every path a reachable
+  // page actually calls is covered by a multi-segment proxy entry (and so by a
+  // matching server.ts alias in production). A single live call outside those
+  // sub-paths makes this false and the domain goes back to missing-edge.
+  function fullyCoveredBySubProxy(d) {
+    const prefixes = subProxied.get(d);
+    if (!prefixes || prefixes.length === 0) return false;
+    const paths = liveFrontendPaths.get(d);
+    if (!paths || paths.size === 0) return false;
+    return [...paths].every((p) => prefixes.some((pre) => p === pre || p.startsWith(`${pre}/`)));
+  }
+
   function classify(d) {
     const fe = frontendCalls.has(d);
     const edge = edgeFns.has(d);
     const exp = expressServed.has(d);
-    const px = proxied.has(d);
+    const px = proxied.has(d) || fullyCoveredBySubProxy(d);
     if (EXPRESS_CANONICAL.has(d)) return 'express-canonical';
     if (px) return 'proxied'; // dev forwards to edge (possibly under another name) → aligned
     if (fe && !edge) return 'missing-edge';

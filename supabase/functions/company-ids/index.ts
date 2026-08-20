@@ -67,6 +67,12 @@ function generateUrlSlug(recordType: string, companyName: string, displayId: str
   return `${recordType}-${slug}-${displayId}`;
 }
 
+/** The identifier columns business_records actually carries. There is no
+ *  company_code (it is company_display_id), no external_id (external_customer_id)
+ *  and no duns_number or metadata at all. */
+const IDENTIFIER_COLUMNS =
+  'id, company_display_id, company_name, tax_id, external_customer_id, customer_number, record_type';
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -111,11 +117,29 @@ export default async function handler(req: Request) {
       const duns = url.searchParams.get('duns');
       const externalId = url.searchParams.get('externalId');
 
-      let query = admin.from('companies').select('*').eq('tenant_id', tenantId);
-      if (code) query = query.eq('company_code', code);
+      // COP-M01: the identifier half of this function addressed a `companies`
+      // table with company_code / tax_id / duns_number / external_id / metadata.
+      // None of those are columns there. The identifiers live on
+      // business_records — tax_id, external_customer_id and the
+      // company_display_id this very function generates — which is also the
+      // table the working half (missing-ids, generate) already uses. Every query
+      // here answered 42703; pointing them at business_records makes the whole
+      // function coherent. There is no DUNS column anywhere, so that filter is
+      // gone rather than silently ignored.
+      let query = admin.from('business_records').select('*').eq('tenant_id', tenantId);
+      if (code) query = query.eq('company_display_id', code);
       if (taxId) query = query.eq('tax_id', taxId);
-      if (duns) query = query.eq('duns_number', duns);
-      if (externalId) query = query.eq('external_id', externalId);
+      if (externalId) query = query.eq('external_customer_id', externalId);
+      if (duns) {
+        return createCorsResponse(
+          {
+            error: 'DUNS lookup is not supported: no table in this schema stores a DUNS number.',
+            code: 'NO_DUNS_COLUMN',
+          },
+          400,
+          req,
+        );
+      }
 
       const { data, error } = await query;
       if (error) {
@@ -242,16 +266,16 @@ export default async function handler(req: Request) {
       const prefix = body.prefix || 'CO';
 
       const { data: companies } = await admin
-        .from('companies')
-        .select('company_code')
+        .from('business_records')
+        .select('company_display_id')
         .eq('tenant_id', tenantId)
-        .ilike('company_code', `${prefix}-%`)
-        .order('company_code', { ascending: false })
+        .ilike('company_display_id', `${prefix}-%`)
+        .order('company_display_id', { ascending: false })
         .limit(1);
 
       let nextNumber = 1;
       if (companies && companies.length > 0) {
-        const lastCode = (companies[0] as Record<string, string>).company_code;
+        const lastCode = (companies[0] as Record<string, string>).company_display_id;
         const match = lastCode?.match(/-(\d+)$/);
         if (match) nextNumber = parseInt(match[1]) + 1;
       }
@@ -289,16 +313,16 @@ export default async function handler(req: Request) {
       const results: Record<string, { isUnique: boolean; existingId?: string }> = {};
 
       const fields: Array<['companyCode' | 'taxId' | 'externalId', string]> = [
-        ['companyCode', 'company_code'],
+        ['companyCode', 'company_display_id'],
         ['taxId', 'tax_id'],
-        ['externalId', 'external_id'],
+        ['externalId', 'external_customer_id'],
       ];
 
       for (const [camel, snake] of fields) {
         const value = body[camel] || body[snake];
         if (!value) continue;
         const { data: existing } = await admin
-          .from('companies')
+          .from('business_records')
           .select('id')
           .eq('tenant_id', tenantId)
           .eq(snake, value)
@@ -322,8 +346,8 @@ export default async function handler(req: Request) {
     // GET /company-ids   — list all (no :id)
     if (req.method === 'GET' && !first) {
       const { data, error } = await admin
-        .from('companies')
-        .select('id, company_code, company_name, tax_id, duns_number, external_id')
+        .from('business_records')
+        .select(IDENTIFIER_COLUMNS)
         .eq('tenant_id', tenantId)
         .order('company_name', { ascending: true });
 
@@ -337,8 +361,8 @@ export default async function handler(req: Request) {
     // GET /company-ids/:id
     if (req.method === 'GET' && first) {
       const { data, error } = await admin
-        .from('companies')
-        .select('id, company_code, company_name, tax_id, duns_number, external_id, metadata')
+        .from('business_records')
+        .select(IDENTIFIER_COLUMNS)
         .eq('id', first)
         .eq('tenant_id', tenantId)
         .maybeSingle();
@@ -353,31 +377,37 @@ export default async function handler(req: Request) {
     if (req.method === 'PUT' && first) {
       const body = await req.json();
       const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      const unpersisted: string[] = [];
       if (body.companyCode || body.company_code) {
-        updateData.company_code = body.companyCode || body.company_code;
+        updateData.company_display_id = body.companyCode || body.company_code;
       }
       if (body.taxId || body.tax_id) {
         updateData.tax_id = body.taxId || body.tax_id;
       }
       if (body.dunsNumber || body.duns_number) {
-        updateData.duns_number = body.dunsNumber || body.duns_number;
+        unpersisted.push('dunsNumber: no table in this schema stores a DUNS number');
       }
       if (body.externalId || body.external_id) {
-        updateData.external_id = body.externalId || body.external_id;
+        updateData.external_customer_id = body.externalId || body.external_id;
       }
 
       const { data, error } = await admin
-        .from('companies')
+        .from('business_records')
         .update(updateData)
         .eq('id', first)
         .eq('tenant_id', tenantId)
-        .select('id, company_code, company_name, tax_id, duns_number, external_id')
+        .select(IDENTIFIER_COLUMNS)
         .single();
 
       if (error) {
-        return createCorsResponse({ error: 'Failed to update company identifiers' }, 500, req);
+        console.error('Error updating company identifiers:', error);
+        return createCorsResponse(
+          { error: 'Failed to update company identifiers', details: error.message },
+          500,
+          req,
+        );
       }
-      return createCorsResponse(data, 200, req);
+      return createCorsResponse({ ...data, unpersisted }, 200, req);
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);

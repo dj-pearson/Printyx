@@ -284,6 +284,12 @@ const enhancedOnboardingSchema = z.object({
 
 type EnhancedOnboardingFormData = z.infer<typeof enhancedOnboardingSchema>;
 
+// One row of the equipment array, taken from the schema rather than inferred
+// from the initial state literal — `replacedEquipment: {}` inferred as `{}`,
+// so every read of item.replacedEquipment?.oldMake was a type error and the
+// nested objects had no shape at all.
+type EquipmentItem = EnhancedOnboardingFormData['equipment'][number];
+
 export default function EnhancedOnboardingForm() {
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
@@ -293,7 +299,7 @@ export default function EnhancedOnboardingForm() {
   const [quoteSearch, setQuoteSearch] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
   const [createdChecklistId, setCreatedChecklistId] = useState<string | null>(null);
-  const [equipmentItems, setEquipmentItems] = useState([
+  const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>([
     {
       equipmentType: 'printer' as const,
       manufacturer: 'Unknown',
@@ -318,24 +324,6 @@ export default function EnhancedOnboardingForm() {
   const [isCompanySelectOpen, setIsCompanySelectOpen] = useState(false);
   const [companySearchTerm, setCompanySearchTerm] = useState('');
   const queryClient = useQueryClient();
-
-  // Prefill from URL params (orderId, quoteId, businessRecordId)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const orderId = params.get('orderId');
-    const quoteId = params.get('quoteId');
-    const businessRecordId = params.get('businessRecordId');
-    if (orderId) {
-      form.setValue('orderId', orderId);
-    }
-    if (quoteId) {
-      form.setValue('quoteId', quoteId);
-    }
-    if (businessRecordId) {
-      form.setValue('businessRecordId', businessRecordId);
-    }
-  }, [form]);
 
   // Fetch business records for auto-population
   const { data: businessRecords = [] } = useQuery({
@@ -453,6 +441,29 @@ export default function EnhancedOnboardingForm() {
       },
     },
   });
+
+  // Prefill from URL params (orderId, quoteId, businessRecordId).
+  // Must sit AFTER the useForm call: the dependency array is evaluated during
+  // render, so declaring this above `form` threw
+  // "Cannot access 'form' before initialization" and white-screened the page —
+  // including the /onboarding/enhanced?orderId=... link from WarehouseOperations,
+  // which is exactly the flow this prefill exists for.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('orderId');
+    const quoteId = params.get('quoteId');
+    const businessRecordId = params.get('businessRecordId');
+    if (orderId) {
+      form.setValue('orderId', orderId);
+    }
+    if (quoteId) {
+      form.setValue('quoteId', quoteId);
+    }
+    if (businessRecordId) {
+      form.setValue('businessRecordId', businessRecordId);
+    }
+  }, [form]);
 
   // Auto-populate form when business record is selected
   useEffect(() => {
@@ -1577,11 +1588,11 @@ export default function EnhancedOnboardingForm() {
                                   size="sm"
                                   onClick={() => {
                                     const newItem = {
-                                      equipmentType: (selectedProductType
+                                      equipmentType: selectedProductType
                                         .toLowerCase()
                                         .includes('copier')
-                                        ? 'copier'
-                                        : 'printer') as const,
+                                        ? ('copier' as const)
+                                        : ('printer' as const),
                                       manufacturer: p.brand || p.manufacturer || selectedBrand,
                                       model: p.modelName || p.name || '',
                                       serialNumber: '',
@@ -1962,9 +1973,10 @@ export default function EnhancedOnboardingForm() {
                   </div>
                   <div>
                     <strong>Scheduled Date:</strong>{' '}
-                    {form.watch('scheduledInstallDate')
-                      ? new Date(form.watch('scheduledInstallDate')).toLocaleDateString()
-                      : 'Not scheduled'}
+                    {(() => {
+                      const scheduled = form.watch('scheduledInstallDate');
+                      return scheduled ? new Date(scheduled).toLocaleDateString() : 'Not scheduled';
+                    })()}
                   </div>
                   <div>
                     <strong>Time Slot:</strong> {form.watch('preferredTimeSlot') || 'morning'}
@@ -2055,21 +2067,25 @@ export default function EnhancedOnboardingForm() {
                   Network Configuration
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  {/* networkConfig has no customerNumber, dhcpEnabled or
+                      defaultGateway field — those three read undefined and this
+                      panel showed "Not specified" no matter what was entered.
+                      Bound to the fields that exist. */}
                   <div>
                     <strong>Customer Number:</strong>{' '}
-                    {form.watch('networkConfig.customerNumber') || 'Not specified'}
+                    {form.watch('customerData.customerNumber') || 'Not specified'}
                   </div>
                   <div>
-                    <strong>DHCP:</strong>{' '}
-                    {form.watch('networkConfig.dhcpEnabled') ? 'Enabled' : 'Disabled'}
+                    <strong>IP Assignment:</strong>{' '}
+                    {form.watch('networkConfig.ipAssignment') || 'Not specified'}
                   </div>
                   <div>
-                    <strong>DNS Primary:</strong>{' '}
+                    <strong>DNS Servers:</strong>{' '}
                     {form.watch('networkConfig.dnsServers') || 'Not specified'}
                   </div>
                   <div>
                     <strong>Gateway:</strong>{' '}
-                    {form.watch('networkConfig.defaultGateway') || 'Not specified'}
+                    {form.watch('networkConfig.gateway') || 'Not specified'}
                   </div>
                 </div>
               </div>

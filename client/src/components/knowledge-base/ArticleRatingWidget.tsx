@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Star, ThumbsUp, ThumbsDown, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,9 +66,7 @@ export function ArticleRatingWidget({
   const { data: ratingsData, isLoading } = useQuery({
     queryKey: ['article-ratings', articleId],
     queryFn: async () => {
-      const response = await fetch(`/api/knowledge-base/ratings/${articleId}`);
-      if (!response.ok) throw new Error('Failed to fetch ratings');
-      return response.json();
+      return apiRequest(`/api/knowledge-base/ratings/${articleId}`);
     },
   });
 
@@ -75,9 +74,7 @@ export function ArticleRatingWidget({
   const { data: userRatingData } = useQuery({
     queryKey: ['user-rating', articleId],
     queryFn: async () => {
-      const response = await fetch(`/api/knowledge-base/ratings/user/${articleId}`);
-      if (!response.ok) throw new Error('Failed to fetch user rating');
-      return response.json();
+      return apiRequest(`/api/knowledge-base/ratings/user/${articleId}`);
     },
   });
 
@@ -85,22 +82,14 @@ export function ArticleRatingWidget({
   const { data: userVoteData } = useQuery({
     queryKey: ['user-vote', articleId],
     queryFn: async () => {
-      const response = await fetch(`/api/knowledge-base/votes/user/${articleId}`);
-      if (!response.ok) throw new Error('Failed to fetch user vote');
-      return response.json();
+      return apiRequest(`/api/knowledge-base/votes/user/${articleId}`);
     },
   });
 
   // Submit rating mutation
   const submitRating = useMutation({
     mutationFn: async ({ rating, comment }: { rating: number; comment?: string }) => {
-      const response = await fetch('/api/knowledge-base/ratings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ articleId, rating, comment }),
-      });
-      if (!response.ok) throw new Error('Failed to submit rating');
-      return response.json();
+      return apiRequest('/api/knowledge-base/ratings', 'POST', { articleId, rating, comment });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['article-ratings', articleId] });
@@ -124,13 +113,7 @@ export function ArticleRatingWidget({
   // Submit vote mutation
   const submitVote = useMutation({
     mutationFn: async (voteType: string) => {
-      const response = await fetch('/api/knowledge-base/votes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ articleId, voteType }),
-      });
-      if (!response.ok) throw new Error('Failed to submit vote');
-      return response.json();
+      return apiRequest('/api/knowledge-base/votes', 'POST', { articleId, voteType });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['article-ratings', articleId] });

@@ -201,9 +201,7 @@ export default async function handler(req: Request) {
           team_id,
           is_active,
           profile_image_url,
-          phone,
-          job_title,
-          department,
+          metadata,
           last_login_at,
           created_at,
           updated_at

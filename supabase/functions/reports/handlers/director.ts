@@ -31,6 +31,7 @@ import {
   type OpportunityRow,
   type ServiceCallRow,
 } from '../_queries/director.ts';
+import { userDisplayName } from '../_queries/user-names.ts';
 
 const COMPANY_TTL_SECONDS = 300; // 5 min — directors hit refresh constantly
 
@@ -199,7 +200,7 @@ async function computeSalesPerformance(ctx: HandlerCtx): Promise<CompanySalesPer
   ]);
 
   const userRegion = buildUserRegionMap(users, locations);
-  const userName = new Map(users.map((u) => [u.id, u.name ?? 'Unknown']));
+  const userName = new Map(users.map((u) => [u.id, userDisplayName(u)]));
 
   let totalRevenue = 0;
   let totalDeals = 0;
@@ -312,7 +313,7 @@ async function computeServicePerformance(ctx: HandlerCtx): Promise<CompanyServic
   ]);
 
   const userRegion = buildUserRegionMap(users, locations);
-  const userName = new Map(users.map((u) => [u.id, u.name ?? 'Unknown']));
+  const userName = new Map(users.map((u) => [u.id, userDisplayName(u)]));
 
   const totalCalls = calls.length;
   const technicianSet = new Set<string>();

@@ -23,6 +23,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { apiFormRequest } from '@/lib/queryClient';
+import { buildCsvTemplate } from '@shared/catalog-import';
 
 interface ImportResult {
   success: boolean;
@@ -64,29 +65,6 @@ const productTypes = [
     endpoint: '/api/managed-services/import',
   },
 ];
-
-const csvTemplates = {
-  'product-models': `Product Code,Product Name,Manufacturer,Model,Description,Category,Color Print,BW Print,Color Copy,BW Copy,Standard Cost,Standard Rep Price,New Cost,New Rep Price,Upgrade Cost,Upgrade Rep Price
-PM-001,Canon imageRUNNER C3226i,Canon,imageRUNNER C3226i,Multifunction color printer with advanced features,Multifunction,Yes,Yes,Yes,Yes,2500.00,2999.00,2300.00,2799.00,1200.00,1499.00`,
-
-  'product-accessories': `Product Code,Product Name,Accessory Type,Description,Compatible Models,Standard Cost,Standard Rep Price,New Cost,New Rep Price,Upgrade Cost,Upgrade Rep Price
-PA-001,Document Feeder DF-701,Document Feeder,50-sheet document feeder for automated scanning,Canon imageRUNNER C3226i,150.00,199.00,140.00,189.00,120.00,159.00`,
-
-  'professional-services': `Product Code,Product Name,Service Category,Service Type,Description,Duration Hours,Standard Cost,Standard Rep Price,New Cost,New Rep Price,Upgrade Cost,Upgrade Rep Price
-PS-001,Printer Installation Service,Installation,On-site Installation,Complete printer setup and configuration,2,80.00,120.00,75.00,110.00,65.00,95.00`,
-
-  'service-products': `Product Code,Product Name,Service Category,Service Type,Description,Billing Frequency,Standard Cost,Standard Rep Price,New Cost,New Rep Price,Upgrade Cost,Upgrade Rep Price
-SP-001,Monthly Maintenance Plan,Maintenance,Preventive Maintenance,Regular maintenance and cleaning service,Monthly,45.00,65.00,40.00,60.00,35.00,50.00`,
-
-  'software-products': `Product Code,Product Name,Product Type,Category,Description,Payment Type,Standard Cost,Standard Rep Price,New Cost,New Rep Price,Upgrade Cost,Upgrade Rep Price
-SW-001,Document Management Suite,Application,Document Management,Comprehensive document management solution,License,800.00,1200.00,750.00,1100.00,400.00,600.00`,
-
-  supplies: `Product Code,Product Name,Product Type,Dealer Comp,Inventory,In Stock,Description,New Rep Price,Upgrade Rep Price,Lexmark Rep Price,Graphic Rep Price
-SUP-001,Black Toner Cartridge,Toner,Standard,Main Warehouse,50,High-yield black toner cartridge,89.99,79.99,75.99,95.99`,
-
-  'managed-services': `Product Code,Product Name,Service Type,Service Level,Support Hours,Response Time,Remote Management,Onsite Support,Description,New Rep Price,Upgrade Rep Price,Lexmark Rep Price,Graphic Rep Price
-IT-001,Network Monitoring Service,Network Management,Premium,24x7,15 minutes,Yes,Yes,Comprehensive network monitoring with proactive management,299.00,279.00,259.00,319.00`,
-};
 
 type ProductImportProps = {
   productType?: string;
@@ -188,7 +166,13 @@ export default function ProductImport({ productType, onImportComplete }: Product
   };
 
   const downloadTemplate = (productType: string) => {
-    const template = csvTemplates[productType as keyof typeof csvTemplates];
+    // PROD-014: this used to serve a hardcoded template per type, and they had
+    // drifted away from the parsers. The product-models one offered nine
+    // columns the importer never read (including every price column it did
+    // offer) and omitted eleven the importer did read, so importing the file
+    // Printyx handed you dropped all the pricing without a word. The template
+    // now comes from the same spec that parses the upload.
+    const template = buildCsvTemplate(productType);
     if (!template) return;
 
     const blob = new Blob([template], { type: 'text/csv' });

@@ -2,6 +2,8 @@
 // Handles CRM goal setting and tracking
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { toNumber } from '../_shared/quote-math.ts';
+import { toUserProfile, USER_PROFILE_COLUMNS, type UserRow } from '../_shared/user-profile.ts';
 import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
@@ -84,7 +86,7 @@ export default async function handler(req: Request) {
         .select(
           `
           *,
-          user:user_id (id, full_name),
+          user:user_id (id, first_name, last_name),
           team:team_id (id, name)
         `,
         )
@@ -162,12 +164,19 @@ export default async function handler(req: Request) {
         return createCorsResponse([], 200, req);
       }
 
+      // COP-M01: full_name and job_title are not columns on `users` (the shape
+      // is first_name/last_name plus a metadata jsonb), so this returned an
+      // empty team every time.
       const { data: members } = await admin
         .from('users')
-        .select('id, full_name, email, job_title')
+        .select(USER_PROFILE_COLUMNS)
         .in('id', memberIds);
 
-      return createCorsResponse(members || [], 200, req);
+      return createCorsResponse(
+        (members ?? []).map((m: any) => ({ ...m, ...toUserProfile(m as UserRow) })),
+        200,
+        req,
+      );
     }
 
     // GET /crm/activity-reports - Get activity reports
@@ -230,7 +239,7 @@ export default async function handler(req: Request) {
 
       const { data: deals } = await admin
         .from('deals')
-        .select('status, value')
+        .select('status, amount')
         .eq('tenant_id', tenantId);
 
       const { data: activities } = await admin
@@ -244,7 +253,10 @@ export default async function handler(req: Request) {
           totalLeads: leads?.length || 0,
           activeLeads: leads?.filter((l: any) => l.status === 'active').length || 0,
           totalDeals: deals?.length || 0,
-          totalDealValue: deals?.reduce((sum: number, d: any) => sum + (d.value || 0), 0) || 0,
+          totalDealValue: (deals ?? []).reduce(
+            (sum: number, d: any) => sum + toNumber(d.amount),
+            0,
+          ),
           recentActivities: activities?.length || 0,
         },
         200,
@@ -260,7 +272,7 @@ export default async function handler(req: Request) {
         .select(
           `
           *,
-          user:user_id (id, full_name)
+          user:user_id (id, first_name, last_name)
         `,
         )
         .eq('tenant_id', tenantId)

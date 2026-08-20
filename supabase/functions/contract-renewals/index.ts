@@ -53,17 +53,16 @@ export default async function handler(req: Request) {
         .select(
           `
           *,
-          contract:contract_id (id, name, value),
-          customer:customer_id (id, company_name),
-          owner:owner_id (id, full_name)
+          contract:contract_id (id, contract_number, monthly_base, end_date),
+          customer:customer_id (id, company_name)
         `,
         )
         .eq('tenant_id', tenantId)
-        .order('renewal_date', { ascending: true });
+        .order('renewal_target_date', { ascending: true });
 
-      if (status) query = query.eq('status', status);
-      if (ownerId) query = query.eq('owner_id', ownerId);
-      if (riskLevel) query = query.eq('risk_level', riskLevel);
+      if (status) query = query.eq('renewal_status', status);
+      if (ownerId) query = query.eq('renewal_owner_id', ownerId);
+      if (riskLevel) query = query.eq('renewal_risk_level', riskLevel);
 
       const { data: renewals, error } = await query;
 
@@ -82,13 +81,13 @@ export default async function handler(req: Request) {
         .select(
           `
           *,
-          contract:contract_id (id, name),
+          contract:contract_id (id, contract_number, end_date),
           customer:customer_id (id, company_name)
         `,
         )
         .eq('tenant_id', tenantId)
-        .in('status', ['at_risk', 'overdue'])
-        .order('renewal_date', { ascending: true });
+        .in('renewal_status', ['at_risk', 'overdue'])
+        .order('renewal_target_date', { ascending: true });
 
       if (error) {
         return createCorsResponse({ error: 'Failed to fetch alerts' }, 500, req);
@@ -105,8 +104,7 @@ export default async function handler(req: Request) {
           `
           *,
           contract:contract_id (*),
-          customer:customer_id (id, company_name),
-          owner:owner_id (id, full_name, email)
+          customer:customer_id (id, company_name)
         `,
         )
         .eq('id', renewalId)
@@ -124,17 +122,24 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && !renewalId) {
       const body = await req.json();
 
+      // COP-M01: contract_renewals prefixes nearly everything — renewal_status,
+      // renewal_risk_level, renewal_owner_id, renewal_target_date — and spells
+      // the money current_contract_value / proposed_contract_value and the free
+      // text internal_notes. Not one of the names below was a column, so
+      // creating a renewal failed outright. (current_value was not even caught
+      // by check:phantom-cols: this is a named-variable payload, its documented
+      // blind spot.)
       const renewalData = {
         tenant_id: tenantId,
         contract_id: body.contractId || body.contract_id,
         customer_id: body.customerId || body.customer_id,
-        owner_id: body.ownerId || body.owner_id || user.id,
-        renewal_date: body.renewalDate || body.renewal_date,
-        current_value: body.currentValue || body.current_value,
-        proposed_value: body.proposedValue || body.proposed_value,
-        status: body.status || 'pending',
-        risk_level: body.riskLevel || body.risk_level || 'low',
-        notes: body.notes,
+        renewal_owner_id: body.ownerId || body.owner_id || user.id,
+        renewal_target_date: body.renewalDate || body.renewal_date,
+        current_contract_value: body.currentValue ?? body.current_value ?? null,
+        proposed_contract_value: body.proposedValue ?? body.proposed_value ?? null,
+        renewal_status: body.status || 'pending',
+        renewal_risk_level: body.riskLevel || body.risk_level || 'low',
+        internal_notes: body.notes ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -160,12 +165,12 @@ export default async function handler(req: Request) {
       const { data: renewal, error } = await admin
         .from('contract_renewals')
         .update({
-          owner_id: body.ownerId || body.owner_id,
-          renewal_date: body.renewalDate || body.renewal_date,
-          proposed_value: body.proposedValue || body.proposed_value,
-          status: body.status,
-          risk_level: body.riskLevel || body.risk_level,
-          notes: body.notes,
+          renewal_owner_id: body.ownerId || body.owner_id,
+          renewal_target_date: body.renewalDate || body.renewal_date,
+          proposed_contract_value: body.proposedValue ?? body.proposed_value,
+          renewal_status: body.status,
+          renewal_risk_level: body.riskLevel || body.risk_level,
+          internal_notes: body.notes,
           updated_at: new Date().toISOString(),
         })
         .eq('id', renewalId)
@@ -186,10 +191,14 @@ export default async function handler(req: Request) {
 
       const { data: renewal, error } = await admin
         .from('contract_renewals')
+        // renewal_closed_date is the only close timestamp there is, and there is
+        // no final_value column — the agreed figure would overwrite
+        // proposed_contract_value, which means something else, so it is reported
+        // rather than misfiled.
         .update({
-          status: 'won',
-          final_value: body.finalValue || body.final_value,
-          won_at: new Date().toISOString(),
+          renewal_status: 'won',
+          renewal_closed_date: new Date().toISOString(),
+          renewal_won_reason: body.reason ?? body.won_reason ?? null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', renewalId)
@@ -198,10 +207,22 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
-        return createCorsResponse({ error: 'Failed to mark renewal as won' }, 500, req);
+        console.error('Error marking renewal won:', error);
+        return createCorsResponse(
+          { error: 'Failed to mark renewal as won', details: error.message },
+          500,
+          req,
+        );
       }
 
-      return createCorsResponse(renewal, 200, req);
+      const unpersisted =
+        (body.finalValue ?? body.final_value)
+          ? [
+              'finalValue: contract_renewals has no final-value column; proposed_contract_value means the proposal, not the outcome',
+            ]
+          : [];
+
+      return createCorsResponse({ ...renewal, unpersisted }, 200, req);
     }
 
     // POST /contract-renewals/:id/lost - Mark renewal as lost
@@ -211,9 +232,9 @@ export default async function handler(req: Request) {
       const { data: renewal, error } = await admin
         .from('contract_renewals')
         .update({
-          status: 'lost',
-          lost_reason: body.reason || body.lost_reason,
-          lost_at: new Date().toISOString(),
+          renewal_status: 'lost',
+          renewal_lost_reason: body.reason || body.lost_reason,
+          renewal_closed_date: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', renewalId)
@@ -222,7 +243,12 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
-        return createCorsResponse({ error: 'Failed to mark renewal as lost' }, 500, req);
+        console.error('Error marking renewal lost:', error);
+        return createCorsResponse(
+          { error: 'Failed to mark renewal as lost', details: error.message },
+          500,
+          req,
+        );
       }
 
       return createCorsResponse(renewal, 200, req);
@@ -243,7 +269,7 @@ export default async function handler(req: Request) {
 
       // Simple risk calculation based on days until renewal and other factors
       const daysUntilRenewal = Math.ceil(
-        (new Date(renewal.renewal_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+        (new Date(renewal.renewal_target_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
       );
 
       let riskLevel = 'low';
@@ -252,9 +278,10 @@ export default async function handler(req: Request) {
 
       const { data: updated, error } = await admin
         .from('contract_renewals')
+        // renewal_risk_level, and there is no separate risk_calculated_at —
+        // updated_at is the only timestamp this write leaves behind.
         .update({
-          risk_level: riskLevel,
-          risk_calculated_at: new Date().toISOString(),
+          renewal_risk_level: riskLevel,
           updated_at: new Date().toISOString(),
         })
         .eq('id', renewalId)
@@ -263,7 +290,12 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
-        return createCorsResponse({ error: 'Failed to recalculate risk' }, 500, req);
+        console.error('Error recalculating renewal risk:', error);
+        return createCorsResponse(
+          { error: 'Failed to recalculate risk', details: error.message },
+          500,
+          req,
+        );
       }
 
       return createCorsResponse(updated, 200, req);

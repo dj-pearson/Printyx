@@ -97,7 +97,7 @@ export default function AdminHub() {
         { title: 'User Management', path: '/admin/user-management', icon: Users },
         { title: 'Role Management', path: '/role-management', icon: Shield },
         { title: 'Security & Permissions', path: '/admin/root-admin-security', icon: Shield },
-        { title: 'Audit & Compliance', path: '/security-compliance-management', icon: FileText },
+        { title: 'Audit & Compliance', path: '/admin/audit-logs', icon: FileText },
       ],
     },
     {

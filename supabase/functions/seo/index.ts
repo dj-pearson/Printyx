@@ -3,6 +3,14 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import {
+  projectAlert,
+  projectAudit,
+  projectCompetitor,
+  projectCrawlResult,
+  projectKeyword,
+  projectPageScore,
+} from '../_shared/seo-projection.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -58,6 +66,154 @@ export default async function handler(req: Request) {
     const resource = parts[0];
     const resourceId = parts[1];
     const action = parts[2];
+
+    // ========================================================================
+    // The SEODashboard read path (PROD-014).
+    //
+    // The page loads seven lists; this function implemented two of them, so in
+    // production five panels 404'd. Every row goes through
+    // _shared/seo-projection.ts, because PostgREST returns snake_case and the
+    // page reads camelCase — handing rows back raw is a screen of blank cells
+    // with no error anywhere.
+    // ========================================================================
+
+    // GET /seo/audit/history - newest audits first
+    if (req.method === 'GET' && resource === 'audit' && resourceId === 'history') {
+      const limit = parseInt(url.searchParams.get('limit') || '20');
+      const offset = parseInt(url.searchParams.get('offset') || '0');
+
+      const { data, error } = await admin
+        .from('seo_audit_history')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) {
+        console.error('Error fetching audit history:', error);
+        return createCorsResponse({ message: 'An internal error occurred' }, 500, req);
+      }
+
+      return createCorsResponse((data ?? []).map(projectAudit), 200, req);
+    }
+
+    // GET /seo/keywords - tracked keywords, highest priority first
+    if (req.method === 'GET' && resource === 'keywords' && !resourceId) {
+      const { data, error } = await admin
+        .from('seo_keywords')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('priority', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching keywords:', error);
+        return createCorsResponse({ message: 'An internal error occurred' }, 500, req);
+      }
+
+      return createCorsResponse((data ?? []).map(projectKeyword), 200, req);
+    }
+
+    // GET /seo/competitors - most recent competitor analyses
+    if (req.method === 'GET' && resource === 'competitors' && !resourceId) {
+      const { data, error } = await admin
+        .from('seo_competitor_analysis')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('analyzed_at', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Error fetching competitors:', error);
+        return createCorsResponse({ message: 'An internal error occurred' }, 500, req);
+      }
+
+      return createCorsResponse((data ?? []).map(projectCompetitor), 200, req);
+    }
+
+    // GET /seo/alerts - newest alerts first
+    if (req.method === 'GET' && resource === 'alerts' && !resourceId) {
+      const { data, error } = await admin
+        .from('seo_alerts')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching SEO alerts:', error);
+        return createCorsResponse({ message: 'An internal error occurred' }, 500, req);
+      }
+
+      return createCorsResponse((data ?? []).map(projectAlert), 200, req);
+    }
+
+    // GET /seo/page-scores - per-page scores
+    //
+    // Distinct from /seo/pages, which is a different (and broken) thing on both
+    // backends — see the note on that branch.
+    if (req.method === 'GET' && resource === 'page-scores' && !resourceId) {
+      const { data, error } = await admin
+        .from('seo_page_scores')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('last_analyzed', { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.error('Error fetching page scores:', error);
+        return createCorsResponse({ message: 'An internal error occurred' }, 500, req);
+      }
+
+      return createCorsResponse((data ?? []).map(projectPageScore), 200, req);
+    }
+
+    // GET /seo/crawl/results - the latest crawl's pages
+    //
+    // MUST precede /seo/crawl/:crawlId. Express had only the :crawlId form, so
+    // this request filtered crawl_id = 'results' and returned [] forever — the
+    // panel was empty in dev too, not just in production.
+    if (req.method === 'GET' && resource === 'crawl' && resourceId === 'results') {
+      const { data: latest } = await admin
+        .from('seo_crawl_results')
+        .select('crawl_id')
+        .eq('tenant_id', tenantId)
+        .order('crawled_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!latest?.crawl_id) return createCorsResponse([], 200, req);
+
+      const { data, error } = await admin
+        .from('seo_crawl_results')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('crawl_id', latest.crawl_id)
+        .order('crawl_depth', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching crawl results:', error);
+        return createCorsResponse({ message: 'An internal error occurred' }, 500, req);
+      }
+
+      return createCorsResponse((data ?? []).map(projectCrawlResult), 200, req);
+    }
+
+    // GET /seo/crawl/:crawlId - one crawl's pages
+    if (req.method === 'GET' && resource === 'crawl' && resourceId) {
+      const { data, error } = await admin
+        .from('seo_crawl_results')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('crawl_id', resourceId)
+        .order('crawl_depth', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching crawl results:', error);
+        return createCorsResponse({ message: 'An internal error occurred' }, 500, req);
+      }
+
+      return createCorsResponse((data ?? []).map(projectCrawlResult), 200, req);
+    }
 
     // ============= SETTINGS =============
 

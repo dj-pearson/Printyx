@@ -91,9 +91,18 @@ export default async function handler(req: Request) {
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
-      if (status) query = query.eq('lead_status', status);
+      // COP-M01: assigned_to is not a column — the rep is assigned_sales_rep.
+      //
+      // The `status` query param is NOT wired to a column here on purpose. This
+      // list already pins .eq('status', 'lead') to select leads (CLAUDE.md:
+      // "Leads and customers share business_records. Status field determines
+      // state."), so a second filter on the same column contradicts it, and
+      // there is no separate lead_status column to put it on. Which column
+      // carries a lead's sub-state — status, sales_stage or record_type — is the
+      // COP-B00 canonical-model question; guessing here would silently change
+      // which rows a saved view returns.
       if (source) query = query.eq('source', source);
-      if (assignedTo) query = query.eq('assigned_to', assignedTo);
+      if (assignedTo) query = query.eq('assigned_sales_rep', assignedTo);
 
       const { data: leads, error, count } = await query;
 
@@ -136,8 +145,7 @@ export default async function handler(req: Request) {
         industry: body.industry,
         source: body.source || 'manual',
         status: 'lead',
-        lead_status: body.leadStatus || body.lead_status || 'new',
-        assigned_to: body.assignedTo || body.assigned_to,
+        assigned_sales_rep: body.assignedTo || body.assigned_to,
         notes: body.notes,
         created_by: user.id,
         created_at: new Date().toISOString(),
@@ -181,10 +189,11 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && leadId && subResource === 'convert') {
       const { data: lead, error } = await admin
         .from('business_records')
+        // converted_at is not a column; the date a record became a customer is
+        // customer_since. converted_by IS real and stays.
         .update({
           status: 'customer',
-          lead_status: 'converted',
-          converted_at: new Date().toISOString(),
+          customer_since: new Date().toISOString(),
           converted_by: user.id,
           updated_at: new Date().toISOString(),
         })
@@ -204,14 +213,20 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && leadId && subResource === 'qualify') {
       const body = await req.json();
 
+      // COP-M01: four of the five columns this wrote do not exist. lead_score is
+      // real and is where a qualification score belongs; qualification_notes,
+      // qualified_at and qualified_by have nowhere to go, and qualified_at is
+      // approximated by updated_at. Rather than drop the other two silently —
+      // which is what the previous version effectively did, since the whole
+      // update failed — they come back as a stated warning.
+      const unpersisted: string[] = [];
+      if (body.notes) unpersisted.push('notes: business_records has no qualification_notes column');
+      unpersisted.push('qualifiedBy: business_records has no qualified_by column');
+
       const { data: lead, error } = await admin
         .from('business_records')
         .update({
-          lead_status: 'qualified',
-          qualification_score: body.score,
-          qualification_notes: body.notes,
-          qualified_at: new Date().toISOString(),
-          qualified_by: user.id,
+          lead_score: body.score ?? null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', leadId)
@@ -220,10 +235,15 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
-        return createCorsResponse({ error: 'Failed to qualify lead' }, 500, req);
+        console.error('Error qualifying lead:', error);
+        return createCorsResponse(
+          { error: 'Failed to qualify lead', details: error.message },
+          500,
+          req,
+        );
       }
 
-      return createCorsResponse(lead, 200, req);
+      return createCorsResponse({ ...lead, unpersisted }, 200, req);
     }
 
     // DELETE /leads/:id - Delete lead

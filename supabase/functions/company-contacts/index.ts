@@ -1,13 +1,70 @@
 // Company Contacts Edge Function
 // Handles contact management for companies (customers)
 // Routes:
-//   GET /company-contacts?companyId=xxx - List contacts for a company
+//   GET /company-contacts - List tenant contacts (paginated, searchable, sortable)
+//   GET /company-contacts?companyId=xxx - the same list narrowed to one company
+//   GET /company-contacts/:id - Single contact
 //   POST /company-contacts - Create new contact
 //   PUT /company-contacts/:id - Update contact
 //   DELETE /company-contacts/:id - Delete contact
+//
+// COP-M01: companyId used to be REQUIRED and the handler 400'd without it, which
+// is exactly the request the CRM contacts table makes — and since
+// /api/company-contacts is proxied to this function in dev too, that page listed
+// nothing anywhere. It is now an optional filter, and limit/offset/search/sortBy
+// are honoured. The query string is parsed by _shared/crm-list-query.ts, which
+// server/lib/crm-list-query.ts mirrors for the Express side.
 
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
+import { buildSearchOr, CONTACT_LIST_SPEC, parseCrmListQuery } from '../_shared/crm-list-query.ts';
+
+/**
+ * snake_case row -> the camelCase shape the CRM table and the record layout read.
+ *
+ * Every key here is backed by a real company_contacts column (shared/schema.ts).
+ * The previous version invented companyName, ownerName and preferredChannels as
+ * hardcoded empties, which renders as a blank column rather than as a missing
+ * one - preferredChannels in particular IS a real column and was being thrown
+ * away. There is no isActive column on this table, so there is no isActive key.
+ */
+function parseJsonArray(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function toContactResponse(contact: any) {
+  return {
+    id: contact.id,
+    firstName: contact.first_name,
+    lastName: contact.last_name,
+    email: contact.email || '',
+    phone: contact.phone || '',
+    mobile: contact.mobile || '',
+    title: contact.title || '',
+    department: contact.department || '',
+    salutation: contact.salutation || '',
+    companyId: contact.company_id,
+    isPrimaryContact: contact.is_primary_contact || false,
+    leadStatus: contact.lead_status || 'customer',
+    lastContactDate: contact.last_contact_date,
+    nextFollowUpDate: contact.next_follow_up_date,
+    ownerId: contact.owner_id || '',
+    favoriteContentType: contact.favorite_content_type,
+    preferredChannels: parseJsonArray(contact.preferred_channels),
+    reportsTo: contact.reports_to,
+    contactRoles: parseJsonArray(contact.contact_roles),
+    createdAt: contact.created_at,
+    updatedAt: contact.updated_at,
+  };
+}
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -46,61 +103,79 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
+    // normalizePath strips an OPTIONAL leading function-name segment, so the id
+    // is at parts[0] whether or not the dispatcher already removed it.
+    const { parts: pathParts } = normalizePath(url.pathname, 'company-contacts');
 
-    // Extract contact ID from path if present (e.g., /3167f30d-... after server strips function name)
-    // The server.ts router already removed the function name, so contactId is at index 0
     const contactId = pathParts.length > 0 ? pathParts[0] : null;
 
-    // GET /company-contacts?companyId=xxx - List contacts for a company
+    // GET /company-contacts - list, optionally narrowed to one company
     if (req.method === 'GET' && !contactId) {
-      const companyId = url.searchParams.get('companyId');
+      const q = parseCrmListQuery(url.searchParams, CONTACT_LIST_SPEC);
 
-      if (!companyId) {
-        return createCorsResponse({ error: 'companyId query parameter is required' }, 400, req);
-      }
-
-      const { data: contacts, error } = await admin
+      let query = admin
         .from('company_contacts')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('tenant_id', tenantId)
-        .order('is_primary_contact', { ascending: false }) // Primary contacts first
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' })
+        .eq('tenant_id', tenantId);
+
+      if (q.filters.companyId) query = query.eq('company_id', q.filters.companyId);
+      if (q.filters.department) query = query.eq('department', q.filters.department);
+      if (q.filters.leadStatus) query = query.eq('lead_status', q.filters.leadStatus);
+      if (q.filters.ownerId) query = query.eq('owner_id', q.filters.ownerId);
+
+      const searchOr = buildSearchOr(CONTACT_LIST_SPEC, q.search);
+      if (searchOr) query = query.or(searchOr);
+
+      query = query
+        .order(q.sortColumn, { ascending: q.ascending })
+        .range(q.offset, q.offset + q.limit - 1);
+
+      const { data: contacts, error, count } = await query;
 
       if (error) {
         console.error('Error fetching contacts:', error);
-        return createCorsResponse({ error: 'Failed to fetch contacts' }, 500, req);
+        return createCorsResponse(
+          { error: 'Failed to fetch contacts', details: error.message },
+          500,
+          req,
+        );
       }
 
-      // Transform snake_case to camelCase for frontend compatibility
-      const transformedContacts = (contacts || []).map((contact) => ({
-        id: contact.id,
-        firstName: contact.first_name,
-        lastName: contact.last_name,
-        email: contact.email || '',
-        phone: contact.phone || '',
-        mobile: contact.mobile || '',
-        title: contact.title || '',
-        department: contact.department || '',
-        salutation: contact.salutation || '',
-        companyId: contact.company_id,
-        companyName: '', // Will be populated by frontend if needed
-        isPrimaryContact: contact.is_primary_contact || false,
-        leadStatus: contact.lead_status || 'customer',
-        lastContactDate: contact.last_contact_date,
-        nextFollowUpDate: contact.next_follow_up_date,
-        ownerId: contact.owner_id || '',
-        ownerName: '', // Not stored in table
-        favoriteContentType: contact.favorite_content_type,
-        preferredChannels: [], // Not stored in table
-        reportsTo: contact.reports_to,
-        contactRoles: contact.contact_roles ? JSON.parse(contact.contact_roles) : [],
-        createdAt: contact.created_at,
-        updatedAt: contact.updated_at,
-      }));
+      return createCorsResponse(
+        {
+          data: (contacts || []).map(toContactResponse),
+          total: count || 0,
+          page: q.page,
+          limit: q.limit,
+        },
+        200,
+        req,
+      );
+    }
 
-      return createCorsResponse(transformedContacts, 200, req);
+    // GET /company-contacts/:id - single contact (the CRM row-click target)
+    if (req.method === 'GET' && contactId) {
+      const { data: contact, error } = await admin
+        .from('company_contacts')
+        .select('*')
+        .eq('id', contactId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching contact:', error);
+        return createCorsResponse(
+          { error: 'Failed to fetch contact', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      if (!contact) {
+        return createCorsResponse({ error: 'Contact not found' }, 404, req);
+      }
+
+      return createCorsResponse(toContactResponse(contact), 200, req);
     }
 
     // POST /company-contacts - Create new contact

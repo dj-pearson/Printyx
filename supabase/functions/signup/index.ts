@@ -87,6 +87,17 @@ export default async function handler(req: Request) {
 
     // Step 1: Create tenant record
     const tenantId = crypto.randomUUID();
+    // COP-M01: this insert named thirteen columns `tenants` does not have —
+    // industry, company_size, website, address, city, state, zip, country,
+    // timezone, plan_slug, billing_cycle, status and trial_ends_at — so it
+    // failed outright and NOBODY COULD SIGN UP. The real columns are name, slug,
+    // is_active, plan, subscription, billing_status and a metadata jsonb.
+    //
+    // The company profile goes in metadata, the same way the users insert below
+    // already carries phone and status (PA-001). Doing it that way needs no
+    // migration, which matters because COP-M00 records migration generation as
+    // currently broken.
+    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(); // 14 days
     const { error: tenantError } = await supabaseAdmin.from('tenants').insert({
       id: tenantId,
       name: metadata.companyName,
@@ -94,19 +105,23 @@ export default async function handler(req: Request) {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, ''),
-      industry: metadata.industry || null,
-      company_size: metadata.companySize || null,
-      website: metadata.website || null,
-      address: metadata.address || null,
-      city: metadata.city || null,
-      state: metadata.state || null,
-      zip: metadata.zip || null,
-      country: metadata.country,
-      timezone: metadata.timezone,
-      plan_slug: metadata.planSlug,
-      billing_cycle: metadata.billingCycle,
-      status: 'trial',
-      trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days
+      is_active: true,
+      plan: metadata.planSlug || null,
+      billing_status: 'trial',
+      metadata: {
+        industry: metadata.industry || null,
+        companySize: metadata.companySize || null,
+        website: metadata.website || null,
+        address: metadata.address || null,
+        city: metadata.city || null,
+        state: metadata.state || null,
+        zip: metadata.zip || null,
+        country: metadata.country ?? null,
+        timezone: metadata.timezone ?? null,
+        billingCycle: metadata.billingCycle ?? null,
+        trialEndsAt,
+        source: 'signup',
+      },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
@@ -120,46 +135,40 @@ export default async function handler(req: Request) {
       );
     }
 
-    // Step 2: Get or create default admin role for this tenant
-    // First check if roles exist
-    const { data: existingRole, error: roleCheckError } = await supabaseAdmin
+    // Step 2: Resolve the tenant administrator role.
+    //
+    // COP-M01: this used to look for a role with tenant_id = <new tenant> and,
+    // finding none, INSERT one carrying tenant_id, is_system and updated_at.
+    // `roles` has none of those columns — it is a GLOBAL table (id, name, code,
+    // role_type, level, permissions, is_system_role, created_at), seeded by
+    // `npm run seed:rbac`. So the lookup 42703'd, the insert failed, and signup
+    // rolled the tenant back.
+    //
+    // Roles being global is a real design decision, not a bug to route around
+    // here (role-management assumes the opposite and is left for that call), so
+    // this resolves the seeded COMPANY_ADMIN role rather than inventing one.
+    const { data: adminRole, error: roleLookupError } = await supabaseAdmin
       .from('roles')
       .select('id')
-      .eq('tenant_id', tenantId)
-      .eq('name', 'Admin')
-      .single();
+      .eq('code', 'COMPANY_ADMIN')
+      .limit(1)
+      .maybeSingle();
 
-    let roleId: string;
-
-    if (roleCheckError || !existingRole) {
-      // Create default admin role
-      const newRoleId = crypto.randomUUID();
-      const { error: roleError } = await supabaseAdmin.from('roles').insert({
-        id: newRoleId,
-        tenant_id: tenantId,
-        name: 'Admin',
-        description: 'Tenant administrator with full access',
-        level: 7, // Admin level
-        permissions: ['*'], // Full access
-        is_system: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-
-      if (roleError) {
-        console.error('Role creation error:', roleError);
-        // Cleanup: delete tenant
-        await supabaseAdmin.from('tenants').delete().eq('id', tenantId);
-        return createCorsResponse(
-          { error: 'Failed to create admin role: ' + roleError.message },
-          500,
-          req,
-        );
-      }
-      roleId = newRoleId;
-    } else {
-      roleId = existingRole.id;
+    if (roleLookupError || !adminRole?.id) {
+      console.error('Admin role lookup error:', roleLookupError);
+      await supabaseAdmin.from('tenants').delete().eq('id', tenantId);
+      return createCorsResponse(
+        {
+          error:
+            'The COMPANY_ADMIN role is not present in this environment, so a tenant administrator cannot be assigned. Run the RBAC seed and retry.',
+          code: 'MISSING_ADMIN_ROLE',
+        },
+        500,
+        req,
+      );
     }
+
+    const roleId: string = adminRole.id;
 
     // Step 3: Create Supabase Auth user with app_metadata
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -182,8 +191,7 @@ export default async function handler(req: Request) {
 
     if (authError) {
       console.error('Auth user creation error:', authError);
-      // Cleanup: delete tenant and role
-      await supabaseAdmin.from('roles').delete().eq('id', roleId);
+      // Cleanup: delete the tenant (no role was created — the admin role is global)
       await supabaseAdmin.from('tenants').delete().eq('id', tenantId);
       return createCorsResponse({ error: 'Failed to create user: ' + authError.message }, 500, req);
     }
@@ -222,7 +230,6 @@ export default async function handler(req: Request) {
         // (previously this was logged and swallowed — PA-001).
         console.error('User record creation error:', userRecordError);
         await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-        await supabaseAdmin.from('roles').delete().eq('id', roleId);
         await supabaseAdmin.from('tenants').delete().eq('id', tenantId);
         return createCorsResponse(
           { error: 'Failed to create user profile: ' + userRecordError.message },

@@ -8,6 +8,7 @@
     "auto-supply-replenishment",
     "catalog",
     "chart-of-accounts",
+    "chatbot",
     "commission",
     "content-gap-analysis",
     "contract-renewal",
@@ -73,21 +74,10 @@
     "warehouse-operations"
   ],
   "missingEdge": [
-    "accessories",
-    "ai",
     "business-process",
-    "chatbot",
     "content",
-    "contract-tiered-rates",
-    "documents",
-    "email-autopilot",
     "erp-integration",
     "incident-response",
-    "renewal-autoquote",
-    "security-compliance",
-    "voice-agent",
-    "voice-ticket-close",
-    "white-label",
     "workflow-automation"
   ]
 }

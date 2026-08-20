@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import BreachTiles from '@/components/dashboard/BreachTiles';
 import TeamLeaderboard from '@/components/stats/TeamLeaderboard';
@@ -74,6 +75,20 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
     roleConfig: Record<string, unknown>;
   }>({
     queryKey: ['/api/dashboard/modules', enabledCards.join(',')],
+    // PROD-014: the default queryFn builds its URL with queryKey.join('/'), so
+    // this asked for /api/dashboard/modules/team_revenue,inventory_alerts — a
+    // path neither backend routes. Switching a card on 404'd in dev and was
+    // ignored in production. The backends read ?enabled=, so send that.
+    queryFn: () =>
+      apiRequest<{
+        modules: DashboardModule[];
+        userRole: string;
+        roleConfig: Record<string, unknown>;
+      }>(
+        enabledCards.length
+          ? `/api/dashboard/modules?enabled=${encodeURIComponent(enabledCards.join(','))}`
+          : '/api/dashboard/modules',
+      ),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 

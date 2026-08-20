@@ -4,7 +4,7 @@
  * Part of CRM-010: Apply unified CRM pattern to all object types.
  */
 import { useState, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
@@ -21,21 +21,51 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
+// COP-M01: two corrections against the real company_contacts columns
+// (shared/schema.ts:1255). The job-title field was named jobTitle, which no
+// column is called - neither backend mapped it, so every contact created here
+// silently lost its title. And company_id is NOT NULL, while the form left the
+// company optional and offered no way to pick one, so the insert could only ever
+// fail. Company is now required and chosen from the tenant's companies.
 const createContactSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
-  jobTitle: z.string().optional(),
+  title: z.string().optional(),
   department: z.string().optional(),
-  companyId: z.string().optional(),
+  companyId: z.string().min(1, 'Company is required'),
 });
 
 type CreateContactForm = z.infer<typeof createContactSchema>;
+
+interface CompanyOption {
+  id: string;
+  companyName?: string | null;
+  businessName?: string | null;
+  business_name?: string | null;
+}
+
+/**
+ * The two backends label the company differently - Express/Drizzle returns
+ * businessName, the companies edge function spreads the raw row and adds
+ * companyName - so read whichever is present rather than picking one and
+ * rendering blank against the other.
+ */
+function companyLabel(company: CompanyOption): string {
+  return company.companyName || company.businessName || company.business_name || 'Unnamed company';
+}
 
 export default function CrmContactsPage() {
   const { toast } = useToast();
@@ -44,7 +74,17 @@ export default function CrmContactsPage() {
 
   const form = useForm<CreateContactForm>({
     resolver: zodResolver(createContactSchema),
-    defaultValues: { firstName: '', lastName: '' },
+    defaultValues: { firstName: '', lastName: '', companyId: '' },
+  });
+
+  const { data: companies = [], isLoading: companiesLoading } = useQuery<CompanyOption[]>({
+    queryKey: ['/api/companies', { limit: 200, forContactPicker: true }],
+    queryFn: async () => {
+      const result: any = await apiRequest('/api/companies?limit=200&sortBy=name&sortOrder=asc');
+      return Array.isArray(result) ? result : (result?.data ?? []);
+    },
+    enabled: showCreateDialog,
+    staleTime: 60_000,
   });
 
   const createContactMutation = useMutation({
@@ -151,17 +191,45 @@ export default function CrmContactsPage() {
                 />
                 <FormField
                   control={form.control}
-                  name="jobTitle"
+                  name="title"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Job Title</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} value={field.value ?? ''} />
                       </FormControl>
                     </FormItem>
                   )}
                 />
               </div>
+              <FormField
+                control={form.control}
+                name="companyId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || undefined}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={
+                              companiesLoading ? 'Loading companies...' : 'Select a company'
+                            }
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {companies.map((company) => (
+                          <SelectItem key={company.id} value={company.id}>
+                            {companyLabel(company)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
                   Cancel

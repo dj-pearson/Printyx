@@ -24,6 +24,12 @@ import {
   contactIdParamSchema,
   companyQuerySchema,
 } from './lib/crm-validation';
+import {
+  compareRecords,
+  CONTACT_LIST_SPEC,
+  matchesSearch,
+  parseCrmListQuery,
+} from './lib/crm-list-query';
 import { createModuleLogger } from './lib/logger';
 import { enhanceUserContext, requirePermission } from './middleware/rbac-route-helper';
 const log = createModuleLogger('routes-contacts');
@@ -37,7 +43,14 @@ export function registerContactsRoutes(app: Express) {
   // Company Contacts API routes
   // ============================================
 
-  // GET /api/company-contacts - fetch all contacts, optionally filtered by companyId
+  // GET /api/company-contacts - list tenant contacts, optionally narrowed by companyId
+  //
+  // COP-M01: this used to return every contact in the tenant as a bare array and
+  // ignore limit/offset/search/sortBy, while the company-contacts edge function
+  // 400'd on the same request for want of a companyId. Both now read the query
+  // through the shared parser and return the same envelope. The filtering runs
+  // in memory, matching the /api/companies handler above it — the row counts
+  // here are per-tenant contact lists, not a scan.
   app.get(
     '/api/company-contacts',
     resolveTenant,
@@ -51,17 +64,26 @@ export function registerContactsRoutes(app: Express) {
           return res.status(401).json({ message: 'Authentication required' });
         }
 
-        const companyId = String((req.query as any)?.companyId || '');
+        const q = parseCrmListQuery((req.query as any) || {}, CONTACT_LIST_SPEC);
 
-        if (companyId) {
-          // Fetch contacts for specific company
-          const contacts = await storage.getCompanyContacts(companyId, tenantId);
-          res.json(contacts);
-        } else {
-          // Fetch all contacts
-          const contacts = await storage.getAllCompanyContacts(tenantId);
-          res.json(contacts);
-        }
+        const all = q.filters.companyId
+          ? await storage.getCompanyContacts(q.filters.companyId, tenantId)
+          : await storage.getAllCompanyContacts(tenantId);
+
+        const filtered = (all as any[])
+          .filter((c) => (q.filters.department ? c.department === q.filters.department : true))
+          .filter((c) => (q.filters.leadStatus ? c.leadStatus === q.filters.leadStatus : true))
+          .filter((c) => (q.filters.ownerId ? c.ownerId === q.filters.ownerId : true))
+          .filter((c) => matchesSearch(CONTACT_LIST_SPEC, c, q.search));
+
+        const sorted = filtered.sort((a, b) => compareRecords(a, b, q.sortField, q.ascending));
+
+        res.json({
+          data: sorted.slice(q.offset, q.offset + q.limit),
+          total: sorted.length,
+          page: q.page,
+          limit: q.limit,
+        });
       } catch (error) {
         log.error('Error fetching company contacts:', error);
         res.status(500).json({ error: 'Failed to fetch company contacts' });
@@ -69,26 +91,37 @@ export function registerContactsRoutes(app: Express) {
     },
   );
 
-  // GET /api/company-contacts/:companyId - Legacy endpoint for backward compatibility
+  // GET /api/company-contacts/:id - single contact, the CRM row-click target
+  //
+  // COP-M01: this path used to be a list-by-company. It had no caller, and it
+  // could not have had one in either environment: /api/company-contacts is
+  // proxied to the edge function in dev (so Express never saw the request) and
+  // the edge function had no GET-with-id branch at all, so production answered
+  // 405. The list-by-company case is served by GET /api/company-contacts?companyId=,
+  // which both backends now support, so the path param is free to mean what the
+  // rest of the API means by it.
   app.get(
-    '/api/company-contacts/:companyId',
+    '/api/company-contacts/:id',
     resolveTenant,
-    validate({ params: companyIdParamSchema }),
+    validate({ params: idParamSchema }),
     async (req: any, res) => {
       try {
         const user = req.user as any;
         const tenantId = user.tenantId || getTenantId(req);
-        const { companyId } = req.params;
+        const { id } = req.params;
 
         if (!tenantId) {
           return res.status(401).json({ message: 'Authentication required' });
         }
 
-        const contacts = await storage.getCompanyContacts(companyId, tenantId);
-        res.json(contacts);
+        const contact = await storage.getCompanyContact(id, tenantId);
+        if (!contact) {
+          return res.status(404).json({ error: 'Contact not found' });
+        }
+        res.json(contact);
       } catch (error) {
-        log.error('Error fetching company contacts:', error);
-        res.status(500).json({ error: 'Failed to fetch company contacts' });
+        log.error('Error fetching company contact:', error);
+        res.status(500).json({ error: 'Failed to fetch company contact' });
       }
     },
   );

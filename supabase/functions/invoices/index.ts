@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { parseBulkIds, parseBulkUpdate } from '../_shared/bulk-ops.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -147,6 +148,101 @@ export default async function handler(req: Request) {
         .order('created_at', { ascending: true });
 
       return createCorsResponse({ ...invoice, lineItems: lineItems || [] }, 200, req);
+    }
+
+    // ========================================================================
+    // POST /invoices/bulk-update  - set whitelisted fields on many invoices
+    // POST /invoices/bulk-delete  - delete many invoices
+    //
+    // PROD-014: these had no branch, and both are POSTs, so in production they
+    // fell through to the CREATE branch below — a click on "delete selected"
+    // sent {ids:[...]} into the invoice constructor. They must stay ABOVE that
+    // branch, which is the whole reason this bug existed.
+    //
+    // Semantics mirror server/routes-bulk-operations.ts: tenant-scoped, capped
+    // at 500 ids, and for updates a field whitelist so an endpoint meant for a
+    // status cannot rewrite an invoice's amount.
+    // ========================================================================
+    if (req.method === 'POST' && invoiceId === 'bulk-update') {
+      const body = await req.json().catch(() => ({}));
+      const parsed = parseBulkUpdate(body, 'invoices');
+      if (!parsed.ok) {
+        return createCorsResponse({ message: parsed.message }, 400, req);
+      }
+
+      // Express refuses the whole batch when an id is not this tenant's, rather
+      // than silently updating the subset it can reach.
+      const { data: existing, error: existingError } = await admin
+        .from('invoices')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .in('id', parsed.ids);
+
+      if (existingError) {
+        console.error('Failed to verify invoices for bulk update:', existingError);
+        return createCorsResponse({ message: 'Failed to bulk update invoices' }, 500, req);
+      }
+
+      const found = new Set((existing ?? []).map((row: any) => row.id));
+      const invalidIds = parsed.ids.filter((id) => !found.has(id));
+      if (invalidIds.length > 0) {
+        return createCorsResponse(
+          {
+            message: `${invalidIds.length} invoice(s) not found or not accessible`,
+            invalidIds,
+          },
+          400,
+          req,
+        );
+      }
+
+      const { error: updateError } = await admin
+        .from('invoices')
+        .update({ ...parsed.updates, updated_at: new Date().toISOString() })
+        .eq('tenant_id', tenantId)
+        .in('id', parsed.ids);
+
+      if (updateError) {
+        console.error('Failed to bulk update invoices:', updateError);
+        return createCorsResponse({ message: 'Failed to bulk update invoices' }, 500, req);
+      }
+
+      return createCorsResponse(
+        {
+          message: `Successfully updated ${parsed.ids.length} invoices`,
+          updatedCount: parsed.ids.length,
+        },
+        200,
+        req,
+      );
+    }
+
+    if (req.method === 'POST' && invoiceId === 'bulk-delete') {
+      const body = await req.json().catch(() => ({}));
+      const parsed = parseBulkIds(body);
+      if (!parsed.ok) {
+        return createCorsResponse({ message: parsed.message }, 400, req);
+      }
+
+      const { error } = await admin
+        .from('invoices')
+        .delete()
+        .eq('tenant_id', tenantId)
+        .in('id', parsed.ids);
+
+      if (error) {
+        console.error('Failed to bulk delete invoices:', error);
+        return createCorsResponse({ message: 'Failed to bulk delete invoices' }, 500, req);
+      }
+
+      return createCorsResponse(
+        {
+          message: `Successfully deleted ${parsed.ids.length} invoices`,
+          deletedCount: parsed.ids.length,
+        },
+        200,
+        req,
+      );
     }
 
     // POST /invoices - Create invoice

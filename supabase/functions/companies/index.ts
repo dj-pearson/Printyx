@@ -2,6 +2,42 @@
 // Updated Jan 13, 2026 - Companies-based architecture
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { buildSearchOr, COMPANY_LIST_SPEC, parseCrmListQuery } from '../_shared/crm-list-query.ts';
+
+/**
+ * camelCase aliases for the companies columns the CRM surfaces read.
+ *
+ * Only real columns (shared/schema.ts, migration 0000). Note there is no email
+ * column on companies, which is why primaryContactEmail above no longer falls
+ * back to company.email — that read was always undefined.
+ */
+function toCamelAliases(company: any) {
+  return {
+    businessName: company.business_name,
+    businessSite: company.business_site,
+    businessRecordType: company.business_record_type,
+    customerNumber: company.customer_number,
+    parentBusiness: company.parent_business,
+    billingAddress: company.billing_address,
+    billingCity: company.billing_city,
+    billingState: company.billing_state,
+    billingZip: company.billing_zip,
+    shippingAddress: company.shipping_address,
+    shippingCity: company.shipping_city,
+    shippingState: company.shipping_state,
+    shippingZip: company.shipping_zip,
+    customerSince: company.customer_since,
+    annualRevenue: company.annual_revenue,
+    numberOfLocations: company.number_of_locations,
+    sicCode: company.sic_code,
+    taxState: company.tax_state,
+    businessOwner: company.business_owner,
+    createdBy: company.created_by,
+    lastModifiedBy: company.last_modified_by,
+    createdAt: company.created_at,
+    updatedAt: company.updated_at,
+  };
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -113,18 +149,19 @@ export default async function handler(req: Request) {
 
     // GET /companies - List all companies with pagination
     if (req.method === 'GET' && !companyId) {
-      const search = url.searchParams.get('search');
       const includeLeads = url.searchParams.get('includeLeads') === 'true';
       const includeCustomers = url.searchParams.get('includeCustomers') === 'true';
       const includeContacts = url.searchParams.get('includeContacts') !== 'false'; // Default true
-      const industry = url.searchParams.get('industry');
-      const status = url.searchParams.get('status');
-      const recordType =
-        url.searchParams.get('recordType') || url.searchParams.get('business_record_type');
 
-      // Pagination parameters
-      const limit = parseInt(url.searchParams.get('limit') || '100');
-      const offset = parseInt(url.searchParams.get('offset') || '0');
+      // COP-M01: the search filter used to name an `email` column that does not
+      // exist on companies (phone, fax and website do; email does not), so every
+      // search reached PostgREST as or=(...,email.ilike...) and came back 42703
+      // — a 500 for the CRM companies page AND the quote builder's customer
+      // picker, in dev as well as production since /api/companies is proxied
+      // here. It also hardcoded ORDER BY created_at, so column sorting did
+      // nothing. Both now come from the shared spec.
+      const q = parseCrmListQuery(url.searchParams, COMPANY_LIST_SPEC);
+      const recordType = q.filters.recordType || q.filters.businessRecordType;
 
       let selectQuery = '*';
       if (includeContacts) selectQuery += ', company_contacts(*)';
@@ -135,26 +172,27 @@ export default async function handler(req: Request) {
         .from('companies')
         .select(selectQuery, { count: 'exact' })
         .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
+        .order(q.sortColumn, { ascending: q.ascending });
 
-      if (search) {
-        // Search across multiple fields for comprehensive results
-        query = query.or(
-          `business_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,customer_number.ilike.%${search}%,industry.ilike.%${search}%,billing_city.ilike.%${search}%,billing_state.ilike.%${search}%`,
-        );
+      const searchOr = buildSearchOr(COMPANY_LIST_SPEC, q.search);
+      if (searchOr) {
+        query = query.or(searchOr);
       }
 
-      if (industry) {
-        query = query.eq('industry', industry);
+      if (q.filters.industry) {
+        query = query.eq('industry', q.filters.industry);
       }
 
-      if (status) {
-        query = query.eq('activity', status);
+      if (q.filters.status) {
+        query = query.eq('activity', q.filters.status);
       }
 
       if (recordType) {
         query = query.eq('business_record_type', recordType);
       }
+
+      const limit = q.limit;
+      const offset = q.offset;
 
       // Apply pagination
       query = query.range(offset, offset + limit - 1);
@@ -178,13 +216,20 @@ export default async function handler(req: Request) {
         primaryContactName: company.company_contacts?.[0]?.first_name
           ? `${company.company_contacts[0].first_name} ${company.company_contacts[0].last_name || ''}`.trim()
           : null,
-        primaryContactEmail: company.company_contacts?.[0]?.email || company.email,
+        primaryContactEmail: company.company_contacts?.[0]?.email || null,
         primaryContactPhone: company.company_contacts?.[0]?.phone || company.phone,
         city: company.billing_city,
         state: company.billing_state,
         status: company.activity || 'active',
         recordType: company.business_record_type?.toLowerCase() || 'customer',
         lead_status: company.activity,
+        // COP-M01: camelCase aliases for the columns the CRM table reads. This
+        // handler spreads the raw PostgREST row, so it was emitting business_name
+        // and billing_city while Express/Drizzle emits businessName and
+        // billingCity — every column the registry named was blank against one
+        // backend or the other. Added rather than swapped: the snake keys above
+        // stay so existing readers keep working.
+        ...toCamelAliases(company),
       }));
 
       // Return in { data: [...], total, page, limit } format for auto-unwrap
@@ -241,7 +286,7 @@ export default async function handler(req: Request) {
         .select('*')
         .eq('company_id', companyId)
         .eq('tenant_id', tenantId)
-        .order('is_primary', { ascending: false });
+        .order('is_primary_contact', { ascending: false });
 
       if (error) {
         console.error('[COMPANIES] Error fetching contacts:', error);
@@ -395,7 +440,12 @@ export default async function handler(req: Request) {
           phone: contact.phone,
           title: contact.title,
           department: contact.department,
-          is_primary: contact.is_primary !== undefined ? contact.is_primary : index === 0,
+          // Real column is is_primary_contact; callers have historically sent is_primary.
+          is_primary_contact:
+            contact.is_primary_contact ??
+            contact.is_primary ??
+            contact.isPrimaryContact ??
+            index === 0,
           created_at: new Date().toISOString(),
         }));
 
@@ -553,7 +603,8 @@ export default async function handler(req: Request) {
         phone: body.phone,
         title: body.title,
         department: body.department,
-        is_primary: body.is_primary || false,
+        is_primary_contact:
+          body.is_primary_contact ?? body.is_primary ?? body.isPrimaryContact ?? false,
         created_at: new Date().toISOString(),
       };
 

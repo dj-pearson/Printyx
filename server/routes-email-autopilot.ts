@@ -207,7 +207,10 @@ const SPAM_KEYWORDS = [
 ];
 const FYI_KEYWORDS = ['fyi', 'no action needed', 'newsletter', 'report is ready', 'do not reply'];
 
-function fallbackClassify(email: InboxEmail): Classification {
+// Exported, with fallbackDraft/levenshtein/editDistancePct, so
+// server/tests/unit/email-autopilot-logic-parity.test.ts can assert these and
+// the Deno copies in _shared/email-autopilot-logic.ts stay identical.
+export function fallbackClassify(email: InboxEmail): Classification {
   const hay = `${email.subject} ${email.snippet} ${email.from}`.toLowerCase();
   if (SPAM_KEYWORDS.some((k) => hay.includes(k))) {
     return { classification: 'spam', confidence: 0.6, source: 'fallback' };
@@ -251,7 +254,7 @@ async function classifyEmail(email: InboxEmail): Promise<Classification> {
   }
 }
 
-function fallbackDraft(
+export function fallbackDraft(
   email: InboxEmail,
   fingerprint: VoiceFingerprint,
   crmContext: string | null,
@@ -314,7 +317,7 @@ async function draftReply(
 // Edit-distance (Levenshtein → % changed)
 // ---------------------------------------------------------------------------
 
-function levenshtein(a: string, b: string): number {
+export function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
   if (m === 0) return n;
@@ -334,7 +337,7 @@ function levenshtein(a: string, b: string): number {
 }
 
 /** Levenshtein-based percentage (0..100) of how much the rep changed the draft. */
-function editDistancePct(a: string, b: string): number {
+export function editDistancePct(a: string, b: string): number {
   const original = a ?? '';
   const edited = b ?? '';
   const denom = Math.max(original.length, edited.length);

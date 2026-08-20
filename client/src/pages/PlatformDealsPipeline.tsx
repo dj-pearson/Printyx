@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -87,13 +88,7 @@ export default function PlatformDealsPipeline() {
   // Move stage mutation
   const moveStageMutation = useMutation({
     mutationFn: async ({ dealId, newStage }: { dealId: string; newStage: string }) => {
-      const response = await fetch(`/api/platform-deals/${dealId}/move-stage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newStage }),
-      });
-      if (!response.ok) throw new Error('Failed to move deal');
-      return response.json();
+      return apiRequest(`/api/platform-deals/${dealId}/move-stage`, 'POST', { newStage });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-deals/pipeline'] });
@@ -107,13 +102,9 @@ export default function PlatformDealsPipeline() {
   // Close won mutation
   const closeWonMutation = useMutation({
     mutationFn: async (dealId: string) => {
-      const response = await fetch(`/api/platform-deals/${dealId}/close-won`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actualCloseDate: new Date().toISOString() }),
+      return apiRequest(`/api/platform-deals/${dealId}/close-won`, 'POST', {
+        actualCloseDate: new Date().toISOString(),
       });
-      if (!response.ok) throw new Error('Failed to close deal');
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-deals/pipeline'] });
@@ -127,13 +118,10 @@ export default function PlatformDealsPipeline() {
   // Close lost mutation
   const closeLostMutation = useMutation({
     mutationFn: async ({ dealId, lostReason }: { dealId: string; lostReason: string }) => {
-      const response = await fetch(`/api/platform-deals/${dealId}/close-lost`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lostReason, actualCloseDate: new Date().toISOString() }),
+      return apiRequest(`/api/platform-deals/${dealId}/close-lost`, 'POST', {
+        lostReason,
+        actualCloseDate: new Date().toISOString(),
       });
-      if (!response.ok) throw new Error('Failed to close deal');
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-deals/pipeline'] });

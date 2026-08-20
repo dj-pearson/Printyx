@@ -3,6 +3,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { parseBulkIds } from '../_shared/bulk-ops.ts';
+import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -45,6 +47,27 @@ export default async function handler(req: Request) {
     // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
     // /product-models, making this correct whether or not the prefix survived.
     const { parts } = normalizePath(url.pathname, 'product-models');
+
+    // ====================================================================
+    // POST /product-models/import - bulk CSV import
+    //
+    // PROD-014: this existed only on Express, so catalog import 404'd in
+    // production. The spec, the CSV parser and the row validation are shared
+    // with the client and Express, so the same file imports identically on
+    // either backend. It must precede the generic POST create branch, or the
+    // upload is treated as a single product. Reads the path segment directly
+    // rather than the id variable below, which is declared after this point —
+    // naming it here is a temporal-dead-zone ReferenceError at runtime that no
+    // bundler flags.
+    // ====================================================================
+    if (req.method === 'POST' && parts[0] === 'import') {
+      const csvText = await readUploadedCsv(req);
+      if (!csvText) {
+        return createCorsResponse({ message: 'No file uploaded' }, 400, req);
+      }
+      const outcome = await importCatalogCsv(admin, 'product-models', tenantId, csvText);
+      return createCorsResponse(outcome, 200, req);
+    }
     const modelId = parts[0]; // Get ID from path if present
 
     // GET /product-models - List product models.
@@ -213,6 +236,45 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(updatedModel, 200, req);
+    }
+
+    // ========================================================================
+    // DELETE /product-models/bulk-delete - delete many at once
+    //
+    // PROD-014: there was no branch for this, so the request fell through to
+    // the :id delete below and the action word became the id — a delete where
+    // id = 'bulk-delete'. `id` is a varchar, so that matches nothing, PostgREST
+    // reports no error, and the function answered 200. The user was told the
+    // bulk delete succeeded and nothing was deleted. It has to stay ABOVE the
+    // :id branch.
+    // ========================================================================
+    if (req.method === 'DELETE' && modelId === 'bulk-delete') {
+      const body = await req.json().catch(() => ({}));
+      const parsed = parseBulkIds(body);
+      if (!parsed.ok) {
+        return createCorsResponse({ error: 'IDs array is required' }, 400, req);
+      }
+
+      // .select() so the count reported is what was actually removed, not what
+      // was asked for — the difference is the bug this branch exists to fix.
+      const { data: deleted, error } = await admin
+        .from('product_models')
+        .delete()
+        .eq('tenant_id', tenantId)
+        .in('id', parsed.ids)
+        .select('id');
+
+      if (error) {
+        console.error('Error bulk deleting product models:', error);
+        return createCorsResponse({ error: 'Failed to bulk delete product models' }, 500, req);
+      }
+
+      const deletedCount = (deleted ?? []).length;
+      return createCorsResponse(
+        { message: `Successfully deleted ${deletedCount} product models`, deletedCount },
+        200,
+        req,
+      );
     }
 
     // DELETE /product-models/:id - Delete product model

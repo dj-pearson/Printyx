@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { useLocation, useParams } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,9 +56,7 @@ export default function ArticleEditor() {
   const { data: categories } = useQuery<Category[]>({
     queryKey: ['/api/knowledge-base/categories'],
     queryFn: async () => {
-      const response = await fetch('/api/knowledge-base/categories');
-      if (!response.ok) throw new Error('Failed to fetch categories');
-      return response.json();
+      return apiRequest('/api/knowledge-base/categories');
     },
   });
 
@@ -66,9 +65,7 @@ export default function ArticleEditor() {
     queryKey: ['/api/knowledge-base/articles', articleId],
     queryFn: async () => {
       if (isNew) return null;
-      const response = await fetch(`/api/knowledge-base/articles/${articleId}`);
-      if (!response.ok) throw new Error('Failed to fetch article');
-      return response.json();
+      return apiRequest(`/api/knowledge-base/articles/${articleId}`);
     },
     enabled: !isNew,
   });
@@ -125,26 +122,18 @@ export default function ArticleEditor() {
 
       const method = isNew ? 'POST' : 'PUT';
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const savedArticle = await apiRequest(url, method, payload);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to save article');
-      }
-
-      const savedArticle = await response.json();
-
-      // Publish if requested
-      if (publish && savedArticle.id) {
-        const publishResponse = await fetch(
-          `/api/knowledge-base/articles/${savedArticle.id}/publish`,
-          { method: 'PATCH' },
-        );
-        if (!publishResponse.ok) throw new Error('Failed to publish article');
+      // Publish if requested. There is no /publish endpoint on either backend —
+      // this used to 404 everywhere — so publishing is a status change on the
+      // article, which PUT /articles/:id already accepts.
+      if (publish && savedArticle?.id) {
+        return apiRequest(`/api/knowledge-base/articles/${savedArticle.id}`, 'PUT', {
+          status: 'published',
+          publishedAt: new Date().toISOString(),
+          changeType: 'publish',
+          changeDescription: 'Published from the article editor',
+        });
       }
 
       return savedArticle;

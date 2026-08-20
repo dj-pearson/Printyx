@@ -288,7 +288,10 @@ export async function extractCloseFields(
 // ---------------------------------------------------------------------------
 
 /** Token-overlap + substring fuzzy score in [0,1]. */
-function fuzzyScore(needle: string, haystack: string): number {
+// Exported, with rankSkuCandidates below, so
+// server/tests/unit/voice-ticket-close-logic-parity.test.ts can assert this and
+// the Deno copy in _shared/voice-ticket-close-logic.ts stay identical.
+export function fuzzyScore(needle: string, haystack: string): number {
   const a = needle.toLowerCase().trim();
   const b = (haystack ?? '').toLowerCase().trim();
   if (!a || !b) return 0;
@@ -302,6 +305,53 @@ function fuzzyScore(needle: string, haystack: string): number {
     score += 0.5 * (overlap / aTokens.length);
   }
   return Math.min(1, score);
+}
+
+/**
+ * Pure scoring/ranking half of resolveSku, extracted so it can be locked against
+ * the Deno copy in _shared/voice-ticket-close-logic.ts. resolveSku does the
+ * tenant-scoped read and delegates here.
+ */
+export function rankSkuCandidates(
+  raw: string,
+  rows: Array<{
+    partNumber?: string | null;
+    name?: string | null;
+    itemDescription?: string | null;
+  }>,
+  topN = 3,
+): { candidates: SkuCandidate[]; chosenSku: string | null } {
+  const term = (raw ?? '').trim();
+  if (!term) return { candidates: [], chosenSku: null };
+
+  const candidates: SkuCandidate[] = rows
+    .map((r) => {
+      const sku = r.partNumber ?? '';
+      if (!sku) return null;
+      const name = r.name ?? r.itemDescription ?? sku;
+      const score = Math.max(
+        fuzzyScore(term, sku),
+        fuzzyScore(term, r.name ?? ''),
+        fuzzyScore(term, r.itemDescription ?? ''),
+      );
+      return { sku, name, score: Math.round(score * 1000) / 1000 };
+    })
+    .filter((c): c is SkuCandidate => !!c && c.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topN);
+
+  // Never auto-select when the top score is tied. A generic word like "toner"
+  // or "cartridge" scores 1 against every toner in the catalogue (0.5 substring
+  // + 0.5 full token overlap), and picking candidates[0] silently deducted the
+  // FIRST match from the technician's truck — black toner when they may have
+  // fitted cyan. An ambiguous match asks the tech instead of guessing.
+  const ambiguous = candidates.length > 1 && candidates[0].score === candidates[1].score;
+  const chosenSku =
+    candidates.length > 0 && !ambiguous && candidates[0].score >= SKU_AUTO_MATCH_THRESHOLD
+      ? candidates[0].sku
+      : null;
+
+  return { candidates, chosenSku };
 }
 
 /**
@@ -327,28 +377,7 @@ export async function resolveSku(
     .from(inventoryItems)
     .where(eq(inventoryItems.tenantId, tenantId));
 
-  const candidates: SkuCandidate[] = rows
-    .map((r) => {
-      const sku = r.partNumber ?? '';
-      if (!sku) return null;
-      const name = r.name ?? r.itemDescription ?? sku;
-      const score = Math.max(
-        fuzzyScore(term, sku),
-        fuzzyScore(term, r.name ?? ''),
-        fuzzyScore(term, r.itemDescription ?? ''),
-      );
-      return { sku, name, score: Math.round(score * 1000) / 1000 };
-    })
-    .filter((c): c is SkuCandidate => !!c && c.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topN);
-
-  const chosenSku =
-    candidates.length > 0 && candidates[0].score >= SKU_AUTO_MATCH_THRESHOLD
-      ? candidates[0].sku
-      : null;
-
-  return { candidates, chosenSku };
+  return rankSkuCandidates(term, rows, topN);
 }
 
 /** Look up unit cost for a resolved SKU (tenant-scoped); 0 when unknown. */

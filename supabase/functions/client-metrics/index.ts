@@ -38,7 +38,8 @@ export default async function handler(req: Request) {
     // Verify API key and get client
     const { data: client } = await admin
       .from('monitoring_clients')
-      .select('id, tenant_id, customer_id, config, status')
+      // COP-M01: monitoring_clients names these configuration and last_heartbeat.
+      .select('id, tenant_id, customer_id, configuration, status')
       .eq('api_key', apiKey)
       .eq('status', 'active')
       .single();
@@ -48,6 +49,21 @@ export default async function handler(req: Request) {
     }
 
     // POST /client-metrics/submit - Submit device metrics
+    // COP-M01, and this one is NOT a rename. The agent posts a generic
+    // measurement — { deviceId, serialNumber, metricType, value, unit, metadata,
+    // collectedAt } — but device_metrics is a FIXED-SHAPE meter snapshot:
+    // device_id, integration_id, collection_timestamp, total_impressions,
+    // bw_impressions, color_impressions, large_impressions, device_status,
+    // toner_levels, paper_levels, error_codes, response_time, uptime, raw_data.
+    // There is no metric_type/value/unit triple and no client_id at all, so
+    // every submitted metric has been failing to insert. device_alerts is the
+    // same story (no client_id, serial_number or metadata).
+    //
+    // Mapping one onto the other means deciding which metric names become which
+    // impression counters and how an agent's client is resolved to a device —
+    // a product decision, not a substitution — so it is left named here rather
+    // than guessed at. The two clean renames in this file (configuration,
+    // last_heartbeat, first_seen_at) ARE fixed.
     if (req.method === 'POST' && action === 'submit') {
       const body = await req.json();
       const metrics = body.metrics || [body];
@@ -80,7 +96,7 @@ export default async function handler(req: Request) {
       // Update client last_seen
       await admin
         .from('monitoring_clients')
-        .update({ last_seen_at: new Date().toISOString() })
+        .update({ last_heartbeat: new Date().toISOString() })
         .eq('id', client.id);
 
       return createCorsResponse(
@@ -101,7 +117,7 @@ export default async function handler(req: Request) {
       await admin
         .from('monitoring_clients')
         .update({
-          last_seen_at: new Date().toISOString(),
+          last_heartbeat: new Date().toISOString(),
           last_heartbeat: {
             timestamp: new Date().toISOString(),
             version: body.version,
@@ -126,7 +142,7 @@ export default async function handler(req: Request) {
       return createCorsResponse(
         {
           clientId: client.id,
-          config: client.config || {
+          config: client.configuration || {
             pollInterval: 300, // 5 minutes
             metricsToCollect: ['toner_levels', 'page_counts', 'status'],
             alertThresholds: {
@@ -164,7 +180,7 @@ export default async function handler(req: Request) {
               status: device.status || 'online',
               capabilities: device.capabilities || {},
               discovered_at: new Date().toISOString(),
-              last_seen_at: new Date().toISOString(),
+              last_heartbeat: new Date().toISOString(),
             },
             {
               onConflict: 'tenant_id,serial_number',
@@ -209,7 +225,8 @@ export default async function handler(req: Request) {
             severity: alert.severity || 'warning',
             message: alert.message,
             metadata: alert.metadata || {},
-            triggered_at: alert.triggeredAt || new Date().toISOString(),
+            // device_alerts records first_seen_at, not triggered_at.
+            first_seen_at: alert.triggeredAt || new Date().toISOString(),
             created_at: new Date().toISOString(),
           })
           .select()

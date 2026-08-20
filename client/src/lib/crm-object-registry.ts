@@ -87,8 +87,14 @@ const dealsConfig: CrmObjectConfig = {
       editable: true,
       width: 'min-w-[250px]',
     },
+    // COP-M01: `value`, `customerName` and `assignedToName` were not columns on
+    // `deals` (migration 0000: amount, company_name, owner_id). Amount and
+    // Company rendered blank; Owner had no backing data at all, since the deals
+    // handler deliberately avoids FK embeds and so cannot resolve owner_id to a
+    // name — that column is removed rather than faked, and the contact name,
+    // which IS stored on the deal, takes its place.
     {
-      field: 'value',
+      field: 'amount',
       label: 'Amount',
       type: 'currency',
       sortable: true,
@@ -120,17 +126,19 @@ const dealsConfig: CrmObjectConfig = {
       width: 'min-w-[130px]',
     },
     {
-      field: 'assignedToName',
-      label: 'Owner',
+      field: 'primaryContactName',
+      label: 'Contact',
       type: 'text',
       sortable: true,
+      editable: true,
       width: 'min-w-[150px]',
     },
     {
-      field: 'customerName',
+      field: 'companyName',
       label: 'Company',
       type: 'text',
       sortable: true,
+      editable: true,
       width: 'min-w-[180px]',
     },
     { field: 'status', label: 'Status', type: 'badge', sortable: true, width: 'min-w-[100px]' },
@@ -146,12 +154,12 @@ const dealsConfig: CrmObjectConfig = {
   ],
   defaultColumns: [
     'title',
-    'value',
+    'amount',
     'stage',
     'probability',
     'expectedCloseDate',
-    'assignedToName',
-    'customerName',
+    'primaryContactName',
+    'companyName',
   ],
   quickFilters: [
     {
@@ -188,7 +196,7 @@ const dealsConfig: CrmObjectConfig = {
     { name: 'All Deals', isDefault: true },
     {
       name: 'My Deals',
-      filterDefinition: [{ field: 'assignedToId', operator: 'eq', value: '__CURRENT_USER__' }],
+      filterDefinition: [{ field: 'ownerId', operator: 'eq', value: '__CURRENT_USER__' }],
     },
     { name: 'Recently Modified', sortConfig: { field: 'updatedAt', direction: 'desc' } },
   ],
@@ -364,7 +372,11 @@ const contactsConfig: CrmObjectConfig = {
   labelPlural: 'Contacts',
   icon: 'Users',
   apiEndpoint: '/api/company-contacts',
-  detailPath: '/contacts',
+  // COP-M01/COP-E04: the canonical contact record path. This pointed at
+  // '/contacts', which is the legacy Contacts.tsx index — there was no
+  // /contacts/:id route, so every row click landed on NotFound. /crm/contacts/:id
+  // follows the deals precedent above.
+  detailPath: '/crm/contacts',
   hasBoardView: false,
   fields: [
     {
@@ -399,8 +411,13 @@ const contactsConfig: CrmObjectConfig = {
       editable: true,
       width: 'min-w-[140px]',
     },
+    // COP-M01: these are the REAL company_contacts columns (shared/schema.ts:1255).
+    // This block used to name jobTitle, isPrimary and isActive — the first two
+    // do not exist under those names (they are title and isPrimaryContact) and
+    // the third does not exist at all, so those three columns rendered blank and
+    // sorting or inline-editing them hit a column the database does not have.
     {
-      field: 'jobTitle',
+      field: 'title',
       label: 'Job Title',
       type: 'text',
       sortable: true,
@@ -414,8 +431,20 @@ const contactsConfig: CrmObjectConfig = {
       sortable: true,
       width: 'min-w-[150px]',
     },
-    { field: 'isPrimary', label: 'Primary', type: 'badge', sortable: true, width: 'min-w-[80px]' },
-    { field: 'isActive', label: 'Active', type: 'badge', sortable: true, width: 'min-w-[80px]' },
+    {
+      field: 'isPrimaryContact',
+      label: 'Primary',
+      type: 'badge',
+      sortable: true,
+      width: 'min-w-[80px]',
+    },
+    {
+      field: 'leadStatus',
+      label: 'Status',
+      type: 'badge',
+      sortable: true,
+      width: 'min-w-[110px]',
+    },
     { field: 'createdAt', label: 'Created', type: 'date', sortable: true, width: 'min-w-[130px]' },
   ],
   defaultColumns: [
@@ -423,9 +452,9 @@ const contactsConfig: CrmObjectConfig = {
     'lastName',
     'email',
     'phone',
-    'jobTitle',
+    'title',
     'department',
-    'isPrimary',
+    'isPrimaryContact',
   ],
   quickFilters: [
     {
@@ -441,18 +470,34 @@ const contactsConfig: CrmObjectConfig = {
       ],
     },
   ],
+  // The real lead_status values (shared/schema.ts): new, contacted, qualified,
+  // unqualified, customer. The previous active/inactive pair described the
+  // isActive column that this table does not have.
   statusConfigs: [
+    { value: 'new', label: 'New', variant: 'secondary', className: 'bg-slate-100 text-slate-800' },
     {
-      value: 'active',
-      label: 'Active',
+      value: 'contacted',
+      label: 'Contacted',
+      variant: 'outline',
+      className: 'bg-sky-100 text-sky-800',
+    },
+    {
+      value: 'qualified',
+      label: 'Qualified',
       variant: 'default',
       className: 'bg-green-100 text-green-800',
     },
     {
-      value: 'inactive',
-      label: 'Inactive',
+      value: 'unqualified',
+      label: 'Unqualified',
       variant: 'secondary',
       className: 'bg-gray-100 text-gray-800',
+    },
+    {
+      value: 'customer',
+      label: 'Customer',
+      variant: 'default',
+      className: 'bg-emerald-100 text-emerald-800',
     },
   ],
   defaultViews: [
@@ -476,8 +521,13 @@ const companiesConfig: CrmObjectConfig = {
   detailPath: '/companies',
   hasBoardView: false,
   fields: [
+    // COP-M01: these are the REAL companies columns (shared/schema.ts, migration
+    // 0000). This block used to name `name`, `city`, `state` and `employeeCount`;
+    // the real columns are businessName, billingCity, billingState and employees.
+    // Company Name was the FIRST column of the table and rendered blank against
+    // both backends.
     {
-      field: 'name',
+      field: 'businessName',
       label: 'Company Name',
       type: 'text',
       sortable: true,
@@ -501,10 +551,16 @@ const companiesConfig: CrmObjectConfig = {
       editable: true,
       width: 'min-w-[140px]',
     },
-    { field: 'city', label: 'City', type: 'text', sortable: true, width: 'min-w-[120px]' },
-    { field: 'state', label: 'State', type: 'text', sortable: true, width: 'min-w-[100px]' },
+    { field: 'billingCity', label: 'City', type: 'text', sortable: true, width: 'min-w-[120px]' },
     {
-      field: 'employeeCount',
+      field: 'billingState',
+      label: 'State',
+      type: 'text',
+      sortable: true,
+      width: 'min-w-[100px]',
+    },
+    {
+      field: 'employees',
       label: 'Employees',
       type: 'number',
       sortable: true,
@@ -519,7 +575,15 @@ const companiesConfig: CrmObjectConfig = {
     },
     { field: 'createdAt', label: 'Created', type: 'date', sortable: true, width: 'min-w-[130px]' },
   ],
-  defaultColumns: ['name', 'industry', 'website', 'phone', 'city', 'state', 'employeeCount'],
+  defaultColumns: [
+    'businessName',
+    'industry',
+    'website',
+    'phone',
+    'billingCity',
+    'billingState',
+    'employees',
+  ],
   quickFilters: [
     {
       field: 'industry',
@@ -551,10 +615,9 @@ const companiesConfig: CrmObjectConfig = {
   ],
   defaultViews: [
     { name: 'All Companies', isDefault: true },
-    {
-      name: 'My Companies',
-      filterDefinition: [{ field: 'ownerId', operator: 'eq', value: '__CURRENT_USER__' }],
-    },
+    // No 'My Companies' view: companies has no owner column keyed on a user id.
+    // The nearest thing is businessOwner, a free-text person's name, which
+    // __CURRENT_USER__ can never equal — the view was guaranteed to be empty.
     { name: 'Recently Modified', sortConfig: { field: 'updatedAt', direction: 'desc' } },
   ],
 };

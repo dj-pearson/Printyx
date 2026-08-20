@@ -97,46 +97,62 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && !checklistId) {
       const body = await req.json();
 
-      const { data: checklist, error } = await admin
-        .from('onboarding_checklists')
-        .insert({
-          tenant_id: tenantId,
-          customer_id: body.customerId || body.customer_id,
-          name: body.name,
-          description: body.description,
-          template_id: body.templateId || body.template_id,
-          status: 'in_progress',
-          assigned_to: body.assignedTo || body.assigned_to,
-          due_date: body.dueDate || body.due_date,
-          created_by: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return createCorsResponse({ error: 'Failed to create checklist' }, 500, req);
-      }
-
-      return createCorsResponse(checklist, 201, req);
+      // COP-M01: this is not a rename, it is a different model. The handler
+      // describes a checklist as name / description / status / customer_id /
+      // template_id / assigned_to / due_date; onboarding_checklists has NONE of
+      // those. It is a per-USER progress record — user_id, lifecycle_event_id, an
+      // `items` jsonb, total_items / completed_items / progress_percent,
+      // started_at, target_completion_date, check_ins. Every field the caller
+      // sends has nowhere to go, and the insert has been failing outright.
+      //
+      // Guessing a mapping here would invent a product decision (what a
+      // checklist IS, and how a template becomes one), so the endpoint says so
+      // rather than half-writing a row.
+      return createCorsResponse(
+        {
+          error:
+            'Creating a checklist from a name/template is not supported by the current schema. ' +
+            "onboarding_checklists records one user's progress through a lifecycle event " +
+            '(user_id, lifecycle_event_id, items[]), and has no name, status, template or ' +
+            'assignee column.',
+          code: 'CHECKLIST_MODEL_MISMATCH',
+          expects: ['userId', 'lifecycleEventId', 'items', 'targetCompletionDate'],
+        },
+        501,
+        req,
+      );
     }
 
     // PUT /onboarding/checklists/:id - Update checklist
     if (req.method === 'PUT' && checklistId && !subResource) {
       const body = await req.json();
 
+      // Only the progress fields exist on this table (see the create branch for
+      // why). name / description / status / assigned_to / due_date are reported
+      // back rather than written to columns that are not there.
+      const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (body.items !== undefined) update.items = body.items;
+      if (body.completedItems ?? body.completed_items) {
+        update.completed_items = body.completedItems ?? body.completed_items;
+      }
+      if (body.progressPercent ?? body.progress_percent) {
+        update.progress_percent = body.progressPercent ?? body.progress_percent;
+      }
+      if (body.targetCompletionDate ?? body.target_completion_date) {
+        update.target_completion_date = body.targetCompletionDate ?? body.target_completion_date;
+      }
+      if (body.nextCheckIn ?? body.next_check_in) {
+        update.next_check_in = body.nextCheckIn ?? body.next_check_in;
+      }
+      if (body.status === 'completed') update.completed_at = new Date().toISOString();
+
+      const unpersisted = (
+        ['name', 'description', 'status', 'assignedTo', 'dueDate'] as const
+      ).filter((field) => body[field] !== undefined);
+
       const { data: checklist, error } = await admin
         .from('onboarding_checklists')
-        .update({
-          name: body.name,
-          description: body.description,
-          status: body.status,
-          assigned_to: body.assignedTo || body.assigned_to,
-          due_date: body.dueDate || body.due_date,
-          completed_at: body.status === 'completed' ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString(),
-        })
+        .update(update)
         .eq('id', checklistId)
         .eq('tenant_id', tenantId)
         .select()
@@ -146,7 +162,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update checklist' }, 500, req);
       }
 
-      return createCorsResponse(checklist, 200, req);
+      return createCorsResponse({ ...checklist, unpersisted }, 200, req);
     }
 
     // POST /onboarding/checklists/:checklistId/sections - Add section
@@ -178,25 +194,41 @@ export default async function handler(req: Request) {
 
       const { data: task, error } = await admin
         .from('onboarding_tasks')
+        // COP-M01: onboarding_tasks names these task_title, task_description and
+        // assigned_to, and has no `order` column — sequencing is section_id plus
+        // priority. tenant_id was never set either.
         .insert({
+          tenant_id: tenantId,
           checklist_id: checklistId,
           section_id: body.sectionId || body.section_id,
-          title: body.title,
-          description: body.description,
+          task_title: body.title ?? body.task_title,
+          task_description: body.description ?? body.task_description ?? null,
+          task_type: body.taskType || body.task_type || null,
+          priority: body.priority || null,
           status: 'pending',
-          assignee_id: body.assigneeId || body.assignee_id,
-          due_date: body.dueDate || body.due_date,
-          order: body.order || 0,
+          assigned_to: body.assigneeId || body.assignee_id || body.assignedTo || null,
+          due_date: body.dueDate || body.due_date || null,
           created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
         .single();
 
       if (error) {
-        return createCorsResponse({ error: 'Failed to add task' }, 500, req);
+        console.error('Error adding onboarding task:', error);
+        return createCorsResponse(
+          { error: 'Failed to add task', details: error.message },
+          500,
+          req,
+        );
       }
 
-      return createCorsResponse(task, 201, req);
+      const unpersisted =
+        body.order !== undefined
+          ? ['order: onboarding_tasks sequences by section_id and priority, not an order column']
+          : [];
+
+      return createCorsResponse({ ...task, unpersisted }, 201, req);
     }
 
     // DELETE /onboarding/checklists/:id - Delete checklist

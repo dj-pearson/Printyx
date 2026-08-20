@@ -2,6 +2,15 @@
 // Handles subscription management for tenants
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import {
+  buildSubscriptionStatus,
+  isUpgradeAmount,
+  nextPeriodEnd,
+  planAmount,
+  resolveTrialPeriod,
+} from '../_shared/subscription-status.ts';
+import { buildCancellationEmail } from '../_shared/cancellation-email.ts';
+import { sendEmail } from '../email-marketing/_sendgrid.ts';
 import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
@@ -440,6 +449,137 @@ export default async function handler(req: Request) {
     }
 
     // ========================================================================
+    // GET  /subscriptions/notifications            - the banner's alert list
+    // POST /subscriptions/notifications/:id/dismiss
+    //
+    // PROD-014: both were Express-only, so the banner had no notifications in
+    // production and dismissing one did nothing. Ported straight across — the
+    // filter (this tenant, this user, not already dismissed) and the 50-row cap
+    // match server/routes-subscriptions.ts, and the body is { notifications }
+    // exactly as the hook expects.
+    // ========================================================================
+    if (req.method === 'GET' && secondSegment === 'notifications' && !thirdSegment) {
+      let query = admin
+        .from('subscription_notifications')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .neq('status', 'dismissed')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      // Express narrows to the caller when it knows them; so do we.
+      if (user?.id) query = query.eq('user_id', user.id);
+
+      const { data: notifications, error } = await query;
+
+      if (error) {
+        console.error('Error fetching subscription notifications:', error);
+        return createCorsResponse(
+          { error: 'Failed to fetch notifications', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse({ notifications: notifications ?? [] }, 200, req);
+    }
+
+    if (
+      req.method === 'POST' &&
+      secondSegment === 'notifications' &&
+      thirdSegment &&
+      parts[2] === 'dismiss'
+    ) {
+      const nowIso = new Date().toISOString();
+      const { error } = await admin
+        .from('subscription_notifications')
+        .update({ status: 'dismissed', dismissed_at: nowIso, updated_at: nowIso })
+        .eq('id', thirdSegment)
+        .eq('tenant_id', tenantId);
+
+      if (error) {
+        console.error('Error dismissing subscription notification:', error);
+        return createCorsResponse(
+          { error: 'Failed to dismiss notification', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse({ success: true }, 200, req);
+    }
+
+    // ========================================================================
+    // GET /subscriptions/current - the shape SubscriptionBanner reads
+    //
+    // PROD-014: this endpoint existed only on Express, and SubscriptionBanner is
+    // mounted in App.tsx — so on every page in production the banner asked for a
+    // plan/usage/trial state that nothing answered. The arithmetic (limit merge,
+    // overage test, day counts) comes from _shared/subscription-status.ts, which
+    // server/lib/subscription-status.ts mirrors, so both backends agree.
+    // ========================================================================
+    if (req.method === 'GET' && secondSegment === 'current') {
+      const { data: subscription, error } = await admin
+        .from('tenant_subscriptions')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .in('status', ['active', 'trialing', 'past_due'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching current subscription:', error);
+        return createCorsResponse(
+          { error: 'Failed to fetch subscription status', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      if (!subscription) {
+        // Same body Express returns, so the hook's `hasSubscription` check works
+        // identically against either backend.
+        return createCorsResponse(
+          { hasSubscription: false, message: 'No active subscription' },
+          200,
+          req,
+        );
+      }
+
+      const { data: plan, error: planError } = await admin
+        .from('subscription_plans')
+        .select('*')
+        .eq('id', subscription.plan_id)
+        .maybeSingle();
+
+      if (planError || !plan) {
+        console.error('Plan not found for subscription:', planError);
+        return createCorsResponse(
+          { error: 'Plan not found for subscription', code: 'PLAN_NOT_FOUND' },
+          500,
+          req,
+        );
+      }
+
+      const nowIso = new Date().toISOString();
+      const { data: usage } = await admin
+        .from('usage_metrics')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .lte('period_start', nowIso)
+        .gte('period_end', nowIso)
+        .limit(1)
+        .maybeSingle();
+
+      return createCorsResponse(
+        buildSubscriptionStatus(subscription, plan, usage, new Date()),
+        200,
+        req,
+      );
+    }
+
+    // ========================================================================
     // GET /subscriptions - Get current subscription for tenant
     // ========================================================================
     if (req.method === 'GET' && !secondSegment) {
@@ -654,6 +794,623 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ subscription: updatedSubscription }, 200, req);
+    }
+
+    // ========================================================================
+    // POST /subscriptions/create - Start a subscription for the tenant
+    //
+    // PROD-014: Express-only, so in production nothing could start a
+    // subscription. Note the frontend sends a plan SLUG, not the plan id the
+    // change-plan branch above takes — resolving by id here would reject every
+    // real request.
+    // ========================================================================
+    if (req.method === 'POST' && secondSegment === 'create' && !thirdSegment) {
+      const body = await req.json().catch(() => ({}));
+      const planSlug = body.planSlug || body.plan_slug;
+      const billingCycle = body.billingCycle || body.billing_cycle;
+      const startTrial = body.startTrial !== false && body.start_trial !== false;
+
+      if (!planSlug || !billingCycle) {
+        return createCorsResponse(
+          { error: 'Missing required fields: planSlug, billingCycle' },
+          400,
+          req,
+        );
+      }
+      if (!['monthly', 'annual'].includes(billingCycle)) {
+        return createCorsResponse(
+          { error: 'Invalid billing cycle. Must be "monthly" or "annual"' },
+          400,
+          req,
+        );
+      }
+
+      // Refusing a second subscription is what keeps a tenant from being billed
+      // twice; Express checks the same two statuses.
+      const { data: existing } = await admin
+        .from('tenant_subscriptions')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .in('status', ['active', 'trialing'])
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        return createCorsResponse(
+          {
+            error: 'Tenant already has an active subscription',
+            message: 'Use the upgrade endpoint to change plans',
+          },
+          400,
+          req,
+        );
+      }
+
+      const { data: plan, error: planError } = await admin
+        .from('subscription_plans')
+        .select('*')
+        .eq('slug', planSlug)
+        .maybeSingle();
+
+      if (planError) {
+        console.error('Error loading plan:', planError);
+        return createCorsResponse(
+          { error: 'Failed to create subscription', message: planError.message },
+          500,
+          req,
+        );
+      }
+      if (!plan) {
+        return createCorsResponse(
+          { error: 'Failed to create subscription', message: `Plan not found: ${planSlug}` },
+          404,
+          req,
+        );
+      }
+      if (!plan.is_active || !plan.is_visible) {
+        return createCorsResponse(
+          { error: 'Failed to create subscription', message: `Plan is not available: ${planSlug}` },
+          400,
+          req,
+        );
+      }
+
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const { isTrialing, trialEndDate, currentPeriodEnd } = resolveTrialPeriod(
+        plan,
+        startTrial,
+        billingCycle,
+        now,
+      );
+      const amount = planAmount(plan, billingCycle);
+
+      const { data: subscription, error: insertError } = await admin
+        .from('tenant_subscriptions')
+        .insert({
+          tenant_id: tenantId,
+          plan_id: plan.id,
+          status: isTrialing ? 'trialing' : 'active',
+          billing_cycle: billingCycle,
+          billing_interval: 1,
+          start_date: nowIso,
+          current_period_start: nowIso,
+          current_period_end: currentPeriodEnd.toISOString(),
+          is_trialing: isTrialing,
+          trial_start_date: isTrialing ? nowIso : null,
+          trial_end_date: isTrialing && trialEndDate ? trialEndDate.toISOString() : null,
+          amount: amount.toFixed(2),
+          currency: 'USD',
+          discount_amount: '0.00',
+          discount_percent: 0,
+          is_free: false,
+          custom_pricing: false,
+          usage_based_billing: false,
+          created_at: nowIso,
+          updated_at: nowIso,
+        })
+        .select('*')
+        .single();
+
+      if (insertError) {
+        console.error('Error creating subscription:', insertError);
+        return createCorsResponse(
+          { error: 'Failed to create subscription', message: insertError.message },
+          500,
+          req,
+        );
+      }
+
+      const { error: tenantError } = await admin
+        .from('tenants')
+        .update({
+          plan: planSlug,
+          subscription: subscription.status,
+          billing_status: isTrialing ? 'trialing' : 'pending',
+          updated_at: nowIso,
+        })
+        .eq('id', tenantId);
+      if (tenantError) console.error('Error updating tenant after create:', tenantError);
+
+      await admin.from('subscription_events').insert({
+        tenant_id: tenantId,
+        subscription_id: subscription.id,
+        event_type: isTrialing ? 'trial_started' : 'created',
+        user_id: user.id,
+        to_plan: planSlug,
+        data: {
+          plan: planSlug,
+          billingCycle,
+          amount,
+          trialDays: plan.trial_days,
+        },
+        created_at: nowIso,
+      });
+
+      await admin.from('subscription_notifications').insert({
+        tenant_id: tenantId,
+        user_id: user.id,
+        type: isTrialing ? 'trial_started' : 'subscription_created',
+        priority: 'normal',
+        title: isTrialing ? 'Trial Started!' : 'Subscription Activated',
+        message: isTrialing
+          ? `Your ${plan.trial_days}-day trial of the ${plan.name} plan has started. Explore all features!`
+          : `Your ${plan.name} subscription is now active. Welcome aboard!`,
+        action_url: '/settings/subscription',
+        action_text: 'View Subscription',
+        channels: ['in_app', 'email'],
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+
+      return createCorsResponse(
+        { subscription, message: 'Subscription created successfully' },
+        201,
+        req,
+      );
+    }
+
+    // ========================================================================
+    // POST /subscriptions/upgrade - Move the tenant to a different plan
+    //
+    // PROD-014: Express-only. Distinct from change-plan above, which takes a
+    // plan id and creates a subscription when there is none; this takes the
+    // SLUG the frontend sends and requires an existing subscription, matching
+    // SubscriptionService.changeSubscription.
+    // ========================================================================
+    if (req.method === 'POST' && secondSegment === 'upgrade' && !thirdSegment) {
+      const body = await req.json().catch(() => ({}));
+      const newPlanSlug = body.newPlanSlug || body.new_plan_slug;
+      const requestedCycle = body.billingCycle || body.billing_cycle;
+      const immediate = body.immediate !== false;
+
+      if (!newPlanSlug) {
+        return createCorsResponse({ error: 'Missing required field: newPlanSlug' }, 400, req);
+      }
+
+      // Express refuses a scheduled change rather than pretending to book one.
+      if (!immediate) {
+        return createCorsResponse(
+          {
+            error: 'Failed to upgrade subscription',
+            message: 'Scheduled plan changes not yet implemented',
+          },
+          501,
+          req,
+        );
+      }
+
+      const { data: currentSubscription, error: currentError } = await admin
+        .from('tenant_subscriptions')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .in('status', ['active', 'trialing', 'past_due'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (currentError) {
+        console.error('Error loading subscription to upgrade:', currentError);
+        return createCorsResponse(
+          { error: 'Failed to upgrade subscription', message: currentError.message },
+          500,
+          req,
+        );
+      }
+      if (!currentSubscription) {
+        return createCorsResponse(
+          { error: 'Failed to upgrade subscription', message: 'No active subscription found' },
+          404,
+          req,
+        );
+      }
+
+      const { data: newPlan } = await admin
+        .from('subscription_plans')
+        .select('*')
+        .eq('slug', newPlanSlug)
+        .maybeSingle();
+
+      if (!newPlan) {
+        return createCorsResponse(
+          {
+            error: 'Failed to upgrade subscription',
+            message: `Plan not found: ${newPlanSlug}`,
+          },
+          404,
+          req,
+        );
+      }
+
+      const { data: currentPlan } = await admin
+        .from('subscription_plans')
+        .select('slug')
+        .eq('id', currentSubscription.plan_id)
+        .maybeSingle();
+
+      const newBillingCycle = requestedCycle || currentSubscription.billing_cycle;
+      const newAmount = planAmount(newPlan, newBillingCycle);
+      const now = new Date();
+      const nowIso = now.toISOString();
+
+      const { data: subscription, error: updateError } = await admin
+        .from('tenant_subscriptions')
+        .update({
+          plan_id: newPlan.id,
+          billing_cycle: newBillingCycle,
+          amount: newAmount.toFixed(2),
+          updated_at: nowIso,
+        })
+        .eq('id', currentSubscription.id)
+        .eq('tenant_id', tenantId)
+        .select('*')
+        .single();
+
+      if (updateError) {
+        console.error('Error upgrading subscription:', updateError);
+        return createCorsResponse(
+          { error: 'Failed to upgrade subscription', message: updateError.message },
+          500,
+          req,
+        );
+      }
+
+      const { error: tenantError } = await admin
+        .from('tenants')
+        .update({ plan: newPlanSlug, updated_at: nowIso })
+        .eq('id', tenantId);
+      if (tenantError) console.error('Error updating tenant after upgrade:', tenantError);
+
+      // A subscription with no recorded amount would otherwise compare NaN and
+      // read as a downgrade; the shared helper treats absent as zero.
+      const isUpgrade = isUpgradeAmount(newAmount, currentSubscription.amount);
+
+      await admin.from('subscription_events').insert({
+        tenant_id: tenantId,
+        subscription_id: currentSubscription.id,
+        event_type: isUpgrade ? 'upgraded' : 'downgraded',
+        user_id: user.id,
+        from_plan: currentPlan?.slug ?? null,
+        to_plan: newPlanSlug,
+        data: {
+          fromAmount: currentSubscription.amount,
+          toAmount: newAmount,
+          billingCycle: newBillingCycle,
+        },
+        created_at: nowIso,
+      });
+
+      await admin.from('subscription_notifications').insert({
+        tenant_id: tenantId,
+        user_id: user.id,
+        type: isUpgrade ? 'plan_upgraded' : 'plan_downgraded',
+        priority: 'normal',
+        title: isUpgrade ? 'Plan Upgraded!' : 'Plan Changed',
+        message: `Your subscription has been ${isUpgrade ? 'upgraded' : 'changed'} to the ${newPlan.name} plan.`,
+        action_url: '/settings/subscription',
+        action_text: 'View Details',
+        channels: ['in_app', 'email'],
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+
+      return createCorsResponse(
+        { subscription, message: 'Subscription updated successfully' },
+        200,
+        req,
+      );
+    }
+
+    // ========================================================================
+    // POST /subscriptions/cancel - Cancel the tenant's subscription
+    //
+    // PROD-014: SubscriptionSettings.tsx posts here, not to :id/cancel, and no
+    // edge function answered the path — so in production the Cancel button 404'd
+    // and the subscription stayed active. The tenant row update, the
+    // cancellation event and the acknowledgement email all come from
+    // SubscriptionService.cancelSubscription; the email body is shared with the
+    // Node copy via _shared/cancellation-email.ts (LEGAL-011 wants both
+    // backends to say the same thing).
+    // ========================================================================
+    if (req.method === 'POST' && secondSegment === 'cancel' && !thirdSegment) {
+      const body = await req.json().catch(() => ({}));
+      const immediate = body.immediate === true;
+
+      const { data: subscription, error: fetchError } = await admin
+        .from('tenant_subscriptions')
+        .select('*, plan:subscription_plans(*)')
+        .eq('tenant_id', tenantId)
+        .in('status', ['active', 'trialing', 'past_due'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error loading subscription to cancel:', fetchError);
+        return createCorsResponse(
+          { error: 'Failed to cancel subscription', message: fetchError.message },
+          500,
+          req,
+        );
+      }
+      if (!subscription) {
+        return createCorsResponse(
+          { error: 'Failed to cancel subscription', message: 'No active subscription found' },
+          404,
+          req,
+        );
+      }
+
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const subscriptionUpdate: Record<string, unknown> = {
+        canceled_at: nowIso,
+        updated_at: nowIso,
+      };
+      if (immediate) {
+        subscriptionUpdate.status = 'canceled';
+        subscriptionUpdate.ended_at = nowIso;
+      } else {
+        subscriptionUpdate.cancel_at = subscription.current_period_end;
+      }
+
+      const { error: updateError } = await admin
+        .from('tenant_subscriptions')
+        .update(subscriptionUpdate)
+        .eq('id', subscription.id)
+        .eq('tenant_id', tenantId);
+
+      if (updateError) {
+        console.error('Error canceling subscription:', updateError);
+        return createCorsResponse(
+          { error: 'Failed to cancel subscription', message: updateError.message },
+          500,
+          req,
+        );
+      }
+
+      // Express only touches the tenant row on an immediate cancellation; an
+      // end-of-period cancellation leaves the tenant active until it lapses.
+      if (immediate) {
+        const { error: tenantError } = await admin
+          .from('tenants')
+          .update({
+            subscription: 'canceled',
+            billing_status: 'canceled',
+            is_active: false,
+            updated_at: nowIso,
+          })
+          .eq('id', tenantId);
+        if (tenantError) console.error('Error deactivating tenant on cancel:', tenantError);
+      }
+
+      const effectiveDate = immediate
+        ? now
+        : subscription.current_period_end
+          ? new Date(subscription.current_period_end)
+          : now;
+
+      // Resolve the recipient before writing the event, so the event records
+      // what actually happened rather than what was intended.
+      let confirmationSent = false;
+      let confirmationError: string | undefined;
+      let recipientEmail: string | undefined;
+      let tenantName = 'your organization';
+
+      const { data: tenantRow } = await admin
+        .from('tenants')
+        .select('name')
+        .eq('id', tenantId)
+        .maybeSingle();
+      if (tenantRow?.name) tenantName = tenantRow.name;
+
+      const { data: adminUser } = await admin
+        .from('users')
+        .select('email')
+        .eq('tenant_id', tenantId)
+        .not('email', 'is', null)
+        .limit(1)
+        .maybeSingle();
+      if (adminUser?.email) recipientEmail = adminUser.email;
+
+      if (recipientEmail) {
+        try {
+          const { subject, html, text } = buildCancellationEmail({
+            recipientEmail,
+            tenantName,
+            planName: subscription.plan?.name,
+            immediate,
+            effectiveDate,
+          });
+          await sendEmail({
+            to: recipientEmail,
+            from: Deno.env.get('DEFAULT_FROM_EMAIL') || 'noreply@printyx.net',
+            subject,
+            html,
+            text,
+          });
+          confirmationSent = true;
+        } catch (err) {
+          // A cancellation that succeeded must not report failure because the
+          // mail server was down — but the miss is recorded, not swallowed.
+          confirmationError = err instanceof Error ? err.message : String(err);
+          console.error('Cancellation confirmation email failed:', confirmationError);
+        }
+      } else {
+        confirmationError = 'no recipient email found for tenant';
+        console.error(`Cancellation for tenant ${tenantId}: ${confirmationError}`);
+      }
+
+      await admin.from('subscription_events').insert({
+        tenant_id: tenantId,
+        subscription_id: subscription.id,
+        event_type: 'canceled',
+        user_id: user.id,
+        data: {
+          immediate,
+          cancelDate: effectiveDate.toISOString(),
+          effectiveDate: effectiveDate.toISOString(),
+          mode: immediate ? 'immediate' : 'end_of_period',
+          canceledAt: nowIso,
+          planId: subscription.plan_id,
+          confirmationSent,
+          confirmationRecipient: recipientEmail ?? null,
+          confirmationError: confirmationError ?? null,
+        },
+        created_at: nowIso,
+      });
+
+      // In-app copy of the same confirmation, so it does not depend on email
+      // delivery succeeding.
+      await admin.from('subscription_notifications').insert({
+        tenant_id: tenantId,
+        user_id: user.id,
+        type: 'subscription_canceled',
+        priority: 'high',
+        title: 'Subscription Canceled',
+        message: immediate
+          ? `Your subscription was canceled immediately and access ended on ${effectiveDate.toLocaleDateString()}. You will not be charged again.`
+          : `Your subscription is canceled and will not renew. You keep access until ${effectiveDate.toLocaleDateString()}. You will not be charged again.`,
+        action_url: '/settings/subscription',
+        action_text: 'Reactivate',
+        channels: ['in_app', 'email'],
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+
+      return createCorsResponse(
+        {
+          message: immediate
+            ? 'Subscription canceled immediately'
+            : 'Subscription will be canceled at the end of the current period',
+        },
+        200,
+        req,
+      );
+    }
+
+    // ========================================================================
+    // POST /subscriptions/convert-trial - Turn a trial into a paid subscription
+    //
+    // PROD-014: Express-only, so in production a trialing tenant could not
+    // convert. The renewal date comes from nextPeriodEnd() in
+    // _shared/subscription-status.ts, which the Node service also calls — a
+    // customer whose renewal lands on a different day depending on which
+    // backend answered is a billing dispute.
+    // ========================================================================
+    if (req.method === 'POST' && secondSegment === 'convert-trial' && !thirdSegment) {
+      const { data: subscription, error: fetchError } = await admin
+        .from('tenant_subscriptions')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'trialing')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error loading trial subscription:', fetchError);
+        return createCorsResponse(
+          { error: 'Failed to convert trial', message: fetchError.message },
+          500,
+          req,
+        );
+      }
+      if (!subscription) {
+        return createCorsResponse(
+          { error: 'Failed to convert trial', message: 'No trial subscription found' },
+          404,
+          req,
+        );
+      }
+
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const newPeriodEnd = nextPeriodEnd(now, subscription.billing_cycle);
+
+      const { data: updatedSubscription, error: updateError } = await admin
+        .from('tenant_subscriptions')
+        .update({
+          status: 'active',
+          is_trialing: false,
+          current_period_start: nowIso,
+          current_period_end: newPeriodEnd.toISOString(),
+          updated_at: nowIso,
+        })
+        .eq('id', subscription.id)
+        .eq('tenant_id', tenantId)
+        .select('*')
+        .single();
+
+      if (updateError) {
+        console.error('Error converting trial:', updateError);
+        return createCorsResponse(
+          { error: 'Failed to convert trial', message: updateError.message },
+          500,
+          req,
+        );
+      }
+
+      const { error: tenantError } = await admin
+        .from('tenants')
+        .update({ subscription: 'active', billing_status: 'current', updated_at: nowIso })
+        .eq('id', tenantId);
+      if (tenantError) console.error('Error updating tenant after trial conversion:', tenantError);
+
+      await admin.from('subscription_events').insert({
+        tenant_id: tenantId,
+        subscription_id: subscription.id,
+        event_type: 'trial_converted',
+        user_id: user.id,
+        data: {
+          trialEndDate: subscription.trial_end_date,
+          conversionDate: nowIso,
+        },
+        created_at: nowIso,
+      });
+
+      await admin.from('subscription_notifications').insert({
+        tenant_id: tenantId,
+        user_id: user.id,
+        type: 'trial_converted',
+        priority: 'normal',
+        title: 'Trial Converted!',
+        message: 'Your trial has been successfully converted to a paid subscription.',
+        action_url: '/settings/subscription',
+        action_text: 'View Subscription',
+        channels: ['in_app', 'email'],
+        created_at: nowIso,
+        updated_at: nowIso,
+      });
+
+      return createCorsResponse(
+        {
+          subscription: updatedSubscription,
+          message: 'Trial converted to paid subscription successfully',
+        },
+        200,
+        req,
+      );
     }
 
     // ========================================================================

@@ -49,8 +49,21 @@ jobs:
         run: npm run check:migrations
       - name: Nav-target ratchet (AUDIT-014)
         run: npm run check:nav
+      - name: Raw-fetch ratchet (PROD-013)
+        run: npm run check:raw-fetch
+      - name: Duplicate route-registration ratchet
+        run: npm run check:dup-routes
+      - name: Runtime-throwing type errors (hard gate)
+        run: npm run check:throwing-types
+      - name: Duplicate physical-table ratchet
+        run: npm run check:dup-tables
+      - name: Phantom PostgREST column ratchet (COP-M01)
+        run: npm run check:phantom-cols
       - name: Edge path-normalization ratchet (EDGE-002e)
         run: npm run check:edge-paths
+
+      - name: Edge path-coverage ratchet (PROD-014)
+        run: npm run check:edge-coverage
       - name: Proxy-override parity (PA-019)
         run: npm run check:proxy-overrides
       - name: Telemetry consent gate (LEGAL-001)

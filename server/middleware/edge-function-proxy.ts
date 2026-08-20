@@ -304,6 +304,51 @@ export function registerEdgeFunctionProxy(app: any) {
     // it was rewritten to /api/search to match the canonical edge function.
     '/api/search': 'search',
 
+    // COP-I05 later pointed the command palette back at /api/universal-search,
+    // which no edge function served — global search 404'd in production. The
+    // universal-search function is the prod implementation; this entry makes dev
+    // exercise it too. server/routes-universal-search.ts stays as the network-
+    // error fallback.
+    '/api/universal-search': 'universal-search',
+
+    // PROD-014: white-label had no edge function, so WhiteLabelDashboard could
+    // neither load nor save branding in production. Dir name matches the URL
+    // segment, so a plain entry is enough — no server.ts override needed.
+    '/api/white-label': 'white-label',
+
+    // PROD-013: neither domain had an edge function. /api/accessories is the
+    // accessory<->model compatibility join behind the EnhancedProductAccessories
+    // dialog (the accessories themselves live in product-accessories);
+    // /api/contract-tiered-rates backs the MeterBilling rate table. Dir names
+    // match the URL segments, so plain entries are enough.
+    '/api/accessories': 'accessories',
+    '/api/contract-tiered-rates': 'contract-tiered-rates',
+
+    // PROD-013: /api/documents (server/routes-documents.ts) had no edge
+    // function, so DocumentBuilder could not list, create or export agreements
+    // in production. NOTE this forwards the WHOLE prefix, which also covers the
+    // /generate, /batch-generate, /generated, /upload, /uploads and /ai-extract
+    // paths in routes-document-automation.ts — those have ZERO callers anywhere
+    // in client/src (checked), so nothing regresses, but a new caller for one of
+    // them needs a handler in the edge function, not just the Express route.
+    '/api/documents': 'documents',
+
+    // PROD-011: renewal-autoquote had no edge function, so the whole renewal
+    // dashboard 404'd in production. Dir name matches the URL segment.
+    '/api/renewal-autoquote': 'renewal-autoquote',
+
+    // PROD-012: voice-agent had no edge function, so the after-hours intake
+    // surface 404'd in production. Dir name matches the URL segment.
+    '/api/voice-agent': 'voice-agent',
+
+    // PROD-012: voice-ticket-close had no edge function, so the field-tech voice
+    // close flow 404'd in production. Dir name matches the URL segment.
+    '/api/voice-ticket-close': 'voice-ticket-close',
+
+    // PROD-012: email-autopilot had no edge function, so the rep draft-review
+    // surface 404'd in production. Dir name matches the URL segment.
+    '/api/email-autopilot': 'email-autopilot',
+
     // AUDIT-015: ai-search. REQUIRED, not defensive — without this entry dev 404s.
     //
     // Nothing in Express serves /api/ai-search/*. The legacy router
@@ -429,6 +474,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // CRMX-016: public Calendly-style booking pages + authenticated admin CRUD.
     '/api/public/booking': { fn: 'public-booking', pathPrefix: '/booking' },
     '/api/booking-pages': 'booking-pages',
+
+    // AI-001: /api/ai/gpt5/* → ai-gpt5 fn. Only the gpt5 sub-path is proxied;
+    // the rest of /api/ai (ai-routes-simple) stays on Express, which is correct
+    // because nothing in the frontend calls it. pathPrefix re-adds the /gpt5
+    // segment the mount strips, so the handler's normalizePath(..., 'gpt5')
+    // sees the same URL it sees in production.
+    '/api/ai/gpt5': { fn: 'ai-gpt5', pathPrefix: '/gpt5' },
 
     // EDGE-005c: phone-in-tickets. The search-companies/search-contacts/
     // equipment sub-routes the PhoneInTicketCreator calls were ported into the

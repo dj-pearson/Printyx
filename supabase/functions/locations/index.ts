@@ -78,11 +78,14 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Location not found' }, 404, req);
       }
 
+      // COP-M01: users has primary_location_id, not location_id, so this
+      // counted nobody (42703 -> undefined -> `|| 0`) and the delete guard below
+      // never saw the users it was meant to protect.
       // Get user count at location
       const { data: users } = await admin
         .from('users')
         .select('id')
-        .eq('location_id', locationId)
+        .eq('primary_location_id', locationId)
         .eq('tenant_id', tenantId);
 
       return createCorsResponse({ ...location, userCount: users?.length || 0 }, 200, req);
@@ -185,7 +188,7 @@ export default async function handler(req: Request) {
       const { data: users } = await admin
         .from('users')
         .select('id')
-        .eq('location_id', locationId)
+        .eq('primary_location_id', locationId)
         .eq('tenant_id', tenantId)
         .limit(1);
 

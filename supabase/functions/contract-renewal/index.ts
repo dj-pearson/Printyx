@@ -2,6 +2,7 @@
 // Handles contract renewal management and tracking
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { toNumber } from '../_shared/quote-math.ts';
 import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
@@ -101,24 +102,25 @@ export default async function handler(req: Request) {
       const yearStart = new Date(year, 0, 1).toISOString();
       const yearEnd = new Date(year, 11, 31, 23, 59, 59).toISOString();
 
+      // COP-M01: monthly_value and renewal_status are not columns. The
+      // contracts table is minimal — monthly_base carries the recurring amount
+      // and `status` carries the lifecycle — so this select 42703'd and every
+      // figure below came out zero through `|| 0`.
       const { data: renewals } = await admin
         .from('contracts')
-        .select('id, monthly_value, renewal_status')
+        .select('id, monthly_base, status')
         .eq('tenant_id', tenantId)
         .gte('end_date', yearStart)
         .lte('end_date', yearEnd);
 
-      const renewed = renewals?.filter((c: any) => c.renewal_status === 'renewed') || [];
-      const churned = renewals?.filter((c: any) => c.renewal_status === 'churned') || [];
+      const renewed = renewals?.filter((c: any) => c.status === 'renewed') || [];
+      const churned = renewals?.filter((c: any) => c.status === 'churned') || [];
 
-      const renewedValue = renewed.reduce(
-        (sum: number, c: any) => sum + (c.monthly_value || 0) * 12,
-        0,
-      );
-      const churnedValue = churned.reduce(
-        (sum: number, c: any) => sum + (c.monthly_value || 0) * 12,
-        0,
-      );
+      // monthly_base is numeric, which PostgREST returns as a string.
+      const annualized = (rows: any[]) =>
+        rows.reduce((sum: number, c: any) => sum + toNumber(c.monthly_base) * 12, 0);
+      const renewedValue = annualized(renewed);
+      const churnedValue = annualized(churned);
 
       return createCorsResponse(
         {
@@ -164,17 +166,20 @@ export default async function handler(req: Request) {
       // Create new contract
       const { data: newContract, error } = await admin
         .from('contracts')
+        // COP-M01: contract_type, previous_contract_id and created_by are not
+        // columns on `contracts`, and the recurring amount is monthly_base.
+        // Copying the rate columns keeps the renewal on the same pricing, which
+        // is what a renewal means here.
         .insert({
           tenant_id: tenantId,
           customer_id: currentContract.customer_id,
           contract_number: `${currentContract.contract_number}-R`,
-          contract_type: currentContract.contract_type,
           start_date: newStartDate.toISOString(),
           end_date: newEndDate.toISOString(),
-          monthly_value: body.monthlyValue || currentContract.monthly_value,
+          monthly_base: body.monthlyValue ?? currentContract.monthly_base,
+          black_rate: currentContract.black_rate,
+          color_rate: currentContract.color_rate,
           status: 'active',
-          previous_contract_id: currentContract.id,
-          created_by: user.id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -182,20 +187,38 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
-        return createCorsResponse({ error: 'Failed to create renewal' }, 500, req);
+        console.error('Error creating renewal contract:', error);
+        return createCorsResponse(
+          { error: 'Failed to create renewal', details: error.message },
+          500,
+          req,
+        );
       }
 
-      // Update old contract
-      await admin
+      // Update old contract. `status` is the only lifecycle column there is;
+      // renewed_contract_id has no home, so the link between the two contracts
+      // is NOT persisted and the caller is told so rather than left to assume.
+      const { error: closeError } = await admin
         .from('contracts')
-        .update({
-          renewal_status: 'renewed',
-          renewed_contract_id: newContract.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', targetContractId);
+        .update({ status: 'renewed', updated_at: new Date().toISOString() })
+        .eq('id', targetContractId)
+        .eq('tenant_id', tenantId);
 
-      return createCorsResponse({ previousContract: currentContract, newContract }, 201, req);
+      if (closeError) {
+        console.error('Error closing the renewed contract:', closeError);
+      }
+
+      return createCorsResponse(
+        {
+          previousContract: currentContract,
+          newContract,
+          unpersisted: [
+            'renewedContractId: contracts has no column linking a renewal to its predecessor',
+          ],
+        },
+        201,
+        req,
+      );
     }
 
     // POST /contract-renewal/:contractId/mark-churned - Mark as churned
@@ -204,11 +227,10 @@ export default async function handler(req: Request) {
 
       const { data: contract, error } = await admin
         .from('contracts')
+        // Only `status` exists; churn_reason, churn_notes and churned_at have no
+        // columns, so they are reported back rather than silently dropped.
         .update({
-          renewal_status: 'churned',
-          churn_reason: body.reason,
-          churn_notes: body.notes,
-          churned_at: new Date().toISOString(),
+          status: 'churned',
           updated_at: new Date().toISOString(),
         })
         .eq('id', contractId)
@@ -217,10 +239,19 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
-        return createCorsResponse({ error: 'Failed to mark as churned' }, 500, req);
+        console.error('Error marking contract churned:', error);
+        return createCorsResponse(
+          { error: 'Failed to mark as churned', details: error.message },
+          500,
+          req,
+        );
       }
 
-      return createCorsResponse(contract, 200, req);
+      const unpersisted: string[] = [];
+      if (body.reason) unpersisted.push('reason: contracts has no churn_reason column');
+      if (body.notes) unpersisted.push('notes: contracts has no churn_notes column');
+
+      return createCorsResponse({ ...contract, unpersisted }, 200, req);
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
