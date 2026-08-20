@@ -470,6 +470,14 @@ export function registerEdgeFunctionProxy(app: any) {
     // left and is deleted.
     '/api/chart-of-accounts': 'chart-of-accounts',
 
+    // PROD-008: contracts. Dev ran two handlers in routes-workflow-mobile.ts
+    // returning a bare array of camelCase rows; prod ran the edge fn returning
+    // { data, total, page, limit } of snake_case rows. Two of the four consuming
+    // pages called .map on that envelope, so they threw on load in production.
+    // The edge fn is the superset (it also serves /:id, tiered-rates, PATCH and
+    // DELETE), so the Express pair is retired and this makes dev match prod.
+    '/api/contracts': 'contracts',
+
     // EDGE-005a: accounts-payable / accounts-receivable. The frontend calls the
     // FLAT /api/accounts-{payable,receivable}[/:id] shape (list/create at root,
     // get/update/delete on /:id). The edge handlers were rewritten to serve that

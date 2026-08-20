@@ -26,7 +26,16 @@ const read = (p: string) => readFileSync(join(repo, p), 'utf-8');
 
 const PROXY = read('server/middleware/edge-function-proxy.ts');
 const REGISTRY = read('server/routes-registry.ts');
-const PREFIXES = ['/api/journal-entries', '/api/chart-of-accounts'];
+const PREFIXES = ['/api/journal-entries', '/api/chart-of-accounts', '/api/contracts'];
+
+// One Express handler is knowingly left under a proxied prefix. It has zero
+// callers anywhere in the repo, it has been a 404 in production since it was
+// written (production never reaches Express), and porting it needs the invoice
+// insert and the meter-reading update to be atomic - which PostgREST cannot
+// express. Listed rather than silently allowed, so it stays visible.
+const KNOWN_UNREACHABLE = [
+  'POST /api/contracts/:contractId/process-meter-billing (server/routes-workflow-mobile.ts)',
+];
 
 function serverFiles(dir = join(repo, 'server'), out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -71,12 +80,19 @@ describe('financial convergence (PROD-008)', () => {
     expect(proxyAt).toBeLessThan(billingAt);
   });
 
-  it('no Express file registers a handler under either prefix', () => {
+  it('no Express file registers a handler under a proxied prefix, bar the known one', () => {
     expect(
-      shadowedRoutes(),
+      shadowedRoutes().filter((r) => !KNOWN_UNREACHABLE.includes(r)),
       'These are shadowed by the proxy and never run. Implement them in the ' +
         'matching supabase/functions/ directory instead.',
     ).toEqual([]);
+  });
+
+  it('the one knowingly-unreachable handler is still exactly one', () => {
+    // If this fails because the entry disappeared, the handler was deleted or
+    // ported - drop it from the list. If it fails because there are more, a new
+    // handler was added under a proxied prefix and is dead on arrival.
+    expect(shadowedRoutes()).toEqual(KNOWN_UNREACHABLE);
   });
 
   it('routes-financial.ts is gone, along with its registration', () => {

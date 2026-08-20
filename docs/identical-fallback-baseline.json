@@ -20,18 +20,10 @@
     "client/src/pages/EquipmentLifecycleManagement.tsx:record.companyName || record.companyName",
     "client/src/pages/inventory.tsx:item.createdAt || item.createdAt",
     "client/src/pages/inventory.tsx:item.updatedAt || item.updatedAt",
-    "client/src/pages/Invoices.tsx:c.contractNumber || c.contractNumber",
-    "client/src/pages/Invoices.tsx:c.customerId || c.customerId",
-    "client/src/pages/Invoices.tsx:c.startDate || c.startDate",
-    "client/src/pages/Invoices.tsx:c.endDate || c.endDate",
-    "client/src/pages/Invoices.tsx:c.createdAt || c.createdAt",
-    "client/src/pages/Invoices.tsx:c.updatedAt || c.updatedAt",
     "client/src/pages/Invoices.tsx:cust.companyName || cust.companyName",
     "client/src/pages/Invoices.tsx:cust.contactId || cust.contactId",
     "client/src/pages/Invoices.tsx:cust.createdAt || cust.createdAt",
     "client/src/pages/Invoices.tsx:cust.updatedAt || cust.updatedAt",
-    "client/src/pages/MeterReadings.tsx:contract.contractNumber || contract.contractNumber",
-    "client/src/pages/MeterReadings.tsx:contract.customerId || contract.customerId",
     "client/src/pages/ProductModels.tsx:model.createdAt || model.createdAt",
     "client/src/pages/ProductModels.tsx:model.updatedAt || model.updatedAt"
   ]

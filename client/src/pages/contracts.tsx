@@ -42,7 +42,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'wouter';
 import { type Contract } from '@shared/schema';
@@ -63,17 +63,22 @@ export default function Contracts() {
     queryKey: ['/api/contracts'],
     queryFn: async () => {
       const response = await apiRequest('/api/contracts', 'GET');
-      return (response || []).map((contract: any) => ({
+      // extractRecords, not `(response || []).map`: the contracts edge function
+      // returns { data, total, page, limit }, and .map on that object is a
+      // TypeError that took the whole page down in production.
+      //
+      // snake_case first, because that is what the edge function returns -
+      // reading only the camelCase key left every one of these blank against
+      // live data.
+      return extractRecords(response).map((contract: any) => ({
         ...contract,
         id: contract.id,
-        contractNumber: contract.contractNumber || '',
-        customerId: contract.customerId || '',
-        quoteId: contract.quoteId || null,
-        startDate: contract.startDate || '',
-        endDate: contract.endDate || '',
-        signedDate: contract.signed_date || contract.signedDate || null,
-        createdAt: contract.createdAt || '',
-        updatedAt: contract.updatedAt || '',
+        contractNumber: contract.contract_number || contract.contractNumber || '',
+        customerId: contract.customer_id || contract.customerId || '',
+        startDate: contract.start_date || contract.startDate || '',
+        endDate: contract.end_date || contract.endDate || '',
+        createdAt: contract.created_at || contract.createdAt || '',
+        updatedAt: contract.updated_at || contract.updatedAt || '',
       }));
     },
   });
