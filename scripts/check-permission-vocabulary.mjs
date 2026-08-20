@@ -39,6 +39,7 @@ const repo = join(fileURLToPath(import.meta.url), '..', '..');
 const baselinePath = join(repo, 'docs', 'permission-vocabulary-baseline.json');
 const update = process.argv.includes('--update-baseline');
 const list = process.argv.includes('--list');
+const triage = process.argv.includes('--triage');
 
 const HELPER = 'server/middleware/rbac-route-helper.ts';
 const SEEDER = 'server/database-updater/seeders/rbac-seeder.ts';
@@ -111,6 +112,60 @@ for (const file of walk(join(repo, 'server'))) {
 findings.sort((a, b) => a.route.localeCompare(b.route) || a.file.localeCompare(b.file));
 
 const key = (f) => `${f.route} (${f.file})`;
+
+/**
+ * --triage: for each unsatisfiable gate, is the route reachable and does the
+ * frontend call it? The answer decides how urgent the fix is, and it is not
+ * what you would guess. See the block printed at the end.
+ */
+if (triage) {
+  const proxySrc = readFileSync(join(repo, 'server/middleware/edge-function-proxy.ts'), 'utf8');
+  const block = proxySrc.slice(
+    proxySrc.indexOf('const crmProxies'),
+    proxySrc.indexOf('for (const [prefix, functionName]'),
+  );
+  const proxied = [...block.matchAll(/'(\/api\/[^']+)':/g)].map((m) => m[1]);
+
+  function walkClient(dir, out = []) {
+    for (const entry of readdirSync(dir)) {
+      if (entry === 'node_modules') continue;
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walkClient(full, out);
+      else if (/\.(tsx?|jsx?)$/.test(entry)) out.push(full);
+    }
+    return out;
+  }
+  let frontend = '';
+  for (const f of walkClient(join(repo, 'client', 'src'))) frontend += readFileSync(f, 'utf8');
+
+  const rows = findings.map((f) => {
+    const path = f.route.split(' ')[1];
+    const isProxied = proxied.some((p) => path === p || path.startsWith(p + '/'));
+    // Strip :params and look for the static prefix in the client bundle.
+    const probe =
+      '/' +
+      path
+        .replace(/:[A-Za-z0-9_]+/g, '')
+        .split('/')
+        .filter(Boolean)
+        .join('/');
+    return { ...f, proxied: isProxied, called: frontend.includes(probe) };
+  });
+
+  const live = rows.filter((r) => !r.proxied);
+  const liveCalled = live.filter((r) => r.called);
+  const edgeDirs = new Set(readdirSync(join(repo, 'supabase', 'functions')));
+  const withEdgeFn = liveCalled.filter((r) => edgeDirs.has(r.route.split(' ')[1].split('/')[2]));
+
+  console.log(`unsatisfiable gates: ${rows.length}`);
+  console.log(`  shadowed by the proxy (never run either way): ${rows.length - live.length}`);
+  console.log(`  live on Express: ${live.length}`);
+  console.log(`    ...and called by the frontend: ${liveCalled.length}`);
+  console.log(`    ...of which the prefix ALSO has an edge function: ${withEdgeFn.length}`);
+  console.log('');
+  for (const r of liveCalled) console.log(`  ${r.route}  needs ${r.required.join(' OR ')}`);
+  process.exit(0);
+}
 
 if (list) {
   for (const f of findings) {
