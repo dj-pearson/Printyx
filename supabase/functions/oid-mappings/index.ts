@@ -38,6 +38,9 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
+    // tenantId gates access only. oid_mappings is a SHARED reference catalogue
+    // with no tenant_id column, so nothing below is tenant-scoped; is_custom is
+    // what separates user-authored rows from the shipped presets.
     // Use service_role client for database operations
     const admin = createSupabaseServiceClient();
 
@@ -51,16 +54,27 @@ export default async function handler(req: Request) {
 
     // GET /oid-mappings - List all OID mappings
     if (req.method === 'GET' && !mappingId) {
-      const category = url.searchParams.get('category');
       const manufacturer = url.searchParams.get('manufacturer');
       const search = url.searchParams.get('search');
 
-      let query = admin.from('oid_mappings').select('*').order('name', { ascending: true });
+      // oid_mappings is a per-manufacturer BUNDLE: one row carries a whole
+      // `oids` jsonb map ({ tonerBlack: '1.3.6.1...', totalCounter: '...' }).
+      // This handler was written for a flat one-row-per-OID table with
+      // name/oid/category/unit/data_type columns, none of which exist, so
+      // ordering, filtering and searching were all 42703s. OidManagement.tsx
+      // already speaks the real shape (manufacturer/modelSeries/mappingName/
+      // oids/isDefault/isCustom), which is what this now serves.
+      let query = admin.from('oid_mappings').select('*').order('mapping_name', { ascending: true });
 
-      // OID mappings may be global or tenant-specific
-      if (category) query = query.eq('category', category);
       if (manufacturer) query = query.eq('manufacturer', manufacturer);
-      if (search) query = query.or(`name.ilike.%${search}%,oid.ilike.%${search}%`);
+      if (search) {
+        const safe = search.replace(/[,()]/g, ' ').trim();
+        if (safe) {
+          query = query.or(
+            `mapping_name.ilike.%${safe}%,manufacturer.ilike.%${safe}%,model_series.ilike.%${safe}%`,
+          );
+        }
+      }
 
       const { data: mappings, error } = await query;
 
@@ -72,15 +86,22 @@ export default async function handler(req: Request) {
       return createCorsResponse(mappings || [], 200, req);
     }
 
-    // GET /oid-mappings/categories - Get unique categories
+    // GET /oid-mappings/categories - no such axis on this table.
+    //
+    // There is no category column; mappings are grouped by manufacturer and
+    // model_series. This returned [] rather than erroring, which reads as "no
+    // categories exist" instead of "categories are not a thing here".
     if (req.method === 'GET' && mappingId === 'categories') {
-      const { data: categories } = await admin
-        .from('oid_mappings')
-        .select('category')
-        .not('category', 'is', null);
-
-      const uniqueCategories = [...new Set((categories || []).map((c: any) => c.category))];
-      return createCorsResponse(uniqueCategories, 200, req);
+      return createCorsResponse(
+        {
+          error: 'OID mappings are not categorised',
+          code: 'OID_MAPPINGS_HAVE_NO_CATEGORY',
+          details:
+            'oid_mappings groups by manufacturer and model_series. Use /oid-mappings/manufacturers.',
+        },
+        501,
+        req,
+      );
     }
 
     // GET /oid-mappings/manufacturers - Get unique manufacturers
@@ -103,25 +124,26 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'OID parameter required' }, 400, req);
       }
 
-      const { data: mapping, error } = await admin
-        .from('oid_mappings')
-        .select('*')
-        .eq('oid', oid)
-        .single();
+      // There is no `oid` column to match on — each row holds an `oids` jsonb
+      // MAP, so a reverse lookup means finding the row whose map contains this
+      // value. PostgREST cannot express that, so the scan happens here.
+      const { data: allMappings, error } = await admin.from('oid_mappings').select('*');
 
       if (error) {
-        return createCorsResponse(
-          {
-            oid,
-            name: 'Unknown',
-            found: false,
-          },
-          200,
-          req,
-        );
+        return createCorsResponse({ oid, name: 'Unknown', found: false }, 200, req);
       }
 
-      return createCorsResponse({ ...mapping, found: true }, 200, req);
+      for (const mapping of allMappings ?? []) {
+        const oids = (mapping.oids ?? {}) as Record<string, string>;
+        const key = Object.keys(oids).find((k) => oids[k] === oid);
+        if (key) {
+          // `name` is the key inside the bundle that carries this OID, which is
+          // the closest thing this table has to the old flat name column.
+          return createCorsResponse({ ...mapping, name: key, found: true }, 200, req);
+        }
+      }
+
+      return createCorsResponse({ oid, name: 'Unknown', found: false }, 200, req);
     }
 
     // GET /oid-mappings/:id - Get single mapping
@@ -143,17 +165,19 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && !mappingId) {
       const body = await req.json();
 
+      // Every name in the old payload was a phantom except manufacturer and
+      // description. Note created_by: it is an INTEGER user_id column, and this
+      // handler only has a Supabase UUID, so it is left null rather than
+      // stuffed with a value of the wrong type.
       const mappingData = {
-        oid: body.oid,
-        name: body.name,
-        description: body.description,
-        category: body.category,
         manufacturer: body.manufacturer,
-        data_type: body.dataType || body.data_type || 'string',
-        unit: body.unit,
-        is_global: body.isGlobal || body.is_global || false,
-        tenant_id: body.isGlobal ? null : tenantId,
-        created_by: user.id,
+        model_series: body.modelSeries ?? body.model_series ?? null,
+        mapping_name: body.mappingName ?? body.mapping_name ?? body.name,
+        oids: body.oids ?? {},
+        description: body.description ?? null,
+        is_default: body.isDefault ?? body.is_default ?? false,
+        // Anything created through this endpoint is user-authored by definition.
+        is_custom: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -180,22 +204,33 @@ export default async function handler(req: Request) {
     if (req.method === 'PUT' && mappingId && !subResource) {
       const body = await req.json();
 
-      // CR-002: map only editable columns (never id/tenant_id/created_by from the
-      // raw body) and scope the update to the caller's tenant so one tenant cannot
-      // overwrite another tenant's (or a global) mapping by id.
+      // CR-002 intended to stop one tenant overwriting another's mapping by
+      // scoping to tenant_id. oid_mappings HAS NO tenant_id column, so that
+      // filter was a 42703 and the protection it describes never existed — the
+      // update simply always failed. This table is a shared reference catalogue
+      // (manufacturer OID bundles) with an explicit is_custom flag, so the
+      // guard that IS available is refusing to touch the shipped presets.
       const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
-      for (const col of ['oid', 'name', 'description', 'category', 'manufacturer', 'unit']) {
-        if (body[col] !== undefined) updateData[col] = body[col];
-      }
-      if (body.dataType !== undefined || body.data_type !== undefined) {
-        updateData.data_type = body.dataType ?? body.data_type;
+      const editable: Record<string, string> = {
+        manufacturer: 'manufacturer',
+        modelSeries: 'model_series',
+        model_series: 'model_series',
+        mappingName: 'mapping_name',
+        mapping_name: 'mapping_name',
+        oids: 'oids',
+        description: 'description',
+        isDefault: 'is_default',
+        is_default: 'is_default',
+      };
+      for (const [key, col] of Object.entries(editable)) {
+        if (body[key] !== undefined) updateData[col] = body[key];
       }
 
       const { data: mapping, error } = await admin
         .from('oid_mappings')
         .update(updateData)
         .eq('id', mappingId)
-        .eq('tenant_id', tenantId)
+        .eq('is_custom', true)
         .select()
         .single();
 
@@ -209,12 +244,13 @@ export default async function handler(req: Request) {
 
     // DELETE /oid-mappings/:id - Delete OID mapping
     if (req.method === 'DELETE' && mappingId) {
-      // CR-002: scope delete to the caller's tenant.
+      // Same as the update above: there is no tenant_id to scope by, so the
+      // available guard is is_custom — system presets are not deletable.
       const { error } = await admin
         .from('oid_mappings')
         .delete()
         .eq('id', mappingId)
-        .eq('tenant_id', tenantId);
+        .eq('is_custom', true);
 
       if (error) {
         console.error('Error deleting OID mapping:', error);
@@ -234,23 +270,22 @@ export default async function handler(req: Request) {
       }
 
       const mappingsData = mappings.map((m: any) => ({
-        oid: m.oid,
-        name: m.name,
-        description: m.description,
-        category: m.category,
         manufacturer: m.manufacturer,
-        data_type: m.dataType || m.data_type || 'string',
-        unit: m.unit,
-        is_global: m.isGlobal || m.is_global || false,
-        tenant_id: m.isGlobal ? null : tenantId,
-        created_by: user.id,
+        model_series: m.modelSeries ?? m.model_series ?? null,
+        mapping_name: m.mappingName ?? m.mapping_name ?? m.name,
+        oids: m.oids ?? {},
+        description: m.description ?? null,
+        is_default: m.isDefault ?? m.is_default ?? false,
+        is_custom: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }));
 
+      // Plain insert, not upsert: the old onConflict: 'oid' named a column that
+      // does not exist, and there is no unique key on this table to conflict on.
       const { data: inserted, error } = await admin
         .from('oid_mappings')
-        .upsert(mappingsData, { onConflict: 'oid' })
+        .insert(mappingsData)
         .select();
 
       if (error) {

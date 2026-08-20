@@ -1067,9 +1067,12 @@ export default async function handler(req: Request) {
     // GET /admin/settings - Get admin settings
     if (req.method === 'GET' && resource === 'settings') {
       // Get tenant settings
+      // The tenant's free-form config bag is `metadata`; there is no `settings`
+      // column, so both this GET and the PUT below 42703'd outright. The
+      // response key stays `settings` so the admin page's contract is unchanged.
       const { data: tenant, error: tenantError } = await admin
         .from('tenants')
-        .select('id, name, settings, created_at, updated_at')
+        .select('id, name, metadata, created_at, updated_at')
         .eq('id', tenantId)
         .single();
 
@@ -1090,7 +1093,7 @@ export default async function handler(req: Request) {
           tenant: {
             id: tenant.id,
             name: tenant.name,
-            settings: tenant.settings || {},
+            settings: tenant.metadata || {},
             createdAt: tenant.created_at,
             updatedAt: tenant.updated_at,
           },
@@ -1120,15 +1123,15 @@ export default async function handler(req: Request) {
       // Get existing settings for audit log
       const { data: existingTenant } = await admin
         .from('tenants')
-        .select('settings')
+        .select('metadata')
         .eq('id', tenantId)
         .single();
 
       // Update tenant settings
       if (body.tenant) {
         const tenantUpdateData = {
-          settings: {
-            ...(existingTenant?.settings || {}),
+          metadata: {
+            ...(existingTenant?.metadata || {}),
             ...body.tenant.settings,
           },
           updated_at: new Date().toISOString(),

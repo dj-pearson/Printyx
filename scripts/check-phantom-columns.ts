@@ -26,6 +26,13 @@
  *   - column names assembled at runtime, and field maps keyed camel -> snake.
  *   - tables that exist live but are in no Drizzle schema (COP-M00 counted 107
  *     of them, created by db:push). Those are reported as unknown, not failed.
+ *   - a handler that holds a query in a VARIABLE and then runs a second
+ *     .from('other_table') before applying that variable's filters. Attribution
+ *     is positional (see tableFor), so those filters are blamed on the second
+ *     table. Round 15 hit this while adding a lookup to meter-readings; the fix
+ *     was to hoist the lookup above the query it feeds, which is also the
+ *     clearer shape. A non-literal .from() no longer reaches backwards, but an
+ *     interleaved LITERAL one still does.
  *
  * Baseline: docs/phantom-columns-baseline.json. Fix them or record them; the
  * count may not grow.

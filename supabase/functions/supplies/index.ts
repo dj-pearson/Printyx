@@ -82,10 +82,17 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
-      if (category) query = query.eq('category', category);
+      // `supplies` is the price book: the kind is product_type and the code is
+      // product_code. There is no category and no sku, so both of these were
+      // 42703s — the category filter and every search took the list down.
+      if (category) query = query.eq('product_type', category);
       if (search) {
         const safe = search.replace(/[,()]/g, ' ').trim();
-        if (safe) query = query.or(`sku.ilike.%${safe}%,note.ilike.%${safe}%`);
+        if (safe) {
+          query = query.or(
+            `product_code.ilike.%${safe}%,product_name.ilike.%${safe}%,note.ilike.%${safe}%`,
+          );
+        }
       }
 
       let page = 1;
@@ -109,9 +116,24 @@ export default async function handler(req: Request) {
 
       let result = supplies || [];
 
-      // Filter low stock if requested (legacy, non-paginated path)
+      // ?lowStock=true is not answerable from this table: `supplies` is a price
+      // book with free-TEXT inventory / in_stock and no quantity or
+      // reorder_level. The old filter compared undefined <= 10, so it silently
+      // returned an empty list rather than erroring. Left unfiltered instead of
+      // pretending; see the /low-stock branch for the same reason stated to the
+      // caller.
       if (lowStock === 'true') {
-        result = result.filter((s: any) => s.quantity <= (s.reorder_level || 10));
+        return createCorsResponse(
+          {
+            error: 'Low-stock filtering is not available for supplies',
+            code: 'SUPPLIES_HAS_NO_STOCK_COUNTS',
+            details:
+              'supplies is a price-book table: inventory and in_stock are free text, and there ' +
+              'is no quantity or reorder_level column to compare.',
+          },
+          501,
+          req,
+        );
       }
 
       if (paginate) {
@@ -124,20 +146,22 @@ export default async function handler(req: Request) {
       return createCorsResponse(result, 200, req);
     }
 
-    // GET /supplies/low-stock - Get low stock alerts
+    // GET /supplies/low-stock - not answerable from this table.
+    //
+    // Returned { items: [], count: 0 } forever: it compared s.quantity, which is
+    // not a column, against a reorder_level that is not one either. An empty
+    // alert list reads as "nothing is low", which is worse than an error.
     if (req.method === 'GET' && supplyId === 'low-stock') {
-      const { data: supplies } = await admin.from('supplies').select('*').eq('tenant_id', tenantId);
-
-      const lowStockItems = (supplies || []).filter(
-        (s: any) => s.quantity <= (s.reorder_level || 10),
-      );
-
       return createCorsResponse(
         {
-          items: lowStockItems,
-          count: lowStockItems.length,
+          error: 'Low-stock alerts are not available for supplies',
+          code: 'SUPPLIES_HAS_NO_STOCK_COUNTS',
+          details:
+            'supplies is a price-book table (product_code, product_name, product_type, pricing ' +
+            'tiers). inventory and in_stock are free text, and there is no quantity or ' +
+            'reorder_level column. Counted stock belongs in an inventory table.',
         },
-        200,
+        501,
         req,
       );
     }
@@ -146,11 +170,11 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && supplyId === 'categories') {
       const { data: supplies } = await admin
         .from('supplies')
-        .select('category')
+        .select('product_type')
         .eq('tenant_id', tenantId)
-        .not('category', 'is', null);
+        .not('product_type', 'is', null);
 
-      const categories = [...new Set((supplies || []).map((s: any) => s.category))];
+      const categories = [...new Set((supplies || []).map((s: any) => s.product_type))];
       return createCorsResponse(categories, 200, req);
     }
 
@@ -174,20 +198,42 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && !supplyId) {
       const body = await req.json();
 
+      // This payload used to describe a warehouse item — sku, category, quantity,
+      // unit, unit_cost, reorder_level, supplier_id, location,
+      // compatible_equipment, created_by — and NONE of those are columns, so
+      // every create 42703'd. `supplies` is the price book, and Supplies.tsx
+      // already posts exactly that shape (productCode/productName/productType/
+      // inventory/summary/...), so this now maps what the page actually sends.
+      const bool = (v: unknown, fallback: boolean) => (typeof v === 'boolean' ? v : fallback);
       const supplyData = {
         tenant_id: tenantId,
-        note: body.name || body.note,
-        sku: body.sku,
-        description: body.description,
-        category: body.category,
-        quantity: body.quantity || 0,
-        unit: body.unit || 'each',
-        unit_cost: body.unitCost || body.unit_cost || 0,
-        reorder_level: body.reorderLevel || body.reorder_level || 10,
-        supplier_id: body.supplierId || body.supplier_id,
-        location: body.location,
-        compatible_equipment: body.compatibleEquipment || body.compatible_equipment || [],
-        created_by: user.id,
+        product_code: body.productCode || body.product_code || body.sku,
+        product_name: body.productName || body.product_name || body.name,
+        product_type: body.productType || body.product_type || body.category || 'Supplies',
+        dealer_comp: body.dealerComp ?? body.dealer_comp ?? null,
+        // inventory and in_stock are free-text on this table, not counts.
+        inventory: body.inventory ?? null,
+        in_stock: body.inStock ?? body.in_stock ?? null,
+        summary: body.summary ?? body.description ?? null,
+        note: body.note ?? null,
+        ea_notes: body.eaNotes ?? body.ea_notes ?? null,
+        related_products: body.relatedProducts ?? body.related_products ?? null,
+        is_active: bool(body.isActive ?? body.is_active, true),
+        available_for_all: bool(body.availableForAll ?? body.available_for_all, false),
+        repost_edit: bool(body.repostEdit ?? body.repost_edit, false),
+        sales_rep_credit: bool(body.salesRepCredit ?? body.sales_rep_credit, true),
+        funding: bool(body.funding, true),
+        lease: bool(body.lease, false),
+        payment_type: body.paymentType ?? body.payment_type ?? null,
+        new_active: bool(body.newActive ?? body.new_active, false),
+        new_rep_price: body.newRepPrice ?? body.new_rep_price ?? null,
+        upgrade_active: bool(body.upgradeActive ?? body.upgrade_active, false),
+        upgrade_rep_price: body.upgradeRepPrice ?? body.upgrade_rep_price ?? null,
+        lexmark_active: bool(body.lexmarkActive ?? body.lexmark_active, false),
+        lexmark_rep_price: body.lexmarkRepPrice ?? body.lexmark_rep_price ?? null,
+        graphic_active: bool(body.graphicActive ?? body.graphic_active, false),
+        graphic_rep_price: body.graphicRepPrice ?? body.graphic_rep_price ?? null,
+        price_book_id: body.priceBookId ?? body.price_book_id ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -229,53 +275,23 @@ export default async function handler(req: Request) {
       return createCorsResponse(supply, 200, req);
     }
 
-    // POST /supplies/:id/adjust - Adjust supply quantity
+    // POST /supplies/:id/adjust - not answerable from this table.
+    //
+    // It read and wrote `quantity` (not a column) and logged to
+    // supply_adjustments, which is in no Drizzle schema or migration. Both the
+    // read and the write were 42703s, so no adjustment ever applied.
     if (req.method === 'POST' && supplyId && subResource === 'adjust') {
-      const body = await req.json();
-      const { adjustment, reason } = body;
-
-      // Get current supply
-      const { data: currentSupply } = await admin
-        .from('supplies')
-        .select('quantity')
-        .eq('id', supplyId)
-        .eq('tenant_id', tenantId)
-        .single();
-
-      if (!currentSupply) {
-        return createCorsResponse({ error: 'Supply not found' }, 404, req);
-      }
-
-      const newQuantity = (currentSupply.quantity || 0) + adjustment;
-
-      const { data: supply, error } = await admin
-        .from('supplies')
-        .update({
-          quantity: newQuantity,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', supplyId)
-        .eq('tenant_id', tenantId)
-        .select()
-        .single();
-
-      if (error) {
-        return createCorsResponse({ error: 'Failed to adjust supply' }, 500, req);
-      }
-
-      // Log the adjustment
-      await admin.from('supply_adjustments').insert({
-        tenant_id: tenantId,
-        supply_id: supplyId,
-        adjustment,
-        previous_quantity: currentSupply.quantity,
-        new_quantity: newQuantity,
-        reason,
-        adjusted_by: user.id,
-        created_at: new Date().toISOString(),
-      });
-
-      return createCorsResponse(supply, 200, req);
+      return createCorsResponse(
+        {
+          error: 'Stock adjustment is not available for supplies',
+          code: 'SUPPLIES_HAS_NO_STOCK_COUNTS',
+          details:
+            'supplies has no quantity column to adjust, and supply_adjustments exists in no ' +
+            'schema or migration. Counted stock and its audit trail need real tables first.',
+        },
+        501,
+        req,
+      );
     }
 
     // DELETE /supplies/:id - Delete supply

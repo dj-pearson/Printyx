@@ -205,7 +205,9 @@ export default async function handler(req: Request) {
           .select('*')
           .eq('company_id', recordId)
           .eq('tenant_id', tenantId)
-          .order('is_primary', { ascending: false });
+          // The column is is_primary_contact; ordering by is_primary 42703'd, so
+          // the contacts tab on a record came back empty.
+          .order('is_primary_contact', { ascending: false });
 
         if (error) {
           console.error('Error fetching contacts:', error);

@@ -144,15 +144,60 @@ export default async function handler(req: Request) {
     }
 
     // GET /root-admin/security-alerts - Security alerts
+    //
+    // This used to query `activity_reports`, which is the sales-activity rollup
+    // (total_calls, total_emails, meetings_scheduled). It has no `type` column
+    // and nothing security-related, so the filter 42703'd and the dashboard's
+    // alert panel was permanently empty — reading as "no security events",
+    // which is the worst possible way for this particular panel to fail.
+    //
+    // audit_logs is the real event store: severity low|medium|high|critical,
+    // category authentication|authorization|data_access|data_modification|
+    // system|security, stamped with `timestamp` (not created_at).
     if (req.method === 'GET' && endpoint === 'security-alerts') {
       const { data: alerts } = await admin
-        .from('activity_reports')
-        .select('*')
-        .eq('type', 'security_alert')
-        .order('created_at', { ascending: false })
+        .from('audit_logs')
+        .select(
+          'id, action, resource, severity, category, tenant_id, user_id, timestamp, additional_context',
+        )
+        .in('category', ['security', 'authentication', 'authorization'])
+        .order('timestamp', { ascending: false })
         .limit(50);
 
-      return createCorsResponse(alerts || [], 200, req);
+      const rows = alerts ?? [];
+      const tenantIds = [...new Set(rows.map((a: any) => a.tenant_id).filter(Boolean))];
+      const tenantNames = new Map<string, string>();
+      if (tenantIds.length > 0) {
+        const { data: tenantRows } = await admin
+          .from('tenants')
+          .select('id, name')
+          .in('id', tenantIds as string[]);
+        for (const t of tenantRows ?? []) tenantNames.set(t.id as string, t.name as string);
+      }
+
+      // RootAdminDashboard renders alert.type.replace(...), so type is always a
+      // string. It is derived from the category rather than stored.
+      const typeForCategory: Record<string, string> = {
+        security: 'security_breach',
+        authentication: 'failed_login',
+        authorization: 'unauthorized_access',
+      };
+
+      return createCorsResponse(
+        rows.map((a: any) => ({
+          id: a.id,
+          type: typeForCategory[a.category as string] ?? 'suspicious_activity',
+          severity: a.severity,
+          tenant: tenantNames.get(a.tenant_id as string) ?? (a.tenant_id as string) ?? 'unknown',
+          message: [a.action, a.resource].filter(Boolean).join(' on ') || 'Security event',
+          timestamp: a.timestamp,
+          // audit_logs is an append-only event log with no triage state; every
+          // row is an observation, so nothing here is "resolved".
+          status: 'open',
+        })),
+        200,
+        req,
+      );
     }
 
     // GET /root-admin/users - List all users
