@@ -289,6 +289,124 @@ export default async function handler(req: Request) {
       return createCorsResponse(reading, 201, req);
     }
 
+    // ─── RemoteMonitoring.tsx endpoints (EDGE-002h) ─────────────────────────
+
+    // POST /remote-monitoring/acknowledge-alert
+    //
+    // Backed by real columns, so it is served. device_alerts records the
+    // acknowledgement as a timestamp plus who did it - there is no boolean
+    // `acknowledged` column, which is what the /alerts filters were fixed for.
+    if (req.method === 'POST' && endpoint === 'acknowledge-alert') {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const alertId = (body.alertId ?? body.alert_id) as string | undefined;
+
+      if (!alertId) {
+        return createCorsResponse(
+          { error: 'alertId is required', code: 'ALERT_ID_REQUIRED' },
+          400,
+          req,
+        );
+      }
+
+      const { data: alert, error } = await admin
+        .from('device_alerts')
+        .update({
+          acknowledged_by: user.id,
+          acknowledged_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', alertId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error acknowledging alert:', error);
+        return createCorsResponse({ error: 'Failed to acknowledge alert' }, 500, req);
+      }
+
+      return createCorsResponse(
+        {
+          ...alert,
+          // The page sends an acknowledgmentNote; device_alerts has nowhere to
+          // put it (message is the alert text, not an operator note).
+          ...(body.acknowledgmentNote
+            ? { unpersisted: ['acknowledgmentNote: device_alerts has no note column'] }
+            : {}),
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /equipment-status, /fleet-overview, /sensor-data - NOT SERVED.
+    //
+    // These three are not a porting gap, they are a schema gap, and serving
+    // them would be worse than the 404 they return today.
+    //
+    // RemoteMonitoring.tsx types EquipmentStatus with location.floor,
+    // location.coordinates, currentMetrics.pagesPerMinute / temperature /
+    // humidity / jamCount / lastJobCompleted, a whole performance block
+    // (utilizationRate, efficiency, averageJobSize, peakUsageHour) and a
+    // maintenance block (nextScheduled, lastCompleted, maintenanceScore,
+    // predictiveAlerts[].estimatedLife). SensorData wants temperature and
+    // powerConsumption time series plus failure probabilities. monitored_devices
+    // and device_metrics carry none of that - the real columns are toner_levels,
+    // paper_levels, error_codes, response_time, uptime, total_impressions and
+    // last_seen.
+    //
+    // Two specific reasons not to serve a partial shape here:
+    //
+    //   1. The page's `select` transform reads equipment.currentMetrics
+    //      .lastJobCompleted and equipment.maintenance.predictiveAlerts.map()
+    //      WITHOUT guarding either, so a response missing those nested objects
+    //      throws a TypeError and takes the page down. A 404 or 501 does not:
+    //      equipmentStatus defaults to [], and fleetOverview / sensorData are
+    //      guarded at every use.
+    //   2. Filling the gaps with zeros would be actively misleading - the same
+    //      trap as predictive-dispatch's fuserLife. uptime 0, maintenanceScore
+    //      0 and tonerLevels.black 0 all read as critical conditions.
+    //
+    // Tracked the way EDGE-002g-remainder tracks the equivalent predictive
+    // dispatch gap: this needs schema before it can have an endpoint.
+    if (
+      req.method === 'GET' &&
+      (endpoint === 'equipment-status' ||
+        endpoint === 'fleet-overview' ||
+        endpoint === 'sensor-data')
+    ) {
+      return createCorsResponse(
+        {
+          error: 'This monitoring view has no backing schema yet',
+          code: 'MONITORING_SHAPE_NEEDS_SCHEMA',
+          details:
+            `/remote-monitoring/${endpoint} is typed against a mock shape. monitored_devices and ` +
+            'device_metrics carry toner_levels, paper_levels, error_codes, response_time, uptime, ' +
+            'total_impressions and last_seen - not equipment location/floor/coordinates, pages ' +
+            'per minute, temperature, humidity, jam counts, utilisation, efficiency, maintenance ' +
+            'scores or failure probabilities. Serving a partial object would throw in the ' +
+            "page's own select() transform, which dereferences currentMetrics and " +
+            'maintenance.predictiveAlerts unguarded.',
+          unbacked:
+            endpoint === 'sensor-data'
+              ? ['historicalData.temperature', 'historicalData.powerConsumption', 'predictions.*']
+              : [
+                  'location.floor',
+                  'location.coordinates',
+                  'currentMetrics.pagesPerMinute',
+                  'currentMetrics.temperature',
+                  'currentMetrics.humidity',
+                  'currentMetrics.jamCount',
+                  'currentMetrics.lastJobCompleted',
+                  'performance.*',
+                  'maintenance.*',
+                ],
+        },
+        501,
+        req,
+      );
+    }
+
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
   } catch (error) {
     console.error('Unexpected error in remote-monitoring function:', error);
