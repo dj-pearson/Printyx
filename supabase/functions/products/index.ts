@@ -2,6 +2,7 @@
 // Handles product catalog queries with pricing information
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { toCamel } from '../_shared/case.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -123,6 +124,52 @@ export default async function handler(req: Request) {
       ];
 
       return createCorsResponse({ data: allProducts, total: allProducts.length }, 200, req);
+    }
+
+    // GET /products/all (EDGE-002h)
+    //
+    // PricingManagement.tsx uses this to populate a product picker. It does
+    // `(response || []).map(...)` and reads product.productName, so this must
+    // return a FLAT camelCase ARRAY - not the { data, total } envelope
+    // /with-pricing returns, and not snake_case. Same four sources, since a
+    // picker should offer everything that can be priced.
+    if (req.method === 'GET' && action === 'all') {
+      const [models, software, accessories, enabled] = await Promise.all([
+        admin.from('product_models').select('*').eq('tenant_id', tenantId).eq('is_active', true),
+        admin.from('software_products').select('*').eq('tenant_id', tenantId).eq('is_active', true),
+        admin
+          .from('product_accessories')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true),
+        admin.from('enabled_products').select('*').eq('tenant_id', tenantId).eq('enabled', true),
+      ]);
+
+      const all = [
+        ...(models.data ?? []).map((p: any) => ({
+          ...toCamel(p),
+          productType: 'product_model',
+          productName: p.product_name,
+        })),
+        ...(software.data ?? []).map((p: any) => ({
+          ...toCamel(p),
+          productType: 'software_product',
+          productName: p.product_name,
+        })),
+        ...(accessories.data ?? []).map((p: any) => ({
+          ...toCamel(p),
+          productType: 'accessory',
+          // product_accessories names it accessory_name.
+          productName: p.accessory_name,
+        })),
+        ...(enabled.data ?? []).map((p: any) => ({
+          ...toCamel(p),
+          productType: 'enabled_product',
+          productName: p.custom_name ?? null,
+        })),
+      ];
+
+      return createCorsResponse(all, 200, req);
     }
 
     return createCorsResponse({ error: 'Method not allowed' }, 405, req);

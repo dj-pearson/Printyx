@@ -304,6 +304,127 @@ export default async function handler(req: Request) {
       );
     }
 
+    // POST /oid-mappings/export (EDGE-002h)
+    //
+    // OidManagement.tsx posts { manufacturer? } and downloads the result. This
+    // is the same read as the list endpoint, optionally narrowed - kept as POST
+    // because that is what the page sends.
+    if (req.method === 'POST' && mappingId === 'export') {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      let query = admin.from('oid_mappings').select('*').order('manufacturer', { ascending: true });
+      if (body.manufacturer) query = query.eq('manufacturer', body.manufacturer as string);
+
+      const { data: mappings, error } = await query;
+
+      if (error) {
+        console.error('Error exporting OID mappings:', error);
+        return createCorsResponse({ error: 'Failed to export OID mappings' }, 500, req);
+      }
+
+      return createCorsResponse(
+        {
+          exportedAt: new Date().toISOString(),
+          manufacturer: (body.manufacturer as string) ?? null,
+          count: (mappings ?? []).length,
+          mappings: mappings ?? [],
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /oid-mappings/import
+    //
+    // The page posts { mappings[], overwriteExisting }. Without the flag this
+    // is the same insert as /bulk; with it, an existing row for the same
+    // manufacturer + mapping_name is replaced rather than duplicated. There is
+    // no unique key on this table, so the replace is an explicit delete before
+    // insert rather than an upsert.
+    if (req.method === 'POST' && mappingId === 'import') {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const incoming = body.mappings;
+
+      if (!Array.isArray(incoming)) {
+        return createCorsResponse({ error: 'mappings array required' }, 400, req);
+      }
+
+      const overwrite = Boolean(body.overwriteExisting);
+      const now = new Date().toISOString();
+
+      const rows = incoming.map((m: any) => ({
+        manufacturer: m.manufacturer,
+        model_series: m.modelSeries ?? m.model_series ?? null,
+        mapping_name: m.mappingName ?? m.mapping_name ?? m.name,
+        oids: m.oids ?? {},
+        description: m.description ?? null,
+        is_default: m.isDefault ?? m.is_default ?? false,
+        is_custom: true,
+        created_at: now,
+        updated_at: now,
+      }));
+
+      let replaced = 0;
+      if (overwrite) {
+        for (const row of rows) {
+          if (!row.manufacturer || !row.mapping_name) continue;
+          // Only user-authored rows are replaceable; shipped presets are not,
+          // matching the guard on update and delete.
+          const { data: removed } = await admin
+            .from('oid_mappings')
+            .delete()
+            .eq('manufacturer', row.manufacturer)
+            .eq('mapping_name', row.mapping_name)
+            .eq('is_custom', true)
+            .select('id');
+          replaced += (removed ?? []).length;
+        }
+      }
+
+      const { data: inserted, error } = await admin.from('oid_mappings').insert(rows).select();
+
+      if (error) {
+        console.error('Error importing OID mappings:', error);
+        return createCorsResponse(
+          { error: 'Failed to import OID mappings', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse(
+        { success: true, imported: (inserted ?? []).length, replaced, mappings: inserted },
+        201,
+        req,
+      );
+    }
+
+    // POST /oid-mappings/test - NOT POSSIBLE FROM AN EDGE FUNCTION.
+    //
+    // The page posts { ipAddress, oids, snmpCommunity, snmpVersion } and expects
+    // each OID to be polled against that device. That is an SNMP walk: UDP to
+    // port 161 on a host inside the customer's network. Edge functions get
+    // outbound HTTP(S) only, and the device is not reachable from the internet
+    // anyway - this needs the on-prem monitoring agent, which is what
+    // printyx-client exists for.
+    //
+    // Refusing beats both the 404 it returns today and any attempt to fake a
+    // result, since the page reports a success RATE and a technician would act
+    // on it.
+    if (req.method === 'POST' && mappingId === 'test') {
+      return createCorsResponse(
+        {
+          error: 'OID testing cannot run from an edge function',
+          code: 'SNMP_REQUIRES_LOCAL_AGENT',
+          details:
+            'Testing an OID means an SNMP request over UDP/161 to a device on the customer ' +
+            'network. Edge functions have outbound HTTP(S) only and no route to that host. The ' +
+            'on-prem monitoring agent (printyx-client) is the component that can poll it.',
+        },
+        501,
+        req,
+      );
+    }
+
     // Method/endpoint not found
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
   } catch (error) {
