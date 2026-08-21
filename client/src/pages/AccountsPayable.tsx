@@ -90,10 +90,10 @@ export default function AccountsPayable() {
         vendorId: ap.vendor_id || ap.vendorId || '',
         billNumber: ap.bill_number || ap.billNumber || '',
         purchaseOrderNumber: ap.purchase_order_number || ap.purchaseOrderNumber || '',
-        referenceNumber: ap.referenceNumber || ap.referenceNumber || '',
+        referenceNumber: ap.reference_number || ap.referenceNumber || '',
         billDate: ap.bill_date || ap.billDate || '',
-        dueDate: ap.dueDate || ap.dueDate || '',
-        createdAt: ap.createdAt || ap.createdAt || '',
+        dueDate: ap.due_date || ap.dueDate || '',
+        createdAt: ap.created_at || ap.createdAt || '',
       }));
     },
   });

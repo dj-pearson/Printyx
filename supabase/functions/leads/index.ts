@@ -1,6 +1,8 @@
 // Leads Edge Function
 // Handles lead management operations
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+import geocodeLeadsHandler from '../geocode-leads/index.ts';
+import { toCamel } from '../_shared/case.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
 export default async function handler(req: Request) {
@@ -260,6 +262,246 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ success: true, message: 'Lead deleted' }, 200, req);
+    }
+
+    // ─── Lead map + geocoding (EDGE-002f) ───────────────────────────────────
+    //
+    // LeadMapViewer.tsx calls GET /leads/map-data and POST /leads/geocode, and
+    // LeadDetail.tsx calls POST /leads/:id/contacts. None existed here, so all
+    // three were hard 404s in production. Ported from server/routes-lead-map.ts.
+
+    // GET /leads/map-data
+    if (req.method === 'GET' && leadId === 'map-data') {
+      const source = url.searchParams.get('source');
+      const city = url.searchParams.get('city');
+      const brand = url.searchParams.get('brand');
+      const filterStatus = url.searchParams.get('status');
+      const hasCoords = url.searchParams.get('hasCoords');
+
+      const { data: rows, error } = await admin
+        .from('business_records')
+        .select(
+          'id, company_name, record_type, status, primary_contact_name, primary_contact_title, ' +
+            'billing_city, billing_state, billing_zip_code, address_line1, city, state, ' +
+            'postal_code, latitude, longitude, lead_source, notes, owner_id, ' +
+            'assigned_sales_rep, created_at',
+        )
+        .eq('tenant_id', tenantId)
+        .eq('record_type', 'lead');
+
+      if (error) {
+        console.error('Lead map data error:', error);
+        return createCorsResponse({ message: 'Failed to load map data' }, 500, req);
+      }
+
+      // Filters are applied here rather than in the query because Express does
+      // the same, and two of them (brand, city) match against free text in
+      // `notes` and a coalesce of two columns.
+      let filtered = rows ?? [];
+      if (source) filtered = filtered.filter((r: any) => r.lead_source === source);
+      if (city) {
+        const needle = city.toLowerCase();
+        filtered = filtered.filter((r: any) =>
+          String(r.billing_city || r.city || '')
+            .toLowerCase()
+            .includes(needle),
+        );
+      }
+      if (brand) {
+        const needle = brand.toLowerCase();
+        filtered = filtered.filter((r: any) =>
+          String(r.notes || '')
+            .toLowerCase()
+            .includes(needle),
+        );
+      }
+      if (filterStatus) filtered = filtered.filter((r: any) => r.status === filterStatus);
+      if (hasCoords === 'true') {
+        filtered = filtered.filter((r: any) => r.latitude && r.longitude);
+      }
+
+      // The EDA importer packs brand, equipment and UCC detail into `notes` as
+      // "Brand: X | Unit 1: ... | UCC: filed". These patterns are Express's,
+      // kept exactly so the map legend counts do not change.
+      const leadsWithMeta = filtered.map((row: any) => {
+        const notes = String(row.notes || '');
+
+        const brands: string[] = [];
+        for (const match of notes.match(/Brand:\s*([^\s|]+)/g) ?? []) {
+          const b = match.replace('Brand:', '').trim();
+          if (b && !brands.includes(b)) brands.push(b);
+        }
+
+        const equipment: string[] = [];
+        for (const match of notes.match(/Unit \d+:\s*([^|]+)/g) ?? []) {
+          equipment.push(match.trim());
+        }
+
+        const uccStatuses: string[] = [];
+        for (const match of notes.match(/UCC:\s*(\w+)/g) ?? []) {
+          const st = match.replace('UCC:', '').trim();
+          if (st && !uccStatuses.includes(st)) uccStatuses.push(st);
+        }
+
+        const unitMatch = notes.match(/(\d+) equipment unit/);
+        const unitCount = unitMatch ? parseInt(unitMatch[1]) : equipment.length;
+
+        return {
+          id: row.id,
+          companyName: row.company_name,
+          recordType: row.record_type,
+          status: row.status,
+          primaryContactName: row.primary_contact_name,
+          primaryContactTitle: row.primary_contact_title,
+          billingCity: row.billing_city,
+          billingState: row.billing_state,
+          // The column is billing_zip_code; the page reads billingPostalCode.
+          billingPostalCode: row.billing_zip_code,
+          addressLine1: row.address_line1,
+          city: row.city,
+          state: row.state,
+          postalCode: row.postal_code,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          leadSource: row.lead_source,
+          notes: row.notes,
+          ownerId: row.owner_id,
+          assignedSalesRep: row.assigned_sales_rep,
+          createdAt: row.created_at,
+          lat: row.latitude ? parseFloat(String(row.latitude)) : null,
+          lng: row.longitude ? parseFloat(String(row.longitude)) : null,
+          brands,
+          equipment,
+          uccStatuses,
+          unitCount,
+        };
+      });
+
+      const allBrands: Record<string, number> = {};
+      const allCities: Record<string, number> = {};
+      const allUccStatuses: Record<string, number> = {};
+      let geocodedCount = 0;
+
+      for (const lead of leadsWithMeta) {
+        if (lead.lat && lead.lng) geocodedCount++;
+        const c = lead.billingCity || lead.city || 'Unknown';
+        allCities[c] = (allCities[c] || 0) + 1;
+        for (const b of lead.brands) allBrands[b] = (allBrands[b] || 0) + 1;
+        for (const st of lead.uccStatuses) allUccStatuses[st] = (allUccStatuses[st] || 0) + 1;
+      }
+
+      return createCorsResponse(
+        {
+          leads: leadsWithMeta,
+          stats: {
+            total: leadsWithMeta.length,
+            geocoded: geocodedCount,
+            pending: leadsWithMeta.length - geocodedCount,
+            geocodedPct: leadsWithMeta.length
+              ? Math.round((geocodedCount / leadsWithMeta.length) * 100)
+              : 0,
+            brands: allBrands,
+            cities: allCities,
+            uccStatuses: allUccStatuses,
+          },
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET/POST /leads/:id/contacts
+    //
+    // LeadDetail.tsx posts { firstName, lastName, email, isPrimary, ... } to
+    // attach a contact. lead_contacts is its own table - note is_primary here,
+    // NOT the is_primary_contact that company_contacts uses; the two lead/
+    // customer contact tables and the company one do not share a spelling.
+    if (leadId && subResource === 'contacts' && (req.method === 'GET' || req.method === 'POST')) {
+      if (req.method === 'GET') {
+        const { data: contacts, error } = await admin
+          .from('lead_contacts')
+          .select('*')
+          .eq('lead_id', leadId)
+          .eq('tenant_id', tenantId)
+          .order('is_primary', { ascending: false })
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching lead contacts:', error);
+          return createCorsResponse({ message: 'Failed to fetch contacts' }, 500, req);
+        }
+
+        return createCorsResponse(toCamel(contacts ?? []), 200, req);
+      }
+
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const firstName = (body.firstName ?? body.first_name) as string | undefined;
+      const lastName = (body.lastName ?? body.last_name) as string | undefined;
+
+      // Both are NOT NULL on lead_contacts, so a missing one is a 400 rather
+      // than a 500 out of PostgREST.
+      if (!firstName || !lastName) {
+        return createCorsResponse(
+          {
+            message: 'firstName and lastName are required',
+            code: 'CONTACT_NAME_REQUIRED',
+          },
+          400,
+          req,
+        );
+      }
+
+      const isPrimary = Boolean(body.isPrimary ?? body.is_primary ?? false);
+
+      // One primary per lead: clear the others first, the way the company
+      // contacts handler does.
+      if (isPrimary) {
+        await admin
+          .from('lead_contacts')
+          .update({ is_primary: false })
+          .eq('lead_id', leadId)
+          .eq('tenant_id', tenantId);
+      }
+
+      const { data: contact, error } = await admin
+        .from('lead_contacts')
+        .insert({
+          tenant_id: tenantId,
+          lead_id: leadId,
+          first_name: firstName,
+          last_name: lastName,
+          title: (body.title ?? null) as string | null,
+          department: (body.department ?? null) as string | null,
+          phone: (body.phone ?? null) as string | null,
+          email: (body.email ?? null) as string | null,
+          is_primary: isPrimary,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating lead contact:', error);
+        return createCorsResponse(
+          { message: 'Failed to create contact', details: error.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse(toCamel(contact), 201, req);
+    }
+
+    // POST /leads/geocode
+    //
+    // Express forwards this to the geocode-leads edge function over HTTP. We
+    // are already inside the edge runtime, so it delegates to that handler
+    // directly - same code, no second network hop, and the Google Places key
+    // stays in the one function that owns it. Cross-function import is the
+    // accepted idiom here (see proposals -> email-marketing/_sendgrid.ts).
+    if (req.method === 'POST' && leadId === 'geocode') {
+      return await geocodeLeadsHandler(req);
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);

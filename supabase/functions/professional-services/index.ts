@@ -146,12 +146,20 @@ export default async function handler(req: Request) {
         .eq('project_id', projectId)
         .order('due_date', { ascending: true });
 
-      // Get time entries
-      const { data: timeEntries } = await admin
-        .from('time_entries')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('entry_date', { ascending: false });
+      // Get time entries.
+      //
+      // time_entries has no project_id — it attaches to a TASK (task_id) — so
+      // filtering by project 42703'd and this list was always empty. The tasks
+      // fetched just above already carry the project's task ids, so the link is
+      // resolved from those rather than with another query.
+      const taskIds = (tasks ?? []).map((t: { id: string }) => t.id);
+      const { data: timeEntries } = taskIds.length
+        ? await admin
+            .from('time_entries')
+            .select('*')
+            .in('task_id', taskIds)
+            .order('entry_date', { ascending: false })
+        : { data: [] };
 
       return createCorsResponse(
         { ...project, tasks: tasks || [], timeEntries: timeEntries || [] },
@@ -246,17 +254,34 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && projectId && subResource === 'time') {
       const body = await req.json();
 
+      // project_id and billable are not columns on time_entries, so every log
+      // was a 42703. An entry reaches its project through its task, which makes
+      // taskId required rather than optional — without it there is nothing
+      // tying the hours to this project.
+      const taskId = body.taskId || body.task_id;
+      if (!taskId) {
+        return createCorsResponse(
+          {
+            error: 'taskId is required to log time',
+            code: 'TIME_ENTRY_NEEDS_TASK',
+            details:
+              'time_entries attaches to a task (task_id), not directly to a project. Create or ' +
+              'pick a task on this project first.',
+          },
+          400,
+          req,
+        );
+      }
+
       const { data: timeEntry, error } = await admin
         .from('time_entries')
         .insert({
           tenant_id: tenantId,
-          project_id: projectId,
-          task_id: body.taskId || body.task_id,
+          task_id: taskId,
           user_id: user.id,
           hours: body.hours,
           description: body.description,
           entry_date: body.entryDate || body.entry_date || new Date().toISOString(),
-          billable: body.billable !== false,
           created_at: new Date().toISOString(),
         })
         .select()
@@ -266,7 +291,16 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to log time' }, 500, req);
       }
 
-      return createCorsResponse(timeEntry, 201, req);
+      return createCorsResponse(
+        body.billable !== undefined
+          ? {
+              ...timeEntry,
+              unpersisted: ['billable: time_entries has no billable column'],
+            }
+          : timeEntry,
+        201,
+        req,
+      );
     }
 
     // DELETE /professional-services/:id - Delete project

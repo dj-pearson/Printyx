@@ -45,24 +45,23 @@ export default async function handler(req: Request) {
       const status = url.searchParams.get('status');
       const customerId = url.searchParams.get('customerId');
 
+      // monitored_devices has no equipment_id, so the equipment embed failed the
+      // WHOLE query — the device list never loaded. It also has no status column
+      // and names the customer client_id. The device row already carries
+      // serial_number, manufacturer and model, so the embed had nothing to add.
       let query = admin
         .from('monitored_devices')
-        .select(
-          `
-          *,
-          equipment:equipment_id (
-            id,
-            name,
-            serial_number,
-            model
-          )
-        `,
-        )
+        .select('*')
         .eq('tenant_id', tenantId)
         .order('last_seen', { ascending: false });
 
-      if (status) query = query.eq('status', status);
-      if (customerId) query = query.eq('customer_id', customerId);
+      // Reachability is not stored as a status string: `enabled` says whether
+      // the device is polled and consecutive_failures says whether polling is
+      // currently working.
+      if (status === 'online') query = query.eq('enabled', true).eq('consecutive_failures', 0);
+      if (status === 'offline') query = query.gt('consecutive_failures', 0);
+      if (status === 'disabled') query = query.eq('enabled', false);
+      if (customerId) query = query.eq('client_id', customerId);
 
       const { data: devices, error } = await query;
 
@@ -86,8 +85,11 @@ export default async function handler(req: Request) {
         .order('created_at', { ascending: false });
 
       if (severity) query = query.eq('severity', severity);
-      if (acknowledged === 'false') query = query.eq('acknowledged', false);
-      if (acknowledged === 'true') query = query.eq('acknowledged', true);
+      // device_alerts records WHEN an alert was acknowledged (acknowledged_at /
+      // acknowledged_by); there is no boolean `acknowledged` column, so both of
+      // these filters 42703'd.
+      if (acknowledged === 'false') query = query.is('acknowledged_at', null);
+      if (acknowledged === 'true') query = query.not('acknowledged_at', 'is', null);
 
       const { data: alerts, error } = await query.limit(100);
 
@@ -106,23 +108,27 @@ export default async function handler(req: Request) {
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId);
 
+      // "Online" is derived, not stored: a device being polled with no run of
+      // failures behind it. The old .eq('status','online') was a 42703, so this
+      // dashboard reported zero devices online however many were up.
       const { count: onlineDevices } = await admin
         .from('monitored_devices')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
-        .eq('status', 'online');
+        .eq('enabled', true)
+        .eq('consecutive_failures', 0);
 
       const { count: activeAlerts } = await admin
         .from('device_alerts')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
-        .eq('acknowledged', false);
+        .is('acknowledged_at', null);
 
       const { count: criticalAlerts } = await admin
         .from('device_alerts')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
-        .eq('acknowledged', false)
+        .is('acknowledged_at', null)
         .eq('severity', 'critical');
 
       return createCorsResponse(
@@ -179,19 +185,37 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && endpoint === 'devices') {
       const body = await req.json();
 
+      // Seven of this payload's names were phantom — equipment_id, customer_id,
+      // device_type, status, monitoring_enabled, poll_interval and created_at —
+      // so registering a device always failed. Only customer_id and status were
+      // visible to check:phantom-cols, the payload being a named variable. The
+      // real columns are client_id, enabled, polling_interval and added_at, and
+      // a device identifies its hardware directly (serial_number, manufacturer,
+      // model) rather than through an equipment FK.
       const deviceData = {
         tenant_id: tenantId,
-        equipment_id: body.equipmentId || body.equipment_id,
-        customer_id: body.customerId || body.customer_id,
+        client_id: body.customerId || body.customer_id || body.clientId || null,
+        serial_number: body.serialNumber || body.serial_number || null,
         ip_address: body.ipAddress || body.ip_address,
         hostname: body.hostname,
-        device_type: body.deviceType || body.device_type,
-        status: 'pending',
-        monitoring_enabled: true,
-        poll_interval: body.pollInterval || body.poll_interval || 300,
-        created_at: new Date().toISOString(),
+        device_name: body.deviceName || body.device_name || null,
+        manufacturer: body.manufacturer ?? null,
+        model: body.model ?? null,
+        enabled: true,
+        polling_interval: body.pollInterval || body.poll_interval || 300,
+        added_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+
+      const unpersisted = [];
+      if (body.equipmentId || body.equipment_id) {
+        unpersisted.push(
+          'equipmentId: monitored_devices has no equipment FK; identify the device by serial_number',
+        );
+      }
+      if (body.deviceType || body.device_type) {
+        unpersisted.push('deviceType: monitored_devices has no device_type column');
+      }
 
       const { data: device, error } = await admin
         .from('monitored_devices')
@@ -204,15 +228,20 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to register device' }, 500, req);
       }
 
-      return createCorsResponse(device, 201, req);
+      return createCorsResponse(
+        unpersisted.length > 0 ? { ...device, unpersisted } : device,
+        201,
+        req,
+      );
     }
 
     // POST /remote-monitoring/alerts/:id/acknowledge - Acknowledge alert
     if (req.method === 'POST' && endpoint === 'alerts' && deviceId && parts[2] === 'acknowledge') {
       const { data: alert, error } = await admin
         .from('device_alerts')
+        // acknowledged_at being set IS the acknowledgement; there is no boolean
+        // column, so this update 42703'd and no alert could be acknowledged.
         .update({
-          acknowledged: true,
           acknowledged_by: user.id,
           acknowledged_at: new Date().toISOString(),
         })
@@ -258,6 +287,124 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId); // CR-002: scope device update to caller's tenant
 
       return createCorsResponse(reading, 201, req);
+    }
+
+    // ─── RemoteMonitoring.tsx endpoints (EDGE-002h) ─────────────────────────
+
+    // POST /remote-monitoring/acknowledge-alert
+    //
+    // Backed by real columns, so it is served. device_alerts records the
+    // acknowledgement as a timestamp plus who did it - there is no boolean
+    // `acknowledged` column, which is what the /alerts filters were fixed for.
+    if (req.method === 'POST' && endpoint === 'acknowledge-alert') {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const alertId = (body.alertId ?? body.alert_id) as string | undefined;
+
+      if (!alertId) {
+        return createCorsResponse(
+          { error: 'alertId is required', code: 'ALERT_ID_REQUIRED' },
+          400,
+          req,
+        );
+      }
+
+      const { data: alert, error } = await admin
+        .from('device_alerts')
+        .update({
+          acknowledged_by: user.id,
+          acknowledged_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', alertId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error acknowledging alert:', error);
+        return createCorsResponse({ error: 'Failed to acknowledge alert' }, 500, req);
+      }
+
+      return createCorsResponse(
+        {
+          ...alert,
+          // The page sends an acknowledgmentNote; device_alerts has nowhere to
+          // put it (message is the alert text, not an operator note).
+          ...(body.acknowledgmentNote
+            ? { unpersisted: ['acknowledgmentNote: device_alerts has no note column'] }
+            : {}),
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /equipment-status, /fleet-overview, /sensor-data - NOT SERVED.
+    //
+    // These three are not a porting gap, they are a schema gap, and serving
+    // them would be worse than the 404 they return today.
+    //
+    // RemoteMonitoring.tsx types EquipmentStatus with location.floor,
+    // location.coordinates, currentMetrics.pagesPerMinute / temperature /
+    // humidity / jamCount / lastJobCompleted, a whole performance block
+    // (utilizationRate, efficiency, averageJobSize, peakUsageHour) and a
+    // maintenance block (nextScheduled, lastCompleted, maintenanceScore,
+    // predictiveAlerts[].estimatedLife). SensorData wants temperature and
+    // powerConsumption time series plus failure probabilities. monitored_devices
+    // and device_metrics carry none of that - the real columns are toner_levels,
+    // paper_levels, error_codes, response_time, uptime, total_impressions and
+    // last_seen.
+    //
+    // Two specific reasons not to serve a partial shape here:
+    //
+    //   1. The page's `select` transform reads equipment.currentMetrics
+    //      .lastJobCompleted and equipment.maintenance.predictiveAlerts.map()
+    //      WITHOUT guarding either, so a response missing those nested objects
+    //      throws a TypeError and takes the page down. A 404 or 501 does not:
+    //      equipmentStatus defaults to [], and fleetOverview / sensorData are
+    //      guarded at every use.
+    //   2. Filling the gaps with zeros would be actively misleading - the same
+    //      trap as predictive-dispatch's fuserLife. uptime 0, maintenanceScore
+    //      0 and tonerLevels.black 0 all read as critical conditions.
+    //
+    // Tracked the way EDGE-002g-remainder tracks the equivalent predictive
+    // dispatch gap: this needs schema before it can have an endpoint.
+    if (
+      req.method === 'GET' &&
+      (endpoint === 'equipment-status' ||
+        endpoint === 'fleet-overview' ||
+        endpoint === 'sensor-data')
+    ) {
+      return createCorsResponse(
+        {
+          error: 'This monitoring view has no backing schema yet',
+          code: 'MONITORING_SHAPE_NEEDS_SCHEMA',
+          details:
+            `/remote-monitoring/${endpoint} is typed against a mock shape. monitored_devices and ` +
+            'device_metrics carry toner_levels, paper_levels, error_codes, response_time, uptime, ' +
+            'total_impressions and last_seen - not equipment location/floor/coordinates, pages ' +
+            'per minute, temperature, humidity, jam counts, utilisation, efficiency, maintenance ' +
+            'scores or failure probabilities. Serving a partial object would throw in the ' +
+            "page's own select() transform, which dereferences currentMetrics and " +
+            'maintenance.predictiveAlerts unguarded.',
+          unbacked:
+            endpoint === 'sensor-data'
+              ? ['historicalData.temperature', 'historicalData.powerConsumption', 'predictions.*']
+              : [
+                  'location.floor',
+                  'location.coordinates',
+                  'currentMetrics.pagesPerMinute',
+                  'currentMetrics.temperature',
+                  'currentMetrics.humidity',
+                  'currentMetrics.jamCount',
+                  'currentMetrics.lastJobCompleted',
+                  'performance.*',
+                  'maintenance.*',
+                ],
+        },
+        501,
+        req,
+      );
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);

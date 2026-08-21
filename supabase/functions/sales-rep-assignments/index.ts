@@ -211,10 +211,14 @@ async function accountsForRep(
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') ?? '25')));
   const offset = (page - 1) * limit;
 
+  // business_records names the zip billing_zip_code and the deal size
+  // estimated_deal_value. The old billing_postal_code / estimated_amount were
+  // 42703s on every read AND on the territory-assignment .in() filters below,
+  // so rep assignment by zip could not work at all.
   const { data, count } = await admin
     .from('business_records')
     .select(
-      'id, company_name, record_type, status, phone, billing_city, billing_state, billing_postal_code, territory, owner_id, assigned_sales_rep, estimated_amount, created_at',
+      'id, company_name, record_type, status, phone, billing_city, billing_state, billing_zip_code, territory, owner_id, assigned_sales_rep, estimated_deal_value, created_at',
       { count: 'exact' },
     )
     .eq('tenant_id', tenantId)
@@ -251,7 +255,7 @@ async function listAccountsWithFilters(
   let q = admin
     .from('business_records')
     .select(
-      'id, company_name, record_type, status, billing_city, billing_state, billing_postal_code, territory, owner_id, assigned_sales_rep',
+      'id, company_name, record_type, status, billing_city, billing_state, billing_zip_code, territory, owner_id, assigned_sales_rep',
     )
     .eq('tenant_id', tenantId)
     .order('company_name', { ascending: true })
@@ -282,7 +286,7 @@ async function listUnassigned(
   const { data, count } = await admin
     .from('business_records')
     .select(
-      'id, company_name, record_type, status, phone, billing_city, billing_state, billing_postal_code, territory, created_at',
+      'id, company_name, record_type, status, phone, billing_city, billing_state, billing_zip_code, territory, created_at',
       { count: 'exact' },
     )
     .eq('tenant_id', tenantId)
@@ -309,13 +313,13 @@ async function zipSummary(admin: Admin, tenantId: string, req: Request): Promise
   // Aggregate in JS (Supabase JS doesn't have GROUP BY).
   const { data } = await admin
     .from('business_records')
-    .select('billing_postal_code')
+    .select('billing_zip_code')
     .eq('tenant_id', tenantId)
-    .not('billing_postal_code', 'is', null);
+    .not('billing_zip_code', 'is', null);
 
   const counts = new Map<string, number>();
-  for (const r of (data ?? []) as Array<{ billing_postal_code: string | null }>) {
-    const z = (r.billing_postal_code ?? '').trim();
+  for (const r of (data ?? []) as Array<{ billing_zip_code: string | null }>) {
+    const z = (r.billing_zip_code ?? '').trim();
     if (!z) continue;
     counts.set(z, (counts.get(z) ?? 0) + 1);
   }
@@ -557,7 +561,7 @@ async function assignByArea(
       .select('id, owner_id', { count: 'exact' })
       .eq('tenant_id', tenantId);
     if (method === 'zip') {
-      q = q.in('billing_postal_code', values);
+      q = q.in('billing_zip_code', values);
     } else if (method === 'state') {
       q = q.in('billing_state', values);
     } else if (method === 'city') {
@@ -590,7 +594,7 @@ async function assignByArea(
     })
     .eq('tenant_id', tenantId);
   if (method === 'zip') {
-    upd = upd.in('billing_postal_code', values);
+    upd = upd.in('billing_zip_code', values);
   } else if (method === 'state') {
     upd = upd.in('billing_state', values);
   } else if (method === 'city') {

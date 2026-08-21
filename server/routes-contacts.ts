@@ -20,7 +20,6 @@ import {
   contactCreateSchema,
   contactUpdateSchema,
   idParamSchema,
-  companyIdParamSchema,
   contactIdParamSchema,
   companyQuerySchema,
 } from './lib/crm-validation';
@@ -586,32 +585,8 @@ export function registerContactsRoutes(app: Express) {
   // ============================================
 
   // GET /api/companies/:companyId/contacts - Get contacts for a company
-  app.get(
-    '/api/companies/:companyId/contacts',
-    resolveTenant,
-    validate({ params: companyIdParamSchema }),
-    async (req: any, res) => {
-      try {
-        const { companyId } = req.params;
-        const userId = getUserId(req);
-
-        if (!userId) {
-          return res.status(401).json({ message: 'Not authenticated' });
-        }
-
-        const user = await storage.getUser(userId);
-        if (!user?.tenantId) {
-          return res.status(403).json({ message: 'Access denied' });
-        }
-
-        const contacts = await storage.getContactsByCompany(companyId, user.tenantId);
-        res.json(contacts);
-      } catch (error) {
-        log.error('Error fetching company contacts:', error);
-        res.status(500).json({ message: 'Failed to fetch contacts' });
-      }
-    },
-  );
+  // PROD-008b: GET /api/companies/:companyId/contacts was registered here and
+  // is proxied to the companies edge function, which serves it. This never ran.
 
   // PUT /api/contacts/:contactId - Update contact (alternate path)
   app.put(

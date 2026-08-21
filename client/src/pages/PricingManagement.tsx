@@ -33,7 +33,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 import type {
   CompanyPricingSettings,
@@ -88,13 +88,13 @@ export default function PricingManagement() {
     queryKey: ['/api/pricing/products'],
     queryFn: async () => {
       const response = await apiRequest('/api/pricing/products', 'GET');
-      return (response || []).map((pricing: any) => ({
+      return extractRecords(response).map((pricing: any) => ({
         ...pricing,
         id: pricing.id,
-        productId: pricing.productId || pricing.productId || '',
+        productId: pricing.product_id || pricing.productId || '',
         baseCost: pricing.base_cost || pricing.baseCost || 0,
-        createdAt: pricing.createdAt || pricing.createdAt || '',
-        updatedAt: pricing.updatedAt || pricing.updatedAt || '',
+        createdAt: pricing.created_at || pricing.createdAt || '',
+        updatedAt: pricing.updated_at || pricing.updatedAt || '',
       }));
     },
   });
@@ -104,10 +104,10 @@ export default function PricingManagement() {
     queryKey: ['/api/products/all'],
     queryFn: async () => {
       const response = await apiRequest('/api/products/all', 'GET');
-      return (response || []).map((product: any) => ({
+      return extractRecords(response).map((product: any) => ({
         ...product,
         id: product.id,
-        productName: product.productName || product.productName || '',
+        productName: product.product_name || product.productName || '',
       }));
     },
   });
@@ -521,15 +521,11 @@ export default function PricingManagement() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Minimum Profit</p>
-                  <p className="text-lg font-semibold">
-                    {companySettings.minMarginPercentage}%
-                  </p>
+                  <p className="text-lg font-semibold">{companySettings.minMarginPercentage}%</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Salesperson Override</p>
-                  <Badge
-                    variant={companySettings.allowRepPriceEdit ? 'default' : 'secondary'}
-                  >
+                  <Badge variant={companySettings.allowRepPriceEdit ? 'default' : 'secondary'}>
                     {companySettings.allowRepPriceEdit ? 'Allowed' : 'Restricted'}
                   </Badge>
                 </div>

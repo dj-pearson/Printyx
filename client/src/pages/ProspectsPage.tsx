@@ -9,7 +9,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocation } from 'wouter';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractPagination } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -247,10 +247,10 @@ export default function ProspectsPage() {
       ]);
 
       return {
-        total: totalResp?.pagination?.total || 0,
-        qualifiedCount: qualifiedResp?.pagination?.total || 0,
-        proposalCount: proposalResp?.pagination?.total || 0,
-        negotiationCount: negotiationResp?.pagination?.total || 0,
+        total: extractPagination(totalResp).total,
+        qualifiedCount: extractPagination(qualifiedResp).total,
+        proposalCount: extractPagination(proposalResp).total,
+        negotiationCount: extractPagination(negotiationResp).total,
       };
     },
     staleTime: 60_000,

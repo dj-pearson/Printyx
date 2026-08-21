@@ -235,10 +235,9 @@ export default async function handler(req: Request) {
       }
 
       // Get roles for mapping
-      const { data: roles } = await admin
-        .from('roles')
-        .select('id, name')
-        .eq('tenant_id', tenantId);
+      // `roles` is a GLOBAL catalogue: it has no tenant_id column, so filtering
+      // by one 42703'd and left every user in the list with a blank role name.
+      const { data: roles } = await admin.from('roles').select('id, name');
       const rolesMap = Object.fromEntries((roles || []).map((r: any) => [r.id, r.name]));
 
       // Get teams for mapping
@@ -606,10 +605,11 @@ export default async function handler(req: Request) {
 
     // GET /admin/roles - List roles
     if (req.method === 'GET' && resource === 'roles' && !resourceId) {
+      // No tenant filter: `roles` has no tenant_id column (see the user-list
+      // lookup above). Filtering by one made this endpoint 500 outright.
       const { data: roles, error } = await admin
         .from('roles')
         .select('*')
-        .eq('tenant_id', tenantId)
         .order('level', { ascending: false });
 
       if (error) {
@@ -639,154 +639,40 @@ export default async function handler(req: Request) {
         canAccessAllTenants: r.can_access_all_tenants,
         userCount: roleCounts[r.id] || 0,
         createdAt: r.created_at,
-        updatedAt: r.updated_at,
+        // `roles` has created_at but no updated_at.
+        updatedAt: null,
       }));
 
       return createCorsResponse(transformedRoles, 200, req);
     }
 
     // POST /admin/roles - Create role
-    if (req.method === 'POST' && resource === 'roles') {
-      const body = await req.json();
-
-      if (!body.name) {
-        return createCorsResponse({ error: 'Role name is required' }, 400, req);
-      }
-
-      // Check if role name already exists
-      const { data: existingRole } = await admin
-        .from('roles')
-        .select('id')
-        .eq('name', body.name)
-        .eq('tenant_id', tenantId)
-        .single();
-
-      if (existingRole) {
-        return createCorsResponse({ error: 'Role with this name already exists' }, 409, req);
-      }
-
-      const roleData = {
-        tenant_id: tenantId,
-        name: body.name,
-        description: body.description || null,
-        level: body.level || 1,
-        permissions: body.permissions || {},
-        can_access_all_tenants: body.canAccessAllTenants || false,
-        is_system_role: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data: role, error } = await admin.from('roles').insert(roleData).select().single();
-
-      if (error) {
-        console.error('Error creating role:', error);
-        return createCorsResponse(
-          { error: 'Failed to create role', details: error.message },
-          500,
-          req,
-        );
-      }
-
-      // Log audit event
-      await logAuditEvent(
-        admin,
-        tenantId,
-        user.id,
-        'CREATE_ROLE',
-        'roles',
-        role.id,
-        null,
-        roleData,
-        req,
-      );
-
-      return createCorsResponse(
-        {
-          id: role.id,
-          name: role.name,
-          description: role.description,
-          level: role.level,
-          permissions: role.permissions,
-          isSystemRole: role.is_system_role,
-          canAccessAllTenants: role.can_access_all_tenants,
-          createdAt: role.created_at,
-        },
-        201,
-        req,
-      );
-    }
-
     // PUT/PATCH /admin/roles/:id - Update role
-    if ((req.method === 'PUT' || req.method === 'PATCH') && resource === 'roles' && resourceId) {
-      const body = await req.json();
-
-      // Get existing role
-      const { data: existingRole, error: fetchError } = await admin
-        .from('roles')
-        .select('*')
-        .eq('id', resourceId)
-        .eq('tenant_id', tenantId)
-        .single();
-
-      if (fetchError || !existingRole) {
-        return createCorsResponse({ error: 'Role not found' }, 404, req);
-      }
-
-      // Prevent modifying system roles
-      if (existingRole.is_system_role) {
-        return createCorsResponse({ error: 'Cannot modify system roles' }, 400, req);
-      }
-
-      const updateData: Record<string, any> = {
-        updated_at: new Date().toISOString(),
-      };
-
-      if (body.name !== undefined) updateData.name = body.name;
-      if (body.description !== undefined) updateData.description = body.description;
-      if (body.level !== undefined) updateData.level = body.level;
-      if (body.permissions !== undefined) updateData.permissions = body.permissions;
-      if (body.canAccessAllTenants !== undefined)
-        updateData.can_access_all_tenants = body.canAccessAllTenants;
-
-      const { data: role, error } = await admin
-        .from('roles')
-        .update(updateData)
-        .eq('id', resourceId)
-        .eq('tenant_id', tenantId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating role:', error);
-        return createCorsResponse({ error: 'Failed to update role' }, 500, req);
-      }
-
-      // Log audit event
-      await logAuditEvent(
-        admin,
-        tenantId,
-        user.id,
-        'UPDATE_ROLE',
-        'roles',
-        resourceId,
-        existingRole,
-        updateData,
-        req,
-      );
-
+    //
+    // Both refuse rather than write. `roles` is a GLOBAL table — no tenant_id
+    // column — so it is not merely that the old code named columns that do not
+    // exist (tenant_id and updated_at on the insert, tenant_id on both update
+    // filters, all of them 42703). Repairing those names would turn a tenant
+    // admin's role edit into a mutation of the roles every OTHER tenant's users
+    // hold, which is precisely what the tenant-isolation rule forbids.
+    //
+    // `enhanced_roles` is the tenant-scoped role table, but users.role_id points
+    // at `roles` and the auth check at the top of this file resolves against it,
+    // so moving this CRUD there is a migration, not a rename.
+    if (
+      (req.method === 'POST' && resource === 'roles') ||
+      ((req.method === 'PUT' || req.method === 'PATCH') && resource === 'roles' && resourceId)
+    ) {
       return createCorsResponse(
         {
-          id: role.id,
-          name: role.name,
-          description: role.description,
-          level: role.level,
-          permissions: role.permissions,
-          isSystemRole: role.is_system_role,
-          canAccessAllTenants: role.can_access_all_tenants,
-          updatedAt: role.updated_at,
+          error: 'Role authoring is not available on this endpoint',
+          code: 'ROLES_TABLE_IS_GLOBAL',
+          details:
+            'The `roles` table has no tenant_id column, so a write here would change roles ' +
+            'for every tenant. Tenant-scoped roles belong in `enhanced_roles`, which ' +
+            'users.role_id does not yet reference.',
         },
-        200,
+        501,
         req,
       );
     }
@@ -1128,9 +1014,12 @@ export default async function handler(req: Request) {
         .in('status', ['open', 'pending', 'in_progress']);
 
       // Get tenant storage usage if available
+      // The column is storage_used; there is no `settings` column on tenants
+      // (the free-form one is `metadata`), so this query returned nothing and
+      // the storage metric below was always null.
       const { data: tenantData } = await admin
         .from('tenants')
-        .select('settings')
+        .select('storage_used')
         .eq('id', tenantId)
         .single();
 
@@ -1153,7 +1042,7 @@ export default async function handler(req: Request) {
           service: {
             openTickets: openTickets || 0,
           },
-          storage: tenantData?.settings?.storageUsage || null,
+          storage: tenantData?.storage_used ?? null,
         },
         alerts: [] as string[],
       };
@@ -1178,9 +1067,12 @@ export default async function handler(req: Request) {
     // GET /admin/settings - Get admin settings
     if (req.method === 'GET' && resource === 'settings') {
       // Get tenant settings
+      // The tenant's free-form config bag is `metadata`; there is no `settings`
+      // column, so both this GET and the PUT below 42703'd outright. The
+      // response key stays `settings` so the admin page's contract is unchanged.
       const { data: tenant, error: tenantError } = await admin
         .from('tenants')
-        .select('id, name, settings, created_at, updated_at')
+        .select('id, name, metadata, created_at, updated_at')
         .eq('id', tenantId)
         .single();
 
@@ -1201,7 +1093,7 @@ export default async function handler(req: Request) {
           tenant: {
             id: tenant.id,
             name: tenant.name,
-            settings: tenant.settings || {},
+            settings: tenant.metadata || {},
             createdAt: tenant.created_at,
             updatedAt: tenant.updated_at,
           },
@@ -1231,15 +1123,15 @@ export default async function handler(req: Request) {
       // Get existing settings for audit log
       const { data: existingTenant } = await admin
         .from('tenants')
-        .select('settings')
+        .select('metadata')
         .eq('id', tenantId)
         .single();
 
       // Update tenant settings
       if (body.tenant) {
         const tenantUpdateData = {
-          settings: {
-            ...(existingTenant?.settings || {}),
+          metadata: {
+            ...(existingTenant?.metadata || {}),
             ...body.tenant.settings,
           },
           updated_at: new Date().toISOString(),

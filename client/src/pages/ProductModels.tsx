@@ -49,7 +49,7 @@ import {
   type ProductModel,
   type InsertProductModel,
 } from '@shared/schema';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import ManagementToolbar from '@/components/product-management/ManagementToolbar';
@@ -69,7 +69,7 @@ export default function ProductModels() {
     queryKey: ['/api/product-models'],
     queryFn: async () => {
       const response = await apiRequest('/api/product-models', 'GET');
-      return (response || []).map((model: any) => ({
+      return extractRecords(response).map((model: any) => ({
         ...model,
         id: model.id,
         createdAt: model.createdAt || model.createdAt || '',
@@ -275,8 +275,8 @@ export default function ProductModels() {
     }
   }, [selectedModel, editForm]);
 
-  const categories = Array.from(new Set(models.map((m) => m.category))).filter(
-    (c): c is string => Boolean(c),
+  const categories = Array.from(new Set(models.map((m) => m.category))).filter((c): c is string =>
+    Boolean(c),
   );
 
   const formatCurrency = (value: string | null) => {

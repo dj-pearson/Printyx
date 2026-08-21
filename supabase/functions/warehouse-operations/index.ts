@@ -338,6 +338,50 @@ export default async function handler(req: Request) {
       return createCorsResponse({ success: true, message: 'Warehouse deleted' }, 200, req);
     }
 
+    // GET /warehouse-operations/stats (EDGE-002h)
+    //
+    // WarehouseOperations.tsx reads stats.totalOperations, pendingOperations,
+    // inProgressOperations and completedOperations. Express counts these in JS
+    // after fetching every operation; PostgREST can count server-side, so this
+    // asks for five head-only counts instead of pulling the rows.
+    if (req.method === 'GET' && endpoint === 'stats') {
+      const countOf = async (
+        client: typeof admin,
+        table: string,
+        apply: (q: any) => any,
+      ): Promise<number> => {
+        const { count } = await apply(
+          client.from(table).select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+        );
+        return count ?? 0;
+      };
+
+      const STATUSES = ['pending', 'in_progress', 'completed', 'failed'];
+      const TYPES = ['receiving', 'quality_control', 'staging', 'shipping', 'build'];
+
+      const [total, ...statusCounts] = await Promise.all([
+        countOf(admin, 'warehouse_operations', (q) => q),
+        ...STATUSES.map((st) => countOf(admin, 'warehouse_operations', (q) => q.eq('status', st))),
+      ]);
+
+      const typeCounts = await Promise.all(
+        TYPES.map((t) => countOf(admin, 'warehouse_operations', (q) => q.eq('operation_type', t))),
+      );
+
+      return createCorsResponse(
+        {
+          totalOperations: total,
+          pendingOperations: statusCounts[0],
+          inProgressOperations: statusCounts[1],
+          completedOperations: statusCounts[2],
+          failedOperations: statusCounts[3],
+          operationsByType: Object.fromEntries(TYPES.map((t, i) => [t, typeCounts[i]])),
+        },
+        200,
+        req,
+      );
+    }
+
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
   } catch (error) {
     console.error('Unexpected error in warehouse-operations function:', error);

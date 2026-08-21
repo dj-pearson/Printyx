@@ -26,6 +26,13 @@
  *   - column names assembled at runtime, and field maps keyed camel -> snake.
  *   - tables that exist live but are in no Drizzle schema (COP-M00 counted 107
  *     of them, created by db:push). Those are reported as unknown, not failed.
+ *   - a handler that holds a query in a VARIABLE and then runs a second
+ *     .from('other_table') before applying that variable's filters. Attribution
+ *     is positional (see tableFor), so those filters are blamed on the second
+ *     table. Round 15 hit this while adding a lookup to meter-readings; the fix
+ *     was to hoist the lookup above the query it feeds, which is also the
+ *     clearer shape. A non-literal .from() no longer reaches backwards, but an
+ *     interleaved LITERAL one still does.
  *
  * Baseline: docs/phantom-columns-baseline.json. Fix them or record them; the
  * count may not grow.
@@ -103,6 +110,9 @@ const FILTER_METHODS = [
   'order',
 ];
 
+/** `.from` on these is a JS builtin, not a PostgREST query. */
+const NON_QUERY_FROM_RECEIVERS = new Set(['Array', 'Buffer', 'String', 'Uint8Array', 'Object']);
+
 /** A string that could not be a column name — skip rather than guess. */
 function looksLikeColumn(token: string): boolean {
   return /^[a-z][a-z0-9_]*$/.test(token) && token.length <= 63;
@@ -119,9 +129,20 @@ function lineAt(source: string, index: number): number {
   return source.slice(0, index).split('\n').length;
 }
 
-/** Nearest preceding .from('x'). These handlers build one query at a time, so
- *  the last table named before a filter is the table that filter runs against. */
-function tableFor(froms: Array<{ index: number; table: string }>, index: number): string | null {
+/** Nearest preceding .from(...). These handlers build one query at a time, so
+ *  the last table named before a filter is the table that filter runs against.
+ *
+ *  A `.from(someVariable)` names a table this check cannot resolve, so it marks
+ *  the position with table: null and everything after it is skipped rather than
+ *  attributed to whatever literal happened to come earlier in the file. Without
+ *  that, reports/handlers/custom-reports.ts built `db.from(table)` over
+ *  business_records and its `.eq('record_type', ...)` was reported against
+ *  report_definitions — a filter on a real column, flagged as phantom. The same
+ *  staleness hides real defects the other way round, so this is not only noise. */
+function tableFor(
+  froms: Array<{ index: number; table: string | null }>,
+  index: number,
+): string | null {
   let current: string | null = null;
   for (const f of froms) {
     if (f.index > index) break;
@@ -155,17 +176,80 @@ function stripEmbeds(list: string): string {
   );
 }
 
+/** Every `.from(` that starts a PostgREST chain, in source order.
+ *
+ *  A quoted argument is the table. Anything else — a variable, a template
+ *  literal, a storage bucket — is unresolvable and gets a null entry so that
+ *  tableFor() stops rather than reaching back to a stale literal. Array.from and
+ *  friends are not query builders and are dropped. */
+function collectFroms(source: string): Array<{ index: number; table: string | null }> {
+  const out: Array<{ index: number; table: string | null }> = [];
+  for (const m of source.matchAll(/(\w+)?\s*\.from\(\s*([^)]*)\)/g)) {
+    const receiver = m[1] ?? '';
+    if (NON_QUERY_FROM_RECEIVERS.has(receiver)) continue;
+    const arg = m[2].trim();
+    const literal = /^'([a-z0-9_]+)'$/.exec(arg);
+    // A storage bucket is not a table even when it is written as a literal.
+    const isStorage = receiver === 'storage';
+    out.push({
+      index: m.index ?? 0,
+      table: literal && !isStorage ? literal[1] : null,
+    });
+  }
+
+  // helper(client, 'table', (q) => q.eq(...)) — the table is an ARGUMENT and the
+  // filters live in a callback, so positional attribution blamed them on
+  // whatever .from() came earlier. daily-briefing's countRows() helper produced
+  // three such false reports, each naming a column that is real on the table
+  // actually queried. The callback region is scoped to the named table, then
+  // whatever was in effect before the call is restored at its closing paren.
+  for (const m of source.matchAll(/\b\w+\(\s*[\w.]+\s*,\s*'([a-z0-9_]+)'\s*,\s*(?=\()/g)) {
+    const table = m[1];
+    if (!tableColumns.has(table)) continue;
+    const start = m.index ?? 0;
+    const end = matchingParen(source, source.indexOf('(', start));
+    if (end < 0) continue;
+    const restore = tableFor(out, start);
+    out.push({ index: start, table });
+    out.push({ index: end, table: restore });
+  }
+
+  out.sort((a, b) => a.index - b.index);
+  return out;
+}
+
+/** Index of the ')' closing the '(' at `open`, or -1. */
+function matchingParen(source: string, open: number): number {
+  if (open < 0) return -1;
+  let depth = 0;
+  for (let i = open; i < source.length; i++) {
+    if (source[i] === '(') depth++;
+    else if (source[i] === ')') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/** Column literals sitting after a `.from(...)` this check could not resolve. */
+let unresolved = 0;
+
 function scan(source: string): Ref[] {
   const refs: Ref[] = [];
-  const froms = [...source.matchAll(/\.from\(\s*'([a-z0-9_]+)'\s*\)/g)].map((m) => ({
-    index: m.index ?? 0,
-    table: m[1],
-  }));
+  const froms = collectFroms(source);
   if (froms.length === 0) return refs;
 
   const push = (index: number, column: string, kind: string) => {
+    if (!looksLikeColumn(column)) return;
     const table = tableFor(froms, index);
-    if (!table || !looksLikeColumn(column)) return;
+    if (!table) {
+      // Counted rather than dropped quietly: a column here is unchecked, not
+      // proven fine. This is the same class of blind spot as a table missing
+      // from the Drizzle schema, and it is reported the same way.
+      unresolved++;
+      return;
+    }
     refs.push({ table, column, line: lineAt(source, index), kind });
   };
 
@@ -412,5 +496,6 @@ const unknownCount = [...unknownTables.values()].reduce((a, b) => a + b, 0);
 console.log(
   `✓ No new phantom column references (${current.length} baselined; ` +
     `${unknownTables.size} table(s) not in any Drizzle schema and ${ambiguousTables.size} ` +
-    `declared twice with different shapes, ${unknownCount} reference(s), skipped).`,
+    `declared twice with different shapes, ${unknownCount} reference(s), skipped; ` +
+    `${unresolved} reference(s) after an unresolved .from(...) also skipped).`,
 );

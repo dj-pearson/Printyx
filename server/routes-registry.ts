@@ -22,7 +22,6 @@ import {
 
 import {
   registerBillingCoreRoutes,
-  registerFinancialRoutes,
   registerFinancialForecastingRoutes,
   registerCommissionRoutes,
   registerQuickBooksRoutes,
@@ -53,7 +52,6 @@ import {
   registerCustomerRoutes,
   registerBusinessRecordRoutes,
   registerCrmGoalRoutes,
-  registerSavedViewsRoutes,
   registerCustomFieldsRoutes,
   registerCrmNotesRoutes,
   registerCrmBulkRoutes,
@@ -68,17 +66,14 @@ import {
 } from './domains/crm';
 
 import {
-  registerDealsRoutes,
   registerDealsManagementRoutes,
   // registerDealDeskRoutes — migrated to supabase/functions/deal-desk/
   registerDealTagRoutes,
-  registerOpportunitiesRoutes,
   // registerPipelineConfigurationRoutes — migrated to supabase/functions/pipeline-config/
   // setupSalesPipelineRoutes — migrated to supabase/functions/sales-pipeline/
   registerLeadAssignmentRoutes,
   registerLeadMapRoutes,
   registerAutoLeadRoutingRoutes,
-  registerSalesRepAssignmentRoutes,
   registerSalesHandoffRoutes,
   registerRenewalManagementRoutes,
   contractRenewalRoutes,
@@ -189,7 +184,6 @@ import { registerAnalyticsRoutes, gpt5Routes } from './domains/ai';
 
 import {
   registerClientMonitoringRoutes,
-  registerWhiteLabelRoutes,
   customerPortalRoutes,
   clientMetricsRoutes,
   deviceMonitoringRoutes,
@@ -197,22 +191,13 @@ import {
 
 // ─── Non-domain imports ──────────────────────────────────���──────────────
 import { registerHealthRoutes } from './routes/health-routes';
-import { registerPredictiveFailureDispatchRoutes } from './routes-predictive-failure-dispatch';
-import { registerChurnRiskRoutes } from './routes-churn-risk';
-import { registerContractPnlRoutes } from './routes-contract-pnl';
-import { registerRenewalAutoQuoteRoutes } from './routes-renewal-autoquote';
 import { registerQbrRoutes } from './routes-qbr';
-import { registerTruckStockRoutes } from './routes-truck-stock';
 import { registerDealDeskCopilotRoutes } from './routes-deal-desk-copilot';
 import { registerDailyBriefingRoutes } from './routes-daily-briefing';
 import { registerPortalServiceRoutes } from './routes-portal-service';
-import { registerTonerReplenishRoutes } from './routes-toner-replenish';
-import { registerMeterReadVisionRoutes } from './routes-meter-read-vision';
 import { registerServiceKnowledgeRoutes } from './routes-service-knowledge';
 import { registerVoiceTicketCloseRoutes } from './routes-voice-ticket-close';
-import { registerEmailAutopilotRoutes } from './routes-email-autopilot';
 import { registerChatbotRoutes } from './routes-chatbot';
-import { registerVoiceAgentRoutes } from './routes-voice-agent';
 import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
@@ -430,7 +415,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Service & CRM ────────────────────────────────────────────────
   registerServiceAnalysisRoutes(app);
   registerCrmGoalRoutes(app);
-  registerSavedViewsRoutes(app);
   registerCustomFieldsRoutes(app);
   registerCrmNotesRoutes(app);
   registerDealTagRoutes(app);
@@ -545,7 +529,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     './routes/ai-documentation-routes',
     './routes/ai-search-knowledge-routes',
     './routes/ai-employee-routes',
-    './routes/lease-routes',
     './routes/signature-routes',
     './routes/field-service-routes',
     './routes/email-marketing-routes',
@@ -635,7 +618,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use(webFormsRoutes);
   app.use(emailSequencesRoutes);
   registerDealsManagementRoutes(app);
-  registerOpportunitiesRoutes(app);
   // registerDealDeskRoutes(app) — migrated to supabase/functions/deal-desk/
   // registerPipelineConfigurationRoutes(app) — migrated to supabase/functions/pipeline-config/
   registerTechnicianManagementRoutes(app);
@@ -643,35 +625,22 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerProductPricingRoutes(app);
   registerSoftwareProductsRoutes(app);
   registerLeadAssignmentRoutes(app);
-  registerSalesRepAssignmentRoutes(app);
   registerLeadMapRoutes(app);
   registerAutoLeadRoutingRoutes(app);
   registerPredictiveServiceDispatchRoutes(app);
-  registerPredictiveFailureDispatchRoutes(app);
-  registerChurnRiskRoutes(app);
-  registerContractPnlRoutes(app);
-  registerRenewalAutoQuoteRoutes(app);
   registerQbrRoutes(app);
-  registerTruckStockRoutes(app);
   registerDealDeskCopilotRoutes(app);
   registerDailyBriefingRoutes(app);
   registerPortalServiceRoutes(app);
-  registerTonerReplenishRoutes(app);
-  registerMeterReadVisionRoutes(app);
   registerServiceKnowledgeRoutes(app);
   registerVoiceTicketCloseRoutes(app);
-  registerEmailAutopilotRoutes(app);
   registerChatbotRoutes(app);
-  registerVoiceAgentRoutes(app);
-  registerWhiteLabelRoutes(app);
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
   registerSalesHandoffRoutes(app);
-  registerDealsRoutes(app);
   registerCommissionRoutes(app);
   registerCatalogRoutes(app);
   registerAnalyticsRoutes(app);
-  registerFinancialRoutes(app);
   registerRenewalManagementRoutes(app);
 
   // ─── Sales Forecasting ────────────────────────────────────────────

@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractPagination } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateFromUrl } from '@/hooks/useCreateFromUrl';
 import { MainLayout } from '@/components/layout/main-layout';
@@ -299,12 +299,12 @@ export default function CustomersPage() {
       ]);
 
       return {
-        total: totalResp?.pagination?.total || 0,
-        activeCount: activeResp?.pagination?.total || 0,
-        inactiveCount: inactiveResp?.pagination?.total || 0,
-        onHoldCount: onHoldResp?.pagination?.total || 0,
-        churnedCount: churnedResp?.pagination?.total || 0,
-        atRiskCount: (inactiveResp?.pagination?.total || 0) + (churnedResp?.pagination?.total || 0),
+        total: extractPagination(totalResp).total,
+        activeCount: extractPagination(activeResp).total,
+        inactiveCount: extractPagination(inactiveResp).total,
+        onHoldCount: extractPagination(onHoldResp).total,
+        churnedCount: extractPagination(churnedResp).total,
+        atRiskCount: extractPagination(inactiveResp).total + extractPagination(churnedResp).total,
       };
     },
     staleTime: 60_000,

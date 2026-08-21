@@ -477,14 +477,17 @@ export default async function handler(req: Request) {
       let escalated = false;
       let onCallTechId: string | null = null;
       if (priority === 'P1') {
+        // The column is user_id; recipient_user_id does not exist, so this
+        // lookup 42703'd and no P1 call ever escalated. (additional_recipients
+        // is the extra-notify list, not the owner of the configuration.)
         const { data: alerts } = await admin
           .from('alert_configurations')
-          .select('id, recipient_user_id')
+          .select('id, user_id')
           .eq('tenant_id', tenantId)
           .limit(1);
         const recipient = ((alerts as Row[]) || [])[0];
-        if (recipient?.recipient_user_id) {
-          onCallTechId = recipient.recipient_user_id;
+        if (recipient?.user_id) {
+          onCallTechId = recipient.user_id as string;
           escalated = true;
         }
       }

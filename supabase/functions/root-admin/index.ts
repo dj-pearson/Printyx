@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { USER_NAME_COLUMNS } from '../_shared/user-profile.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toCamel } from '../_shared/case.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
 
 export default async function handler(req: Request) {
@@ -144,15 +145,60 @@ export default async function handler(req: Request) {
     }
 
     // GET /root-admin/security-alerts - Security alerts
+    //
+    // This used to query `activity_reports`, which is the sales-activity rollup
+    // (total_calls, total_emails, meetings_scheduled). It has no `type` column
+    // and nothing security-related, so the filter 42703'd and the dashboard's
+    // alert panel was permanently empty — reading as "no security events",
+    // which is the worst possible way for this particular panel to fail.
+    //
+    // audit_logs is the real event store: severity low|medium|high|critical,
+    // category authentication|authorization|data_access|data_modification|
+    // system|security, stamped with `timestamp` (not created_at).
     if (req.method === 'GET' && endpoint === 'security-alerts') {
       const { data: alerts } = await admin
-        .from('activity_reports')
-        .select('*')
-        .eq('type', 'security_alert')
-        .order('created_at', { ascending: false })
+        .from('audit_logs')
+        .select(
+          'id, action, resource, severity, category, tenant_id, user_id, timestamp, additional_context',
+        )
+        .in('category', ['security', 'authentication', 'authorization'])
+        .order('timestamp', { ascending: false })
         .limit(50);
 
-      return createCorsResponse(alerts || [], 200, req);
+      const rows = alerts ?? [];
+      const tenantIds = [...new Set(rows.map((a: any) => a.tenant_id).filter(Boolean))];
+      const tenantNames = new Map<string, string>();
+      if (tenantIds.length > 0) {
+        const { data: tenantRows } = await admin
+          .from('tenants')
+          .select('id, name')
+          .in('id', tenantIds as string[]);
+        for (const t of tenantRows ?? []) tenantNames.set(t.id as string, t.name as string);
+      }
+
+      // RootAdminDashboard renders alert.type.replace(...), so type is always a
+      // string. It is derived from the category rather than stored.
+      const typeForCategory: Record<string, string> = {
+        security: 'security_breach',
+        authentication: 'failed_login',
+        authorization: 'unauthorized_access',
+      };
+
+      return createCorsResponse(
+        rows.map((a: any) => ({
+          id: a.id,
+          type: typeForCategory[a.category as string] ?? 'suspicious_activity',
+          severity: a.severity,
+          tenant: tenantNames.get(a.tenant_id as string) ?? (a.tenant_id as string) ?? 'unknown',
+          message: [a.action, a.resource].filter(Boolean).join(' on ') || 'Security event',
+          timestamp: a.timestamp,
+          // audit_logs is an append-only event log with no triage state; every
+          // row is an observation, so nothing here is "resolved".
+          status: 'open',
+        })),
+        200,
+        req,
+      );
     }
 
     // GET /root-admin/users - List all users
@@ -224,6 +270,273 @@ export default async function handler(req: Request) {
     }
 
     // Method/endpoint not found
+    // ─── Signup CRM (EDGE-002d) ─────────────────────────────────────────────
+    //
+    // RootAdminSignupsCRM.tsx calls /signups, /signups-analytics,
+    // /trial-funnel and /high-value-signups; AdminCommandCenter.tsx calls
+    // /pending-tasks. None existed here. Ported from
+    // server/routes-signup-crm.ts against platform_signups.
+    //
+    // Rows go through toCamel: the page reads companyName, firstName,
+    // qualificationScore and lastActivityAt, because Express returns Drizzle's
+    // camelCase while PostgREST returns snake_case.
+
+    // GET /root-admin/signups
+    if (req.method === 'GET' && endpoint === 'signups') {
+      const status = url.searchParams.get('status');
+      const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
+      const limit = Math.min(
+        100,
+        Math.max(1, parseInt(url.searchParams.get('limit') || '20', 10) || 20),
+      );
+      const offset = (page - 1) * limit;
+      const order = url.searchParams.get('order') === 'asc';
+
+      // Only sort by a column that exists — sortBy arrives from the query
+      // string, and an unknown name would be a 42703 rather than a bad request.
+      const SORTABLE = new Set([
+        'created_at',
+        'updated_at',
+        'company_name',
+        'qualification_score',
+        'status',
+        'last_activity_at',
+      ]);
+      const requested = url.searchParams.get('sortBy') || 'createdAt';
+      const requestedColumn = requested.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
+      const sortColumn = SORTABLE.has(requestedColumn) ? requestedColumn : 'created_at';
+
+      let query = admin
+        .from('platform_signups')
+        .select('*', { count: 'exact' })
+        .order(sortColumn, { ascending: order })
+        .range(offset, offset + limit - 1);
+      if (status) query = query.eq('status', status);
+
+      const { data: signups, error, count } = await query;
+
+      if (error) {
+        console.error('Error fetching signups:', error);
+        return createCorsResponse({ message: 'Failed to fetch signups' }, 500, req);
+      }
+
+      const total = count ?? 0;
+      return createCorsResponse(
+        {
+          data: toCamel(signups ?? []),
+          pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /root-admin/pending-tasks
+    //
+    // Express builds this from activity_reports filtered on type, resolved and
+    // severity. activity_reports is the SALES rollup (total_calls, total_emails,
+    // meetings_scheduled) and has none of those three columns, so the Express
+    // version 42703s - the same defect this function's /security-alerts had
+    // before it was rebuilt on audit_logs. Rebuilt from sources that exist:
+    // unconverted signups, and unacknowledged critical security events.
+    if (req.method === 'GET' && endpoint === 'pending-tasks') {
+      const [signupRes, securityRes] = await Promise.all([
+        admin
+          .from('platform_signups')
+          .select('id', { count: 'exact', head: true })
+          .in('status', ['pending', 'new', 'trial']),
+        admin
+          .from('audit_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('category', 'security')
+          .eq('severity', 'critical'),
+      ]);
+
+      const pendingTasks: Array<Record<string, unknown>> = [];
+
+      if ((signupRes.count ?? 0) > 0) {
+        pendingTasks.push({
+          id: 'signup-review',
+          type: 'Signup Review',
+          count: signupRes.count,
+          urgency: 'high',
+          description: 'Signups awaiting review or still in trial',
+          action: 'Review All',
+        });
+      }
+
+      if ((securityRes.count ?? 0) > 0) {
+        pendingTasks.push({
+          id: 'security-alerts',
+          type: 'Security Alert',
+          count: securityRes.count,
+          urgency: 'critical',
+          description: 'Critical security events recorded in the audit log',
+          action: 'Investigate',
+        });
+      }
+
+      return createCorsResponse(pendingTasks, 200, req);
+    }
+
+    // GET /root-admin/signups-analytics
+    if (req.method === 'GET' && endpoint === 'signups-analytics') {
+      const startParam = url.searchParams.get('startDate');
+      const endParam = url.searchParams.get('endDate');
+      const start = startParam
+        ? new Date(startParam)
+        : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const end = endParam ? new Date(endParam) : new Date();
+
+      // GROUP BY and AVG are not expressible in PostgREST, so the rows come
+      // back and are aggregated here - the same split every dashboard endpoint
+      // ported in this story-family has needed.
+      const { data: rows, error } = await admin
+        .from('platform_signups')
+        .select('status, source, qualification_score')
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString());
+
+      if (error) {
+        console.error('Error fetching signup analytics:', error);
+        return createCorsResponse({ error: 'Failed to fetch analytics' }, 500, req);
+      }
+
+      const signups = rows ?? [];
+      const byStatus: Record<string, number> = {};
+      const bySource: Record<string, number> = {};
+      let scoreTotal = 0;
+      let scoreCount = 0;
+
+      for (const row of signups) {
+        const status = (row as any).status ?? 'unknown';
+        const source = (row as any).source ?? 'unknown';
+        byStatus[status] = (byStatus[status] ?? 0) + 1;
+        bySource[source] = (bySource[source] ?? 0) + 1;
+        const score = (row as any).qualification_score;
+        if (typeof score === 'number') {
+          scoreTotal += score;
+          scoreCount++;
+        }
+      }
+
+      const activated = byStatus['activated'] ?? 0;
+
+      return createCorsResponse(
+        {
+          totalSignups: signups.length,
+          byStatus,
+          bySource,
+          // Express selects { avg: qualificationScore } and reads [0].avg,
+          // which is the FIRST row's score, not an average - the field name and
+          // the card above it both promise a mean. Computed properly here.
+          avgQualificationScore: scoreCount > 0 ? scoreTotal / scoreCount : 0,
+          conversionRate: signups.length > 0 ? ((activated / signups.length) * 100).toFixed(2) : 0,
+          dateRange: { start, end },
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /root-admin/trial-funnel
+    if (req.method === 'GET' && endpoint === 'trial-funnel') {
+      const STAGES = [
+        'signup_created',
+        'email_verified',
+        'trial_started',
+        'first_data_created',
+        'feature_used',
+        'demo_completed',
+        'upgrade_attempted',
+        'upgraded',
+      ];
+
+      // conversion_funnel_events is keyed by signup_id and carries no
+      // tenant_id; root-admin is platform-scoped, and Express does not filter
+      // by tenant here either.
+      const counts = await Promise.all(
+        STAGES.map(async (stage) => {
+          const { count } = await admin
+            .from('conversion_funnel_events')
+            .select('id', { count: 'exact', head: true })
+            .eq('stage', stage);
+          return { stage, count: count ?? 0 };
+        }),
+      );
+
+      const funnel = counts.map((item, index) => ({
+        ...item,
+        dropoffPercent:
+          index > 0 && counts[index - 1].count > 0
+            ? (((counts[index - 1].count - item.count) / counts[index - 1].count) * 100).toFixed(2)
+            : 0,
+      }));
+
+      return createCorsResponse({ funnel }, 200, req);
+    }
+
+    // GET /root-admin/high-value-signups
+    if (req.method === 'GET' && endpoint === 'high-value-signups') {
+      const minScore = parseInt(url.searchParams.get('minScore') || '70', 10) || 70;
+      const limit = Math.min(
+        100,
+        Math.max(1, parseInt(url.searchParams.get('limit') || '20', 10) || 20),
+      );
+
+      const { data: signups, error } = await admin
+        .from('platform_signups')
+        .select('*')
+        .gte('qualification_score', minScore)
+        .order('qualification_score', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching high-value signups:', error);
+        return createCorsResponse({ error: 'Failed to fetch high-value signups' }, 500, req);
+      }
+
+      return createCorsResponse({ data: toCamel(signups ?? []) }, 200, req);
+    }
+
+    // ─── Not portable to an edge function ───────────────────────────────────
+    //
+    // These three do not read tenant tables — they introspect POSTGRES ITSELF:
+    // pg_database_size, pg_stat_activity, information_schema.tables, pg_tables
+    // joined to pg_class, and in the last case an operator-supplied statement.
+    // PostgREST exposes one schema of tables; none of that is reachable through
+    // it. Porting them would mean adding database functions, and for
+    // /execute-query specifically that means a function that runs arbitrary
+    // operator SQL — strictly worse than where it is now.
+    //
+    // Express's /execute-query is already hardened in a way an edge port could
+    // not reproduce: the statement runs inside SET TRANSACTION READ ONLY, so
+    // Postgres itself rejects writes with SQLSTATE 25006. That transaction is
+    // the real boundary (validateReadOnlyQuery is defence in depth), and it is
+    // not expressible through the PostgREST client. EDGE-002d's own acceptance
+    // criterion allows removing this feature rather than porting it.
+    //
+    // So these stay on Express, and say so instead of 404ing.
+    if (
+      endpoint === 'system-resources' ||
+      endpoint === 'database-tables' ||
+      endpoint === 'execute-query'
+    ) {
+      return createCorsResponse(
+        {
+          error: 'This endpoint cannot be served from an edge function',
+          code: 'REQUIRES_DIRECT_SQL',
+          details:
+            `/root-admin/${endpoint} introspects Postgres (catalog views, or an operator-supplied ` +
+            'statement) rather than reading tenant tables, and PostgREST cannot reach either. ' +
+            'It remains on the Express host. /execute-query additionally depends on a SET ' +
+            'TRANSACTION READ ONLY boundary that the PostgREST client cannot express.',
+        },
+        501,
+        req,
+      );
+    }
+
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
   } catch (error) {
     console.error('Unexpected error in root-admin function:', error);

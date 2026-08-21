@@ -90,12 +90,12 @@ export default function Invoices() {
       return extractRecords(response).map((c: any) => ({
         ...c,
         id: c.id,
-        contractNumber: c.contractNumber || c.contractNumber || '',
-        customerId: c.customerId || c.customerId || '',
-        startDate: c.startDate || c.startDate || '',
-        endDate: c.endDate || c.endDate || '',
-        createdAt: c.createdAt || c.createdAt || '',
-        updatedAt: c.updatedAt || c.updatedAt || '',
+        contractNumber: c.contract_number || c.contractNumber || '',
+        customerId: c.customer_id || c.customerId || '',
+        startDate: c.start_date || c.startDate || '',
+        endDate: c.end_date || c.endDate || '',
+        createdAt: c.created_at || c.createdAt || '',
+        updatedAt: c.updated_at || c.updatedAt || '',
       }));
     },
   });

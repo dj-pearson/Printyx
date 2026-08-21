@@ -377,38 +377,9 @@ class OnboardingPDFService {
 }
 
 // Enhanced API endpoints for auto-population
-async function searchBusinessRecords(req: Request, res: Response) {
-  try {
-    const tenantId = req.headers['x-tenant-id'] as string;
-    const { search, limit = 10 } = req.query;
-
-    if (!tenantId) {
-      return res.status(400).json({ error: 'Tenant ID is required' });
-    }
-
-    let query = db
-      .select()
-      .from(businessRecords)
-      .where(eq(businessRecords.tenantId, tenantId))
-      .limit(Number(limit));
-
-    if (search && typeof search === 'string') {
-      query = query.where(
-        or(
-          ilike(businessRecords.companyName, `%${search}%`),
-          ilike(businessRecords.firstName, `%${search}%`),
-          ilike(businessRecords.lastName, `%${search}%`),
-        ),
-      );
-    }
-
-    const records = await query.execute();
-    res.json(records);
-  } catch (error) {
-    log.error('Error searching business records:', error);
-    res.status(500).json({ error: 'Failed to search business records' });
-  }
-}
+// searchBusinessRecords was the handler for GET /api/business-records here.
+// PROD-008b retired that registration (proxied to the edge function), and it
+// had no other caller.
 
 async function searchQuotes(req: Request, res: Response) {
   try {
@@ -477,46 +448,9 @@ async function getQuoteLineItems(req: Request, res: Response) {
   }
 }
 
-async function getCompanyContacts(req: Request, res: Response) {
-  try {
-    const user = req.user as any;
-    const { businessRecordId } = req.params;
-
-    if (!user?.tenantId) {
-      return res.status(400).json({ error: 'Tenant ID is required' });
-    }
-
-    const tenantId = user.tenantId;
-
-    // First get the business record to find the company
-    const businessRecord = await db
-      .select()
-      .from(businessRecords)
-      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.id, businessRecordId)))
-      .limit(1)
-      .execute();
-
-    if (!businessRecord.length) {
-      return res.status(404).json({ error: 'Business record not found' });
-    }
-
-    // For now, return the business record contact info as primary contact
-    // This can be enhanced when company_contacts table is properly linked
-    const primaryContact = {
-      id: businessRecord[0].id,
-      first_name: businessRecord[0].firstName,
-      last_name: businessRecord[0].lastName,
-      email: businessRecord[0].email,
-      phone: businessRecord[0].phone,
-      is_primary: true,
-    };
-
-    res.json([primaryContact]);
-  } catch (error) {
-    log.error('Error fetching company contacts:', error);
-    res.status(500).json({ error: 'Failed to fetch company contacts' });
-  }
-}
+// getCompanyContacts served GET /api/companies/:id/contacts here. PROD-008b
+// retired that registration (proxied to the edge function); it had no other
+// caller.
 
 export function registerOnboardingRoutes(app: Express): void {
   const pdfService = new OnboardingPDFService();
@@ -878,11 +812,18 @@ export function registerOnboardingRoutes(app: Express): void {
     }
   });
 
-  // Enhanced API endpoints for auto-population
-  app.get('/api/business-records', searchBusinessRecords);
+  // Enhanced API endpoints for auto-population.
+  //
+  // PROD-008b: GET /api/business-records was registered here too. It is proxied
+  // to the business-records edge function, so this registration never ran - and
+  // it was the SECOND registration of that path, which check:dup-routes tracks
+  // separately. The remaining three below are on unproxied prefixes.
   app.get('/api/quotes', searchQuotes);
   app.get('/api/quotes/:quoteId/line-items', getQuoteLineItems);
-  app.get('/api/companies/:businessRecordId/contacts', getCompanyContacts);
+  // PROD-008b: GET /api/companies/:id/contacts was registered here too and is
+  // proxied to the companies edge function, so it never ran. It was also the
+  // second of three registrations of that path (routes-contacts.ts has the
+  // other), which check:dup-routes tracks separately.
 
   // ─── Setup Wizard State ──────────────────────────────────────────
   // In-memory store for wizard state (keyed by tenantId:userId)

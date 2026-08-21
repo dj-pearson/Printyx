@@ -1,7 +1,7 @@
 import type { Express } from 'express';
 import { storage } from './storage';
 import { z } from 'zod';
-import { insertTaskSchema, insertProjectSchema } from '@shared/schema';
+import { insertProjectSchema } from '@shared/schema';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
@@ -9,114 +9,15 @@ const log = createModuleLogger('routes-tasks');
 
 // Task management routes using real database data
 export function registerTaskRoutes(app: Express) {
-  // Get tasks - filter by assigned user if requested
-  app.get('/api/tasks', async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
-      const { assignedTo, my } = req.query;
-
-      let userId: string | undefined;
-      if (my === 'true') {
-        userId = getUserId(req);
-      } else if (assignedTo) {
-        userId = assignedTo as string;
-      }
-
-      const tasks = await storage.getTasks(tenantId, userId);
-      res.json(tasks);
-    } catch (error) {
-      log.error('Error fetching tasks:', error);
-      res.status(500).json({ error: 'Failed to fetch tasks' });
-    }
-  });
-
-  // Get task statistics
-  app.get('/api/tasks/stats', async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
-      const { my } = req.query;
-
-      let userId: string | undefined;
-      if (my === 'true') {
-        userId = getUserId(req);
-      }
-
-      const stats = await storage.getTaskStats(tenantId, userId);
-      res.json(stats);
-    } catch (error) {
-      log.error('Error fetching task stats:', error);
-      res.status(500).json({ error: 'Failed to fetch task statistics' });
-    }
-  });
-
-  // Create new task
-  app.post('/api/tasks', async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
-      const userId = getUserId(req);
-
-      // Convert string dates to Date objects and clean up data
-      const taskData = { ...req.body };
-      if (taskData.dueDate && typeof taskData.dueDate === 'string') {
-        taskData.dueDate = new Date(taskData.dueDate);
-      }
-
-      // Clean up invalid UUID fields
-      if (taskData.customerId === 'none' || taskData.customerId === '') {
-        taskData.customerId = null;
-      }
-      if (taskData.projectId === 'none' || taskData.projectId === '') {
-        taskData.projectId = null;
-      }
-      if (taskData.assignedTo === 'none' || taskData.assignedTo === '') {
-        taskData.assignedTo = null;
-      }
-
-      const validatedData = insertTaskSchema.parse({
-        ...taskData,
-        tenantId,
-        createdBy: userId,
-      });
-
-      const task = await storage.createTask(validatedData);
-      res.status(201).json(task);
-    } catch (error) {
-      log.error('Error creating task:', error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Invalid task data', details: error.errors });
-      }
-      res.status(500).json({ error: 'Failed to create task' });
-    }
-  });
-
-  // Update task (PUT method)
-  app.put('/api/tasks/:id', async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
-      const taskId = req.params.id;
-
-      const task = await storage.updateTask(taskId, req.body, tenantId);
-
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-
-      res.json(task);
-    } catch (error) {
-      log.error('Error updating task:', error);
-      res.status(500).json({ error: 'Failed to update task' });
-    }
-  });
-
-  // Update task (PATCH method)
-  // PATCH /api/tasks/:id is intentionally NOT registered here. The authenticated
-  // handler in routes-enhanced-tasks.ts owns it; this file used to register an
-  // unauthenticated duplicate that shadowed it (CR-018). PUT /api/tasks/:id above
-  // remains this module's update path.
+  // ── /api/tasks: RETIRED (PROD-008b) ───────────────────────────────────────
+  //
+  // GET /api/tasks, GET /api/tasks/stats, POST /api/tasks and PUT
+  // /api/tasks/:id used to live here. /api/tasks is in crmProxies, and
+  // registerEdgeFunctionProxy runs before this file, so none of them ran in
+  // dev; production never reaches Express at all. The tasks edge function owns
+  // the surface.
+  //
+  // /api/projects below is NOT proxied and still runs here.
 
   // Get projects
   app.get('/api/projects', async (req: any, res) => {

@@ -51,7 +51,7 @@ import { insertMeterReadingSchema } from '@shared/schema';
 import type { MeterReading, Equipment, Contract } from '@shared/schema';
 import { z } from 'zod';
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 
@@ -143,7 +143,7 @@ export default function MeterReadings() {
       const response = await apiRequest(path, 'GET');
       // The Express route returns raw snake_case rows (SELECT *); normalize to the
       // camelCase Drizzle column names the page renders against.
-      return (response || []).map((reading: any) => ({
+      return extractRecords(response).map((reading: any) => ({
         ...reading,
         id: reading.id,
         equipmentId: reading.equipment_id ?? reading.equipmentId ?? '',
@@ -165,7 +165,7 @@ export default function MeterReadings() {
     queryKey: ['/api/equipment'],
     queryFn: async () => {
       const response = await apiRequest('/api/equipment', 'GET');
-      return (response || []).map((equip: any) => ({
+      return extractRecords(response).map((equip: any) => ({
         ...equip,
         id: equip.id,
         serialNumber: equip.serial_number ?? equip.serialNumber ?? '',
@@ -183,11 +183,14 @@ export default function MeterReadings() {
     queryKey: ['/api/contracts'],
     queryFn: async () => {
       const response = await apiRequest('/api/contracts', 'GET');
-      return (response || []).map((contract: any) => ({
+      // The contracts edge function returns { data, total, page, limit }, so
+      // `(response || []).map` was a TypeError in production; and the rows are
+      // snake_case, so reading only the camelCase key left both fields blank.
+      return extractRecords(response).map((contract: any) => ({
         ...contract,
         id: contract.id,
-        contractNumber: contract.contractNumber || contract.contractNumber || '',
-        customerId: contract.customerId || contract.customerId || '',
+        contractNumber: contract.contract_number || contract.contractNumber || '',
+        customerId: contract.customer_id || contract.customerId || '',
       }));
     },
   });

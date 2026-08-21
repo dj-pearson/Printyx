@@ -51,13 +51,32 @@ export default async function handler(req: Request) {
       const limit = parseInt(url.searchParams.get('limit') || '100');
       const offset = (page - 1) * limit;
 
+      // Resolved BEFORE the readings query is built, so this handler still runs
+      // one PostgREST chain at a time.
+      //
+      // A reading names its equipment, not its customer — meter_readings has no
+      // customer_id column and no FK to business_records, so the old
+      // .eq('customer_id') filter and the customer embed were both errors that
+      // took the whole list query down. equipment.customer_id is the real link.
+      let customerEquipmentIds: string[] | null = null;
+      if (customerId) {
+        const { data: customerEquipment } = await admin
+          .from('equipment')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('customer_id', customerId);
+        customerEquipmentIds = (customerEquipment ?? []).map((e: { id: string }) => e.id);
+        if (customerEquipmentIds.length === 0) {
+          return createCorsResponse({ data: [], total: 0, page, limit }, 200, req);
+        }
+      }
+
       let query = admin
         .from('meter_readings')
         .select(
           `
           *,
-          equipment:equipment(id, serial_number, model_number, manufacturer),
-          customer:business_records!meter_readings_customer_id_fkey(id, company_name),
+          equipment:equipment(id, serial_number, model_number, manufacturer, customer_id),
           created_by_user:users!meter_readings_created_by_fkey(id, first_name, last_name)
         `,
           { count: 'exact' },
@@ -70,8 +89,8 @@ export default async function handler(req: Request) {
         query = query.eq('equipment_id', equipmentId);
       }
 
-      if (customerId) {
-        query = query.eq('customer_id', customerId);
+      if (customerEquipmentIds) {
+        query = query.in('equipment_id', customerEquipmentIds);
       }
 
       if (startDate) {
@@ -109,7 +128,6 @@ export default async function handler(req: Request) {
           `
           *,
           equipment:equipment(id, serial_number, model_number, manufacturer, customer_id),
-          customer:business_records!meter_readings_customer_id_fkey(id, company_name, primary_contact_name),
           created_by_user:users!meter_readings_created_by_fkey(id, first_name, last_name, email)
         `,
         )
@@ -133,26 +151,39 @@ export default async function handler(req: Request) {
       let blackUsage = body.blackUsage || body.black_usage;
       let colorUsage = body.colorUsage || body.color_usage;
 
+      // MeterReadings.tsx posts bwMeterReading / colorMeterReading (the real
+      // column names, per the BATCH 8 page fix); blackCount / colorCount are the
+      // older shape and are still accepted.
+      const blackReading = body.bwMeterReading ?? body.blackCount ?? body.black_count ?? 0;
+      const colorReading = body.colorMeterReading ?? body.colorCount ?? body.color_count ?? 0;
+
       if (body.previousBlackReading !== undefined) {
-        const currentBlack = body.blackCount || body.black_count || 0;
-        blackUsage = currentBlack - body.previousBlackReading;
+        blackUsage = blackReading - body.previousBlackReading;
       }
 
       if (body.previousColorReading !== undefined) {
-        const currentColor = body.colorCount || body.color_count || 0;
-        colorUsage = currentColor - body.previousColorReading;
+        colorUsage = colorReading - body.previousColorReading;
       }
 
+      // Six of the eight names this payload used were not columns —
+      // customer_id, black_count, color_count, black_usage, color_usage and
+      // reading_type — so every create was a 42703. Only customer_id was visible
+      // to check:phantom-cols, because the payload is a named variable. The real
+      // meter columns are bw_/color_meter_reading, the deltas are
+      // black_/color_copies, the previous readings have their own columns, and
+      // the how-collected field is reading_method.
       const readingData = {
         tenant_id: tenantId,
         equipment_id: body.equipmentId || body.equipment_id,
-        customer_id: body.customerId || body.customer_id,
+        contract_id: body.contractId ?? body.contract_id ?? null,
         reading_date: body.readingDate || body.reading_date || new Date().toISOString(),
-        black_count: body.blackCount || body.black_count || 0,
-        color_count: body.colorCount || body.color_count || 0,
-        black_usage: blackUsage || 0,
-        color_usage: colorUsage || 0,
-        reading_type: body.readingType || body.reading_type || 'manual',
+        bw_meter_reading: blackReading,
+        color_meter_reading: colorReading,
+        previous_black_meter: body.previousBlackReading ?? null,
+        previous_color_meter: body.previousColorReading ?? null,
+        black_copies: blackUsage || 0,
+        color_copies: colorUsage || 0,
+        reading_method: body.readingType || body.reading_type || body.readingMethod || 'manual',
         notes: body.notes || null,
         created_by: user.id,
         created_at: new Date().toISOString(),

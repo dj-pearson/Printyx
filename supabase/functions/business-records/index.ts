@@ -3,6 +3,7 @@
 // Maintains the same response format expected by existing callers
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
 
 // Convert camelCase request body keys to snake_case for DB compatibility
 function camelToSnake(str: string): string {
@@ -31,14 +32,16 @@ function mapCompanyToBusinessRecord(company: any): any {
     primary_contact_name: company.company_contacts?.[0]?.first_name
       ? `${company.company_contacts[0].first_name} ${company.company_contacts[0].last_name || ''}`.trim()
       : null,
-    primaryContactEmail: company.company_contacts?.[0]?.email || company.email,
-    primary_contact_email: company.company_contacts?.[0]?.email || company.email,
+    // No `|| company.email` fallback: companies has no email column. Email is a
+    // company_contacts field, which is where the write paths below put it.
+    primaryContactEmail: company.company_contacts?.[0]?.email ?? null,
+    primary_contact_email: company.company_contacts?.[0]?.email ?? null,
     primaryContactPhone: company.company_contacts?.[0]?.phone || company.phone,
     primary_contact_phone: company.company_contacts?.[0]?.phone || company.phone,
     contactName: company.company_contacts?.[0]?.first_name
       ? `${company.company_contacts[0].first_name} ${company.company_contacts[0].last_name || ''}`.trim()
       : null,
-    email: company.email,
+    email: company.company_contacts?.[0]?.email ?? null,
     phone: company.phone,
     city: company.billing_city,
     state: company.billing_state,
@@ -65,6 +68,7 @@ export default async function handler(req: Request) {
   const pathParts = rawParts[0] === 'business-records' ? rawParts.slice(1) : rawParts;
   const recordId = pathParts[0]; // The UUID or 'stats'
   const subResource = pathParts[1]; // activities, contacts, overview, etc.
+  const subResourceId = pathParts[2]; // e.g. the contact id on /:id/contacts/:contactId
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -196,6 +200,31 @@ export default async function handler(req: Request) {
         return createCorsResponse(activities || [], 200, req);
       }
 
+      // A SINGLE contact: /:id/contacts/:contactId. Must be matched before the
+      // list branch below, which has no third-segment guard and would answer a
+      // single-contact request with the whole array. QuoteTransformer.tsx:244
+      // requests exactly this path through the default queryFn and types the
+      // result as one Contact, so it was reading firstName off an array and
+      // rendering blank contact fields into a generated proposal.
+      if (subResource === 'contacts' && recordId && subResourceId) {
+        const { data: contact, error } = await admin
+          .from('company_contacts')
+          .select('*')
+          .eq('id', subResourceId)
+          .eq('company_id', recordId)
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching contact:', error);
+          return createCorsResponse({ error: 'Failed to fetch contact' }, 500, req);
+        }
+        if (!contact) {
+          return createCorsResponse({ error: 'Contact not found' }, 404, req);
+        }
+        return createCorsResponse(contact, 200, req);
+      }
+
       if (subResource === 'contacts' && recordId) {
         // Fetch contacts for a company
         const { data: contacts, error } = await admin
@@ -203,7 +232,9 @@ export default async function handler(req: Request) {
           .select('*')
           .eq('company_id', recordId)
           .eq('tenant_id', tenantId)
-          .order('is_primary', { ascending: false });
+          // The column is is_primary_contact; ordering by is_primary 42703'd, so
+          // the contacts tab on a record came back empty.
+          .order('is_primary_contact', { ascending: false });
 
         if (error) {
           console.error('Error fetching contacts:', error);
@@ -283,9 +314,30 @@ export default async function handler(req: Request) {
         }
 
         if (search) {
-          query = query.or(
-            `business_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,customer_number.ilike.%${search}%,industry.ilike.%${search}%,billing_city.ilike.%${search}%`,
-          );
+          // `companies` has no email column, so naming it here made EVERY search
+          // a 42703. Email lives on company_contacts and is searched by
+          // resolving matching contacts to their company ids first.
+          const safe = search.replace(/[,()]/g, ' ');
+          const clauses = [
+            `business_name.ilike.%${safe}%`,
+            `phone.ilike.%${safe}%`,
+            `customer_number.ilike.%${safe}%`,
+            `industry.ilike.%${safe}%`,
+            `billing_city.ilike.%${safe}%`,
+          ];
+          const { data: contactMatches } = await admin
+            .from('company_contacts')
+            .select('company_id')
+            .eq('tenant_id', tenantId)
+            .ilike('email', `%${safe}%`)
+            .limit(200);
+          const companyIds = [
+            ...new Set((contactMatches ?? []).map((c: any) => c.company_id).filter(Boolean)),
+          ];
+          if (companyIds.length > 0) {
+            clauses.push(`id.in.(${companyIds.join(',')})`);
+          }
+          query = query.or(clauses.join(','));
         }
 
         query = query.range(offset, offset + limit - 1);
@@ -381,7 +433,8 @@ export default async function handler(req: Request) {
         tenant_id: tenantId,
         business_name: body.companyName || body.company_name || body.name || body.businessName,
         phone: body.phone,
-        email: body.email || body.primaryContactEmail || body.primary_contact_email,
+        // No email here: companies has no email column, and setting it made
+        // EVERY create a 42703. The address below carries it to the contact row.
         website: body.website,
         billing_address:
           body.address || body.addressLine1 || body.address_line1 || body.billing_address,
@@ -419,20 +472,52 @@ export default async function handler(req: Request) {
         body.primary_contact_name?.split(' ').slice(1).join(' ') ||
         body.contactName?.split(' ').slice(1).join(' ');
 
-      if (contactFirstName) {
+      const contactEmail =
+        body.email || body.primaryContactEmail || body.primary_contact_email || body.contactEmail;
+      const contactPhone =
+        body.primaryContactPhone || body.primary_contact_phone || body.contactPhone;
+
+      // Also insert when only an email came in: companies cannot hold one, so
+      // without a contact row the submitted email would be dropped silently.
+      if (contactFirstName || contactEmail) {
         await admin.from('company_contacts').insert({
           tenant_id: tenantId,
           company_id: company.id,
-          first_name: contactFirstName,
+          first_name: contactFirstName ?? null,
           last_name: contactLastName || '',
-          email: body.primaryContactEmail || body.primary_contact_email || body.contactEmail,
-          phone: body.primaryContactPhone || body.primary_contact_phone || body.contactPhone,
-          is_primary: true,
+          email: contactEmail,
+          phone: contactPhone,
+          // The column is is_primary_contact; is_primary does not exist.
+          is_primary_contact: true,
           created_at: new Date().toISOString(),
         });
       }
 
-      return createCorsResponse(mapCompanyToBusinessRecord(company), 201, req);
+      // CRMX-008a: the record.created trigger seam.
+      //
+      // It used to live only in server/routes-business-records.ts, under a
+      // prefix this edge function is proxied for, so it ran on neither host and
+      // no workflow ever enrolled on a new record. The payload reads off the
+      // `companies` row this function actually writes - production CRM runs on
+      // companies, not business_records (COP-B00) - so the field names are the
+      // mapped ones, not the Express copy's.
+      const createdRecord = mapCompanyToBusinessRecord(company);
+      await dispatchWorkflowEventSafe(
+        admin,
+        tenantId,
+        'record.created',
+        {
+          recordId: company.id,
+          businessRecordId: company.id,
+          recordType: createdRecord.recordType,
+          companyName: createdRecord.companyName,
+          status: createdRecord.status,
+          ownerId: createdRecord.ownerId,
+        },
+        { dedupeKey: `created:${company.id}`, initiatedBy: user.id },
+      );
+
+      return createCorsResponse(createdRecord, 201, req);
     }
 
     if ((req.method === 'PATCH' || req.method === 'PUT') && recordId) {
@@ -469,7 +554,9 @@ export default async function handler(req: Request) {
         updateData.business_name = body.companyName || body.company_name || body.name;
       }
       if (body.phone) updateData.phone = body.phone;
-      if (body.email) updateData.email = body.email;
+      // body.email is deliberately NOT put on updateData: companies has no email
+      // column, so this took the whole update down. It is applied to the primary
+      // contact after the company update succeeds.
       if (body.website) updateData.website = body.website;
       if (body.industry) updateData.industry = body.industry;
       if (body.status || body.lead_status) updateData.activity = body.status || body.lead_status;
@@ -498,7 +585,65 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update record' }, 500, req);
       }
 
-      return createCorsResponse(mapCompanyToBusinessRecord(updated), 200, req);
+      const newEmail = body.email || body.primaryContactEmail || body.primary_contact_email;
+      if (newEmail) {
+        const { data: primaryContact } = await admin
+          .from('company_contacts')
+          .select('id')
+          .eq('company_id', recordId)
+          .eq('tenant_id', tenantId)
+          .order('is_primary_contact', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (primaryContact?.id) {
+          await admin
+            .from('company_contacts')
+            .update({ email: newEmail, updated_at: new Date().toISOString() })
+            .eq('id', primaryContact.id)
+            .eq('tenant_id', tenantId);
+        } else {
+          await admin.from('company_contacts').insert({
+            tenant_id: tenantId,
+            company_id: recordId,
+            last_name: '',
+            email: newEmail,
+            is_primary_contact: true,
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      // CRMX-008a: the record.updated trigger seam.
+      //
+      // Keyed on the row's updated_at, matching the Express copy. Note what
+      // that actually buys, because the Express comment claims more: this
+      // handler SETS updated_at to now on every request, so a client retry
+      // produces a different key and does enrol again. The key guards a
+      // double-dispatch within one invocation, not a retry. Making it idempotent
+      // across retries needs a caller-supplied token, which no caller sends -
+      // left as ported rather than changed silently.
+      const updatedRecord = mapCompanyToBusinessRecord(updated);
+      await dispatchWorkflowEventSafe(
+        admin,
+        tenantId,
+        'record.updated',
+        {
+          recordId: updated.id,
+          businessRecordId: updated.id,
+          recordType: updatedRecord.recordType,
+          companyName: updatedRecord.companyName,
+          status: updatedRecord.status,
+          ownerId: updatedRecord.ownerId,
+          changedFields: Object.keys(updateData),
+        },
+        {
+          dedupeKey: `updated:${updated.id}:${updated.updated_at ?? ''}`,
+          initiatedBy: user.id,
+        },
+      );
+
+      return createCorsResponse(updatedRecord, 200, req);
     }
 
     if (req.method === 'DELETE' && recordId) {

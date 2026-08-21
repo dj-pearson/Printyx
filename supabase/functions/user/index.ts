@@ -157,11 +157,13 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && endpoint === 'activity') {
       const limit = parseInt(url.searchParams.get('limit') || '20');
 
+      // audit_logs timestamps the event in `timestamp`; it has no created_at,
+      // so this ordering 42703'd and the activity list came back empty.
       const { data: activities } = await admin
         .from('audit_logs')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .order('timestamp', { ascending: false })
         .limit(limit);
 
       return createCorsResponse(activities || [], 200, req);

@@ -358,7 +358,10 @@ export default async function handler(req: Request) {
       // Find the integration
       const { data: integration, error: findError } = await admin
         .from('platform_integrations')
-        .select('id, status, last_synced_at, last_error_message, last_error_at')
+        // platform_integrations records the error MESSAGE but has no timestamp
+        // for it — there is no last_error_at column, and naming it here made the
+        // whole status query a 42703. See lastErrorAt in the response below.
+        .select('id, status, last_synced_at, last_error_message')
         .eq('tenant_id', tenantId)
         .eq('integration_key', integrationType)
         .single();
@@ -381,7 +384,9 @@ export default async function handler(req: Request) {
           status: integration.status,
           lastSyncedAt: integration.last_synced_at,
           lastError: integration.last_error_message,
-          lastErrorAt: integration.last_error_at,
+          // Kept so the response shape does not change under consumers, but the
+          // table stores no error timestamp. Recording one needs a migration.
+          lastErrorAt: null,
           recentSyncs: syncLogs || [],
         },
         200,

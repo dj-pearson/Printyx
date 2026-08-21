@@ -65,7 +65,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 
 interface Contact {
   id: string;
@@ -124,7 +124,7 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
     queryFn: async () => {
       const response = await apiRequest(`/api/companies/${companyId}/contacts`, 'GET');
       // Transform snake_case API response to camelCase for component
-      return (response || []).map((c: any) => ({
+      return extractRecords(response).map((c: any) => ({
         id: c.id,
         firstName: c.firstName || '',
         lastName: c.lastName || '',
@@ -140,14 +140,14 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
         leadStatus: c.lead_status || c.status || 'active',
         lastContactDate: c.last_contact_date || c.lastContactDate,
         nextFollowUpDate: c.next_follow_up_date || c.nextFollowUpDate,
-        ownerId: c.ownerId || c.ownerId || '',
+        ownerId: c.owner_id || c.ownerId || '',
         ownerName: c.owner_name || c.ownerName || '',
         favoriteContentType: c.favorite_content_type || c.favoriteContentType,
         preferredChannels: c.preferred_channels || c.preferredChannels || [],
         reportsTo: c.reports_to || c.reportsTo,
         contactRoles: c.contact_roles || c.contactRoles || [],
-        createdAt: c.createdAt || c.createdAt || new Date().toISOString(),
-        updatedAt: c.updatedAt || c.updatedAt || new Date().toISOString(),
+        createdAt: c.created_at || c.createdAt || new Date().toISOString(),
+        updatedAt: c.updated_at || c.updatedAt || new Date().toISOString(),
       }));
     },
   });

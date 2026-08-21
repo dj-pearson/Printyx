@@ -26,7 +26,6 @@ const log = createModuleLogger('routes-workflow-mobile');
 
 import {
   insertDealStageSchema,
-  insertDealActivitySchema,
   businessRecords,
   locations,
   regions,
@@ -677,30 +676,19 @@ export function registerWorkflowMobileRoutes(app: Express) {
   // ============= DEAL MANAGEMENT ROUTES =============
 
   // Get all deals with optional filtering
-  app.get('/api/deals', async (req: any, res) => {
-    // Authentication check using unified auth helpers
-    const userId = getUserId(req);
-    if (!userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-
-    const user = await storage.getUser(userId);
-    if (!user?.tenantId) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-    try {
-      const tenantId = user.tenantId;
-      const stageId = String((req.query as any)?.stageId || '');
-      const search = String((req.query as any)?.search || '');
-      const leadId = String((req.query as any)?.leadId || '');
-
-      const deals = await storage.getDeals(tenantId, stageId, search, leadId);
-      res.json(deals);
-    } catch (error) {
-      log.error('Error fetching deals:', error);
-      res.status(500).json({ message: 'Failed to fetch deals' });
-    }
-  });
+  // ── /api/deals: RETIRED (PROD-008b) ───────────────────────────────────────
+  //
+  // GET /api/deals, PUT /api/deals/:id/stage and the two /:id/activities
+  // handlers lived here, alongside GET/POST /:id and POST from routes-deals.ts.
+  // /api/deals is proxied to supabase/functions/deals, which covers all of
+  // them, so none ran on either host.
+  //
+  // The stage handler was the last thing keeping this cluster: it held the only
+  // deal.stage_changed dispatch, and deleting it would have removed the seam
+  // rather than the duplicate. CRMX-008a ported that into the edge function's
+  // PATCH/PUT branch first.
+  //
+  // /api/deal-stages below is NOT proxied and still runs here.
 
   /**
    * NOTE: The following routes have been migrated to routes-deals.ts:
@@ -712,23 +700,6 @@ export function registerWorkflowMobileRoutes(app: Express) {
    */
 
   // Update deal stage (for drag and drop)
-  app.put('/api/deals/:id/stage', async (req: any, res) => {
-    try {
-      const tenantId = req.user.tenantId;
-      const dealId = req.params.id;
-      const { stageId } = req.body;
-
-      const deal = await storage.updateDealStage(dealId, stageId, tenantId);
-      if (!deal) {
-        return res.status(404).json({ message: 'Deal not found' });
-      }
-
-      res.json(deal);
-    } catch (error) {
-      log.error('Error updating deal stage:', error);
-      res.status(500).json({ message: 'Failed to update deal stage' });
-    }
-  });
 
   // Deal Stages Routes
 
@@ -855,48 +826,8 @@ export function registerWorkflowMobileRoutes(app: Express) {
   // Deal Activities Routes
 
   // Get activities for a deal
-  app.get(
-    '/api/deals/:id/activities',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-        const dealId = req.params.id;
-
-        const activities = await storage.getDealActivities(dealId, tenantId);
-        res.json(activities);
-      } catch (error) {
-        log.error('Error fetching deal activities:', error);
-        res.status(500).json({ message: 'Failed to fetch deal activities' });
-      }
-    },
-  );
 
   // Create deal activity
-  app.post(
-    '/api/deals/:id/activities',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-        const dealId = req.params.id;
-        const userId = req.user.id;
-
-        const activityData = insertDealActivitySchema.parse({
-          ...req.body,
-          tenantId,
-          dealId,
-          userId,
-        });
-
-        const activity = await storage.createDealActivity(activityData);
-        res.status(201).json(activity);
-      } catch (error) {
-        log.error('Error creating deal activity:', error);
-        res.status(500).json({ message: 'Failed to create deal activity' });
-      }
-    },
-  );
 
   // ============= CUSTOMER DETAIL ROUTES =============
 
@@ -991,66 +922,24 @@ export function registerWorkflowMobileRoutes(app: Express) {
     },
   );
 
-  // ============= CONTRACT ROUTES =============
-
-  // Contract routes
-  app.get('/api/contracts', requireTenant, async (req: TenantRequest, res) => {
-    try {
-      const contracts = await storage.getContracts(req.tenantId!);
-      res.json(contracts);
-    } catch (error) {
-      log.error('Error fetching contracts:', error);
-      res.status(500).json({ message: 'Failed to fetch contracts' });
-    }
-  });
-
-  app.post('/api/contracts', requireTenant, async (req: TenantRequest, res) => {
-    try {
-      const session = req.session as any;
-      const userId = session?.userId;
-
-      if (!userId) {
-        return res.status(401).json({ message: 'Authentication required' });
-      }
-
-      // Generate contract number if not provided
-      const contractNumber = req.body.contractNumber || `CNT-${Date.now()}`;
-
-      // Ensure we have a customerId
-      if (!req.body.customerId) {
-        return res.status(400).json({ message: 'Customer ID is required' });
-      }
-
-      // Prepare contract data with only existing database columns
-      const contractData = {
-        customerId: req.body.customerId,
-        tenantId: req.tenantId!,
-        contractNumber,
-        startDate: req.body.startDate,
-        endDate: req.body.endDate,
-        blackRate: req.body.blackRate ? String(req.body.blackRate) : null,
-        colorRate: req.body.colorRate ? String(req.body.colorRate) : null,
-        monthlyBase: req.body.monthlyBase ? String(req.body.monthlyBase) : null,
-        status: req.body.status || 'active',
-      };
-
-      log.info('Creating contract with data:', JSON.stringify(contractData, null, 2));
-
-      // Convert date strings to Date objects if they exist
-      if (contractData.startDate && typeof contractData.startDate === 'string') {
-        contractData.startDate = new Date(contractData.startDate);
-      }
-      if (contractData.endDate && typeof contractData.endDate === 'string') {
-        contractData.endDate = new Date(contractData.endDate);
-      }
-
-      const newContract = await storage.createContract(contractData);
-      res.status(201).json(newContract);
-    } catch (error) {
-      log.error('Error creating contract:', error);
-      res.status(500).json({ message: 'Failed to create contract' });
-    }
-  });
+  // ============= CONTRACT ROUTES - RETIRED (PROD-008) =============
+  //
+  // GET and POST /api/contracts used to live here. registerEdgeFunctionProxy
+  // runs before this file's registration, and now forwards the whole
+  // /api/contracts prefix to supabase/functions/contracts - which is what
+  // production has always hit directly.
+  //
+  // The two implementations disagreed in the way that breaks pages rather than
+  // the way that shows up in review: storage.getContracts returned a bare array
+  // of camelCase Drizzle rows, while the edge function returns
+  // { data, total, page, limit } of snake_case PostgREST rows. contracts.tsx and
+  // MeterReadings.tsx both did `(response || []).map(...)`, which is a TypeError
+  // against that envelope, and every page that read contractNumber/customerId/
+  // startDate/endDate off the camelCase key rendered them blank in production.
+  //
+  // The edge function is a superset - it also serves /:id, /:id/tiered-rates,
+  // PATCH and DELETE - and its POST accepts exactly the payload contracts.tsx
+  // sends.
 
   // ============= MOBILE SERVICE APP ROUTES =============
 
@@ -2094,6 +1983,23 @@ export function registerWorkflowMobileRoutes(app: Express) {
   });
 
   // ============= CONTRACT BILLING AUTOMATION =============
+  //
+  // UNREACHABLE, AND ALREADY WAS (PROD-008). This sits under /api/contracts,
+  // which is now proxied to the contracts edge function, so the proxy claims it
+  // in dev. That is not a regression: production has never reached Express at
+  // all (the frontend rewrites /api/x to functions.printyx.net/x), so this
+  // endpoint has been a 404 in production since it was written.
+  //
+  // It is kept rather than deleted because it is real, previously-repaired
+  // billing logic (AUDIT-008 fixed an invoice-number template that made it
+  // impossible to bill more than one reading, and collapsed an N-cycle
+  // read-modify-write on the customer balance) and nothing else implements it.
+  // Nothing calls it either - a repo-wide search for the path finds only this
+  // definition, the AUDIT-008 notes and a doc.
+  //
+  // Porting it is its own story: it spans four tables and needs the invoice
+  // insert and the meter-reading update to be atomic, which PostgREST cannot
+  // express - that requires a database function.
 
   // Contract Billing Automation Connected to Meter Readings
   app.post(

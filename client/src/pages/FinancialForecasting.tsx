@@ -188,7 +188,7 @@ export default function FinancialForecasting() {
         forecastType: forecast.forecast_type || forecast.forecastType || '',
         forecastPeriod: forecast.forecast_period || forecast.forecastPeriod || '',
         scenarioType: forecast.scenario_type || forecast.scenarioType || '',
-        createdAt: forecast.createdAt || forecast.createdAt || '',
+        createdAt: forecast.created_at || forecast.createdAt || '',
       }));
     },
   });
@@ -204,7 +204,7 @@ export default function FinancialForecasting() {
         ...projection,
         id: projection.id,
         projectionDate: projection.projection_date || projection.projectionDate || '',
-        createdAt: projection.createdAt || projection.createdAt || '',
+        createdAt: projection.created_at || projection.createdAt || '',
       }));
     },
   });
@@ -222,7 +222,7 @@ export default function FinancialForecasting() {
         ...analysis,
         id: analysis.id,
         analysisType: analysis.analysis_type || analysis.analysisType || '',
-        createdAt: analysis.createdAt || analysis.createdAt || '',
+        createdAt: analysis.created_at || analysis.createdAt || '',
       }));
     },
   });
@@ -238,7 +238,7 @@ export default function FinancialForecasting() {
         kpiName: kpi.kpi_name || kpi.kpiName || '',
         currentValue: kpi.current_value || kpi.currentValue || 0,
         targetValue: kpi.target_value || kpi.targetValue || 0,
-        createdAt: kpi.createdAt || kpi.createdAt || '',
+        createdAt: kpi.created_at || kpi.createdAt || '',
       }));
     },
   });

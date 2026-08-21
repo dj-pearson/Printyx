@@ -164,11 +164,15 @@ export default async function handler(req: Request) {
 
     // POST /social-media/posts/:id/publish - Publish post
     if (req.method === 'POST' && endpoint === 'posts' && postId && parts[2] === 'publish') {
+      // social_media_posts has no published_at, so this update 42703'd and no
+      // post could be published. The table's only send timestamp is
+      // webhook_sent_at, which belongs to the webhook delivery path — this
+      // endpoint sends nothing, so setting it would be a lie. status and
+      // updated_at are real and carry the state change.
       const { data: post, error } = await admin
         .from('social_media_posts')
         .update({
           status: 'published',
-          published_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', postId)
@@ -180,7 +184,17 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to publish post' }, 500, req);
       }
 
-      return createCorsResponse(post, 200, req);
+      return createCorsResponse(
+        {
+          ...post,
+          unpersisted: [
+            'publishedAt: social_media_posts has no published_at column (webhook_sent_at ' +
+              'belongs to the webhook delivery path, which this endpoint does not use)',
+          ],
+        },
+        200,
+        req,
+      );
     }
 
     // DELETE /social-media/posts/:id - Delete post
@@ -204,7 +218,9 @@ export default async function handler(req: Request) {
         .from('social_media_cron_jobs')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('next_run_at', { ascending: true });
+        // The column is next_execution; next_run_at does not exist, so the
+        // scheduled-jobs list 42703'd.
+        .order('next_execution', { ascending: true });
 
       return createCorsResponse(jobs || [], 200, req);
     }

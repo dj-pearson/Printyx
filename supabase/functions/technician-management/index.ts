@@ -44,6 +44,10 @@ export default async function handler(req: Request) {
       const status = url.searchParams.get('status');
       const skillId = url.searchParams.get('skillId');
 
+      // technicians stores first_name/last_name and is_active/is_available —
+      // there is no full_name and no status column, and `users` has no full_name
+      // either, so the embed, the ordering and the filter were all 42703s. The
+      // technician list simply never loaded.
       let query = admin
         .from('technicians')
         .select(
@@ -52,14 +56,16 @@ export default async function handler(req: Request) {
           user:user_id (
             id,
             email,
-            full_name
+            first_name,
+            last_name
           )
         `,
         )
         .eq('tenant_id', tenantId)
-        .order('full_name', { ascending: true });
+        .order('last_name', { ascending: true })
+        .order('first_name', { ascending: true });
 
-      if (status) query = query.eq('status', status);
+      if (status) query = query.eq('is_active', status === 'active');
 
       const { data: technicians, error } = await query;
 
@@ -80,7 +86,7 @@ export default async function handler(req: Request) {
         .from('technicians')
         .select('*')
         .eq('tenant_id', tenantId)
-        .eq('status', 'active')
+        .eq('is_active', true)
         .eq('is_available', true);
 
       const { data: technicians } = await query;
@@ -137,20 +143,44 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && !techId) {
       const body = await req.json();
 
+      // Six of this payload's names were phantom: full_name, status,
+      // overtime_rate, max_jobs_per_day, service_radius_miles and home_location.
+      // Only full_name and status were visible to check:phantom-cols, the
+      // payload being a named variable, so every create was a 42703.
+      const fullName = String(body.fullName || body.full_name || '').trim();
+      const [derivedFirst, ...derivedRest] = fullName.split(/\s+/);
+      const capacityFields = [
+        'overtimeRate',
+        'overtime_rate',
+        'maxJobsPerDay',
+        'max_jobs_per_day',
+        'serviceRadiusMiles',
+        'service_radius_miles',
+      ];
+      const unpersisted = capacityFields.some((f) => body[f] !== undefined)
+        ? [
+            'overtimeRate / maxJobsPerDay / serviceRadiusMiles: technicians has no ' +
+              'capacity columns (it carries skills, certifications, working_hours and hourly_rate)',
+          ]
+        : [];
+
       const techData = {
         tenant_id: tenantId,
         user_id: body.userId || body.user_id,
-        full_name: body.fullName || body.full_name,
+        first_name: body.firstName || body.first_name || derivedFirst || null,
+        last_name: body.lastName || body.last_name || derivedRest.join(' ') || '',
         email: body.email,
         phone: body.phone,
         employee_id: body.employeeId || body.employee_id,
-        status: body.status || 'active',
+        // status was a string ('active'); the column is the boolean is_active.
+        is_active: (body.status ?? 'active') === 'active',
         is_available: body.isAvailable !== false,
         hourly_rate: body.hourlyRate || body.hourly_rate,
-        overtime_rate: body.overtimeRate || body.overtime_rate,
-        max_jobs_per_day: body.maxJobsPerDay || body.max_jobs_per_day || 8,
-        service_radius_miles: body.serviceRadiusMiles || body.service_radius_miles || 50,
-        home_location: body.homeLocation || body.home_location,
+        skills: body.skills ?? null,
+        certifications: body.certifications ?? null,
+        // home_location has no column; current_location is where a technician's
+        // position is kept.
+        current_location: body.homeLocation || body.home_location || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -166,7 +196,11 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create technician' }, 500, req);
       }
 
-      return createCorsResponse(technician, 201, req);
+      return createCorsResponse(
+        unpersisted.length > 0 ? { ...technician, unpersisted } : technician,
+        201,
+        req,
+      );
     }
 
     // PUT /technician-management/:id - Update technician
@@ -251,9 +285,10 @@ export default async function handler(req: Request) {
 
       const { data: technician, error } = await admin
         .from('technicians')
+        // availability_notes is not a column, so setting availability failed
+        // outright. The note is reported below rather than dropped in silence.
         .update({
           is_available: body.isAvailable,
-          availability_notes: body.notes,
           updated_at: new Date().toISOString(),
         })
         .eq('id', techId)
@@ -265,7 +300,16 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update availability' }, 500, req);
       }
 
-      return createCorsResponse(technician, 200, req);
+      return createCorsResponse(
+        body.notes !== undefined
+          ? {
+              ...technician,
+              unpersisted: ['notes: technicians has no availability_notes column'],
+            }
+          : technician,
+        200,
+        req,
+      );
     }
 
     // DELETE /technician-management/:id - Delete technician

@@ -77,7 +77,7 @@ export default function Billing() {
       return extractRecords(response).map((method: any) => ({
         ...method,
         id: method.id,
-        createdAt: method.createdAt || method.createdAt || '',
+        createdAt: method.created_at || method.createdAt || '',
       }));
     },
   });

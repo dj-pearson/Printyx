@@ -204,15 +204,21 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && resource === 'analytics') {
       const { data: contacts } = await admin
         .from('enriched_contacts')
-        .select('source, status')
+        // The columns are enrichment_source and prospecting_status; `source` and
+        // `status` do not exist, so this analytics query 42703'd and both
+        // breakdowns came back empty. The shared importer mapper already uses
+        // the real names — this read was the last place still on the old ones.
+        .select('enrichment_source, prospecting_status')
         .eq('tenant_id', tenantId);
 
       const bySource: Record<string, number> = {};
       const byStatus: Record<string, number> = {};
 
       (contacts || []).forEach((c: any) => {
-        bySource[c.source] = (bySource[c.source] || 0) + 1;
-        byStatus[c.status] = (byStatus[c.status] || 0) + 1;
+        const src = c.enrichment_source ?? 'unknown';
+        const st = c.prospecting_status ?? 'unknown';
+        bySource[src] = (bySource[src] || 0) + 1;
+        byStatus[st] = (byStatus[st] || 0) + 1;
       });
 
       return createCorsResponse(

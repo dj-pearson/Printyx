@@ -98,8 +98,8 @@ function transformUser(user: User | null): AuthUser | null {
   return {
     id: user.id,
     email: user.email || '',
-    firstName: metadata.firstName || metadata.firstName,
-    lastName: metadata.lastName || metadata.lastName,
+    firstName: metadata.first_name || metadata.firstName,
+    lastName: metadata.last_name || metadata.lastName,
     tenantId: appMetadata.tenantId,
     roleId: appMetadata.roleId,
     teamId: appMetadata.teamId,

@@ -32,6 +32,16 @@
  *                        → every drill-through 404s → reported.
  * The softening can still miss a wrong dynamic target that sits under a real prefix,
  * which beats crying wolf on every template literal in the codebase.
+ *
+ * ── Why it resolves config-value prefixes ───────────────────────────────────
+ * A template whose FIRST segment is an interpolation - `${config.detailPath}/${id}` -
+ * does not start with "/", so the literal collector never saw it. That is how every
+ * CRM row click on /companies 404'd while this check stayed green: the ratchet only
+ * ever saw the bare '/companies' literal sitting in the object registry, which IS a
+ * registered route, and never the `${detailPath}/${id}` the table actually navigates
+ * to. So property names used that way are resolved against every "/" string assigned
+ * to that property name anywhere in client/src, and EVERY value must resolve - one
+ * registry entry pointing somewhere unrouted breaks that config's rows and no other.
  */
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
@@ -146,16 +156,80 @@ function walk(dir, out = []) {
   return out;
 }
 
-function candidates(file) {
+/**
+ * propertyName -> every "/" string literal assigned to it as an object property,
+ * across client/src. Backs the config-prefix rule: `detailPath` collects
+ * '/crm/deals', '/leads', '/crm/contacts', '/companies' from the CRM object
+ * registry, so `${config.detailPath}/${record.id}` can be checked against all
+ * four instead of being skipped as unverifiable.
+ */
+// Only property names that MEAN "a route base" take part. The first version
+// keyed on any property name and immediately produced 13 false positives from
+// `${config.supabase.url}/auth/v1/health`, because some unrelated object
+// elsewhere in client/src also has a `url: '/...'`. A name-based convention is
+// the honest discriminator here: `.url` is an endpoint, `.detailPath` is a
+// route base, and nothing in the source distinguishes them structurally.
+const ROUTE_BASE_PROPERTY = /(^|[a-z])[Pp]ath$|^route$|^basePath$/;
+
+function buildPropertyRoutes(files) {
+  const map = new Map();
+  const re = /(\w+)\s*:\s*['"](\/[^'"\n]*)['"]/g;
+  for (const file of files) {
+    const src = stripComments(readFileSync(file, 'utf8'));
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const [, prop, value] = m;
+      if (!ROUTE_BASE_PROPERTY.test(prop)) continue;
+      if (!map.has(prop)) map.set(prop, new Set());
+      map.get(prop).add(value);
+    }
+  }
+  return map;
+}
+
+function candidates(file, propertyRoutes) {
   const src = stripComments(readFileSync(file, 'utf8'));
   const found = [];
+  const lineAt = (index) => src.slice(0, index).split('\n').length;
+
+  // Every "/" string that is the value of a route-base property. These are
+  // PREFIXES, not destinations - `detailPath: '/companies'` is correct exactly
+  // because /companies/:id is registered - so they are checked with the
+  // strictly-under rule instead of as routes. Without this they report as
+  // broken and get baselined, which reads as "known broken" about something
+  // that works. An actually-wrong value is still caught, at the navigation
+  // sites below.
+  const baseLiterals = new Set();
+  const baseRe = /(\w+)\s*:\s*['"](\/[^'"\n]*)['"]/g;
+  let bm;
+  while ((bm = baseRe.exec(src)) !== null) {
+    if (ROUTE_BASE_PROPERTY.test(bm[1])) baseLiterals.add(bm[2]);
+  }
+
   // Single-quoted, double-quoted, and template literals starting with "/".
   const re = /(['"`])(\/[^'"`\n]*)\1/g;
   let m;
   while ((m = re.exec(src)) !== null) {
-    const raw = m[2];
-    const line = src.slice(0, m.index).split('\n').length;
-    found.push({ raw, line });
+    found.push({ raw: m[2], line: lineAt(m.index), base: baseLiterals.has(m[2]) });
+  }
+
+  // Templates whose first segment is an interpolation: `${config.detailPath}/${id}`.
+  // Only the trailing property name is used - the object it hangs off is whatever
+  // the call site was given, which is exactly the indirection that hid the bug.
+  const tpl = /`\$\{([^}]+)\}([^`\n]*)`/g;
+  while ((m = tpl.exec(src)) !== null) {
+    const remainder = m[2];
+    if (!remainder.startsWith('/')) continue;
+    const prop = /(?:\.|^)\s*([A-Za-z_]\w*)\s*$/.exec(m[1])?.[1];
+    if (!prop) continue;
+    const values = propertyRoutes.get(prop);
+    if (!values) continue;
+    const line = lineAt(m.index);
+    for (const value of values) {
+      // `via` keeps the report readable - without it these look like literals
+      // that are nowhere in the file.
+      found.push({ raw: value + remainder, line, via: prop });
+    }
   }
   return found;
 }
@@ -237,13 +311,23 @@ function resolves(path) {
   return false;
 }
 
+const files = walk(clientSrc);
+const propertyRoutes = buildPropertyRoutes(files);
+
 const all = [];
-for (const file of walk(clientSrc)) {
-  for (const { raw, line } of candidates(file)) {
+for (const file of files) {
+  for (const { raw, line, via, base } of candidates(file, propertyRoutes)) {
     if (isNoise(raw)) continue;
     if (resolves(raw)) continue;
+    // A base is legitimate when something is routed one segment under it -
+    // reuse the same resolver rather than a second prefix rule, which got the
+    // /companies case wrong: /companies/:id has the route PREFIX '/companies',
+    // so a startsWith('/companies/') test fails on the very route that makes
+    // the base correct.
+    if (base && resolves(`${raw.replace(/\/$/, '')}/\${x}`)) continue;
+    const target = raw.replace(/\$\{[^}]*\}/g, PLACEHOLDER);
     all.push({
-      target: raw.replace(/\$\{[^}]*\}/g, PLACEHOLDER),
+      target: via ? `${target} (via .${via})` : target,
       file: relative(repo, file).replace(/\\/g, '/'),
       line,
       live: live.has(file),

@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest, apiFormRequest } from '@/lib/queryClient';
+import { apiRequest, apiFormRequest, extractRecords } from '@/lib/queryClient';
 import {
   Search,
   Package,
@@ -109,15 +109,15 @@ export default function ProductCatalog() {
     queryKey: ['/api/enabled-products'],
     queryFn: async () => {
       const response = await apiRequest('/api/enabled-products');
-      return (response || []).map((product: any) => ({
+      return extractRecords(response).map((product: any) => ({
         ...product,
         id: product.id,
         masterProductId: product.master_product_id || product.masterProductId || '',
-        tenantId: product.tenantId || product.tenantId || '',
-        dealerCost: product.dealerCost || product.dealerCost || 0,
-        marginPercentage: product.marginPercentage || product.marginPercentage || 0,
-        createdAt: product.createdAt || product.createdAt || '',
-        updatedAt: product.updatedAt || product.updatedAt || '',
+        tenantId: product.tenant_id || product.tenantId || '',
+        dealerCost: product.dealer_cost || product.dealerCost || 0,
+        marginPercentage: product.margin_percentage || product.marginPercentage || 0,
+        createdAt: product.created_at || product.createdAt || '',
+        updatedAt: product.updated_at || product.updatedAt || '',
       }));
     },
   });
@@ -896,7 +896,9 @@ export default function ProductCatalog() {
                               <div className="flex flex-wrap gap-2 pt-2">
                                 {product.productType && (
                                   <Badge
-                                    variant={product.productType === 'model' ? 'default' : 'secondary'}
+                                    variant={
+                                      product.productType === 'model' ? 'default' : 'secondary'
+                                    }
                                     className="text-xs"
                                   >
                                     {product.productType === 'model' ? 'Model' : 'Accessory'}
@@ -935,7 +937,9 @@ export default function ProductCatalog() {
                                         {product.productType && (
                                           <Badge
                                             variant={
-                                              product.productType === 'model' ? 'default' : 'secondary'
+                                              product.productType === 'model'
+                                                ? 'default'
+                                                : 'secondary'
                                             }
                                             className="text-sm"
                                           >
@@ -1257,47 +1261,49 @@ export default function ProductCatalog() {
                               {master?.manufacturer} - {product.customSku || master?.modelCode}
                             </CardDescription>
                           </CardHeader>
-                        <CardContent className="pt-0">
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-xs text-muted-foreground">MSRP:</span>
-                              <span className="text-sm">
-                                {master?.msrp ? `$${master.msrp.toLocaleString()}` : 'N/A'}
-                              </span>
-                            </div>
-                            {product.dealerCost && (
+                          <CardContent className="pt-0">
+                            <div className="space-y-2">
                               <div className="flex justify-between">
-                                <span className="text-xs text-muted-foreground">Dealer Cost:</span>
+                                <span className="text-xs text-muted-foreground">MSRP:</span>
                                 <span className="text-sm">
-                                  ${product.dealerCost.toLocaleString()}
+                                  {master?.msrp ? `$${master.msrp.toLocaleString()}` : 'N/A'}
                                 </span>
                               </div>
-                            )}
-                            {product.companyPrice && (
+                              {product.dealerCost && (
+                                <div className="flex justify-between">
+                                  <span className="text-xs text-muted-foreground">
+                                    Dealer Cost:
+                                  </span>
+                                  <span className="text-sm">
+                                    ${product.dealerCost.toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                              {product.companyPrice && (
+                                <div className="flex justify-between">
+                                  <span className="text-xs text-muted-foreground">
+                                    Company Price:
+                                  </span>
+                                  <span className="text-sm font-medium">
+                                    ${product.companyPrice.toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
                               <div className="flex justify-between">
-                                <span className="text-xs text-muted-foreground">
-                                  Company Price:
-                                </span>
-                                <span className="text-sm font-medium">
-                                  ${product.companyPrice.toLocaleString()}
-                                </span>
+                                <span className="text-xs text-muted-foreground">Source:</span>
+                                <Badge variant="outline" className="text-xs">
+                                  Master Catalog
+                                </Badge>
                               </div>
-                            )}
-                            <div className="flex justify-between">
-                              <span className="text-xs text-muted-foreground">Source:</span>
-                              <Badge variant="outline" className="text-xs">
-                                Master Catalog
-                              </Badge>
                             </div>
-                          </div>
-                          <div className="flex gap-2 pt-3">
-                            <Button variant="outline" size="sm" className="flex-1 text-xs">
-                              <Settings className="h-3 w-3 mr-1" />
-                              Configure
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
+                            <div className="flex gap-2 pt-3">
+                              <Button variant="outline" size="sm" className="flex-1 text-xs">
+                                <Settings className="h-3 w-3 mr-1" />
+                                Configure
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
                       );
                     })
                   )}

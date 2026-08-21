@@ -25,7 +25,7 @@ import {
   Clock,
 } from 'lucide-react';
 import MainLayout from '@/components/layout/main-layout';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 
 type Lease = {
   id: string;
@@ -52,18 +52,21 @@ export default function Leases() {
     queryKey: ['/api/leases'],
     queryFn: async () => {
       const response = await apiRequest('/api/leases', 'GET');
-      return (response || []).map((lease: any) => ({
+      // extractRecords, not `(response || []).map`: the leases edge function
+      // returns { data, total, page, limit }, and .map on that object is a
+      // TypeError that took the whole page down in production.
+      return extractRecords(response).map((lease: any) => ({
         ...lease,
         id: lease.id,
         leaseNumber: lease.lease_number || lease.leaseNumber || '',
         leaseName: lease.lease_name || lease.leaseName || '',
-        customerId: lease.customerId || lease.customerId || '',
-        equipmentId: lease.equipmentId || lease.equipmentId || '',
-        startDate: lease.startDate || lease.startDate || '',
-        endDate: lease.endDate || lease.endDate || '',
+        customerId: lease.customer_id || lease.customerId || '',
+        equipmentId: lease.equipment_id || lease.equipmentId || '',
+        startDate: lease.start_date || lease.startDate || '',
+        endDate: lease.end_date || lease.endDate || '',
         signedDate: lease.signed_date || lease.signedDate || null,
-        createdAt: lease.createdAt || lease.createdAt || '',
-        updatedAt: lease.updatedAt || lease.updatedAt || '',
+        createdAt: lease.created_at || lease.createdAt || '',
+        updatedAt: lease.updated_at || lease.updatedAt || '',
       }));
     },
   });

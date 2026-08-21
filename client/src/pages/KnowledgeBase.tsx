@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { Link } from 'wouter';
 import {
   BookOpen,
@@ -51,11 +51,11 @@ export default function KnowledgeBase() {
     queryKey: ['/api/knowledge-base/categories'],
     queryFn: async () => {
       const response = await apiRequest('/api/knowledge-base/categories', 'GET');
-      return (response || []).map((category: any) => ({
+      return extractRecords(response).map((category: any) => ({
         ...category,
         id: category.id,
         categoryName: category.category_name || category.categoryName || '',
-        createdAt: category.createdAt || category.createdAt || '',
+        createdAt: category.created_at || category.createdAt || '',
       }));
     },
   });
@@ -70,10 +70,10 @@ export default function KnowledgeBase() {
       return articles.map((article: any) => ({
         ...article,
         id: article.id,
-        categoryId: article.categoryId || article.categoryId || '',
+        categoryId: article.category_id || article.categoryId || '',
         viewCount: article.view_count || article.viewCount || 0,
-        createdAt: article.createdAt || article.createdAt || '',
-        updatedAt: article.updatedAt || article.updatedAt || '',
+        createdAt: article.created_at || article.createdAt || '',
+        updatedAt: article.updated_at || article.updatedAt || '',
       }));
     },
   });

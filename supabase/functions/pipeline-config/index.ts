@@ -358,12 +358,38 @@ export default async function handler(req: Request) {
     if (tplGet && method === 'DELETE') {
       const id = tplGet[1];
 
-      // Guard: refuse if any active deals use it
-      const { count, error: countErr } = await db
-        .from('deals')
-        .select('id', { count: 'exact', head: true })
+      // Guard: refuse if any active deals use it.
+      //
+      // A deal does not name its template — deals.pipeline_template_id does not
+      // exist, and asking for it made this guard 500 and blocked every template
+      // delete. The link is deals.stage_id -> pipeline_stages.pipeline_template_id,
+      // so resolve the template's stages first and count deals sitting in them.
+      const { data: templateStages, error: stagesErr } = await db
+        .from('pipeline_stages')
+        .select('id')
         .eq('tenant_id', ctx.tenantId)
         .eq('pipeline_template_id', id);
+
+      if (stagesErr) {
+        return errorResponse(500, 'Failed to check deal usage', req, {
+          code: 'DB_ERROR',
+          details: stagesErr,
+          requestId,
+        });
+      }
+
+      const stageIds = (templateStages ?? []).map((row: { id: string }) => row.id);
+      let count = 0;
+      let countErr = null;
+      if (stageIds.length > 0) {
+        const res = await db
+          .from('deals')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', ctx.tenantId)
+          .in('stage_id', stageIds);
+        count = res.count ?? 0;
+        countErr = res.error;
+      }
 
       if (countErr) {
         return errorResponse(500, 'Failed to check deal usage', req, {
@@ -572,7 +598,9 @@ export default async function handler(req: Request) {
         .from('deals')
         .select('id', { count: 'exact', head: true })
         .eq('tenant_id', ctx.tenantId)
-        .eq('current_stage_id', id);
+        // The column is stage_id; current_stage_id does not exist, so this
+        // guard 500'd and no stage could be deleted.
+        .eq('stage_id', id);
 
       if (countErr) {
         return errorResponse(500, 'Failed to check stage usage', req, {

@@ -7,12 +7,10 @@
     "auto-lead-routing",
     "auto-supply-replenishment",
     "catalog",
-    "chart-of-accounts",
     "chatbot",
     "commission",
     "content-gap-analysis",
     "contract-renewal",
-    "contracts",
     "crm",
     "dashboard",
     "dashboards",
@@ -34,9 +32,7 @@
     "integrations",
     "inventory",
     "invoices",
-    "journal-entries",
     "leads",
-    "leases",
     "maintenance",
     "managed-services",
     "manufacturer-integrations",
@@ -73,11 +69,5 @@
     "user",
     "warehouse-operations"
   ],
-  "missingEdge": [
-    "business-process",
-    "content",
-    "erp-integration",
-    "incident-response",
-    "workflow-automation"
-  ]
+  "missingEdge": ["business-process", "content", "erp-integration", "incident-response"]
 }

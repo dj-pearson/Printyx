@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { type ServiceTicket } from '@shared/schema';
 import {
   Select,
@@ -100,19 +100,19 @@ export default function ServiceHub() {
     enabled: isAuthenticated,
     queryFn: async () => {
       const response = await apiRequest('/api/service-tickets', 'GET');
-      return (response || []).map((t: any) => ({
+      return extractRecords(response).map((t: any) => ({
         ...t,
         id: t.id,
-        ticketNumber: t.ticketNumber || t.ticketNumber || '',
-        customerId: t.customerId || t.customerId || '',
-        equipmentId: t.equipmentId || t.equipmentId || null,
-        assignedTo: t.assignedTo || t.assignedTo || null,
+        ticketNumber: t.ticket_number || t.ticketNumber || '',
+        customerId: t.customer_id || t.customerId || '',
+        equipmentId: t.equipment_id || t.equipmentId || null,
+        assignedTo: t.assigned_to || t.assignedTo || null,
         // Real column is assigned_technician_id/assignedTechnicianId; the page's
         // filters read `technicianId`, so normalize it here (was undefined for
         // every real ticket, making them all read as "unassigned").
         technicianId: t.assignedTechnicianId || t.assigned_technician_id || t.technicianId || null,
-        createdAt: t.createdAt || t.createdAt || '',
-        updatedAt: t.updatedAt || t.updatedAt || '',
+        createdAt: t.created_at || t.createdAt || '',
+        updatedAt: t.updated_at || t.updatedAt || '',
         scheduledDate: t.scheduled_date || t.scheduledDate || null,
         completedDate: t.completed_date || t.completedDate || null,
       }));
@@ -125,12 +125,12 @@ export default function ServiceHub() {
     enabled: isAuthenticated,
     queryFn: async () => {
       const response = await apiRequest('/api/phone-in-tickets', 'GET');
-      return (response || []).map((t: any) => ({
+      return extractRecords(response).map((t: any) => ({
         ...t,
         id: t.id,
         callerName: t.caller_name || t.callerName || '',
         callerPhone: t.caller_phone || t.callerPhone || '',
-        createdAt: t.createdAt || t.createdAt || '',
+        createdAt: t.created_at || t.createdAt || '',
         issueDescription: t.issue_description || t.issueDescription || '',
       }));
     },

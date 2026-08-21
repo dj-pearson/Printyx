@@ -442,6 +442,60 @@ export function registerEdgeFunctionProxy(app: any) {
     // /api/client-metrics/* stays on Express (routes-client-monitoring.ts).
     '/api/monitoring-clients': 'monitoring-clients',
 
+    // PROD-014: workflow-automation dashboard. Nothing served this prefix on
+    // the functions host, so AutopilotDashboard.tsx and WorkflowAutomation.tsx
+    // 404'd in production. The two Express handlers that answered in dev
+    // (routes-workflow-mobile.ts, routes-sample-data.ts) returned the same
+    // invented figures for every tenant, so the new edge fn derives the
+    // dashboard from the real CRMX-008 runtime tables instead and this entry
+    // makes dev match prod. Only /api/workflow-automation is forwarded - the
+    // registered runtime router lives at /api/workflows, /api/executions and
+    // /api/workflow-events and is untouched.
+    '/api/workflow-automation': 'workflow-automation',
+
+    // PROD-008: journal-entries. Dev ran the Express handlers in
+    // routes-financial.ts while prod ran the edge fn, and the two disagreed on
+    // the list shape, the create payload and the update verb - so the live page
+    // threw on load, every edit 404'd, and every entry was saved with zero
+    // totals. The edge fn is now the single implementation and this makes dev
+    // match it. Only /api/journal-entries moves; /api/chart-of-accounts stays
+    // on Express in the same file.
+    '/api/journal-entries': 'journal-entries',
+
+    // PROD-008: chart-of-accounts, the other half of the retired
+    // routes-financial.ts. Editing an account was broken on BOTH hosts - Express
+    // never had a /:id handler, and the edge fn implemented PUT while the page
+    // sends PATCH - so this closes a dead feature rather than only aligning two
+    // live ones. With both prefixes proxied, routes-financial.ts has no routes
+    // left and is deleted.
+    '/api/chart-of-accounts': 'chart-of-accounts',
+
+    // PROD-008: contracts. Dev ran two handlers in routes-workflow-mobile.ts
+    // returning a bare array of camelCase rows; prod ran the edge fn returning
+    // { data, total, page, limit } of snake_case rows. Two of the four consuming
+    // pages called .map on that envelope, so they threw on load in production.
+    // The edge fn is the superset (it also serves /:id, tiered-rates, PATCH and
+    // DELETE), so the Express pair is retired and this makes dev match prod.
+    '/api/contracts': 'contracts',
+
+    // PROD-008: leases. The edge fn was already the canonical implementation -
+    // its header says so, and AUDIT-012 added the server.ts aliases that make
+    // the three sibling prefixes resolve in prod - but nothing ever proxied dev
+    // or retired server/routes/lease-routes.ts, so dev kept running the 28
+    // Express endpoints. Leases.tsx did `(response || []).map(...)` against the
+    // edge fn's { data, total, page, limit }, which is a TypeError, so the page
+    // threw on load in production.
+    //
+    // The three siblings need the object form: the mount strips their prefix,
+    // but server.ts aliases them with stripSegments = 0 because that segment is
+    // the leases dispatcher's discriminator, so pathPrefix has to put it back.
+    // ('/api/lease-payments' is NOT repeated here - SUPA-011 already added it
+    // above. A duplicate key is silently last-wins at runtime; tsc caught it
+    // with TS1117, which is the only reason it did not ship.)
+    '/api/leases': 'leases',
+    '/api/lease-renewals': { fn: 'leases', pathPrefix: '/lease-renewals' },
+    '/api/lease-dispositions': { fn: 'leases', pathPrefix: '/lease-dispositions' },
+
     // EDGE-005a: accounts-payable / accounts-receivable. The frontend calls the
     // FLAT /api/accounts-{payable,receivable}[/:id] shape (list/create at root,
     // get/update/delete on /:id). The edge handlers were rewritten to serve that

@@ -85,12 +85,12 @@ export default function AccountsReceivable() {
       return extractRecords(response).map((ar: any) => ({
         ...ar,
         id: ar.id,
-        customerId: ar.customerId || ar.customerId || '',
-        invoiceNumber: ar.invoiceNumber || ar.invoiceNumber || '',
-        contractId: ar.contractId || ar.contractId || null,
+        customerId: ar.customer_id || ar.customerId || '',
+        invoiceNumber: ar.invoice_number || ar.invoiceNumber || '',
+        contractId: ar.contract_id || ar.contractId || null,
         invoiceDate: ar.invoice_date || ar.invoiceDate || '',
-        dueDate: ar.dueDate || ar.dueDate || '',
-        createdAt: ar.createdAt || ar.createdAt || '',
+        dueDate: ar.due_date || ar.dueDate || '',
+        createdAt: ar.created_at || ar.createdAt || '',
       }));
     },
   });
@@ -102,7 +102,7 @@ export default function AccountsReceivable() {
       return extractRecords(response).map((customer: any) => ({
         ...customer,
         id: customer.id,
-        companyName: customer.companyName || customer.companyName || '',
+        companyName: customer.company_name || customer.companyName || '',
       }));
     },
   });

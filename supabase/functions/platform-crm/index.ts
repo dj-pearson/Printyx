@@ -305,11 +305,14 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && endpoint === 'business-records') {
       const body = await req.json();
 
+      // platform_business_records has no created_by column — it tracks people as
+      // assigned_sales_rep / assigned_csm / converted_by — so setting one made
+      // every create a 42703. The creator is reported rather than invented onto
+      // one of those, which mean different things.
       const { data: record, error } = await admin
         .from('platform_business_records')
         .insert({
           ...toRecordColumns(body),
-          created_by: user.id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -321,7 +324,14 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create record' }, 500, req);
       }
 
-      return createCorsResponse(camelRow(record as Row), 201, req);
+      return createCorsResponse(
+        {
+          ...camelRow(record as Row),
+          unpersisted: ['createdBy: platform_business_records has no created_by column'],
+        },
+        201,
+        req,
+      );
     }
 
     // POST /platform-crm/activities - Log platform activity
