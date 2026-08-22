@@ -20,7 +20,6 @@ import {
 } from './domains/auth';
 
 import {
-  registerFinancialForecastingRoutes,
   registerCommissionRoutes,
   registerQuickBooksRoutes,
   getCompanyPricingSettings,
@@ -347,7 +346,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerProductsCrudRoutes(app);
   registerCatalogCsvRoutes(app);
   registerSeoCoreRoutes(app);
-  registerFinancialForecastingRoutes(app);
+  // registerFinancialForecastingRoutes was called here and is DELETED (CR-017).
+  // See the /api/financial entry in middleware/edge-function-proxy.ts: its six
+  // handlers queried four non-existent tables through raw SQL.
   registerOperationsExtendedRoutes(app);
   registerWorkflowMobileRoutes(app);
   registerAuditLogRoutes(app);

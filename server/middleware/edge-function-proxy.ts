@@ -440,6 +440,22 @@ export function registerEdgeFunctionProxy(app: any) {
     // service_calls, equipment_failure_predictions) and covers every path
     // PredictiveServiceDispatchDashboard.tsx calls plus five more. This entry
     // points dev at the same function so the page stops throwing there.
+    // CR-017: /api/financial. The Express router here queried four tables that
+    // exist in no schema or migration - financial_forecasts,
+    // cash_flow_projections, profitability_analysis, financial_kpis - through
+    // db.$client.query() RAW SQL, so tsc never saw them and all six endpoints
+    // 500'd on a missing relation in dev. Production already ran
+    // supabase/functions/financial/, which DERIVES the same figures from real
+    // tables (contracts, invoices, quotes) rather than storing them.
+    //
+    // PARTIAL PARITY, stated because this entry changes dev behaviour in two
+    // directions: metrics, forecasts and cash-flow go from 500 to WORKING; kpis,
+    // profitability and profitability/run go from 500 to 404, which is what
+    // production already returns for them. Dev now matches prod on all six
+    // instead of failing differently on all six. FinancialForecasting.tsx
+    // defaults each list to [] and each figure to 0, so an absent endpoint
+    // renders empty rather than fabricated - the same as today.
+    '/api/financial': 'financial',
     '/api/predictive-dispatch': 'predictive-dispatch',
     '/api/predictive-maintenance': 'predictive-maintenance',
 
