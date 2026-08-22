@@ -69,5 +69,5 @@
     "user",
     "warehouse-operations"
   ],
-  "missingEdge": ["business-process", "content", "erp-integration", "incident-response"]
+  "missingEdge": ["business-process", "erp-integration", "incident-response"]
 }

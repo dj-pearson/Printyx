@@ -65,7 +65,6 @@ export {
   formatPublishDate,
   generateExcerpt,
   slugify,
-  trackContentView,
   FAQSchemaScript,
   BreadcrumbSchemaScript,
 } from '../seoUtils';
