@@ -2,11 +2,6 @@
   "note": "AUDIT-011: `x.a || x.a` fallbacks that cannot fall back. Each is either dead weight or a typo for a key that is now never read. This list only shrinks - fix one and tighten, never add.",
   "allowed": [
     "client/src/pages/BusinessProcessOptimization.tsx:template.createdAt || template.createdAt",
-    "client/src/pages/CommissionManagement.tsx:plan.createdAt || plan.createdAt",
-    "client/src/pages/CommissionManagement.tsx:plan.updatedAt || plan.updatedAt",
-    "client/src/pages/CommissionManagement.tsx:calc.calculationPeriod.startDate || calc.calculationPeriod.startDate",
-    "client/src/pages/CommissionManagement.tsx:calc.calculationPeriod.endDate || calc.calculationPeriod.endDate",
-    "client/src/pages/CommissionManagement.tsx:dispute.createdAt || dispute.createdAt",
     "client/src/pages/DocumentManagement.tsx:doc.createdAt || doc.createdAt",
     "client/src/pages/DocumentManagement.tsx:doc.workflow.dueDate || doc.workflow.dueDate",
     "client/src/pages/EnhancedOnboardingForm.tsx:selectedBusinessRecord.companyName || selectedBusinessRecord.companyName",
@@ -20,10 +15,6 @@
     "client/src/pages/EquipmentLifecycleManagement.tsx:record.companyName || record.companyName",
     "client/src/pages/inventory.tsx:item.createdAt || item.createdAt",
     "client/src/pages/inventory.tsx:item.updatedAt || item.updatedAt",
-    "client/src/pages/Invoices.tsx:cust.companyName || cust.companyName",
-    "client/src/pages/Invoices.tsx:cust.contactId || cust.contactId",
-    "client/src/pages/Invoices.tsx:cust.createdAt || cust.createdAt",
-    "client/src/pages/Invoices.tsx:cust.updatedAt || cust.updatedAt",
     "client/src/pages/ProductModels.tsx:model.createdAt || model.createdAt",
     "client/src/pages/ProductModels.tsx:model.updatedAt || model.updatedAt"
   ]
