@@ -7,7 +7,6 @@ export { registerPredictiveServiceDispatchRoutes } from '../routes-predictive-se
 export { registerTechnicianManagementRoutes } from '../routes-technician-management';
 export { serviceDispatchRouter } from '../routes-service-dispatch';
 export { proactiveMaintenanceRouter } from '../routes-proactive-maintenance';
-export { predictiveMaintenanceHubRouter } from '../routes-predictive-maintenance-hub';
 export { default as equipmentLifecycleStateMachineRoutes } from '../routes-equipment-lifecycle-state-machine';
 export { default as equipmentDisposalRoutes } from '../routes-equipment-disposal';
 export { default as equipmentQRRoutes } from '../routes-equipment-qr';

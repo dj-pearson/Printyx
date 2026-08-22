@@ -69,12 +69,8 @@
     "GET /api/pipeline-forecast/:forecastId? (server/routes-sales-forecasting.ts)",
     "GET /api/portal-service/classifications/:requestId (server/routes-portal-service.ts)",
     "GET /api/portal-service/timeline/:requestId (server/routes-portal-service.ts)",
-    "GET /api/predictive-maintenance/dashboard (server/routes-predictive-maintenance-hub.ts)",
-    "GET /api/predictive-maintenance/parts-forecast (server/routes-predictive-maintenance-hub.ts)",
     "GET /api/quotes (server/routes-onboarding.ts)",
     "GET /api/quotes/:quoteId/line-items (server/routes-onboarding.ts)",
-    "GET /api/service/knowledge-search/settings (server/routes-service-knowledge.ts)",
-    "GET /api/service/knowledge-search/stats (server/routes-service-knowledge.ts)",
     "GET /api/service/proactive-maintenance (server/routes-proactive-maintenance.ts)",
     "GET /api/universal-search (server/routes-universal-search.ts)",
     "GET /api/users (server/middleware/api-versioning.ts)",
@@ -100,13 +96,6 @@
     "POST /api/phone-in-tickets/:id/convert (server/routes-operations-extended.ts)",
     "POST /api/portal-service/classify (server/routes-portal-service.ts)",
     "POST /api/portal-service/rate (server/routes-portal-service.ts)",
-    "POST /api/predictive-maintenance/:equipmentId/schedule (server/routes-predictive-maintenance-hub.ts)",
-    "POST /api/predictive-maintenance/analyze-batch (server/routes-predictive-maintenance-hub.ts)",
-    "POST /api/predictive-maintenance/analyze-fleet (server/routes-predictive-maintenance-hub.ts)",
-    "POST /api/predictive-maintenance/analyze/:serialNumber (server/routes-predictive-maintenance-hub.ts)",
-    "POST /api/service/knowledge-search (server/routes-service-knowledge.ts)",
-    "POST /api/service/knowledge-search/backfill (server/routes-service-knowledge.ts)",
-    "POST /api/service/knowledge-search/embed/:ticketId (server/routes-service-knowledge.ts)",
     "POST /api/service/proactive-maintenance/:equipmentId/schedule (server/routes-proactive-maintenance.ts)",
     "POST /api/users (server/middleware/enhanced-validation.ts)",
     "POST /api/users/:id/permissions (server/middleware/mfa-enforcement.ts)",
@@ -122,7 +111,6 @@
     "POST /api/webhooks/quickbooks (server/integrations/webhook-routes.ts)",
     "POST /api/webhooks/salesforce (server/integrations/webhook-routes.ts)",
     "POST /api/webhooks/sendgrid (server/routes/email-marketing-routes.ts)",
-    "POST /api/webhooks/stripe (server/integrations/webhook-routes.ts)",
-    "PUT /api/service/knowledge-search/settings (server/routes-service-knowledge.ts)"
+    "POST /api/webhooks/stripe (server/integrations/webhook-routes.ts)"
   ]
 }

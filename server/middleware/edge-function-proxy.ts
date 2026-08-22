@@ -659,12 +659,15 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/technician-sessions': 'technician-sessions',
 
     // PROD-011. Full parity: all EIGHT endpoints across the TWO Express routers
-    // that share this prefix — routes-service-knowledge.ts (search, backfill,
+    // that shared this prefix — routes-service-knowledge.ts (search, backfill,
     // embed/:ticketId, stats, GET/PUT settings) and routes-proactive-maintenance.ts
     // (list, :equipmentId/schedule) — which covers everything KnowledgeSearch.tsx
-    // and ProactiveServiceDashboard.tsx call. Both routers had to ship together:
+    // and ProactiveServiceDashboard.tsx call. Both had to ship together:
     // proxying forwards the whole prefix, so porting one would have taken the
     // other from working-in-dev to 404-in-dev.
+    //
+    // PROD-008b then retired routes-service-knowledge.ts; routes-proactive-
+    // maintenance.ts still shares the prefix and is still shadowed.
     //
     // app.use() matches on path-segment boundaries, so this entry captures
     // /api/service and /api/service/* only — NOT /api/service-tickets, which
