@@ -8,6 +8,6 @@
     "server/routes-warehouse-fpy.ts": 8,
     "server/routes/mileage-routes.ts": 1,
     "server/services/customer-portal-service.ts": 1,
-    "server/storage.ts": 27
+    "server/storage.ts": 6
   }
 }
