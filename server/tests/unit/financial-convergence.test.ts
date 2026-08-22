@@ -67,10 +67,13 @@ describe('financial convergence (PROD-008)', () => {
     // Express matches the first handler registered for a path, so the proxy only
     // wins if it goes on before the domain registrations.
     const proxyAt = REGISTRY.indexOf('registerEdgeFunctionProxy(app)');
-    const billingAt = REGISTRY.indexOf('registerBillingCoreRoutes(app)');
+    // registerBillingCoreRoutes was the original anchor; it was retired under
+    // PROD-008b once every one of its handlers was shadowed by the billing edge
+    // function. Any surviving domain registration proves the same ordering.
+    const domainAt = REGISTRY.indexOf('registerCrmCoreRoutes(app)');
     expect(proxyAt).toBeGreaterThan(-1);
-    expect(billingAt).toBeGreaterThan(-1);
-    expect(proxyAt).toBeLessThan(billingAt);
+    expect(domainAt).toBeGreaterThan(-1);
+    expect(proxyAt).toBeLessThan(domainAt);
   });
 
   it('the retired Express modules are gone, along with their registrations', () => {

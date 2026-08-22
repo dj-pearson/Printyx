@@ -286,6 +286,17 @@ export default async function handler(req: Request) {
         query = query.eq('external_customer_id', ticketId);
       }
 
+      // Breach drill-through: BreachDetectionTiles and ModularDashboard link to
+      // /advanced-billing?filter=issuance_delay_gt_24h, and the page forwards it
+      // here. Invoices issued more than 24h after service completion, last 30
+      // days. PostgREST drops NULL rows on .gt(), matching the legacy
+      // "IS NOT NULL AND > 24". (Ported from server/routes-billing-core.ts,
+      // which read a phantom billing_invoices table and never ran.)
+      if (url.searchParams.get('filter') === 'issuance_delay_gt_24h') {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        query = query.gt('created_at', thirtyDaysAgo).gt('issuance_delay_hours', 24);
+      }
+
       const { data: invoices, error, count } = await query;
 
       if (error) {

@@ -2,7 +2,6 @@
  * Billing & Financial Domain
  * Billing, pricing, commissions, forecasting, QuickBooks
  */
-export { registerBillingCoreRoutes } from '../routes-billing-core';
 export { registerFinancialForecastingRoutes } from '../routes-financial-forecasting';
 export { registerCommissionRoutes } from '../routes-commission';
 export { registerQuickBooksRoutes } from '../routes-quickbooks-integration';

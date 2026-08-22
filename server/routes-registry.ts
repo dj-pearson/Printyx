@@ -21,7 +21,6 @@ import {
 } from './domains/auth';
 
 import {
-  registerBillingCoreRoutes,
   registerFinancialForecastingRoutes,
   registerCommissionRoutes,
   registerQuickBooksRoutes,
@@ -345,7 +344,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerSampleDataRoutes(app);
   registerCrmCoreRoutes(app);
   registerDashboardsCoreRoutes(app);
-  registerBillingCoreRoutes(app);
   registerProductsCrudRoutes(app);
   registerCatalogCsvRoutes(app);
   registerSeoCoreRoutes(app);

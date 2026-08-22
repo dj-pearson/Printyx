@@ -1425,7 +1425,9 @@ export function registerProductsCrudRoutes(app: Express) {
     },
   );
 
-  // NOTE: Invoice generation and contract profitability migrated to routes-billing-core.ts
+  // NOTE: Invoice generation and contract profitability now live in the billing
+  // edge function (supabase/functions/billing/); routes-billing-core.ts was
+  // retired under PROD-008b as a shadowed Express module.
 
   // NOTE: Company contacts routes migrated to routes-contacts.ts (Phase 3 Refactor)
 
