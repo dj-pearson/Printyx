@@ -185,7 +185,6 @@ import {
 import { registerHealthRoutes } from './routes/health-routes';
 import { registerDealDeskCopilotRoutes } from './routes-deal-desk-copilot';
 import { registerPortalServiceRoutes } from './routes-portal-service';
-import { registerVoiceTicketCloseRoutes } from './routes-voice-ticket-close';
 import { registerChatbotRoutes } from './routes-chatbot';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
@@ -645,7 +644,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // shadowed by the /api/service proxy and supabase/functions/service/knowledge.ts
   // is a byte-compatible port of its pure logic. routes-proactive-maintenance.ts
   // still shares the prefix and stays.
-  registerVoiceTicketCloseRoutes(app);
+  // routes-voice-ticket-close.ts retired (PROD-008b). All six handlers were
+  // shadowed by the /api/voice-ticket-close proxy. Its two load-bearing exports
+  // moved with it: the SKU matcher already lived in
+  // _shared/voice-ticket-close-logic.ts, and isAllowedAudioHost was ported there
+  // too — the edge function had been gating audioUrl with a startsWith() prefix
+  // match that 'https://api.printyx.net.evil.com' satisfies.
   registerChatbotRoutes(app);
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
