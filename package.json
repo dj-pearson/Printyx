@@ -29,6 +29,7 @@
     "check:chained-where": "node scripts/check-chained-where.mjs",
     "check:route-shadowing": "node scripts/check-route-shadowing.mjs",
     "check:api-request-args": "node scripts/check-api-request-args.mjs",
+    "audit:edge-dispatch": "node scripts/audit-edge-dispatch-order.mjs",
     "check:identical-fallback": "node scripts/check-identical-fallback.mjs",
     "check:shadowed-express": "node scripts/check-shadowed-express.mjs",
     "check:unwrapped-response": "node scripts/check-unwrapped-response.mjs",

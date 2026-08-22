@@ -76,6 +76,89 @@ export default async function handler(req: Request) {
       return createCorsResponse(statusMap, 200, req);
     }
 
+    // ORDERING IS LOAD-BEARING: /stats and /audit-logs must stay ABOVE the
+    // GET /:manufacturer branch, which matches on `manufacturer && !endpoint`
+    // and would otherwise answer both as an integration lookup.
+    // ManufacturerIntegration.tsx and ManufacturerIntegrationAudit.tsx call
+    // them. The Express side of this was fixed under check:route-shadowing;
+    // production runs THIS file, so that fix alone had left prod broken.
+    // GET /manufacturer-integrations/stats
+    if (req.method === 'GET' && manufacturer === 'stats') {
+      const countOf = async (
+        client: typeof admin,
+        table: string,
+        apply: (q: any) => any,
+      ): Promise<number> => {
+        const { count } = await apply(
+          client.from(table).select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+        );
+        return count ?? 0;
+      };
+
+      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+      const [totalIntegrations, activeIntegrations, totalDevices, onlineDevices, todayMetrics] =
+        await Promise.all([
+          countOf(admin, 'manufacturer_integrations', (q) => q),
+          countOf(admin, 'manufacturer_integrations', (q) => q.eq('status', 'active')),
+          countOf(admin, 'device_registrations', (q) => q),
+          countOf(admin, 'device_registrations', (q) => q.eq('status', 'online')),
+          countOf(admin, 'device_metrics', (q) => q.gte('collection_timestamp', dayAgo)),
+        ]);
+
+      return createCorsResponse(
+        { totalIntegrations, activeIntegrations, totalDevices, onlineDevices, todayMetrics },
+        200,
+        req,
+      );
+    }
+
+    // GET /manufacturer-integrations/audit-logs
+    //
+    // Express joins the integration and device rows onto each log. PostgREST
+    // expresses that as an embed, which is cheaper than two round trips - the
+    // FKs are integration_id and device_id.
+    if (req.method === 'GET' && manufacturer === 'audit-logs') {
+      const days = parseInt(url.searchParams.get('days') || '7', 10) || 7;
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+      let query = admin
+        .from('integration_audit_logs')
+        .select('*, integration:manufacturer_integrations(*), device:device_registrations(*)')
+        .eq('tenant_id', tenantId)
+        .gte('timestamp', startDate)
+        .order('timestamp', { ascending: false })
+        .limit(100);
+
+      const integrationId = url.searchParams.get('integrationId');
+      const deviceId = url.searchParams.get('deviceId');
+      const action = url.searchParams.get('action');
+      const status = url.searchParams.get('status');
+      if (integrationId) query = query.eq('integration_id', integrationId);
+      if (deviceId) query = query.eq('device_id', deviceId);
+      if (action) query = query.eq('action', action);
+      if (status) query = query.eq('status', status);
+
+      const { data: logs, error } = await query;
+
+      if (error) {
+        console.error('Error fetching integration audit logs:', error);
+        return createCorsResponse({ message: 'Failed to fetch audit logs' }, 500, req);
+      }
+
+      // Express returns { log, integration, device } per row; the embed puts
+      // the joined rows under those keys already, so the log's own columns are
+      // lifted into `log` to match.
+      return createCorsResponse(
+        (logs ?? []).map((row: any) => {
+          const { integration, device, ...log } = row;
+          return { log, integration, device };
+        }),
+        200,
+        req,
+      );
+    }
+
     // GET /manufacturer-integrations/:manufacturer - Get specific integration
     if (req.method === 'GET' && manufacturer && !endpoint) {
       const { data: integration } = await admin
@@ -292,83 +375,6 @@ export default async function handler(req: Request) {
     // everything else in this function reads parts[0] as a MANUFACTURER and
     // parts[1] as the sub-resource, which is the legitimate shape, not the
     // prod-404 signature.
-
-    // GET /manufacturer-integrations/stats
-    if (req.method === 'GET' && manufacturer === 'stats') {
-      const countOf = async (
-        client: typeof admin,
-        table: string,
-        apply: (q: any) => any,
-      ): Promise<number> => {
-        const { count } = await apply(
-          client.from(table).select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-        );
-        return count ?? 0;
-      };
-
-      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-      const [totalIntegrations, activeIntegrations, totalDevices, onlineDevices, todayMetrics] =
-        await Promise.all([
-          countOf(admin, 'manufacturer_integrations', (q) => q),
-          countOf(admin, 'manufacturer_integrations', (q) => q.eq('status', 'active')),
-          countOf(admin, 'device_registrations', (q) => q),
-          countOf(admin, 'device_registrations', (q) => q.eq('status', 'online')),
-          countOf(admin, 'device_metrics', (q) => q.gte('collection_timestamp', dayAgo)),
-        ]);
-
-      return createCorsResponse(
-        { totalIntegrations, activeIntegrations, totalDevices, onlineDevices, todayMetrics },
-        200,
-        req,
-      );
-    }
-
-    // GET /manufacturer-integrations/audit-logs
-    //
-    // Express joins the integration and device rows onto each log. PostgREST
-    // expresses that as an embed, which is cheaper than two round trips - the
-    // FKs are integration_id and device_id.
-    if (req.method === 'GET' && manufacturer === 'audit-logs') {
-      const days = parseInt(url.searchParams.get('days') || '7', 10) || 7;
-      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-
-      let query = admin
-        .from('integration_audit_logs')
-        .select('*, integration:manufacturer_integrations(*), device:device_registrations(*)')
-        .eq('tenant_id', tenantId)
-        .gte('timestamp', startDate)
-        .order('timestamp', { ascending: false })
-        .limit(100);
-
-      const integrationId = url.searchParams.get('integrationId');
-      const deviceId = url.searchParams.get('deviceId');
-      const action = url.searchParams.get('action');
-      const status = url.searchParams.get('status');
-      if (integrationId) query = query.eq('integration_id', integrationId);
-      if (deviceId) query = query.eq('device_id', deviceId);
-      if (action) query = query.eq('action', action);
-      if (status) query = query.eq('status', status);
-
-      const { data: logs, error } = await query;
-
-      if (error) {
-        console.error('Error fetching integration audit logs:', error);
-        return createCorsResponse({ message: 'Failed to fetch audit logs' }, 500, req);
-      }
-
-      // Express returns { log, integration, device } per row; the embed puts
-      // the joined rows under those keys already, so the log's own columns are
-      // lifted into `log` to match.
-      return createCorsResponse(
-        (logs ?? []).map((row: any) => {
-          const { integration, device, ...log } = row;
-          return { log, integration, device };
-        }),
-        200,
-        req,
-      );
-    }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
   } catch (error) {
