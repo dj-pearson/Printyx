@@ -57,7 +57,6 @@ import {
   signupCrmRoutes,
   universalSearchRoutes,
   businessRecordsRoutes,
-  emailSequencesRoutes,
 } from './domains/crm';
 
 import {
@@ -184,7 +183,6 @@ import {
 // ─── Non-domain imports ──────────────────────────────────���──────────────
 import { registerHealthRoutes } from './routes/health-routes';
 import { registerDealDeskCopilotRoutes } from './routes-deal-desk-copilot';
-import { registerPortalServiceRoutes } from './routes-portal-service';
 import { registerChatbotRoutes } from './routes-chatbot';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
@@ -621,7 +619,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use(businessRecordsRoutes);
   // routes-web-forms.ts retired (PROD-008b); supabase/functions/web-forms/ has
   // all six handlers and already returns camelCase rows.
-  app.use(emailSequencesRoutes);
+  // routes-email-sequences.ts retired (PROD-008b). All four handlers were
+  // shadowed by the /api/email-sequences proxy; supabase/functions/email-sequences/
+  // covers them and already returns camelCase rows.
   registerDealsManagementRoutes(app);
   // registerDealDeskRoutes(app) — migrated to supabase/functions/deal-desk/
   // registerPipelineConfigurationRoutes(app) — migrated to supabase/functions/pipeline-config/
@@ -639,7 +639,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // them and agrees on every table. The generation engine and
   // runDueDailyBriefings moved to services/daily-briefing-scheduler.ts, which
   // cron-service imports.
-  registerPortalServiceRoutes(app);
+  // routes-portal-service.ts retired (PROD-008b). All four handlers were
+  // shadowed by the /api/portal-service proxy; supabase/functions/portal-service/
+  // covers them, and its timeline steps match the TimelineStep shape
+  // CustomerPortalService.tsx renders.
   // routes-service-knowledge.ts retired (PROD-008b). All six handlers were
   // shadowed by the /api/service proxy and supabase/functions/service/knowledge.ts
   // is a byte-compatible port of its pure logic. routes-proactive-maintenance.ts
