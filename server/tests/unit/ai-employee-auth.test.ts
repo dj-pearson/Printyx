@@ -19,6 +19,10 @@
  *
  * These tests encode BOTH the Express behaviour that made it dangerous and the shape
  * of the fix, so a future pathless `router.use` on an /api-root router gets caught.
+ *
+ * PROD-008b: the source scan below no longer names one file. The router this was
+ * written for has been retired, but the defect belongs to every /api-root mount,
+ * so the guard walks the registry's list instead.
  */
 import { describe, it, expect } from 'vitest';
 import express from 'express';
@@ -64,7 +68,8 @@ describe('AUDIT-015: the old stub leaked its tenant onto unrelated routes', () =
 
   it('a PATH-SCOPED router.use does not leak — this is the fix', async () => {
     const good = express.Router();
-    // Scoped to the router's own resource, exactly as ai-employee-routes now does.
+    // Scoped to the router's own resource, which is the shape every /api-root
+    // router must have.
     good.use('/ai-employees', (req, _res, next) => {
       (req as any).tenantId = 'SCOPED-ONLY';
       next();
@@ -79,42 +84,58 @@ describe('AUDIT-015: the old stub leaked its tenant onto unrelated routes', () =
   });
 });
 
-describe('AUDIT-015: ai-employee-routes source no longer fabricates identity', () => {
-  const src = readSource();
-  function readSource() {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require('node:fs').readFileSync('server/routes/ai-employee-routes.ts', 'utf8') as string;
-  }
+describe('AUDIT-015: no /api-root router fabricates or leaks identity', () => {
   /**
-   * Strip comments so the explanatory block describing the OLD bug isn't matched.
+   * PROD-008b generalized this. It used to read server/routes/ai-employee-routes.ts
+   * by name and assert that one file. That router has been retired — its handlers
+   * were shadowed by the /api/ai-employees proxy and the ai-employee edge function
+   * covers all ten — but the DEFECT it guarded against is a property of every
+   * router mounted at the /api root, not of that one file. So the guard now walks
+   * the whole asyncRootApiMounts list instead of dying with its subject.
    *
-   * ORDER MATTERS: line comments must go FIRST. The doc comment in that router
-   * contains the text "/api/*", and a block-comment regex run first would treat that
-   * "/*" as an opening delimiter and swallow everything up to the next "*\/" —
-   * including the very `router.use(...)` line these tests assert on. (TypeScript is
-   * unbothered: inside a // line, "/api/*" is not a comment opener. A regex that
-   * disagrees with the real lexer is exactly the AUDIT-003 lesson, in miniature.)
+   * Comment-stripping ORDER MATTERS: line comments must go FIRST. A doc comment
+   * containing "/api/*" would otherwise be read as an opening block delimiter by a
+   * block-comment regex run first, swallowing everything to the next "*\/" —
+   * including the router.use lines these tests assert on. TypeScript is unbothered:
+   * inside a // line, "/api/*" is not a comment opener. A regex that disagrees with
+   * the real lexer is the AUDIT-003 lesson in miniature.
    */
-  const code = src.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  const fsMod = require('node:fs') as typeof import('node:fs');
+  const registry = fsMod.readFileSync('server/routes-registry.ts', 'utf8') as string;
 
-  it('contains no mock identity in executable code', () => {
-    expect(code).not.toContain('mock-tenant-id');
-    expect(code).not.toContain('mock-user-id');
+  // The bare './routes/x' entries in the list mounted with app.use('/api', ...).
+  const rootMounted = [...registry.matchAll(/^\s*'(\.\/routes\/[^']+)',$/gm)]
+    .map((m) => `server/${m[1].replace(/^\.\//, '')}.ts`)
+    .filter((p) => fsMod.existsSync(p));
+
+  const strip = (src: string) =>
+    src.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('finds the /api-root routers to check', () => {
+    // If this drops to zero the rest of the suite passes vacuously.
+    expect(rootMounted.length).toBeGreaterThan(0);
   });
 
-  it('never reads identity off the request without the helpers', () => {
-    expect(code).not.toMatch(/\(req as any\)\.tenantId/);
-    expect(code).not.toMatch(/\(req as any\)\.userId/);
+  it('none of them fabricates a mock identity in executable code', () => {
+    for (const file of rootMounted) {
+      const code = strip(fsMod.readFileSync(file, 'utf8') as string);
+      expect(code, file).not.toContain('mock-tenant-id');
+      expect(code, file).not.toContain('mock-user-id');
+    }
   });
 
-  it('requires auth, and scopes that middleware to its own path', () => {
-    expect(code).toContain("router.use('/ai-employees', requireAuth)");
-    // No pathless router.use — that is what caused the leak.
-    expect(code).not.toMatch(/router\.use\(\s*\(/);
+  it('none of them writes identity onto the request', () => {
+    for (const file of rootMounted) {
+      const code = strip(fsMod.readFileSync(file, 'utf8') as string);
+      expect(code, file).not.toMatch(/\(req as any\)\.tenantId\s*=/);
+      expect(code, file).not.toMatch(/\(req as any\)\.userId\s*=/);
+    }
   });
 
-  it('resolves identity via the canonical auth helpers', () => {
-    expect(code).toMatch(/getTenantId\(req\)/);
-    expect(code).toMatch(/getUserId\(req\)/);
+  it('none of them registers a PATHLESS router.use — the leak itself', () => {
+    for (const file of rootMounted) {
+      const code = strip(fsMod.readFileSync(file, 'utf8') as string);
+      expect(code, file).not.toMatch(/router\.use\(\s*\(/);
+    }
   });
 });

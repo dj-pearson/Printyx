@@ -525,7 +525,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     './routes/meeting-transcription-routes',
     './routes/ai-documentation-routes',
     './routes/ai-search-knowledge-routes',
-    './routes/ai-employee-routes',
+    // './routes/ai-employee-routes' — retired (PROD-008b). All ten handlers were
+    // shadowed by the /api/ai-employees proxy and supabase/functions/ai-employee/
+    // covers every one. Three of them (/workflows, /templates, and the analytics
+    // overview's siblings) were also registered AFTER /ai-employees/:employeeId in
+    // the same router, so Express matched them as an id lookup — dead before the
+    // proxy existed. The edge function orders literals first.
     './routes/signature-routes',
     './routes/field-service-routes',
     './routes/email-marketing-routes',
