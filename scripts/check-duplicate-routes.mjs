@@ -93,12 +93,21 @@ for (const file of walk(serverDir)) {
   ROUTE_RE.lastIndex = 0;
 }
 
-// Only a registration in a DIFFERENT file can shadow; two in one file are a
-// deliberate ordering the author can see.
+// SAME-FILE duplicates count too.
+//
+// This used to skip them, on the reasoning that "two in one file are a
+// deliberate ordering the author can see". server/routes-operations-extended.ts
+// disproved that: 1,727 lines carrying SIX duplicate pairs 700 lines apart -
+// GET/POST /api/commission/{metrics,structures,payments,disputes} - and the two
+// copies were not variants of one handler but competing implementations over
+// different tables (net_payment_amount on commission_payments in the first,
+// final_payment_amount plus commission_transactions and sales_representatives in
+// the second). Express matched the first and the second set never ran. Nobody
+// "sees" that by reading.
 const dupes = [];
 for (const [key, sites] of byKey) {
   const files = [...new Set(sites.map((s) => s.rel))];
-  if (files.length < 2) continue;
+  if (sites.length < 2) continue;
   const ranked = files
     .map((rel) => {
       const site = sites.find((s) => s.rel === rel);
@@ -109,7 +118,12 @@ for (const [key, sites] of byKey) {
   // method+path alone hid a whole class of regression: a third file registering
   // an already-duplicated path matched the existing entry and passed. Caught by
   // mutation-testing this script against exactly that case.
-  const id = `${key} :: ${files.slice().sort().join('|')}`;
+  // A same-file duplicate has one entry in `files`, so the id carries the count
+  // as well - otherwise two duplicates in one file and three would share a key.
+  const id =
+    files.length > 1
+      ? `${key} :: ${files.slice().sort().join('|')}`
+      : `${key} :: ${files[0]} x${sites.length}`;
   dupes.push({ key, id, ranked });
 }
 dupes.sort((a, b) => a.id.localeCompare(b.id));
