@@ -9884,11 +9884,16 @@ export class DatabaseStorage implements IStorage {
     return anomaly || null;
   }
 
+  // meter_anomalies carries corrected_bw_reading / corrected_color_reading, and a
+  // resolution that corrects the readings is the main reason to record one — this
+  // used to take them from the caller and drop them on the floor.
   async resolveAnomaly(
     anomalyId: string,
     tenantId: string,
     resolutionMethod: string,
     notes: string,
+    correctedBwReading?: number | null,
+    correctedColorReading?: number | null,
   ): Promise<MeterAnomaly | null> {
     const [anomaly] = await db
       .update(meterAnomalies)
@@ -9897,6 +9902,8 @@ export class DatabaseStorage implements IStorage {
         resolvedAt: new Date(),
         resolutionMethod,
         resolutionNotes: notes,
+        ...(correctedBwReading != null ? { correctedBwReading } : {}),
+        ...(correctedColorReading != null ? { correctedColorReading } : {}),
         updatedAt: new Date(),
       })
       .where(and(eq(meterAnomalies.id, anomalyId), eq(meterAnomalies.tenantId, tenantId)))
@@ -10060,17 +10067,19 @@ export class DatabaseStorage implements IStorage {
     return dispute || null;
   }
 
+  // The third argument is who the dispute is escalated TO, not who escalated it —
+  // it was named userId while being written straight into escalated_to.
   async escalateDispute(
     disputeId: string,
     tenantId: string,
-    userId: string,
+    escalatedTo: string,
     reason: string,
   ): Promise<BillingDispute | null> {
     const [dispute] = await db
       .update(billingDisputes)
       .set({
         escalated: true,
-        escalatedTo: userId,
+        escalatedTo,
         escalatedAt: new Date(),
         escalationReason: reason,
         disputeStatus: 'escalated',

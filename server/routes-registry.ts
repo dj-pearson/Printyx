@@ -57,7 +57,7 @@ import {
 } from './domains/crm';
 
 import {
-  registerDealsManagementRoutes,
+  // registerDealsManagementRoutes — deleted; supabase/functions/deals/ covers it
   // registerDealDeskRoutes — migrated to supabase/functions/deal-desk/
   registerDealTagRoutes,
   // registerPipelineConfigurationRoutes — migrated to supabase/functions/pipeline-config/
@@ -753,7 +753,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // routes-email-sequences.ts retired (PROD-008b). All four handlers were
   // shadowed by the /api/email-sequences proxy; supabase/functions/email-sequences/
   // covers them and already returns camelCase rows.
-  registerDealsManagementRoutes(app);
+  // registerDealsManagementRoutes(app) — deleted; supabase/functions/deals/ covers it
   // registerDealDeskRoutes(app) — migrated to supabase/functions/deal-desk/
   // registerPipelineConfigurationRoutes(app) — migrated to supabase/functions/pipeline-config/
   registerTechnicianManagementRoutes(app);
