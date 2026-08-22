@@ -1160,6 +1160,7 @@ export interface IStorage {
   // MFA Enrollment & Configuration
   enableMfaForUser(userId: string, secret: string): Promise<User | null>;
   disableMfaForUser(userId: string): Promise<User | null>;
+  getUserMfaSecret(userId: string): Promise<{ enabled: boolean; secret: string | null }>;
   getUserMfaStatus(userId: string): Promise<{ enabled: boolean; hasBackupCodes: boolean } | null>;
 
   // MFA Backup Codes
@@ -3877,7 +3878,11 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`,
-          eq(systemAlerts.isRead, false),
+          // There is no is_read column. "Active" means nobody has acknowledged
+          // it and it is not resolved - the two columns that do record a human
+          // having dealt with the alert.
+          isNull(systemAlerts.acknowledgedAt),
+          eq(systemAlerts.resolved, false),
           ne(systemAlerts.severity, 'info'),
         ),
       );
@@ -3889,23 +3894,28 @@ export class DatabaseStorage implements IStorage {
 
   async getSystemAlerts(tenantId?: string): Promise<SystemAlert[]> {
     try {
+      // TENANT LEAK, fixed here: this called .where() TWICE. drizzle's where()
+      // ASSIGNS rather than ANDs - `this.config.where = where` in
+      // pg-core/query-builders/select.js - so the second call discarded the
+      // tenant predicate and every caller passing a tenantId received alerts
+      // from EVERY tenant. The two conditions are combined with and() now.
+      //
+      // The projection also named three columns system_alerts does not have -
+      // title, is_read and metadata - which made the select throw before it
+      // could leak anything. The two bugs were masking each other, so fixing
+      // only the columns would have turned a crash into a silent cross-tenant
+      // read. Selecting the whole row rather than a hand-listed projection: the
+      // declared return type is SystemAlert[], which the list could not satisfy
+      // even with the names corrected.
       return await db
-        .select({
-          id: systemAlerts.id,
-          tenantId: systemAlerts.tenantId,
-          title: systemAlerts.title,
-          message: systemAlerts.message,
-          severity: systemAlerts.severity,
-          category: systemAlerts.category,
-          isRead: systemAlerts.isRead,
-          createdAt: systemAlerts.createdAt,
-          updatedAt: systemAlerts.updatedAt,
-          expiresAt: systemAlerts.expiresAt,
-          metadata: systemAlerts.metadata,
-        })
+        .select()
         .from(systemAlerts)
-        .where(tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`)
-        .where(gte(systemAlerts.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000))) // Last 24 hours
+        .where(
+          and(
+            tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`,
+            gte(systemAlerts.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)), // Last 24 hours
+          ),
+        )
         .orderBy(desc(systemAlerts.createdAt))
         .limit(10);
     } catch (error) {
@@ -6056,12 +6066,15 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(signatureRequests.tenantId, tenantId),
-          lte(signatureRequests.expirationDate, futureDate),
+          // The column is expiresAt (expires_at). expirationDate does not exist
+          // on this table, so both references here were undefined - the
+          // predicate emitted an empty operand and Postgres rejected the query.
+          lte(signatureRequests.expiresAt, futureDate),
           ne(signatureRequests.status, 'completed'),
           ne(signatureRequests.status, 'voided'),
         ),
       )
-      .orderBy(signatureRequests.expirationDate);
+      .orderBy(signatureRequests.expiresAt);
   }
 
   async createSignatureRequest(request: InsertSignatureRequest): Promise<SignatureRequest> {
@@ -6182,7 +6195,9 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(eq(signatureAuditLogs.requestId, requestId), eq(signatureAuditLogs.tenantId, tenantId)),
       )
-      .orderBy(desc(signatureAuditLogs.eventTimestamp));
+      // signature_audit_logs records its time in created_at; there is no
+      // eventTimestamp column, so this ordering clause was undefined.
+      .orderBy(desc(signatureAuditLogs.createdAt));
   }
 
   async getSignatureAuditLogsBySigner(
@@ -6195,7 +6210,9 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(eq(signatureAuditLogs.signerId, signerId), eq(signatureAuditLogs.tenantId, tenantId)),
       )
-      .orderBy(desc(signatureAuditLogs.eventTimestamp));
+      // signature_audit_logs records its time in created_at; there is no
+      // eventTimestamp column, so this ordering clause was undefined.
+      .orderBy(desc(signatureAuditLogs.createdAt));
   }
 
   async createSignatureAuditLog(log: InsertSignatureAuditLog): Promise<SignatureAuditLog> {
@@ -6916,50 +6933,100 @@ export class DatabaseStorage implements IStorage {
   // ==================== Multi-Factor Authentication (MFA) Enforcement ====================
 
   // MFA Enrollment & Configuration
+  //
+  // two_factor_enabled and two_factor_secret are columns on USER_SETTINGS, not
+  // on users (shared/schema.ts:1063, migration 0000). Every method below used to
+  // address them on `users`, and the two halves failed in opposite directions:
+  //
+  //   .set({ twoFactorEnabled, twoFactorSecret })  drizzle DROPS keys that are
+  //   not columns of the target table, so the UPDATE became `set updated_at =
+  //   $1`. enableMfaForUser returned the user and reported success while writing
+  //   NOTHING. Enrolling in MFA was a no-op that claimed to have worked.
+  //
+  //   .select({ twoFactorEnabled: users.twoFactorEnabled })  throws
+  //   "Cannot convert undefined or null to object" - so reading the status
+  //   crashed.
+  //
+  // Both verified by building the queries and printing toSQL(). PA-008 describes
+  // this as "TOTP enrolled but never challenged"; on this backend it was never
+  // enrolled either.
+  //
+  // user_settings.tenant_id is NOT NULL and the row may not exist yet, so enable
+  // resolves the tenant from the user and upserts on the unique user_id.
   async enableMfaForUser(userId: string, secret: string): Promise<User | null> {
-    const [updatedUser] = await db
-      .update(users)
-      .set({
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return null;
+
+    await db
+      .insert(userSettings)
+      .values({
+        tenantId: user.tenantId,
+        userId,
         twoFactorEnabled: true,
         twoFactorSecret: secret,
-        updatedAt: new Date(),
       })
-      .where(eq(users.id, userId))
-      .returning();
+      .onConflictDoUpdate({
+        target: userSettings.userId,
+        set: { twoFactorEnabled: true, twoFactorSecret: secret, updatedAt: new Date() },
+      });
 
-    return updatedUser || null;
+    return user;
   }
 
   async disableMfaForUser(userId: string): Promise<User | null> {
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        twoFactorEnabled: false,
-        twoFactorSecret: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning();
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return null;
+
+    await db
+      .update(userSettings)
+      .set({ twoFactorEnabled: false, twoFactorSecret: null, updatedAt: new Date() })
+      .where(eq(userSettings.userId, userId));
 
     // Delete all backup codes when disabling MFA
     await this.deleteAllBackupCodes(userId);
 
-    return updatedUser || null;
+    return user;
+  }
+
+  /**
+   * The enrolled TOTP secret, or null when MFA is not enabled.
+   *
+   * Callers used to read user.twoFactorEnabled / user.twoFactorSecret off a
+   * `User`. Those are user_settings columns, so both were always undefined and
+   * every verification path short-circuited to "MFA not enabled for this user" -
+   * a code could never be accepted. Returning them from one place keeps the
+   * routes from having to know which table holds them.
+   */
+  async getUserMfaSecret(userId: string): Promise<{ enabled: boolean; secret: string | null }> {
+    const [settings] = await db
+      .select({
+        twoFactorEnabled: userSettings.twoFactorEnabled,
+        twoFactorSecret: userSettings.twoFactorSecret,
+      })
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId));
+
+    return {
+      enabled: settings?.twoFactorEnabled ?? false,
+      secret: settings?.twoFactorSecret ?? null,
+    };
   }
 
   async getUserMfaStatus(
     userId: string,
   ): Promise<{ enabled: boolean; hasBackupCodes: boolean } | null> {
-    const [user] = await db
-      .select({
-        twoFactorEnabled: users.twoFactorEnabled,
-      })
-      .from(users)
-      .where(eq(users.id, userId));
+    const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
 
     if (!user) {
       return null;
     }
+
+    // No settings row yet means MFA has never been enrolled, which is not the
+    // same as "user not found" - the caller distinguishes null from disabled.
+    const [settings] = await db
+      .select({ twoFactorEnabled: userSettings.twoFactorEnabled })
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId));
 
     const backupCodes = await db
       .select()
@@ -6968,7 +7035,7 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
 
     return {
-      enabled: user.twoFactorEnabled || false,
+      enabled: settings?.twoFactorEnabled ?? false,
       hasBackupCodes: backupCodes.length > 0,
     };
   }
@@ -7112,11 +7179,14 @@ export class DatabaseStorage implements IStorage {
 
     const totalUsers = totalUsersResult[0]?.count || 0;
 
-    // Get MFA-enabled users
+    // Get MFA-enabled users. The flag is on user_settings; joining rather than
+    // counting user_settings alone keeps the tenant scope on `users`, which is
+    // the authoritative membership table.
     const mfaEnabledResult = await db
       .select({ count: count() })
       .from(users)
-      .where(and(eq(users.tenantId, tenantId), eq(users.twoFactorEnabled, true)));
+      .innerJoin(userSettings, eq(userSettings.userId, users.id))
+      .where(and(eq(users.tenantId, tenantId), eq(userSettings.twoFactorEnabled, true)));
 
     const mfaEnabledUsers = mfaEnabledResult[0]?.count || 0;
     const mfaDisabledUsers = totalUsers - mfaEnabledUsers;
@@ -7166,16 +7236,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUsersWithoutMfa(tenantId: string): Promise<User[]> {
-    return await db
-      .select()
+    // LEFT JOIN, not INNER: a user who has never opened settings has no
+    // user_settings row at all, and that user is exactly the one without MFA.
+    // An inner join would have hidden them, which is the wrong direction for a
+    // compliance report.
+    const rows = await db
+      .select({ user: users })
       .from(users)
+      .leftJoin(userSettings, eq(userSettings.userId, users.id))
       .where(
         and(
           eq(users.tenantId, tenantId),
-          or(eq(users.twoFactorEnabled, false), isNull(users.twoFactorEnabled)),
+          or(eq(userSettings.twoFactorEnabled, false), isNull(userSettings.twoFactorEnabled)),
         ),
       )
       .orderBy(asc(users.email));
+
+    return rows.map((row) => row.user);
   }
 
   // ==================== Workflow Automation Methods ====================
