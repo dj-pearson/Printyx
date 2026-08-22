@@ -6,144 +6,38 @@
 import express from 'express';
 import AISearchKnowledgeService from '../services/ai-search-knowledge-service';
 import { createModuleLogger } from '../lib/logger';
-import { getUserId, getTenantId } from '../utils/auth-helpers';
 const log = createModuleLogger('ai-search-knowledge-routes');
 
 const router = express.Router();
 
-/**
- * POST /api/search/semantic
- * Perform semantic search using vector similarity
- */
-router.post('/search/semantic', async (req, res) => {
-  try {
-    const {
-      query,
-      contentTypes,
-      categories,
-      tags,
-      maxResults = 10,
-      minSimilarity = 0.3,
-      accessLevel,
-      dateRange,
-      includeAnswer = true,
-    } = req.body;
+// ==================== /search/* — REMOVED (PROD-008b) ====================
+//
+// The five /search handlers that lived here (semantic, suggestions, feedback,
+// embeddings, analytics) are gone. /api/search is proxied to
+// supabase/functions/search/, so none of them ran, and nothing in client/src
+// called any of them — global-search.tsx calls GET /api/search?q= only, which
+// the edge function serves.
+//
+// Nothing was ported, because there is nothing real to port:
+// services/ai-search-knowledge-service.ts generates embedding vectors with
+// Math.random(), returns mock semantic results from getMockEmbeddings(), and
+// invents its analytics. Porting fabricated output to production is worse than
+// a 404 — the same call PROD-010 made about /api/business-process.
+//
+// The /knowledge/* handlers below are on an UNPROXIED prefix and still register.
+// They are mock too, and also have no callers; removing them is a separate
+// story, since this one is scoped to shadowed handlers.
 
-    if (!query || query.trim().length === 0) {
-      return res.status(400).json({ error: 'Search query is required' });
-    }
-
-    const searchResults = await AISearchKnowledgeService.semanticSearch(
-      req.user!.tenantId!,
-      req.user!.id,
-      query.trim(),
-      {
-        contentTypes,
-        categories,
-        tags,
-        maxResults,
-        minSimilarity,
-        accessLevel,
-        dateRange: dateRange
-          ? {
-              start: new Date(dateRange.start),
-              end: new Date(dateRange.end),
-            }
-          : undefined,
-        includeAnswer,
-      },
-    );
-
-    res.json(searchResults);
-  } catch (error) {
-    log.error('Error performing semantic search:', error);
-    res.status(500).json({ error: 'Failed to perform semantic search' });
-  }
-});
 
 /**
  * GET /api/search/suggestions
  * Get search query suggestions based on popular searches and user history
  */
-router.get('/search/suggestions', async (req, res) => {
-  try {
-    const { query, limit = 8 } = req.query;
-
-    // Mock search suggestions - in production, this would analyze user patterns and popular queries
-    const suggestions = [
-      'How to set up meeting transcription',
-      'AI documentation best practices',
-      'Team collaboration workflows',
-      'Calendar integration troubleshooting',
-      'Advanced scheduling algorithms',
-      'Vector search implementation',
-      'Knowledge management strategies',
-      'Automated content generation',
-    ];
-
-    let filteredSuggestions = suggestions;
-
-    if (query && typeof query === 'string') {
-      const queryLower = query.toLowerCase();
-      filteredSuggestions = suggestions.filter((suggestion) =>
-        suggestion.toLowerCase().includes(queryLower),
-      );
-    }
-
-    res.json({
-      suggestions: filteredSuggestions.slice(0, Number(limit)),
-      popularQueries: [
-        { query: 'meeting transcription setup', frequency: 234 },
-        { query: 'AI writing assistant', frequency: 187 },
-        { query: 'team collaboration tools', frequency: 156 },
-        { query: 'calendar integration', frequency: 134 },
-      ],
-    });
-  } catch (error) {
-    log.error('Error fetching search suggestions:', error);
-    res.status(500).json({ error: 'Failed to fetch search suggestions' });
-  }
-});
 
 /**
  * POST /api/search/feedback
  * Submit feedback on search results and AI answers
  */
-router.post('/search/feedback', async (req, res) => {
-  try {
-    const { queryId, answerId, rating, feedback, clickedResults, wasHelpful, corrections } =
-      req.body;
-
-    if (!queryId) {
-      return res.status(400).json({ error: 'Query ID is required' });
-    }
-
-    // In production, this would update the database with user feedback
-    const feedbackData = {
-      queryId,
-      answerId,
-      userId: req.user!.id,
-      tenantId: req.user!.tenantId!,
-      rating: rating ? Number(rating) : undefined,
-      feedback: feedback || null,
-      clickedResults: clickedResults || [],
-      wasHelpful: wasHelpful !== undefined ? Boolean(wasHelpful) : undefined,
-      corrections: corrections || [],
-      submittedAt: new Date(),
-    };
-
-    log.info('Search feedback received:', feedbackData);
-
-    res.json({
-      success: true,
-      message: 'Feedback submitted successfully',
-      feedbackId: `feedback-${Date.now()}`,
-    });
-  } catch (error) {
-    log.error('Error submitting search feedback:', error);
-    res.status(500).json({ error: 'Failed to submit feedback' });
-  }
-});
 
 /**
  * POST /api/knowledge/entities
@@ -557,76 +451,11 @@ router.get('/knowledge/entities/:entityId', async (req, res) => {
  * POST /api/search/embeddings
  * Create vector embeddings for content
  */
-router.post('/search/embeddings', async (req, res) => {
-  try {
-    const {
-      contentId,
-      contentType,
-      text,
-      title,
-      summary,
-      keywords,
-      category,
-      subcategory,
-      tags,
-      authorId,
-      createdAt,
-      accessLevel,
-      accessPermissions,
-    } = req.body;
-
-    if (!contentId || !contentType || !text) {
-      return res.status(400).json({ error: 'Content ID, type, and text are required' });
-    }
-
-    const embedding = await AISearchKnowledgeService.createContentEmbedding(
-      req.user!.tenantId!,
-      contentId,
-      contentType,
-      {
-        text,
-        title,
-        summary,
-        keywords,
-        category,
-        subcategory,
-        tags,
-        authorId,
-        createdAt: createdAt ? new Date(createdAt) : undefined,
-        accessLevel,
-        accessPermissions,
-      },
-    );
-
-    res.status(201).json(embedding);
-  } catch (error) {
-    log.error('Error creating content embedding:', error);
-    res.status(500).json({ error: 'Failed to create content embedding' });
-  }
-});
 
 /**
  * GET /api/search/analytics
  * Get search analytics and performance insights
  */
-router.get('/search/analytics', async (req, res) => {
-  try {
-    const {
-      start_date = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      end_date = new Date().toISOString(),
-    } = req.query;
-
-    const analytics = await AISearchKnowledgeService.getSearchAnalytics(req.user!.tenantId!, {
-      start: new Date(start_date as string),
-      end: new Date(end_date as string),
-    });
-
-    res.json(analytics);
-  } catch (error) {
-    log.error('Error fetching search analytics:', error);
-    res.status(500).json({ error: 'Failed to fetch search analytics' });
-  }
-});
 
 /**
  * GET /api/knowledge/graph
