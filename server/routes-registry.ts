@@ -125,14 +125,7 @@ import {
 
 import { registerGdprRoutes, incidentResponseRoutes } from './domains/security';
 
-import {
-  knowledgeBaseRoutes,
-  knowledgeBaseAdminRoutes,
-  contentGapAnalysisRoutes,
-  articleBookmarksRoutes,
-  readingHistoryRoutes,
-  articleRatingsRoutes,
-} from './domains/knowledge';
+import { knowledgeBaseAdminRoutes, contentGapAnalysisRoutes } from './domains/knowledge';
 
 import {
   registerIntegrationRoutes,
@@ -310,12 +303,40 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerEdgeFunctionProxy(app);
 
   // ─── Knowledge Base ────────────────────────────────────────────────
-  app.use('/api/knowledge-base', knowledgeBaseRoutes);
+  // The knowledge-base Express routers were mounted here and are DELETED
+  // (PROD-008b): routes-knowledge-base.ts plus the three engagement routers
+  // (article-ratings, article-bookmarks, reading-history), 35 handlers in all.
+  //
+  // /api/knowledge-base is in crmProxies, so the proxy served the whole prefix
+  // in dev and production hit supabase/functions/knowledge-base/ directly -
+  // none of them ran on either host. They were invisible to
+  // check:shadowed-express until it learned to follow the domains/* barrels.
+  //
+  // ALL 35 WERE CHECKED AGAINST THE EDGE FUNCTION BEFORE DELETING, and the
+  // check earned its keep: POST /articles/:id/feedback had NO edge counterpart
+  // and a live caller (KnowledgeArticle.tsx), so it was ported first rather
+  // than deleted with the rest.
+  //
+  //   categories CRUD           -> knowledge-base/index.ts:106, 137, 201, 254
+  //   articles list / by-id-or-slug / create / update / delete
+  //                             -> index.ts:585, 751, 855, 972
+  //   search, popular, analytics -> index.ts:400, 363, 316
+  //   POST /articles/:id/feedback -> index.ts:591 (ported this round)
+  //   ratings, votes            -> handlers/ratings.ts (both id and user/:id forms)
+  //   bookmarks                 -> handlers/bookmarks.ts (list, create, update,
+  //                                delete, collections, check/:articleId)
+  //   reading-history           -> handlers/reading-history.ts (list, create,
+  //                                recent, stats, by-article, delete)
+  //
+  // DELETED WITH NO COUNTERPART, because nothing calls them either:
+  //   GET /articles/:id/feedback - the admin feedback list. The admin dashboard
+  //     reads /api/admin/knowledge-base/feedback/pending, a different prefix
+  //     that is NOT proxied and is still served by knowledgeBaseAdminRoutes.
+  //   PATCH /articles/:id/publish and /archive - KnowledgeBaseAdmin.tsx already
+  //     does both as a status change through the article PUT, and says so in a
+  //     comment at its call site.
   app.use('/api/admin/knowledge-base', knowledgeBaseAdminRoutes);
   app.use('/api/content-gap-analysis', contentGapAnalysisRoutes);
-  app.use('/api/knowledge-base/bookmarks', articleBookmarksRoutes);
-  app.use('/api/knowledge-base/reading-history', readingHistoryRoutes);
-  app.use('/api/knowledge-base/ratings', articleRatingsRoutes);
 
   // ─── Search & Accessibility ────────────────────────────────────────
   app.use(universalSearchRoutes);

@@ -6,7 +6,6 @@
     "server/routes-equipment-disposal.ts": 2,
     "server/routes-product-pricing.ts": 4,
     "server/routes-warehouse-fpy.ts": 8,
-    "server/routes/article-bookmarks-routes.ts": 1,
     "server/routes/mileage-routes.ts": 1,
     "server/services/customer-portal-service.ts": 1,
     "server/storage.ts": 27
