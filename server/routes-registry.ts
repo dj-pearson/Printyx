@@ -163,7 +163,6 @@ import { registerAnalyticsRoutes, gpt5Routes } from './domains/ai';
 
 import {
   registerClientMonitoringRoutes,
-  customerPortalRoutes,
   clientMetricsRoutes,
   deviceMonitoringRoutes,
 } from './domains/portal';
@@ -605,7 +604,31 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Monitoring & Service ─────────────────────────────────────────
   registerManufacturerIntegrationRoutes(app);
   registerClientMonitoringRoutes(app);
-  app.use('/api/customer-portal', customerPortalRoutes);
+  // routes-customer-portal.ts was mounted here and is DELETED (PROD-008b).
+  // 1,701 lines, 25 handlers. /api/customer-portal is in crmProxies, so the
+  // proxy served the prefix in dev and production hit
+  // supabase/functions/customer-portal/ directly - it ran on neither host.
+  //
+  // ALL 25 CHECKED AGAINST THE EDGE FUNCTION. Every path the frontend calls has
+  // a counterpart, sub-paths included:
+  //   maintenance-availability, maintenance-appointments (+ /:id,
+  //     /:id/reschedule, DELETE /:id)      -> index.ts:79-83, handlers/maintenance.ts
+  //   satisfaction/surveys (+ /:id, /:id/start, /:id/submit), /analytics
+  //                                        -> index.ts:85, handlers/satisfaction.ts
+  //   service-requests (+ /:id, /:id/history, POST)  -> index.ts:210-370
+  //   equipment, equipment-health, usage-analytics, supply-orders,
+  //     knowledge-base, dashboard          -> index.ts:88-98, 457, 528, 612, 693
+  //
+  // DELETED WITH NO COUNTERPART, none of which any page calls: /test, /users,
+  // /dashboard/stats, /equipment-analytics/:id, /equipment-usage/:id,
+  // /meter-submissions/recent, /service-requests/recent, and
+  // POST /equipment-maintenance.
+  //
+  // Worth knowing about that last group: /service-requests/recent would not have
+  // worked on the edge side anyway. There is no 'recent' branch there, and the
+  // GET /:id branch matches first, so it would resolve as a lookup for a request
+  // whose id is the word "recent" - the shadowing class check:route-shadowing
+  // gates on the Express side.
   app.use('/api/client-metrics', clientMetricsRoutes);
   app.use('/api/device-monitoring', deviceMonitoringRoutes);
 

@@ -64,26 +64,7 @@
     "POST /api/business-records/import (server/routes-crm-core.ts)": "LIVE BROKEN FEATURE, retained because deleting it would destroy the only implementation. POST /api/business-records/import is the lead CSV import: multer upload, parseCSV, per-row dedup against existing records, insert, behind enforceUsageLimits. client/src/components/leads/LeadsImport.tsx calls it, and the business-records edge function has NO import branch — so lead CSV import already 404s in dev and production. Porting it needs multipart handling (the EDGE-002l fix covers it, and _shared/catalog-import-runner.ts is the precedent), a CSV parser, the dedup pass, and an edge equivalent of enforceUsageLimits, which does not exist. That is a feature story. PROD-008b."
   },
   "allowed": [
-    "DELETE /api/customer-portal/maintenance-appointments/:appointmentId (server/routes-customer-portal.ts)",
     "GET /api/ai/gpt5/configs (server/routes-ai-gpt5.ts)",
-    "GET /api/customer-portal/dashboard/stats (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/equipment-analytics/:equipmentId (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/equipment-health (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/equipment-usage/:equipmentId (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/maintenance-appointments (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/maintenance-appointments/:appointmentId (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/maintenance-availability (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/meter-submissions/recent (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/satisfaction/analytics (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/satisfaction/surveys (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/satisfaction/surveys/:surveyId (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/service-requests (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/service-requests/:requestId (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/service-requests/:requestId/history (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/service-requests/recent (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/test (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/usage-analytics (server/routes-customer-portal.ts)",
-    "GET /api/customer-portal/users (server/routes-customer-portal.ts)",
     "GET /api/phone-in-tickets (server/routes-enhanced-service.ts)",
     "GET /api/technician-sessions/:sessionId/workflow-steps (server/routes-enhanced-service.ts)",
     "GET /api/webhooks (server/integrations/webhook-routes.ts)",
@@ -96,11 +77,6 @@
     "POST /api/ai/gpt5/generate-code (server/routes-ai-gpt5.ts)",
     "POST /api/ai/gpt5/generate-proposal (server/routes-ai-gpt5.ts)",
     "POST /api/ai/gpt5/support-response (server/routes-ai-gpt5.ts)",
-    "POST /api/customer-portal/equipment-maintenance (server/routes-customer-portal.ts)",
-    "POST /api/customer-portal/maintenance-appointments (server/routes-customer-portal.ts)",
-    "POST /api/customer-portal/satisfaction/surveys/:surveyId/start (server/routes-customer-portal.ts)",
-    "POST /api/customer-portal/satisfaction/surveys/:surveyId/submit (server/routes-customer-portal.ts)",
-    "POST /api/customer-portal/service-requests (server/routes-customer-portal.ts)",
     "POST /api/phone-in-tickets (server/routes-enhanced-service.ts)",
     "POST /api/phone-in-tickets/:id/convert (server/routes-enhanced-service.ts)",
     "POST /api/webhooks/:provider (server/integrations/webhook-routes.ts)",
@@ -108,7 +84,6 @@
     "POST /api/webhooks/microsoft-calendar (server/integrations/webhook-routes.ts)",
     "POST /api/webhooks/quickbooks (server/integrations/webhook-routes.ts)",
     "POST /api/webhooks/salesforce (server/integrations/webhook-routes.ts)",
-    "POST /api/webhooks/stripe (server/integrations/webhook-routes.ts)",
-    "PUT /api/customer-portal/maintenance-appointments/:appointmentId/reschedule (server/routes-customer-portal.ts)"
+    "POST /api/webhooks/stripe (server/integrations/webhook-routes.ts)"
   ]
 }
