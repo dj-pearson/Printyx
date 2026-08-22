@@ -501,25 +501,9 @@ export function registerWorkflowMobileRoutes(app: Express) {
   // ============= USERS API =============
 
   // Users API for owner lookup
-  app.get('/api/users', async (req: any, res) => {
-    try {
-      const userId = getUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: 'Not authenticated' });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-
-      const result = await storage.getUsers(user.tenantId);
-      res.json(result);
-    } catch (error) {
-      log.error('Error fetching users:', error);
-      res.status(500).json({ message: 'Failed to fetch users' });
-    }
-  });
+  // GET /api/users was removed here (PROD-008b). supabase/functions/users/ serves
+  // it, returning the active tenant users with camelCase keys and a derived
+  // `name`.
 
   // ============= DEAL MANAGEMENT ROUTES =============
 

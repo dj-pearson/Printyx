@@ -58,19 +58,14 @@
     "POST /api/deals/:dealId/tags (server/routes-deal-tags.ts)": "Half-reachable feature, no edge counterpart. dealTags + dealTagAssignments are real tables (shared/crm-views-schema.ts:168) and the sibling CRUD at /api/deal-tags and /api/board-card-config is UNPROXIED and live — so a tenant can create tags but not assign one to a deal, because /api/deals is proxied and the deals edge function has no tag branch. No frontend calls either half today. Wiring it up (edge branches + UI) is a feature story, not cleanup. PROD-008b, finding 10.",
     "GET /api/companies/duplicates/details (server/routes-companies.ts)": "Real dedup logic with no edge counterpart and no caller. Both handlers call services/company-deduplication-service.ts (getDuplicateGroupDetails, findExistingCompany), which server/cli/company-dedup-cli.ts also uses so it stays regardless. The companies edge function has duplicates/scan but neither duplicates/details nor check-duplicate — the dedup surface is half-ported. Deleting working logic to move a counter is not a fix. PROD-008b, finding 10.",
     "POST /api/companies/check-duplicate (server/routes-companies.ts)": "Real dedup logic with no edge counterpart and no caller. Both handlers call services/company-deduplication-service.ts (getDuplicateGroupDetails, findExistingCompany), which server/cli/company-dedup-cli.ts also uses so it stays regardless. The companies edge function has duplicates/scan but neither duplicates/details nor check-duplicate — the dedup surface is half-ported. Deleting working logic to move a counter is not a fix. PROD-008b, finding 10.",
-    "POST /api/business-records/bulk/status (server/routes-business-records.ts)": "Real tenant-scoped logic with no edge counterpart and no caller: a bulk status update over business_records plus a businessRecordActivities row per changed record. Deleting it removes capability rather than a duplicate. PROD-008b, finding 10."
+    "POST /api/business-records/bulk/status (server/routes-business-records.ts)": "Real tenant-scoped logic with no edge counterpart and no caller: a bulk status update over business_records plus a businessRecordActivities row per changed record. Deleting it removes capability rather than a duplicate. PROD-008b, finding 10.",
+    "GET /api/universal-search (server/routes-universal-search.ts)": "Deliberate network-error fallback, not a duplicate. edge-function-proxy.ts:307-311 records the decision: the universal-search edge function is the production implementation and this Express handler stays because createProxyHandler falls through to Express on a NETWORK error (never on a 404). Removing it would remove the fallback the proxy entry was written to rely on. PROD-008b.",
+    "POST /api/business-records/bulk-update (server/routes-crm-bulk.ts)": "Real tenant-scoped bulk update over deals and business_records with no edge counterpart and no caller. Deleting it removes capability rather than a duplicate. PROD-008b, finding 10.",
+    "POST /api/business-records/import (server/routes-crm-core.ts)": "LIVE BROKEN FEATURE, retained because deleting it would destroy the only implementation. POST /api/business-records/import is the lead CSV import: multer upload, parseCSV, per-row dedup against existing records, insert, behind enforceUsageLimits. client/src/components/leads/LeadsImport.tsx calls it, and the business-records edge function has NO import branch — so lead CSV import already 404s in dev and production. Porting it needs multipart handling (the EDGE-002l fix covers it, and _shared/catalog-import-runner.ts is the precedent), a CSV parser, the dedup pass, and an edge equivalent of enforceUsageLimits, which does not exist. That is a feature story. PROD-008b."
   },
   "allowed": [
-    "GET /api/business-records/stats (server/routes-mobile-api.ts)",
-    "GET /api/pipeline-forecast/:forecastId? (server/routes-sales-forecasting.ts)",
-    "GET /api/universal-search (server/routes-universal-search.ts)",
-    "GET /api/users (server/routes-workflow-mobile.ts)",
-    "GET /api/users/team (server/routes-enhanced-tasks.ts)",
     "GET /api/webhooks (server/integrations/webhook-routes.ts)",
-    "GET /api/webhooks (server/routes-integrations.ts)",
     "GET /api/webhooks/health (server/integrations/webhook-routes.ts)",
-    "POST /api/business-records/bulk-update (server/routes-crm-bulk.ts)",
-    "POST /api/business-records/import (server/routes-crm-core.ts)",
     "POST /api/webhooks/:provider (server/integrations/webhook-routes.ts)",
     "POST /api/webhooks/google-calendar (server/integrations/webhook-routes.ts)",
     "POST /api/webhooks/microsoft-calendar (server/integrations/webhook-routes.ts)",

@@ -40,7 +40,6 @@
     "GET /api/tenants/:tenantId/locations :: server/routes-sample-data.ts|server/routes-workflow-mobile.ts",
     "GET /api/tenants/:tenantId/regions :: server/routes-sample-data.ts|server/routes-workflow-mobile.ts",
     "GET /api/tenants/:tenantId/summary :: server/routes-sample-data.ts|server/routes-workflow-mobile.ts",
-    "GET /api/webhooks :: server/integrations/webhook-routes.ts|server/routes-integrations.ts",
     "POST /api/customers :: server/routes-business-records.ts|server/routes-customers.ts",
     "POST /api/import/jobs/:jobId/duplicates/resolve-all :: server/routes-csv-import.ts|server/routes-import.ts",
     "POST /api/import/jobs/:jobId/execute :: server/routes-csv-import.ts|server/routes-import.ts",

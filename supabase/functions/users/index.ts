@@ -1,6 +1,7 @@
 // Users Edge Function
 // Lists users for task assignment and team management
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 
 // Export handler for use by the main server router
@@ -52,6 +53,22 @@ export default async function handler(req: Request) {
       }
 
       tenantId = userData.tenant_id;
+    }
+
+    // PROD-008b: this function does not route on the path at all, so before this
+    // guard ANY sub-path — /users/team, /users/<uuid>, anything — returned the
+    // full tenant user list rather than 404ing. server/routes-enhanced-tasks.ts
+    // used to serve /api/users/team, and its removal would otherwise have turned
+    // a team-scoped list into a whole-tenant one silently. Nothing calls a
+    // sub-path today; this keeps it that way honestly.
+    const url = new URL(req.url);
+    const { parts } = normalizePath(url.pathname, 'users');
+    if (parts.length > 0) {
+      return createCorsResponse(
+        { error: 'Not found', details: { path: url.pathname, method: req.method } },
+        404,
+        req,
+      );
     }
 
     const admin = createSupabaseServiceClient();
