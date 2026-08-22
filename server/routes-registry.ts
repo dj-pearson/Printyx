@@ -438,7 +438,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Async Route Imports ──────────────────────────────────────────
   const asyncMounts: [string, string][] = [
     // ['/api/proposals', './routes-proposals'] — migrated to supabase/functions/proposals/
-    ['/api/documents', './routes-documents'],
+    // ['/api/documents', './routes-documents'] — retired (PROD-008b). All four
+    // handlers (GET /, POST /, GET /:id, POST /:id/pdf) are shadowed by the
+    // /api/documents proxy and matched branch-for-branch by
+    // supabase/functions/documents/. Its generateDocumentHTML moved to
+    // server/lib/document-html.ts, which the parity test now imports.
     ['/api/root-admin', './routes-root-admin'],
     ['/api/admin', './routes-admin-workflows'],
     ['/api/dashboard', './routes-dashboard-customization'],
@@ -495,7 +499,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     ['/api/manufacturer-orders', './routes/manufacturer-order-routes'],
     ['/api/gps', './routes/gps-tracking-routes'],
     ['/api/billing', './routes/advanced-billing-routes'],
-    ['/api/customer-success', './routes/customer-success-routes'],
+    // ['/api/customer-success', './routes/customer-success-routes'] — retired
+    // (PROD-008b). All 44 handlers were shadowed by the /api/customer-success
+    // proxy AND self-broken: the module's `storage` was only ever assigned by an
+    // exported setter nothing called, so every handler dereferenced undefined.
+    // supabase/functions/customer-success/ covers all 44, literals ordered before
+    // /:id — which this router got backwards.
     ['/api/apollo', './routes/apollo-routes'],
     // ['/api/outreach', './routes/outreach-routes'] — migrated to supabase/functions/outreach/
     ['/api/extension', './routes/chrome-extension-routes'],

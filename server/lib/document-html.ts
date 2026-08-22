@@ -1,110 +1,13 @@
-import express from 'express';
-import { db } from './db';
-import { documents } from '../shared/schema.js';
-import { eq, and } from 'drizzle-orm';
-// Use centralized auth helpers for Supabase JWT + session fallback
-import { getUserId, getTenantId } from './utils/auth-helpers';
-import { createModuleLogger } from './lib/logger';
-const log = createModuleLogger('routes-documents');
-
-const router = express.Router();
-
-const requireTenant = (req: any, res: any, next: any) => {
-  const tenantId = getTenantId(req);
-  if (!tenantId) {
-    return res.status(400).json({ message: 'Tenant ID is required' });
-  }
-  req.tenantId = tenantId;
-  next();
-};
-
-// Get all documents for tenant
-router.get('/', requireTenant, async (req: any, res) => {
-  try {
-    const docs = await db
-      .select()
-      .from(documents)
-      .where(eq(documents.tenantId, req.tenantId))
-      .orderBy(documents.createdAt);
-
-    res.json(docs);
-  } catch (error) {
-    log.error('Error fetching documents:', error);
-    res.status(500).json({ message: 'Failed to fetch documents' });
-  }
-});
-
-// Create a new document
-router.post('/', requireTenant, async (req: any, res) => {
-  try {
-    const userId = getUserId(req);
-
-    const documentData = {
-      ...req.body,
-      tenantId: req.tenantId,
-      createdBy: userId,
-      updatedBy: userId,
-      documentNumber: req.body.agreementNumber || `DOC-${Date.now()}`,
-      documentType: req.body.includeServiceContract ? 'purchase_service' : 'purchase_only',
-    };
-
-    const [newDocument] = await db.insert(documents).values(documentData).returning();
-
-    res.status(201).json(newDocument);
-  } catch (error) {
-    log.error('Error creating document:', error);
-    res.status(500).json({ message: 'Failed to create document' });
-  }
-});
-
-// Get a specific document
-router.get('/:id', requireTenant, async (req: any, res) => {
-  try {
-    const [document] = await db
-      .select()
-      .from(documents)
-      .where(and(eq(documents.id, req.params.id), eq(documents.tenantId, req.tenantId)));
-
-    if (!document) {
-      return res.status(404).json({ message: 'Document not found' });
-    }
-
-    res.json(document);
-  } catch (error) {
-    log.error('Error fetching document:', error);
-    res.status(500).json({ message: 'Failed to fetch document' });
-  }
-});
-
-// Generate PDF for a document
-router.post('/:id/pdf', requireTenant, async (req: any, res) => {
-  try {
-    const [document] = await db
-      .select()
-      .from(documents)
-      .where(and(eq(documents.id, req.params.id), eq(documents.tenantId, req.tenantId)));
-
-    if (!document) {
-      return res.status(404).json({ message: 'Document not found' });
-    }
-
-    // Generate HTML content for PDF
-    const htmlContent = generateDocumentHTML(document);
-
-    // For now, return the HTML content as text
-    // In production, you would use a library like puppeteer to generate PDF
-    res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Content-Disposition', `attachment; filename="document-${document.id}.html"`);
-    res.send(htmlContent);
-  } catch (error) {
-    log.error('Error generating PDF:', error);
-    res.status(500).json({ message: 'Failed to generate PDF' });
-  }
-});
-
-// Generate HTML content for document
-// Exported so server/tests/unit/document-html-parity.test.ts can assert this and
-// the Deno copy in supabase/functions/_shared/document-html.ts render identically.
+/**
+ * Purchase-agreement HTML renderer (server side).
+ *
+ * Extracted from server/routes-documents.ts when PROD-008b retired that module:
+ * /api/documents is proxied to supabase/functions/documents/, so all four of its
+ * handlers were shadowed. This function was NOT — it is the Express half of the
+ * pair that server/tests/unit/document-html-parity.test.ts locks against
+ * supabase/functions/_shared/document-html.ts, and would have died silently with
+ * the routes around it.
+ */
 export function generateDocumentHTML(doc: any): string {
   const lineItems = doc.lineItems || [];
   const total = lineItems.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0);
@@ -264,5 +167,3 @@ export function generateDocumentHTML(doc: any): string {
 </body>
 </html>`;
 }
-
-export default router;

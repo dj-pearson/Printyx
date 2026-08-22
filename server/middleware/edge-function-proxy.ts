@@ -324,7 +324,8 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/accessories': 'accessories',
     '/api/contract-tiered-rates': 'contract-tiered-rates',
 
-    // PROD-013: /api/documents (server/routes-documents.ts) had no edge
+    // PROD-013: /api/documents (formerly server/routes-documents.ts, retired by
+    // PROD-008b) had no edge
     // function, so DocumentBuilder could not list, create or export agreements
     // in production. NOTE this forwards the WHOLE prefix, which also covers the
     // /generate, /batch-generate, /generated, /upload, /uploads and /ai-extract

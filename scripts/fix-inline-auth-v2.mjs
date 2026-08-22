@@ -21,7 +21,6 @@ const targetFiles = [
   'routes-customer-numbers.ts',
   'routes-customer-portal.ts',
   'routes-device-monitoring.ts',
-  'routes-documents.ts',
   'routes-enhanced-rbac.ts',
   'routes-erp-integration.ts',
   'routes-incident-response.ts',
