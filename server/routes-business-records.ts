@@ -104,12 +104,13 @@ const statusUpdateSchema = z.object({
 // them earlier would have removed the trigger seam rather than a duplicate.
 // CRMX-008a ported both into the edge function first.
 //
-// STILL HERE, and deliberately: POST /api/business-records/bulk/status and
-// GET /api/business-records/stats/overview have NO edge counterpart, so
-// deleting them removes capability rather than a duplicate. Neither has a
-// frontend caller today. They stay in docs/shadowed-express-baseline.json until
-// someone decides to port or drop them. /api/customers below is not proxied and
-// still runs.
+// STILL HERE, and deliberately: POST /api/business-records/bulk/status has NO
+// edge counterpart, and it is real tenant-scoped logic — a bulk status update
+// plus a businessRecordActivities row per record. No frontend caller today, so it
+// is RETAINED in docs/shadowed-express-baseline.json with a reason rather than
+// deleted. GET /stats/overview, which this note also used to claim had no
+// counterpart, in fact does; it has been removed. /api/customers below is not
+// proxied and still runs.
 
 /**
  * Get single business record by ID or slug
@@ -196,50 +197,14 @@ router.post(
 /**
  * Get statistics for dashboard
  */
-router.get(
-  '/api/business-records/stats/overview',
-  requireAuth,
-  async (req: Request, res: Response) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Get counts by record type and status
-      const stats = await db
-        .select({
-          recordType: businessRecords.recordType,
-          status: businessRecords.status,
-          count: sql<number>`count(*)`,
-        })
-        .from(businessRecords)
-        .where(eq(businessRecords.tenantId, tenantId))
-        .groupBy(businessRecords.recordType, businessRecords.status);
-
-      // Calculate pipeline value
-      const [pipelineValue] = await db
-        .select({
-          total: sql<number>`COALESCE(SUM(${businessRecords.estimatedAmount}), 0)`,
-        })
-        .from(businessRecords)
-        .where(
-          and(
-            eq(businessRecords.tenantId, tenantId),
-            inArray(businessRecords.recordType, ['lead', 'prospect']),
-          ),
-        );
-
-      res.json({
-        stats,
-        pipelineValue: pipelineValue.total,
-      });
-    } catch (error) {
-      log.error('Error fetching stats:', error);
-      res.status(500).json({ message: 'Failed to fetch statistics' });
-    }
-  },
-);
+// GET /api/business-records/stats/overview was removed here (PROD-008b). The
+// note above used to say it had no edge counterpart; that was wrong. The
+// business-records edge function handles it at index.ts:129, and its own comment
+// names both paths: "GET /business-records/stats or /business-records/stats/overview".
+//
+// One difference worth knowing rather than fixing here: the edge version counts
+// rows in `companies`, this one counted `business_records`. Which of those is
+// canonical is the whole of COP-B00 and is not this story's to settle.
 
 // Backward compatibility routes - GET all customers with pagination
 router.get(

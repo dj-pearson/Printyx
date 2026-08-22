@@ -174,6 +174,30 @@ export default async function handler(req: Request) {
     }
 
     // GET /quotes/:id - Get single quote with line items
+    // GET /quotes/:id/line-items — the flat line-item list.
+    //
+    // PROD-008b: this branch was MISSING. The detail response below embeds
+    // `lineItems`, which covers most readers, but pages/contracts.tsx fetches
+    // /api/quotes/:id/line-items directly and reads the response as a bare array
+    // (`return response || []`). With no branch for the sub-path, that request
+    // fell past every GET guard — each of which requires !action — and answered
+    // 404, so the contracts page's line-item table was empty in production.
+    // Returns the bare array the Express handler returned, from the same table
+    // and ordering the embed uses.
+    if (req.method === 'GET' && quoteId && action === 'line-items') {
+      const { data, error } = await admin
+        .from('quote_line_items')
+        .select('*')
+        .eq('quote_id', quoteId)
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: true });
+      if (error) {
+        console.error('Error fetching quote line items:', error);
+        return createCorsResponse({ error: 'Failed to fetch quote line items' }, 500, req);
+      }
+      return createCorsResponse(data ?? [], 200, req);
+    }
+
     if (req.method === 'GET' && quoteId && !action) {
       const { data: quote, error } = await admin
         .from('quotes')

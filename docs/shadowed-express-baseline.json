@@ -57,14 +57,12 @@
     "GET /api/deals/:dealId/tags (server/routes-deal-tags.ts)": "Half-reachable feature, no edge counterpart. dealTags + dealTagAssignments are real tables (shared/crm-views-schema.ts:168) and the sibling CRUD at /api/deal-tags and /api/board-card-config is UNPROXIED and live — so a tenant can create tags but not assign one to a deal, because /api/deals is proxied and the deals edge function has no tag branch. No frontend calls either half today. Wiring it up (edge branches + UI) is a feature story, not cleanup. PROD-008b, finding 10.",
     "POST /api/deals/:dealId/tags (server/routes-deal-tags.ts)": "Half-reachable feature, no edge counterpart. dealTags + dealTagAssignments are real tables (shared/crm-views-schema.ts:168) and the sibling CRUD at /api/deal-tags and /api/board-card-config is UNPROXIED and live — so a tenant can create tags but not assign one to a deal, because /api/deals is proxied and the deals edge function has no tag branch. No frontend calls either half today. Wiring it up (edge branches + UI) is a feature story, not cleanup. PROD-008b, finding 10.",
     "GET /api/companies/duplicates/details (server/routes-companies.ts)": "Real dedup logic with no edge counterpart and no caller. Both handlers call services/company-deduplication-service.ts (getDuplicateGroupDetails, findExistingCompany), which server/cli/company-dedup-cli.ts also uses so it stays regardless. The companies edge function has duplicates/scan but neither duplicates/details nor check-duplicate — the dedup surface is half-ported. Deleting working logic to move a counter is not a fix. PROD-008b, finding 10.",
-    "POST /api/companies/check-duplicate (server/routes-companies.ts)": "Real dedup logic with no edge counterpart and no caller. Both handlers call services/company-deduplication-service.ts (getDuplicateGroupDetails, findExistingCompany), which server/cli/company-dedup-cli.ts also uses so it stays regardless. The companies edge function has duplicates/scan but neither duplicates/details nor check-duplicate — the dedup surface is half-ported. Deleting working logic to move a counter is not a fix. PROD-008b, finding 10."
+    "POST /api/companies/check-duplicate (server/routes-companies.ts)": "Real dedup logic with no edge counterpart and no caller. Both handlers call services/company-deduplication-service.ts (getDuplicateGroupDetails, findExistingCompany), which server/cli/company-dedup-cli.ts also uses so it stays regardless. The companies edge function has duplicates/scan but neither duplicates/details nor check-duplicate — the dedup surface is half-ported. Deleting working logic to move a counter is not a fix. PROD-008b, finding 10.",
+    "POST /api/business-records/bulk/status (server/routes-business-records.ts)": "Real tenant-scoped logic with no edge counterpart and no caller: a bulk status update over business_records plus a businessRecordActivities row per changed record. Deleting it removes capability rather than a duplicate. PROD-008b, finding 10."
   },
   "allowed": [
     "GET /api/business-records/stats (server/routes-mobile-api.ts)",
-    "GET /api/business-records/stats/overview (server/routes-business-records.ts)",
     "GET /api/pipeline-forecast/:forecastId? (server/routes-sales-forecasting.ts)",
-    "GET /api/quotes (server/routes-onboarding.ts)",
-    "GET /api/quotes/:quoteId/line-items (server/routes-onboarding.ts)",
     "GET /api/universal-search (server/routes-universal-search.ts)",
     "GET /api/users (server/routes-workflow-mobile.ts)",
     "GET /api/users/team (server/routes-enhanced-tasks.ts)",
@@ -72,14 +70,12 @@
     "GET /api/webhooks (server/routes-integrations.ts)",
     "GET /api/webhooks/health (server/integrations/webhook-routes.ts)",
     "POST /api/business-records/bulk-update (server/routes-crm-bulk.ts)",
-    "POST /api/business-records/bulk/status (server/routes-business-records.ts)",
     "POST /api/business-records/import (server/routes-crm-core.ts)",
     "POST /api/webhooks/:provider (server/integrations/webhook-routes.ts)",
     "POST /api/webhooks/google-calendar (server/integrations/webhook-routes.ts)",
     "POST /api/webhooks/microsoft-calendar (server/integrations/webhook-routes.ts)",
     "POST /api/webhooks/quickbooks (server/integrations/webhook-routes.ts)",
     "POST /api/webhooks/salesforce (server/integrations/webhook-routes.ts)",
-    "POST /api/webhooks/sendgrid (server/routes/email-marketing-routes.ts)",
     "POST /api/webhooks/stripe (server/integrations/webhook-routes.ts)"
   ]
 }
