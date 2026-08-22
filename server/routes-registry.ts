@@ -45,7 +45,6 @@ import {
 
 import {
   registerCrmCoreRoutes,
-  registerContactsRoutes,
   registerCompaniesRoutes,
   registerActivitiesRoutes,
   registerCustomerRoutes,
@@ -606,7 +605,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api/platform-deals', platformDealsRoutes);
 
   // ─── Phase 3 Modular Routes ───────────────────────────────────────
-  registerContactsRoutes(app);
   registerCompaniesRoutes(app);
   registerActivitiesRoutes(app);
   registerAutomationRoutes(app);

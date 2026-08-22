@@ -822,8 +822,8 @@ export function registerOnboardingRoutes(app: Express): void {
   app.get('/api/quotes/:quoteId/line-items', getQuoteLineItems);
   // PROD-008b: GET /api/companies/:id/contacts was registered here too and is
   // proxied to the companies edge function, so it never ran. It was also the
-  // second of three registrations of that path (routes-contacts.ts has the
-  // other), which check:dup-routes tracks separately.
+  // second of three registrations of that path; the routes-contacts.ts copy was
+  // retired with that module under PROD-008b. check:dup-routes tracks the rest.
 
   // ─── Setup Wizard State ──────────────────────────────────────────
   // In-memory store for wizard state (keyed by tenantId:userId)

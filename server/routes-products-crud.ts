@@ -1429,7 +1429,9 @@ export function registerProductsCrudRoutes(app: Express) {
   // edge function (supabase/functions/billing/); routes-billing-core.ts was
   // retired under PROD-008b as a shadowed Express module.
 
-  // NOTE: Company contacts routes migrated to routes-contacts.ts (Phase 3 Refactor)
+  // NOTE: Company contacts routes now live in the company-contacts and contacts
+  // edge functions; routes-contacts.ts was retired under PROD-008b as a fully
+  // shadowed Express module.
 
   // ============= CSV IMPORT ENDPOINTS =============
 

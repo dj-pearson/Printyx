@@ -3,7 +3,6 @@
  * Contacts, companies, activities, customers, business records, goals, views
  */
 export { registerCrmCoreRoutes } from '../routes-crm-core';
-export { registerContactsRoutes } from '../routes-contacts';
 export { registerCompaniesRoutes } from '../routes-companies';
 export { registerActivitiesRoutes } from '../routes-activities';
 export { registerCustomerRoutes } from '../routes-customers';
