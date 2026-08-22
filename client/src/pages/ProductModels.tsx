@@ -72,8 +72,11 @@ export default function ProductModels() {
       return extractRecords(response).map((model: any) => ({
         ...model,
         id: model.id,
-        createdAt: model.createdAt || model.createdAt || '',
-        updatedAt: model.updatedAt || model.updatedAt || '',
+        // AUDIT-011a: the product-models edge function returns raw PostgREST
+        // rows (bare array, or { data, pagination } when paginated), so
+        // created_at / updated_at are what arrive.
+        createdAt: model.created_at || model.createdAt || '',
+        updatedAt: model.updated_at || model.updatedAt || '',
       }));
     },
   });

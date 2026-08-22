@@ -418,7 +418,7 @@ export default function EquipmentLifecycleManagement() {
                               <SelectContent>
                                 {businessRecords.map((record: any) => (
                                   <SelectItem key={record.id} value={record.id}>
-                                    {record.companyName || record.companyName}
+                                    {record.companyName || record.company_name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

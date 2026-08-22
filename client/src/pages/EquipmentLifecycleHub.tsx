@@ -349,8 +349,12 @@ export default function EquipmentLifecycleHub() {
       return extractRecords(response).map((t: any) => ({
         ...t,
         id: t.id,
-        firstName: t.firstName || t.firstName || '',
-        lastName: t.lastName || t.lastName || '',
+        // AUDIT-011a: the technicians edge function returns { data, total, page,
+        // limit } with RAW PostgREST rows, so first_name / last_name are what
+        // arrive and these read undefined — every technician dropdown rendered
+        // blank names.
+        firstName: t.first_name || t.firstName || '',
+        lastName: t.last_name || t.lastName || '',
       }));
     },
   });
@@ -362,7 +366,11 @@ export default function EquipmentLifecycleHub() {
       return extractRecords(response).map((r: any) => ({
         ...r,
         id: r.id,
-        companyName: r.companyName || r.companyName || '',
+        // /api/business-records is served by the business-records edge function,
+        // whose mapCompanyToBusinessRecord emits BOTH companyName and
+        // company_name, so this is a genuine fallback once the right side names
+        // the other key.
+        companyName: r.companyName || r.company_name || '',
       }));
     },
   });
@@ -568,7 +576,7 @@ export default function EquipmentLifecycleHub() {
                               <SelectContent>
                                 {businessRecords.map((record: any) => (
                                   <SelectItem key={record.id} value={record.id}>
-                                    {record.companyName || record.companyName}
+                                    {record.companyName || record.company_name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
