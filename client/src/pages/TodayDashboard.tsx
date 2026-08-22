@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLocation } from 'wouter';
-import { format, formatDistance, isToday, isPast, isFuture, addDays } from 'date-fns';
+import { format, formatDistance, isToday, isPast, isFuture } from 'date-fns';
 import {
   AlertCircle,
   Calendar,
@@ -18,7 +18,6 @@ import {
   Phone,
   Target,
   TrendingUp,
-  Users,
   Zap,
   Trophy,
   AlertTriangle,
@@ -36,7 +35,9 @@ interface Activity {
   type: 'call' | 'meeting' | 'email' | 'task' | 'follow-up';
   scheduledDate: string;
   dueDate?: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  // No priority: business_record_activities has no priority column, and the
+  // server used to emit a hardcoded 'medium' for every activity, which coloured
+  // every badge identically while looking like real data.
   status: 'pending' | 'completed' | 'overdue';
   customerName?: string;
   customerId?: string;
@@ -86,13 +87,6 @@ const activityTypeIcons = {
   email: Mail,
   task: CheckCircle2,
   'follow-up': Clock,
-};
-
-const priorityColors = {
-  low: 'text-gray-500 bg-gray-100',
-  medium: 'text-blue-600 bg-blue-100',
-  high: 'text-orange-600 bg-orange-100',
-  urgent: 'text-red-600 bg-red-100',
 };
 
 export default function TodayDashboard() {
@@ -458,7 +452,12 @@ function ActivityItem({
         isOverdue ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200 hover:border-gray-300',
       )}
     >
-      <div className={cn('p-2 rounded-md', priorityColors[activity.priority])}>
+      <div
+        className={cn(
+          'p-2 rounded-md',
+          isOverdue ? 'text-red-600 bg-red-100' : 'text-blue-600 bg-blue-100',
+        )}
+      >
         {Icon && <Icon className="h-4 w-4" />}
       </div>
       <div className="flex-1 min-w-0">
