@@ -156,8 +156,6 @@ import {
 
 import { emailParserRoutes } from './domains/notifications';
 
-import { registerAnalyticsRoutes } from './domains/ai';
-
 import {
   registerClientMonitoringRoutes,
   clientMetricsRoutes,
@@ -797,7 +795,30 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerSalesHandoffRoutes(app);
   registerCommissionRoutes(app);
   registerCatalogRoutes(app);
-  registerAnalyticsRoutes(app);
+  // registerAnalyticsRoutes was called here and is DELETED (CR-017).
+  //
+  // routes-analytics.ts served eleven /api/analytics paths against SIX tables
+  // that exist in no schema and no migration - service_performance_metrics,
+  // technician_performance_analytics, customer_service_analytics,
+  // service_trend_analysis, business_intelligence_dashboards,
+  // performance_benchmarks. Every one of them 500'd on a missing relation, and
+  // because the queries were raw SQL rather than drizzle, tsc reported nothing.
+  //
+  // DELIBERATELY NOT PROXIED, and this is the part worth reading before anyone
+  // "finishes the job": /api/analytics is served by a SECOND router,
+  // server/analytics-routes.ts (dynamically imported below), which owns
+  // conversion-metrics, activity-nudges, control-charts and trend-widgets - four
+  // paths with live callers (PipelineTrendWidgets.tsx, ConversionInsights.tsx)
+  // that WORK today. A crmProxies entry forwards the whole prefix, so proxying
+  // would take those four from working to 404 in order to fix nothing: the
+  // analytics edge function only answers 'dashboard' out of the eleven paths
+  // deleted here.
+  //
+  // So dev now returns 404 for those eleven instead of 500, which is what
+  // production already returns for ten of them. Making them work means creating
+  // the six tables, not choosing a backend. ServiceAnalytics.tsx and
+  // AdvancedAnalyticsDashboard.tsx have no mock fallbacks, so both states render
+  // empty rather than fabricated.
   registerRenewalManagementRoutes(app);
 
   // ─── Sales Forecasting ────────────────────────────────────────────

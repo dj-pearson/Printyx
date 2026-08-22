@@ -23,5 +23,9 @@ export * as TasksDomain from './tasks';
 export * as ContentDomain from './content';
 export * as OnboardingDomain from './onboarding';
 export * as NotificationsDomain from './notifications';
-export * as AiDomain from './ai';
+// AiDomain removed: server/domains/ai.ts re-exported exactly two things and
+// both are gone - gpt5Routes with routes-ai-gpt5.ts (PROD-008b, the edge
+// function has 1:1 parity) and registerAnalyticsRoutes with routes-analytics.ts
+// (CR-017, six phantom tables). An empty barrel is not a module, so it took
+// domains/index.ts down with it rather than sitting there harmlessly.
 export * as PortalDomain from './portal';
