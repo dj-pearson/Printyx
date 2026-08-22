@@ -19,12 +19,10 @@ import {
   insertProductAccessorySchema,
   insertAccessoryModelCompatibilitySchema,
   insertProfessionalServiceSchema,
-  insertServiceProductSchema,
   insertSoftwareProductSchema,
   insertSupplySchema,
   insertManagedServiceSchema,
   insertInventoryItemSchema,
-  insertContractTieredRateSchema,
   insertMeterReadingSchema,
   insertCpcRateSchema,
   companyContacts,
@@ -463,64 +461,13 @@ export function registerProductsCrudRoutes(app: Express) {
 
   // ============= ACCESSORY-MODEL COMPATIBILITY =============
 
-  app.get('/api/accessories/:accessoryId/compatibility', async (req: any, res) => {
-    try {
-      const { accessoryId } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      const compatibilities = await storage.getAccessoryCompatibilities(accessoryId, tenantId);
-      res.json(compatibilities);
-    } catch (error) {
-      log.error('Error fetching accessory compatibilities:', error);
-      res.status(500).json({ message: 'Failed to fetch compatibilities' });
-    }
-  });
 
-  app.post(
-    '/api/accessories/:accessoryId/compatibility',
-    ctx,
-    can([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
-    async (req: any, res) => {
-      try {
-        const { accessoryId } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: 'Tenant ID is required' });
-        }
-        const validatedData = insertAccessoryModelCompatibilitySchema.parse({
-          ...req.body,
-          accessoryId,
-          tenantId,
-        });
-        const compatibility = await storage.createAccessoryModelCompatibility(validatedData);
-        res.status(201).json(compatibility);
-      } catch (error) {
-        log.error('Error creating accessory compatibility:', error);
-        res.status(500).json({ message: 'Failed to create compatibility' });
-      }
-    },
-  );
+  // Accessory/model compatibility (GET, POST, DELETE) removed here (PROD-008b).
+  // /api/accessories is proxied to supabase/functions/accessories/, which was
+  // built as the production counterpart to exactly these three — the
+  // compatibility dialog in EnhancedProductAccessories.tsx 404'd in prod before
+  // it existed.
 
-  app.delete(
-    '/api/accessories/:accessoryId/compatibility/:modelId',
-
-    async (req: any, res) => {
-      try {
-        const { accessoryId, modelId } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: 'Tenant ID is required' });
-        }
-        await storage.deleteAccessoryModelCompatibility(accessoryId, modelId, tenantId);
-        res.status(204).send();
-      } catch (error) {
-        log.error('Error deleting accessory compatibility:', error);
-        res.status(500).json({ message: 'Failed to delete compatibility' });
-      }
-    },
-  );
 
   app.get('/api/models/:modelId/compatibility', async (req: any, res) => {
     try {
@@ -666,42 +613,12 @@ export function registerProductsCrudRoutes(app: Express) {
 
   // ============= SERVICE PRODUCTS =============
 
-  app.get('/api/service-products', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      const services = await storage.getAllServiceProducts(tenantId);
-      res.json(services);
-    } catch (error) {
-      log.error('Error fetching service products:', error);
-      res.status(500).json({ message: 'Failed to fetch service products' });
-    }
-  });
 
-  app.post(
-    '/api/service-products',
-    ctx,
-    can([PERMISSIONS.INVENTORY.ITEM.CREATE]),
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: 'Tenant ID is required' });
-        }
-        const validatedData = insertServiceProductSchema.parse({
-          ...req.body,
-          tenantId,
-        });
-        const service = await storage.createServiceProduct(validatedData);
-        res.json(service);
-      } catch (error) {
-        log.error('Error creating service product:', error);
-        res.status(500).json({ message: 'Failed to create service product' });
-      }
-    },
-  );
+  // GET and POST /api/service-products removed here (PROD-008b).
+  // supabase/functions/service-products/ serves both. Its rows now go out
+  // camelCase: ServiceProducts.tsx filters on service.productName.toLowerCase()
+  // with no guard, so the raw snake_case rows it used to return threw a
+  // TypeError on render rather than showing an empty list.
 
   // ============= SUPPLIES =============
 
@@ -979,57 +896,16 @@ export function registerProductsCrudRoutes(app: Express) {
   // only by the order of register*(app) calls in routes-registry.ts.
 
   // Accounts Payable Management
-  app.get('/api/accounts-payable', async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const accountsPayable = await storage.getAccountsPayable(tenantId);
-      res.json(accountsPayable);
-    } catch (error) {
-      log.error('Error fetching accounts payable:', error);
-      res.status(500).json({ message: 'Failed to fetch accounts payable' });
-    }
-  });
 
-  app.post('/api/accounts-payable', ctx, can(['finance.bill.enter']), async (req, res) => {
-    try {
-      const { tenantId, id: userId } = (req as any).user || {};
-      const apData = { ...req.body, tenantId, createdBy: userId };
-      const newAP = await storage.createAccountsPayable(apData);
-      res.status(201).json(newAP);
-    } catch (error) {
-      log.error('Error creating account payable:', error);
-      res.status(500).json({ message: 'Failed to create account payable' });
-    }
-  });
+  // GET and POST /api/accounts-payable removed here (PROD-008b).
+  // supabase/functions/account-payable/ serves both — EDGE-005a built it against
+  // the canonical accounts_payable table and returns camelCase rows, which is
+  // what AccountsPayable.tsx spreads directly.
 
   // Accounts Receivable Management
-  app.get('/api/accounts-receivable', async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const accountsReceivable = await storage.getAccountsReceivable(tenantId);
-      res.json(accountsReceivable);
-    } catch (error) {
-      log.error('Error fetching accounts receivable:', error);
-      res.status(500).json({ message: 'Failed to fetch accounts receivable' });
-    }
-  });
 
-  app.post(
-    '/api/accounts-receivable',
-    ctx,
-    can([PERMISSIONS.FINANCE.INVOICE.CREATE]),
-    async (req, res) => {
-      try {
-        const { tenantId, id: userId } = (req as any).user || {};
-        const arData = { ...req.body, tenantId, createdBy: userId };
-        const newAR = await storage.createAccountsReceivable(arData);
-        res.status(201).json(newAR);
-      } catch (error) {
-        log.error('Error creating account receivable:', error);
-        res.status(500).json({ message: 'Failed to create account receivable' });
-      }
-    },
-  );
+  // GET and POST /api/accounts-receivable removed here (PROD-008b).
+  // supabase/functions/account-receivable/ serves both (EDGE-005a).
 
   /**
    * NOTE: Migrated to routes-financial.ts (Phase 2):
@@ -1235,52 +1111,8 @@ export function registerProductsCrudRoutes(app: Express) {
 
   // ============= COMPANY CONTACTS =============
 
-  app.post(
-    '/api/companies/:companyId/contacts',
-
-    async (req: any, res) => {
-      try {
-        const { companyId } = req.params;
-        const { contacts } = req.body;
-
-        // Authentication check using unified auth helpers
-        const userId = getUserId(req);
-        if (!userId) {
-          return res.status(401).json({ message: 'Not authenticated' });
-        }
-
-        const user = await storage.getUser(userId);
-        if (!user?.tenantId) {
-          return res.status(403).json({ message: 'Access denied' });
-        }
-
-        if (!Array.isArray(contacts) || contacts.length === 0) {
-          return res.status(400).json({ message: 'Contacts array is required' });
-        }
-
-        // Create contacts for the company
-        const createdContacts = [];
-        for (const contactData of contacts) {
-          const contact = await storage.createContact({
-            ...contactData,
-            companyId: companyId, // Use companyId field for company_contacts table
-            tenantId: user.tenantId,
-            ownerId: user.id, // Set the current user as owner
-            leadStatus: 'new', // Set default lead status
-          });
-          createdContacts.push(contact);
-        }
-
-        res.json({
-          message: `${createdContacts.length} contact(s) created successfully`,
-          contacts: createdContacts,
-        });
-      } catch (error) {
-        log.error('Error creating company contacts:', error);
-        res.status(500).json({ message: 'Failed to create contacts' });
-      }
-    },
-  );
+  // POST /api/companies/:companyId/contacts removed here (PROD-008b).
+  // The companies edge function has the branch (POST + companyId + 'contacts').
 
   // ============= METER BILLING API ROUTES =============
 
@@ -1388,42 +1220,14 @@ export function registerProductsCrudRoutes(app: Express) {
 
   // ============= CONTRACT TIERED RATES =============
 
-  app.get('/api/contract-tiered-rates', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      const rates = await storage.getContractTieredRates(tenantId);
-      res.json(rates);
-    } catch (error) {
-      log.error('Error fetching contract tiered rates:', error);
-      res.status(500).json({ message: 'Failed to fetch contract tiered rates' });
-    }
-  });
 
-  app.post(
-    '/api/contract-tiered-rates',
-    ctx,
-    can([PERMISSIONS.FINANCE.BILLING.CONFIGURE]),
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: 'Tenant ID is required' });
-        }
-        const validatedData = insertContractTieredRateSchema.parse({
-          ...req.body,
-          tenantId,
-        });
-        const rate = await storage.createContractTieredRate(validatedData);
-        res.json(rate);
-      } catch (error) {
-        log.error('Error creating contract tiered rate:', error);
-        res.status(500).json({ message: 'Failed to create contract tiered rate' });
-      }
-    },
-  );
+  // GET and POST /api/contract-tiered-rates removed here (PROD-008b).
+  // supabase/functions/contract-tiered-rates/ serves both and returns camelRow,
+  // which is what MeterBilling.tsx types.
+  //
+  // NOT carried over: the Express POST gated on
+  // PERMISSIONS.FINANCE.BILLING.CONFIGURE and the edge function has no RBAC.
+  // That gap is the whole of SEC-EDGE-002 and is not this story's to invent.
 
   // NOTE: Invoice generation and contract profitability now live in the billing
   // edge function (supabase/functions/billing/); routes-billing-core.ts was
