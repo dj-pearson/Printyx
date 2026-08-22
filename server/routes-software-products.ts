@@ -19,47 +19,40 @@ export function registerSoftwareProductsRoutes(app: Express) {
       const tenantId = req.user.tenantId;
       const { search, category, vendor, status } = req.query;
 
-      let query = db
-        .select({
-          id: softwareProducts.id,
-          productCode: softwareProducts.productCode,
-          productName: softwareProducts.productName,
-          category: softwareProducts.category,
-          vendor: softwareProducts.vendor,
-          description: softwareProducts.description,
-          version: softwareProducts.version,
-          price: softwareProducts.price,
-          costPrice: softwareProducts.costPrice,
-          licenseType: softwareProducts.licenseType,
-          supportIncluded: softwareProducts.supportIncluded,
-          systemRequirements: softwareProducts.systemRequirements,
-          status: softwareProducts.status,
-          createdAt: softwareProducts.createdAt,
-          updatedAt: softwareProducts.updatedAt,
-        })
-        .from(softwareProducts)
-        .where(eq(softwareProducts.tenantId, tenantId));
+      // Filters are collected and ANDed once. They used to be applied by calling
+      // query.where() again per filter, and drizzle's where() ASSIGNS rather
+      // than ANDs, so each filter REPLACED the predicate before it - starting
+      // with the tenant scope. A request with ?category= would have read every
+      // tenant's software catalogue. It never got that far only because the
+      // projection named seven columns that do not exist and the query threw
+      // first. npm run check:chained-where now gates this shape.
+      const filters = [eq(softwareProducts.tenantId, tenantId)];
 
-      // Apply filters
       if (search) {
-        query = query.where(
-          sql`${softwareProducts.productName} ILIKE ${`%${search}%`} OR ${softwareProducts.productCode} ILIKE ${`%${search}%`}`,
+        filters.push(
+          sql`(${softwareProducts.productName} ILIKE ${`%${search}%`} OR ${softwareProducts.productCode} ILIKE ${`%${search}%`})`,
         );
       }
-
       if (category) {
-        query = query.where(eq(softwareProducts.category, category as string));
+        filters.push(eq(softwareProducts.category, category as string));
       }
-
       if (vendor) {
-        query = query.where(eq(softwareProducts.vendor, vendor as string));
+        filters.push(eq(softwareProducts.vendor, vendor as string));
+      }
+      // ?status=active|inactive maps onto is_active; software_products has no
+      // status column, nor version, price, costPrice, licenseType,
+      // supportIncluded or systemRequirements. Its real shape is the same
+      // catalogue shape as product_models: productType, accessoryType, summary,
+      // isActive and three pricing tiers (standard / new / upgrade).
+      if (status === 'active' || status === 'inactive') {
+        filters.push(eq(softwareProducts.isActive, status === 'active'));
       }
 
-      if (status) {
-        query = query.where(eq(softwareProducts.status, status as string));
-      }
-
-      const products = await query.orderBy(softwareProducts.productName);
+      const products = await db
+        .select()
+        .from(softwareProducts)
+        .where(and(...filters))
+        .orderBy(softwareProducts.productName);
       res.json(products);
     } catch (error) {
       log.error('Error fetching software products:', error);

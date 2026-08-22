@@ -61,6 +61,8 @@ jobs:
         run: npm run check:phantom-cols
       - name: Phantom PostgREST table ratchet (PROD-008b)
         run: npm run check:phantom-tables
+      - name: Chained .where() ratchet (tenant scope, QUALITY-002)
+        run: npm run check:chained-where
       - name: Identical-fallback ratchet (AUDIT-011)
         run: npm run check:identical-fallback
       - name: Shadowed-Express ratchet (PROD-008)

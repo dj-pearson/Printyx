@@ -1,0 +1,14 @@
+{
+  "note": "QUALITY-002 chained-.where() ratchet. drizzle where() ASSIGNS rather than ANDs, so a second application discards the first predicate - usually the tenant scope. Each count is the number of queries in that file whose earlier predicate may be silently dropped. Keyed by file rather than file:line so unrelated edits do not renumber entries. Shrink these counts, never grow them: fix by collecting conditions into and(). Regenerate with node scripts/check-chained-where.mjs --update-baseline.",
+  "counts": {
+    "server/routes-admin-subscriptions.ts": 1,
+    "server/routes-enhanced-service.ts": 1,
+    "server/routes-equipment-disposal.ts": 2,
+    "server/routes-product-pricing.ts": 4,
+    "server/routes-warehouse-fpy.ts": 8,
+    "server/routes/article-bookmarks-routes.ts": 1,
+    "server/routes/mileage-routes.ts": 1,
+    "server/services/customer-portal-service.ts": 1,
+    "server/storage.ts": 27
+  }
+}

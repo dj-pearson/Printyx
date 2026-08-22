@@ -26,6 +26,7 @@
     "check:dup-tables": "node scripts/check-duplicate-tables.mjs",
     "check:phantom-cols": "tsx scripts/check-phantom-columns.ts",
     "check:phantom-tables": "node scripts/check-phantom-tables.mjs",
+    "check:chained-where": "node scripts/check-chained-where.mjs",
     "check:identical-fallback": "node scripts/check-identical-fallback.mjs",
     "check:shadowed-express": "node scripts/check-shadowed-express.mjs",
     "check:unwrapped-response": "node scripts/check-unwrapped-response.mjs",
