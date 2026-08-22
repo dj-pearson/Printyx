@@ -185,7 +185,6 @@ import {
 // ─── Non-domain imports ──────────────────────────────────���──────────────
 import { registerHealthRoutes } from './routes/health-routes';
 import { registerDealDeskCopilotRoutes } from './routes-deal-desk-copilot';
-import { registerDailyBriefingRoutes } from './routes-daily-briefing';
 import { registerPortalServiceRoutes } from './routes-portal-service';
 import { registerServiceKnowledgeRoutes } from './routes-service-knowledge';
 import { registerVoiceTicketCloseRoutes } from './routes-voice-ticket-close';
@@ -634,7 +633,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerAutoLeadRoutingRoutes(app);
   registerPredictiveServiceDispatchRoutes(app);
   registerDealDeskCopilotRoutes(app);
-  registerDailyBriefingRoutes(app);
+  // routes-daily-briefing.ts retired (PROD-008b). All six handlers were shadowed
+  // by the /api/daily-briefing proxy; supabase/functions/daily-briefing/ covers
+  // them and agrees on every table. The generation engine and
+  // runDueDailyBriefings moved to services/daily-briefing-scheduler.ts, which
+  // cron-service imports.
   registerPortalServiceRoutes(app);
   registerServiceKnowledgeRoutes(app);
   registerVoiceTicketCloseRoutes(app);

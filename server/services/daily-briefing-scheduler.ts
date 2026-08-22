@@ -1,44 +1,23 @@
 /**
- * Daily Role-Based Morning Briefings Routes (US-SUPER-015).
+ * Daily briefing generation and scheduling.
  *
- * Per-user, role-flavored morning briefings assembled from existing Printyx
- * data layers (no new content tables). Each briefing is generated for the user's
- * derived role (owner | service_manager | sales_rep), written as a CONCISE
- * bulleted summary honoring the user's A/B variant (numbers-led vs narrative-led)
- * via Claude (with a deterministic fallback), then delivered over two reused
- * channels — email (best-effort) and an in-app notification badge — and logged
- * for the A/B + open-rate success metric.
+ * Assembles the per-role briefing sections, renders and sends them, records
+ * daily_briefing_log / user_notifications, and exposes runDueDailyBriefings for
+ * services/cron-service.ts to call on its schedule.
  *
- * Endpoints:
- *   POST /api/daily-briefing/generate        — generate (self by default; ?all for cron tenant-wide)
- *   GET  /api/daily-briefing                 — current user's briefings (newest first)
- *   GET  /api/daily-briefing/preferences     — getOrCreate prefs for the current user
- *   PUT  /api/daily-briefing/preferences     — update prefs
- *   POST /api/daily-briefing/:id/open        — open-rate tracking (sets opened_at once)
- *   GET  /api/daily-briefing/stats           — A/B open-rate stats by variant + overall
- *
- * Schema lives in shared/daily-briefing-schema.ts (re-exported from shared/schema.ts).
- *
- * Auth: requireAuth + tenant scoping on every query.
- * TODO(rbac): no special permission — every authenticated user gets their own
- * role-appropriate briefing.
- * Scheduling (US-SUPER-015 AC1): runDueDailyBriefings() is the cron entry,
- * invoked hourly by CronService. It delivers each user's briefing at 6am in
- * THEIR local timezone (user_settings.timezone), honoring frequency
- * (daily/weekly/off) and same-day dedupe. Schedule logic is unit-tested in
- * shared/briefing-schedule.ts.
+ * This was the bottom two thirds of server/routes-daily-briefing.ts until
+ * PROD-008b retired that module: /api/daily-briefing is proxied to
+ * supabase/functions/daily-briefing/, so all six of its HTTP handlers were
+ * shadowed. runDueDailyBriefings was NOT — cron-service lazy-imports it — and
+ * would have died silently with the routes around it. It belongs in services/
+ * either way: nothing here is HTTP.
  */
-
-import type { Express } from 'express';
 import { z } from 'zod';
 import { and, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
-import { db } from './db';
-import { requireAuth } from './replitAuth';
-import { resolveTenant } from './middleware/tenancy';
-import { getTenantId, getUserId } from './utils/auth-helpers';
-import { createModuleLogger } from './lib/logger';
-import ClaudeAIService from './services/claude-ai-service';
-import { sendEmail } from './services/email-service';
+import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+import ClaudeAIService from './claude-ai-service';
+import { sendEmail } from './email-service';
 import {
   dueBriefingUsers,
   localDateInTimeZone,
@@ -65,7 +44,7 @@ import {
   renewalAutoQuotes,
 } from '@shared/schema';
 
-const log = createModuleLogger('routes-daily-briefing');
+const log = createModuleLogger('daily-briefing-scheduler');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -807,231 +786,4 @@ export async function runDueDailyBriefings(now: Date = new Date()): Promise<{
     '[CRON] daily briefings tick',
   );
   return { candidates: rows.length, due: due.length, generated, emailed, inApp };
-}
-
-// ---------------------------------------------------------------------------
-// Routes
-// ---------------------------------------------------------------------------
-
-export function registerDailyBriefingRoutes(app: Express) {
-  /**
-   * POST /api/daily-briefing/generate
-   * body { userId?, date?, force?, all? }.
-   * - Default (no userId, all !== true): generate for the authenticated caller only.
-   * - userId: generate for that single user (tenant-scoped).
-   * - all: true: tenant-wide (the cron path) — every active user.
-   */
-  app.post('/api/daily-briefing/generate', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      const callerId = getUserId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      const parsed = generateSchema.safeParse(req.body ?? {});
-      if (!parsed.success) {
-        return res.status(400).json({ message: 'Invalid input', errors: parsed.error.flatten() });
-      }
-      const date = parsed.data.date ?? briefingDate();
-      const force = parsed.data.force ?? false;
-
-      // Resolve target users.
-      let targets: Array<{ id: string; email: string | null; role: string | null }>;
-      if (parsed.data.all === true) {
-        targets = await db
-          .select({ id: users.id, email: users.email, role: users.role })
-          .from(users)
-          .where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)));
-      } else {
-        const targetUserId = parsed.data.userId ?? callerId;
-        if (!targetUserId) return res.status(400).json({ message: 'User ID is required' });
-        const u = await db.query.users.findFirst({
-          where: and(eq(users.id, targetUserId), eq(users.tenantId, tenantId)),
-          columns: { id: true, email: true, role: true },
-        });
-        if (!u) return res.status(404).json({ message: 'User not found' });
-        targets = [u];
-      }
-
-      let generated = 0;
-      let skippedOff = 0;
-      let emailed = 0;
-      let inApp = 0;
-
-      for (const u of targets) {
-        const outcome = await generateBriefingForUser(tenantId, u, date, force);
-        if (outcome.skippedOff) skippedOff++;
-        if (outcome.generated) generated++;
-        if (outcome.emailed) emailed++;
-        if (outcome.inApp) inApp++;
-      }
-
-      audit('GENERATE', {
-        tenantId,
-        userId: callerId,
-        extra: { date, generated, skippedOff, emailed, inApp, all: parsed.data.all === true },
-      });
-      res.json({ generated, skippedOff, emailed, inApp });
-    } catch (error: any) {
-      log.error('Briefing generation failed:', error);
-      res.status(500).json({ message: 'Failed to generate briefings', error: error?.message });
-    }
-  });
-
-  /**
-   * GET /api/daily-briefing — the current user's briefings, newest first.
-   * Admins may pass ?userId= to view another user's briefings (still tenant-scoped).
-   */
-  app.get('/api/daily-briefing', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      const callerId = getUserId(req);
-      const override = typeof req.query.userId === 'string' ? req.query.userId : undefined;
-      const userId = override ?? callerId;
-      if (!userId) return res.status(400).json({ message: 'User ID is required' });
-
-      const rows = await db
-        .select()
-        .from(dailyBriefingLog)
-        .where(and(eq(dailyBriefingLog.tenantId, tenantId), eq(dailyBriefingLog.userId, userId)))
-        .orderBy(desc(dailyBriefingLog.sentAt))
-        .limit(30);
-
-      res.json({ data: rows, total: rows.length });
-    } catch (error: any) {
-      log.error('Failed to list briefings:', error);
-      res.status(500).json({ message: 'Failed to list briefings', error: error?.message });
-    }
-  });
-
-  /** GET /api/daily-briefing/preferences — getOrCreate for the current user. */
-  app.get('/api/daily-briefing/preferences', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      const userId = getUserId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-      if (!userId) return res.status(400).json({ message: 'User ID is required' });
-      const prefs = await getOrCreatePreferences(tenantId, userId);
-      res.json(prefs);
-    } catch (error: any) {
-      log.error('Failed to load preferences:', error);
-      res.status(500).json({ message: 'Failed to load preferences', error: error?.message });
-    }
-  });
-
-  /** PUT /api/daily-briefing/preferences — update the current user's prefs. */
-  app.put('/api/daily-briefing/preferences', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      const userId = getUserId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-      if (!userId) return res.status(400).json({ message: 'User ID is required' });
-
-      const parsed = prefsSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: 'Invalid input', errors: parsed.error.flatten() });
-      }
-
-      await getOrCreatePreferences(tenantId, userId);
-
-      const updates: Record<string, unknown> = { updatedAt: new Date() };
-      if (parsed.data.frequency !== undefined) updates.frequency = parsed.data.frequency;
-      if (parsed.data.abVariant !== undefined) updates.abVariant = parsed.data.abVariant;
-      if (parsed.data.role !== undefined) updates.role = parsed.data.role;
-      if (parsed.data.emailEnabled !== undefined) updates.emailEnabled = parsed.data.emailEnabled;
-      if (parsed.data.inAppEnabled !== undefined) updates.inAppEnabled = parsed.data.inAppEnabled;
-
-      const [updated] = await db
-        .update(dailyBriefingPreferences)
-        .set(updates)
-        .where(
-          and(
-            eq(dailyBriefingPreferences.tenantId, tenantId),
-            eq(dailyBriefingPreferences.userId, userId),
-          ),
-        )
-        .returning();
-
-      audit('UPDATE_PREFS', { tenantId, userId, extra: parsed.data });
-      res.json(updated);
-    } catch (error: any) {
-      log.error('Failed to update preferences:', error);
-      res.status(500).json({ message: 'Failed to update preferences', error: error?.message });
-    }
-  });
-
-  /** GET /api/daily-briefing/stats — A/B open-rate stats by variant + overall. */
-  app.get('/api/daily-briefing/stats', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      const rows = await db
-        .select({
-          variant: dailyBriefingLog.variant,
-          sent: sql<number>`count(*)`,
-          opened: sql<number>`count(${dailyBriefingLog.openedAt})`,
-        })
-        .from(dailyBriefingLog)
-        .where(eq(dailyBriefingLog.tenantId, tenantId))
-        .groupBy(dailyBriefingLog.variant);
-
-      const byVariant = rows.map((r) => {
-        const sent = Number(r.sent ?? 0);
-        const opened = Number(r.opened ?? 0);
-        return {
-          variant: r.variant,
-          sent,
-          opened,
-          openRate: sent > 0 ? Math.round((opened / sent) * 1000) / 10 : 0,
-        };
-      });
-
-      const totalSent = byVariant.reduce((a, v) => a + v.sent, 0);
-      const totalOpened = byVariant.reduce((a, v) => a + v.opened, 0);
-
-      res.json({
-        byVariant,
-        overall: {
-          sent: totalSent,
-          opened: totalOpened,
-          openRate: totalSent > 0 ? Math.round((totalOpened / totalSent) * 1000) / 10 : 0,
-        },
-      });
-    } catch (error: any) {
-      log.error('Failed to load briefing stats:', error);
-      res.status(500).json({ message: 'Failed to load stats', error: error?.message });
-    }
-  });
-
-  /**
-   * POST /api/daily-briefing/:id/open — open-rate tracking.
-   * Sets opened_at = now() if it's still null. Tenant-scoped.
-   */
-  app.post('/api/daily-briefing/:id/open', requireAuth, resolveTenant, async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      const userId = getUserId(req);
-      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-      const [row] = await db
-        .update(dailyBriefingLog)
-        .set({ openedAt: new Date() })
-        .where(
-          and(
-            eq(dailyBriefingLog.id, req.params.id),
-            eq(dailyBriefingLog.tenantId, tenantId),
-            sql`${dailyBriefingLog.openedAt} is null`,
-          ),
-        )
-        .returning();
-
-      audit('OPEN', { tenantId, userId, extra: { id: req.params.id, firstOpen: !!row } });
-      res.json({ ok: true, firstOpen: !!row });
-    } catch (error: any) {
-      log.error('Failed to mark briefing opened:', error);
-      res.status(500).json({ message: 'Failed to mark opened', error: error?.message });
-    }
-  });
 }

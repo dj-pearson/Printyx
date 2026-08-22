@@ -62,9 +62,6 @@
     "GET /api/business-records/stats (server/routes-mobile-api.ts)",
     "GET /api/business-records/stats/overview (server/routes-business-records.ts)",
     "GET /api/companies/duplicates/details (server/routes-companies.ts)",
-    "GET /api/daily-briefing (server/routes-daily-briefing.ts)",
-    "GET /api/daily-briefing/preferences (server/routes-daily-briefing.ts)",
-    "GET /api/daily-briefing/stats (server/routes-daily-briefing.ts)",
     "GET /api/deals/:dealId/tags (server/routes-deal-tags.ts)",
     "GET /api/email-sequences/:campaignId/enrollments (server/routes-email-sequences.ts)",
     "GET /api/email-sequences/enrollments/:id (server/routes-email-sequences.ts)",
@@ -96,8 +93,6 @@
     "POST /api/business-records/bulk/status (server/routes-business-records.ts)",
     "POST /api/business-records/import (server/routes-crm-core.ts)",
     "POST /api/companies/check-duplicate (server/routes-companies.ts)",
-    "POST /api/daily-briefing/:id/open (server/routes-daily-briefing.ts)",
-    "POST /api/daily-briefing/generate (server/routes-daily-briefing.ts)",
     "POST /api/deals/:dealId/tags (server/routes-deal-tags.ts)",
     "POST /api/email-sequences/:campaignId/enroll (server/routes-email-sequences.ts)",
     "POST /api/email-sequences/enrollments/:id/unenroll (server/routes-email-sequences.ts)",
@@ -128,7 +123,6 @@
     "POST /api/webhooks/salesforce (server/integrations/webhook-routes.ts)",
     "POST /api/webhooks/sendgrid (server/routes/email-marketing-routes.ts)",
     "POST /api/webhooks/stripe (server/integrations/webhook-routes.ts)",
-    "PUT /api/daily-briefing/preferences (server/routes-daily-briefing.ts)",
     "PUT /api/service/knowledge-search/settings (server/routes-service-knowledge.ts)"
   ]
 }
