@@ -1,17 +1,11 @@
 import type { Express } from 'express';
-import { z } from 'zod';
-import { eq, and, desc, sql, count, like } from 'drizzle-orm';
+import { eq, and, sql, count } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-product-models');
 
-import {
-  productModels,
-  masterProductModels,
-  insertProductModelSchema,
-  type ProductModel,
-} from '@shared/schema';
+import { productModels, insertProductModelSchema } from '@shared/schema';
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -20,37 +14,30 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-import { getUserId, getTenantId, authed } from './utils/auth-helpers';
-// Validation schemas for update operations
-const updateProductModelSchema = z
-  .object({
-    productCode: z.string().min(1).optional(),
-    productName: z.string().min(1).optional(),
-    category: z.string().nullable().optional(),
-    manufacturer: z.string().nullable().optional(),
-    description: z.string().nullable().optional(),
-    specifications: z.any().nullable().optional(),
-    price: z.string().or(z.number()).nullable().optional(),
-    costPrice: z.string().or(z.number()).nullable().optional(),
-    status: z.string().optional(),
-    stockQuantity: z.number().int().min(0).optional(),
-    reorderLevel: z.number().int().min(0).optional(),
-    weight: z.string().or(z.number()).nullable().optional(),
-    dimensions: z.string().nullable().optional(),
-    warrantyPeriod: z.string().nullable().optional(),
-  })
+import { authed } from './utils/auth-helpers';
+// QUALITY-002 (batch: phantom-shape server file). This file was written against
+// a product_models table that does not exist. The real one (shared/schema.ts) is
+// an equipment CATALOGUE - productCode, productName, category, manufacturer,
+// description, msrp, colorMode, colorSpeed, bwSpeed, productFamily,
+// requiredAccessories, three pricing tiers (new / upgrade / lexmark) and
+// isActive. It has no specifications, price, costPrice, status, stockQuantity,
+// reorderLevel, weight, dimensions or warrantyPeriod.
+//
+// Stock is not a missing column here, it is a different table:
+// inventory_items (shared/schema.ts:1987) carries quantityOnHand and
+// reorderPoint for parts and consumables, keyed by partNumber, with no FK to
+// product_models. So the low-stock endpoint, the stock half of the dashboard and
+// the bulk-stock-update endpoint could not be repointed - there is nothing to
+// point them at - and they are removed rather than faked. None had a caller in
+// client/src.
+//
+// The update schema below is derived from the table instead of being hand-listed,
+// so it cannot drift from it again. It was .strict() over the nine phantom names
+// and NONE of the real ones, which meant a PUT carrying any real field was a 400.
+const updateProductModelSchema = insertProductModelSchema
+  .omit({ tenantId: true })
+  .partial()
   .strict();
-
-const bulkStockUpdateSchema = z.object({
-  updates: z
-    .array(
-      z.object({
-        id: z.string().min(1),
-        stockQuantity: z.number().int().min(0),
-      }),
-    )
-    .min(1, 'At least one update is required'),
-});
 
 export function registerProductModelsRoutes(app: Express) {
   // Apply authentication and RBAC context to all product model routes
@@ -67,49 +54,40 @@ export function registerProductModelsRoutes(app: Express) {
         const tenantId = req.user!.tenantId;
         const { search, category, manufacturer, status } = req.query;
 
-        let query = db
-          .select({
-            id: productModels.id,
-            productCode: productModels.productCode,
-            productName: productModels.productName,
-            category: productModels.category,
-            manufacturer: productModels.manufacturer,
-            description: productModels.description,
-            specifications: productModels.specifications,
-            price: productModels.price,
-            costPrice: productModels.costPrice,
-            status: productModels.status,
-            stockQuantity: productModels.stockQuantity,
-            reorderLevel: productModels.reorderLevel,
-            weight: productModels.weight,
-            dimensions: productModels.dimensions,
-            warrantyPeriod: productModels.warrantyPeriod,
-            createdAt: productModels.createdAt,
-            updatedAt: productModels.updatedAt,
-          })
-          .from(productModels)
-          .where(eq(productModels.tenantId, tenantId));
+        // Filters are collected and ANDed once. They used to be applied by
+        // calling query.where() again per filter, and drizzle's where() ASSIGNS
+        // rather than ANDs - `this.config.where = where` in
+        // pg-core/query-builders/select.js - so each filter REPLACED the
+        // predicate before it, starting with the tenant scope. Any request with
+        // ?category= or ?manufacturer= would have read every tenant's catalogue.
+        // It never got that far only because the projection above named nine
+        // columns that do not exist, so the query threw first.
+        const filters = [eq(productModels.tenantId, tenantId)];
 
-        // Apply filters
         if (search) {
-          query = query.where(
-            sql`${productModels.productName} ILIKE ${`%${search}%`} OR ${productModels.productCode} ILIKE ${`%${search}%`}`,
+          filters.push(
+            sql`(${productModels.productName} ILIKE ${`%${search}%`} OR ${productModels.productCode} ILIKE ${`%${search}%`})`,
           );
         }
-
         if (category) {
-          query = query.where(eq(productModels.category, category as string));
+          filters.push(eq(productModels.category, category as string));
         }
-
         if (manufacturer) {
-          query = query.where(eq(productModels.manufacturer, manufacturer as string));
+          filters.push(eq(productModels.manufacturer, manufacturer as string));
+        }
+        // ?status=active|inactive maps onto is_active; there is no status column.
+        if (status === 'active' || status === 'inactive') {
+          filters.push(eq(productModels.isActive, status === 'active'));
         }
 
-        if (status) {
-          query = query.where(eq(productModels.status, status as string));
-        }
-
-        const models = await query.orderBy(productModels.productName);
+        // Whole row: ProductModels.tsx reads msrp, colorMode, colorSpeed,
+        // bwSpeed, requiredAccessories, isActive and all three rep prices, none
+        // of which the old projection returned.
+        const models = await db
+          .select()
+          .from(productModels)
+          .where(and(...filters))
+          .orderBy(productModels.productName);
         res.json(models);
       } catch (error) {
         log.error('Error fetching product models:', error);
@@ -118,126 +96,11 @@ export function registerProductModelsRoutes(app: Express) {
     }),
   );
 
-  // Get product model by ID - requires inventory item view permission
-  app.get(
-    '/api/product-models/:id',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
-    authed(async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = req.user!.tenantId;
-        const modelId = req.params.id;
-
-        const [model] = await db
-          .select()
-          .from(productModels)
-          .where(and(eq(productModels.id, modelId), eq(productModels.tenantId, tenantId)));
-
-        if (!model) {
-          return res.status(404).json({ error: 'Product model not found' });
-        }
-
-        res.json(model);
-      } catch (error) {
-        log.error('Error fetching product model:', error);
-        res.status(500).json({ error: 'Failed to fetch product model' });
-      }
-    }),
-  );
-
-  // Create new product model - requires inventory item create permission
-  app.post(
-    '/api/product-models',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.ITEM.CREATE]),
-    authed(async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = req.user!.tenantId;
-
-        const modelData = insertProductModelSchema.parse({
-          ...req.body,
-          tenantId,
-          status: req.body.status || 'active',
-        });
-
-        const [newModel] = await db.insert(productModels).values(modelData).returning();
-
-        res.status(201).json(newModel);
-      } catch (error: any) {
-        log.error('Error creating product model:', error);
-        if (error.name === 'ZodError') {
-          res.status(400).json({ error: 'Invalid data', details: error.errors });
-        } else {
-          res.status(500).json({ error: 'Failed to create product model' });
-        }
-      }
-    }),
-  );
-
-  // Update product model - requires inventory item edit permission
-  app.put(
-    '/api/product-models/:id',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
-    authed(async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = req.user!.tenantId;
-        const modelId = req.params.id;
-
-        const validatedData = updateProductModelSchema.parse(req.body);
-
-        const [updatedModel] = await db
-          .update(productModels)
-          .set({
-            ...validatedData,
-            updatedAt: new Date(),
-          })
-          .where(and(eq(productModels.id, modelId), eq(productModels.tenantId, tenantId)))
-          .returning();
-
-        if (!updatedModel) {
-          return res.status(404).json({ error: 'Product model not found' });
-        }
-
-        res.json(updatedModel);
-      } catch (error: any) {
-        log.error('Error updating product model:', error);
-        if (error.name === 'ZodError') {
-          res.status(400).json({ error: 'Invalid data', details: error.errors });
-        } else {
-          res.status(500).json({ error: 'Failed to update product model' });
-        }
-      }
-    }),
-  );
-
-  // Delete product model - requires inventory item delete permission
-  app.delete(
-    '/api/product-models/:id',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.ITEM.DELETE]),
-    authed(async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = req.user!.tenantId;
-        const modelId = req.params.id;
-
-        const [deletedModel] = await db
-          .delete(productModels)
-          .where(and(eq(productModels.id, modelId), eq(productModels.tenantId, tenantId)))
-          .returning();
-
-        if (!deletedModel) {
-          return res.status(404).json({ error: 'Product model not found' });
-        }
-
-        res.json({ message: 'Product model deleted successfully' });
-      } catch (error) {
-        log.error('Error deleting product model:', error);
-        res.status(500).json({ error: 'Failed to delete product model' });
-      }
-    }),
-  );
-
+  // ROUTE ORDER IS LOAD-BEARING. These three static sub-paths were registered
+  // AFTER /api/product-models/:id, and express matches in registration order, so
+  // /categories, /manufacturers and /dashboard were all being served by the :id
+  // handler with id set to the literal word - a guaranteed 404 for each. Keep
+  // them above :id.
   // Get product categories - requires inventory item view permission
   app.get(
     '/api/product-models/categories',
@@ -289,33 +152,13 @@ export function registerProductModelsRoutes(app: Express) {
     }),
   );
 
-  // Get low stock models - requires inventory item view permission
-  app.get(
-    '/api/product-models/low-stock',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
-    authed(async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = req.user!.tenantId;
-
-        const lowStockModels = await db
-          .select()
-          .from(productModels)
-          .where(
-            and(
-              eq(productModels.tenantId, tenantId),
-              sql`${productModels.stockQuantity} <= ${productModels.reorderLevel}`,
-            ),
-          )
-          .orderBy(productModels.stockQuantity);
-
-        res.json(lowStockModels);
-      } catch (error) {
-        log.error('Error fetching low stock models:', error);
-        res.status(500).json({ error: 'Failed to fetch low stock models' });
-      }
-    }),
-  );
+  // The /low-stock endpoint that stood here is REMOVED, not repointed. It read
+  // productModels.stockQuantity <= productModels.reorderLevel; neither column
+  // exists, and there is nothing on product_models to substitute. Stock lives on
+  // inventory_items (quantityOnHand / reorderPoint), a parts table keyed by
+  // partNumber with no relationship to the equipment catalogue, so this is not a
+  // rename away from working. Nothing in client/src called it. A real low-stock
+  // report belongs on the inventory routes.
 
   // Get product models dashboard stats - requires inventory item view permission
   app.get(
@@ -331,39 +174,35 @@ export function registerProductModelsRoutes(app: Express) {
           .from(productModels)
           .where(eq(productModels.tenantId, tenantId));
 
+        // is_active, not a status string.
         const activeModelsResult = await db
           .select({ count: count() })
           .from(productModels)
-          .where(and(eq(productModels.tenantId, tenantId), eq(productModels.status, 'active')));
+          .where(and(eq(productModels.tenantId, tenantId), eq(productModels.isActive, true)));
 
-        const lowStockResult = await db
-          .select({ count: count() })
-          .from(productModels)
-          .where(
-            and(
-              eq(productModels.tenantId, tenantId),
-              sql`${productModels.stockQuantity} <= ${productModels.reorderLevel}`,
-            ),
-          );
-
-        const totalValueResult = await db
+        // MSRP is the only price on the catalogue row, so this is the list value
+        // of the catalogue, NOT inventory value. lowStockCount, totalValue and
+        // averageValue as they stood multiplied price by stockQuantity - neither
+        // column exists, and without a quantity there is no inventory value to
+        // report. Reporting the catalogue figure under its own name beats
+        // reporting an inventory figure that is really a catalogue one.
+        const msrpResult = await db
           .select({
-            totalValue: sql<number>`COALESCE(SUM(${productModels.price} * ${productModels.stockQuantity}), 0)`,
+            totalMsrp: sql<string>`COALESCE(SUM(${productModels.msrp}), 0)`,
           })
           .from(productModels)
           .where(eq(productModels.tenantId, tenantId));
 
         const totalModels = totalModelsResult[0]?.count || 0;
         const activeModels = activeModelsResult[0]?.count || 0;
-        const lowStockCount = lowStockResult[0]?.count || 0;
-        const totalValue = totalValueResult[0]?.totalValue || 0;
+        // msrp is numeric; node-postgres returns numeric as a string.
+        const totalMsrp = Number(msrpResult[0]?.totalMsrp ?? 0);
 
         res.json({
           totalModels,
           activeModels,
-          lowStockCount,
-          totalValue,
-          averageValue: totalModels > 0 ? totalValue / totalModels : 0,
+          totalMsrp,
+          averageMsrp: totalModels > 0 ? totalMsrp / totalModels : 0,
         });
       } catch (error) {
         log.error('Error fetching product models dashboard:', error);
@@ -372,44 +211,138 @@ export function registerProductModelsRoutes(app: Express) {
     }),
   );
 
-  // Bulk update stock quantities - requires inventory item edit permission
-  app.patch(
-    '/api/product-models/bulk-stock-update',
+  // Get product model by ID - requires inventory item view permission
+  app.get(
+    '/api/product-models/:id',
     isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
+    authed(async (req: AuthenticatedRequest, res) => {
+      try {
+        const tenantId = req.user!.tenantId;
+        const modelId = req.params.id;
+
+        const [model] = await db
+          .select()
+          .from(productModels)
+          .where(and(eq(productModels.id, modelId), eq(productModels.tenantId, tenantId)));
+
+        if (!model) {
+          return res.status(404).json({ error: 'Product model not found' });
+        }
+
+        res.json(model);
+      } catch (error) {
+        log.error('Error fetching product model:', error);
+        res.status(500).json({ error: 'Failed to fetch product model' });
+      }
+    }),
+  );
+
+  // Create new product model - requires inventory item create permission
+  app.post(
+    '/api/product-models',
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.CREATE]),
     authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user!.tenantId;
 
-        const { updates } = bulkStockUpdateSchema.parse(req.body);
+        // No `status` default: product_models has no status column, so the key
+        // was stripped by the schema and defaulted nothing. isActive carries its
+        // own database default.
+        const modelData = insertProductModelSchema.parse({ ...req.body, tenantId });
 
-        const results = await Promise.all(
-          updates.map(async (update) => {
-            const [updatedModel] = await db
-              .update(productModels)
-              .set({
-                stockQuantity: update.stockQuantity,
-                updatedAt: new Date(),
-              })
-              .where(and(eq(productModels.id, update.id), eq(productModels.tenantId, tenantId)))
-              .returning();
+        const [newModel] = await db.insert(productModels).values(modelData).returning();
 
-            return updatedModel;
-          }),
-        );
-
-        res.json({
-          message: `Updated ${results.filter((r) => r).length} product models`,
-          updated: results.filter((r) => r),
-        });
+        res.status(201).json(newModel);
       } catch (error: any) {
-        log.error('Error bulk updating stock:', error);
+        log.error('Error creating product model:', error);
         if (error.name === 'ZodError') {
           res.status(400).json({ error: 'Invalid data', details: error.errors });
         } else {
-          res.status(500).json({ error: 'Failed to bulk update stock' });
+          res.status(500).json({ error: 'Failed to create product model' });
         }
       }
     }),
   );
+
+  // Update product model - requires inventory item edit permission.
+  //
+  // Registered for BOTH verbs. ProductModels.tsx sends PATCH
+  // (updateModelMutation), and only PUT was mounted, so every edit from the page
+  // 404'd in dev. The body is a partial either way - the schema has always been
+  // all-optional - so one handler serves both rather than PUT claiming to be a
+  // full replacement it never validated as one.
+  const updateProductModelHandler = authed(async (req: AuthenticatedRequest, res) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const modelId = req.params.id;
+
+      const validatedData = updateProductModelSchema.parse(req.body);
+
+      const [updatedModel] = await db
+        .update(productModels)
+        .set({
+          ...validatedData,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(productModels.id, modelId), eq(productModels.tenantId, tenantId)))
+        .returning();
+
+      if (!updatedModel) {
+        return res.status(404).json({ error: 'Product model not found' });
+      }
+
+      res.json(updatedModel);
+    } catch (error: any) {
+      log.error('Error updating product model:', error);
+      if (error.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid data', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to update product model' });
+      }
+    }
+  });
+
+  for (const register of [app.put.bind(app), app.patch.bind(app)]) {
+    register(
+      '/api/product-models/:id',
+      isAuthenticated,
+      requirePermission([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
+      updateProductModelHandler,
+    );
+  }
+
+  // Delete product model - requires inventory item delete permission
+  app.delete(
+    '/api/product-models/:id',
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.DELETE]),
+    authed(async (req: AuthenticatedRequest, res) => {
+      try {
+        const tenantId = req.user!.tenantId;
+        const modelId = req.params.id;
+
+        const [deletedModel] = await db
+          .delete(productModels)
+          .where(and(eq(productModels.id, modelId), eq(productModels.tenantId, tenantId)))
+          .returning();
+
+        if (!deletedModel) {
+          return res.status(404).json({ error: 'Product model not found' });
+        }
+
+        res.json({ message: 'Product model deleted successfully' });
+      } catch (error) {
+        log.error('Error deleting product model:', error);
+        res.status(500).json({ error: 'Failed to delete product model' });
+      }
+    }),
+  );
+
+  // The /bulk-stock-update endpoint that stood here is REMOVED for the same
+  // reason as /low-stock: it wrote productModels.stockQuantity, a column that
+  // does not exist, so drizzle dropped the key and every "update" was a no-op
+  // that answered 200 with a count of rows it had not changed. Nothing called
+  // it. Bulk stock adjustment belongs on inventory_items.
 }
