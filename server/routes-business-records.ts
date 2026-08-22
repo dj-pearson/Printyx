@@ -20,7 +20,7 @@ import {
   identifierParamSchema,
 } from './lib/crm-validation';
 import { createModuleLogger } from './lib/logger';
-import { validateCustomFieldValues } from './routes-custom-fields';
+import { validateCustomFieldValues } from './lib/custom-field-validation';
 const log = createModuleLogger('routes-business-records');
 
 const router = Router();

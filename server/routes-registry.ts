@@ -13,7 +13,6 @@ import type { Express } from 'express';
 // ─── Domain Module Imports (20 domains) ────────────────────────────────
 import {
   registerAuthCoreRoutes,
-  registerFeatureFlagRoutes,
   registerSessionManagementRoutes,
   enhancedRBACRoutes,
   registerCspReportRoutes,
@@ -50,7 +49,6 @@ import {
   registerCustomerRoutes,
   registerBusinessRecordRoutes,
   registerCrmGoalRoutes,
-  registerCustomFieldsRoutes,
   registerCrmNotesRoutes,
   registerCrmBulkRoutes,
   registerBulkOperationsRoutes,
@@ -410,7 +408,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Service & CRM ────────────────────────────────────────────────
   registerServiceAnalysisRoutes(app);
   registerCrmGoalRoutes(app);
-  registerCustomFieldsRoutes(app);
   registerCrmNotesRoutes(app);
   registerDealTagRoutes(app);
   registerCrmBulkRoutes(app);
@@ -481,7 +478,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api/company-ids', companyIdRoutes.default);
 
   // ─── Feature Flags ────────────────────────────────────────��─────────
-  registerFeatureFlagRoutes(app);
 
   // ─── Session Management ────────────────────────────────────────────
   registerSessionManagementRoutes(app);

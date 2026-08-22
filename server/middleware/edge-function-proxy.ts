@@ -558,9 +558,10 @@ export function registerEdgeFunctionProxy(app: any) {
     // routes-custom-fields.ts both served /api/custom-fields with no proxy
     // entry, which check:routes flags as ambiguous ownership. Prod already
     // bypasses Express and hits the edge fn, so this only makes dev match prod.
-    // NOTE routes-custom-fields.ts STAYS — its validateCustomFieldValues is
-    // imported by routes-business-records.ts and routes-deals.ts; only the HTTP
-    // handlers are superseded. Dir name == prefix segment, no override needed.
+    // PROD-008b retired routes-custom-fields.ts entirely; its shared
+    // validateCustomFieldValues moved to lib/custom-field-validation.ts, which
+    // is where routes-business-records.ts imports it from now. Dir name ==
+    // prefix segment, no override needed.
     '/api/custom-fields': 'custom-fields',
 
     // New edge fns for three domains that 404'd in PROD — the frontend calls
