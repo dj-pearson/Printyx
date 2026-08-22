@@ -159,7 +159,7 @@ import {
 
 import { emailParserRoutes } from './domains/notifications';
 
-import { registerAnalyticsRoutes, gpt5Routes } from './domains/ai';
+import { registerAnalyticsRoutes } from './domains/ai';
 
 import {
   registerClientMonitoringRoutes,
@@ -528,7 +528,25 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── RBAC & AI ────────────────────────────────────────────────────
   app.use('/api/rbac', enhancedRBACRoutes);
-  app.use('/api/ai/gpt5', gpt5Routes);
+  // routes-ai-gpt5.ts was mounted here and is DELETED (PROD-008b). /api/ai/gpt5
+  // is in crmProxies (and has a server.ts alias), so the proxy served it in dev
+  // and production hit supabase/functions/ai-gpt5/ directly - it ran on neither
+  // host. Note the prefix is the SUB-PATH only: the rest of /api/ai stays on
+  // Express, which is why this mount was narrow.
+  //
+  // All nine handlers map one-for-one onto the edge function's dispatch:
+  // analyze-lead, generate-proposal, analyze-service, support-response,
+  // business-analytics, classify-inquiry, generate-code and custom-prompt are
+  // the switch cases at ai-gpt5/index.ts:199-325, and GET /configs is the branch
+  // at :174.
+  //
+  // server/services/gpt5-service.ts is NOT deleted with it. It was this file's
+  // only route consumer, but server/tests/unit/gpt5-prompts-parity.test.ts
+  // imports it to lock the Node prompt text against
+  // supabase/functions/_shared/gpt5-prompts.ts. Deleting the service would take
+  // the parity test's Node side with it and leave the edge prompts unguarded -
+  // the "is this test guarding a class or a corpse" question, and here it is a
+  // class: the prompts still exist on both sides.
 
   const asyncApiMounts: [string, string][] = [
     ['/api/ai', './routes/ai-routes-simple'],
