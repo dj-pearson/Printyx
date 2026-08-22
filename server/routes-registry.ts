@@ -38,7 +38,6 @@ import {
   deleteQuoteLineItem,
   calculatePricingForProduct,
   printCostCalculatorRoutes,
-  consolidatedBillingRoutes,
   salesForecastingRoutes,
 } from './domains/billing';
 
@@ -419,7 +418,39 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use(equipmentDisposalRoutes);
 
   // ─── Consolidated Billing ─────────────────────────────────────────
-  app.use('/api/billing', consolidatedBillingRoutes);
+  // routes/billing.ts was mounted here and is DELETED (PROD-008b).
+  //
+  // /api/billing is in crmProxies, so the proxy served the whole prefix in dev
+  // and production hit supabase/functions/billing/ directly - this router had
+  // not run on either host. It was invisible to check:shadowed-express until the
+  // scanner learned to follow the domains/* barrels; its 33 handlers were 33 of
+  // the 106 that surfaced.
+  //
+  // EVERY SURFACE WITH A LIVE CALLER WAS CHECKED AGAINST THE EDGE FUNCTION
+  // BEFORE DELETING, not assumed:
+  //   /rules + /rules/:id + PATCH /rules/:id/{activate,deactivate}
+  //       BillingRules.tsx, billing-rule-dialog.tsx  -> billing/index.ts:116-121, 313-490
+  //   /info, /address                Billing.tsx     -> billing/index.ts:100-103
+  //   /analytics, /analytics/:kind   BillingAnalytics.tsx, AdvancedBillingEngine.tsx
+  //                                                  -> billing/index.ts:90, 140
+  //   /invoices, /invoices/:id, /:id/{pdf,email,send,pay,paid}
+  //       Billing.tsx, Invoices.tsx, invoice-email-dialog.tsx, lib/invoice-pdf.ts
+  //                                                  -> handlers/invoices.ts:76-305
+  //   /invoices/generate-from-contract  Invoices.tsx -> handlers/invoices.ts:81
+  //       (this one never had an Express route at all)
+  //
+  // The surfaces with NO caller anywhere in client/src are gone with the file:
+  // /stripe/config, /stripe/setup-intent, /stripe/webhooks, /dashboard,
+  // /metrics, /health-score, /auto-invoice-status, /auto-generate. The Stripe
+  // webhook one was already dead by a second route: Stripe delivers to
+  // /api/webhooks/stripe, not under /api/billing (CLAUDE.md).
+  //
+  // It could not have worked anyway: it imported billingDisputes and creditMemos
+  // from @shared/schema, which does not re-export them (they live in
+  // shared/advanced-billing-schema.ts), and it read invoices.balance / .paid /
+  // .total / .tax / .description - the phantom columns CLAUDE.md names as the
+  // legacy consolidated router's. The real ones are total_amount / amount_paid /
+  // balance_due / invoice_status / paid_date.
 
   // ─── Salesforce Test Routes (dev only) ────────────────────────────
   if (process.env.NODE_ENV === 'development') {

@@ -22,5 +22,4 @@ export {
   calculatePricingForProduct,
 } from '../routes-pricing';
 export { default as printCostCalculatorRoutes } from '../routes-print-cost-calculator';
-export { default as consolidatedBillingRoutes } from '../routes/billing';
 export { default as salesForecastingRoutes } from '../routes-sales-forecasting';
