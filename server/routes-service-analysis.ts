@@ -15,15 +15,23 @@ import {
 } from '../shared/service-analysis-schema';
 import { serviceTickets } from '../shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { z } from 'zod';
 // Auth helpers for Supabase JWT + session fallback
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getTenantId } from './utils/auth-helpers';
 
+// Every handler here reads the tenant from the request and then filters by it.
+// getTenantId returns `string | undefined`, and passing undefined into eq() does
+// not scope anything — it produces a bound parameter of undefined, which the
+// driver rejects. So each handler answers 400 when there is no tenant on the
+// request rather than issuing a query that either errors or, worse, reads across
+// tenants. This is the 213-site house idiom, not a new one.
 export function registerServiceAnalysisRoutes(app: Express) {
   // Get service call analysis for a ticket
   app.get('/api/service-tickets/:ticketId/analysis', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
       const { ticketId } = req.params;
 
       const analysis = await db
@@ -48,6 +56,9 @@ export function registerServiceAnalysisRoutes(app: Express) {
   app.post('/api/service-tickets/:ticketId/analysis', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
       const { ticketId } = req.params;
       const analysisData = insertServiceCallAnalysisSchema.parse({
         ...req.body,
@@ -81,6 +92,9 @@ export function registerServiceAnalysisRoutes(app: Express) {
   app.put('/api/service-analysis/:id', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
       const { id } = req.params;
       const updateData = req.body;
 
@@ -105,6 +119,9 @@ export function registerServiceAnalysisRoutes(app: Express) {
   app.get('/api/service-analysis/:analysisId/parts-used', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
       const { analysisId } = req.params;
 
       const parts = await db
@@ -125,6 +142,9 @@ export function registerServiceAnalysisRoutes(app: Express) {
   app.post('/api/service-analysis/:analysisId/parts-used', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
       const { analysisId } = req.params;
       const partsData = insertServicePartsUsedSchema.parse({
         ...req.body,
@@ -145,6 +165,9 @@ export function registerServiceAnalysisRoutes(app: Express) {
   app.post('/api/service-analysis/:analysisId/parts-order', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
       const { analysisId } = req.params;
 
       // Get analysis to get service ticket ID
@@ -181,6 +204,9 @@ export function registerServiceAnalysisRoutes(app: Express) {
   app.get('/api/service-analysis/:analysisId/parts-orders', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
       const { analysisId } = req.params;
 
       const orders = await db
@@ -200,6 +226,9 @@ export function registerServiceAnalysisRoutes(app: Express) {
   app.patch('/api/parts-orders/:orderId', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
       const { orderId } = req.params;
       const { status, trackingNumber, actualDeliveryDate } = req.body;
 
@@ -229,6 +258,9 @@ export function registerServiceAnalysisRoutes(app: Express) {
   app.post('/api/parts-orders/:orderId/items', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
       const { orderId } = req.params;
       const itemsData = req.body.items || [req.body]; // Support both single item and array
 
@@ -253,6 +285,9 @@ export function registerServiceAnalysisRoutes(app: Express) {
   app.get('/api/parts-orders/:orderId/items', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
       const { orderId } = req.params;
 
       const items = await db
@@ -271,6 +306,9 @@ export function registerServiceAnalysisRoutes(app: Express) {
   app.get('/api/service-analysis/stats', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
 
       const stats = await db
         .select({
@@ -307,6 +345,9 @@ export function registerServiceAnalysisRoutes(app: Express) {
   app.get('/api/service-analysis/recent', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required' });
+      }
       const limit = parseInt(req.query.limit as string) || 10;
 
       const recentAnalyses = await db
