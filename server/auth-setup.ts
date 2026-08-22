@@ -174,30 +174,29 @@ const roleDefinitions = [
 ];
 
 // Team structure
+// `teams` has no description column (tenant_id / name / department / location_id /
+// manager_id / parent_team_id / is_active), so a description here would be dropped
+// silently by drizzle rather than stored.
 const teamDefinitions = [
   {
     name: 'West Coast Sales',
     department: 'sales',
     managerId: null, // Will be set to sales manager ID
-    description: 'Sales team covering western territories',
   },
   {
     name: 'East Coast Sales',
     department: 'sales',
     managerId: null,
-    description: 'Sales team covering eastern territories',
   },
   {
     name: 'Field Service Team A',
     department: 'service',
     managerId: null, // Will be set to service manager ID
-    description: 'Primary field service team',
   },
   {
     name: 'Field Service Team B',
     department: 'service',
     managerId: null,
-    description: 'Secondary field service team',
   },
 ];
 

@@ -61,6 +61,8 @@ jobs:
         run: npm run check:phantom-cols
       - name: Phantom PostgREST table ratchet (PROD-008b)
         run: npm run check:phantom-tables
+      - name: Spread-insert key ratchet (hard gate at zero)
+        run: npm run check:spread-insert-keys
       - name: Chained .where() ratchet (tenant scope, QUALITY-002)
         run: npm run check:chained-where
       - name: Route-shadowing ratchet (static route under a :param sibling)
