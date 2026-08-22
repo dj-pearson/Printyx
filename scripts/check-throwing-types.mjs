@@ -20,8 +20,16 @@
 //   - the signup-crm conversion funnel threw on every call (TS2448, a local
 //     shadowing drizzle's count() inside its own initializer).
 //
-// So this check is zero-tolerance, with one recorded exclusion. Adding a file to
-// EXCLUDED requires a reason a reviewer can check.
+// So this check is zero-tolerance, and as of 2026-08-22 it has NO exclusions.
+// Its one entry was server/routes-predictive-service-dispatch.ts, which named
+// three tables that exist in no schema or migration as undefined identifiers -
+// 59 TS2304s, every handler a guaranteed ReferenceError. That file is deleted:
+// production already ran supabase/functions/predictive-dispatch/ against the
+// real tables, and dev now goes there too through crmProxies.
+//
+// EXCLUDED is kept rather than removed, because the escape hatch is what makes a
+// zero-tolerance gate survivable - but adding to it requires a reason a reviewer
+// can check, and the bar is "cannot be fixed by editing this file alone".
 import { execSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,14 +40,7 @@ const CODES = ['TS2304', 'TS2552', 'TS2448', 'TS2454'];
 
 // Files allowed to carry these errors, each with the reason it cannot be fixed
 // by editing the file alone.
-const EXCLUDED = new Map([
-  [
-    'server/routes-predictive-service-dispatch.ts',
-    'References serviceCallsEnhanced / equipmentMetrics / technicianResourcesEnhanced, ' +
-      'which exist in no schema or migration. These endpoints already fail at runtime; ' +
-      'fixing them needs new tables plus a migration, not an import. Tracked in CLAUDE.md.',
-  ],
-]);
+const EXCLUDED = new Map([]);
 
 function runTsc() {
   try {

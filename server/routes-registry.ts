@@ -91,7 +91,6 @@ import {
 
 import {
   registerServiceAnalysisRoutes,
-  registerPredictiveServiceDispatchRoutes,
   registerTechnicianManagementRoutes,
   serviceDispatchRouter,
   equipmentLifecycleStateMachineRoutes,
@@ -749,7 +748,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerLeadAssignmentRoutes(app);
   registerLeadMapRoutes(app);
   registerAutoLeadRoutingRoutes(app);
-  registerPredictiveServiceDispatchRoutes(app);
+  // registerPredictiveServiceDispatchRoutes was called here and is DELETED
+  // (QUALITY-002). See the /api/predictive-dispatch entry in
+  // middleware/edge-function-proxy.ts: the router's handlers referenced three
+  // tables that exist nowhere, as undefined identifiers rather than as imports,
+  // so each was a guaranteed ReferenceError. The edge function already served
+  // production correctly and now serves dev too.
   registerDealDeskCopilotRoutes(app);
   // routes-daily-briefing.ts retired (PROD-008b). All six handlers were shadowed
   // by the /api/daily-briefing proxy; supabase/functions/daily-briefing/ covers

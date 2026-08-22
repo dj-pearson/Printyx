@@ -430,6 +430,17 @@ export function registerEdgeFunctionProxy(app: any) {
     // EDGE-005d-remainder: predictive-maintenance (6 frontend callsites).
     // Dashboard + parts-forecast aggregations are portable; AI analysis paths
     // return degraded responses (require Claude integration port).
+    // QUALITY-002: /api/predictive-dispatch. The Express router that served
+    // this prefix is DELETED - it referenced three tables that exist in no
+    // schema or migration (service_calls_enhanced, equipment_metrics,
+    // technician_resources_enhanced) as UNDEFINED IDENTIFIERS, 59 TS2304s, so
+    // every one of its handlers was a guaranteed ReferenceError. Production
+    // already ran supabase/functions/predictive-dispatch/, which reads the real
+    // tables (device_metrics, equipment, service_tickets, technicians,
+    // service_calls, equipment_failure_predictions) and covers every path
+    // PredictiveServiceDispatchDashboard.tsx calls plus five more. This entry
+    // points dev at the same function so the page stops throwing there.
+    '/api/predictive-dispatch': 'predictive-dispatch',
     '/api/predictive-maintenance': 'predictive-maintenance',
 
     // EDGE-013: monitoring-clients. Verified parity — the edge function

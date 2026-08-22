@@ -3,7 +3,6 @@
  * Service dispatch, maintenance, equipment lifecycle, technician management
  */
 export { registerServiceAnalysisRoutes } from '../routes-service-analysis';
-export { registerPredictiveServiceDispatchRoutes } from '../routes-predictive-service-dispatch';
 export { registerTechnicianManagementRoutes } from '../routes-technician-management';
 export { serviceDispatchRouter } from '../routes-service-dispatch';
 export { default as equipmentLifecycleStateMachineRoutes } from '../routes-equipment-lifecycle-state-machine';
