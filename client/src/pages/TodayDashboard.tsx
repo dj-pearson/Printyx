@@ -74,8 +74,12 @@ interface TodayViewData {
   pipelineAlerts: Deal[];
   recentWins: Deal[];
   stats: {
-    pipelineValue: number;
-    quotaAttainment: number;
+    // Nullable on purpose. Both are a SUM over the tenant's whole deals table,
+    // which the production backend cannot compute without either truncating
+    // silently or an rpc that does not exist yet, so it reports them as absent.
+    // Rendering a 0 would read as "no pipeline" rather than "not available".
+    pipelineValue: number | null;
+    quotaAttainment: number | null;
     conversionRate: number;
     tasksCompleted: number;
   };
@@ -163,8 +167,10 @@ export default function TodayDashboard() {
     pipelineAlerts = [],
     recentWins = [],
     stats = {
-      pipelineValue: 0,
-      quotaAttainment: 0,
+      // null, not 0, for the two the backend may not be able to compute: a zero
+      // here is indistinguishable from an empty pipeline.
+      pipelineValue: null,
+      quotaAttainment: null,
       conversionRate: 0,
       tasksCompleted: 0,
     },
@@ -213,15 +219,25 @@ export default function TodayDashboard() {
           <StatCard
             icon={DollarSign}
             label="Pipeline Value"
-            value={`$${(stats.pipelineValue / 1000).toFixed(0)}K`}
+            value={
+              stats.pipelineValue == null
+                ? 'Not available'
+                : `$${(stats.pipelineValue / 1000).toFixed(0)}K`
+            }
             color="text-green-600 bg-green-100"
           />
           <StatCard
             icon={Target}
             label="Quota Attainment"
-            value={`${stats.quotaAttainment}%`}
+            value={stats.quotaAttainment == null ? 'Not available' : `${stats.quotaAttainment}%`}
             color="text-blue-600 bg-blue-100"
-            subtitle={stats.quotaAttainment >= 100 ? '🎉 Over target!' : 'Keep going!'}
+            subtitle={
+              stats.quotaAttainment == null
+                ? undefined
+                : stats.quotaAttainment >= 100
+                  ? '🎉 Over target!'
+                  : 'Keep going!'
+            }
           />
           <StatCard
             icon={TrendingUp}

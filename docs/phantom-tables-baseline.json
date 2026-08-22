@@ -2,7 +2,6 @@
   "note": "PROD-008b: edge-function .from() names absent from BOTH the Drizzle definitions in shared/ and the CREATE TABLE/VIEW statements in drizzle/. Absence here is a question, not a defect: 107 tables exist live with no Drizzle schema (db:push, pre-migrations). Confirm against the database before treating an entry as broken. The list may not grow.",
   "allowed": [
     "activities (supabase/functions/crm-goals/index.ts)",
-    "activities (supabase/functions/dashboards/index.ts)",
     "activities (supabase/functions/gdpr/index.ts)",
     "activities (supabase/functions/sales-reports/index.ts)",
     "activities (supabase/functions/team-reports/index.ts)",
