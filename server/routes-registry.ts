@@ -57,7 +57,6 @@ import {
   signupCrmRoutes,
   universalSearchRoutes,
   businessRecordsRoutes,
-  webFormsRoutes,
   emailSequencesRoutes,
 } from './domains/crm';
 
@@ -172,7 +171,7 @@ import {
   accessibilityRoutes,
 } from './domains/onboarding';
 
-import { registerNotificationRoutes, emailParserRoutes } from './domains/notifications';
+import { emailParserRoutes } from './domains/notifications';
 
 import { registerAnalyticsRoutes, gpt5Routes } from './domains/ai';
 
@@ -557,7 +556,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.get('/api/onboarding/export/:id/csv', exportChecklistCSV);
 
   // ─── Notifications ──────────────────────────────────────────────────
-  registerNotificationRoutes(app);
+  // routes-notifications.ts retired (PROD-008b). supabase/functions/notifications/
+  // serves the prefix — repointed in the same change from a phantom `notifications`
+  // table onto the real user_notifications.
 
   // ─── Monitoring & Service ─────────────────────────────────────────
   registerManufacturerIntegrationRoutes(app);
@@ -618,7 +619,8 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerAutomationRoutes(app);
   registerCustomerRoutes(app);
   app.use(businessRecordsRoutes);
-  app.use(webFormsRoutes);
+  // routes-web-forms.ts retired (PROD-008b); supabase/functions/web-forms/ has
+  // all six handlers and already returns camelCase rows.
   app.use(emailSequencesRoutes);
   registerDealsManagementRoutes(app);
   // registerDealDeskRoutes(app) — migrated to supabase/functions/deal-desk/

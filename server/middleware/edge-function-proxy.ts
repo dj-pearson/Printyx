@@ -571,12 +571,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // run ONLY in prod, which is the "invisible in dev" trap that let these
     // rot in the first place. Dir name == prefix segment, no override needed.
     //
-    // NOTE for anyone re-running npm run audit:routes: it classifies both of
-    // these `edge-only`, i.e. it does NOT see the Express side. That is a false
-    // negative in the tool — routes-web-forms.ts and routes-email-sequences.ts
-    // declare full '/api/...' paths INSIDE a Router that routes-registry.ts
-    // mounts with a bare `app.use(router)` (lines 635-636), a shape the audit's
-    // Express detection misses. They really are both-served.
+    // PROD-008b: routes-web-forms.ts is gone — the web-forms function has all six
+    // handlers and already returned camelCase rows, so it was a clean retirement.
+    // /api/email-sequences is still both-served by routes-email-sequences.ts.
+    //
+    // NOTE for anyone re-running npm run audit:routes: it classifies these
+    // `edge-only`, i.e. it does NOT see the Express side. That is a false
+    // negative in the tool — routes-email-sequences.ts declares full '/api/...'
+    // paths INSIDE a Router that routes-registry.ts mounts with a bare
+    // `app.use(router)`, a shape the audit's Express detection misses.
     '/api/web-forms': 'web-forms',
     '/api/email-sequences': 'email-sequences',
 
