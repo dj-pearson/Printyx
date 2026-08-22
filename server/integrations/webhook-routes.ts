@@ -3,7 +3,6 @@
  * Handles incoming webhooks from all integrated services
  */
 import express from 'express';
-import { z } from 'zod';
 import { WebhookService } from './webhook-service';
 import { createModuleLogger } from '../lib/logger';
 import { stripSensitiveHeaders } from '../utils/error-sanitizer';
@@ -11,77 +10,17 @@ const log = createModuleLogger('webhook-routes');
 
 const router = express.Router();
 
-/** Return a 400 for Zod validation errors, rethrow others */
-function handleWebhookError(error: unknown, provider: string, res: express.Response) {
-  if (error instanceof z.ZodError) {
-    log.warn({ provider, issues: error.issues }, 'Webhook payload validation failed');
-    return res.status(400).json({
-      error: 'Invalid webhook payload',
-      code: 'VALIDATION_ERROR',
-      details: error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
-    });
-  }
-  log.error(`Webhook error for ${provider}:`, error);
-  return res.status(500).json({ error: 'Internal server error' });
-}
-
 // Raw body parser middleware for webhook signature verification
 const rawBodyParser = express.raw({ type: 'application/json' });
 
-// ─── Webhook Payload Schemas ──────────────────────────────────────────
-// Loose schemas that validate structure without being overly strict,
-// since providers may add new fields over time.
-
-const stripeWebhookSchema = z.object({
-  id: z.string().startsWith('evt_'),
-  object: z.literal('event'),
-  type: z.string().min(1),
-  data: z.object({ object: z.record(z.unknown()) }),
-});
-
-const salesforceWebhookSchema = z
-  .object({
-    // Salesforce outbound messages contain sObject data
-  })
-  .passthrough()
-  .refine((data) => Object.keys(data).length > 0, {
-    message: 'Salesforce webhook payload cannot be empty',
-  });
-
-const microsoftGraphWebhookSchema = z.object({
-  value: z.array(
-    z
-      .object({
-        subscriptionId: z.string(),
-        changeType: z.string(),
-        resource: z.string(),
-      })
-      .passthrough(),
-  ),
-});
-
-const googleCalendarWebhookSchema = z.object({}).passthrough();
-
-const quickbooksWebhookSchema = z.object({
-  eventNotifications: z.array(
-    z
-      .object({
-        realmId: z.string(),
-        dataChangeEvent: z.object({
-          entities: z.array(
-            z
-              .object({
-                name: z.string(),
-                id: z.string(),
-                operation: z.string(),
-              })
-              .passthrough(),
-          ),
-        }),
-      })
-      .passthrough(),
-  ),
-});
+// The five per-provider Zod payload schemas that stood here are gone with the
+// handlers that used them (stripe, salesforce, microsoftGraph, googleCalendar,
+// quickbooks), along with handleWebhookError, which only they called. The
+// generic receiver below does not shape-validate: it hands the raw bytes and the
+// parsed payload to WebhookService, which verifies the HMAC first and then
+// dispatches. A signature check over the raw body is the stronger gate, and
+// re-adding loose passthrough schemas on top of it would only reject payloads
+// the provider legitimately extended.
 
 /**
  * Generic webhook endpoint that routes to provider-specific handlers
@@ -120,159 +59,33 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
   }
 });
 
-// THE FIVE PROVIDER-SPECIFIC HANDLERS BELOW ARE SHADOWED, DELIBERATELY LEFT SO,
-// and baselined in docs/route-shadowing-baseline.json rather than reordered.
+// THE FIVE PROVIDER-SPECIFIC HANDLERS THAT STOOD HERE ARE DELETED (PROD-008b).
 //
-// /api/webhooks/:provider above is registered first, and express matches in
-// registration order, so none of salesforce / stripe / microsoft-calendar /
-// google-calendar / quickbooks ever runs. That is not a security hole: the
-// generic handler calls the SAME WebhookService.processWebhook, which verifies
-// the provider's HMAC signature (webhook-service.ts:50) before dispatching on
-// the provider name. The specific handlers are redundant with it.
+// salesforce, stripe, microsoft-calendar, google-calendar and quickbooks each
+// had their own POST route below the generic POST /api/webhooks/:provider above,
+// and express matches in registration order, so none of them had ever run.
 //
-// Moving them above :provider would make things WORSE, not better. Two of them -
-// microsoft-calendar and google-calendar - parse with express.json() rather than
-// the rawBodyParser, so req.body is a parsed object and the raw bytes the HMAC
-// is computed over are gone (see the PA-018 note on processWebhook). Activating
-// them would turn working calendar webhooks into signature failures.
+// Deleted rather than reordered, which was the open decision recorded under
+// INTEG-WEBHOOK-001, and the evidence is one-sided:
 //
-// The whole file is also unreachable today: /api/webhooks is in crmProxies, so
-// the proxy serves the prefix in dev and production hits the edge function
-// directly. That is INTEG-WEBHOOK-001's subject. Whoever un-shadows this file
-// has to resolve the duplication here at the same time - either delete these
-// five and keep the generic dispatcher, or fix their body parsing and register
-// them first. Do not simply reorder.
-
-/**
- * Salesforce-specific webhook endpoint
- */
-router.post('/api/webhooks/salesforce', rawBodyParser, async (req, res) => {
-  try {
-    // Raw body parsing (not express.json) so the HMAC signature can be verified
-    // against the exact bytes Salesforce signed. (PA-018)
-    const rawBody = req.body.toString();
-    const payload = salesforceWebhookSchema.parse(JSON.parse(rawBody));
-    const result = await WebhookService.processWebhook(
-      'salesforce',
-      payload,
-      req.headers as Record<string, string>,
-      rawBody,
-    );
-
-    if (result.success) {
-      res.status(200).json({ message: result.message });
-    } else {
-      res.status(400).json({ error: result.message });
-    }
-  } catch (error) {
-    handleWebhookError(error, 'salesforce', res);
-  }
-});
-
-/**
- * Stripe-specific webhook endpoint with raw body parsing for signature verification
- */
-router.post('/api/webhooks/stripe', rawBodyParser, async (req, res) => {
-  try {
-    const rawBody = req.body.toString();
-    const payload = stripeWebhookSchema.parse(JSON.parse(rawBody));
-    const result = await WebhookService.processWebhook(
-      'stripe',
-      payload,
-      req.headers as Record<string, string>,
-      rawBody,
-    );
-
-    if (result.success) {
-      res.status(200).json({ received: true });
-    } else {
-      res.status(400).json({ error: result.message });
-    }
-  } catch (error) {
-    handleWebhookError(error, 'stripe', res);
-  }
-});
-
-/**
- * Microsoft Graph webhook endpoint
- */
-router.post('/api/webhooks/microsoft-calendar', express.json(), async (req, res) => {
-  try {
-    // Microsoft Graph webhook validation - must echo back the token
-    if (req.query.validationToken) {
-      const token = z.string().max(512).parse(req.query.validationToken);
-      res.status(200).contentType('text/plain').send(token);
-      return;
-    }
-
-    const payload = microsoftGraphWebhookSchema.parse(req.body);
-    const result = await WebhookService.processWebhook(
-      'microsoft-calendar',
-      payload,
-      req.headers as Record<string, string>,
-      // Microsoft validates via clientState token, not a body HMAC, so rawBody
-      // is unused here; pass a best-effort serialization for the signature.
-      JSON.stringify(req.body),
-    );
-
-    if (result.success) {
-      res.status(202).json({ message: result.message });
-    } else {
-      res.status(400).json({ error: result.message });
-    }
-  } catch (error) {
-    handleWebhookError(error, 'microsoft-calendar', res);
-  }
-});
-
-/**
- * Google Calendar webhook endpoint
- */
-router.post('/api/webhooks/google-calendar', express.json(), async (req, res) => {
-  try {
-    const payload = googleCalendarWebhookSchema.parse(req.body);
-    const result = await WebhookService.processWebhook(
-      'google-calendar',
-      payload,
-      req.headers as Record<string, string>,
-      // Google validates via channel token/id headers, not a body HMAC, so
-      // rawBody is unused here; pass a best-effort serialization.
-      JSON.stringify(req.body),
-    );
-
-    if (result.success) {
-      res.status(200).json({ message: result.message });
-    } else {
-      res.status(400).json({ error: result.message });
-    }
-  } catch (error) {
-    handleWebhookError(error, 'google-calendar', res);
-  }
-});
-
-/**
- * QuickBooks webhook endpoint
- */
-router.post('/api/webhooks/quickbooks', rawBodyParser, async (req, res) => {
-  try {
-    const rawBody = req.body.toString();
-    const payload = quickbooksWebhookSchema.parse(JSON.parse(rawBody));
-    const result = await WebhookService.processWebhook(
-      'quickbooks',
-      payload,
-      req.headers as Record<string, string>,
-      rawBody,
-    );
-
-    if (result.success) {
-      res.status(200).json({ message: result.message });
-    } else {
-      res.status(400).json({ error: result.message });
-    }
-  } catch (error) {
-    handleWebhookError(error, 'quickbooks', res);
-  }
-});
+//   They are REDUNDANT. The generic handler calls the same
+//   WebhookService.processWebhook, which verifies the provider's HMAC
+//   (webhook-service.ts:50, tested by server/tests/unit/webhook-signature.test.ts)
+//   and then dispatches on the provider name through the same switch the five
+//   duplicated. Nothing is lost.
+//
+//   Two of them were WRONG. microsoft-calendar and google-calendar parsed with
+//   express.json() rather than the rawBodyParser, so req.body was a parsed
+//   object and the exact bytes the HMAC is computed over were gone - the PA-018
+//   trap called out in processWebhook's own signature. Registering them first,
+//   the "obvious" fix, would have turned calendar webhooks into signature
+//   failures.
+//
+// What remains on this prefix is the generic receiver, the health probe and the
+// outbound list - and all three are still shadowed by the crmProxies entry for
+// /api/webhooks. See INTEG-WEBHOOK-001: the receiver cannot simply be
+// un-shadowed, because the edge function that owns the prefix authenticates
+// before it routes.
 
 /**
  * Webhook health check endpoint

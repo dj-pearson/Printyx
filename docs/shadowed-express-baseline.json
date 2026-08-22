@@ -66,11 +66,6 @@
   "allowed": [
     "GET /api/webhooks (server/integrations/webhook-routes.ts)",
     "GET /api/webhooks/health (server/integrations/webhook-routes.ts)",
-    "POST /api/webhooks/:provider (server/integrations/webhook-routes.ts)",
-    "POST /api/webhooks/google-calendar (server/integrations/webhook-routes.ts)",
-    "POST /api/webhooks/microsoft-calendar (server/integrations/webhook-routes.ts)",
-    "POST /api/webhooks/quickbooks (server/integrations/webhook-routes.ts)",
-    "POST /api/webhooks/salesforce (server/integrations/webhook-routes.ts)",
-    "POST /api/webhooks/stripe (server/integrations/webhook-routes.ts)"
+    "POST /api/webhooks/:provider (server/integrations/webhook-routes.ts)"
   ]
 }
