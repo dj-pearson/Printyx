@@ -5,7 +5,6 @@ import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('advanced-billing-routes');
 
 import {
-  insertBillingRuleSchema,
   insertMeterAnomalySchema,
   insertBillingDisputeSchema,
   insertInvoiceGenerationLogSchema,
@@ -25,175 +24,26 @@ function isAdminOrManager(user: any): boolean {
   );
 }
 
-// ==================== Billing Rules ====================
-
-// GET /api/billing/rules - List all billing rules with filtering
-router.get('/rules', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    const { ruleType, ruleStatus, customerId, equipmentId, contractId } = req.query;
-
-    const filters: any = {};
-    if (ruleType) filters.ruleType = ruleType as string;
-    if (ruleStatus) filters.ruleStatus = ruleStatus as string;
-    if (customerId) filters.customerId = customerId as string;
-    if (equipmentId) filters.equipmentId = equipmentId as string;
-    if (contractId) filters.contractId = contractId as string;
-
-    const rules = await storage.getBillingRules(user.tenantId, filters);
-    res.json(rules);
-  } catch (error) {
-    log.error('Get billing rules error:', error);
-    res.status(500).json({ error: 'Failed to fetch billing rules' });
-  }
-});
-
-// GET /api/billing/rules/:id - Get specific billing rule
-router.get('/rules/:id', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    const rule = await storage.getBillingRule(req.params.id);
-
-    if (!rule || rule.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Billing rule not found' });
-    }
-
-    res.json(rule);
-  } catch (error) {
-    log.error('Get billing rule error:', error);
-    res.status(500).json({ error: 'Failed to fetch billing rule' });
-  }
-});
-
-// POST /api/billing/rules - Create new billing rule (Admin/Manager only)
-router.post('/rules', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  if (!isAdminOrManager(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to create billing rules' });
-  }
-
-  try {
-    const data = insertBillingRuleSchema.parse(req.body);
-    const rule = await storage.createBillingRule({
-      ...data,
-      tenantId: user.tenantId,
-      createdBy: user.id,
-    });
-
-    res.status(201).json(rule);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation error', details: error.errors });
-    }
-    log.error('Create billing rule error:', error);
-    res.status(500).json({ error: 'Failed to create billing rule' });
-  }
-});
-
-// PUT /api/billing/rules/:id - Update billing rule (Admin/Manager only)
-router.put('/rules/:id', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  if (!isAdminOrManager(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to update billing rules' });
-  }
-
-  try {
-    const existing = await storage.getBillingRule(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Billing rule not found' });
-    }
-
-    const data = insertBillingRuleSchema.partial().parse(req.body);
-    const updated = await storage.updateBillingRule(req.params.id, user.tenantId, data);
-
-    res.json(updated);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation error', details: error.errors });
-    }
-    log.error('Update billing rule error:', error);
-    res.status(500).json({ error: 'Failed to update billing rule' });
-  }
-});
-
-// DELETE /api/billing/rules/:id - Delete billing rule (Admin/Manager only)
-router.delete('/rules/:id', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  if (!isAdminOrManager(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to delete billing rules' });
-  }
-
-  try {
-    const rule = await storage.getBillingRule(req.params.id);
-    if (!rule || rule.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Billing rule not found' });
-    }
-
-    await storage.deleteBillingRule(req.params.id, user.tenantId);
-    res.status(204).send();
-  } catch (error) {
-    log.error('Delete billing rule error:', error);
-    res.status(500).json({ error: 'Failed to delete billing rule' });
-  }
-});
-
-// GET /api/billing/rules/customer/:customerId - Get rules for customer
-router.get('/rules/customer/:customerId', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    const rules = await storage.getBillingRulesByCustomer(req.params.customerId, user.tenantId);
-    res.json(rules);
-  } catch (error) {
-    log.error('Get billing rules by customer error:', error);
-    res.status(500).json({ error: 'Failed to fetch billing rules for customer' });
-  }
-});
-
-// GET /api/billing/rules/contract/:contractId - Get rules for contract
-router.get('/rules/contract/:contractId', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    const rules = await storage.getBillingRulesByContract(req.params.contractId, user.tenantId);
-    res.json(rules);
-  } catch (error) {
-    log.error('Get billing rules by contract error:', error);
-    res.status(500).json({ error: 'Failed to fetch billing rules for contract' });
-  }
-});
+// ==================== Billing Rules — RETIRED (PROD-008b) ====================
+//
+// The seven /rules handlers that lived here are gone. /api/billing is proxied to
+// supabase/functions/billing/, which serves the whole rules surface and serves it
+// better: BillingRules.tsx toggles a rule with PATCH /rules/:id/activate, and
+// Express never had a PATCH route at all. The edge list returns
+// { rules, pagination }, which is what the page reads.
+//
+// The two by-relation reads (/rules/customer/:id, /rules/contract/:id) have no
+// caller; the edge list covers the same ground with ?customerId= and
+// ?contractId=.
+//
+// EVERYTHING BELOW STAYS, and is baselined rather than deleted. The anomalies,
+// disputes, generation, schedules and credit-memo sections are a real feature:
+// seven tables in shared/advanced-billing-schema.ts and ~40 storage methods
+// behind them. They are unreachable — the proxy claims /api/billing and no edge
+// counterpart exists — but no part of the frontend calls them either, so nothing
+// is broken today and nothing is served by deleting working domain logic to move
+// a counter. Wiring them up (edge handlers + a UI) is a feature story. This is
+// the case the AC reserves: say so and leave it baselined.
 
 // ==================== Meter Anomalies ====================
 

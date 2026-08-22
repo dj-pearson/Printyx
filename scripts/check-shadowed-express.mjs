@@ -17,6 +17,15 @@
  * The baseline is the backlog. It only shrinks: retire the handler, or port what
  * it does into the edge function and then retire it.
  *
+ * `retained` is the third answer, and it is deliberately separate from `allowed`.
+ * Some handlers are unreachable but are NOT dead: PROD-008a's meter-billing needs
+ * a transaction PostgREST cannot express, and the advanced-billing anomaly /
+ * dispute / credit-memo sections are a real feature (seven tables, ~40 storage
+ * methods) that simply has no UI and no edge counterpart yet. Deleting working
+ * domain logic to move a counter is not a fix. Each retained entry carries a
+ * reason, and the two counts are reported separately so "the backlog reached 0"
+ * stays a claim about the backlog rather than a claim about the tree.
+ *
  * PROD-008b: this used to match only literal '/api/...' registration paths, which
  * made every PREFIX-MOUNTED router invisible. A module mounted with
  * `app.use('/api/customer-success', router)` registers relative paths — 
@@ -192,6 +201,14 @@ if (list) {
 }
 
 if (update) {
+  const prior = existsSync(baselinePath) ? JSON.parse(readFileSync(baselinePath, 'utf8')) : {};
+  const present = new Set(findings.map(key));
+  // Drop retained entries whose handler is gone, so a retention cannot outlive
+  // the code it was granted for.
+  const retainedMap = Object.fromEntries(
+    Object.entries(prior.retained || {}).filter(([k]) => present.has(k)),
+  );
+  const backlog = [...present].filter((k) => !(k in retainedMap)).sort();
   writeFileSync(
     baselinePath,
     JSON.stringify(
@@ -203,13 +220,20 @@ if (update) {
           'only shrinks — the one exception was PROD-008b teaching the scanner to see ' +
           'prefix-mounted routers, which added 131 handlers it had never been able to match. ' +
           'That was a measurement correction, not a regression.',
-        allowed: [...new Set(findings.map(key))].sort(),
+        retainedNote:
+          'Unreachable but NOT dead: working logic with no edge counterpart and no caller, or ' +
+          'behaviour PostgREST cannot express. Each entry states why. Retained entries do not ' +
+          'count toward the backlog; adding one is a decision, not a default.',
+        retained: retainedMap,
+        allowed: backlog,
       },
       null,
       2,
     ) + '\n',
   );
-  console.log(`✓ Baseline updated: ${new Set(findings.map(key)).size} shadowed handler(s).`);
+  console.log(
+    `✓ Baseline updated: ${backlog.length} in the backlog, ${Object.keys(retainedMap).length} retained.`,
+  );
   process.exit(0);
 }
 
@@ -218,7 +242,9 @@ if (!existsSync(baselinePath)) {
   process.exit(1);
 }
 
-const allowed = new Set(JSON.parse(readFileSync(baselinePath, 'utf8')).allowed);
+const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'));
+const retained = baseline.retained || {};
+const allowed = new Set([...baseline.allowed, ...Object.keys(retained)]);
 const novel = findings.filter((f) => !allowed.has(key(f)));
 
 if (novel.length > 0) {
@@ -232,6 +258,12 @@ if (novel.length > 0) {
   process.exit(1);
 }
 
+const staleRetained = Object.keys(retained).filter((k) => !findings.some((f) => key(f) === k));
+if (staleRetained.length > 0) {
+  console.log(`ℹ ${staleRetained.length} retained entr(ies) no longer exist and can be dropped:`);
+  for (const k of staleRetained) console.log(`    ${k}`);
+}
+
 const fixed = [...allowed].filter((a) => !findings.some((f) => key(f) === a));
 if (fixed.length > 0) {
   console.log(`✓ No new shadowed handlers. ${fixed.length} baselined entr(ies) are gone:`);
@@ -239,5 +271,8 @@ if (fixed.length > 0) {
   if (fixed.length > 10) console.log(`    …and ${fixed.length - 10} more`);
   console.log('  Tighten with: node scripts/check-shadowed-express.mjs --update-baseline');
 } else {
-  console.log(`✓ No new shadowed Express handlers (${allowed.size} known).`);
+  console.log(
+  `✓ No new shadowed Express handlers (${baseline.allowed.length} in the backlog, ` +
+    `${Object.keys(retained).length} retained).`,
+);
 }
