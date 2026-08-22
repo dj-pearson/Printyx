@@ -577,6 +577,88 @@ export default async function handler(req: Request) {
     }
 
     // GET /knowledge-base/:id - Get single article (increment view count)
+    // ── POST /knowledge-base/articles/:idOrSlug/feedback ─────────────────────
+    //
+    // PROD-008b: this existed ONLY in the shadowed Express router
+    // (routes-knowledge-base.ts), so KnowledgeArticle.tsx's thumbs-up/down did
+    // nothing on either host - the proxy forwarded to this function in dev and
+    // production came here directly, and neither found a handler.
+    //
+    // The page sends { helpful: boolean } while article_feedback stores a
+    // feedback_type string, so both spellings are accepted. It also addresses
+    // the article by SLUG (its route is /knowledge-base/article/:slug), which is
+    // why this resolves id-or-slug the same way the article GET below does.
+    if (req.method === 'POST' && resource && subResource === 'feedback') {
+      const idOrSlug = resource;
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        idOrSlug,
+      );
+
+      let lookup = admin
+        .from('knowledge_articles')
+        .select('id, helpful_votes, unhelpful_votes')
+        .eq('tenant_id', tenantId);
+      lookup = isUuid ? lookup.eq('id', idOrSlug) : lookup.eq('slug', idOrSlug);
+
+      const { data: article } = await lookup.single();
+      if (!article) {
+        return createCorsResponse({ error: 'Article not found' }, 404, req);
+      }
+
+      const body = await req.json().catch(() => ({}));
+      const feedbackType =
+        typeof body.feedbackType === 'string'
+          ? body.feedbackType
+          : typeof body.feedback_type === 'string'
+            ? body.feedback_type
+            : body.helpful === true
+              ? 'helpful'
+              : body.helpful === false
+                ? 'unhelpful'
+                : null;
+
+      if (feedbackType !== 'helpful' && feedbackType !== 'unhelpful') {
+        return createCorsResponse(
+          { error: "feedback requires helpful: boolean, or feedbackType 'helpful' | 'unhelpful'" },
+          400,
+          req,
+        );
+      }
+
+      const { data: feedback, error: insertError } = await admin
+        .from('article_feedback')
+        .insert({
+          tenant_id: tenantId,
+          article_id: article.id,
+          user_id: user.id,
+          feedback_type: feedbackType,
+          rating: typeof body.rating === 'number' ? body.rating : null,
+          comment: typeof body.comment === 'string' ? body.comment : null,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error submitting article feedback:', insertError);
+        return createCorsResponse({ error: 'Failed to submit feedback' }, 500, req);
+      }
+
+      // Increment the counter the article list and detail already read. Done as
+      // a read-modify-write on the row just fetched rather than a raw SQL
+      // expression, which PostgREST cannot express; two people voting in the
+      // same instant can lose one increment. The feedback row itself is the
+      // durable record, so the counter is a cache, not the tally.
+      const column = feedbackType === 'helpful' ? 'helpful_votes' : 'unhelpful_votes';
+      const current = Number(article[column] ?? 0);
+      await admin
+        .from('knowledge_articles')
+        .update({ [column]: current + 1 })
+        .eq('id', article.id)
+        .eq('tenant_id', tenantId);
+
+      return createCorsResponse(feedback, 201, req);
+    }
+
     if (
       req.method === 'GET' &&
       resource &&

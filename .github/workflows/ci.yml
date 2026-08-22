@@ -65,6 +65,8 @@ jobs:
         run: npm run check:chained-where
       - name: Route-shadowing ratchet (static route under a :param sibling)
         run: npm run check:route-shadowing
+      - name: apiRequest argument order (hard gate at zero)
+        run: npm run check:api-request-args
       - name: Identical-fallback ratchet (AUDIT-011)
         run: npm run check:identical-fallback
       - name: Shadowed-Express ratchet (PROD-008)
