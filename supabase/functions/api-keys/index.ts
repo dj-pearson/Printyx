@@ -32,6 +32,7 @@ import { handleCors } from '../_shared/cors.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
+import { toCamelShallow } from '../_shared/case.ts';
 import { createLogger } from '../_shared/logger.ts';
 
 const log = createLogger('api-keys');
@@ -87,12 +88,12 @@ export default async function handler(req: Request) {
       const { data, error } = await db
         .from('api_keys')
         .select(
-          'id, tenant_id, name, description, key_type, key_prefix, status, is_active, expires_at, scopes, permissions, rate_limit_per_minute, rate_limit_per_hour, rate_limit_per_day, last_used_at, usage_count, environment, tags, created_by, revoked_at, created_at, updated_at',
+          'id, tenant_id, name, description, key_type, key_prefix, status, is_active, never_expires, expires_at, scopes, permissions, rate_limit_per_minute, rate_limit_per_hour, rate_limit_per_day, last_used_at, usage_count, environment, tags, created_by, revoked_at, created_at, updated_at',
         )
         .eq('tenant_id', auth.tenantId)
         .order('created_at', { ascending: false });
       if (error) return dbErr(req, requestId, 'Failed to list keys', error);
-      return jsonResponse(data ?? [], 200, req, requestId);
+      return jsonResponse((data ?? []).map(toCamelShallow), 200, req, requestId);
     }
 
     // GET /:id/stats
@@ -119,7 +120,7 @@ export default async function handler(req: Request) {
         .maybeSingle();
       if (error) return dbErr(req, requestId, 'Failed to revoke key', error);
       if (!data) return errorResponse(404, 'Key not found', req, { code: 'NOT_FOUND', requestId });
-      return jsonResponse(redact(data), 200, req, requestId);
+      return jsonResponse(toCamelShallow(redact(data)!), 200, req, requestId);
     }
 
     // POST /:id/rotate
@@ -137,7 +138,7 @@ export default async function handler(req: Request) {
         .maybeSingle();
       if (error) return dbErr(req, requestId, 'Failed to fetch key', error);
       if (!data) return errorResponse(404, 'Key not found', req, { code: 'NOT_FOUND', requestId });
-      return jsonResponse(redact(data), 200, req, requestId);
+      return jsonResponse(toCamelShallow(redact(data)!), 200, req, requestId);
     }
 
     // PATCH /:id
@@ -156,7 +157,7 @@ export default async function handler(req: Request) {
         .maybeSingle();
       if (error) return dbErr(req, requestId, 'Failed to update key', error);
       if (!data) return errorResponse(404, 'Key not found', req, { code: 'NOT_FOUND', requestId });
-      return jsonResponse(redact(data), 200, req, requestId);
+      return jsonResponse(toCamelShallow(redact(data)!), 200, req, requestId);
     }
 
     // DELETE /:id
@@ -247,7 +248,15 @@ async function createKey(req: Request, auth: any, db: any, requestId: string): P
 
   return jsonResponse(
     {
-      ...redact(data),
+      ...toCamelShallow(redact(data) ?? {}),
+      // ApiKeyManagement.tsx reads `result.rawKey || result.key`, which is what
+      // the Express service returned (GeneratedApiKey.key). This function only
+      // sent `plaintextKey`, so the dialog set null and the user never saw the
+      // key they had just created — a key you cannot read is a key that does not
+      // exist. All three names are sent; plaintextKey stays for any edge-side
+      // caller already reading it.
+      key: plaintext,
+      rawKey: plaintext,
       plaintextKey: plaintext,
       warning:
         'Save this key now — it will not be shown again. To rotate, call POST /api-keys/:id/rotate.',
@@ -331,7 +340,10 @@ async function rotateKey(
 
   return jsonResponse(
     {
-      ...redact(created),
+      ...toCamelShallow(redact(created) ?? {}),
+      // Same contract as create — see the note there.
+      key: plaintext,
+      rawKey: plaintext,
       plaintextKey: plaintext,
       rotatedFromId: id,
       graceWindowEndsAt: gracePeriodEnd,

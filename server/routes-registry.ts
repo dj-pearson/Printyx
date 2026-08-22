@@ -191,7 +191,6 @@ import { registerPortalServiceRoutes } from './routes-portal-service';
 import { registerServiceKnowledgeRoutes } from './routes-service-knowledge';
 import { registerVoiceTicketCloseRoutes } from './routes-voice-ticket-close';
 import { registerChatbotRoutes } from './routes-chatbot';
-import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
 import { logRouteDivergence } from './middleware/route-divergence-detector';
@@ -387,7 +386,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.delete('/api/user/delete', deleteUserAccount);
 
   // ─── API Key Management ──────────────────────────────────────────
-  app.use('/api/api-keys', requireAuth, apiKeyRoutes);
+  // routes/api-key-routes.ts retired (PROD-008b). All nine handlers were shadowed
+  // by the /api/api-keys proxy and supabase/functions/api-keys/ covers every one,
+  // literals ordered before /:id. services/api-key-service.ts stays — it is what
+  // middleware/api-key-auth.ts validates inbound keys with.
 
   // ─── Integrations ─────────────────────────────────────────────────
   registerIntegrationRoutes(app);
