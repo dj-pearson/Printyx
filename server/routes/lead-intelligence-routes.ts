@@ -53,6 +53,47 @@ router.get('/:leadId', isAuthenticated, async (req: Request, res: Response) => {
  * POST /api/lead-intelligence/:leadId/score
  * Calculate or recalculate lead score
  */
+// ROUTE ORDER IS LOAD-BEARING. /batch/score was registered AFTER /:leadId/score,
+// and express matches in registration order, so a batch request was served by
+// the single-lead handler with leadId set to the literal 'batch'. Gated by
+// npm run check:route-shadowing.
+/**
+ * POST /api/lead-intelligence/batch/score
+ * Batch score multiple leads
+ */
+router.post('/batch/score', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const context = getTenantContext(req);
+    if (!context) {
+      return res.status(403).json({ error: 'No tenant context found' });
+    }
+
+    const schema = z.object({
+      leadIds: z.array(z.string()).min(1).max(100),
+    });
+
+    const { leadIds } = schema.parse(req.body);
+    const result = await leadIntelligenceService.batchProcessLeads(
+      leadIds,
+      context.tenantId,
+      context.userId,
+    );
+
+    res.json(result);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid request', details: error.errors });
+    }
+    log.error('Batch score error:', error);
+    res.status(500).json({ error: 'Failed to batch score leads' });
+  }
+});
+
+/**
+ * GET /api/lead-intelligence/analytics/overview
+ * Get lead scoring analytics and dashboard data
+ */
+
 router.post('/:leadId/score', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const context = getTenantContext(req);
@@ -133,42 +174,6 @@ router.post('/:leadId/process', isAuthenticated, async (req: Request, res: Respo
   }
 });
 
-/**
- * POST /api/lead-intelligence/batch/score
- * Batch score multiple leads
- */
-router.post('/batch/score', isAuthenticated, async (req: Request, res: Response) => {
-  try {
-    const context = getTenantContext(req);
-    if (!context) {
-      return res.status(403).json({ error: 'No tenant context found' });
-    }
-
-    const schema = z.object({
-      leadIds: z.array(z.string()).min(1).max(100),
-    });
-
-    const { leadIds } = schema.parse(req.body);
-    const result = await leadIntelligenceService.batchProcessLeads(
-      leadIds,
-      context.tenantId,
-      context.userId,
-    );
-
-    res.json(result);
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Invalid request', details: error.errors });
-    }
-    log.error('Batch score error:', error);
-    res.status(500).json({ error: 'Failed to batch score leads' });
-  }
-});
-
-/**
- * GET /api/lead-intelligence/analytics/overview
- * Get lead scoring analytics and dashboard data
- */
 router.get('/analytics/overview', isAuthenticated, async (req: Request, res: Response) => {
   try {
     const context = getTenantContext(req);

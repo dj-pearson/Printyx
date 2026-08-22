@@ -345,6 +345,26 @@ router.post(
   },
 );
 
+// ROUTE ORDER IS LOAD-BEARING. /consent/subject/:id/summary sat BELOW
+// /consent/subject/:type/:id, and both are four segments with two params, so
+// express matched the earlier one first: a request for .../summary was served as
+// a subject lookup with type = the id and id = 'summary'. Two :param routes of
+// the same arity are ordered by registration, so the more specific one - the one
+// with a static tail - has to come first. Gated by npm run check:route-shadowing.
+/**
+ * Get consent summary for a subject
+ */
+router.get('/consent/subject/:id/summary', async (req: TenantRequest, res: Response) => {
+  try {
+    const summary = await consentManagementService.getConsentSummary(req.tenantId!, req.params.id);
+
+    res.json({ summary });
+  } catch (error) {
+    log.error('Error fetching consent summary:', error);
+    res.status(500).json({ message: 'Failed to fetch consent summary' });
+  }
+});
+
 /**
  * Get consents for a subject
  */
@@ -360,20 +380,6 @@ router.get('/consent/subject/:type/:id', async (req: TenantRequest, res: Respons
   } catch (error) {
     log.error('Error fetching subject consents:', error);
     res.status(500).json({ message: 'Failed to fetch subject consents' });
-  }
-});
-
-/**
- * Get consent summary for a subject
- */
-router.get('/consent/subject/:id/summary', async (req: TenantRequest, res: Response) => {
-  try {
-    const summary = await consentManagementService.getConsentSummary(req.tenantId!, req.params.id);
-
-    res.json({ summary });
-  } catch (error) {
-    log.error('Error fetching consent summary:', error);
-    res.status(500).json({ message: 'Failed to fetch consent summary' });
   }
 });
 
@@ -554,6 +560,31 @@ router.get(
     }
   },
 );
+
+// ROUTE ORDER IS LOAD-BEARING. /dpa/stats was registered after /dpa/:id, so
+// express served it from the :id handler with id = 'stats'. Any new static
+// /dpa/<word> route must go above this block. Gated by
+// npm run check:route-shadowing.
+/**
+ * Get DPA statistics
+ */
+router.get(
+  '/dpa/stats',
+  requireRole(['admin', 'compliance_officer', 'legal', 'manager']),
+  async (req: TenantRequest, res: Response) => {
+    try {
+      const stats = await dpaManagementService.getStats(req.tenantId!);
+      res.json(stats);
+    } catch (error) {
+      log.error('Error fetching DPA stats:', error);
+      res.status(500).json({ message: 'Failed to fetch DPA statistics' });
+    }
+  },
+);
+
+// ============================================================================
+// CONTACT DEDUPLICATION ENDPOINTS
+// ============================================================================
 
 /**
  * Get DPA by ID
@@ -872,27 +903,6 @@ router.get(
     }
   },
 );
-
-/**
- * Get DPA statistics
- */
-router.get(
-  '/dpa/stats',
-  requireRole(['admin', 'compliance_officer', 'legal', 'manager']),
-  async (req: TenantRequest, res: Response) => {
-    try {
-      const stats = await dpaManagementService.getStats(req.tenantId!);
-      res.json(stats);
-    } catch (error) {
-      log.error('Error fetching DPA stats:', error);
-      res.status(500).json({ message: 'Failed to fetch DPA statistics' });
-    }
-  },
-);
-
-// ============================================================================
-// CONTACT DEDUPLICATION ENDPOINTS
-// ============================================================================
 
 /**
  * Create duplicate detection rule

@@ -66,6 +66,129 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   });
 
   // Get integration by ID
+  // ROUTE ORDER IS LOAD-BEARING. /audit-logs and /stats were registered AFTER
+  // /api/manufacturer-integrations/:id, and express matches in registration
+  // order, so both were served by the :id handler with id set to the literal
+  // word - ManufacturerIntegrationAudit.tsx and ManufacturerIntegration.tsx were
+  // calling endpoints that could only 404. Gated by npm run check:route-shadowing.
+  // Get audit logs
+  app.get('/api/manufacturer-integrations/audit-logs', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { integrationId, deviceId, action, status, days = 7 } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - parseInt(days as string));
+
+      let whereConditions = [
+        eq(integrationAuditLogs.tenantId, tenantId),
+        gte(integrationAuditLogs.timestamp, startDate),
+      ];
+
+      if (integrationId) {
+        whereConditions.push(eq(integrationAuditLogs.integrationId, integrationId as string));
+      }
+      if (deviceId) {
+        whereConditions.push(eq(integrationAuditLogs.deviceId, deviceId as string));
+      }
+      if (action) {
+        whereConditions.push(eq(integrationAuditLogs.action, action as string));
+      }
+      if (status) {
+        whereConditions.push(eq(integrationAuditLogs.status, status as string));
+      }
+
+      const logs = await db
+        .select({
+          log: integrationAuditLogs,
+          integration: manufacturerIntegrations,
+          device: deviceRegistrations,
+        })
+        .from(integrationAuditLogs)
+        .leftJoin(
+          manufacturerIntegrations,
+          eq(integrationAuditLogs.integrationId, manufacturerIntegrations.id),
+        )
+        .leftJoin(deviceRegistrations, eq(integrationAuditLogs.deviceId, deviceRegistrations.id))
+        .where(and(...whereConditions))
+        .orderBy(desc(integrationAuditLogs.timestamp))
+        .limit(100);
+
+      res.json(logs);
+    } catch (error) {
+      log.error('Error fetching audit logs:', error);
+      res.status(500).json({ message: 'Failed to fetch audit logs' });
+    }
+  });
+
+  // Get integration statistics
+  app.get('/api/manufacturer-integrations/stats', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const [totalIntegrations, activeIntegrations, totalDevices, onlineDevices, todayMetrics] =
+        await Promise.all([
+          db
+            .select({ count: sql`count(*)` })
+            .from(manufacturerIntegrations)
+            .where(eq(manufacturerIntegrations.tenantId, tenantId)),
+
+          db
+            .select({ count: sql`count(*)` })
+            .from(manufacturerIntegrations)
+            .where(
+              and(
+                eq(manufacturerIntegrations.tenantId, tenantId),
+                eq(manufacturerIntegrations.status, 'active'),
+              ),
+            ),
+
+          db
+            .select({ count: sql`count(*)` })
+            .from(deviceRegistrations)
+            .where(eq(deviceRegistrations.tenantId, tenantId)),
+
+          db
+            .select({ count: sql`count(*)` })
+            .from(deviceRegistrations)
+            .where(
+              and(
+                eq(deviceRegistrations.tenantId, tenantId),
+                eq(deviceRegistrations.status, 'online'),
+              ),
+            ),
+
+          db
+            .select({ count: sql`count(*)` })
+            .from(deviceMetrics)
+            .where(
+              and(
+                eq(deviceMetrics.tenantId, tenantId),
+                gte(deviceMetrics.collectionTimestamp, new Date(Date.now() - 24 * 60 * 60 * 1000)),
+              ),
+            ),
+        ]);
+
+      res.json({
+        totalIntegrations: Number(totalIntegrations[0]?.count || 0),
+        activeIntegrations: Number(activeIntegrations[0]?.count || 0),
+        totalDevices: Number(totalDevices[0]?.count || 0),
+        onlineDevices: Number(onlineDevices[0]?.count || 0),
+        todayMetrics: Number(todayMetrics[0]?.count || 0),
+      });
+    } catch (error) {
+      log.error('Error fetching integration stats:', error);
+      res.status(500).json({ message: 'Failed to fetch integration statistics' });
+    }
+  });
+
   app.get('/api/manufacturer-integrations/:id', async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId || req.tenantId;
@@ -301,124 +424,6 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
     } catch (error) {
       log.error('Error fetching device metrics:', error);
       res.status(500).json({ message: 'Failed to fetch device metrics' });
-    }
-  });
-
-  // Get audit logs
-  app.get('/api/manufacturer-integrations/audit-logs', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || req.tenantId;
-      const { integrationId, deviceId, action, status, days = 7 } = req.query;
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - parseInt(days as string));
-
-      let whereConditions = [
-        eq(integrationAuditLogs.tenantId, tenantId),
-        gte(integrationAuditLogs.timestamp, startDate),
-      ];
-
-      if (integrationId) {
-        whereConditions.push(eq(integrationAuditLogs.integrationId, integrationId as string));
-      }
-      if (deviceId) {
-        whereConditions.push(eq(integrationAuditLogs.deviceId, deviceId as string));
-      }
-      if (action) {
-        whereConditions.push(eq(integrationAuditLogs.action, action as string));
-      }
-      if (status) {
-        whereConditions.push(eq(integrationAuditLogs.status, status as string));
-      }
-
-      const logs = await db
-        .select({
-          log: integrationAuditLogs,
-          integration: manufacturerIntegrations,
-          device: deviceRegistrations,
-        })
-        .from(integrationAuditLogs)
-        .leftJoin(
-          manufacturerIntegrations,
-          eq(integrationAuditLogs.integrationId, manufacturerIntegrations.id),
-        )
-        .leftJoin(deviceRegistrations, eq(integrationAuditLogs.deviceId, deviceRegistrations.id))
-        .where(and(...whereConditions))
-        .orderBy(desc(integrationAuditLogs.timestamp))
-        .limit(100);
-
-      res.json(logs);
-    } catch (error) {
-      log.error('Error fetching audit logs:', error);
-      res.status(500).json({ message: 'Failed to fetch audit logs' });
-    }
-  });
-
-  // Get integration statistics
-  app.get('/api/manufacturer-integrations/stats', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || req.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const [totalIntegrations, activeIntegrations, totalDevices, onlineDevices, todayMetrics] =
-        await Promise.all([
-          db
-            .select({ count: sql`count(*)` })
-            .from(manufacturerIntegrations)
-            .where(eq(manufacturerIntegrations.tenantId, tenantId)),
-
-          db
-            .select({ count: sql`count(*)` })
-            .from(manufacturerIntegrations)
-            .where(
-              and(
-                eq(manufacturerIntegrations.tenantId, tenantId),
-                eq(manufacturerIntegrations.status, 'active'),
-              ),
-            ),
-
-          db
-            .select({ count: sql`count(*)` })
-            .from(deviceRegistrations)
-            .where(eq(deviceRegistrations.tenantId, tenantId)),
-
-          db
-            .select({ count: sql`count(*)` })
-            .from(deviceRegistrations)
-            .where(
-              and(
-                eq(deviceRegistrations.tenantId, tenantId),
-                eq(deviceRegistrations.status, 'online'),
-              ),
-            ),
-
-          db
-            .select({ count: sql`count(*)` })
-            .from(deviceMetrics)
-            .where(
-              and(
-                eq(deviceMetrics.tenantId, tenantId),
-                gte(deviceMetrics.collectionTimestamp, new Date(Date.now() - 24 * 60 * 60 * 1000)),
-              ),
-            ),
-        ]);
-
-      res.json({
-        totalIntegrations: Number(totalIntegrations[0]?.count || 0),
-        activeIntegrations: Number(activeIntegrations[0]?.count || 0),
-        totalDevices: Number(totalDevices[0]?.count || 0),
-        onlineDevices: Number(onlineDevices[0]?.count || 0),
-        todayMetrics: Number(todayMetrics[0]?.count || 0),
-      });
-    } catch (error) {
-      log.error('Error fetching integration stats:', error);
-      res.status(500).json({ message: 'Failed to fetch integration statistics' });
     }
   });
 }

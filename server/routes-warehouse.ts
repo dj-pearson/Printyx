@@ -112,6 +112,40 @@ export function registerWarehouseRoutes(app: Express) {
     }),
   );
 
+  // ROUTE ORDER IS LOAD-BEARING. /stats was registered AFTER
+  // /api/warehouse-operations/:id, so express served it from the :id handler
+  // with id = 'stats' and WarehouseOperations.tsx could only ever get a 404.
+  // Gated by npm run check:route-shadowing.
+  // Warehouse statistics
+  app.get('/api/warehouse-operations/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+      const operations = await storage.getWarehouseOperations(tenantId);
+
+      const stats = {
+        totalOperations: operations.length,
+        pendingOperations: operations.filter((op) => op.status === 'pending').length,
+        inProgressOperations: operations.filter((op) => op.status === 'in_progress').length,
+        completedOperations: operations.filter((op) => op.status === 'completed').length,
+        failedOperations: operations.filter((op) => op.status === 'failed').length,
+        operationsByType: {
+          receiving: operations.filter((op) => op.operationType === 'receiving').length,
+          quality_control: operations.filter((op) => op.operationType === 'quality_control').length,
+          staging: operations.filter((op) => op.operationType === 'staging').length,
+          shipping: operations.filter((op) => op.operationType === 'shipping').length,
+          build: operations.filter((op) => op.operationType === 'build').length,
+        },
+      };
+
+      res.json(stats);
+    } catch (error) {
+      log.error('Error fetching warehouse statistics:', error);
+      res.status(500).json({ error: 'Failed to fetch warehouse statistics' });
+    }
+  });
+
+  // Serial Number Management
+
   app.get('/api/warehouse-operations/:id', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
@@ -219,35 +253,6 @@ export function registerWarehouseRoutes(app: Express) {
     }
   });
 
-  // Warehouse statistics
-  app.get('/api/warehouse-operations/stats', isAuthenticated, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
-      const operations = await storage.getWarehouseOperations(tenantId);
-
-      const stats = {
-        totalOperations: operations.length,
-        pendingOperations: operations.filter((op) => op.status === 'pending').length,
-        inProgressOperations: operations.filter((op) => op.status === 'in_progress').length,
-        completedOperations: operations.filter((op) => op.status === 'completed').length,
-        failedOperations: operations.filter((op) => op.status === 'failed').length,
-        operationsByType: {
-          receiving: operations.filter((op) => op.operationType === 'receiving').length,
-          quality_control: operations.filter((op) => op.operationType === 'quality_control').length,
-          staging: operations.filter((op) => op.operationType === 'staging').length,
-          shipping: operations.filter((op) => op.operationType === 'shipping').length,
-          build: operations.filter((op) => op.operationType === 'build').length,
-        },
-      };
-
-      res.json(stats);
-    } catch (error) {
-      log.error('Error fetching warehouse statistics:', error);
-      res.status(500).json({ error: 'Failed to fetch warehouse statistics' });
-    }
-  });
-
-  // Serial Number Management
   app.get('/api/serial-numbers', isAuthenticated, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;

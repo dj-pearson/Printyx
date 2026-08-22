@@ -120,6 +120,29 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
   }
 });
 
+// THE FIVE PROVIDER-SPECIFIC HANDLERS BELOW ARE SHADOWED, DELIBERATELY LEFT SO,
+// and baselined in docs/route-shadowing-baseline.json rather than reordered.
+//
+// /api/webhooks/:provider above is registered first, and express matches in
+// registration order, so none of salesforce / stripe / microsoft-calendar /
+// google-calendar / quickbooks ever runs. That is not a security hole: the
+// generic handler calls the SAME WebhookService.processWebhook, which verifies
+// the provider's HMAC signature (webhook-service.ts:50) before dispatching on
+// the provider name. The specific handlers are redundant with it.
+//
+// Moving them above :provider would make things WORSE, not better. Two of them -
+// microsoft-calendar and google-calendar - parse with express.json() rather than
+// the rawBodyParser, so req.body is a parsed object and the raw bytes the HMAC
+// is computed over are gone (see the PA-018 note on processWebhook). Activating
+// them would turn working calendar webhooks into signature failures.
+//
+// The whole file is also unreachable today: /api/webhooks is in crmProxies, so
+// the proxy serves the prefix in dev and production hits the edge function
+// directly. That is INTEG-WEBHOOK-001's subject. Whoever un-shadows this file
+// has to resolve the duplication here at the same time - either delete these
+// five and keep the generic dispatcher, or fix their body parsing and register
+// them first. Do not simply reorder.
+
 /**
  * Salesforce-specific webhook endpoint
  */
