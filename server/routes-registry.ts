@@ -190,7 +190,6 @@ import {
 
 // ─── Non-domain imports ──────────────────────────────────���──────────────
 import { registerHealthRoutes } from './routes/health-routes';
-import { registerQbrRoutes } from './routes-qbr';
 import { registerDealDeskCopilotRoutes } from './routes-deal-desk-copilot';
 import { registerDailyBriefingRoutes } from './routes-daily-briefing';
 import { registerPortalServiceRoutes } from './routes-portal-service';
@@ -626,7 +625,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerLeadMapRoutes(app);
   registerAutoLeadRoutingRoutes(app);
   registerPredictiveServiceDispatchRoutes(app);
-  registerQbrRoutes(app);
   registerDealDeskCopilotRoutes(app);
   registerDailyBriefingRoutes(app);
   registerPortalServiceRoutes(app);
