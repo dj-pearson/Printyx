@@ -161,14 +161,14 @@ import {
   type InsertServicePhoto,
   type InsertLocationHistory,
   // Onboarding schemas
-  onboardingChecklists,
   onboardingEquipment,
   onboardingNetworkConfig,
   onboardingPrintManagement,
   onboardingDynamicSections,
   onboardingTasks,
-  type OnboardingChecklist,
-  type InsertOnboardingChecklist,
+  equipmentOnboardingChecklists,
+  type EquipmentOnboardingChecklist,
+  type InsertEquipmentOnboardingChecklist,
   type OnboardingEquipment,
   type InsertOnboardingEquipment,
   type OnboardingNetworkConfig,
@@ -834,14 +834,19 @@ export interface IStorage {
   ): Promise<any | undefined>;
 
   // Onboarding operations
-  getOnboardingChecklists(tenantId: string): Promise<OnboardingChecklist[]>;
-  getOnboardingChecklist(id: string, tenantId: string): Promise<OnboardingChecklist | undefined>;
-  createOnboardingChecklist(checklist: InsertOnboardingChecklist): Promise<OnboardingChecklist>;
+  getOnboardingChecklists(tenantId: string): Promise<EquipmentOnboardingChecklist[]>;
+  getOnboardingChecklist(
+    id: string,
+    tenantId: string,
+  ): Promise<EquipmentOnboardingChecklist | undefined>;
+  createOnboardingChecklist(
+    checklist: InsertEquipmentOnboardingChecklist,
+  ): Promise<EquipmentOnboardingChecklist>;
   updateOnboardingChecklist(
     id: string,
     tenantId: string,
-    checklist: Partial<OnboardingChecklist>,
-  ): Promise<OnboardingChecklist | undefined>;
+    checklist: Partial<EquipmentOnboardingChecklist>,
+  ): Promise<EquipmentOnboardingChecklist | undefined>;
   deleteOnboardingChecklist(id: string, tenantId: string): Promise<void>;
 
   getOnboardingEquipment(checklistId: string, tenantId: string): Promise<OnboardingEquipment[]>;
@@ -5254,50 +5259,86 @@ export class DatabaseStorage implements IStorage {
     return newLocation;
   }
 
-  // Onboarding operations
-  async getOnboardingChecklists(tenantId: string): Promise<OnboardingChecklist[]> {
+  // Onboarding operations.
+  //
+  // There are TWO onboarding checklist tables and they are unrelated:
+  //   equipment_onboarding_checklists (shared/schema.ts) — the installation
+  //     checklist, with checklistTitle / installationType / customerData /
+  //     siteInformation / scheduledInstallDate, and the one that
+  //     onboarding_equipment / _network_config / _print_management /
+  //     _dynamic_sections / _tasks all carry a checklistId into.
+  //   onboarding_checklists (shared/user-lifecycle-schema.ts) — a NEW-USER
+  //     checklist, keyed on userId with a jsonb `items` array. Owned by
+  //     services/user-lifecycle-service.ts, which is the only thing that should
+  //     touch it.
+  //
+  // Both export a type called OnboardingChecklist, and shared/schema.ts re-exports
+  // the user-lifecycle one, so the name resolved to the wrong table here: these
+  // methods wrote the equipment checklist into the user-lifecycle table, whose
+  // userId / items / totalItems are all NOT NULL and were never supplied. POST
+  // /api/onboarding/checklists could not succeed, and the sibling equipment rows
+  // pointed at ids that were never in the table they FK into.
+  async getOnboardingChecklists(tenantId: string): Promise<EquipmentOnboardingChecklist[]> {
     return await db
       .select()
-      .from(onboardingChecklists)
-      .where(eq(onboardingChecklists.tenantId, tenantId))
-      .orderBy(desc(onboardingChecklists.createdAt));
+      .from(equipmentOnboardingChecklists)
+      .where(eq(equipmentOnboardingChecklists.tenantId, tenantId))
+      .orderBy(desc(equipmentOnboardingChecklists.createdAt));
   }
 
   async getOnboardingChecklist(
     id: string,
     tenantId: string,
-  ): Promise<OnboardingChecklist | undefined> {
+  ): Promise<EquipmentOnboardingChecklist | undefined> {
     const [checklist] = await db
       .select()
-      .from(onboardingChecklists)
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)));
+      .from(equipmentOnboardingChecklists)
+      .where(
+        and(
+          eq(equipmentOnboardingChecklists.id, id),
+          eq(equipmentOnboardingChecklists.tenantId, tenantId),
+        ),
+      );
     return checklist;
   }
 
   async createOnboardingChecklist(
-    checklist: InsertOnboardingChecklist,
-  ): Promise<OnboardingChecklist> {
-    const [newChecklist] = await db.insert(onboardingChecklists).values(checklist).returning();
+    checklist: InsertEquipmentOnboardingChecklist,
+  ): Promise<EquipmentOnboardingChecklist> {
+    const [newChecklist] = await db
+      .insert(equipmentOnboardingChecklists)
+      .values(checklist)
+      .returning();
     return newChecklist;
   }
 
   async updateOnboardingChecklist(
     id: string,
     tenantId: string,
-    checklist: Partial<OnboardingChecklist>,
-  ): Promise<OnboardingChecklist | undefined> {
+    checklist: Partial<EquipmentOnboardingChecklist>,
+  ): Promise<EquipmentOnboardingChecklist | undefined> {
     const [updatedChecklist] = await db
-      .update(onboardingChecklists)
+      .update(equipmentOnboardingChecklists)
       .set({ ...checklist, updatedAt: new Date() })
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)))
+      .where(
+        and(
+          eq(equipmentOnboardingChecklists.id, id),
+          eq(equipmentOnboardingChecklists.tenantId, tenantId),
+        ),
+      )
       .returning();
     return updatedChecklist;
   }
 
   async deleteOnboardingChecklist(id: string, tenantId: string): Promise<void> {
     await db
-      .delete(onboardingChecklists)
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)));
+      .delete(equipmentOnboardingChecklists)
+      .where(
+        and(
+          eq(equipmentOnboardingChecklists.id, id),
+          eq(equipmentOnboardingChecklists.tenantId, tenantId),
+        ),
+      );
   }
 
   async getOnboardingEquipment(

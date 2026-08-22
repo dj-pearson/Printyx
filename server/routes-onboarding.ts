@@ -9,13 +9,16 @@ const log = createModuleLogger('routes-onboarding');
 const getRequestTenantId = getTenantId;
 
 import {
-  insertOnboardingChecklistSchema,
+  // The equipment installation checklist, NOT the user-lifecycle
+  // onboarding_checklists table that shares the shorter export name — see the
+  // note on storage.getOnboardingChecklists.
+  insertEquipmentOnboardingChecklistSchema,
   insertOnboardingEquipmentSchema,
   insertOnboardingNetworkConfigSchema,
   insertOnboardingPrintManagementSchema,
   insertOnboardingDynamicSectionSchema,
   insertOnboardingTaskSchema,
-  type OnboardingChecklist,
+  type EquipmentOnboardingChecklist,
   type OnboardingEquipment,
   type OnboardingNetworkConfig,
   type OnboardingPrintManagement,
@@ -33,7 +36,7 @@ import puppeteer from 'puppeteer';
 // PDF Generation Service
 class OnboardingPDFService {
   private async generateChecklistHTML(
-    checklist: OnboardingChecklist,
+    checklist: EquipmentOnboardingChecklist,
     equipment: OnboardingEquipment[],
     networkConfigs: OnboardingNetworkConfig[],
     printConfigs: OnboardingPrintManagement[],
@@ -233,7 +236,7 @@ class OnboardingPDFService {
         <div class="field-group">
           <div class="field-label">Progress:</div>
           <div class="field-value">${
-            checklist.progressPercent || 0
+            checklist.progressPercentage || 0
           }% Complete (${checklist.completedSections || 0}/${
             checklist.totalSections || 0
           } sections)</div>
@@ -244,7 +247,9 @@ class OnboardingPDFService {
         </div>
         <div class="field-group">
           <div class="field-label">Created Date:</div>
-          <div class="field-value">${new Date(checklist.createdAt).toLocaleDateString()}</div>
+          <div class="field-value">${
+            checklist.createdAt ? new Date(checklist.createdAt).toLocaleDateString() : 'Unknown'
+          }</div>
         </div>
         ${
           checklist.actualInstallDate
@@ -380,8 +385,6 @@ class OnboardingPDFService {
 // PROD-008b retired that registration (proxied to the edge function), and it
 // had no other caller.
 
-
-
 // getCompanyContacts served GET /api/companies/:id/contacts here. PROD-008b
 // retired that registration (proxied to the edge function); it had no other
 // caller.
@@ -477,7 +480,7 @@ export function registerOnboardingRoutes(app: Express): void {
 
       log.debug('Onboarding checklist update', { fields: Object.keys(req.body || {}) });
 
-      const validatedData = insertOnboardingChecklistSchema.parse({
+      const validatedData = insertEquipmentOnboardingChecklistSchema.parse({
         ...req.body,
         tenantId,
         createdBy: userId,
