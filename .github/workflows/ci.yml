@@ -59,6 +59,8 @@ jobs:
         run: npm run check:dup-tables
       - name: Phantom PostgREST column ratchet (COP-M01)
         run: npm run check:phantom-cols
+      - name: Phantom PostgREST table ratchet (PROD-008b)
+        run: npm run check:phantom-tables
       - name: Identical-fallback ratchet (AUDIT-011)
         run: npm run check:identical-fallback
       - name: Shadowed-Express ratchet (PROD-008)
