@@ -28,7 +28,7 @@
  *
  * PROD-008b: this used to match only literal '/api/...' registration paths, which
  * made every PREFIX-MOUNTED router invisible. A module mounted with
- * `app.use('/api/customer-success', router)` registers relative paths — 
+ * `app.use('/api/customer-success', router)` registers relative paths —
  * `router.get('/health-scores')` — so none of its handlers matched, and the gate
  * would have reported 0 with 131 shadowed handlers still live (48 in
  * routes/advanced-billing-routes.ts, 44 in routes/customer-success-routes.ts,
@@ -105,7 +105,9 @@ prefixes.sort((a, b) => b.length - a.length);
 const findings = [];
 for (const file of walk(join(repo, 'server'))) {
   const src = stripComments(readFileSync(file, 'utf8'));
-  for (const m of src.matchAll(/(?:app|router)\.(get|post|put|patch|delete)\(\s*'(\/api\/[^']+)'/g)) {
+  for (const m of src.matchAll(
+    /(?:app|router)\.(get|post|put|patch|delete)\(\s*'(\/api\/[^']+)'/g,
+  )) {
     const path = m[2];
     const prefix = prefixes.find((p) => path === p || path.startsWith(p + '/'));
     if (!prefix) continue;
@@ -149,7 +151,7 @@ function prefixMountedFindings() {
   // app.use('/api/x', router) and app.use('/api/x', middleware, router)
   for (const m of registry.matchAll(/app\.use\(\s*'(\/api[^']*)'\s*,\s*([^)]+)\)/g)) {
     const ident = m[2].split(',').pop().trim().split('.')[0];
-    if (importedFrom[ident]) mounts.push({ prefix: m[1], spec: importedFrom[ident] });
+    if (importedFrom[ident]) mounts.push({ prefix: m[1], spec: importedFrom[ident], ident });
   }
   // [ '/api/x', './module' ] tuples (asyncApiMounts and friends)
   for (const m of registry.matchAll(/\[\s*'(\/api\/[^']+)'\s*,\s*'(\.[^']+)'\s*\]/g)) {
@@ -160,10 +162,44 @@ function prefixMountedFindings() {
     mounts.push({ prefix: '/api', spec: m[1] });
   }
 
-  const resolveModule = (spec) => {
-    const base = join(repo, 'server', spec.replace(/^\.\//, ''));
+  const resolveModule = (spec, fromDir = 'server') => {
+    const base = join(repo, fromDir, spec.replace(/^\.\//, '').replace(/^\.\.\//, '../'));
     for (const candidate of [base + '.ts', join(base, 'index.ts')]) {
       if (existsSync(candidate)) return candidate;
+    }
+    return null;
+  };
+
+  /**
+   * Follow a BARREL re-export one level.
+   *
+   * routes-registry.ts imports most routers from ./domains/<area>, which is a
+   * file of `export { default as fooRoutes } from '../routes/foo'` lines. The
+   * first version of this pass resolved the mount to domains/billing.ts, found
+   * no router.get() calls in it (it is all re-exports) and reported nothing - so
+   * every router mounted through a domains barrel was invisible to this gate.
+   * That is the same class of miss as the prefix-mount gap fixed earlier, which
+   * had hidden 131 handlers.
+   *
+   * Returns the real module path for `ident`, or null when the file is not a
+   * barrel for that name.
+   */
+  const followBarrel = (barrelFile, ident) => {
+    const src = stripComments(readFileSync(barrelFile, 'utf8'));
+    const barrelDir = relative(repo, barrelFile)
+      .replace(/\\/g, '/')
+      .replace(/\/[^/]+$/, '');
+    for (const m of src.matchAll(/export\s*\{([^}]+)\}\s*from\s*'([^']+)'/g)) {
+      const names = m[1].split(',').map((n) => n.trim());
+      const hit = names.some((n) => {
+        const aliased = n.match(/(\w+)\s+as\s+(\w+)/);
+        return aliased ? aliased[2] === ident : n === ident;
+      });
+      if (!hit) continue;
+      const spec = m[2];
+      const dir = spec.startsWith('../') ? barrelDir.replace(/\/[^/]+$/, '') : barrelDir;
+      const resolved = resolveModule(spec.replace(/^\.\.\//, './'), dir);
+      if (resolved) return resolved;
     }
     return null;
   };
@@ -172,8 +208,12 @@ function prefixMountedFindings() {
   const seen = new Set();
   for (const mount of mounts) {
     if (!mount.spec.startsWith('.')) continue;
-    const file = resolveModule(mount.spec);
+    let file = resolveModule(mount.spec);
     if (!file) continue; // a mount whose module is gone is its own problem
+    if (mount.ident) {
+      const behindBarrel = followBarrel(file, mount.ident);
+      if (behindBarrel) file = behindBarrel;
+    }
     const src = stripComments(readFileSync(file, 'utf8'));
     for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*'([^']*)'/g)) {
       const rel = m[2];
@@ -294,7 +334,7 @@ if (fixed.length > 0) {
   console.log('  Tighten with: node scripts/check-shadowed-express.mjs --update-baseline');
 } else {
   console.log(
-  `✓ No new shadowed Express handlers (${baseline.allowed.length} in the backlog, ` +
-    `${Object.keys(retained).length} retained).`,
-);
+    `✓ No new shadowed Express handlers (${baseline.allowed.length} in the backlog, ` +
+      `${Object.keys(retained).length} retained).`,
+  );
 }
