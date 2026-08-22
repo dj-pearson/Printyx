@@ -1713,151 +1713,15 @@ export function registerOperationsExtendedRoutes(app: Express) {
   });
 
   // Phone-in tickets POST endpoint - Now properly saves to database
-  app.post('/api/phone-in-tickets', async (req, res) => {
-    try {
-      const tenantId = req.headers['x-tenant-id'] as string;
-
-      log.info('Phone-in ticket request body:', req.body);
-
-      // Map request fields to database schema
-      const phoneTicketData = {
-        tenant_id: tenantId,
-        caller_name: req.body.callerName || 'Unknown',
-        caller_phone: req.body.callerPhone || '',
-        caller_email: req.body.callerEmail || '',
-        caller_role: req.body.callerRole || '',
-        customer_id: req.body.customerId || req.body.companyId || '',
-        customer_name: req.body.companyName || 'Unknown Company',
-        location_address: req.body.locationAddress || '',
-        location_building: req.body.locationBuilding || '',
-        location_floor: req.body.locationFloor || '',
-        location_room: req.body.locationRoom || '',
-        equipment_id: req.body.equipmentId || '',
-        equipment_brand: req.body.equipmentBrand || '',
-        equipment_model: req.body.equipmentModel || '',
-        equipment_serial: req.body.equipmentSerial || '',
-        issue_category: req.body.issueCategory || 'other',
-        issue_description: req.body.issueDescription || 'No description provided',
-        priority: req.body.priority || 'medium',
-        contact_method: 'phone',
-        preferred_service_date: req.body.preferredServiceDate || null,
-        notes: req.body.notes || '',
-      };
-
-      log.info('Creating phone-in ticket:', phoneTicketData);
-
-      // Use direct SQL execution instead of ORM
-      const result = await db.execute(sql`
-        INSERT INTO phone_in_tickets (
-          tenant_id, caller_name, caller_phone, caller_email, caller_role,
-          customer_id, customer_name, location_address, location_building,
-          location_floor, location_room, equipment_id, equipment_brand,
-          equipment_model, equipment_serial, issue_category, issue_description,
-          priority, contact_method, preferred_service_date, notes
-        ) VALUES (
-          ${phoneTicketData.tenant_id}, ${phoneTicketData.caller_name}, ${phoneTicketData.caller_phone},
-          ${phoneTicketData.caller_email}, ${phoneTicketData.caller_role}, ${phoneTicketData.customer_id},
-          ${phoneTicketData.customer_name}, ${phoneTicketData.location_address}, ${phoneTicketData.location_building},
-          ${phoneTicketData.location_floor}, ${phoneTicketData.location_room}, ${phoneTicketData.equipment_id},
-          ${phoneTicketData.equipment_brand}, ${phoneTicketData.equipment_model}, ${phoneTicketData.equipment_serial},
-          ${phoneTicketData.issue_category}, ${phoneTicketData.issue_description}, ${phoneTicketData.priority},
-          ${phoneTicketData.contact_method}, ${phoneTicketData.preferred_service_date}, ${phoneTicketData.notes}
-        ) RETURNING *
-      `);
-
-      const createdTicket = result.rows[0];
-      log.info('Phone-in ticket created successfully:', createdTicket);
-      res.json({ success: true, ticket: createdTicket });
-    } catch (error: any) {
-      log.error('Error creating phone-in ticket:', error);
-      res.status(500).json({
-        error: 'Failed to create phone-in ticket',
-        details: error?.message,
-      });
-    }
-  });
+  // GET, POST /api/phone-in-tickets and POST /:id/convert were removed here
+  // (PROD-008b). /api/phone-in-tickets is proxied to
+  // supabase/functions/phone-in-tickets/, which serves all three plus the
+  // search-companies / search-contacts / equipment lookups PhoneInTicketCreator.tsx
+  // calls. Its POST returns { phoneTicket, serviceTicket }, which is exactly what
+  // the component reads. The GET had no reader — the component only invalidates
+  // that query key.
 
   // Phone-in tickets GET endpoint
-  app.get('/api/phone-in-tickets', async (req, res) => {
-    try {
-      const tenantId = req.headers['x-tenant-id'] as string;
-
-      const result = await db.execute(sql`
-        SELECT * FROM phone_in_tickets
-        WHERE tenant_id = ${tenantId}
-        ORDER BY created_at DESC
-        LIMIT 50
-      `);
-
-      res.json(result.rows);
-    } catch (error: any) {
-      log.error('Error fetching phone-in tickets:', error);
-      res.status(500).json({
-        error: 'Failed to fetch phone-in tickets',
-        details: error?.message,
-      });
-    }
-  });
 
   // Phone-in ticket conversion endpoint
-  app.post('/api/phone-in-tickets/:id/convert', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
-
-      // Get the phone-in ticket
-      const phoneTicketResult = await db.execute(sql`
-        SELECT * FROM phone_in_tickets
-        WHERE id = ${id} AND tenant_id = ${tenantId}
-      `);
-
-      if (phoneTicketResult.rows.length === 0) {
-        return res.status(404).json({ error: 'Phone-in ticket not found' });
-      }
-
-      const phoneTicket = phoneTicketResult.rows[0];
-
-      // Check if already converted
-      if (phoneTicket.converted_to_ticket_id) {
-        return res.status(400).json({ error: 'Ticket already converted' });
-      }
-
-      // Create service ticket from phone-in ticket
-      const serviceTicketResult = await db.execute(sql`
-        INSERT INTO service_tickets (
-          tenant_id, customer_id, title, description, priority, status,
-          equipment_id, customer_address, customer_phone
-        ) VALUES (
-          ${phoneTicket.tenantId}, ${phoneTicket.customerId},
-          ${'Service Call: ' + (phoneTicket.customer_name || 'Unknown Customer')},
-          ${phoneTicket.issue_description || 'No description provided'},
-          ${phoneTicket.priority || 'medium'}, 'new',
-          ${phoneTicket.equipmentId}, ${phoneTicket.location_address},
-          ${phoneTicket.caller_phone}
-        ) RETURNING *
-      `);
-
-      const serviceTicket = serviceTicketResult.rows[0];
-
-      // Mark phone-in ticket as converted
-      await db.execute(sql`
-        UPDATE phone_in_tickets
-        SET converted_to_ticket_id = ${serviceTicket.id},
-            converted_at = NOW()
-        WHERE id = ${id}
-      `);
-
-      res.json({
-        success: true,
-        serviceTicket: serviceTicket,
-        message: 'Phone-in ticket converted to service ticket successfully',
-      });
-    } catch (error: any) {
-      log.error('Error converting phone-in ticket:', error);
-      res.status(500).json({
-        error: 'Failed to convert phone-in ticket',
-        details: error?.message,
-      });
-    }
-  });
 }
