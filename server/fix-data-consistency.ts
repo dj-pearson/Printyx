@@ -27,7 +27,6 @@ export const ROUTES_TO_FIX = [
   'routes-mobile.ts',
   'routes-analytics.ts',
   'routes-business-process-optimization.ts',
-  'routes-workflow-automation.ts',
   'routes-incident-response.ts',
   'routes-security-compliance.ts',
 ];

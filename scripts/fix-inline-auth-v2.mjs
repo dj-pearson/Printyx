@@ -41,7 +41,6 @@ const targetFiles = [
   'routes-tasks.ts',
   'routes-tenant-onboarding.ts',
   'routes-user-lifecycle.ts',
-  'routes-workflow-automation.ts',
   'routes/article-bookmarks-routes.ts',
   'routes/article-ratings-routes.ts',
   'routes/content-gap-analysis-routes.ts',
