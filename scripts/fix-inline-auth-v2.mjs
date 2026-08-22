@@ -25,7 +25,6 @@ const targetFiles = [
   'routes-enhanced-rbac.ts',
   'routes-erp-integration.ts',
   'routes-incident-response.ts',
-  'routes-integration-hub.ts',
   'routes-knowledge-base.ts',
   'routes-mobile.ts',
   'routes-onboarding.ts',

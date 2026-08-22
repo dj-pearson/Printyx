@@ -61,7 +61,6 @@ const VENDORS = [
 const NOT_DATA_FLOWS = [
   { file: 'server/seed-signature-data.ts', why: 'Seed fixture. The signature send path is a stub; no envelope is created.' },
   { file: 'server/seed-manufacturer-orders.ts', why: 'Seed fixture for Canon/HP/Xerox endpoints that are not called.' },
-  { file: 'server/routes-integration-hub.ts', why: 'Catalog of available integrations; the URLs are documentation links.' },
   { file: 'server/quickbooks-mapping.ts', why: 'Field-mapping reference including a commented sandbox URL.' },
 ];
 

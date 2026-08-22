@@ -9,7 +9,6 @@ import { businessRecords, locations, regions, tenants } from '@shared/schema';
 import { storage } from './storage';
 import { getUserId } from './utils/auth-helpers';
 import { requireAuth } from './replitAuth';
-import { DashboardService } from './integrations/dashboard-service';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-sample-data');
 

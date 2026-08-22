@@ -17,6 +17,16 @@
  * The baseline is the backlog. It only shrinks: retire the handler, or port what
  * it does into the edge function and then retire it.
  *
+ * PROD-008b: this used to match only literal '/api/...' registration paths, which
+ * made every PREFIX-MOUNTED router invisible. A module mounted with
+ * `app.use('/api/customer-success', router)` registers relative paths — 
+ * `router.get('/health-scores')` — so none of its handlers matched, and the gate
+ * would have reported 0 with 131 shadowed handlers still live (48 in
+ * routes/advanced-billing-routes.ts, 44 in routes/customer-success-routes.ts,
+ * and 39 across seven more). The second pass below resolves each mount to its
+ * module and composes mountPath + relative path before testing it against the
+ * proxied prefixes.
+ *
  * Usage:
  *   node scripts/check-shadowed-express.mjs                  # check (CI)
  *   node scripts/check-shadowed-express.mjs --update-baseline
@@ -76,6 +86,89 @@ for (const file of walk(join(repo, 'server'))) {
     });
   }
 }
+
+// ── Second pass: prefix-mounted routers ────────────────────────────────────
+// A router mounted with app.use('<prefix>', router) registers RELATIVE paths, so
+// the literal-path scan above never sees it. Resolve every mount in
+// routes-registry.ts to its module and compose the full path.
+function prefixMountedFindings() {
+  const registryPath = join(repo, 'server', 'routes-registry.ts');
+  if (!existsSync(registryPath)) return [];
+  // Strip line comments so commented-out mounts (e.g. the migrated
+  // '/api/proposals' entry) are not read as live ones.
+  const registry = readFileSync(registryPath, 'utf8').replace(/^[ \t]*\/\/.*$/gm, '');
+
+  // Imported identifier -> module specifier, for the app.use('<prefix>', ident) form.
+  const importedFrom = {};
+  for (const m of registry.matchAll(/import\s+(?:\{([^}]+)\}|(\w+))\s+from\s+'([^']+)'/g)) {
+    const spec = m[3];
+    if (m[2]) {
+      importedFrom[m[2]] = spec;
+      continue;
+    }
+    for (const part of m[1].split(',')) {
+      const name = part.trim().replace(/^type\s+/, '');
+      const aliased = name.match(/(\w+)\s+as\s+(\w+)/);
+      if (aliased) importedFrom[aliased[2]] = spec;
+      else if (name) importedFrom[name] = spec;
+    }
+  }
+
+  const mounts = [];
+  // app.use('/api/x', router) and app.use('/api/x', middleware, router)
+  for (const m of registry.matchAll(/app\.use\(\s*'(\/api[^']*)'\s*,\s*([^)]+)\)/g)) {
+    const ident = m[2].split(',').pop().trim().split('.')[0];
+    if (importedFrom[ident]) mounts.push({ prefix: m[1], spec: importedFrom[ident] });
+  }
+  // [ '/api/x', './module' ] tuples (asyncApiMounts and friends)
+  for (const m of registry.matchAll(/\[\s*'(\/api\/[^']+)'\s*,\s*'(\.[^']+)'\s*\]/g)) {
+    mounts.push({ prefix: m[1], spec: m[2] });
+  }
+  // Bare './routes/x' entries in the list mounted at '/api'
+  for (const m of registry.matchAll(/^\s*'(\.\/routes\/[^']+)',$/gm)) {
+    mounts.push({ prefix: '/api', spec: m[1] });
+  }
+
+  const resolveModule = (spec) => {
+    const base = join(repo, 'server', spec.replace(/^\.\//, ''));
+    for (const candidate of [base + '.ts', join(base, 'index.ts')]) {
+      if (existsSync(candidate)) return candidate;
+    }
+    return null;
+  };
+
+  const out = [];
+  const seen = new Set();
+  for (const mount of mounts) {
+    if (!mount.spec.startsWith('.')) continue;
+    const file = resolveModule(mount.spec);
+    if (!file) continue; // a mount whose module is gone is its own problem
+    const src = readFileSync(file, 'utf8');
+    for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*'([^']*)'/g)) {
+      const rel = m[2];
+      // Absolute paths are already covered by the first pass.
+      if (rel.startsWith('/api/')) continue;
+      const full = (mount.prefix + (rel === '/' ? '' : rel)).replace(/\/{2,}/g, '/');
+      const prefix = prefixes.find((p) => full === p || full.startsWith(p + '/'));
+      if (!prefix) continue;
+      const rec = {
+        file: relative(repo, file).replace(/\\/g, '/'),
+        line: src.slice(0, m.index).split('\n').length,
+        route: `${m[1].toUpperCase()} ${full}`,
+        prefix,
+      };
+      // The same module can be mounted twice; report each route once.
+      const id = `${rec.route} (${rec.file})`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push(rec);
+    }
+  }
+  return out;
+}
+
+findings.push(...prefixMountedFindings());
+
 findings.sort((a, b) => a.route.localeCompare(b.route) || a.file.localeCompare(b.file));
 
 // Keyed on route + file, not line, so reformatting neither invents nor retires
@@ -107,7 +200,9 @@ if (update) {
           'PROD-008: Express handlers under a crmProxies prefix. The proxy is registered first, ' +
           'so these never run in dev; production never reaches Express at all. Each is either dead ' +
           'code to delete or behaviour to port into the edge function and then delete. This list ' +
-          'only shrinks.',
+          'only shrinks — the one exception was PROD-008b teaching the scanner to see ' +
+          'prefix-mounted routers, which added 131 handlers it had never been able to match. ' +
+          'That was a measurement correction, not a regression.',
         allowed: [...new Set(findings.map(key))].sort(),
       },
       null,

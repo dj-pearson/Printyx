@@ -147,7 +147,6 @@ import {
   registerSalesforceRoutes,
   registerSalesforceTestRoutes,
   integrationRoutes,
-  integrationHubRoutes,
 } from './domains/integrations';
 
 import {
@@ -393,7 +392,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Integrations ─────────────────────────────────────────────────
   registerIntegrationRoutes(app);
   app.use(integrationRoutes);
-  app.use(integrationHubRoutes);
 
   // ─── Task Management ──────────────────────────────────────────────
   registerTaskRoutes(app);

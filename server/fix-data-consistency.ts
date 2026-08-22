@@ -21,7 +21,6 @@ export const ROUTES_TO_FIX = [
   'routes-esignature.ts',
   'routes-preventive-maintenance.ts',
   'routes-service-dispatch.ts',
-  'routes-customer-success.ts',
   'routes-remote-monitoring.ts',
   'routes-document-management.ts',
   'routes-mobile.ts',
