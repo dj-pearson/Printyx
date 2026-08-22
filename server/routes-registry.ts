@@ -124,7 +124,6 @@ import {
   registerDashboardLayoutsRoutes,
 } from './domains/dashboard';
 
-import { registerScheduledReportsRoutes } from './domains/reporting';
 
 import {
   registerAdminStatsRoutes,
@@ -419,7 +418,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerRecordLayoutRoutes(app);
   registerBusinessRecordRoutes(app);
   registerCsvImportRoutes(app);
-  registerScheduledReportsRoutes(app);
   registerDashboardLayoutsRoutes(app);
 
   // ─── Salesforce & Data Enrichment ─────────────────────────────────

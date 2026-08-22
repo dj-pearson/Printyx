@@ -17,8 +17,17 @@
 //
 // The Express path was /api/scheduled-reports/*; the proxy entry rewrites
 // that to /reports/scheduled/* (with pathPrefix='/scheduled').
+//
+// PROD-008b: every schedule row goes out camelCase. ScheduledReportsDashboard.tsx
+// types ScheduleFromAPI in camelCase because it was written against the Express
+// handler, which returned drizzle rows. Returning PostgREST's snake_case made
+// isActive, runCount, nextRun, exportFormat and cronExpression all undefined, so
+// the page showed every schedule as Paused with 0 sent and no next run. The
+// conversion is shallow on purpose: parameters and filters are jsonb whose inner
+// keys belong to the caller and must not be rewritten.
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
+import { toCamelShallow } from '../../_shared/case.ts';
 import type { HandlerCtx } from '../_context.ts';
 
 const VALID_FREQUENCIES = new Set(['daily', 'weekly', 'monthly', 'quarterly', 'custom']);
@@ -163,7 +172,7 @@ async function listSchedules(req: Request, ctx: HandlerCtx): Promise<Response> {
       requestId,
     });
   }
-  return jsonResponse(data ?? [], 200, req, requestId);
+  return jsonResponse((data ?? []).map(toCamelShallow), 200, req, requestId);
 }
 
 async function getSchedule(req: Request, ctx: HandlerCtx, id: string): Promise<Response> {
@@ -188,7 +197,7 @@ async function getSchedule(req: Request, ctx: HandlerCtx, id: string): Promise<R
       requestId,
     });
   }
-  return jsonResponse(data, 200, req, requestId);
+  return jsonResponse(toCamelShallow(data), 200, req, requestId);
 }
 
 async function createSchedule(req: Request, ctx: HandlerCtx): Promise<Response> {
@@ -241,7 +250,7 @@ async function createSchedule(req: Request, ctx: HandlerCtx): Promise<Response> 
       requestId,
     });
   }
-  return jsonResponse(schedule, 201, req, requestId);
+  return jsonResponse(toCamelShallow(schedule), 201, req, requestId);
 }
 
 async function updateSchedule(req: Request, ctx: HandlerCtx, id: string): Promise<Response> {
@@ -294,7 +303,7 @@ async function updateSchedule(req: Request, ctx: HandlerCtx, id: string): Promis
       requestId,
     });
   }
-  return jsonResponse(schedule, 200, req, requestId);
+  return jsonResponse(toCamelShallow(schedule), 200, req, requestId);
 }
 
 async function deleteSchedule(req: Request, ctx: HandlerCtx, id: string): Promise<Response> {
@@ -365,7 +374,7 @@ async function toggleSchedule(req: Request, ctx: HandlerCtx, id: string): Promis
       requestId,
     });
   }
-  return jsonResponse(schedule, 200, req, requestId);
+  return jsonResponse(toCamelShallow(schedule), 200, req, requestId);
 }
 
 async function runScheduleNow(req: Request, ctx: HandlerCtx, id: string): Promise<Response> {
@@ -453,5 +462,5 @@ async function listExecutions(req: Request, ctx: HandlerCtx, id: string): Promis
       requestId,
     });
   }
-  return jsonResponse(data ?? [], 200, req, requestId);
+  return jsonResponse((data ?? []).map(toCamelShallow), 200, req, requestId);
 }
