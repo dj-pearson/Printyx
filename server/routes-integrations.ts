@@ -89,15 +89,22 @@ export function registerIntegrationRoutes(app: Express) {
   // /api/deployment/readiness and /api/deployment/metrics (EDGE-005f), in every
   // environment. Emitting fabricated numbers here read as real and served no one.
 
-  // GET /api/webhooks — the webhook endpoints this system actually exposes, with
-  // honest status. (PA-046: was a hardcoded sample with INVENTED success rates of
-  // 98.5% / 99.2%.) `status` reflects whether the provider's signing secret is
-  // configured; there is no webhook delivery-stats tracking yet, so lastTriggered
-  // and successRate are explicitly null (the UI shows "Not tracked") rather than
-  // fabricated. Each url points at the real POST handler under /api/webhooks/:provider.
-// GET /api/webhooks was removed here (PROD-008b). This is the OUTBOUND
-// subscription list, not an inbound receiver, and the webhooks edge function
-// serves it at index.ts:43. The inbound provider receivers in
-// server/integrations/webhook-routes.ts are a different feature on the same
-// prefix and are retained pending INTEG-WEBHOOK-001.
+  // GET /api/webhooks was removed here (PROD-008b). /api/webhooks is in
+  // crmProxies, so this handler was shadowed in dev and unreachable in
+  // production; supabase/functions/webhooks/ serves the prefix on both hosts.
+  //
+  // CORRECTION to the note this replaces, which had the feature backwards: what
+  // stood here was the INBOUND provider list (stripe, salesforce, microsoft,
+  // quickbooks, google, each with status derived from its signing-secret env
+  // var), while the edge function serves the OUTBOUND subscription rows a tenant
+  // configures in the `webhooks` table. Different features that happened to
+  // share a path. The deletion was still runtime-neutral - the proxy already won
+  // - but it is the edge function's rows the pages have been rendering, and they
+  // were reading a shape it did not return until _shared/webhook-view.ts.
+  //
+  // The inbound receivers themselves live in server/integrations/webhook-routes.ts
+  // and are retained pending INTEG-WEBHOOK-001. There is no longer an endpoint
+  // that reports whether each provider's secret is configured; if that display
+  // is wanted back, it belongs on the edge side as its own sub-resource, not on
+  // this prefix by accident.
 }

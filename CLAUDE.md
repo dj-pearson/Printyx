@@ -274,6 +274,15 @@ the cause: `tsc` bails before typechecking, `vitest` is absent, the app looks br
 now blocks this (`npm run check:node`), but if you inherit a half-installed tree, `node -v` is the
 first thing to check. Use `nvm use 20 && npm install`.
 
+In a sandbox with no `nvm`, look for Node 20 on disk before concluding the suite
+is unrunnable: this container ships it at `/opt/node20/bin` with a
+`use-node-20` helper on PATH, while the default `node` is 22. Prefixing the PATH
+(`export PATH="/opt/node20/bin:$PATH" && npm install`) installs cleanly and makes
+`npm run check`, `npm run test`, `check:phantom-cols` and every other
+tsx-dependent script work. Several rounds of this repo's history were written
+under the belief that they could not be run at all, and a deleted handler's test
+stayed red for a whole session because of it.
+
 Before committing: `npm run check && npm run build && npm run format:write && npm run lint`.
 
 Common mistakes:

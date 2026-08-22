@@ -422,10 +422,12 @@ export default function IntegrationHub() {
     },
   });
 
-  // Fetch webhooks
-  const { data: webhooks, isLoading: webhooksLoading } = useQuery({
-    queryKey: ['/api/webhooks'],
-  });
+  // A /api/webhooks query used to sit here. Neither `webhooks` nor
+  // `webhooksLoading` was read anywhere in this file - the Webhooks tab below
+  // renders from integrationData.webhookManagement, a different query - so it
+  // was a request whose response went nowhere. Removed rather than bound to the
+  // tab: that tab's shape (totalWebhooks, activeWebhooks, recentDeliveries) is
+  // not what /api/webhooks returns.
 
   // Check for OAuth callback success/error
   React.useEffect(() => {
