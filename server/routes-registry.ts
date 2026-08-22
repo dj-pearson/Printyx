@@ -136,7 +136,6 @@ import {
   registerTaskRoutes,
   registerEnhancedTaskRoutes,
   registerTemplateRoutes,
-  registerAutomationRoutes,
   registerTaskWorkflowRoutes,
 } from './domains/tasks';
 
@@ -731,7 +730,24 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // (GET /activities/recent, GET /activities/user/:userId) were shadowed by the
   // /api/activities proxy, have no edge branch and no caller — both fell through
   // to the single-activity lookup and answered 404.
-  registerAutomationRoutes(app);
+  // registerAutomationRoutes was called here and is DELETED (CR-017).
+  //
+  // routes-automation.ts served /api/automation/{rules,tasks} against
+  // automation_rules and automated_tasks, through raw SQL string queries. NEITHER
+  // TABLE EXISTS - not in shared/*.ts, not in any migration - so all four
+  // handlers 500'd on a missing relation, and because the queries were raw SQL
+  // rather than drizzle, tsc reported zero errors for the file.
+  //
+  // Nothing called it: a repo-wide search finds no /api/automation reference in
+  // client/src at all. The pages that look like they would use it
+  // (WorkflowAutomation.tsx, AutopilotDashboard.tsx) call
+  // /api/workflow-automation/dashboard, a different prefix that IS proxied and
+  // IS served - supabase/functions/workflow-automation/index.ts:62.
+  //
+  // supabase/functions/automation/ is NOT deleted with it, but it is not a
+  // working alternative either: it reads the same two non-existent tables and is
+  // already recorded in docs/phantom-tables-baseline.json. The prefix is dead on
+  // both hosts. Reviving it means creating the tables first.
   registerCustomerRoutes(app);
   app.use(businessRecordsRoutes);
   // routes-web-forms.ts retired (PROD-008b); supabase/functions/web-forms/ has
