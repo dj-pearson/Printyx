@@ -428,6 +428,20 @@ export default async function handler(req: Request) {
         return createCorsResponse(mapCompanyToBusinessRecord(updated), 200, req);
       }
 
+      // PROD-008b: everything above this point handles a POST to a SUB-PATH
+      // (/:id/activities, /:id/status). What follows is the collection create, so
+      // it must not be reachable with a record id in the path — without this
+      // guard, POST /business-records/<uuid>/<any-unhandled-subresource> fell
+      // through and CREATED A NEW COMPANY. Same shape as the deals and activities
+      // catch-alls.
+      if (recordId) {
+        return createCorsResponse(
+          { error: 'Not found', details: { path: url.pathname, method: req.method } },
+          404,
+          req,
+        );
+      }
+
       // Handle regular business record creation - create in companies table
       const companyData = {
         tenant_id: tenantId,

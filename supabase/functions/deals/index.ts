@@ -351,7 +351,13 @@ export default async function handler(req: Request) {
     }
 
     // POST /deals - Create deal
-    if (req.method === 'POST') {
+    //
+    // PROD-008b: `!dealId` is load-bearing. Without it this matched ANY POST
+    // under the prefix, so POST /deals/<uuid> or /deals/<uuid>/<anything> the
+    // function has no branch for fell through to here and CREATED A NEW DEAL
+    // instead of answering 405. Same shape as the activities bulk-delete that
+    // inserted a row; on `deals` it manufactures pipeline.
+    if (req.method === 'POST' && !dealId) {
       const body = await req.json();
 
       // COP-M01: this used to insert business_record_id, deal_name, deal_value,
