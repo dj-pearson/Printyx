@@ -64,6 +64,28 @@ function proxiedPrefixes() {
   return [...src.slice(start, end).matchAll(/'(\/api\/[^']+)':/g)].map((m) => m[1]);
 }
 
+/**
+ * Blank out comments before matching, preserving line numbers.
+ *
+ * PROD-008b: without this the scanner counted DOCUMENTATION as shadowed
+ * handlers. Five baseline entries came from JSDoc usage examples —
+ * `app.get('/api/users', versionedHandler({...}))` in middleware/api-versioning.ts,
+ * and the same shape in utils/validation-schemas.ts,
+ * middleware/enhanced-validation.ts and middleware/mfa-enforcement.ts. None of
+ * those files registers a route at all. A gate that reports work which does not
+ * exist is as bad as one that misses work that does.
+ *
+ * ORDER MATTERS: line comments first. A doc comment containing "/api/*" would
+ * otherwise have its "/*" read as an opening block delimiter by a
+ * block-comment pass run first, swallowing every real registration up to the
+ * next "*​/". Same trap the AUDIT-015 guard documents.
+ */
+function stripComments(src) {
+  return src
+    .replace(/^[ \t]*\/\/.*$/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ''));
+}
+
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     // tests/ describe routes in fixtures and assertions, not registrations.
@@ -82,7 +104,7 @@ prefixes.sort((a, b) => b.length - a.length);
 
 const findings = [];
 for (const file of walk(join(repo, 'server'))) {
-  const src = readFileSync(file, 'utf8');
+  const src = stripComments(readFileSync(file, 'utf8'));
   for (const m of src.matchAll(/(?:app|router)\.(get|post|put|patch|delete)\(\s*'(\/api\/[^']+)'/g)) {
     const path = m[2];
     const prefix = prefixes.find((p) => path === p || path.startsWith(p + '/'));
@@ -105,7 +127,7 @@ function prefixMountedFindings() {
   if (!existsSync(registryPath)) return [];
   // Strip line comments so commented-out mounts (e.g. the migrated
   // '/api/proposals' entry) are not read as live ones.
-  const registry = readFileSync(registryPath, 'utf8').replace(/^[ \t]*\/\/.*$/gm, '');
+  const registry = stripComments(readFileSync(registryPath, 'utf8'));
 
   // Imported identifier -> module specifier, for the app.use('<prefix>', ident) form.
   const importedFrom = {};
@@ -152,7 +174,7 @@ function prefixMountedFindings() {
     if (!mount.spec.startsWith('.')) continue;
     const file = resolveModule(mount.spec);
     if (!file) continue; // a mount whose module is gone is its own problem
-    const src = readFileSync(file, 'utf8');
+    const src = stripComments(readFileSync(file, 'utf8'));
     for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*'([^']*)'/g)) {
       const rel = m[2];
       // Absolute paths are already covered by the first pass.

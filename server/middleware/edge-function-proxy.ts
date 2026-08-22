@@ -664,8 +664,8 @@ export function registerEdgeFunctionProxy(app: any) {
     // proxying forwards the whole prefix, so porting one would have taken the
     // other from working-in-dev to 404-in-dev.
     //
-    // PROD-008b then retired routes-service-knowledge.ts; routes-proactive-
-    // maintenance.ts still shares the prefix and is still shadowed.
+    // PROD-008b then retired BOTH: routes-service-knowledge.ts and
+    // routes-proactive-maintenance.ts. No Express router serves this prefix now.
     //
     // app.use() matches on path-segment boundaries, so this entry captures
     // /api/service and /api/service/* only — NOT /api/service-tickets, which

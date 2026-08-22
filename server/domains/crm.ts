@@ -4,7 +4,6 @@
  */
 export { registerCrmCoreRoutes } from '../routes-crm-core';
 export { registerCompaniesRoutes } from '../routes-companies';
-export { registerActivitiesRoutes } from '../routes-activities';
 export { registerCustomerRoutes } from '../routes-customers';
 export { registerBusinessRecordRoutes } from '../routes-business-records';
 export { registerCrmGoalRoutes } from '../routes-crm-goals';

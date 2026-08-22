@@ -45,7 +45,6 @@ import {
 import {
   registerCrmCoreRoutes,
   registerCompaniesRoutes,
-  registerActivitiesRoutes,
   registerCustomerRoutes,
   registerBusinessRecordRoutes,
   registerCrmGoalRoutes,
@@ -96,7 +95,6 @@ import {
   registerPredictiveServiceDispatchRoutes,
   registerTechnicianManagementRoutes,
   serviceDispatchRouter,
-  proactiveMaintenanceRouter,
   equipmentLifecycleStateMachineRoutes,
   equipmentDisposalRoutes,
   equipmentQRRoutes,
@@ -564,7 +562,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   const contractAlertsRoutes = (await import('./routes-contract-alerts')).default;
   app.use(contractAlertsRoutes);
   app.use(serviceDispatchRouter);
-  app.use(proactiveMaintenanceRouter);
+  // routes-proactive-maintenance.ts retired (PROD-008b). Both handlers were
+  // shadowed by the /api/service proxy; supabase/functions/service/maintenance.ts
+  // serves them, and its own header records that GET /proactive-maintenance is a
+  // REPAIR rather than a transcription — the Express version selected columns
+  // that do not exist and had always 500'd.
   // routes-predictive-maintenance-hub.ts retired (PROD-008b). All six handlers
   // were shadowed by the /api/predictive-maintenance proxy and
   // supabase/functions/predictive-maintenance/ matches PredictiveMaintenanceHub.tsx
@@ -613,7 +615,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Phase 3 Modular Routes ───────────────────────────────────────
   registerCompaniesRoutes(app);
-  registerActivitiesRoutes(app);
+  // routes-activities.ts retired (PROD-008b). Its two handlers
+  // (GET /activities/recent, GET /activities/user/:userId) were shadowed by the
+  // /api/activities proxy, have no edge branch and no caller — both fell through
+  // to the single-activity lookup and answered 404.
   registerAutomationRoutes(app);
   registerCustomerRoutes(app);
   app.use(businessRecordsRoutes);
@@ -645,8 +650,8 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // CustomerPortalService.tsx renders.
   // routes-service-knowledge.ts retired (PROD-008b). All six handlers were
   // shadowed by the /api/service proxy and supabase/functions/service/knowledge.ts
-  // is a byte-compatible port of its pure logic. routes-proactive-maintenance.ts
-  // still shares the prefix and stays.
+  // is a byte-compatible port of its pure logic. routes-proactive-maintenance.ts,
+  // the other router on this prefix, is retired too.
   // routes-voice-ticket-close.ts retired (PROD-008b). All six handlers were
   // shadowed by the /api/voice-ticket-close proxy. Its two load-bearing exports
   // moved with it: the SKU matcher already lived in

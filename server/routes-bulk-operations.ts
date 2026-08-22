@@ -212,92 +212,16 @@ export function registerBulkOperationsRoutes(app: Express) {
   // ==================== ACTIVITY BULK OPERATIONS ====================
 
   // POST /api/activities/bulk-update - Bulk update activities
-  app.post('/api/activities/bulk-update', isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const tenantId = getTenantId(req);
-      const userId = getUserId(req);
-      if (!tenantId) return res.status(401).json({ message: 'Authentication required' });
-
-      const parsed = bulkUpdateSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res
-          .status(400)
-          .json({ message: 'Validation failed', errors: parsed.error.flatten().fieldErrors });
-      }
-
-      const { ids, updates } = parsed.data;
-
-      const existing = await db
-        .select({ id: activities.id })
-        .from(activities)
-        .where(and(eq(activities.tenantId, tenantId), inArray(activities.id, ids)));
-
-      const validIds = new Set(existing.map((r) => r.id));
-      const invalidIds = ids.filter((id) => !validIds.has(id));
-
-      if (invalidIds.length > 0) {
-        return res.status(400).json({
-          message: `${invalidIds.length} activity(ies) not found or not accessible`,
-          invalidIds,
-        });
-      }
-
-      const safeUpdates: Record<string, any> = {};
-      const allowedFields = ['status', 'assignedToId', 'priority', 'dueDate'];
-      for (const [key, value] of Object.entries(updates)) {
-        if (allowedFields.includes(key)) {
-          safeUpdates[key] = value;
-        }
-      }
-
-      if (Object.keys(safeUpdates).length === 0) {
-        return res.status(400).json({ message: 'No valid update fields provided' });
-      }
-
-      safeUpdates.updatedAt = new Date();
-
-      await db
-        .update(activities)
-        .set(safeUpdates)
-        .where(and(eq(activities.tenantId, tenantId), inArray(activities.id, ids)));
-
-      log.info(`Bulk updated ${ids.length} activities by user ${userId}`);
-      res.json({
-        message: `Successfully updated ${ids.length} activities`,
-        updatedCount: ids.length,
-      });
-    } catch (error: any) {
-      log.error('Failed to bulk update activities:', error);
-      res.status(500).json({ message: 'Failed to bulk update activities' });
-    }
-  });
+  // POST /api/activities/bulk-update and /bulk-delete were removed here
+  // (PROD-008b). /api/activities is proxied to supabase/functions/activities/,
+  // which has no bulk branch — and until this change its POST branch had no path
+  // check either, so both requests fell through to "create activity" and inserted
+  // a row built from a bulk payload. That guard is now explicit on the edge side;
+  // an unmatched sub-path reaches the 405. Nothing in client/src calls either
+  // endpoint. The invoices and equipment bulk handlers below are on UNPROXIED
+  // prefixes and stay.
 
   // POST /api/activities/bulk-delete - Bulk delete activities
-  app.post('/api/activities/bulk-delete', isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const tenantId = getTenantId(req);
-      const userId = getUserId(req);
-      if (!tenantId) return res.status(401).json({ message: 'Authentication required' });
-
-      const parsed = bulkIdsSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: 'Validation failed' });
-      }
-
-      await db
-        .delete(activities)
-        .where(and(eq(activities.tenantId, tenantId), inArray(activities.id, parsed.data.ids)));
-
-      log.info(`Bulk deleted ${parsed.data.ids.length} activities by user ${userId}`);
-      res.json({
-        message: `Successfully deleted ${parsed.data.ids.length} activities`,
-        deletedCount: parsed.data.ids.length,
-      });
-    } catch (error: any) {
-      log.error('Failed to bulk delete activities:', error);
-      res.status(500).json({ message: 'Failed to bulk delete activities' });
-    }
-  });
 
   log.info('✅ Bulk Operations routes registered');
 }
