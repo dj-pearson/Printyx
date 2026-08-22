@@ -104,7 +104,6 @@ import {
 import {
   registerMobileApiRoutes,
   registerWorkflowMobileRoutes,
-  mobileTechnicianRoutes,
   mobileLogsRoutes,
   registerMobileLogsAdminRoutes,
 } from './domains/mobile';
@@ -116,7 +115,6 @@ import {
   registerTodayDashboardRoutes,
   registerDashboardLayoutsRoutes,
 } from './domains/dashboard';
-
 
 import {
   registerAdminStatsRoutes,
@@ -597,7 +595,28 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Email & Mobile ───────────────────────────────────────────────
   app.use('/api/email-parser', emailParserRoutes);
-  app.use('/api/mobile', mobileTechnicianRoutes);
+  // routes-mobile-technician was mounted here and is DELETED (QUALITY-002).
+  //
+  // It queried phone_in_tickets as if it were the technician's ticket queue.
+  // That table is a CALL-INTAKE LOG - callerName, callerPhone, issueDescription,
+  // convertedToTicketId - with no assignedTo, no status and no
+  // enhancedTicketStatus, so every handler in the file referenced columns that
+  // do not exist and could only fail at runtime. It also called storage.upload,
+  // which is not a method on DatabaseStorage. The technician's queue is
+  // service_tickets (assignedTechnicianId / status / scheduledDate).
+  //
+  // Nothing called it: no reference to /api/mobile/sync, /tickets, /equipment,
+  // /location or /stats exists in client/src, mobile/, printyx-client/ or ios/.
+  //
+  // NOTE FOR WHOEVER FIXES THE DEV GAP BELOW: /api/mobile/sessions and
+  // /api/mobile/photos - which MobileFieldService.tsx really does call - were
+  // never served here either. supabase/functions/mobile/ serves them, so the
+  // page works in production and 404s in dev. A crmProxies entry for
+  // /api/mobile would NOT be a safe fix: the proxy forwards the WHOLE prefix,
+  // and /api/mobile/push-token (the React Native app), /api/mobile/dashboard,
+  // /api/mobile/jobs/:jobId (routes-mobile.ts) and /api/mobile/time-tracking/*
+  // (routes-mobile-api.ts) are all still Express-only. Proxying would take those
+  // from working-in-dev to 404-in-dev.
   app.use('/api/equipment', equipmentQRRoutes);
 
   // ─── Mobile App API (service-tickets, equipment list, time tracking) ──
