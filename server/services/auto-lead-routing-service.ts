@@ -2,21 +2,35 @@ import { db } from '../db';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('auto-lead-routing-service');
 
+// These were aliased onto the platform_* tables, which are PLATFORM-level
+// configuration: platform_lead_scoring_rules, platform_rep_capacity and the rest
+// have no tenant_id at all, and their columns differ (points vs scorePoints,
+// business_record_id vs lead_id, current_active_prospects vs
+// current_active_leads). Every query in this service filtered them by tenantId,
+// which drizzle compiles to an empty operand and Postgres rejects — so lead
+// scoring, BANT lookup, rep capacity and territory matching all raised.
+//
+// The per-tenant tables this service was written for exist, in
+// shared/lead-scoring-schema.ts and shared/lead-assignment-schema.ts, and carry
+// exactly the columns the code uses. The barrel already re-exports the
+// assignment ones; the scoring ones are only in their own module.
 import {
   businessRecords,
-  platformLeadScoringRules as leadScoringRules,
-  platformLeadScoreCalculations as leadScoreCalculations,
-  platformBantQualification as bantQualificationCriteria,
-  platformLeadAssignmentRules as leadAssignmentRules,
-  platformRepCapacity as repCapacity,
-  platformSalesTerritories as salesTerritories,
-  platformLeadAssignmentHistory as leadAssignmentHistory,
+  leadAssignmentRules,
+  repCapacity,
+  salesTerritories,
+  leadAssignmentHistory,
   leadAssignmentQueue,
   users,
   type InsertLeadAssignmentHistory,
   type InsertLeadAssignmentQueue,
 } from '@shared/schema';
-import type { InsertLeadScoreCalculation } from '@shared/lead-scoring-schema';
+import {
+  leadScoringRules,
+  bantQualificationCriteria,
+  leadScoreCalculations,
+  type InsertLeadScoreCalculation,
+} from '@shared/lead-scoring-schema';
 import { eq, and, desc, gte, lte, sql, inArray } from 'drizzle-orm';
 
 // Batch helper: fetch full names for multiple user IDs in a single query
@@ -158,19 +172,26 @@ export class AutoLeadRoutingService {
    */
   private async scoreLead(lead: any, tenantId: string): Promise<LeadScoringResult> {
     // Fetch scoring rules
-    const rules = await db.query.leadScoringRules.findMany({
-      where: and(eq(leadScoringRules.tenantId, tenantId), eq(leadScoringRules.isActive, true)),
-      orderBy: [desc(leadScoringRules.priority)],
-    });
+    // shared/schema.ts is what db.query is built from and it does not re-export
+    // the lead-scoring tables, so these two go through the core query builder.
+    const rules = await db
+      .select()
+      .from(leadScoringRules)
+      .where(and(eq(leadScoringRules.tenantId, tenantId), eq(leadScoringRules.isActive, true)))
+      .orderBy(desc(leadScoringRules.priority));
 
     // Calculate base scores from rules
     let demographicScore = 0;
     let firmographicScore = 0;
     let behavioralScore = 0;
     let engagementScore = 0;
+    // rules_applied is a real jsonb column documented as the rule ids that
+    // contributed to the score, and the loop below already knows them.
+    const rulesApplied: string[] = [];
 
     for (const rule of rules) {
       if (this.evaluateRule(lead, rule)) {
+        rulesApplied.push(rule.id);
         switch (rule.category) {
           case 'demographic':
             demographicScore += rule.scorePoints;
@@ -189,12 +210,16 @@ export class AutoLeadRoutingService {
     }
 
     // Get BANT score if exists
-    const bantData = await db.query.bantQualificationCriteria.findFirst({
-      where: and(
-        eq(bantQualificationCriteria.leadId, lead.id),
-        eq(bantQualificationCriteria.tenantId, tenantId),
-      ),
-    });
+    const [bantData] = await db
+      .select()
+      .from(bantQualificationCriteria)
+      .where(
+        and(
+          eq(bantQualificationCriteria.leadId, lead.id),
+          eq(bantQualificationCriteria.tenantId, tenantId),
+        ),
+      )
+      .limit(1);
     const bantScore = bantData?.totalBantScore || 0;
 
     // Calculate total (out of 100)
@@ -228,9 +253,13 @@ export class AutoLeadRoutingService {
       totalScore,
       leadGrade,
       leadTier,
-      predictionScore: aiAnalysis.conversionProbability,
-      aiInsights: aiAnalysis.insights,
-      aiRecommendations: aiAnalysis.recommendations,
+      // prediction_score is a decimal column, so drizzle wants a string.
+      predictionScore: aiAnalysis.conversionProbability.toString(),
+      // `aiInsights` / `aiRecommendations` are not columns on this table and were
+      // being dropped. They still reach the caller in the return value below;
+      // what belongs here is the rules that produced the score.
+      rulesApplied,
+      calculationMethod: 'hybrid',
     });
 
     return {
@@ -365,6 +394,8 @@ Format as JSON:
     // Group territories by ownerId
     const territoriesByOwner = new Map<string, typeof allTerritories>();
     for (const territory of allTerritories) {
+      // owner_id is nullable; an unowned territory belongs to no rep.
+      if (!territory.ownerId) continue;
       const existing = territoriesByOwner.get(territory.ownerId) || [];
       existing.push(territory);
       territoriesByOwner.set(territory.ownerId, existing);
@@ -439,8 +470,10 @@ Format as JSON:
         score,
         reasons,
         capacity: {
-          available: rep.isAvailable,
-          currentLoad: rep.currentActiveLeads,
+          // Both columns are nullable. The query already filters isAvailable, so
+          // the null branch is unreachable — default to the conservative side.
+          available: rep.isAvailable ?? false,
+          currentLoad: rep.currentActiveLeads ?? 0,
           maxLoad: rep.maxActiveLeads || 50,
         },
         performance: {
