@@ -110,6 +110,13 @@ class MobileLogger {
 
     // Flush on page unload (use beacon for reliability during navigation)
     window.addEventListener('beforeunload', () => this.beaconFlush());
+
+    // `window` and `document` are separate checks on purpose. This module builds
+    // its singleton at import time and queryClient imports it, so it gets loaded
+    // in plain node too — and a context that defines one global without the other
+    // is exactly what a test worker looks like. addEntry already guards window
+    // the same way; this line did not, and threw on import.
+    if (typeof document === 'undefined') return;
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') this.beaconFlush();
     });

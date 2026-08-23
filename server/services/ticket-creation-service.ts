@@ -5,6 +5,19 @@ import { sendEmail } from './email-service';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('ticket-creation-service');
 
+/** `users` stores first_name/last_name; there is no single `name` column. */
+function technicianName(tech: { firstName?: string | null; lastName?: string | null }): string {
+  return [tech.firstName, tech.lastName].filter(Boolean).join(' ') || 'Unassigned';
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export interface ParsedTicketData {
   customerName?: string;
   customerEmail: string;
@@ -92,7 +105,9 @@ export class TicketCreationService {
     });
 
     if (customer) {
-      log.info(`[TicketCreation] Found existing customer: ${customer.name} (${customer.id})`);
+      log.info(
+        `[TicketCreation] Found existing customer: ${customer.companyName} (${customer.id})`,
+      );
       return customer.id;
     }
 
@@ -102,18 +117,27 @@ export class TicketCreationService {
     const [newCustomer] = await db
       .insert(businessRecords)
       .values({
+        // business_records has companyName / primaryContactEmail / leadSource, and
+        // created_by is NOT NULL — the old insert named `name`, `email` and
+        // `source`, all of which drizzle drops, and omitted created_by entirely, so
+        // creating a customer from an inbound email could not succeed. recordType
+        // is the lead/customer discriminator; status is the state within it.
         tenantId: this.tenantId,
-        name: ticketData.customerName || ticketData.customerEmail.split('@')[0],
-        email: ticketData.customerEmail,
-        phone: ticketData.contactPhone || null,
-        status: 'lead', // Start as lead since they're contacting us
-        source: 'email',
+        companyName: ticketData.customerName || ticketData.customerEmail.split('@')[0],
+        primaryContactEmail: ticketData.customerEmail,
+        primaryContactPhone: ticketData.contactPhone || null,
+        recordType: 'lead',
+        status: 'new',
+        leadSource: 'email',
+        createdBy: 'system',
         createdAt: new Date(),
         updatedAt: new Date(),
       })
       .returning();
 
-    log.info(`[TicketCreation] Created new customer: ${newCustomer.name} (${newCustomer.id})`);
+    log.info(
+      `[TicketCreation] Created new customer: ${newCustomer.companyName} (${newCustomer.id})`,
+    );
 
     return newCustomer.id;
   }
@@ -133,13 +157,13 @@ export class TicketCreationService {
     const match = customerEquipment.find(
       (e) =>
         e.serialNumber?.toLowerCase().includes(identifierLower) ||
-        e.model?.toLowerCase().includes(identifierLower) ||
-        e.location?.toLowerCase().includes(identifierLower),
+        e.modelNumber?.toLowerCase().includes(identifierLower) ||
+        e.locationDescription?.toLowerCase().includes(identifierLower),
     );
 
     if (match) {
       log.info(
-        `[TicketCreation] Matched equipment: ${match.manufacturer} ${match.model} (${match.id})`,
+        `[TicketCreation] Matched equipment: ${match.manufacturer} ${match.modelNumber} (${match.id})`,
       );
       return match.id;
     }
@@ -274,7 +298,8 @@ export class TicketCreationService {
         where: and(
           eq(users.tenantId, this.tenantId),
           eq(users.role, 'Technician'),
-          eq(users.status, 'active'),
+          // `users` has is_active, not a status string.
+          eq(users.isActive, true),
         ),
       });
 
@@ -313,8 +338,8 @@ export class TicketCreationService {
           // 2. Skills Match (25 points max)
           const skillsScore = await this.calculateSkillsScore(
             tech,
-            equipmentData?.make || '',
-            equipmentData?.model || '',
+            equipmentData?.manufacturer || '',
+            equipmentData?.modelNumber || '',
           );
           score += skillsScore;
           if (skillsScore > 15) {
@@ -324,7 +349,10 @@ export class TicketCreationService {
           }
 
           // 3. Geographic Proximity (15 points max)
-          const proximityScore = await this.calculateProximityScore(tech, customer?.address || '');
+          const proximityScore = await this.calculateProximityScore(
+            tech,
+            customer?.addressLine1 || '',
+          );
           score += proximityScore;
           if (proximityScore > 10) {
             reasons.push('Close proximity to customer');
@@ -353,7 +381,7 @@ export class TicketCreationService {
       // Auto-assign if confidence is high enough (>= 80 points)
       if (bestMatch.score >= 80) {
         log.info(
-          `[SmartDispatch] ✅ AI AUTO-ASSIGNED to ${bestMatch.technician.name} (Score: ${bestMatch.score}/100)`,
+          `[SmartDispatch] ✅ AI AUTO-ASSIGNED to ${technicianName(bestMatch.technician)} (Score: ${bestMatch.score}/100)`,
         );
         log.info(`[SmartDispatch] Reasons: ${bestMatch.reasons.join(', ')}`);
 
@@ -377,7 +405,7 @@ export class TicketCreationService {
         log.info(`[SmartDispatch] Top candidates:`);
         scoredTechnicians.slice(0, 3).forEach((match, i) => {
           log.info(
-            `  ${i + 1}. ${match.technician.name} (${match.score} pts) - ${match.reasons.join(', ')}`,
+            `  ${i + 1}. ${technicianName(match.technician)} (${match.score} pts) - ${match.reasons.join(', ')}`,
           );
         });
 
@@ -544,10 +572,13 @@ Printyx Support Team
 ---
 This ticket was created automatically from your email. If you did not request service, please contact us immediately.`;
 
+      // EmailMessage is { to, subject, html, text? } — there is no `body` field, so
+      // the old call sent a message with no content at all.
       await sendEmail({
         to: customerEmail,
         subject,
-        body,
+        text: body,
+        html: `<pre style="font-family:inherit;white-space:pre-wrap">${escapeHtml(body)}</pre>`,
       });
 
       log.info(`[TicketCreation] ✓ Sent confirmation email to ${customerEmail}`);
