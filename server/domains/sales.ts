@@ -2,7 +2,6 @@
  * Sales & Pipeline Domain
  * Deals, pipeline, leads, opportunities, renewals, handoffs
  */
-export { registerDealsManagementRoutes } from '../routes-deals-management';
 // registerDealDeskRoutes — migrated to supabase/functions/deal-desk/
 export { registerDealTagRoutes } from '../routes-deal-tags';
 // registerPipelineConfigurationRoutes — migrated to supabase/functions/pipeline-config/

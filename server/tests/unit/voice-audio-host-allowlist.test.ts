@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { isAllowedAudioHost } from '../../routes-voice-ticket-close';
+import { isAllowedAudioHost as allow } from '../../../supabase/functions/_shared/voice-ticket-close-logic';
+
+// PROD-008b: this guarded server/routes-voice-ticket-close.ts, now retired. The
+// DEFECT CLASS it covers — an unvetted audioUrl reaching fetch() — belongs to
+// whichever backend transcribes, so the test follows the surviving one instead
+// of dying with its first subject. The shared helper takes the configured
+// storage origin as an argument (Deno.env is not reachable from a module the
+// Node suite loads), so the env plumbing below is preserved as the caller.
+const isAllowedAudioHost = (url: string) => allow(url, process.env.SUPABASE_URL);
 
 // CR-005: voice-ticket audioUrl must be restricted to expected storage hosts
 // before being fetched (defense-in-depth alongside safeFetch's SSRF blocklist).

@@ -471,9 +471,13 @@ export default function EnhancedOnboardingForm() {
       const primaryContact = companyContacts.find((c: any) => c.is_primary) || companyContacts[0];
 
       form.setValue('businessRecordId', selectedBusinessRecord.id);
+      // AUDIT-011a: was `companyName || companyName`. /api/business-records is
+      // served by the business-records edge function, whose
+      // mapCompanyToBusinessRecord emits BOTH companyName and company_name, so
+      // this is a genuine fallback once the right-hand side names the other key.
       const companyName =
         selectedBusinessRecord.companyName ||
-        selectedBusinessRecord.companyName ||
+        selectedBusinessRecord.company_name ||
         `${selectedBusinessRecord.firstName || ''} ${selectedBusinessRecord.lastName || ''}`.trim() ||
         'Customer Company';
 
@@ -502,7 +506,11 @@ export default function EnhancedOnboardingForm() {
       form.setValue('customerData.state', selectedBusinessRecord.state || 'State');
       form.setValue(
         'customerData.zipCode',
-        selectedBusinessRecord.zipCode || selectedBusinessRecord.zipCode || '12345',
+        // AUDIT-011a: `zipCode` does not exist on these rows at all —
+        // mapCompanyToBusinessRecord emits postal_code (from companies.billing_zip)
+        // and no camelCase alias. So this always fell through to the placeholder
+        // and every onboarding form was pre-filled with the fake ZIP 12345.
+        selectedBusinessRecord.postal_code || selectedBusinessRecord.zipCode || '',
       );
       form.setValue('customerData.industry', selectedBusinessRecord.industry || '');
 
@@ -524,7 +532,7 @@ export default function EnhancedOnboardingForm() {
         selectedBusinessRecord.address,
         selectedBusinessRecord.city,
         selectedBusinessRecord.state,
-        selectedBusinessRecord.zipCode,
+        selectedBusinessRecord.postal_code || selectedBusinessRecord.zipCode,
       ]
         .filter(Boolean)
         .join(', ');
@@ -855,7 +863,7 @@ export default function EnhancedOnboardingForm() {
       form.setValue('equipment', equipmentFromQuote);
       toast({
         title: 'Equipment Imported',
-        description: `Successfully imported ${equipmentFromQuote.length} equipment items from quote "${selectedQuote.quoteNumber}".`,
+        description: `Successfully imported ${equipmentFromQuote.length} equipment items from quote "${selectedQuote.quote_number || selectedQuote.quoteNumber}".`,
       });
     } else {
       toast({
@@ -969,17 +977,17 @@ export default function EnhancedOnboardingForm() {
                           {businessRecords.map((record: any) => (
                             <CommandItem
                               key={record.id}
-                              value={record.companyName || record.companyName}
+                              value={record.companyName || record.company_name}
                               onSelect={() => {
                                 setSelectedBusinessRecord(record);
-                                setCompanySearchTerm(record.companyName || record.companyName);
+                                setCompanySearchTerm(record.companyName || record.company_name);
                                 setBusinessRecordSearch('');
                                 setIsCompanySelectOpen(false);
                               }}
                             >
                               <div className="flex flex-col">
                                 <span className="font-medium">
-                                  {record.companyName || record.companyName}
+                                  {record.companyName || record.company_name}
                                 </span>
                                 <span className="text-sm text-gray-500">
                                   {record.city || 'N/A'}, {record.state || 'N/A'} •{' '}
@@ -1002,7 +1010,7 @@ export default function EnhancedOnboardingForm() {
                     </div>
                     <div className="text-sm">
                       <div className="font-medium">
-                        {selectedBusinessRecord.companyName || selectedBusinessRecord.companyName}
+                        {selectedBusinessRecord.companyName || selectedBusinessRecord.company_name}
                       </div>
                       <div>
                         {selectedBusinessRecord.primaryContactName ||
@@ -1053,10 +1061,14 @@ export default function EnhancedOnboardingForm() {
                             setQuoteSearch('');
                           }}
                         >
-                          <div className="font-medium">{quote.title || quote.quoteNumber}</div>
+                          <div className="font-medium">{quote.title || quote.quote_number || quote.quoteNumber}</div>
                           <div className="text-sm text-gray-600">
                             Created{' '}
-                            {new Date(quote.createdAt || quote.createdAt).toLocaleDateString()}
+                            {/* AUDIT-011a: the quotes list returns the raw row
+                                ({ ...quote, customer, created_by_user }), so
+                                created_at is what arrives and this rendered
+                                "Invalid Date". */}
+                            {new Date(quote.created_at || quote.createdAt).toLocaleDateString()}
                           </div>
                         </div>
                       ))}
@@ -1310,7 +1322,7 @@ export default function EnhancedOnboardingForm() {
                             <div className="flex justify-between items-start">
                               <div>
                                 <p className="font-medium">
-                                  {quote.quoteNumber || `Quote #${quote.id.slice(-6)}`}
+                                  {quote.quote_number || quote.quoteNumber || `Quote #${quote.id.slice(-6)}`}
                                 </p>
                                 <p className="text-sm text-gray-600">
                                   {quote.title || 'Untitled Quote'}

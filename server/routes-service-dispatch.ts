@@ -52,6 +52,20 @@ function calculateAIScore(ticket: any, technician: any, assignedCount: number): 
   return Math.min(100, Math.round(score));
 }
 
+// The technicians table stores first/last name separately and has no free-text
+// status column: availability is isAvailable, employment is isActive.
+type TechnicianNameParts = { firstName: string | null; lastName: string | null };
+function technicianDisplayName(tech: TechnicianNameParts): string {
+  const name = [tech.firstName, tech.lastName].filter(Boolean).join(' ').trim();
+  return name || 'Unassigned Technician';
+}
+
+type TechnicianStatusParts = { isActive: boolean | null; isAvailable: boolean | null };
+function technicianStatusLabel(tech: TechnicianStatusParts): 'inactive' | 'available' | 'busy' {
+  if (tech.isActive === false) return 'inactive';
+  return tech.isAvailable === false ? 'busy' : 'available';
+}
+
 // Get dispatch recommendations with AI optimization and AUTO-ASSIGNMENT
 router.get(
   '/api/dispatch/recommendations',
@@ -77,10 +91,11 @@ router.get(
           customerId: serviceTickets.customerId,
           status: serviceTickets.status,
           createdAt: serviceTickets.createdAt,
+          ticketNumber: serviceTickets.ticketNumber,
           technicianId: serviceTickets.assignedTechnicianId,
         })
         .from(serviceTickets)
-        .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'pending')))
+        .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'open')))
         .orderBy(desc(serviceTickets.createdAt))
         .limit(10);
 
@@ -88,7 +103,13 @@ router.get(
       const availableTechnicians = await db
         .select()
         .from(technicians)
-        .where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'available')));
+        .where(
+          and(
+            eq(technicians.tenantId, tenantId),
+            eq(technicians.isActive, true),
+            eq(technicians.isAvailable, true),
+          ),
+        );
 
       // Get assigned ticket counts for capacity planning
       const assignedTicketsQuery = await db
@@ -154,8 +175,8 @@ router.get(
           estimatedDuration: 90,
           recommendedTechnician: {
             id: availableTech.id,
-            name: availableTech.name,
-            currentLocation: availableTech.location || 'Service Center',
+            name: technicianDisplayName(availableTech),
+            currentLocation: availableTech.currentLocation || 'Service Center',
             skillMatch: 90,
             availabilityScore: Math.max(0, 100 - assignedCount * 12.5),
             overallScore: aiConfidence,
@@ -172,7 +193,7 @@ router.get(
             await db
               .update(serviceTickets)
               .set({
-                technicianId: availableTech.id,
+                assignedTechnicianId: availableTech.id,
                 status: 'assigned',
                 updatedAt: now,
               })
@@ -182,7 +203,7 @@ router.get(
             autoAssignedTickets.push({
               ticketId: ticket.id,
               technicianId: availableTech.id,
-              technicianName: availableTech.name,
+              technicianName: technicianDisplayName(availableTech),
               aiConfidence: aiConfidence,
               assignedAt: now,
             });
@@ -206,7 +227,7 @@ router.get(
                   await customerNotificationService.sendAssignmentNotification({
                     ticketId: ticket.id,
                     ticketNumber: ticket.ticketNumber,
-                    technicianName: availableTech.name,
+                    technicianName: technicianDisplayName(availableTech),
                     technicianPhone: availableTech.phone || undefined,
                     estimatedArrival: eta,
                     customerContact,
@@ -276,11 +297,13 @@ router.get(
       const allTechnicians = await db
         .select({
           id: technicians.id,
-          name: technicians.name,
+          firstName: technicians.firstName,
+          lastName: technicians.lastName,
           email: technicians.email,
           phone: technicians.phone,
-          status: technicians.status,
-          location: technicians.location,
+          isActive: technicians.isActive,
+          isAvailable: technicians.isAvailable,
+          currentLocation: technicians.currentLocation,
           skills: technicians.skills,
           certifications: technicians.certifications,
         })
@@ -319,10 +342,10 @@ router.get(
 
         return {
           id: tech.id,
-          name: tech.name,
+          name: technicianDisplayName(tech),
           email: tech.email,
           phone: tech.phone,
-          currentLocation: tech.location || 'Service Center',
+          currentLocation: tech.currentLocation || 'Service Center',
           skills: tech.skills || [],
           certifications: tech.certifications || [],
           availability: {
@@ -331,7 +354,7 @@ router.get(
             availableHours: Math.round(8 - (utilizationRate / 100) * 8),
             utilizationRate: utilizationRate,
           },
-          status: tech.status || 'available',
+          status: technicianStatusLabel(tech),
           assignedTickets: assignedTicketCount,
           performance: {
             completionRate: 92 + Math.random() * 8, // Randomized realistic performance metrics
@@ -374,13 +397,14 @@ router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any
     const techPerformance = await db
       .select({
         technicianId: serviceTickets.assignedTechnicianId,
-        name: technicians.name,
+        firstName: technicians.firstName,
+        lastName: technicians.lastName,
         completedTickets: count(serviceTickets.id),
       })
       .from(serviceTickets)
       .leftJoin(technicians, eq(serviceTickets.assignedTechnicianId, technicians.id))
       .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'completed')))
-      .groupBy(serviceTickets.assignedTechnicianId, technicians.name);
+      .groupBy(serviceTickets.assignedTechnicianId, technicians.firstName, technicians.lastName);
 
     // Calculate summary statistics
     const totalTickets = ticketStats.reduce((sum, stat) => sum + stat.count, 0);
@@ -388,7 +412,7 @@ router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any
       .filter((stat) => stat.status === 'completed')
       .reduce((sum, stat) => sum + stat.count, 0);
     const pendingTickets = ticketStats
-      .filter((stat) => stat.status === 'pending')
+      .filter((stat) => stat.status === 'open')
       .reduce((sum, stat) => sum + stat.count, 0);
 
     const analytics = {
@@ -410,7 +434,7 @@ router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any
       },
       technician_performance: techPerformance.map((tech) => ({
         technicianId: tech.technicianId,
-        name: tech.name,
+        name: technicianDisplayName(tech),
         ticketsCompleted: tech.completedTickets,
         averageCallTime: 90 + Math.random() * 30, // Simulated for now
         completionRate: 90 + Math.random() * 8,
@@ -473,7 +497,7 @@ router.post(
           and(
             eq(serviceTickets.tenantId, tenantId),
             inArray(serviceTickets.id, ticketIds),
-            eq(serviceTickets.status, 'pending'),
+            eq(serviceTickets.status, 'open'),
           ),
         );
 
@@ -481,7 +505,13 @@ router.post(
       const availableTechnicians = await db
         .select()
         .from(technicians)
-        .where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'available')));
+        .where(
+          and(
+            eq(technicians.tenantId, tenantId),
+            eq(technicians.isActive, true),
+            eq(technicians.isAvailable, true),
+          ),
+        );
 
       const assignments = [];
       const updatePromises = [];
@@ -496,7 +526,7 @@ router.post(
           assignments.push({
             ticketId: ticket.id,
             technicianId: assignedTech.id,
-            technicianName: assignedTech.name,
+            technicianName: technicianDisplayName(assignedTech),
             estimatedTime: 90, // Default estimate
             confidence: 85,
           });
@@ -506,7 +536,7 @@ router.post(
             db
               .update(serviceTickets)
               .set({
-                technicianId: assignedTech.id,
+                assignedTechnicianId: assignedTech.id,
                 status: 'assigned',
                 updatedAt: now,
               })
@@ -553,17 +583,17 @@ router.get('/api/dispatch/tracking', cacheControl(60), etag(), async (req: any, 
     // Create tracking data based on real technician data
     const tracking = allTechnicians.map((tech) => ({
       technicianId: tech.id,
-      name: tech.name,
-      currentStatus: tech.status || 'available',
+      name: technicianDisplayName(tech),
+      currentStatus: technicianStatusLabel(tech),
       currentLocation: {
-        address: tech.location || 'Service Center',
+        address: tech.currentLocation || 'Service Center',
         coordinates: {
           lat: 40.7128 + (Math.random() - 0.5) * 0.1,
           lng: -74.006 + (Math.random() - 0.5) * 0.1,
         },
       },
       currentAssignment:
-        tech.status === 'busy'
+        technicianStatusLabel(tech) === 'busy'
           ? {
               ticketId: `ticket-${Math.floor(Math.random() * 1000)}`,
               customer: 'Active Service Call',

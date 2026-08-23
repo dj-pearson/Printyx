@@ -204,7 +204,11 @@ export default function BusinessProcessOptimization() {
         data.workflowTemplates?.map((template: any) => ({
           ...template,
           lastUpdated: new Date(template.lastUpdated || template.last_updated),
-          createdAt: template.createdAt || template.createdAt,
+        // AUDIT-011a: this endpoint is a hand-built Express mock returning
+        // camelCase literals (server/routes-business-process-optimization.ts:90), so camelCase is authoritative and
+        // there is no snake_case key to fall back to. Collapsed to a single read
+        // rather than invented one.
+          createdAt: template.createdAt,
         })) || [],
     }),
     refetchInterval: 300000, // Refresh every 5 minutes

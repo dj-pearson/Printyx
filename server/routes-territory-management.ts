@@ -85,28 +85,6 @@ router.get(
 );
 
 /**
- * Get territory by ID
- */
-router.get(
-  '/:id',
-  requireRole(['admin', 'manager', 'sales_rep']),
-  async (req: TenantRequest, res: Response) => {
-    try {
-      const territory = await territoryManagementService.getTerritory(req.tenantId!, req.params.id);
-
-      if (!territory) {
-        return res.status(404).json({ message: 'Territory not found' });
-      }
-
-      res.json(territory);
-    } catch (error) {
-      log.error('Error fetching territory:', error);
-      res.status(500).json({ message: 'Failed to fetch territory' });
-    }
-  },
-);
-
-/**
  * Update territory
  */
 router.put(
@@ -501,6 +479,35 @@ router.get(
     } catch (error) {
       log.error('Error fetching territory stats:', error);
       res.status(500).json({ message: 'Failed to fetch territory statistics' });
+    }
+  },
+);
+
+/**
+ * Get territory by ID
+ *
+ * ROUTE ORDER IS LOAD-BEARING, which is why this sits at the bottom of the file
+ * rather than beside the other territory CRUD. It used to be registered above
+ * /rules, /capacity and /stats, and express matches in registration order, so
+ * all three static GETs were served by this handler with id set to the literal
+ * word and answered "Territory not found". Any new static GET on this router
+ * must go ABOVE this block. Gated by npm run check:route-shadowing.
+ */
+router.get(
+  '/:id',
+  requireRole(['admin', 'manager', 'sales_rep']),
+  async (req: TenantRequest, res: Response) => {
+    try {
+      const territory = await territoryManagementService.getTerritory(req.tenantId!, req.params.id);
+
+      if (!territory) {
+        return res.status(404).json({ message: 'Territory not found' });
+      }
+
+      res.json(territory);
+    } catch (error) {
+      log.error('Error fetching territory:', error);
+      res.status(500).json({ message: 'Failed to fetch territory' });
     }
   },
 );

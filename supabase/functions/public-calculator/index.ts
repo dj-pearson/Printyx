@@ -474,8 +474,13 @@ async function recordEmailSequence(
         email_subject: 'Your Print Fleet Analysis Report + First Action Step',
         email_template: isDealerAccount ? 'day_0_dealer' : 'day_0_standard',
         // Provider send is deferred in the edge function — record as pending
-        // rather than claiming 'sent'. A future worker (or the Express path)
-        // delivers and flips the status.
+        // rather than claiming 'sent'. PROD-008b correction: there is no worker
+        // and no Express fallback. The Express handler that sent the Day-0 mail
+        // was shadowed by this function and has been deleted, and
+        // processEmailSequences in server/services/calculator-email-service.ts
+        // has no caller anywhere. NOTHING delivers these rows today. Restoring
+        // delivery needs the templates ported to Deno (see the _sendgrid.ts
+        // cross-function idiom) plus a scheduler for days 1-7.
         status: 'pending',
         scheduled_for: now.toISOString(),
       },

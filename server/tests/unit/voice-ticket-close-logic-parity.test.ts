@@ -1,14 +1,14 @@
-// Locks the spoken-part → SKU matcher across both backends.
+// Pins the spoken-part → SKU matcher.
 //
 // On confirm, the chosen SKU's quantity is DEDUCTED FROM THE TECHNICIAN'S TRUCK,
-// so a drift between server/routes-voice-ticket-close.ts and
-// _shared/voice-ticket-close-logic.ts would take the wrong part off the truck —
-// or auto-select where the tech should have been asked to disambiguate.
+// so a wrong match takes the wrong part off the truck — or auto-selects where the
+// tech should have been asked to disambiguate.
+//
+// PROD-008b: this used to lock _shared/voice-ticket-close-logic.ts against a
+// second copy in server/routes-voice-ticket-close.ts. That copy is retired, so
+// the cross-backend assertions are gone; what remains pins the surviving matcher's
+// behaviour directly, which is what actually protects the truck count.
 import { describe, it, expect } from 'vitest';
-import {
-  fuzzyScore as expressScore,
-  rankSkuCandidates as expressRank,
-} from '../../routes-voice-ticket-close';
 import {
   fuzzyScore as edgeScore,
   rankSkuCandidates as edgeRank,
@@ -51,8 +51,11 @@ describe('voice ticket close SKU matcher parity', () => {
     ['zzz', 'Black Toner TN-514K'],
   ];
 
-  it.each(PAIRS)('fuzzyScore(%s, %s) agrees', (a, b) => {
-    expect(edgeScore(a, b)).toBe(expressScore(a, b));
+  it.each(PAIRS)('fuzzyScore(%s, %s) is deterministic and within [0, 1]', (a, b) => {
+    const score = edgeScore(a, b);
+    expect(score).toBeGreaterThanOrEqual(0);
+    expect(score).toBeLessThanOrEqual(1);
+    expect(edgeScore(a, b)).toBe(score);
   });
 
   it('scores an exact match at 1 and an unrelated term at 0', () => {
@@ -60,12 +63,23 @@ describe('voice ticket close SKU matcher parity', () => {
     expect(edgeScore('zzz', 'Black Toner TN-514K')).toBe(0);
   });
 
-  it.each(SPOKEN)('rankSkuCandidates agrees for: "%s"', (spoken) => {
-    expect(edgeRank(spoken, INVENTORY)).toEqual(expressRank(spoken, INVENTORY));
+  it.each(SPOKEN)('rankSkuCandidates holds its invariants for: "%s"', (spoken) => {
+    const { candidates, chosenSku } = edgeRank(spoken, INVENTORY);
+    // Descending by score, every candidate a real SKU.
+    expect([...candidates.map((c) => c.score)].sort((a, b) => b - a)).toEqual(
+      candidates.map((c) => c.score),
+    );
+    expect(candidates.every((c) => c.sku !== '')).toBe(true);
+    // A chosen SKU is always the top candidate AND always clears the threshold —
+    // this is the property that decides what leaves the truck.
+    if (chosenSku !== null) {
+      expect(chosenSku).toBe(candidates[0].sku);
+      expect(candidates[0].score).toBeGreaterThanOrEqual(SKU_AUTO_MATCH_THRESHOLD);
+    }
   });
 
-  it.each([1, 2, 3, 5])('rankSkuCandidates agrees at topN=%i', (topN) => {
-    expect(edgeRank('toner', INVENTORY, topN)).toEqual(expressRank('toner', INVENTORY, topN));
+  it.each([1, 2, 3, 5])('rankSkuCandidates returns at most topN=%i candidates', (topN) => {
+    expect(edgeRank('toner', INVENTORY, topN).candidates.length).toBeLessThanOrEqual(topN);
   });
 
   it('skips rows with no part number', () => {
@@ -75,7 +89,7 @@ describe('voice ticket close SKU matcher parity', () => {
 
   it('returns nothing for an empty spoken term', () => {
     expect(edgeRank('', INVENTORY)).toEqual({ candidates: [], chosenSku: null });
-    expect(edgeRank('   ', INVENTORY)).toEqual(expressRank('   ', INVENTORY));
+    expect(edgeRank('   ', INVENTORY)).toEqual({ candidates: [], chosenSku: null });
   });
 
   it('auto-selects only above the threshold, and asks otherwise', () => {
@@ -85,7 +99,6 @@ describe('voice ticket close SKU matcher parity', () => {
 
     const none = edgeRank('a part we do not stock', INVENTORY);
     expect(none.chosenSku).toBeNull();
-    expect(none).toEqual(expressRank('a part we do not stock', INVENTORY));
   });
 
   // The threshold is the whole auto-select-vs-ask decision, so it needs cases
@@ -101,7 +114,6 @@ describe('voice ticket close SKU matcher parity', () => {
     const result = edgeRank(spoken, INVENTORY);
     expect(result.candidates[0].score).toBeLessThan(SKU_AUTO_MATCH_THRESHOLD);
     expect(result.chosenSku).toBeNull();
-    expect(result).toEqual(expressRank(spoken, INVENTORY));
   });
 
   it('auto-selects just above the threshold', () => {
@@ -119,7 +131,6 @@ describe('voice ticket close SKU matcher parity', () => {
     expect(result.candidates[0].score).toBe(1);
     expect(result.candidates[1].score).toBe(1);
     expect(result.chosenSku).toBeNull();
-    expect(result).toEqual(expressRank(spoken, INVENTORY));
   });
 
   it('still auto-selects when the top score is unambiguous', () => {
@@ -134,8 +145,7 @@ describe('voice ticket close SKU matcher parity', () => {
     expect([...scores].sort((a, b) => b - a)).toEqual(scores);
   });
 
-  it('agrees on an empty inventory', () => {
-    expect(edgeRank('toner', [])).toEqual(expressRank('toner', []));
-    expect(edgeRank('toner', []).chosenSku).toBeNull();
+  it('returns nothing for an empty inventory', () => {
+    expect(edgeRank('toner', [])).toEqual({ candidates: [], chosenSku: null });
   });
 });

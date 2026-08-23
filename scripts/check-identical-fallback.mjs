@@ -104,6 +104,19 @@ if (list) {
 }
 
 if (update) {
+  // Guard the same invariant on the write path: once this class is closed, a
+  // baseline refresh must not be how a new instance gets accepted.
+  if (findings.length > 0 && existsSync(baselinePath)) {
+    const current = JSON.parse(readFileSync(baselinePath, 'utf8')).allowed;
+    if (Array.isArray(current) && current.length === 0) {
+      console.error(
+        `✗ Refusing to re-open a closed ratchet: ${findings.length} identical fallback(s) found\n` +
+          '  against an empty baseline. Fix them; do not record them.',
+      );
+      for (const f of findings) console.error(`    ${key(f)}`);
+      process.exit(1);
+    }
+  }
   writeFileSync(
     baselinePath,
     JSON.stringify(
@@ -128,6 +141,21 @@ if (!existsSync(baselinePath)) {
 }
 
 const allowed = new Set(JSON.parse(readFileSync(baselinePath, 'utf8')).allowed);
+
+// AUDIT-011a AC4: the baseline reached 0, so this is a HARD GATE now. Refuse to
+// let it grow back — an --update-baseline that would record a non-empty list is
+// rejected rather than silently re-opening the class. Every one of the 130
+// original instances was a `row.x || row.x` that could never fall back, and they
+// produced blank invoice numbers, $NaN totals, 'Invalid Date', blank technician
+// names and a hard-coded placeholder ZIP on the onboarding form.
+if (allowed.size > 0) {
+  console.error(
+    `✗ docs/identical-fallback-baseline.json is meant to stay empty (AUDIT-011a) but has ${allowed.size} entr(ies).\n` +
+      '  Fix the fallback instead of baselining it: point the left side at the key the\n' +
+      '  serving endpoint actually returns, confirmed against the handler or the column.',
+  );
+  process.exit(1);
+}
 const novel = findings.filter((f) => !allowed.has(key(f)));
 
 if (novel.length > 0) {

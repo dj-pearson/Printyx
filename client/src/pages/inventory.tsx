@@ -68,8 +68,11 @@ export default function Inventory() {
       return extractRecords(response).map((item: any) => ({
         ...item,
         id: item.id,
-        createdAt: item.createdAt || item.createdAt || '',
-        updatedAt: item.updatedAt || item.updatedAt || '',
+        // AUDIT-011a: the inventory edge function returns { data, total, page,
+        // limit } with RAW PostgREST rows, so created_at / updated_at are what
+        // arrive and these read undefined.
+        createdAt: item.created_at || item.createdAt || '',
+        updatedAt: item.updated_at || item.updatedAt || '',
       }));
     },
   });

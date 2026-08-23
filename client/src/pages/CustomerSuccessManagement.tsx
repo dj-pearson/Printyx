@@ -183,19 +183,31 @@ export default function CustomerSuccessManagement() {
   // Fetch customer health scores
   const { data: healthScores = [], isLoading: healthLoading } = useQuery<CustomerHealthScore[]>({
     queryKey: ['/api/customer-success/health-scores'],
+    // PROD-008b: this select used to dereference score.metrics.lastPaymentDate
+    // and score.alerts.map unguarded. That was safe only against the mock
+    // handler in server/routes-sample-data.ts, which hand-built those nested
+    // objects. The live endpoint is the customer-success edge function, which
+    // returns raw customer_health_scores rows — no `metrics`, no `alerts` — so
+    // the page threw a TypeError on every load instead of rendering. Guarded so
+    // it degrades to empty. Rebinding the whole page onto the real columns
+    // (overall_score / health_status / calculated_at ...) is a data-contract
+    // story of its own, the same one EDGE-004 opened for
+    // PlatformCustomerSuccess.tsx.
     select: (data: any[]) =>
-      data.map((score) => ({
+      (data ?? []).map((score) => ({
         ...score,
         metrics: {
           ...score.metrics,
-          lastPaymentDate: new Date(score.metrics.lastPaymentDate),
+          lastPaymentDate: score.metrics?.lastPaymentDate
+            ? new Date(score.metrics.lastPaymentDate)
+            : undefined,
         },
-        alerts: score.alerts.map((alert: any) => ({
+        alerts: (score.alerts ?? []).map((alert: any) => ({
           ...alert,
-          dueDate: new Date(alert.dueDate),
+          dueDate: alert.dueDate ? new Date(alert.dueDate) : undefined,
         })),
-        lastUpdated: new Date(score.lastUpdated),
-        nextReviewDate: new Date(score.nextReviewDate),
+        lastUpdated: score.lastUpdated ? new Date(score.lastUpdated) : undefined,
+        nextReviewDate: score.nextReviewDate ? new Date(score.nextReviewDate) : undefined,
       })),
   });
 

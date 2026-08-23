@@ -120,6 +120,72 @@ router.post('/onboarding/start', async (req, res) => {
  * GET /api/tenants/onboarding/:sessionId
  * Get onboarding session status
  */
+// ROUTE ORDER IS LOAD-BEARING. /onboarding/analytics and /onboarding/recent
+// were registered AFTER /onboarding/:sessionId, and express matches in
+// registration order, so both were served by the :sessionId handler with the
+// literal word as the session id. Any new static /onboarding/<word> route must
+// go above the :sessionId block. Gated by npm run check:route-shadowing.
+/**
+ * GET /api/tenants/onboarding/analytics
+ * Get onboarding analytics and metrics
+ */
+router.get('/onboarding/analytics', async (req, res) => {
+  try {
+    const { period = 'monthly' } = req.query;
+
+    // Get recent analytics record
+    const analytics = await db.query.onboardingAnalytics.findFirst({
+      where: eq(onboardingAnalytics.period, period as string),
+      orderBy: desc(onboardingAnalytics.createdAt),
+    });
+
+    // Get summary stats
+    const sessions = await db.query.tenantOnboardingSessions.findMany({
+      limit: 100,
+      orderBy: desc(tenantOnboardingSessions.createdAt),
+    });
+
+    const completed = sessions.filter((s) => s.status === 'completed').length;
+    const inProgress = sessions.filter((s) => s.status === 'in_progress').length;
+    const abandoned = sessions.filter((s) => s.status === 'abandoned').length;
+
+    res.json({
+      analytics,
+      summary: {
+        total: sessions.length,
+        completed,
+        inProgress,
+        abandoned,
+        completionRate: sessions.length > 0 ? Math.round((completed / sessions.length) * 100) : 0,
+      },
+    });
+  } catch (error) {
+    log.error('Failed to fetch analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch onboarding analytics' });
+  }
+});
+
+/**
+ * GET /api/tenants/onboarding/recent
+ * Get recent onboarding sessions
+ */
+router.get('/onboarding/recent', async (req, res) => {
+  try {
+    const { limit = 20, status } = req.query;
+
+    const sessions = await db.query.tenantOnboardingSessions.findMany({
+      where: status ? eq(tenantOnboardingSessions.status, status as any) : undefined,
+      orderBy: desc(tenantOnboardingSessions.createdAt),
+      limit: Number(limit),
+    });
+
+    res.json({ sessions });
+  } catch (error) {
+    log.error('Failed to fetch recent sessions:', error);
+    res.status(500).json({ error: 'Failed to fetch recent onboarding sessions' });
+  }
+});
+
 router.get('/onboarding/:sessionId', async (req, res) => {
   try {
     const session = await db.query.tenantOnboardingSessions.findFirst({
@@ -622,66 +688,5 @@ router.get('/clone/:operationId', async (req, res) => {
 // ============================================================================
 // ONBOARDING ANALYTICS
 // ============================================================================
-
-/**
- * GET /api/tenants/onboarding/analytics
- * Get onboarding analytics and metrics
- */
-router.get('/onboarding/analytics', async (req, res) => {
-  try {
-    const { period = 'monthly' } = req.query;
-
-    // Get recent analytics record
-    const analytics = await db.query.onboardingAnalytics.findFirst({
-      where: eq(onboardingAnalytics.period, period as string),
-      orderBy: desc(onboardingAnalytics.createdAt),
-    });
-
-    // Get summary stats
-    const sessions = await db.query.tenantOnboardingSessions.findMany({
-      limit: 100,
-      orderBy: desc(tenantOnboardingSessions.createdAt),
-    });
-
-    const completed = sessions.filter((s) => s.status === 'completed').length;
-    const inProgress = sessions.filter((s) => s.status === 'in_progress').length;
-    const abandoned = sessions.filter((s) => s.status === 'abandoned').length;
-
-    res.json({
-      analytics,
-      summary: {
-        total: sessions.length,
-        completed,
-        inProgress,
-        abandoned,
-        completionRate: sessions.length > 0 ? Math.round((completed / sessions.length) * 100) : 0,
-      },
-    });
-  } catch (error) {
-    log.error('Failed to fetch analytics:', error);
-    res.status(500).json({ error: 'Failed to fetch onboarding analytics' });
-  }
-});
-
-/**
- * GET /api/tenants/onboarding/recent
- * Get recent onboarding sessions
- */
-router.get('/onboarding/recent', async (req, res) => {
-  try {
-    const { limit = 20, status } = req.query;
-
-    const sessions = await db.query.tenantOnboardingSessions.findMany({
-      where: status ? eq(tenantOnboardingSessions.status, status as any) : undefined,
-      orderBy: desc(tenantOnboardingSessions.createdAt),
-      limit: Number(limit),
-    });
-
-    res.json({ sessions });
-  } catch (error) {
-    log.error('Failed to fetch recent sessions:', error);
-    res.status(500).json({ error: 'Failed to fetch recent onboarding sessions' });
-  }
-});
 
 export default router;

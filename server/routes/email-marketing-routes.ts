@@ -746,39 +746,23 @@ router.get('/email-unsubscribes/check/:email', async (req: Request, res: Respons
   }
 });
 
-router.post('/webhooks/sendgrid', async (req: Request, res: Response) => {
-  try {
-    const events = req.body;
-
-    if (!Array.isArray(events)) {
-      return res.status(400).json({ error: 'Invalid webhook payload' });
-    }
-
-    for (const event of events) {
-      const sendgridEventType = event.event;
-      const messageId = event.sg_message_id;
-
-      const send = await storage.getEmailSends('', '');
-
-      const eventTypeMap: Record<string, string> = {
-        delivered: 'delivered',
-        open: 'open',
-        click: 'click',
-        bounce: 'bounce',
-        dropped: 'bounce',
-        spamreport: 'spam_report',
-        unsubscribe: 'unsubscribe',
-      };
-
-      const eventType = eventTypeMap[sendgridEventType];
-      if (!eventType) continue;
-    }
-
-    res.status(200).json({ message: 'Webhook processed successfully' });
-  } catch (error) {
-    log.error('Error processing SendGrid webhook:', error);
-    res.status(500).json({ error: 'Failed to process webhook' });
-  }
-});
+// POST /webhooks/sendgrid was removed here (PROD-008b).
+//
+// It is the signature-routes class, not the INTEG-WEBHOOK-001 class: it looped
+// the event array, mapped SendGrid event names to internal ones, hit
+// `continue` on anything unmapped — and then the loop body ENDED. Nothing was
+// written. It also called storage.getEmailSends('', '') once per event and threw
+// the result away; that query filters on campaign_id = '' AND tenant_id = '', so
+// it returned nothing rather than leaking across tenants, but it was a database
+// round trip per event to no purpose.
+//
+// It then answered 200 { message: 'Webhook processed successfully' }, which is
+// the part that matters: SendGrid marks the endpoint healthy while no delivery,
+// open, click, bounce or unsubscribe is ever recorded. Already shadowed by the
+// /api/webhooks proxy, so a callback 404s today regardless.
+//
+// Recording engagement events for real needs a handler that writes email_events
+// (or whatever the canonical table turns out to be) and verifies the SendGrid
+// signature. That is a feature, not a port.
 
 export default router;

@@ -13,7 +13,6 @@ import type { Express } from 'express';
 // ─── Domain Module Imports (20 domains) ────────────────────────────────
 import {
   registerAuthCoreRoutes,
-  registerFeatureFlagRoutes,
   registerSessionManagementRoutes,
   enhancedRBACRoutes,
   registerCspReportRoutes,
@@ -21,8 +20,6 @@ import {
 } from './domains/auth';
 
 import {
-  registerBillingCoreRoutes,
-  registerFinancialForecastingRoutes,
   registerCommissionRoutes,
   registerQuickBooksRoutes,
   getCompanyPricingSettings,
@@ -40,19 +37,15 @@ import {
   deleteQuoteLineItem,
   calculatePricingForProduct,
   printCostCalculatorRoutes,
-  consolidatedBillingRoutes,
   salesForecastingRoutes,
 } from './domains/billing';
 
 import {
   registerCrmCoreRoutes,
-  registerContactsRoutes,
   registerCompaniesRoutes,
-  registerActivitiesRoutes,
   registerCustomerRoutes,
   registerBusinessRecordRoutes,
   registerCrmGoalRoutes,
-  registerCustomFieldsRoutes,
   registerCrmNotesRoutes,
   registerCrmBulkRoutes,
   registerBulkOperationsRoutes,
@@ -61,12 +54,10 @@ import {
   signupCrmRoutes,
   universalSearchRoutes,
   businessRecordsRoutes,
-  webFormsRoutes,
-  emailSequencesRoutes,
 } from './domains/crm';
 
 import {
-  registerDealsManagementRoutes,
+  // registerDealsManagementRoutes — deleted; supabase/functions/deals/ covers it
   // registerDealDeskRoutes — migrated to supabase/functions/deal-desk/
   registerDealTagRoutes,
   // registerPipelineConfigurationRoutes — migrated to supabase/functions/pipeline-config/
@@ -99,11 +90,8 @@ import {
 
 import {
   registerServiceAnalysisRoutes,
-  registerPredictiveServiceDispatchRoutes,
   registerTechnicianManagementRoutes,
   serviceDispatchRouter,
-  proactiveMaintenanceRouter,
-  predictiveMaintenanceHubRouter,
   equipmentLifecycleStateMachineRoutes,
   equipmentDisposalRoutes,
   equipmentQRRoutes,
@@ -113,7 +101,6 @@ import {
 import {
   registerMobileApiRoutes,
   registerWorkflowMobileRoutes,
-  mobileTechnicianRoutes,
   mobileLogsRoutes,
   registerMobileLogsAdminRoutes,
 } from './domains/mobile';
@@ -126,8 +113,6 @@ import {
   registerDashboardLayoutsRoutes,
 } from './domains/dashboard';
 
-import { registerScheduledReportsRoutes } from './domains/reporting';
-
 import {
   registerAdminStatsRoutes,
   registerOperationsExtendedRoutes,
@@ -138,28 +123,19 @@ import {
 
 import { registerGdprRoutes, incidentResponseRoutes } from './domains/security';
 
-import {
-  knowledgeBaseRoutes,
-  knowledgeBaseAdminRoutes,
-  contentGapAnalysisRoutes,
-  articleBookmarksRoutes,
-  readingHistoryRoutes,
-  articleRatingsRoutes,
-} from './domains/knowledge';
+import { knowledgeBaseAdminRoutes, contentGapAnalysisRoutes } from './domains/knowledge';
 
 import {
   registerIntegrationRoutes,
   registerSalesforceRoutes,
   registerSalesforceTestRoutes,
   integrationRoutes,
-  integrationHubRoutes,
 } from './domains/integrations';
 
 import {
   registerTaskRoutes,
   registerEnhancedTaskRoutes,
   registerTemplateRoutes,
-  registerAutomationRoutes,
   registerTaskWorkflowRoutes,
 } from './domains/tasks';
 
@@ -178,27 +154,18 @@ import {
   accessibilityRoutes,
 } from './domains/onboarding';
 
-import { registerNotificationRoutes, emailParserRoutes } from './domains/notifications';
-
-import { registerAnalyticsRoutes, gpt5Routes } from './domains/ai';
+import { emailParserRoutes } from './domains/notifications';
 
 import {
   registerClientMonitoringRoutes,
-  customerPortalRoutes,
   clientMetricsRoutes,
   deviceMonitoringRoutes,
 } from './domains/portal';
 
 // ─── Non-domain imports ──────────────────────────────────���──────────────
 import { registerHealthRoutes } from './routes/health-routes';
-import { registerQbrRoutes } from './routes-qbr';
 import { registerDealDeskCopilotRoutes } from './routes-deal-desk-copilot';
-import { registerDailyBriefingRoutes } from './routes-daily-briefing';
-import { registerPortalServiceRoutes } from './routes-portal-service';
-import { registerServiceKnowledgeRoutes } from './routes-service-knowledge';
-import { registerVoiceTicketCloseRoutes } from './routes-voice-ticket-close';
 import { registerChatbotRoutes } from './routes-chatbot';
-import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
 import { logRouteDivergence } from './middleware/route-divergence-detector';
@@ -330,12 +297,40 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerEdgeFunctionProxy(app);
 
   // ─── Knowledge Base ────────────────────────────────────────────────
-  app.use('/api/knowledge-base', knowledgeBaseRoutes);
+  // The knowledge-base Express routers were mounted here and are DELETED
+  // (PROD-008b): routes-knowledge-base.ts plus the three engagement routers
+  // (article-ratings, article-bookmarks, reading-history), 35 handlers in all.
+  //
+  // /api/knowledge-base is in crmProxies, so the proxy served the whole prefix
+  // in dev and production hit supabase/functions/knowledge-base/ directly -
+  // none of them ran on either host. They were invisible to
+  // check:shadowed-express until it learned to follow the domains/* barrels.
+  //
+  // ALL 35 WERE CHECKED AGAINST THE EDGE FUNCTION BEFORE DELETING, and the
+  // check earned its keep: POST /articles/:id/feedback had NO edge counterpart
+  // and a live caller (KnowledgeArticle.tsx), so it was ported first rather
+  // than deleted with the rest.
+  //
+  //   categories CRUD           -> knowledge-base/index.ts:106, 137, 201, 254
+  //   articles list / by-id-or-slug / create / update / delete
+  //                             -> index.ts:585, 751, 855, 972
+  //   search, popular, analytics -> index.ts:400, 363, 316
+  //   POST /articles/:id/feedback -> index.ts:591 (ported this round)
+  //   ratings, votes            -> handlers/ratings.ts (both id and user/:id forms)
+  //   bookmarks                 -> handlers/bookmarks.ts (list, create, update,
+  //                                delete, collections, check/:articleId)
+  //   reading-history           -> handlers/reading-history.ts (list, create,
+  //                                recent, stats, by-article, delete)
+  //
+  // DELETED WITH NO COUNTERPART, because nothing calls them either:
+  //   GET /articles/:id/feedback - the admin feedback list. The admin dashboard
+  //     reads /api/admin/knowledge-base/feedback/pending, a different prefix
+  //     that is NOT proxied and is still served by knowledgeBaseAdminRoutes.
+  //   PATCH /articles/:id/publish and /archive - KnowledgeBaseAdmin.tsx already
+  //     does both as a status change through the article PUT, and says so in a
+  //     comment at its call site.
   app.use('/api/admin/knowledge-base', knowledgeBaseAdminRoutes);
   app.use('/api/content-gap-analysis', contentGapAnalysisRoutes);
-  app.use('/api/knowledge-base/bookmarks', articleBookmarksRoutes);
-  app.use('/api/knowledge-base/reading-history', readingHistoryRoutes);
-  app.use('/api/knowledge-base/ratings', articleRatingsRoutes);
 
   // ─── Search & Accessibility ────────────────────────────────────────
   app.use(universalSearchRoutes);
@@ -345,11 +340,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerSampleDataRoutes(app);
   registerCrmCoreRoutes(app);
   registerDashboardsCoreRoutes(app);
-  registerBillingCoreRoutes(app);
   registerProductsCrudRoutes(app);
   registerCatalogCsvRoutes(app);
   registerSeoCoreRoutes(app);
-  registerFinancialForecastingRoutes(app);
+  // registerFinancialForecastingRoutes was called here and is DELETED (CR-017).
+  // See the /api/financial entry in middleware/edge-function-proxy.ts: its six
+  // handlers queried four non-existent tables through raw SQL.
   registerOperationsExtendedRoutes(app);
   registerWorkflowMobileRoutes(app);
   registerAuditLogRoutes(app);
@@ -395,12 +391,14 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.delete('/api/user/delete', deleteUserAccount);
 
   // ─── API Key Management ──────────────────────────────────────────
-  app.use('/api/api-keys', requireAuth, apiKeyRoutes);
+  // routes/api-key-routes.ts retired (PROD-008b). All nine handlers were shadowed
+  // by the /api/api-keys proxy and supabase/functions/api-keys/ covers every one,
+  // literals ordered before /:id. services/api-key-service.ts stays — it is what
+  // middleware/api-key-auth.ts validates inbound keys with.
 
   // ─── Integrations ─────────────────────────────────────────────────
   registerIntegrationRoutes(app);
   app.use(integrationRoutes);
-  app.use(integrationHubRoutes);
 
   // ─── Task Management ──────────────────────────────────────────────
   registerTaskRoutes(app);
@@ -415,7 +413,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Service & CRM ────────────────────────────────────────────────
   registerServiceAnalysisRoutes(app);
   registerCrmGoalRoutes(app);
-  registerCustomFieldsRoutes(app);
   registerCrmNotesRoutes(app);
   registerDealTagRoutes(app);
   registerCrmBulkRoutes(app);
@@ -423,7 +420,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerRecordLayoutRoutes(app);
   registerBusinessRecordRoutes(app);
   registerCsvImportRoutes(app);
-  registerScheduledReportsRoutes(app);
   registerDashboardLayoutsRoutes(app);
 
   // ─── Salesforce & Data Enrichment ─────────────────────────────────
@@ -439,7 +435,39 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use(equipmentDisposalRoutes);
 
   // ─── Consolidated Billing ─────────────────────────────────────────
-  app.use('/api/billing', consolidatedBillingRoutes);
+  // routes/billing.ts was mounted here and is DELETED (PROD-008b).
+  //
+  // /api/billing is in crmProxies, so the proxy served the whole prefix in dev
+  // and production hit supabase/functions/billing/ directly - this router had
+  // not run on either host. It was invisible to check:shadowed-express until the
+  // scanner learned to follow the domains/* barrels; its 33 handlers were 33 of
+  // the 106 that surfaced.
+  //
+  // EVERY SURFACE WITH A LIVE CALLER WAS CHECKED AGAINST THE EDGE FUNCTION
+  // BEFORE DELETING, not assumed:
+  //   /rules + /rules/:id + PATCH /rules/:id/{activate,deactivate}
+  //       BillingRules.tsx, billing-rule-dialog.tsx  -> billing/index.ts:116-121, 313-490
+  //   /info, /address                Billing.tsx     -> billing/index.ts:100-103
+  //   /analytics, /analytics/:kind   BillingAnalytics.tsx, AdvancedBillingEngine.tsx
+  //                                                  -> billing/index.ts:90, 140
+  //   /invoices, /invoices/:id, /:id/{pdf,email,send,pay,paid}
+  //       Billing.tsx, Invoices.tsx, invoice-email-dialog.tsx, lib/invoice-pdf.ts
+  //                                                  -> handlers/invoices.ts:76-305
+  //   /invoices/generate-from-contract  Invoices.tsx -> handlers/invoices.ts:81
+  //       (this one never had an Express route at all)
+  //
+  // The surfaces with NO caller anywhere in client/src are gone with the file:
+  // /stripe/config, /stripe/setup-intent, /stripe/webhooks, /dashboard,
+  // /metrics, /health-score, /auto-invoice-status, /auto-generate. The Stripe
+  // webhook one was already dead by a second route: Stripe delivers to
+  // /api/webhooks/stripe, not under /api/billing (CLAUDE.md).
+  //
+  // It could not have worked anyway: it imported billingDisputes and creditMemos
+  // from @shared/schema, which does not re-export them (they live in
+  // shared/advanced-billing-schema.ts), and it read invoices.balance / .paid /
+  // .total / .tax / .description - the phantom columns CLAUDE.md names as the
+  // legacy consolidated router's. The real ones are total_amount / amount_paid /
+  // balance_due / invoice_status / paid_date.
 
   // ─── Salesforce Test Routes (dev only) ────────────────────────────
   if (process.env.NODE_ENV === 'development') {
@@ -449,7 +477,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Async Route Imports ──────────────────────────────────────────
   const asyncMounts: [string, string][] = [
     // ['/api/proposals', './routes-proposals'] — migrated to supabase/functions/proposals/
-    ['/api/documents', './routes-documents'],
+    // ['/api/documents', './routes-documents'] — retired (PROD-008b). All four
+    // handlers (GET /, POST /, GET /:id, POST /:id/pdf) are shadowed by the
+    // /api/documents proxy and matched branch-for-branch by
+    // supabase/functions/documents/. Its generateDocumentHTML moved to
+    // server/lib/document-html.ts, which the parity test now imports.
     ['/api/root-admin', './routes-root-admin'],
     ['/api/admin', './routes-admin-workflows'],
     ['/api/dashboard', './routes-dashboard-customization'],
@@ -487,14 +519,31 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api/company-ids', companyIdRoutes.default);
 
   // ─── Feature Flags ────────────────────────────────────────��─────────
-  registerFeatureFlagRoutes(app);
 
   // ─── Session Management ────────────────────────────────────────────
   registerSessionManagementRoutes(app);
 
   // ─── RBAC & AI ────────────────────────────────────────────────────
   app.use('/api/rbac', enhancedRBACRoutes);
-  app.use('/api/ai/gpt5', gpt5Routes);
+  // routes-ai-gpt5.ts was mounted here and is DELETED (PROD-008b). /api/ai/gpt5
+  // is in crmProxies (and has a server.ts alias), so the proxy served it in dev
+  // and production hit supabase/functions/ai-gpt5/ directly - it ran on neither
+  // host. Note the prefix is the SUB-PATH only: the rest of /api/ai stays on
+  // Express, which is why this mount was narrow.
+  //
+  // All nine handlers map one-for-one onto the edge function's dispatch:
+  // analyze-lead, generate-proposal, analyze-service, support-response,
+  // business-analytics, classify-inquiry, generate-code and custom-prompt are
+  // the switch cases at ai-gpt5/index.ts:199-325, and GET /configs is the branch
+  // at :174.
+  //
+  // server/services/gpt5-service.ts is NOT deleted with it. It was this file's
+  // only route consumer, but server/tests/unit/gpt5-prompts-parity.test.ts
+  // imports it to lock the Node prompt text against
+  // supabase/functions/_shared/gpt5-prompts.ts. Deleting the service would take
+  // the parity test's Node side with it and leave the edge prompts unguarded -
+  // the "is this test guarding a class or a corpse" question, and here it is a
+  // class: the prompts still exist on both sides.
 
   const asyncApiMounts: [string, string][] = [
     ['/api/ai', './routes/ai-routes-simple'],
@@ -507,7 +556,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     ['/api/manufacturer-orders', './routes/manufacturer-order-routes'],
     ['/api/gps', './routes/gps-tracking-routes'],
     ['/api/billing', './routes/advanced-billing-routes'],
-    ['/api/customer-success', './routes/customer-success-routes'],
+    // ['/api/customer-success', './routes/customer-success-routes'] — retired
+    // (PROD-008b). All 44 handlers were shadowed by the /api/customer-success
+    // proxy AND self-broken: the module's `storage` was only ever assigned by an
+    // exported setter nothing called, so every handler dereferenced undefined.
+    // supabase/functions/customer-success/ covers all 44, literals ordered before
+    // /:id — which this router got backwards.
     ['/api/apollo', './routes/apollo-routes'],
     // ['/api/outreach', './routes/outreach-routes'] — migrated to supabase/functions/outreach/
     ['/api/extension', './routes/chrome-extension-routes'],
@@ -528,7 +582,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     './routes/meeting-transcription-routes',
     './routes/ai-documentation-routes',
     './routes/ai-search-knowledge-routes',
-    './routes/ai-employee-routes',
+    // './routes/ai-employee-routes' — retired (PROD-008b). All ten handlers were
+    // shadowed by the /api/ai-employees proxy and supabase/functions/ai-employee/
+    // covers every one. Three of them (/workflows, /templates, and the analytics
+    // overview's siblings) were also registered AFTER /ai-employees/:employeeId in
+    // the same router, so Express matched them as an id lookup — dead before the
+    // proxy existed. The edge function orders literals first.
     './routes/signature-routes',
     './routes/field-service-routes',
     './routes/email-marketing-routes',
@@ -553,20 +612,54 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.get('/api/onboarding/export/:id/csv', exportChecklistCSV);
 
   // ─── Notifications ──────────────────────────────────────────────────
-  registerNotificationRoutes(app);
+  // routes-notifications.ts retired (PROD-008b). supabase/functions/notifications/
+  // serves the prefix — repointed in the same change from a phantom `notifications`
+  // table onto the real user_notifications.
 
   // ─── Monitoring & Service ─────────────────────────────────────────
   registerManufacturerIntegrationRoutes(app);
   registerClientMonitoringRoutes(app);
-  app.use('/api/customer-portal', customerPortalRoutes);
+  // routes-customer-portal.ts was mounted here and is DELETED (PROD-008b).
+  // 1,701 lines, 25 handlers. /api/customer-portal is in crmProxies, so the
+  // proxy served the prefix in dev and production hit
+  // supabase/functions/customer-portal/ directly - it ran on neither host.
+  //
+  // ALL 25 CHECKED AGAINST THE EDGE FUNCTION. Every path the frontend calls has
+  // a counterpart, sub-paths included:
+  //   maintenance-availability, maintenance-appointments (+ /:id,
+  //     /:id/reschedule, DELETE /:id)      -> index.ts:79-83, handlers/maintenance.ts
+  //   satisfaction/surveys (+ /:id, /:id/start, /:id/submit), /analytics
+  //                                        -> index.ts:85, handlers/satisfaction.ts
+  //   service-requests (+ /:id, /:id/history, POST)  -> index.ts:210-370
+  //   equipment, equipment-health, usage-analytics, supply-orders,
+  //     knowledge-base, dashboard          -> index.ts:88-98, 457, 528, 612, 693
+  //
+  // DELETED WITH NO COUNTERPART, none of which any page calls: /test, /users,
+  // /dashboard/stats, /equipment-analytics/:id, /equipment-usage/:id,
+  // /meter-submissions/recent, /service-requests/recent, and
+  // POST /equipment-maintenance.
+  //
+  // Worth knowing about that last group: /service-requests/recent would not have
+  // worked on the edge side anyway. There is no 'recent' branch there, and the
+  // GET /:id branch matches first, so it would resolve as a lookup for a request
+  // whose id is the word "recent" - the shadowing class check:route-shadowing
+  // gates on the Express side.
   app.use('/api/client-metrics', clientMetricsRoutes);
   app.use('/api/device-monitoring', deviceMonitoringRoutes);
 
   const contractAlertsRoutes = (await import('./routes-contract-alerts')).default;
   app.use(contractAlertsRoutes);
   app.use(serviceDispatchRouter);
-  app.use(proactiveMaintenanceRouter);
-  app.use(predictiveMaintenanceHubRouter);
+  // routes-proactive-maintenance.ts retired (PROD-008b). Both handlers were
+  // shadowed by the /api/service proxy; supabase/functions/service/maintenance.ts
+  // serves them, and its own header records that GET /proactive-maintenance is a
+  // REPAIR rather than a transcription — the Express version selected columns
+  // that do not exist and had always 500'd.
+  // routes-predictive-maintenance-hub.ts retired (PROD-008b). All six handlers
+  // were shadowed by the /api/predictive-maintenance proxy and
+  // supabase/functions/predictive-maintenance/ matches PredictiveMaintenanceHub.tsx
+  // key for key on both the dashboard overview and the parts forecast, with its
+  // AI-prediction degradation disclosed in the payload.
   app.use('/api', enhancedServiceRoutes);
 
   // ─── Reporting ────────────────────────────────────────────────────
@@ -592,7 +685,28 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Email & Mobile ───────────────────────────────────────────────
   app.use('/api/email-parser', emailParserRoutes);
-  app.use('/api/mobile', mobileTechnicianRoutes);
+  // routes-mobile-technician was mounted here and is DELETED (QUALITY-002).
+  //
+  // It queried phone_in_tickets as if it were the technician's ticket queue.
+  // That table is a CALL-INTAKE LOG - callerName, callerPhone, issueDescription,
+  // convertedToTicketId - with no assignedTo, no status and no
+  // enhancedTicketStatus, so every handler in the file referenced columns that
+  // do not exist and could only fail at runtime. It also called storage.upload,
+  // which is not a method on DatabaseStorage. The technician's queue is
+  // service_tickets (assignedTechnicianId / status / scheduledDate).
+  //
+  // Nothing called it: no reference to /api/mobile/sync, /tickets, /equipment,
+  // /location or /stats exists in client/src, mobile/, printyx-client/ or ios/.
+  //
+  // NOTE FOR WHOEVER FIXES THE DEV GAP BELOW: /api/mobile/sessions and
+  // /api/mobile/photos - which MobileFieldService.tsx really does call - were
+  // never served here either. supabase/functions/mobile/ serves them, so the
+  // page works in production and 404s in dev. A crmProxies entry for
+  // /api/mobile would NOT be a safe fix: the proxy forwards the WHOLE prefix,
+  // and /api/mobile/push-token (the React Native app), /api/mobile/dashboard,
+  // /api/mobile/jobs/:jobId (routes-mobile.ts) and /api/mobile/time-tracking/*
+  // (routes-mobile-api.ts) are all still Express-only. Proxying would take those
+  // from working-in-dev to 404-in-dev.
   app.use('/api/equipment', equipmentQRRoutes);
 
   // ─── Mobile App API (service-tickets, equipment list, time tracking) ──
@@ -609,15 +723,37 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api/platform-deals', platformDealsRoutes);
 
   // ─── Phase 3 Modular Routes ───────────────────────────────────────
-  registerContactsRoutes(app);
   registerCompaniesRoutes(app);
-  registerActivitiesRoutes(app);
-  registerAutomationRoutes(app);
+  // routes-activities.ts retired (PROD-008b). Its two handlers
+  // (GET /activities/recent, GET /activities/user/:userId) were shadowed by the
+  // /api/activities proxy, have no edge branch and no caller — both fell through
+  // to the single-activity lookup and answered 404.
+  // registerAutomationRoutes was called here and is DELETED (CR-017).
+  //
+  // routes-automation.ts served /api/automation/{rules,tasks} against
+  // automation_rules and automated_tasks, through raw SQL string queries. NEITHER
+  // TABLE EXISTS - not in shared/*.ts, not in any migration - so all four
+  // handlers 500'd on a missing relation, and because the queries were raw SQL
+  // rather than drizzle, tsc reported zero errors for the file.
+  //
+  // Nothing called it: a repo-wide search finds no /api/automation reference in
+  // client/src at all. The pages that look like they would use it
+  // (WorkflowAutomation.tsx, AutopilotDashboard.tsx) call
+  // /api/workflow-automation/dashboard, a different prefix that IS proxied and
+  // IS served - supabase/functions/workflow-automation/index.ts:62.
+  //
+  // supabase/functions/automation/ is NOT deleted with it, but it is not a
+  // working alternative either: it reads the same two non-existent tables and is
+  // already recorded in docs/phantom-tables-baseline.json. The prefix is dead on
+  // both hosts. Reviving it means creating the tables first.
   registerCustomerRoutes(app);
   app.use(businessRecordsRoutes);
-  app.use(webFormsRoutes);
-  app.use(emailSequencesRoutes);
-  registerDealsManagementRoutes(app);
+  // routes-web-forms.ts retired (PROD-008b); supabase/functions/web-forms/ has
+  // all six handlers and already returns camelCase rows.
+  // routes-email-sequences.ts retired (PROD-008b). All four handlers were
+  // shadowed by the /api/email-sequences proxy; supabase/functions/email-sequences/
+  // covers them and already returns camelCase rows.
+  // registerDealsManagementRoutes(app) — deleted; supabase/functions/deals/ covers it
   // registerDealDeskRoutes(app) — migrated to supabase/functions/deal-desk/
   // registerPipelineConfigurationRoutes(app) — migrated to supabase/functions/pipeline-config/
   registerTechnicianManagementRoutes(app);
@@ -627,20 +763,62 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerLeadAssignmentRoutes(app);
   registerLeadMapRoutes(app);
   registerAutoLeadRoutingRoutes(app);
-  registerPredictiveServiceDispatchRoutes(app);
-  registerQbrRoutes(app);
+  // registerPredictiveServiceDispatchRoutes was called here and is DELETED
+  // (QUALITY-002). See the /api/predictive-dispatch entry in
+  // middleware/edge-function-proxy.ts: the router's handlers referenced three
+  // tables that exist nowhere, as undefined identifiers rather than as imports,
+  // so each was a guaranteed ReferenceError. The edge function already served
+  // production correctly and now serves dev too.
   registerDealDeskCopilotRoutes(app);
-  registerDailyBriefingRoutes(app);
-  registerPortalServiceRoutes(app);
-  registerServiceKnowledgeRoutes(app);
-  registerVoiceTicketCloseRoutes(app);
+  // routes-daily-briefing.ts retired (PROD-008b). All six handlers were shadowed
+  // by the /api/daily-briefing proxy; supabase/functions/daily-briefing/ covers
+  // them and agrees on every table. The generation engine and
+  // runDueDailyBriefings moved to services/daily-briefing-scheduler.ts, which
+  // cron-service imports.
+  // routes-portal-service.ts retired (PROD-008b). All four handlers were
+  // shadowed by the /api/portal-service proxy; supabase/functions/portal-service/
+  // covers them, and its timeline steps match the TimelineStep shape
+  // CustomerPortalService.tsx renders.
+  // routes-service-knowledge.ts retired (PROD-008b). All six handlers were
+  // shadowed by the /api/service proxy and supabase/functions/service/knowledge.ts
+  // is a byte-compatible port of its pure logic. routes-proactive-maintenance.ts,
+  // the other router on this prefix, is retired too.
+  // routes-voice-ticket-close.ts retired (PROD-008b). All six handlers were
+  // shadowed by the /api/voice-ticket-close proxy. Its two load-bearing exports
+  // moved with it: the SKU matcher already lived in
+  // _shared/voice-ticket-close-logic.ts, and isAllowedAudioHost was ported there
+  // too — the edge function had been gating audioUrl with a startsWith() prefix
+  // match that 'https://api.printyx.net.evil.com' satisfies.
   registerChatbotRoutes(app);
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
   registerSalesHandoffRoutes(app);
   registerCommissionRoutes(app);
   registerCatalogRoutes(app);
-  registerAnalyticsRoutes(app);
+  // registerAnalyticsRoutes was called here and is DELETED (CR-017).
+  //
+  // routes-analytics.ts served eleven /api/analytics paths against SIX tables
+  // that exist in no schema and no migration - service_performance_metrics,
+  // technician_performance_analytics, customer_service_analytics,
+  // service_trend_analysis, business_intelligence_dashboards,
+  // performance_benchmarks. Every one of them 500'd on a missing relation, and
+  // because the queries were raw SQL rather than drizzle, tsc reported nothing.
+  //
+  // DELIBERATELY NOT PROXIED, and this is the part worth reading before anyone
+  // "finishes the job": /api/analytics is served by a SECOND router,
+  // server/analytics-routes.ts (dynamically imported below), which owns
+  // conversion-metrics, activity-nudges, control-charts and trend-widgets - four
+  // paths with live callers (PipelineTrendWidgets.tsx, ConversionInsights.tsx)
+  // that WORK today. A crmProxies entry forwards the whole prefix, so proxying
+  // would take those four from working to 404 in order to fix nothing: the
+  // analytics edge function only answers 'dashboard' out of the eleven paths
+  // deleted here.
+  //
+  // So dev now returns 404 for those eleven instead of 500, which is what
+  // production already returns for ten of them. Making them work means creating
+  // the six tables, not choosing a backend. ServiceAnalytics.tsx and
+  // AdvancedAnalyticsDashboard.tsx have no mock fallbacks, so both states render
+  // empty rather than fabricated.
   registerRenewalManagementRoutes(app);
 
   // ─── Sales Forecasting ────────────────────────────────────────────

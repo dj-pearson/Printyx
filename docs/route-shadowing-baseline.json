@@ -1,0 +1,4 @@
+{
+  "note": "Static routes registered after a :param sibling that swallows them. Express matches in registration order, so each entry is a handler that can never run - it answers from the :param handler instead, usually as a 404. Invisible to tsc, eslint and every other ratchet. Fix by moving the static registration above the :param one. Keyed by file + route so line numbers do not churn. Shrink, never grow: node scripts/check-route-shadowing.mjs --update-baseline.",
+  "allowed": []
+}

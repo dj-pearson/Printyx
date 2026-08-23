@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLocation } from 'wouter';
-import { format, formatDistance, isToday, isPast, isFuture, addDays } from 'date-fns';
+import { format, formatDistance, isToday, isPast, isFuture } from 'date-fns';
 import {
   AlertCircle,
   Calendar,
@@ -18,7 +18,6 @@ import {
   Phone,
   Target,
   TrendingUp,
-  Users,
   Zap,
   Trophy,
   AlertTriangle,
@@ -36,7 +35,9 @@ interface Activity {
   type: 'call' | 'meeting' | 'email' | 'task' | 'follow-up';
   scheduledDate: string;
   dueDate?: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  // No priority: business_record_activities has no priority column, and the
+  // server used to emit a hardcoded 'medium' for every activity, which coloured
+  // every badge identically while looking like real data.
   status: 'pending' | 'completed' | 'overdue';
   customerName?: string;
   customerId?: string;
@@ -73,8 +74,12 @@ interface TodayViewData {
   pipelineAlerts: Deal[];
   recentWins: Deal[];
   stats: {
-    pipelineValue: number;
-    quotaAttainment: number;
+    // Nullable on purpose. Both are a SUM over the tenant's whole deals table,
+    // which the production backend cannot compute without either truncating
+    // silently or an rpc that does not exist yet, so it reports them as absent.
+    // Rendering a 0 would read as "no pipeline" rather than "not available".
+    pipelineValue: number | null;
+    quotaAttainment: number | null;
     conversionRate: number;
     tasksCompleted: number;
   };
@@ -86,13 +91,6 @@ const activityTypeIcons = {
   email: Mail,
   task: CheckCircle2,
   'follow-up': Clock,
-};
-
-const priorityColors = {
-  low: 'text-gray-500 bg-gray-100',
-  medium: 'text-blue-600 bg-blue-100',
-  high: 'text-orange-600 bg-orange-100',
-  urgent: 'text-red-600 bg-red-100',
 };
 
 export default function TodayDashboard() {
@@ -169,8 +167,10 @@ export default function TodayDashboard() {
     pipelineAlerts = [],
     recentWins = [],
     stats = {
-      pipelineValue: 0,
-      quotaAttainment: 0,
+      // null, not 0, for the two the backend may not be able to compute: a zero
+      // here is indistinguishable from an empty pipeline.
+      pipelineValue: null,
+      quotaAttainment: null,
       conversionRate: 0,
       tasksCompleted: 0,
     },
@@ -219,15 +219,25 @@ export default function TodayDashboard() {
           <StatCard
             icon={DollarSign}
             label="Pipeline Value"
-            value={`$${(stats.pipelineValue / 1000).toFixed(0)}K`}
+            value={
+              stats.pipelineValue == null
+                ? 'Not available'
+                : `$${(stats.pipelineValue / 1000).toFixed(0)}K`
+            }
             color="text-green-600 bg-green-100"
           />
           <StatCard
             icon={Target}
             label="Quota Attainment"
-            value={`${stats.quotaAttainment}%`}
+            value={stats.quotaAttainment == null ? 'Not available' : `${stats.quotaAttainment}%`}
             color="text-blue-600 bg-blue-100"
-            subtitle={stats.quotaAttainment >= 100 ? '🎉 Over target!' : 'Keep going!'}
+            subtitle={
+              stats.quotaAttainment == null
+                ? undefined
+                : stats.quotaAttainment >= 100
+                  ? '🎉 Over target!'
+                  : 'Keep going!'
+            }
           />
           <StatCard
             icon={TrendingUp}
@@ -458,7 +468,12 @@ function ActivityItem({
         isOverdue ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200 hover:border-gray-300',
       )}
     >
-      <div className={cn('p-2 rounded-md', priorityColors[activity.priority])}>
+      <div
+        className={cn(
+          'p-2 rounded-md',
+          isOverdue ? 'text-red-600 bg-red-100' : 'text-blue-600 bg-blue-100',
+        )}
+      >
         {Icon && <Icon className="h-4 w-4" />}
       </div>
       <div className="flex-1 min-w-0">

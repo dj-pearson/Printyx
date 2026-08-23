@@ -104,13 +104,28 @@ export default function Invoices() {
     queryKey: ['/api/customers'],
     queryFn: async () => {
       const response = await apiRequest('/api/customers', 'GET');
+      // AUDIT-011a: each of these was `x || x`, which can never fall back, so the
+      // key on the left was the only one ever read. Checked against the serving
+      // handler rather than guessed — /api/customers is special-cased in
+      // edge-function-proxy.ts to the companies edge function in dev, and hits the
+      // customers edge function in prod. BOTH spread the raw PostgREST row (so the
+      // snake_case columns are present) and BOTH then set `companyName` explicitly
+      // in camelCase, because the underlying column is `business_name` and there is
+      // no `company_name` key to fall back to.
       return extractRecords(response).map((cust: any) => ({
         ...cust,
         id: cust.id,
-        companyName: cust.companyName || cust.companyName || '',
-        contactId: cust.contactId || cust.contactId || '',
-        createdAt: cust.createdAt || cust.createdAt || '',
-        updatedAt: cust.updatedAt || cust.updatedAt || '',
+        // camelCase is authoritative here: it is synthesised by both handlers.
+        companyName: cust.companyName || '',
+        // `companies` has no contact_id column — the association runs through
+        // company_contacts — so there is no snake_case name to point at. Left as a
+        // single read rather than a fabricated fallback; nothing in this file reads
+        // it today.
+        contactId: cust.contactId || '',
+        // These come straight off the raw row, so snake_case is what arrives; the
+        // camel side only exists on the companies handler, via toCamelAliases.
+        createdAt: cust.created_at || cust.createdAt || '',
+        updatedAt: cust.updated_at || cust.updatedAt || '',
       }));
     },
   });

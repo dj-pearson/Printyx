@@ -324,7 +324,8 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/accessories': 'accessories',
     '/api/contract-tiered-rates': 'contract-tiered-rates',
 
-    // PROD-013: /api/documents (server/routes-documents.ts) had no edge
+    // PROD-013: /api/documents (formerly server/routes-documents.ts, retired by
+    // PROD-008b) had no edge
     // function, so DocumentBuilder could not list, create or export agreements
     // in production. NOTE this forwards the WHOLE prefix, which also covers the
     // /generate, /batch-generate, /generated, /upload, /uploads and /ai-extract
@@ -429,6 +430,33 @@ export function registerEdgeFunctionProxy(app: any) {
     // EDGE-005d-remainder: predictive-maintenance (6 frontend callsites).
     // Dashboard + parts-forecast aggregations are portable; AI analysis paths
     // return degraded responses (require Claude integration port).
+    // QUALITY-002: /api/predictive-dispatch. The Express router that served
+    // this prefix is DELETED - it referenced three tables that exist in no
+    // schema or migration (service_calls_enhanced, equipment_metrics,
+    // technician_resources_enhanced) as UNDEFINED IDENTIFIERS, 59 TS2304s, so
+    // every one of its handlers was a guaranteed ReferenceError. Production
+    // already ran supabase/functions/predictive-dispatch/, which reads the real
+    // tables (device_metrics, equipment, service_tickets, technicians,
+    // service_calls, equipment_failure_predictions) and covers every path
+    // PredictiveServiceDispatchDashboard.tsx calls plus five more. This entry
+    // points dev at the same function so the page stops throwing there.
+    // CR-017: /api/financial. The Express router here queried four tables that
+    // exist in no schema or migration - financial_forecasts,
+    // cash_flow_projections, profitability_analysis, financial_kpis - through
+    // db.$client.query() RAW SQL, so tsc never saw them and all six endpoints
+    // 500'd on a missing relation in dev. Production already ran
+    // supabase/functions/financial/, which DERIVES the same figures from real
+    // tables (contracts, invoices, quotes) rather than storing them.
+    //
+    // PARTIAL PARITY, stated because this entry changes dev behaviour in two
+    // directions: metrics, forecasts and cash-flow go from 500 to WORKING; kpis,
+    // profitability and profitability/run go from 500 to 404, which is what
+    // production already returns for them. Dev now matches prod on all six
+    // instead of failing differently on all six. FinancialForecasting.tsx
+    // defaults each list to [] and each figure to 0, so an absent endpoint
+    // renders empty rather than fabricated - the same as today.
+    '/api/financial': 'financial',
+    '/api/predictive-dispatch': 'predictive-dispatch',
     '/api/predictive-maintenance': 'predictive-maintenance',
 
     // EDGE-013: monitoring-clients. Verified parity — the edge function
@@ -558,9 +586,10 @@ export function registerEdgeFunctionProxy(app: any) {
     // routes-custom-fields.ts both served /api/custom-fields with no proxy
     // entry, which check:routes flags as ambiguous ownership. Prod already
     // bypasses Express and hits the edge fn, so this only makes dev match prod.
-    // NOTE routes-custom-fields.ts STAYS — its validateCustomFieldValues is
-    // imported by routes-business-records.ts and routes-deals.ts; only the HTTP
-    // handlers are superseded. Dir name == prefix segment, no override needed.
+    // PROD-008b retired routes-custom-fields.ts entirely; its shared
+    // validateCustomFieldValues moved to lib/custom-field-validation.ts, which
+    // is where routes-business-records.ts imports it from now. Dir name ==
+    // prefix segment, no override needed.
     '/api/custom-fields': 'custom-fields',
 
     // New edge fns for three domains that 404'd in PROD — the frontend calls
@@ -569,12 +598,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // run ONLY in prod, which is the "invisible in dev" trap that let these
     // rot in the first place. Dir name == prefix segment, no override needed.
     //
-    // NOTE for anyone re-running npm run audit:routes: it classifies both of
-    // these `edge-only`, i.e. it does NOT see the Express side. That is a false
-    // negative in the tool — routes-web-forms.ts and routes-email-sequences.ts
-    // declare full '/api/...' paths INSIDE a Router that routes-registry.ts
-    // mounts with a bare `app.use(router)` (lines 635-636), a shape the audit's
-    // Express detection misses. They really are both-served.
+    // PROD-008b retired BOTH Express routers that used to share these prefixes:
+    // routes-web-forms.ts and routes-email-sequences.ts. Each edge function had
+    // full handler coverage and already returned camelCase rows, so both were
+    // clean retirements — the audit:routes false negative these two used to
+    // demonstrate (full '/api/...' paths declared inside a Router mounted with a
+    // bare `app.use(router)`, which its Express detection misses) no longer has
+    // an instance here, but the tool still has the blind spot.
     '/api/web-forms': 'web-forms',
     '/api/email-sequences': 'email-sequences',
 
@@ -654,12 +684,15 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/technician-sessions': 'technician-sessions',
 
     // PROD-011. Full parity: all EIGHT endpoints across the TWO Express routers
-    // that share this prefix — routes-service-knowledge.ts (search, backfill,
+    // that shared this prefix — routes-service-knowledge.ts (search, backfill,
     // embed/:ticketId, stats, GET/PUT settings) and routes-proactive-maintenance.ts
     // (list, :equipmentId/schedule) — which covers everything KnowledgeSearch.tsx
-    // and ProactiveServiceDashboard.tsx call. Both routers had to ship together:
+    // and ProactiveServiceDashboard.tsx call. Both had to ship together:
     // proxying forwards the whole prefix, so porting one would have taken the
     // other from working-in-dev to 404-in-dev.
+    //
+    // PROD-008b then retired BOTH: routes-service-knowledge.ts and
+    // routes-proactive-maintenance.ts. No Express router serves this prefix now.
     //
     // app.use() matches on path-segment boundaries, so this entry captures
     // /api/service and /api/service/* only — NOT /api/service-tickets, which

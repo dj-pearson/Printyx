@@ -9,13 +9,16 @@ const log = createModuleLogger('routes-onboarding');
 const getRequestTenantId = getTenantId;
 
 import {
-  insertOnboardingChecklistSchema,
+  // The equipment installation checklist, NOT the user-lifecycle
+  // onboarding_checklists table that shares the shorter export name — see the
+  // note on storage.getOnboardingChecklists.
+  insertEquipmentOnboardingChecklistSchema,
   insertOnboardingEquipmentSchema,
   insertOnboardingNetworkConfigSchema,
   insertOnboardingPrintManagementSchema,
   insertOnboardingDynamicSectionSchema,
   insertOnboardingTaskSchema,
-  type OnboardingChecklist,
+  type EquipmentOnboardingChecklist,
   type OnboardingEquipment,
   type OnboardingNetworkConfig,
   type OnboardingPrintManagement,
@@ -23,7 +26,6 @@ import {
   type OnboardingTask,
   businessRecords,
   quotes,
-  quoteLineItems,
   onboardingProgress,
 } from '@shared/schema';
 import { storage } from './storage';
@@ -34,7 +36,7 @@ import puppeteer from 'puppeteer';
 // PDF Generation Service
 class OnboardingPDFService {
   private async generateChecklistHTML(
-    checklist: OnboardingChecklist,
+    checklist: EquipmentOnboardingChecklist,
     equipment: OnboardingEquipment[],
     networkConfigs: OnboardingNetworkConfig[],
     printConfigs: OnboardingPrintManagement[],
@@ -234,7 +236,7 @@ class OnboardingPDFService {
         <div class="field-group">
           <div class="field-label">Progress:</div>
           <div class="field-value">${
-            checklist.progressPercent || 0
+            checklist.progressPercentage || 0
           }% Complete (${checklist.completedSections || 0}/${
             checklist.totalSections || 0
           } sections)</div>
@@ -245,7 +247,9 @@ class OnboardingPDFService {
         </div>
         <div class="field-group">
           <div class="field-label">Created Date:</div>
-          <div class="field-value">${new Date(checklist.createdAt).toLocaleDateString()}</div>
+          <div class="field-value">${
+            checklist.createdAt ? new Date(checklist.createdAt).toLocaleDateString() : 'Unknown'
+          }</div>
         </div>
         ${
           checklist.actualInstallDate
@@ -381,73 +385,6 @@ class OnboardingPDFService {
 // PROD-008b retired that registration (proxied to the edge function), and it
 // had no other caller.
 
-async function searchQuotes(req: Request, res: Response) {
-  try {
-    const user = req.user as any;
-    const { search, businessRecordId, limit = 10 } = req.query;
-
-    if (!user?.tenantId) {
-      return res.status(400).json({ error: 'Tenant ID is required' });
-    }
-
-    const tenantId = user.tenantId;
-
-    let query = db.select().from(quotes).where(eq(quotes.tenantId, tenantId)).limit(Number(limit));
-
-    if (businessRecordId && typeof businessRecordId === 'string') {
-      query = query.where(
-        and(
-          eq(quotes.tenantId, tenantId),
-          or(eq(quotes.leadId, businessRecordId), eq(quotes.customerId, businessRecordId)),
-        ),
-      );
-    }
-
-    if (search && typeof search === 'string') {
-      query = query.where(
-        and(
-          eq(quotes.tenantId, tenantId),
-          or(
-            ilike(quotes.quoteNumber, `%${search}%`),
-            ilike(quotes.title, `%${search}%`),
-            ilike(quotes.notes, `%${search}%`),
-          ),
-        ),
-      );
-    }
-
-    const quotesData = await query.execute();
-    res.json(quotesData);
-  } catch (error) {
-    log.error('Error searching quotes:', error);
-    res.status(500).json({ error: 'Failed to search quotes' });
-  }
-}
-
-async function getQuoteLineItems(req: Request, res: Response) {
-  try {
-    const user = req.user as any;
-    const { quoteId } = req.params;
-
-    if (!user?.tenantId) {
-      return res.status(400).json({ error: 'Tenant ID is required' });
-    }
-
-    const tenantId = user.tenantId;
-
-    const lineItems = await db
-      .select()
-      .from(quoteLineItems)
-      .where(and(eq(quoteLineItems.tenantId, tenantId), eq(quoteLineItems.quoteId, quoteId)))
-      .execute();
-
-    res.json(lineItems);
-  } catch (error) {
-    log.error('Error fetching quote line items:', error);
-    res.status(500).json({ error: 'Failed to fetch quote line items' });
-  }
-}
-
 // getCompanyContacts served GET /api/companies/:id/contacts here. PROD-008b
 // retired that registration (proxied to the edge function); it had no other
 // caller.
@@ -543,7 +480,7 @@ export function registerOnboardingRoutes(app: Express): void {
 
       log.debug('Onboarding checklist update', { fields: Object.keys(req.body || {}) });
 
-      const validatedData = insertOnboardingChecklistSchema.parse({
+      const validatedData = insertEquipmentOnboardingChecklistSchema.parse({
         ...req.body,
         tenantId,
         createdBy: userId,
@@ -818,12 +755,17 @@ export function registerOnboardingRoutes(app: Express): void {
   // to the business-records edge function, so this registration never ran - and
   // it was the SECOND registration of that path, which check:dup-routes tracks
   // separately. The remaining three below are on unproxied prefixes.
-  app.get('/api/quotes', searchQuotes);
-  app.get('/api/quotes/:quoteId/line-items', getQuoteLineItems);
+  // GET /api/quotes and GET /api/quotes/:quoteId/line-items were registered here
+  // and removed (PROD-008b). /api/quotes is proxied to
+  // supabase/functions/quotes/, which serves the list. The line-items sub-path
+  // had NO branch there — the detail response embeds lineItems instead — so
+  // pages/contracts.tsx, which fetches that path directly, was getting a 404 and
+  // rendering an empty line-item table. The branch was added to the edge function
+  // before these came out.
   // PROD-008b: GET /api/companies/:id/contacts was registered here too and is
   // proxied to the companies edge function, so it never ran. It was also the
-  // second of three registrations of that path (routes-contacts.ts has the
-  // other), which check:dup-routes tracks separately.
+  // second of three registrations of that path; the routes-contacts.ts copy was
+  // retired with that module under PROD-008b. check:dup-routes tracks the rest.
 
   // ─── Setup Wizard State ──────────────────────────────────────────
   // In-memory store for wizard state (keyed by tenantId:userId)

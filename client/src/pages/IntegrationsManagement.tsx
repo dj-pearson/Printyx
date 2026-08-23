@@ -252,7 +252,7 @@ export function IntegrationsManagement() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('POST', '/api/integrations', data),
+    mutationFn: (data: any) => apiRequest('/api/integrations', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       setIsDialogOpen(false);
@@ -269,7 +269,7 @@ export function IntegrationsManagement() {
 
   const testMutation = useMutation({
     mutationFn: (integrationId: string) =>
-      apiRequest('POST', `/api/integrations/${integrationId}/test`, {}),
+      apiRequest(`/api/integrations/${integrationId}/test`, 'POST', {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({ title: 'Connection successful', description: 'Integration test passed' });
@@ -285,7 +285,7 @@ export function IntegrationsManagement() {
 
   const syncMutation = useMutation({
     mutationFn: (integrationId: string) =>
-      apiRequest('POST', `/api/integrations/${integrationId}/sync`, {}),
+      apiRequest(`/api/integrations/${integrationId}/sync`, 'POST', {}),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({ title: 'Sync started', description: `${data.message}` });
@@ -294,7 +294,7 @@ export function IntegrationsManagement() {
 
   const disconnectMutation = useMutation({
     mutationFn: (integrationId: string) =>
-      apiRequest('POST', `/api/integrations/${integrationId}/disconnect`, {}),
+      apiRequest(`/api/integrations/${integrationId}/disconnect`, 'POST', {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({ title: 'Disconnected', description: 'Integration removed' });

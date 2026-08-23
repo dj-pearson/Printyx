@@ -141,28 +141,11 @@ export function registerEnhancedTaskRoutes(app: Express) {
   });
 
   // Get team members for task assignment
-  app.get('/api/users/team', isAuthenticated, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-
-      const teamMembers = await db
-        .select({
-          id: users.id,
-          name: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
-          email: users.email,
-          avatar: users.profileImageUrl,
-          role: users.role,
-        })
-        .from(users)
-        .where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)))
-        .orderBy(users.firstName, users.lastName);
-
-      res.json(teamMembers);
-    } catch (error) {
-      log.error('Error fetching team members:', error);
-      res.status(500).json({ error: 'Failed to fetch team members' });
-    }
-  });
+// GET /api/users/team was removed here (PROD-008b). No caller. Worth recording
+// what the surviving implementation does with the path: supabase/functions/users/
+// does not route on it at all, so /api/users/team returns the FULL tenant user
+// list rather than a team-scoped one. A guard was added there so an unhandled
+// sub-path 404s instead of answering with the wrong set.
 
   // Create task with enhanced data
 }

@@ -59,6 +59,16 @@ jobs:
         run: npm run check:dup-tables
       - name: Phantom PostgREST column ratchet (COP-M01)
         run: npm run check:phantom-cols
+      - name: Phantom PostgREST table ratchet (PROD-008b)
+        run: npm run check:phantom-tables
+      - name: Spread-insert key ratchet (hard gate at zero)
+        run: npm run check:spread-insert-keys
+      - name: Chained .where() ratchet (tenant scope, QUALITY-002)
+        run: npm run check:chained-where
+      - name: Route-shadowing ratchet (static route under a :param sibling)
+        run: npm run check:route-shadowing
+      - name: apiRequest argument order (hard gate at zero)
+        run: npm run check:api-request-args
       - name: Identical-fallback ratchet (AUDIT-011)
         run: npm run check:identical-fallback
       - name: Shadowed-Express ratchet (PROD-008)

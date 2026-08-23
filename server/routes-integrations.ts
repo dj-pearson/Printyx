@@ -89,65 +89,22 @@ export function registerIntegrationRoutes(app: Express) {
   // /api/deployment/readiness and /api/deployment/metrics (EDGE-005f), in every
   // environment. Emitting fabricated numbers here read as real and served no one.
 
-  // GET /api/webhooks — the webhook endpoints this system actually exposes, with
-  // honest status. (PA-046: was a hardcoded sample with INVENTED success rates of
-  // 98.5% / 99.2%.) `status` reflects whether the provider's signing secret is
-  // configured; there is no webhook delivery-stats tracking yet, so lastTriggered
-  // and successRate are explicitly null (the UI shows "Not tracked") rather than
-  // fabricated. Each url points at the real POST handler under /api/webhooks/:provider.
-  app.get('/api/webhooks', isAuthenticated, async (req: any, res, next) => {
-    try {
-      const base = process.env.PUBLIC_API_BASE_URL || '';
-      const providers = [
-        {
-          id: 'stripe',
-          name: 'Stripe Payments',
-          events: ['payment.succeeded', 'payment.failed'],
-          configured: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
-        },
-        {
-          id: 'salesforce',
-          name: 'Salesforce',
-          events: ['account.updated', 'contact.updated', 'opportunity.updated'],
-          configured: Boolean(process.env.SALESFORCE_WEBHOOK_SECRET),
-        },
-        {
-          id: 'microsoft-calendar',
-          name: 'Microsoft Calendar',
-          events: ['calendar.event.created', 'calendar.event.updated'],
-          configured: Boolean(process.env.MICROSOFT_WEBHOOK_SECRET),
-        },
-        {
-          id: 'quickbooks',
-          name: 'QuickBooks',
-          events: ['customer.updated', 'invoice.updated', 'payment.updated'],
-          configured: Boolean(process.env.QUICKBOOKS_WEBHOOK_TOKEN),
-        },
-        {
-          id: 'google-calendar',
-          name: 'Google Calendar',
-          events: ['calendar.event.created', 'calendar.event.updated'],
-          configured: Boolean(process.env.GOOGLE_WEBHOOK_TOKEN),
-        },
-      ];
-
-      const webhooks = providers.map((p) => ({
-        id: `webhook-${p.id}`,
-        name: p.name,
-        integration: p.name,
-        url: `${base}/api/webhooks/${p.id}`,
-        events: p.events,
-        status: p.configured ? 'active' : 'inactive',
-        // No delivery-stats tracking exists yet — do not fabricate.
-        lastTriggered: null,
-        lastDelivery: null,
-        successRate: null,
-        deliveryStatsTracked: false,
-      }));
-
-      res.json(webhooks);
-    } catch (error) {
-      next(error);
-    }
-  });
+  // GET /api/webhooks was removed here (PROD-008b). /api/webhooks is in
+  // crmProxies, so this handler was shadowed in dev and unreachable in
+  // production; supabase/functions/webhooks/ serves the prefix on both hosts.
+  //
+  // CORRECTION to the note this replaces, which had the feature backwards: what
+  // stood here was the INBOUND provider list (stripe, salesforce, microsoft,
+  // quickbooks, google, each with status derived from its signing-secret env
+  // var), while the edge function serves the OUTBOUND subscription rows a tenant
+  // configures in the `webhooks` table. Different features that happened to
+  // share a path. The deletion was still runtime-neutral - the proxy already won
+  // - but it is the edge function's rows the pages have been rendering, and they
+  // were reading a shape it did not return until _shared/webhook-view.ts.
+  //
+  // The inbound receivers themselves live in server/integrations/webhook-routes.ts
+  // and are retained pending INTEG-WEBHOOK-001. There is no longer an endpoint
+  // that reports whether each provider's secret is configured; if that display
+  // is wanted back, it belongs on the edge side as its own sub-resource, not on
+  // this prefix by accident.
 }

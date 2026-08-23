@@ -59,7 +59,7 @@ export class CronService {
     const briefingInterval = setInterval(
       async () => {
         try {
-          const { runDueDailyBriefings } = await import('../routes-daily-briefing');
+          const { runDueDailyBriefings } = await import('./daily-briefing-scheduler');
           const r = await runDueDailyBriefings();
           if (r.due > 0) log.info(`[CRON] Morning briefings: ${r.generated}/${r.due} delivered`);
         } catch (error) {

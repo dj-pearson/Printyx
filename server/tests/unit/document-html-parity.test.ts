@@ -1,13 +1,13 @@
 // Locks the two copies of the purchase-agreement renderer together.
 //
-// server/routes-documents.ts (Express) and
+// server/lib/document-html.ts (Express side) and
 // supabase/functions/_shared/document-html.ts (Deno) render the same agreement.
 // This one produces a document rather than a number, so a drift is less
 // dangerous than the quote-math one — but a customer could still receive a
 // different contract depending on which backend served the export, which is not
 // a difference anyone would notice until it mattered.
 import { describe, it, expect } from 'vitest';
-import { generateDocumentHTML as expressRender } from '../../routes-documents';
+import { generateDocumentHTML as expressRender } from '../../lib/document-html';
 import { generateDocumentHtml as edgeRender } from '../../../supabase/functions/_shared/document-html';
 
 const full = {

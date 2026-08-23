@@ -191,6 +191,11 @@ export default function AdvancedBillingEngine() {
         const contractId = urlParams.get('contractId');
         if (ticketId) params.append('ticketId', ticketId);
         if (contractId) params.append('contractId', contractId);
+        // BreachDetectionTiles / ModularDashboard drill through to
+        // /advanced-billing?filter=issuance_delay_gt_24h. The param was never
+        // forwarded, so the tile landed here and showed every invoice.
+        const filter = urlParams.get('filter');
+        if (filter) params.append('filter', filter);
       }
       if (selectedInvoiceStatus !== 'all') params.append('status', selectedInvoiceStatus);
       const response = await apiRequest(`/api/billing/invoices?${params.toString()}`);

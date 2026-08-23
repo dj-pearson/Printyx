@@ -23,7 +23,6 @@
     "client/src/hooks/useSubscription.ts:/api/subscriptions/setup-intent",
     "client/src/hooks/useSubscription.ts:/api/subscriptions/stripe/config",
     "client/src/hooks/useSubscription.ts:/api/subscriptions/usage",
-    "client/src/lib/seoUtils.tsx:/api/content/analytics/view",
     "client/src/lib/validations.ts:/api/auth/check-disposable-email",
     "client/src/pages/AdminCommandCenter.tsx:/api/admin/execute-action",
     "client/src/pages/AutoSupplyReplenishmentDashboard.tsx:/api/auto-supply-replenishment/analyze-all",

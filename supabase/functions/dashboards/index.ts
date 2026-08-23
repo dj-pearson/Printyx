@@ -4,6 +4,15 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toNumber } from '../_shared/quote-math.ts';
+import {
+  conversionRate,
+  toActivityView,
+  toLeadView,
+  toStaleDealView,
+  toWonDealView,
+  todayWindows,
+  type BusinessRecordRow,
+} from '../_shared/today-dashboard-view.ts';
 
 /**
  * Total of a set of deal amounts.
@@ -165,39 +174,174 @@ export default async function handler(req: Request) {
       );
     }
 
-    // GET /dashboards/today - Today's dashboard
+    // GET /dashboards/today - the "My Day" page (client/src/pages/TodayDashboard.tsx).
+    //
+    // PROD-008: this used to return {activitiesCount, newTickets, newDeals,
+    // newDealValue}. The page reads {overdue, today, upcoming, hotLeads,
+    // pipelineAlerts, recentWins, stats} and destructures with `= []` defaults,
+    // so production rendered an empty dashboard with zero stats and no error,
+    // while dev ran an entirely different Express handler on an unproxied
+    // prefix. Ported to the contract the page actually reads.
+    //
+    // Every read below is bounded by a limit or answered by a server-side count,
+    // so nothing here can be silently truncated by db-max-rows. The two stats
+    // that would need a SUM are returned as null - see TodayStats.
     if (req.method === 'GET' && dashboardType === 'today') {
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const todayEnd = new Date();
-      todayEnd.setHours(23, 59, 59, 999);
+      const now = new Date();
+      const w = todayWindows(now);
+      const STALE_AFTER_DAYS = 7;
+      const staleCutoff = new Date(now.getTime() - STALE_AFTER_DAYS * 86400000).toISOString();
 
-      const [{ data: todayActivities }, { data: todayTickets }, { data: todayDeals }] =
+      const activityCols =
+        'id, subject, activity_type, scheduled_date, due_date, completed_date, description, business_record_id';
+
+      const [
+        { data: overdueRows },
+        { data: todayRows },
+        { data: upcomingRows },
+        { data: leadRows },
+        { data: staleRows },
+        { data: wonRows },
+      ] = await Promise.all([
+        admin
+          .from('business_record_activities')
+          .select(activityCols)
+          .eq('tenant_id', tenantId)
+          .is('completed_date', null)
+          .or(
+            `due_date.lte.${w.startOfDay.toISOString()},scheduled_date.lte.${w.yesterday.toISOString()}`,
+          )
+          .order('due_date', { ascending: true })
+          .limit(10),
+        admin
+          .from('business_record_activities')
+          .select(activityCols)
+          .eq('tenant_id', tenantId)
+          .is('completed_date', null)
+          .gte('scheduled_date', w.startOfDay.toISOString())
+          .lte('scheduled_date', w.endOfDay.toISOString())
+          .order('scheduled_date', { ascending: true })
+          .limit(20),
+        admin
+          .from('business_record_activities')
+          .select(activityCols)
+          .eq('tenant_id', tenantId)
+          .is('completed_date', null)
+          .gte('scheduled_date', w.upcomingFrom.toISOString())
+          .lte('scheduled_date', w.upcomingTo.toISOString())
+          .order('scheduled_date', { ascending: true })
+          .limit(10),
+        admin
+          .from('lead_score_calculations')
+          .select('id, lead_id, total_score, lead_grade, lead_tier')
+          .eq('tenant_id', tenantId)
+          .gte('total_score', 70)
+          .order('total_score', { ascending: false })
+          .limit(10),
+        // COALESCE(updated_at, created_at) < cutoff, expressed as PostgREST can:
+        // updated_at is nullable, so the null case falls back to created_at.
+        admin
+          .from('deals')
+          .select('id, title, company_name, amount, probability, stage_id, created_at, updated_at')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'open')
+          .or(`updated_at.lt.${staleCutoff},and(updated_at.is.null,created_at.lt.${staleCutoff})`)
+          .order('updated_at', { ascending: true, nullsFirst: true })
+          .limit(5),
+        admin
+          .from('deals')
+          .select('id, title, company_name, amount, probability, stage_id, created_at, updated_at')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'won')
+          .gte('actual_close_date', w.weekStart.toISOString())
+          .lte('actual_close_date', w.weekEnd.toISOString())
+          .order('actual_close_date', { ascending: false })
+          .limit(5),
+      ]);
+
+      const activities = [...(overdueRows ?? []), ...(todayRows ?? []), ...(upcomingRows ?? [])];
+      const recordIds = [
+        ...new Set(
+          [
+            ...activities.map((a: Record<string, unknown>) => a.business_record_id),
+            ...(leadRows ?? []).map((l: Record<string, unknown>) => l.lead_id),
+          ].filter((id): id is string => typeof id === 'string' && id.length > 0),
+        ),
+      ];
+      const stageIds = [
+        ...new Set(
+          (staleRows ?? [])
+            .map((d: Record<string, unknown>) => d.stage_id)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0),
+        ),
+      ];
+
+      const [{ data: recordRows }, { data: stageRows }, leadCount, customerCount, doneToday] =
         await Promise.all([
+          recordIds.length
+            ? admin
+                .from('business_records')
+                .select(
+                  'id, company_name, primary_contact_name, estimated_deal_value, status, last_contact_date',
+                )
+                .eq('tenant_id', tenantId)
+                .in('id', recordIds)
+            : Promise.resolve({ data: [] as BusinessRecordRow[] }),
+          stageIds.length
+            ? admin
+                .from('pipeline_stages')
+                .select('id, name, display_name')
+                .eq('tenant_id', tenantId)
+                .in('id', stageIds)
+            : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
           admin
-            .from('activities')
-            .select('id, activity_type')
+            .from('business_records')
+            .select('id', { count: 'exact', head: true })
             .eq('tenant_id', tenantId)
-            .gte('created_at', todayStart.toISOString())
-            .lte('created_at', todayEnd.toISOString()),
+            .eq('record_type', 'lead'),
           admin
-            .from('service_tickets')
-            .select('id, status')
+            .from('business_records')
+            .select('id', { count: 'exact', head: true })
             .eq('tenant_id', tenantId)
-            .gte('created_at', todayStart.toISOString()),
+            .eq('record_type', 'customer'),
           admin
-            .from('deals')
-            .select('id, amount')
+            .from('business_record_activities')
+            .select('id', { count: 'exact', head: true })
             .eq('tenant_id', tenantId)
-            .gte('created_at', todayStart.toISOString()),
+            .not('completed_date', 'is', null)
+            .gte('completed_date', w.startOfDay.toISOString()),
         ]);
+
+      const companyNames = new Map<string, string | null>(
+        ((recordRows ?? []) as BusinessRecordRow[]).map((r) => [
+          String(r.id),
+          (r.company_name as string | null) ?? null,
+        ]),
+      );
+      const recordsById = new Map<string, BusinessRecordRow>(
+        ((recordRows ?? []) as BusinessRecordRow[]).map((r) => [String(r.id), r]),
+      );
+      const stageNames = new Map<string, string>(
+        ((stageRows ?? []) as Array<Record<string, unknown>>).map((st) => [
+          String(st.id),
+          String(st.display_name || st.name || ''),
+        ]),
+      );
 
       return createCorsResponse(
         {
-          activitiesCount: todayActivities?.length || 0,
-          newTickets: todayTickets?.length || 0,
-          newDeals: todayDeals?.length || 0,
-          newDealValue: sumAmounts(todayDeals),
+          overdue: (overdueRows ?? []).map((a) => toActivityView(a, companyNames)),
+          today: (todayRows ?? []).map((a) => toActivityView(a, companyNames)),
+          upcoming: (upcomingRows ?? []).map((a) => toActivityView(a, companyNames)),
+          hotLeads: (leadRows ?? []).map((l) => toLeadView(l, recordsById)),
+          pipelineAlerts: (staleRows ?? []).map((d) => toStaleDealView(d, stageNames, now)),
+          recentWins: (wonRows ?? []).map(toWonDealView),
+          stats: {
+            pipelineValue: null,
+            quotaAttainment: null,
+            conversionRate: conversionRate(leadCount.count ?? 0, customerCount.count ?? 0),
+            tasksCompleted: doneToday.count ?? 0,
+          },
         },
         200,
         req,

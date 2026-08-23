@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toWebhookView, toWebhookViews } from '../_shared/webhook-view.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -43,7 +44,10 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && !webhookId) {
       const { data: webhooks, error } = await admin
         .from('webhooks')
-        .select('*')
+        // Never select `secret` on a read path - see _shared/webhook-view.ts.
+        .select(
+          'id, name, url, events, is_active, headers, retry_count, created_by, created_at, updated_at',
+        )
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
@@ -52,7 +56,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch webhooks' }, 500, req);
       }
 
-      return createCorsResponse(webhooks || [], 200, req);
+      return createCorsResponse(toWebhookViews(webhooks), 200, req);
     }
 
     // GET /webhooks/events - Get available webhook events
@@ -78,7 +82,9 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && webhookId && !subResource) {
       const { data: webhook, error } = await admin
         .from('webhooks')
-        .select('*')
+        .select(
+          'id, name, url, events, is_active, headers, retry_count, created_by, created_at, updated_at',
+        )
         .eq('id', webhookId)
         .eq('tenant_id', tenantId)
         .single();
@@ -87,7 +93,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Webhook not found' }, 404, req);
       }
 
-      return createCorsResponse(webhook, 200, req);
+      return createCorsResponse(toWebhookView(webhook), 200, req);
     }
 
     // POST /webhooks - Create webhook
@@ -122,7 +128,9 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create webhook' }, 500, req);
       }
 
-      return createCorsResponse(webhook, 201, req);
+      // The signing secret is issued here and never returned again; the view
+      // omits it so it cannot leak through a later list or read.
+      return createCorsResponse({ ...toWebhookView(webhook), secret }, 201, req);
     }
 
     // PUT /webhooks/:id - Update webhook
@@ -149,7 +157,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update webhook' }, 500, req);
       }
 
-      return createCorsResponse(webhook, 200, req);
+      return createCorsResponse(toWebhookView(webhook), 200, req);
     }
 
     // POST /webhooks/:id/test - Test webhook

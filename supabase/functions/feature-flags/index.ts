@@ -12,6 +12,15 @@
  *   POST   /                — create flag, platform admin only
  *   PUT    /:name           — update flag, platform admin only
  *
+ * PROD-008b — response contracts, which the Express handler set and the tree
+ * still reads:
+ *   GET /      returns a Record<string, boolean> MAP, not an array.
+ *              client/src/hooks/useFeatureFlag.ts does `flags?.[flagName]`, so
+ *              returning an array made EVERY flag read undefined and fall back
+ *              to its default of false. Every feature flag was off.
+ *   GET /raw and GET /:name return camelCase rows, matching what the drizzle
+ *              service returned. PostgREST snake_case is converted at the edge.
+ *
  * Table: `feature_flags` is CROSS-TENANT (no tenant_id column). Per-tenant
  * behavior comes from the `tenant_overrides` jsonb column which maps
  * tenantId → boolean. Resolution order: tenantOverride → rolloutPercentage
@@ -23,6 +32,7 @@ import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { toCamelShallow } from '../_shared/case.ts';
 
 const log = createLogger('feature-flags');
 
@@ -108,7 +118,7 @@ export default async function handler(req: Request) {
           requestId,
         });
       }
-      return jsonResponse(data ?? [], 200, req, requestId);
+      return jsonResponse((data ?? []).map(toCamelShallow), 200, req, requestId);
     }
 
     // GET / — resolved flags for current tenant/user
@@ -121,15 +131,13 @@ export default async function handler(req: Request) {
           requestId,
         });
       }
-      const resolved = (data ?? []).map((f) => {
+      // A name -> boolean map, matching getAllFlags() in the Express service and
+      // the Record<string, boolean> the useFeatureFlag hook indexes into.
+      const resolved: Record<string, boolean> = {};
+      for (const f of data ?? []) {
         const flag = f as FlagRow;
-        return {
-          name: flag.name,
-          description: flag.description,
-          enabled: resolveFlag(flag, auth.tenantId, auth.userId),
-          rolloutPercentage: flag.rollout_percentage,
-        };
-      });
+        resolved[flag.name] = resolveFlag(flag, auth.tenantId, auth.userId);
+      }
       return jsonResponse(resolved, 200, req, requestId);
     }
 
@@ -197,7 +205,7 @@ export default async function handler(req: Request) {
           requestId,
         });
       }
-      return jsonResponse(data, 201, req, requestId);
+      return jsonResponse(toCamelShallow(data), 201, req, requestId);
     }
 
     // GET /:name — single flag (any authenticated user can read)
@@ -217,7 +225,7 @@ export default async function handler(req: Request) {
       if (!data) {
         return jsonResponse({ message: 'Feature flag not found' }, 404, req, requestId);
       }
-      return jsonResponse(data, 200, req, requestId);
+      return jsonResponse(toCamelShallow(data), 200, req, requestId);
     }
 
     // PUT /:name — update, platform admin only
@@ -266,7 +274,7 @@ export default async function handler(req: Request) {
       if (!data) {
         return jsonResponse({ message: 'Feature flag not found' }, 404, req, requestId);
       }
-      return jsonResponse(data, 200, req, requestId);
+      return jsonResponse(toCamelShallow(data), 200, req, requestId);
     }
 
     return errorResponse(404, 'Not found', req, {

@@ -60,7 +60,7 @@ export default function KnowledgeArticle() {
 
   const feedbackMutation = useMutation({
     mutationFn: async (helpful: boolean) => {
-      return apiRequest('POST', `/api/knowledge-base/articles/${slug}/feedback`, {
+      return apiRequest(`/api/knowledge-base/articles/${slug}/feedback`, 'POST', {
         helpful,
       });
     },

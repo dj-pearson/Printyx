@@ -6,12 +6,13 @@
  * client/src/lib/config.ts getApiUrl() rewrites /api/qbr -> functions.printyx.net/qbr
  * with no Express fallback anywhere in the path.
  *
- * ROUTES (the four the page actually calls, plus the two suppression endpoints
+ * ROUTES (the four the page actually calls, plus the three suppression endpoints
  * the Express handler exposes so the surface does not shrink):
- *   GET   /                 list, ?customerId=&quarter=&status=  -> { data, total }
- *   POST  /generate         { quarter?, customerId? }            -> { quarter, generated, ... }
- *   GET   /suppressions
- *   POST  /suppressions
+ *   GET    /                list, ?customerId=&quarter=&status=  -> { data, total }
+ *   POST   /generate        { quarter?, customerId? }            -> { quarter, generated, ... }
+ *   GET    /suppressions
+ *   POST   /suppressions
+ *   DELETE /suppressions/:customerId
  *   GET   /:id
  *   PATCH /:id              { status?, sectionOverrides? }
  *   POST  /:id/send
@@ -43,6 +44,29 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamelShallow } from '../_shared/case.ts';
 import { assembleContent, renderHtml, currentQuarter } from './content.ts';
+
+/**
+ * Structured audit line, carried over from server/routes-qbr.ts. It was a log
+ * record there too, not a DB write — the point is that a suppression or a send
+ * leaves a searchable trace with the actor on it. Ported alongside the handlers
+ * under PROD-008b so retiring the Express module does not silently drop it.
+ */
+function audit(
+  action: 'GENERATE' | 'REVIEW' | 'SEND' | 'SUPPRESS' | 'UNSUPPRESS',
+  ctx: { tenantId: string; userId: string | undefined; extra?: unknown },
+) {
+  console.log(
+    JSON.stringify({
+      audit: true,
+      source: 'qbr',
+      action,
+      tenantId: ctx.tenantId,
+      userId: ctx.userId ?? 'system',
+      timestamp: new Date().toISOString(),
+      ...(ctx.extra ? { extra: ctx.extra } : {}),
+    }),
+  );
+}
 
 const QUARTER_RE = /^\d{4}-Q[1-4]$/;
 const PATCH_STATUSES = new Set(['draft', 'reviewed']);
@@ -159,11 +183,34 @@ export default async function handler(req: Request) {
         // The table has a unique (tenant, customer) index; a conflict means the
         // customer is already suppressed, which Express reports as success.
         if (error && !isUniqueViolation(error)) throw error;
+        audit('SUPPRESS', { tenantId, userId: user.id, extra: { customerId } });
         return createCorsResponse(
           data ? toCamelShallow(data) : { customerId, alreadySuppressed: true },
           201,
           req,
         );
+      }
+
+      // DELETE /suppressions/:customerId — un-suppress. Express deleted by
+      // (tenant, customer) and answered { success: true } whether or not a row
+      // matched; a missing branch here fell through to the trailing 404.
+      if (method === 'DELETE') {
+        const customerId = typeof second === 'string' ? second.trim() : '';
+        if (!customerId) {
+          return createCorsResponse(
+            { message: 'Invalid input', errors: { customerId: 'required' } },
+            400,
+            req,
+          );
+        }
+        const { error } = await admin
+          .from('qbr_suppressions')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .eq('customer_id', customerId);
+        if (error) throw error;
+        audit('UNSUPPRESS', { tenantId, userId: user.id, extra: { customerId } });
+        return createCorsResponse({ success: true }, 200, req);
       }
     }
 
@@ -210,6 +257,7 @@ export default async function handler(req: Request) {
         .maybeSingle();
       if (error) throw error;
       if (!data) return createCorsResponse({ message: 'QBR report not found' }, 404, req);
+      audit('SEND', { tenantId, userId: user.id, extra: { id: first } });
       return createCorsResponse(await toReport(admin, data), 200, req);
     }
 
@@ -287,6 +335,7 @@ export default async function handler(req: Request) {
         .select()
         .maybeSingle();
       if (error) throw error;
+      audit('REVIEW', { tenantId, userId: user.id, extra: { id: first, status } });
       return createCorsResponse(await toReport(admin, data ?? {}), 200, req);
     }
 
@@ -411,7 +460,11 @@ async function handleGenerate(
     generated++;
   }
 
-  void userId;
+  audit('GENERATE', {
+    tenantId,
+    userId,
+    extra: { quarter, generated, skippedSuppressed, skippedNoContract },
+  });
   return createCorsResponse(
     {
       quarter,

@@ -188,62 +188,26 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-/**
- * Track content view for analytics
- */
-export async function trackContentView(params: {
-  contentType: 'blog_post' | 'guide' | 'case_study' | 'landing_page';
-  contentId: string;
-  source?: string;
-  medium?: string;
-  campaign?: string;
-}) {
-  try {
-    // Get device info
-    const device = /mobile|tablet|android|ios|iphone|ipad/i.test(navigator.userAgent)
-      ? 'mobile'
-      : 'desktop';
-
-    // Get browser info
-    const browser =
-      navigator.userAgent.match(/(chrome|firefox|safari|edge)/i)?.[0]?.toLowerCase() || 'other';
-
-    // Check if from AI platform
-    const referrer = document.referrer.toLowerCase();
-    let isAiReferral = false;
-    let aiPlatform = null;
-
-    if (referrer.includes('chat.openai.com')) {
-      isAiReferral = true;
-      aiPlatform = 'chatgpt';
-    } else if (referrer.includes('perplexity.ai')) {
-      isAiReferral = true;
-      aiPlatform = 'perplexity';
-    } else if (referrer.includes('claude.ai')) {
-      isAiReferral = true;
-      aiPlatform = 'claude';
-    } else if (referrer.includes('google.com') && referrer.includes('ai')) {
-      isAiReferral = true;
-      aiPlatform = 'google_ai';
-    }
-
-    await fetch('/api/content/analytics/view', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...params,
-        device,
-        browser,
-        isAiReferral,
-        aiPlatform,
-      }),
-    });
-  } catch (error) {
-    console.error('Failed to track content view:', error);
-  }
-}
+// Content-view analytics beacon: REMOVED (PROD-013).
+//
+// The exported function was never called. A repo-wide search for the name
+// returned its own definition and one re-export in lib/seo/index.ts, nothing
+// else. route-parity counted the marketing-content domain as a live prod 404
+// because this module is reachable from App.tsx through SEOProvider, which is
+// true of the file and false of the function.
+//
+// It would not have worked if it had been called. Three independent reasons:
+// the request used a raw relative fetch, so in production it targeted the
+// Cloudflare Pages origin rather than the functions host and never reached a
+// backend; the receiving handler is Express-only, so that host would have
+// 404'd anyway; and content_analytics.content_id is uuid NOT NULL while every
+// blog page under pages/blog/ is a static React file identified by a slug with
+// no database row and therefore no uuid to send.
+//
+// Wiring it up is a real piece of work, not a call-site fix: it needs the
+// marketing-content endpoints on the edge side and a decision about how a
+// static page identifies itself to a uuid column. Deleting the unused export
+// is the honest state until someone wants the metric.
 
 /**
  * Component to render FAQ schema in the page

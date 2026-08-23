@@ -160,11 +160,15 @@ export default function DocumentManagement() {
         data.recentDocuments?.map((doc: any) => ({
           ...doc,
           lastModified: new Date(doc.lastModified || doc.last_modified),
-          createdAt: doc.createdAt || doc.createdAt,
+        // AUDIT-011a: this endpoint is a hand-built Express mock returning
+        // camelCase literals (server/routes-sample-data.ts:873), so camelCase is authoritative and
+        // there is no snake_case key to fall back to. Collapsed to a single read
+        // rather than invented one.
+          createdAt: doc.createdAt,
           workflow: doc.workflow
             ? {
                 ...doc.workflow,
-                dueDate: new Date(doc.workflow.dueDate || doc.workflow.dueDate),
+                dueDate: new Date(doc.workflow.dueDate),
               }
             : undefined,
         })) || [],

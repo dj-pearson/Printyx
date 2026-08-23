@@ -5,7 +5,8 @@
  *  1. Email (via the provider-agnostic email-service) using the
  *     taskWorkflowStepAssigned template.
  *  2. In-app notification row (userNotifications) + real-time WebSocket push,
- *     mirroring routes-notifications.ts so the notification bell + deep link work.
+ *     writing user_notifications directly, which supabase/functions/notifications/
+ *     now reads, so the notification bell + deep link work.
  *
  * Resolves the recipient from the step's assigneeUserId (internal user) or
  * assigneeEmail (external assignee). Failures are logged but never throw — a

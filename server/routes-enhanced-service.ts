@@ -5,31 +5,18 @@ import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-enhanced-service');
 
 import {
-  phoneInTickets,
   technicianTicketSessions,
   ticketPartsRequests,
   workflowSteps,
-  insertPhoneInTicketSchema,
   insertTechnicianTicketSessionSchema,
   insertTicketPartsRequestSchema,
-  insertWorkflowStepSchema,
-  type PhoneInTicket,
-  type TechnicianTicketSession,
-  type TicketPartsRequest,
 } from '@shared/enhanced-service-schema';
-import {
-  serviceTickets,
-  customers,
-  businessRecords,
-  autoInvoiceGeneration,
-  insertAutoInvoiceGenerationSchema,
-} from '@shared/schema';
+import { serviceTickets, customers, businessRecords } from '@shared/schema';
 import { requireServiceAccess } from './rbac-middleware';
 import { CustomerPortalService } from './services/customer-portal-service';
 import { billingEngine } from './services/billing-engine-service';
 import { updateServiceRequestStatusSchema } from '@shared/customer-portal-schema';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 const customerPortalService = new CustomerPortalService();
 
@@ -151,123 +138,6 @@ router.get('/service-requests', requireServiceAccess(2), async (req: any, res) =
   }
 });
 
-// Create phone-in ticket
-router.post('/phone-in-tickets', async (req, res) => {
-  try {
-    // PA-035: tenantId is NOT NULL and injected at .values() below.
-    const validatedData = insertPhoneInTicketSchema.omit({ tenantId: true }).parse(req.body);
-    const tenantId = req.headers['x-tenant-id'] as string;
-
-    // If customerId is provided, fetch customer info from business_records
-    let customerInfo = {};
-    if (validatedData.customerId) {
-      const [customer] = await db
-        .select({
-          id: businessRecords.id,
-          companyName: businessRecords.companyName,
-          primaryContactName: businessRecords.primaryContactName,
-          primaryContactEmail: businessRecords.primaryContactEmail,
-          primaryContactPhone: businessRecords.primaryContactPhone,
-          // `address` is not a column — addressLine1/addressLine2 below are the real
-          // ones and were already being selected alongside it.
-          addressLine1: businessRecords.addressLine1,
-          addressLine2: businessRecords.addressLine2,
-          city: businessRecords.city,
-          state: businessRecords.state,
-          postalCode: businessRecords.postalCode,
-        })
-        .from(businessRecords)
-        .where(
-          and(
-            eq(businessRecords.id, validatedData.customerId),
-            eq(businessRecords.tenantId, tenantId),
-          ),
-        )
-        .limit(1);
-
-      if (customer) {
-        // Was `customer.address || [addressLine1, addressLine2].join(', ')`. There is
-        // no `address` column, so the left operand was always undefined and the
-        // fallback was always the live branch — dropping it changes nothing at
-        // runtime, it just stops pretending the column exists.
-        const fullAddress = [
-          [customer.addressLine1, customer.addressLine2].filter(Boolean).join(', '),
-          customer.city,
-          customer.state,
-          customer.postalCode,
-        ]
-          .filter(Boolean)
-          .join(', ');
-
-        customerInfo = {
-          customerName: customer.companyName || customer.primaryContactName || 'Unknown Customer',
-          locationAddress: fullAddress || validatedData.locationAddress,
-          callerName: validatedData.callerName || customer.primaryContactName,
-          callerPhone: validatedData.callerPhone || customer.primaryContactPhone,
-          callerEmail: validatedData.callerEmail || customer.primaryContactEmail,
-        };
-      }
-    }
-
-    const [phoneTicket] = await db
-      .insert(phoneInTickets)
-      .values({
-        ...validatedData,
-        ...customerInfo,
-        tenantId,
-      })
-      .returning();
-
-    // If createServiceTicket is true, convert to service ticket
-    if (req.body.createServiceTicket) {
-      const ticketNumber = `TK-${Date.now()}`;
-
-      const [serviceTicket] = await db
-        .insert(serviceTickets)
-        .values({
-          tenantId,
-          customerId: phoneTicket.customerId || 'unknown',
-          ticketNumber,
-          title: `${phoneTicket.issueCategory.replace('_', ' ')} - ${phoneTicket.customerName}`,
-          description: phoneTicket.issueDescription,
-          priority: phoneTicket.priority,
-          status: 'new',
-          customerAddress: phoneTicket.locationAddress,
-          customerPhone: phoneTicket.callerPhone,
-          workOrderNotes: `
-Phone-in ticket details:
-- Caller: ${phoneTicket.callerName} (${phoneTicket.callerRole || 'Not specified'})
-- Issue Category: ${phoneTicket.issueCategory.replace('_', ' ')}
-- Equipment: ${phoneTicket.equipmentBrand || 'Not specified'} ${phoneTicket.equipmentModel || ''}
-- Preferred Service Time: ${phoneTicket.preferredServiceTime || 'Not specified'}
-- Troubleshooting Attempted: ${phoneTicket.troubleshootingAttempted || 'None specified'}
-- Business Impact: ${phoneTicket.businessImpact || 'Not specified'}
-- Affected Users: ${phoneTicket.affectedUsers || 'Not specified'}
-- Special Instructions: ${phoneTicket.specialInstructions || 'None'}
-          `.trim(),
-          createdBy: phoneTicket.handledBy,
-        })
-        .returning();
-
-      // Update phone ticket with conversion info
-      await db
-        .update(phoneInTickets)
-        .set({
-          convertedToTicketId: serviceTicket.id,
-          convertedAt: new Date(),
-        })
-        .where(eq(phoneInTickets.id, phoneTicket.id));
-
-      res.json({ phoneTicket, serviceTicket });
-    } else {
-      res.json({ phoneTicket });
-    }
-  } catch (error) {
-    log.error('Error creating phone-in ticket:', error);
-    res.status(500).json({ error: 'Failed to create phone-in ticket' });
-  }
-});
-
 // Get customers for phone-in ticket form
 router.get('/customers', async (req, res) => {
   try {
@@ -307,66 +177,6 @@ router.get('/customers', async (req, res) => {
   } catch (error) {
     log.error('Error fetching customers for phone-in tickets:', error);
     res.status(500).json({ error: 'Failed to fetch customers' });
-  }
-});
-
-// Get phone-in tickets
-router.get('/phone-in-tickets', async (req, res) => {
-  try {
-    const tenantId = req.headers['x-tenant-id'] as string;
-    const { limit = '50', offset = '0', converted } = req.query as Record<string, string>;
-
-    if (!tenantId) {
-      return res.status(400).json({ error: 'Missing x-tenant-id header' });
-    }
-
-    const limitNum = Math.min(200, Math.max(1, parseInt(limit || '50', 10)));
-    const offsetNum = Math.max(0, parseInt(offset || '0', 10));
-
-    let where = and(eq(phoneInTickets.tenantId, tenantId));
-    if (converted === 'true') {
-      where = and(where, sql`${phoneInTickets.convertedToTicketId} IS NOT NULL`);
-    } else if (converted === 'false') {
-      where = and(where, sql`${phoneInTickets.convertedToTicketId} IS NULL`);
-    }
-
-    const rows = await db
-      .select({
-        id: phoneInTickets.id,
-        tenantId: phoneInTickets.tenantId,
-        callerName: phoneInTickets.callerName,
-        callerPhone: phoneInTickets.callerPhone,
-        callerEmail: phoneInTickets.callerEmail,
-        callerRole: phoneInTickets.callerRole,
-        customerId: phoneInTickets.customerId,
-        customerName: phoneInTickets.customerName,
-        locationAddress: phoneInTickets.locationAddress,
-        locationBuilding: phoneInTickets.locationBuilding,
-        locationFloor: phoneInTickets.locationFloor,
-        locationRoom: phoneInTickets.locationRoom,
-        equipmentId: phoneInTickets.equipmentId,
-        equipmentBrand: phoneInTickets.equipmentBrand,
-        equipmentModel: phoneInTickets.equipmentModel,
-        equipmentSerial: phoneInTickets.equipmentSerial,
-        issueCategory: phoneInTickets.issueCategory,
-        issueDescription: phoneInTickets.issueDescription,
-        urgencyLevel: phoneInTickets.urgencyLevel,
-        contactMethod: phoneInTickets.contactMethod,
-        convertedToTicketId: phoneInTickets.convertedToTicketId,
-        convertedAt: phoneInTickets.convertedAt,
-        createdAt: phoneInTickets.createdAt,
-        updatedAt: phoneInTickets.updatedAt,
-      })
-      .from(phoneInTickets)
-      .where(where)
-      .orderBy(desc(phoneInTickets.createdAt))
-      .limit(limitNum)
-      .offset(offsetNum);
-
-    res.json(rows);
-  } catch (error) {
-    log.error('Error fetching phone-in tickets:', error);
-    res.status(500).json({ error: 'Failed to fetch phone-in tickets' });
   }
 });
 
@@ -578,25 +388,6 @@ router.post('/service-tickets/:ticketId/complete', async (req, res) => {
   }
 });
 
-// Get workflow steps for session
-router.get('/technician-sessions/:sessionId/workflow-steps', async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-    const tenantId = req.headers['x-tenant-id'] as string;
-
-    const steps = await db
-      .select()
-      .from(workflowSteps)
-      .where(and(eq(workflowSteps.tenantId, tenantId), eq(workflowSteps.sessionId, sessionId)))
-      .orderBy(workflowSteps.stepStarted);
-
-    res.json(steps);
-  } catch (error) {
-    log.error('Error fetching workflow steps:', error);
-    res.status(500).json({ error: 'Failed to fetch workflow steps' });
-  }
-});
-
 // Customer search endpoint
 router.get('/customers/search', async (req, res) => {
   try {
@@ -688,62 +479,6 @@ router.post('/parts-requests/:requestId/reject', async (req, res) => {
   } catch (error) {
     log.error('Error rejecting parts request:', error);
     res.status(500).json({ error: 'Failed to reject parts request' });
-  }
-});
-
-// Convert an existing phone-in ticket to a service ticket
-router.post('/phone-in-tickets/:id/convert', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const tenantId = req.headers['x-tenant-id'] as string;
-    if (!tenantId) {
-      return res.status(400).json({ error: 'Missing x-tenant-id header' });
-    }
-
-    const [phoneTicket] = await db
-      .select()
-      .from(phoneInTickets)
-      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)))
-      .limit(1);
-
-    if (!phoneTicket) {
-      return res.status(404).json({ error: 'Phone-in ticket not found' });
-    }
-
-    if (phoneTicket.convertedToTicketId) {
-      return res.status(400).json({ error: 'Already converted' });
-    }
-
-    const ticketNumber = `TK-${Date.now()}`;
-    const [serviceTicket] = await db
-      .insert(serviceTickets)
-      .values({
-        tenantId,
-        customerId: phoneTicket.customerId || 'unknown',
-        ticketNumber,
-        title: `${(phoneTicket.issueCategory || '').toString().replace('_', ' ')} - ${phoneTicket.customerName}`,
-        description: phoneTicket.issueDescription,
-        priority: phoneTicket.urgencyLevel || 'medium',
-        status: 'new',
-        customerAddress: phoneTicket.locationAddress,
-        customerPhone: phoneTicket.callerPhone,
-        workOrderNotes: `Converted from phone-in ticket ${id}`,
-        createdBy: phoneTicket.handledBy,
-      })
-      .returning();
-
-    await db
-      .update(phoneInTickets)
-      .set({ convertedToTicketId: serviceTicket.id, convertedAt: new Date() })
-      .where(eq(phoneInTickets.id, id));
-
-    res.json({
-      phoneTicket: { ...phoneTicket, convertedToTicketId: serviceTicket.id },
-      serviceTicket,
-    });
-  } catch (error) {
-    log.error('Error converting phone-in ticket:', error);
-    res.status(500).json({ error: 'Failed to convert phone-in ticket' });
   }
 });
 

@@ -226,16 +226,34 @@ export const partsOrderItemsRelations = relations(partsOrderItems, ({ one }) => 
 }));
 
 // Insert Schemas
-export const insertServiceCallAnalysisSchema = createInsertSchema(serviceCallAnalysis).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+// drizzle-zod infers a jsonb column from its runtime shape, not from the $type<>
+// annotation, so the string[] columns below come out as a structural array-like
+// that is NOT assignable back to string[] on insert. Restating them as
+// z.array(z.string()) fixes the type AND actually validates the payload, which
+// the inferred schema did not.
+const stringArray = z.array(z.string());
 
-export const insertServicePartsUsedSchema = createInsertSchema(servicePartsUsed).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertServiceCallAnalysisSchema = createInsertSchema(serviceCallAnalysis)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    actionsTaken: stringArray.optional(),
+    diagnosticCodes: stringArray.optional(),
+    beforePhotos: stringArray.optional(),
+    afterPhotos: stringArray.optional(),
+  });
+
+export const insertServicePartsUsedSchema = createInsertSchema(servicePartsUsed)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    serialNumbers: stringArray.optional(),
+  });
 
 export const insertPartsOrderSchema = createInsertSchema(partsOrders).omit({
   id: true,

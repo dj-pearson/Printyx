@@ -344,48 +344,9 @@ router.get('/api/service-dispatch', async (req: any, res) => {
  * CRM statistics (leads, customers, deals, contacts counts)
  * Alias for the mobile app - delegates to stats/overview if needed
  */
-router.get('/api/business-records/stats', async (req: any, res) => {
-  try {
-    const tenantId = getTenantId(req);
-    if (!tenantId) return res.status(400).json({ message: 'Tenant ID required' });
-
-    const [leadsCount] = await db
-      .select({ count: count() })
-      .from(businessRecords)
-      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'lead')));
-
-    const [customersCount] = await db
-      .select({ count: count() })
-      .from(businessRecords)
-      .where(
-        and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
-      );
-
-    // Get contacts count from business_records contacts
-    const [contactsCount] = await db
-      .select({ count: count() })
-      .from(businessRecords)
-      .where(
-        and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'contact')),
-      );
-
-    // Deals count from business_records with deal-related statuses
-    const [dealsCount] = await db
-      .select({ count: count() })
-      .from(businessRecords)
-      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'deal')));
-
-    res.json({
-      leads: leadsCount?.count ?? 0,
-      customers: customersCount?.count ?? 0,
-      contacts: contactsCount?.count ?? 0,
-      deals: dealsCount?.count ?? 0,
-    });
-  } catch (error: any) {
-    log.error('Error fetching CRM stats:', error);
-    res.status(500).json({ message: 'Failed to fetch CRM stats' });
-  }
-});
+// GET /api/business-records/stats was removed here (PROD-008b). The
+// business-records edge function serves it — its branch is keyed on
+// recordId === 'stats' and its comment names both /stats and /stats/overview.
 
 // ─── Mobile Time Tracking & Status ─────────────────────────────────────
 

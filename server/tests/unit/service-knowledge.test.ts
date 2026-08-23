@@ -24,7 +24,6 @@ import {
   truncate,
 } from '../../../supabase/functions/service/knowledge';
 // The Express implementation, imported to prove the port is byte-compatible.
-import { cosineSimilarity as expressCosine } from '../../routes-service-knowledge';
 
 describe('hashCode / fallbackEmbedding', () => {
   it('hashes deterministically', () => {
@@ -89,30 +88,13 @@ describe('cosineSimilarity', () => {
     expect(cosineSimilarity([0, 0], [1, 1])).toBe(0);
   });
 
-  it('agrees with the Express implementation', () => {
-    const cases: Array<[number[], number[]]> = [
-      [
-        [1, 2, 3],
-        [4, 5, 6],
-      ],
-      [
-        [0.1, -0.4, 0.9],
-        [0.2, 0.3, -0.5],
-      ],
-      [[1], [1]],
-      [
-        [0, 0],
-        [0, 0],
-      ],
-      [
-        [1, 2],
-        [1, 2, 3],
-      ],
-    ];
-    for (const [a, b] of cases) {
-      expect(cosineSimilarity(a, b)).toBe(expressCosine(a, b));
-    }
-  });
+  // The 'agrees with the Express implementation' case was removed with
+  // server/routes-service-knowledge.ts (PROD-008b). It locked the two copies of
+  // cosineSimilarity byte-for-byte while both backends served /api/service; with
+  // the Express half retired there is no second implementation to drift from,
+  // and a parity test with one party is theatre. The cases it exercised are
+  // covered by the identity/orthogonality/zero-vector/length-mismatch
+  // assertions above, which test this implementation on its own terms.
 });
 
 describe('extractErrorCodes', () => {

@@ -203,6 +203,30 @@ export default async function handler(req: Request) {
       return createCorsResponse(settings, 200, req);
     }
 
+    // ORDERING IS LOAD-BEARING: this must stay ABOVE the generic
+    // PUT /:settingCategory branch, which matches any category and would
+    // otherwise swallow it. No caller today, but it is dead as written.
+    // PUT /tenant-settings/features - Update enabled features
+    if (req.method === 'PUT' && settingCategory === 'features') {
+      const body = await req.json();
+
+      const { data: settings, error } = await admin
+        .from('tenant_settings')
+        .upsert({
+          tenant_id: tenantId,
+          enabled_features: body,
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        return createCorsResponse({ error: 'Failed to update features' }, 500, req);
+      }
+
+      return createCorsResponse(settings, 200, req);
+    }
+
     // PUT /tenant-settings/:category - Update settings category
     if (req.method === 'PUT' && settingCategory) {
       const body = await req.json();
@@ -252,27 +276,6 @@ export default async function handler(req: Request) {
         200,
         req,
       );
-    }
-
-    // PUT /tenant-settings/features - Update enabled features
-    if (req.method === 'PUT' && settingCategory === 'features') {
-      const body = await req.json();
-
-      const { data: settings, error } = await admin
-        .from('tenant_settings')
-        .upsert({
-          tenant_id: tenantId,
-          enabled_features: body,
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return createCorsResponse({ error: 'Failed to update features' }, 500, req);
-      }
-
-      return createCorsResponse(settings, 200, req);
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);

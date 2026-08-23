@@ -105,7 +105,15 @@ export default async function handler(req: Request) {
     }
 
     // POST /activities - Create activity
-    if (req.method === 'POST') {
+    //
+    // PROD-008b: the `!activityId` guard is load-bearing. Without it this branch
+    // matched ANY POST under the prefix, so POST /activities/bulk-delete and
+    // /bulk-update — which server/routes-bulk-operations.ts used to serve and
+    // which this function has no branch for — would fall through to here and
+    // INSERT a row built from a bulk payload that carries no subject and no
+    // activity type. A delete request that silently creates a record is the worst
+    // available outcome; an unmatched sub-path now reaches the 405 at the bottom.
+    if (req.method === 'POST' && !activityId) {
       const body = await req.json();
 
       const activityData = {

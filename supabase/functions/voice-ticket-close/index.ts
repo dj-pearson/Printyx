@@ -27,7 +27,11 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
-import { rankSkuCandidates, type SkuCandidate } from '../_shared/voice-ticket-close-logic.ts';
+import {
+  isAllowedAudioHost,
+  rankSkuCandidates,
+  type SkuCandidate,
+} from '../_shared/voice-ticket-close-logic.ts';
 
 type Row = Record<string, any>;
 
@@ -75,12 +79,14 @@ async function transcribeAudio(args: {
         const bin = atob(args.audioBase64);
         bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
       } else if (args.audioUrl) {
-        // The Express side gates this on an allowlisted storage host plus an
-        // SSRF-checked fetch. Deno has no equivalent helper here, so only the
-        // configured storage origin is accepted — an unvetted URL is skipped
-        // rather than fetched.
-        const allowed = Deno.env.get('SUPABASE_URL') ?? '';
-        if (allowed && args.audioUrl.startsWith(allowed)) {
+        // CR-005 storage allowlist. This used to be
+        // `args.audioUrl.startsWith(SUPABASE_URL)`, which is a prefix match on the
+        // whole URL rather than a host check: with SUPABASE_URL
+        // 'https://api.printyx.net', the URL 'https://api.printyx.net.evil.com/a.webm'
+        // passes it, and the function fetches whatever an attacker's subdomain
+        // points at. isAllowedAudioHost parses the hostname — the shape the
+        // Express implementation used and the one CR-005's tests cover.
+        if (isAllowedAudioHost(args.audioUrl, Deno.env.get('SUPABASE_URL'))) {
           const dl = await fetch(args.audioUrl);
           if (dl.ok) bytes = new Uint8Array(await dl.arrayBuffer());
         } else {

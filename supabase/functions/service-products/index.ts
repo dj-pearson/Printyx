@@ -16,10 +16,19 @@
 //
 // Multipart import requires the EDGE-002l proxy fix (already landed) so the
 // CSV body passes through with its boundary preserved.
+//
+// PROD-008b: every row goes out camelCase. ServiceProducts.tsx types
+// ServiceProduct[] (the drizzle shape it was written against) and its filter does
+// `service.productName.toLowerCase()` with no guard, so returning PostgREST's
+// snake_case did not render an empty list — it threw a TypeError on every render.
+// ProductTypeSelector.tsx and the quote builder read the same camelCase keys.
+// toCamelShallow is right here: service_products has no jsonb column whose inner
+// keys would be rewritten.
 
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toCamelShallow } from '../_shared/case.ts';
 import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
@@ -156,12 +165,12 @@ async function listProducts(
   }
   if (paginate) {
     return createCorsResponse(
-      { data: data ?? [], pagination: { page, limit, total: count ?? 0 } },
+      { data: (data ?? []).map(toCamelShallow), pagination: { page, limit, total: count ?? 0 } },
       200,
       req,
     );
   }
-  return createCorsResponse(data ?? [], 200, req);
+  return createCorsResponse((data ?? []).map(toCamelShallow), 200, req);
 }
 
 async function getProduct(
@@ -180,7 +189,7 @@ async function getProduct(
   if (error || !data) {
     return createCorsResponse({ error: 'Service product not found' }, 404, req);
   }
-  return createCorsResponse(data, 200, req);
+  return createCorsResponse(toCamelShallow(data), 200, req);
 }
 
 async function createProduct(admin: Admin, tenantId: string, req: Request): Promise<Response> {
@@ -204,7 +213,7 @@ async function createProduct(admin: Admin, tenantId: string, req: Request): Prom
     console.error('Error creating service product:', error);
     return createCorsResponse({ error: 'Failed to create service product' }, 500, req);
   }
-  return createCorsResponse(data, 201, req);
+  return createCorsResponse(toCamelShallow(data), 201, req);
 }
 
 async function updateProduct(
@@ -230,7 +239,7 @@ async function updateProduct(
   if (error) {
     return createCorsResponse({ error: 'Failed to update service product' }, 500, req);
   }
-  return createCorsResponse(data, 200, req);
+  return createCorsResponse(toCamelShallow(data), 200, req);
 }
 
 async function deleteProduct(

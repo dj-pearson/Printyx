@@ -85,7 +85,7 @@ export function DashboardCustomizer() {
 
   // Save layout mutation
   const saveMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('POST', '/api/dashboard/layout', data),
+    mutationFn: (data: any) => apiRequest('/api/dashboard/layout', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/layout'] });
       setIsOpen(false);

@@ -25,7 +25,6 @@
     "enrichment",
     "equipment",
     "equipment-lifecycle",
-    "financial",
     "fleet",
     "gdpr",
     "import",
@@ -42,7 +41,6 @@
     "onboarding",
     "parts-orders",
     "performance",
-    "predictive-dispatch",
     "pricing",
     "product-accessories",
     "product-models",
@@ -69,5 +67,5 @@
     "user",
     "warehouse-operations"
   ],
-  "missingEdge": ["business-process", "content", "erp-integration", "incident-response"]
+  "missingEdge": ["business-process", "erp-integration", "incident-response"]
 }

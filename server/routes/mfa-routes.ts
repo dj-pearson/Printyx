@@ -268,7 +268,9 @@ router.post('/verify', async (req: Request, res: Response) => {
     const { userId, code, useBackupCode } = verifyLoginSchema.parse(req.body);
 
     const user = await storage.getUser(userId);
-    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+    // The enrollment flag and secret live on user_settings, not on the user row.
+    const mfa = user ? await storage.getUserMfaSecret(userId) : null;
+    if (!user || !mfa?.enabled || !mfa.secret) {
       return res.status(400).json({ error: 'MFA not enabled for this user' });
     }
 
@@ -291,7 +293,7 @@ router.post('/verify', async (req: Request, res: Response) => {
       }
     } else {
       // Verify TOTP
-      isValid = verifyTOTP(user.twoFactorSecret, code);
+      isValid = verifyTOTP(mfa.secret, code);
     }
 
     if (!isValid) {
@@ -361,12 +363,13 @@ router.post('/disable', async (req: Request, res: Response) => {
 
     // Get current user data
     const currentUser = await storage.getUser(user.id);
-    if (!currentUser || !currentUser.twoFactorEnabled || !currentUser.twoFactorSecret) {
+    const mfa = currentUser ? await storage.getUserMfaSecret(currentUser.id) : null;
+    if (!currentUser || !mfa?.enabled || !mfa.secret) {
       return res.status(400).json({ error: 'MFA is not enabled' });
     }
 
     // Verify TOTP token before disabling
-    const isValid = verifyTOTP(currentUser.twoFactorSecret, token);
+    const isValid = verifyTOTP(mfa.secret, token);
     if (!isValid) {
       return res.status(400).json({ error: 'Invalid verification code' });
     }
@@ -412,12 +415,13 @@ router.post('/backup-codes/regenerate', async (req: Request, res: Response) => {
 
     // Get current user data
     const currentUser = await storage.getUser(user.id);
-    if (!currentUser || !currentUser.twoFactorEnabled || !currentUser.twoFactorSecret) {
+    const mfa = currentUser ? await storage.getUserMfaSecret(currentUser.id) : null;
+    if (!currentUser || !mfa?.enabled || !mfa.secret) {
       return res.status(400).json({ error: 'MFA is not enabled' });
     }
 
     // Verify TOTP token before regenerating
-    const isValid = verifyTOTP(currentUser.twoFactorSecret, token);
+    const isValid = verifyTOTP(mfa.secret, token);
     if (!isValid) {
       return res.status(400).json({ error: 'Invalid verification code' });
     }

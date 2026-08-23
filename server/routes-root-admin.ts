@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { db } from './db';
 import { validateReadOnlyQuery, MAX_ROWS } from './lib/sql-console-guard';
-import { users, roles, tenants, activityReports, auditLogs } from '../shared/schema';
+import { users, roles, tenants, auditLogs } from '../shared/schema';
 import { rbacAuditLog } from './enhanced-rbac-schema';
 import { eq, desc, sql, count, and, gte, lte, like, inArray } from 'drizzle-orm';
 // Auth helpers for Supabase JWT + session fallback
@@ -12,6 +12,27 @@ import { logAdminAction } from './services/audit-log-service';
 const log = createModuleLogger('routes-root-admin');
 
 const router = Router();
+
+/** How far back the security views look. audit_logs is append-only and unbounded. */
+const SECURITY_WINDOW_DAYS = 30;
+const SECURITY_WINDOW = () => new Date(Date.now() - SECURITY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+/**
+ * The dashboard renders an alert `type` from a fixed vocabulary. audit_logs stores
+ * a category and an action instead, so map one onto the other rather than inventing
+ * a column.
+ */
+function alertType(
+  category: string | null,
+  action: string | null,
+): 'failed_login' | 'unauthorized_access' | 'security_breach' | 'suspicious_activity' {
+  if (category === 'authentication') {
+    return action?.includes('failure') ? 'failed_login' : 'suspicious_activity';
+  }
+  if (category === 'authorization') return 'unauthorized_access';
+  if (category === 'data_modification') return 'security_breach';
+  return 'suspicious_activity';
+}
 
 /**
  * AUDIT-007: batch-load user display fields for a page of rows.
@@ -27,10 +48,20 @@ async function loadUsersByIds(ids: (string | null | undefined)[]) {
   const unique = [...new Set(ids.filter((id): id is string => !!id))];
   if (unique.length === 0) return new Map<string, { name: string | null; email: string | null }>();
   const rows = await db
-    .select({ id: users.id, name: users.name, email: users.email })
+    .select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+    })
     .from(users)
     .where(inArray(users.id, unique));
-  return new Map(rows.map((r) => [r.id, { name: r.name, email: r.email }]));
+  return new Map(
+    rows.map((r) => [
+      r.id,
+      { name: [r.firstName, r.lastName].filter(Boolean).join(' ') || null, email: r.email },
+    ]),
+  );
 }
 
 // Middleware to check root admin access (exported for reuse)
@@ -101,17 +132,16 @@ router.get('/overview', requireRootAdmin, async (req, res) => {
       .from(users)
       .where(gte(users.lastLoginAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))); // Last 7 days
 
-    // Get critical alerts count
+    // Critical alerts. This used to count activity_reports rows with
+    // type='security_alert' / severity / resolved — activity_reports is the SALES
+    // metrics table (calls, emails, meetings, win rates) and has none of those
+    // columns, so the query raised and the whole endpoint 500'd. audit_logs is the
+    // security trail: it carries severity and category and is what
+    // services/audit-log-service.ts writes to.
     const criticalAlerts = await db
       .select({ count: count() })
-      .from(activityReports)
-      .where(
-        and(
-          eq(activityReports.type, 'security_alert'),
-          eq(activityReports.severity, 'critical'),
-          eq(activityReports.resolved, false),
-        ),
-      );
+      .from(auditLogs)
+      .where(and(eq(auditLogs.severity, 'critical'), gte(auditLogs.timestamp, SECURITY_WINDOW())));
 
     // Calculate system uptime (mock for now - would come from monitoring service)
     const systemUptime = 99.97;
@@ -139,7 +169,7 @@ router.get('/tenants', requireRootAdmin, async (req, res) => {
       .select({
         id: tenants.id,
         name: tenants.name,
-        status: tenants.status,
+        isActive: tenants.isActive,
         subscription: tenants.subscription,
         lastActivity: tenants.lastActivity,
         storageUsed: tenants.storageUsed,
@@ -152,7 +182,14 @@ router.get('/tenants', requireRootAdmin, async (req, res) => {
       .groupBy(tenants.id)
       .orderBy(desc(tenants.lastActivity));
 
-    res.json(tenantMetrics);
+    // `tenants` has is_active, not a status string. The dashboard reads
+    // 'active' | 'suspended' | 'trial', so keep that key and derive it.
+    res.json(
+      tenantMetrics.map(({ isActive, ...tenant }) => ({
+        ...tenant,
+        status: isActive === false ? 'suspended' : 'active',
+      })),
+    );
   } catch (error) {
     log.error('Error fetching tenant metrics:', error);
     res.status(500).json({ message: 'Failed to fetch tenant metrics' });
@@ -166,21 +203,32 @@ router.get(
   requireRootAdmin,
   async (req, res) => {
     try {
+      // Same wrong-table bug as /overview: this read activity_reports, the SALES
+      // metrics table, for type/severity/description/metadata/resolved columns it
+      // does not have. audit_logs is where audit-log-service.ts records
+      // authentication, authorization and destructive actions, with a severity and
+      // a category on each row.
       const alerts = await db
         .select({
-          id: activityReports.id,
-          type: activityReports.type,
-          severity: activityReports.severity,
-          tenantId: activityReports.tenantId,
-          userId: activityReports.userId,
-          description: activityReports.description,
-          metadata: activityReports.metadata,
-          timestamp: activityReports.createdAt,
-          resolved: activityReports.resolved,
+          id: auditLogs.id,
+          action: auditLogs.action,
+          category: auditLogs.category,
+          severity: auditLogs.severity,
+          resource: auditLogs.resource,
+          resourceId: auditLogs.resourceId,
+          ipAddress: auditLogs.ipAddress,
+          tenantId: auditLogs.tenantId,
+          userId: auditLogs.userId,
+          timestamp: auditLogs.timestamp,
         })
-        .from(activityReports)
-        .where(eq(activityReports.type, 'security_alert'))
-        .orderBy(desc(activityReports.createdAt))
+        .from(auditLogs)
+        .where(
+          and(
+            inArray(auditLogs.severity, ['high', 'critical']),
+            gte(auditLogs.timestamp, SECURITY_WINDOW()),
+          ),
+        )
+        .orderBy(desc(auditLogs.timestamp))
         .limit(50);
 
       // AUDIT-007: was TWO queries PER ALERT (tenant + user) — up to 100 round-trips
@@ -201,6 +249,13 @@ router.get(
         const user = alert.userId ? alertUsers.get(alert.userId) : undefined;
         return {
           ...alert,
+          type: alertType(alert.category, alert.action),
+          // audit_logs records what happened; it has no resolution workflow, so
+          // there is nothing here that could report anything but 'open'.
+          status: 'open' as const,
+          message: alert.resourceId
+            ? `${alert.action} on ${alert.resource} (${alert.resourceId})`
+            : `${alert.action} on ${alert.resource}`,
           tenant: (alert.tenantId ? tenantsById.get(alert.tenantId) : null) || 'Unknown',
           userName: user?.name || 'Unknown',
           userEmail: user?.email || 'unknown@example.com',
@@ -242,7 +297,12 @@ router.get(
       const resources = [
         {
           name: 'Database Size',
-          current: parseFloat(dbSize.rows[0]?.size?.replace(/[^\d.]/g, '') || '0'),
+          current: parseFloat(
+            String((dbSize.rows[0] as { size?: string } | undefined)?.size ?? '').replace(
+              /[^\d.]/g,
+              '',
+            ) || '0',
+          ),
           threshold: 100,
           unit: 'GB',
           status: 'normal',
@@ -250,7 +310,9 @@ router.get(
         },
         {
           name: 'Active Connections',
-          current: parseInt(connectionCount.rows[0]?.count || '0'),
+          current: parseInt(
+            String((connectionCount.rows[0] as { count?: string } | undefined)?.count ?? '0'),
+          ),
           threshold: 100,
           unit: '',
           status: 'normal',
@@ -258,7 +320,9 @@ router.get(
         },
         {
           name: 'Tables Count',
-          current: parseInt(tableCount.rows[0]?.count || '0'),
+          current: parseInt(
+            String((tableCount.rows[0] as { count?: string } | undefined)?.count ?? '0'),
+          ),
           threshold: 200,
           unit: '',
           status: 'normal',
@@ -298,11 +362,12 @@ router.get('/users', requireRootAdmin, async (req, res) => {
     let query = db
       .select({
         id: users.id,
-        name: users.name,
+        firstName: users.firstName,
+        lastName: users.lastName,
         email: users.email,
         roleId: users.roleId,
         tenantId: users.tenantId,
-        status: users.status,
+        isActive: users.isActive,
         lastLogin: users.lastLoginAt,
         createdAt: users.createdAt,
         // AUDIT-007: the joins below were ALREADY here — the query just never
@@ -323,12 +388,15 @@ router.get('/users', requireRootAdmin, async (req, res) => {
     if (role && role !== 'all') {
       conditions.push(eq(roles.name, role as string));
     }
+    // `users` has is_active, not a status string, and first_name/last_name rather
+    // than a single name column — so ?status=active and ?search= both raised.
     if (status && status !== 'all') {
-      conditions.push(eq(users.status, status as string));
+      conditions.push(eq(users.isActive, status === 'active'));
     }
     if (search) {
+      const term = `%${search}%`;
       conditions.push(
-        sql`(${users.name} ILIKE ${`%${search}%`} OR ${users.email} ILIKE ${`%${search}%`})`,
+        sql`(${users.firstName} ILIKE ${term} OR ${users.lastName} ILIKE ${term} OR ${users.email} ILIKE ${term})`,
       );
     }
 
@@ -343,6 +411,10 @@ router.get('/users', requireRootAdmin, async (req, res) => {
     // joins are LEFT joins, so those columns come back null).
     const enrichedUsers = userList.map((user) => ({
       ...user,
+      // Kept so callers still get `name` and `status`, which is what they read;
+      // the columns behind them are first_name/last_name and is_active.
+      name: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email,
+      status: user.isActive === false ? 'inactive' : 'active',
       role: user.roleName || 'No Role',
       roleLevel: user.roleLevel || 1,
       tenant: user.tenantName || 'No Tenant',
@@ -391,8 +463,10 @@ router.get('/audit-logs', requireRootAdmin, async (req, res) => {
         id: auditLogs.id,
         userId: auditLogs.userId,
         action: auditLogs.action,
-        tableName: auditLogs.tableName,
-        recordId: auditLogs.recordId,
+        // The columns are resource/resource_id; the dashboard reads
+        // tableName/recordId, so alias rather than rename its contract.
+        tableName: auditLogs.resource,
+        recordId: auditLogs.resourceId,
         oldValues: auditLogs.oldValues,
         newValues: auditLogs.newValues,
         timestamp: auditLogs.timestamp,

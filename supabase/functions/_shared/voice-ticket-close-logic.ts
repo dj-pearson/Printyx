@@ -81,3 +81,38 @@ export function rankSkuCandidates(
 
   return { candidates, chosenSku };
 }
+
+/**
+ * Storage-host allowlist for a voice note's audioUrl (CR-005), ported from
+ * server/routes-voice-ticket-close.ts under PROD-008b.
+ *
+ * The edge function previously gated this with
+ * `audioUrl.startsWith(Deno.env.get('SUPABASE_URL'))`. That is a prefix match on
+ * the whole URL, not a host check, so with SUPABASE_URL = 'https://api.printyx.net'
+ * the string 'https://api.printyx.net.evil.com/a.webm' passes it — an attacker
+ * registers a subdomain of their own domain and the function fetches whatever it
+ * points at. The Express implementation parsed the hostname, which does not have
+ * that hole, and it was the tested one. Porting the parsing version and keeping
+ * the Express suffix set.
+ *
+ * Takes the configured storage origin explicitly so this stays a pure function:
+ * Deno.env is not reachable from a module the Node test suite loads.
+ */
+export function isAllowedAudioHost(rawUrl: string, configuredStorageUrl?: string): boolean {
+  let host: string;
+  try {
+    host = new URL(rawUrl).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  const suffixes = ['.supabase.co', '.supabase.in', '.printyx.net'];
+  if (suffixes.some((s) => host.endsWith(s))) return true;
+  if (configuredStorageUrl) {
+    try {
+      if (host === new URL(configuredStorageUrl).hostname.toLowerCase()) return true;
+    } catch {
+      /* malformed configuration is not a match */
+    }
+  }
+  return false;
+}

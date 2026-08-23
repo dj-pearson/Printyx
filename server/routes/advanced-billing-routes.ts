@@ -5,7 +5,6 @@ import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('advanced-billing-routes');
 
 import {
-  insertBillingRuleSchema,
   insertMeterAnomalySchema,
   insertBillingDisputeSchema,
   insertInvoiceGenerationLogSchema,
@@ -25,175 +24,26 @@ function isAdminOrManager(user: any): boolean {
   );
 }
 
-// ==================== Billing Rules ====================
-
-// GET /api/billing/rules - List all billing rules with filtering
-router.get('/rules', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    const { ruleType, ruleStatus, customerId, equipmentId, contractId } = req.query;
-
-    const filters: any = {};
-    if (ruleType) filters.ruleType = ruleType as string;
-    if (ruleStatus) filters.ruleStatus = ruleStatus as string;
-    if (customerId) filters.customerId = customerId as string;
-    if (equipmentId) filters.equipmentId = equipmentId as string;
-    if (contractId) filters.contractId = contractId as string;
-
-    const rules = await storage.getBillingRules(user.tenantId, filters);
-    res.json(rules);
-  } catch (error) {
-    log.error('Get billing rules error:', error);
-    res.status(500).json({ error: 'Failed to fetch billing rules' });
-  }
-});
-
-// GET /api/billing/rules/:id - Get specific billing rule
-router.get('/rules/:id', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    const rule = await storage.getBillingRule(req.params.id);
-
-    if (!rule || rule.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Billing rule not found' });
-    }
-
-    res.json(rule);
-  } catch (error) {
-    log.error('Get billing rule error:', error);
-    res.status(500).json({ error: 'Failed to fetch billing rule' });
-  }
-});
-
-// POST /api/billing/rules - Create new billing rule (Admin/Manager only)
-router.post('/rules', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  if (!isAdminOrManager(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to create billing rules' });
-  }
-
-  try {
-    const data = insertBillingRuleSchema.parse(req.body);
-    const rule = await storage.createBillingRule({
-      ...data,
-      tenantId: user.tenantId,
-      createdBy: user.id,
-    });
-
-    res.status(201).json(rule);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation error', details: error.errors });
-    }
-    log.error('Create billing rule error:', error);
-    res.status(500).json({ error: 'Failed to create billing rule' });
-  }
-});
-
-// PUT /api/billing/rules/:id - Update billing rule (Admin/Manager only)
-router.put('/rules/:id', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  if (!isAdminOrManager(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to update billing rules' });
-  }
-
-  try {
-    const existing = await storage.getBillingRule(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Billing rule not found' });
-    }
-
-    const data = insertBillingRuleSchema.partial().parse(req.body);
-    const updated = await storage.updateBillingRule(req.params.id, user.tenantId, data);
-
-    res.json(updated);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation error', details: error.errors });
-    }
-    log.error('Update billing rule error:', error);
-    res.status(500).json({ error: 'Failed to update billing rule' });
-  }
-});
-
-// DELETE /api/billing/rules/:id - Delete billing rule (Admin/Manager only)
-router.delete('/rules/:id', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  if (!isAdminOrManager(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to delete billing rules' });
-  }
-
-  try {
-    const rule = await storage.getBillingRule(req.params.id);
-    if (!rule || rule.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Billing rule not found' });
-    }
-
-    await storage.deleteBillingRule(req.params.id, user.tenantId);
-    res.status(204).send();
-  } catch (error) {
-    log.error('Delete billing rule error:', error);
-    res.status(500).json({ error: 'Failed to delete billing rule' });
-  }
-});
-
-// GET /api/billing/rules/customer/:customerId - Get rules for customer
-router.get('/rules/customer/:customerId', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    const rules = await storage.getBillingRulesByCustomer(req.params.customerId, user.tenantId);
-    res.json(rules);
-  } catch (error) {
-    log.error('Get billing rules by customer error:', error);
-    res.status(500).json({ error: 'Failed to fetch billing rules for customer' });
-  }
-});
-
-// GET /api/billing/rules/contract/:contractId - Get rules for contract
-router.get('/rules/contract/:contractId', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    const rules = await storage.getBillingRulesByContract(req.params.contractId, user.tenantId);
-    res.json(rules);
-  } catch (error) {
-    log.error('Get billing rules by contract error:', error);
-    res.status(500).json({ error: 'Failed to fetch billing rules for contract' });
-  }
-});
+// ==================== Billing Rules — RETIRED (PROD-008b) ====================
+//
+// The seven /rules handlers that lived here are gone. /api/billing is proxied to
+// supabase/functions/billing/, which serves the whole rules surface and serves it
+// better: BillingRules.tsx toggles a rule with PATCH /rules/:id/activate, and
+// Express never had a PATCH route at all. The edge list returns
+// { rules, pagination }, which is what the page reads.
+//
+// The two by-relation reads (/rules/customer/:id, /rules/contract/:id) have no
+// caller; the edge list covers the same ground with ?customerId= and
+// ?contractId=.
+//
+// EVERYTHING BELOW STAYS, and is baselined rather than deleted. The anomalies,
+// disputes, generation, schedules and credit-memo sections are a real feature:
+// seven tables in shared/advanced-billing-schema.ts and ~40 storage methods
+// behind them. They are unreachable — the proxy claims /api/billing and no edge
+// counterpart exists — but no part of the frontend calls them either, so nothing
+// is broken today and nothing is served by deleting working domain logic to move
+// a counter. Wiring them up (edge handlers + a UI) is a feature story. This is
+// the case the AC reserves: say so and leave it baselined.
 
 // ==================== Meter Anomalies ====================
 
@@ -328,7 +178,7 @@ router.post('/anomalies/:id/resolve', async (req: Request, res: Response) => {
     const { resolutionMethod, resolutionNotes, correctedBwReading, correctedColorReading } =
       req.body;
 
-    const resolved = await storage.resolveMeterAnomaly(
+    const resolved = await storage.resolveAnomaly(
       req.params.id,
       user.tenantId,
       resolutionMethod,
@@ -396,7 +246,7 @@ router.get('/disputes/open', async (req: Request, res: Response) => {
   }
 
   try {
-    const disputes = await storage.getOpenBillingDisputes(user.tenantId);
+    const disputes = await storage.getOpenDisputes(user.tenantId);
     res.json(disputes);
   } catch (error) {
     log.error('Get open disputes error:', error);
@@ -500,7 +350,7 @@ router.post('/disputes/:id/assign', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'assignedTo is required' });
     }
 
-    const assigned = await storage.assignBillingDispute(req.params.id, user.tenantId, assignedTo);
+    const assigned = await storage.assignDispute(req.params.id, user.tenantId, assignedTo);
 
     res.json(assigned);
   } catch (error) {
@@ -522,7 +372,7 @@ router.post('/disputes/:id/acknowledge', async (req: Request, res: Response) => 
       return res.status(404).json({ error: 'Billing dispute not found' });
     }
 
-    const acknowledged = await storage.acknowledgeBillingDispute(req.params.id, user.tenantId);
+    const acknowledged = await storage.acknowledgeDispute(req.params.id, user.tenantId, user.id);
 
     res.json(acknowledged);
   } catch (error) {
@@ -550,18 +400,18 @@ router.post('/disputes/:id/resolve', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Billing dispute not found' });
     }
 
-    const { resolutionType, resolutionDescription } = req.body;
+    // approved_credit_amount is a real column on billing_disputes and the resolution
+    // is where it gets set, so accept it here.
+    const { resolutionType, resolutionDescription, creditAmount } = req.body;
     if (!resolutionType) {
       return res.status(400).json({ error: 'resolutionType is required' });
     }
 
-    const resolved = await storage.resolveBillingDispute(
-      req.params.id,
-      user.tenantId,
-      user.id,
+    const resolved = await storage.resolveDispute(req.params.id, user.tenantId, user.id, {
       resolutionType,
       resolutionDescription,
-    );
+      creditAmount,
+    });
 
     res.json(resolved);
   } catch (error) {
@@ -594,7 +444,7 @@ router.post('/disputes/:id/escalate', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'escalatedTo is required' });
     }
 
-    const escalated = await storage.escalateBillingDispute(
+    const escalated = await storage.escalateDispute(
       req.params.id,
       user.tenantId,
       escalatedTo,
@@ -616,10 +466,7 @@ router.get('/disputes/customer/:customerId', async (req: Request, res: Response)
   }
 
   try {
-    const disputes = await storage.getBillingDisputesByCustomer(
-      req.params.customerId,
-      user.tenantId,
-    );
+    const disputes = await storage.getDisputesByCustomer(req.params.customerId, user.tenantId);
 
     res.json(disputes);
   } catch (error) {
@@ -636,7 +483,7 @@ router.get('/disputes/invoice/:invoiceId', async (req: Request, res: Response) =
   }
 
   try {
-    const disputes = await storage.getBillingDisputesByInvoice(req.params.invoiceId, user.tenantId);
+    const disputes = await storage.getDisputesByInvoice(req.params.invoiceId, user.tenantId);
 
     res.json(disputes);
   } catch (error) {
@@ -692,80 +539,13 @@ router.get('/generation/logs/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/billing/generation/generate - Generate invoices (manual trigger)
-router.post('/generation/generate', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  if (!isAdminOrManager(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to generate invoices' });
-  }
-
-  try {
-    const { customerId, contractId, billingPeriodStart, billingPeriodEnd } = req.body;
-
-    if (!customerId || !billingPeriodStart || !billingPeriodEnd) {
-      return res.status(400).json({
-        error: 'customerId, billingPeriodStart, and billingPeriodEnd are required',
-      });
-    }
-
-    const result = await storage.generateInvoice(
-      user.tenantId,
-      customerId,
-      contractId,
-      new Date(billingPeriodStart),
-      new Date(billingPeriodEnd),
-      user.id,
-    );
-
-    res.status(201).json(result);
-  } catch (error) {
-    log.error('Generate invoice error:', error);
-    res.status(500).json({ error: 'Failed to generate invoice' });
-  }
-});
-
-// POST /api/billing/generation/batch - Generate batch of invoices
-router.post('/generation/batch', async (req: Request, res: Response) => {
-  const user = req.session?.user;
-  if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  if (!isAdminOrManager(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to generate invoice batches' });
-  }
-
-  try {
-    const { customerIds, billingPeriodStart, billingPeriodEnd } = req.body;
-
-    if (!customerIds || !Array.isArray(customerIds) || !billingPeriodStart || !billingPeriodEnd) {
-      return res.status(400).json({
-        error: 'customerIds (array), billingPeriodStart, and billingPeriodEnd are required',
-      });
-    }
-
-    const results = await storage.generateInvoiceBatch(
-      user.tenantId,
-      customerIds,
-      new Date(billingPeriodStart),
-      new Date(billingPeriodEnd),
-      user.id,
-    );
-
-    res.status(201).json(results);
-  } catch (error) {
-    log.error('Generate invoice batch error:', error);
-    res.status(500).json({ error: 'Failed to generate invoice batch' });
-  }
-});
+// POST /generation/generate and POST /generation/batch used to live here. They
+// called storage.generateInvoice and storage.generateInvoiceBatch, neither of
+// which has ever existed on DatabaseStorage — so both were a TypeError on the
+// first request. The real meter-billing generator is
+// supabase/functions/billing/handlers/generate-invoices.ts, reached at
+// POST /api/billing/generate-invoices; PROD-008a tracks moving it into an atomic
+// database function. Nothing is lost by removing two endpoints that could not run.
 
 // GET /api/billing/generation/failed - Get failed generations
 router.get('/generation/failed', async (req: Request, res: Response) => {
@@ -775,7 +555,7 @@ router.get('/generation/failed', async (req: Request, res: Response) => {
   }
 
   try {
-    const failedLogs = await storage.getFailedInvoiceGenerations(user.tenantId);
+    const failedLogs = await storage.getFailedGenerations(user.tenantId);
     res.json(failedLogs);
   } catch (error) {
     log.error('Get failed invoice generations error:', error);
@@ -793,11 +573,12 @@ router.get('/generation/stats', async (req: Request, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const stats = await storage.getInvoiceGenerationStats(
-      user.tenantId,
-      startDate ? new Date(startDate as string) : undefined,
-      endDate ? new Date(endDate as string) : undefined,
-    );
+    // getGenerationStats needs a bounded window; default to the last 30 days.
+    const end = endDate ? new Date(endDate as string) : new Date();
+    const start = startDate
+      ? new Date(startDate as string)
+      : new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const stats = await storage.getGenerationStats(user.tenantId, start, end);
 
     res.json(stats);
   } catch (error) {
@@ -840,7 +621,7 @@ router.get('/schedules/active', async (req: Request, res: Response) => {
   }
 
   try {
-    const schedules = await storage.getActiveBillingSchedules(user.tenantId);
+    const schedules = await storage.getActiveSchedules(user.tenantId);
     res.json(schedules);
   } catch (error) {
     log.error('Get active billing schedules error:', error);
@@ -856,7 +637,7 @@ router.get('/schedules/due', async (req: Request, res: Response) => {
   }
 
   try {
-    const schedules = await storage.getDueBillingSchedules(user.tenantId);
+    const schedules = await storage.getDueSchedules(user.tenantId, new Date());
     res.json(schedules);
   } catch (error) {
     log.error('Get due billing schedules error:', error);
@@ -1175,7 +956,7 @@ router.post('/credit-memos/:id/apply', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'invoiceId is required' });
     }
 
-    const applied = await storage.applyCreditMemo(req.params.id, user.tenantId, invoiceId);
+    const applied = await storage.applyCreditToInvoice(req.params.id, user.tenantId, invoiceId);
 
     res.json(applied);
   } catch (error) {

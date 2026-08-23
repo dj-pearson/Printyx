@@ -117,6 +117,153 @@ export default async function handler(req: Request) {
       return createCorsResponse(leads || [], 200, req);
     }
 
+    // ORDERING IS LOAD-BEARING: this must stay ABOVE the GET /leads/:id branch.
+    // It used to sit ~150 lines below it, and that branch matches on
+    // `leadId && !subResource`, so a request for /leads/map-data arrived with
+    // leadId = 'map-data' and was answered as a lead lookup - LeadMapViewer.tsx
+    // got "Lead not found" in production. Express's copy of the same mistake is
+    // gated by npm run check:route-shadowing; the edge functions dispatch
+    // through an ordered if-chain with the same hazard and no gate yet.
+    // GET /leads/map-data
+    if (req.method === 'GET' && leadId === 'map-data') {
+      const source = url.searchParams.get('source');
+      const city = url.searchParams.get('city');
+      const brand = url.searchParams.get('brand');
+      const filterStatus = url.searchParams.get('status');
+      const hasCoords = url.searchParams.get('hasCoords');
+
+      const { data: rows, error } = await admin
+        .from('business_records')
+        .select(
+          'id, company_name, record_type, status, primary_contact_name, primary_contact_title, ' +
+            'billing_city, billing_state, billing_zip_code, address_line1, city, state, ' +
+            'postal_code, latitude, longitude, lead_source, notes, owner_id, ' +
+            'assigned_sales_rep, created_at',
+        )
+        .eq('tenant_id', tenantId)
+        .eq('record_type', 'lead');
+
+      if (error) {
+        console.error('Lead map data error:', error);
+        return createCorsResponse({ message: 'Failed to load map data' }, 500, req);
+      }
+
+      // Filters are applied here rather than in the query because Express does
+      // the same, and two of them (brand, city) match against free text in
+      // `notes` and a coalesce of two columns.
+      let filtered = rows ?? [];
+      if (source) filtered = filtered.filter((r: any) => r.lead_source === source);
+      if (city) {
+        const needle = city.toLowerCase();
+        filtered = filtered.filter((r: any) =>
+          String(r.billing_city || r.city || '')
+            .toLowerCase()
+            .includes(needle),
+        );
+      }
+      if (brand) {
+        const needle = brand.toLowerCase();
+        filtered = filtered.filter((r: any) =>
+          String(r.notes || '')
+            .toLowerCase()
+            .includes(needle),
+        );
+      }
+      if (filterStatus) filtered = filtered.filter((r: any) => r.status === filterStatus);
+      if (hasCoords === 'true') {
+        filtered = filtered.filter((r: any) => r.latitude && r.longitude);
+      }
+
+      // The EDA importer packs brand, equipment and UCC detail into `notes` as
+      // "Brand: X | Unit 1: ... | UCC: filed". These patterns are Express's,
+      // kept exactly so the map legend counts do not change.
+      const leadsWithMeta = filtered.map((row: any) => {
+        const notes = String(row.notes || '');
+
+        const brands: string[] = [];
+        for (const match of notes.match(/Brand:\s*([^\s|]+)/g) ?? []) {
+          const b = match.replace('Brand:', '').trim();
+          if (b && !brands.includes(b)) brands.push(b);
+        }
+
+        const equipment: string[] = [];
+        for (const match of notes.match(/Unit \d+:\s*([^|]+)/g) ?? []) {
+          equipment.push(match.trim());
+        }
+
+        const uccStatuses: string[] = [];
+        for (const match of notes.match(/UCC:\s*(\w+)/g) ?? []) {
+          const st = match.replace('UCC:', '').trim();
+          if (st && !uccStatuses.includes(st)) uccStatuses.push(st);
+        }
+
+        const unitMatch = notes.match(/(\d+) equipment unit/);
+        const unitCount = unitMatch ? parseInt(unitMatch[1]) : equipment.length;
+
+        return {
+          id: row.id,
+          companyName: row.company_name,
+          recordType: row.record_type,
+          status: row.status,
+          primaryContactName: row.primary_contact_name,
+          primaryContactTitle: row.primary_contact_title,
+          billingCity: row.billing_city,
+          billingState: row.billing_state,
+          // The column is billing_zip_code; the page reads billingPostalCode.
+          billingPostalCode: row.billing_zip_code,
+          addressLine1: row.address_line1,
+          city: row.city,
+          state: row.state,
+          postalCode: row.postal_code,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          leadSource: row.lead_source,
+          notes: row.notes,
+          ownerId: row.owner_id,
+          assignedSalesRep: row.assigned_sales_rep,
+          createdAt: row.created_at,
+          lat: row.latitude ? parseFloat(String(row.latitude)) : null,
+          lng: row.longitude ? parseFloat(String(row.longitude)) : null,
+          brands,
+          equipment,
+          uccStatuses,
+          unitCount,
+        };
+      });
+
+      const allBrands: Record<string, number> = {};
+      const allCities: Record<string, number> = {};
+      const allUccStatuses: Record<string, number> = {};
+      let geocodedCount = 0;
+
+      for (const lead of leadsWithMeta) {
+        if (lead.lat && lead.lng) geocodedCount++;
+        const c = lead.billingCity || lead.city || 'Unknown';
+        allCities[c] = (allCities[c] || 0) + 1;
+        for (const b of lead.brands) allBrands[b] = (allBrands[b] || 0) + 1;
+        for (const st of lead.uccStatuses) allUccStatuses[st] = (allUccStatuses[st] || 0) + 1;
+      }
+
+      return createCorsResponse(
+        {
+          leads: leadsWithMeta,
+          stats: {
+            total: leadsWithMeta.length,
+            geocoded: geocodedCount,
+            pending: leadsWithMeta.length - geocodedCount,
+            geocodedPct: leadsWithMeta.length
+              ? Math.round((geocodedCount / leadsWithMeta.length) * 100)
+              : 0,
+            brands: allBrands,
+            cities: allCities,
+            uccStatuses: allUccStatuses,
+          },
+        },
+        200,
+        req,
+      );
+    }
+
     // GET /leads/:id - Get single lead
     if (req.method === 'GET' && leadId && !subResource) {
       const { data: lead, error } = await admin
@@ -269,146 +416,6 @@ export default async function handler(req: Request) {
     // LeadMapViewer.tsx calls GET /leads/map-data and POST /leads/geocode, and
     // LeadDetail.tsx calls POST /leads/:id/contacts. None existed here, so all
     // three were hard 404s in production. Ported from server/routes-lead-map.ts.
-
-    // GET /leads/map-data
-    if (req.method === 'GET' && leadId === 'map-data') {
-      const source = url.searchParams.get('source');
-      const city = url.searchParams.get('city');
-      const brand = url.searchParams.get('brand');
-      const filterStatus = url.searchParams.get('status');
-      const hasCoords = url.searchParams.get('hasCoords');
-
-      const { data: rows, error } = await admin
-        .from('business_records')
-        .select(
-          'id, company_name, record_type, status, primary_contact_name, primary_contact_title, ' +
-            'billing_city, billing_state, billing_zip_code, address_line1, city, state, ' +
-            'postal_code, latitude, longitude, lead_source, notes, owner_id, ' +
-            'assigned_sales_rep, created_at',
-        )
-        .eq('tenant_id', tenantId)
-        .eq('record_type', 'lead');
-
-      if (error) {
-        console.error('Lead map data error:', error);
-        return createCorsResponse({ message: 'Failed to load map data' }, 500, req);
-      }
-
-      // Filters are applied here rather than in the query because Express does
-      // the same, and two of them (brand, city) match against free text in
-      // `notes` and a coalesce of two columns.
-      let filtered = rows ?? [];
-      if (source) filtered = filtered.filter((r: any) => r.lead_source === source);
-      if (city) {
-        const needle = city.toLowerCase();
-        filtered = filtered.filter((r: any) =>
-          String(r.billing_city || r.city || '')
-            .toLowerCase()
-            .includes(needle),
-        );
-      }
-      if (brand) {
-        const needle = brand.toLowerCase();
-        filtered = filtered.filter((r: any) =>
-          String(r.notes || '')
-            .toLowerCase()
-            .includes(needle),
-        );
-      }
-      if (filterStatus) filtered = filtered.filter((r: any) => r.status === filterStatus);
-      if (hasCoords === 'true') {
-        filtered = filtered.filter((r: any) => r.latitude && r.longitude);
-      }
-
-      // The EDA importer packs brand, equipment and UCC detail into `notes` as
-      // "Brand: X | Unit 1: ... | UCC: filed". These patterns are Express's,
-      // kept exactly so the map legend counts do not change.
-      const leadsWithMeta = filtered.map((row: any) => {
-        const notes = String(row.notes || '');
-
-        const brands: string[] = [];
-        for (const match of notes.match(/Brand:\s*([^\s|]+)/g) ?? []) {
-          const b = match.replace('Brand:', '').trim();
-          if (b && !brands.includes(b)) brands.push(b);
-        }
-
-        const equipment: string[] = [];
-        for (const match of notes.match(/Unit \d+:\s*([^|]+)/g) ?? []) {
-          equipment.push(match.trim());
-        }
-
-        const uccStatuses: string[] = [];
-        for (const match of notes.match(/UCC:\s*(\w+)/g) ?? []) {
-          const st = match.replace('UCC:', '').trim();
-          if (st && !uccStatuses.includes(st)) uccStatuses.push(st);
-        }
-
-        const unitMatch = notes.match(/(\d+) equipment unit/);
-        const unitCount = unitMatch ? parseInt(unitMatch[1]) : equipment.length;
-
-        return {
-          id: row.id,
-          companyName: row.company_name,
-          recordType: row.record_type,
-          status: row.status,
-          primaryContactName: row.primary_contact_name,
-          primaryContactTitle: row.primary_contact_title,
-          billingCity: row.billing_city,
-          billingState: row.billing_state,
-          // The column is billing_zip_code; the page reads billingPostalCode.
-          billingPostalCode: row.billing_zip_code,
-          addressLine1: row.address_line1,
-          city: row.city,
-          state: row.state,
-          postalCode: row.postal_code,
-          latitude: row.latitude,
-          longitude: row.longitude,
-          leadSource: row.lead_source,
-          notes: row.notes,
-          ownerId: row.owner_id,
-          assignedSalesRep: row.assigned_sales_rep,
-          createdAt: row.created_at,
-          lat: row.latitude ? parseFloat(String(row.latitude)) : null,
-          lng: row.longitude ? parseFloat(String(row.longitude)) : null,
-          brands,
-          equipment,
-          uccStatuses,
-          unitCount,
-        };
-      });
-
-      const allBrands: Record<string, number> = {};
-      const allCities: Record<string, number> = {};
-      const allUccStatuses: Record<string, number> = {};
-      let geocodedCount = 0;
-
-      for (const lead of leadsWithMeta) {
-        if (lead.lat && lead.lng) geocodedCount++;
-        const c = lead.billingCity || lead.city || 'Unknown';
-        allCities[c] = (allCities[c] || 0) + 1;
-        for (const b of lead.brands) allBrands[b] = (allBrands[b] || 0) + 1;
-        for (const st of lead.uccStatuses) allUccStatuses[st] = (allUccStatuses[st] || 0) + 1;
-      }
-
-      return createCorsResponse(
-        {
-          leads: leadsWithMeta,
-          stats: {
-            total: leadsWithMeta.length,
-            geocoded: geocodedCount,
-            pending: leadsWithMeta.length - geocodedCount,
-            geocodedPct: leadsWithMeta.length
-              ? Math.round((geocodedCount / leadsWithMeta.length) * 100)
-              : 0,
-            brands: allBrands,
-            cities: allCities,
-            uccStatuses: allUccStatuses,
-          },
-        },
-        200,
-        req,
-      );
-    }
 
     // GET/POST /leads/:id/contacts
     //

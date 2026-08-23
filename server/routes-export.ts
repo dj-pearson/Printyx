@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import { db } from './db';
-import { onboardingChecklists, onboardingEquipment } from '../shared/schema';
+// equipment_onboarding_checklists, not the user-lifecycle onboarding_checklists
+// that shares the shorter export name: the generators below read checklistTitle,
+// customerData, siteInformation and scheduledInstallDate, none of which exist on
+// that table. tsc could not see it because the generators take `any`.
+import { equipmentOnboardingChecklists, onboardingEquipment } from '../shared/schema';
 import { eq } from 'drizzle-orm';
 import { createModuleLogger } from './lib/logger';
 import { getUserId, getTenantId } from './utils/auth-helpers';
@@ -18,8 +22,8 @@ export async function exportChecklistPDF(req: Request, res: Response) {
     // Get checklist with equipment
     const [checklist] = await db
       .select()
-      .from(onboardingChecklists)
-      .where(eq(onboardingChecklists.id, id));
+      .from(equipmentOnboardingChecklists)
+      .where(eq(equipmentOnboardingChecklists.id, id));
 
     if (!checklist || checklist.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Checklist not found' });
@@ -54,8 +58,8 @@ export async function exportChecklistExcel(req: Request, res: Response) {
     // Get checklist with equipment
     const [checklist] = await db
       .select()
-      .from(onboardingChecklists)
-      .where(eq(onboardingChecklists.id, id));
+      .from(equipmentOnboardingChecklists)
+      .where(eq(equipmentOnboardingChecklists.id, id));
 
     if (!checklist || checklist.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Checklist not found' });
@@ -93,8 +97,8 @@ export async function exportChecklistCSV(req: Request, res: Response) {
     // Get checklist with equipment
     const [checklist] = await db
       .select()
-      .from(onboardingChecklists)
-      .where(eq(onboardingChecklists.id, id));
+      .from(equipmentOnboardingChecklists)
+      .where(eq(equipmentOnboardingChecklists.id, id));
 
     if (!checklist || checklist.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Checklist not found' });

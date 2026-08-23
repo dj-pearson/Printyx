@@ -654,49 +654,23 @@ router.get('/signature-signers/:signerId/audit-logs', async (req, res) => {
 });
 
 // ============================================================================
-// WEBHOOK ENDPOINTS (for provider callbacks)
+// WEBHOOK ENDPOINTS — REMOVED (PROD-008b)
 // ============================================================================
-
-// DocuSign webhook
-router.post('/webhooks/docusign', async (req, res) => {
-  try {
-    // TODO: Verify webhook signature
-    // TODO: Process DocuSign events and update signature requests accordingly
-
-    log.info('DocuSign webhook received:', req.body);
-    res.status(200).json({ received: true });
-  } catch (error) {
-    log.error('Error processing DocuSign webhook:', error);
-    res.status(500).json({ error: 'Failed to process webhook' });
-  }
-});
-
-// Adobe Sign webhook
-router.post('/webhooks/adobe-sign', async (req, res) => {
-  try {
-    // TODO: Verify webhook signature
-    // TODO: Process Adobe Sign events and update signature requests accordingly
-
-    log.info('Adobe Sign webhook received:', req.body);
-    res.status(200).json({ received: true });
-  } catch (error) {
-    log.error('Error processing Adobe Sign webhook:', error);
-    res.status(500).json({ error: 'Failed to process webhook' });
-  }
-});
-
-// HelloSign webhook
-router.post('/webhooks/hellosign', async (req, res) => {
-  try {
-    // TODO: Verify webhook signature
-    // TODO: Process HelloSign events and update signature requests accordingly
-
-    log.info('HelloSign webhook received:', req.body);
-    res.status(200).json({ received: true });
-  } catch (error) {
-    log.error('Error processing HelloSign webhook:', error);
-    res.status(500).json({ error: 'Failed to process webhook' });
-  }
-});
+//
+// POST /webhooks/{docusign,adobe-sign,hellosign} lived here. All three were
+// shadowed by the /api/webhooks proxy, which forwards to the webhooks edge
+// function — outbound subscription MANAGEMENT, with no provider branch — so a
+// provider callback already 404s. Deleting them changes nothing at runtime.
+//
+// Nothing was ported because there was nothing to port: each handler logged the
+// body, returned 200, and carried two TODOs (verify the signature, process the
+// event). They updated no signature request. A 200 from a stub is worse than the
+// 404 the proxy already gives, because the provider marks the endpoint healthy
+// while nothing happens.
+//
+// This is NOT the INTEG-WEBHOOK-001 case. Those receivers (Stripe, QuickBooks,
+// Salesforce, both calendars) are a real implementation and are retained pending
+// the ingress question. These were placeholders for the DocuSign / Adobe Sign /
+// HelloSign wiring EDGE-005e already recorded as a deferred PRD.
 
 export default router;

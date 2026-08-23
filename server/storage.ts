@@ -161,14 +161,14 @@ import {
   type InsertServicePhoto,
   type InsertLocationHistory,
   // Onboarding schemas
-  onboardingChecklists,
   onboardingEquipment,
   onboardingNetworkConfig,
   onboardingPrintManagement,
   onboardingDynamicSections,
   onboardingTasks,
-  type OnboardingChecklist,
-  type InsertOnboardingChecklist,
+  equipmentOnboardingChecklists,
+  type EquipmentOnboardingChecklist,
+  type InsertEquipmentOnboardingChecklist,
   type OnboardingEquipment,
   type InsertOnboardingEquipment,
   type OnboardingNetworkConfig,
@@ -334,6 +334,7 @@ import {
   manufacturerOrderLineItems,
   manufacturerOrderConfirmations,
   manufacturerOrderShipments,
+  shipmentStatusEnum,
   manufacturerOrderExceptions,
   type ManufacturerConnection,
   type InsertManufacturerConnection,
@@ -435,10 +436,54 @@ import {
 import bcrypt from 'bcrypt';
 
 // Interface for storage operations with role-based access control
+// Projections that several storage methods return instead of the full row. They
+// are narrower on purpose — getUsers must not hand back password_hash — so the
+// interface says so rather than claiming a row it never selected.
+export type UserSummary = Pick<
+  User,
+  'id' | 'firstName' | 'lastName' | 'email' | 'roleId' | 'isActive'
+>;
+
+export type ProductModelSummary = Pick<
+  ProductModel,
+  | 'id'
+  | 'productCode'
+  | 'productName'
+  | 'description'
+  | 'category'
+  | 'manufacturer'
+  | 'msrp'
+  | 'newRepPrice'
+  | 'upgradeRepPrice'
+  | 'isActive'
+  | 'tenantId'
+  | 'createdAt'
+  | 'updatedAt'
+>;
+
+export type ContactListRow = Pick<
+  CompanyContact,
+  | 'id'
+  | 'firstName'
+  | 'lastName'
+  | 'email'
+  | 'phone'
+  | 'title'
+  | 'companyId'
+  | 'leadStatus'
+  | 'lastContactDate'
+  | 'nextFollowUpDate'
+  | 'createdAt'
+  | 'ownerId'
+  | 'favoriteContentType'
+  | 'preferredChannels'
+  | 'tenantId'
+> & { companyName: string | null; ownerName: string | null };
+
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getUsers(tenantId: string): Promise<User[]>;
+  getUsers(tenantId: string): Promise<UserSummary[]>;
   upsertUser(user: UpsertUser): Promise<User>;
 
   // Authentication operations
@@ -447,35 +492,14 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
 
   // Tenant operations for platform users
-  getAllTenants(): Promise<{ id: string; name: string; domain?: string }[]>;
+  getAllTenants(): Promise<{ id: string; name: string; domain: string | null }[]>;
 
   // Role-based data access operations
-  getUserWithRole(id: string): Promise<(User & { role?: Role; team?: Team }) | undefined>;
-  getAccessibleCustomers(
-    userId: string,
-    tenantId: string,
-    roleLevel: number,
-    teamId?: string,
-  ): Promise<Customer[]>;
-  getAccessibleLeads(
-    userId: string,
-    tenantId: string,
-    roleLevel: number,
-    teamId?: string,
-  ): Promise<Lead[]>;
-  getAccessibleServiceTickets(
-    userId: string,
-    tenantId: string,
-    roleLevel: number,
-    teamId?: string,
-  ): Promise<ServiceTicket[]>;
-  getAccessibleContracts(
-    userId: string,
-    tenantId: string,
-    roleLevel: number,
-    teamId?: string,
-  ): Promise<Contract[]>;
-
+  // `users` has its own `role` varchar, so User & { role?: Role } intersects to
+  // `string & Role`, a type nothing can satisfy. The joined role wins here.
+  getUserWithRole(
+    id: string,
+  ): Promise<(Omit<User, 'role'> & { role?: Role; team?: Team }) | undefined>;
   // Customer operations
   getCustomers(tenantId: string): Promise<Customer[]>;
   getCustomer(id: string, tenantId: string): Promise<Customer | undefined>;
@@ -517,7 +541,7 @@ export interface IStorage {
   getLead(id: string, tenantId: string): Promise<Lead | undefined>;
   createLead(lead: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>): Promise<Lead>;
   updateLead(id: string, lead: Partial<Lead>, tenantId: string): Promise<Lead | undefined>;
-  convertLeadToCustomer(leadId: string, tenantId: string): Promise<Customer>;
+  convertLeadToCustomer(leadId: string, tenantId: string, userId: string): Promise<Customer>;
 
   // Lead activity/interaction operations
   getLeadActivities(leadId: string, tenantId: string): Promise<LeadActivity[]>;
@@ -533,16 +557,10 @@ export interface IStorage {
     sortOrder: 'asc' | 'desc';
     offset: number;
     limit: number;
-  }): Promise<CompanyContact[]>;
+  }): Promise<ContactListRow[]>;
   getContactsCount(options: { filters: any; search: string }): Promise<number>;
   getContactById(id: string): Promise<CompanyContact | undefined>;
-  createContact(
-    contact: Omit<CompanyContact, 'id' | 'createdAt' | 'updatedAt'>,
-  ): Promise<CompanyContact>;
-  updateContact(id: string, contact: Partial<CompanyContact>): Promise<CompanyContact>;
-  deleteContact(id: string): Promise<boolean>;
   getUserByName(name: string): Promise<User | undefined>;
-  getContactsByCompany(companyId: string, tenantId: string): Promise<CompanyContact[]>;
 
   // Lead contact operations
   getLeadContacts(leadId: string, tenantId: string): Promise<LeadContact[]>;
@@ -607,7 +625,7 @@ export interface IStorage {
   ): Promise<UserCustomerAssignment>;
 
   // Product Management operations
-  getProductModels(tenantId: string): Promise<ProductModel[]>;
+  getProductModels(tenantId: string): Promise<ProductModelSummary[]>;
   getProductModel(id: string, tenantId: string): Promise<ProductModel | undefined>;
   createProductModel(model: InsertProductModel): Promise<ProductModel>;
   updateProductModel(
@@ -616,7 +634,9 @@ export interface IStorage {
     tenantId: string,
   ): Promise<ProductModel | undefined>;
 
-  getProductAccessories(modelId: string, tenantId: string): Promise<ProductAccessory[]>;
+  getProductAccessories(
+    baseProductId: string,
+  ): Promise<(MasterProductAccessoryRelationship & MasterProductAccessory)[]>;
   createProductAccessory(accessory: InsertProductAccessory): Promise<ProductAccessory>;
   deleteProductAccessory(id: string, tenantId: string): Promise<boolean>;
 
@@ -656,7 +676,7 @@ export interface IStorage {
   getContract(id: string, tenantId: string): Promise<Contract | undefined>;
 
   // Deal management operations
-  getDeals(tenantId: string, stageId?: string, search?: string, leadId?: string): Promise<any[]>;
+  getDeals(tenantId: string, stageId?: string, search?: string): Promise<any[]>;
   getDeal(id: string, tenantId: string): Promise<any>;
   createDeal(deal: any): Promise<any>;
   updateDeal(id: string, deal: Partial<any>, tenantId: string): Promise<any>;
@@ -700,7 +720,6 @@ export interface IStorage {
   deleteVendor(id: string, tenantId: string): Promise<boolean>;
 
   // Product catalog operations
-  getAllProductModels(tenantId: string): Promise<ProductModel[]>;
   getAllProductAccessories(tenantId: string): Promise<ProductAccessory[]>;
   getAllServiceProducts(tenantId: string): Promise<ServiceProduct[]>;
   getAllSoftwareProducts(tenantId: string): Promise<SoftwareProduct[]>;
@@ -815,14 +834,19 @@ export interface IStorage {
   ): Promise<any | undefined>;
 
   // Onboarding operations
-  getOnboardingChecklists(tenantId: string): Promise<OnboardingChecklist[]>;
-  getOnboardingChecklist(id: string, tenantId: string): Promise<OnboardingChecklist | undefined>;
-  createOnboardingChecklist(checklist: InsertOnboardingChecklist): Promise<OnboardingChecklist>;
+  getOnboardingChecklists(tenantId: string): Promise<EquipmentOnboardingChecklist[]>;
+  getOnboardingChecklist(
+    id: string,
+    tenantId: string,
+  ): Promise<EquipmentOnboardingChecklist | undefined>;
+  createOnboardingChecklist(
+    checklist: InsertEquipmentOnboardingChecklist,
+  ): Promise<EquipmentOnboardingChecklist>;
   updateOnboardingChecklist(
     id: string,
     tenantId: string,
-    checklist: Partial<OnboardingChecklist>,
-  ): Promise<OnboardingChecklist | undefined>;
+    checklist: Partial<EquipmentOnboardingChecklist>,
+  ): Promise<EquipmentOnboardingChecklist | undefined>;
   deleteOnboardingChecklist(id: string, tenantId: string): Promise<void>;
 
   getOnboardingEquipment(checklistId: string, tenantId: string): Promise<OnboardingEquipment[]>;
@@ -954,7 +978,7 @@ export interface IStorage {
   testIntegrationConnection(
     id: string,
     tenantId: string,
-  ): Promise<{ healthy: boolean; message: string }>;
+  ): Promise<{ status: string; message: string }>;
 
   // Signature Requests operations
   getSignatureRequests(tenantId: string, status?: string): Promise<SignatureRequest[]>;
@@ -1160,6 +1184,7 @@ export interface IStorage {
   // MFA Enrollment & Configuration
   enableMfaForUser(userId: string, secret: string): Promise<User | null>;
   disableMfaForUser(userId: string): Promise<User | null>;
+  getUserMfaSecret(userId: string): Promise<{ enabled: boolean; secret: string | null }>;
   getUserMfaStatus(userId: string): Promise<{ enabled: boolean; hasBackupCodes: boolean } | null>;
 
   // MFA Backup Codes
@@ -1392,13 +1417,10 @@ export interface IStorage {
   deleteTechnicianLocation(technicianId: string, tenantId: string): Promise<void>;
   getAllTechnicianLocations(tenantId: string): Promise<TechnicianLocation[]>;
 
-  // Location History (Historical Tracking)
-  createLocationHistory(data: InsertGpsLocationHistory): Promise<GpsLocationHistory>;
-  getLocationHistory(
-    technicianId: string,
-    tenantId: string,
-    filters?: { startDate?: Date; endDate?: Date; activityType?: string; ticketId?: string },
-  ): Promise<GpsLocationHistory[]>;
+  // Location History (Historical Tracking) — createLocationHistory and
+  // getLocationHistory are declared once, above, in the shape DatabaseStorage
+  // actually implements. Declaring them twice made TypeScript intersect the two
+  // signatures into one nothing could satisfy.
   getActivityTimeline(
     technicianId: string,
     tenantId: string,
@@ -2196,7 +2218,8 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getUsers(tenantId: string): Promise<User[]> {
+  // A deliberate projection: the full row carries password_hash.
+  async getUsers(tenantId: string): Promise<UserSummary[]> {
     return await db
       .select({
         id: users.id,
@@ -2256,7 +2279,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Tenant operations for platform users
-  async getAllTenants(): Promise<{ id: string; name: string; domain?: string }[]> {
+  async getAllTenants(): Promise<{ id: string; name: string; domain: string | null }[]> {
     const result = await db
       .select({
         id: tenants.id,
@@ -2270,7 +2293,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Enhanced user operations with role information
-  async getUserWithRole(id: string): Promise<(User & { role?: Role; team?: Team }) | undefined> {
+  async getUserWithRole(
+    id: string,
+  ): Promise<(Omit<User, 'role'> & { role?: Role; team?: Team }) | undefined> {
     const result = await db
       .select({
         user: users,
@@ -2286,162 +2311,6 @@ export class DatabaseStorage implements IStorage {
 
     const { user, role, team } = result[0];
     return { ...user, role: role || undefined, team: team || undefined };
-  }
-
-  // Role-based data access methods
-  async getAccessibleCustomers(
-    userId: string,
-    tenantId: string,
-    roleLevel: number,
-    teamId?: string,
-  ): Promise<Customer[]> {
-    let query = db.select().from(customers).where(eq(customers.tenantId, tenantId));
-
-    // Apply role-based filtering
-    if (roleLevel === 1) {
-      // Individual contributor - only assigned customers
-      const assignedCustomerIds = await db
-        .select({ customerId: userCustomerAssignments.customerId })
-        .from(userCustomerAssignments)
-        .where(
-          and(
-            eq(userCustomerAssignments.userId, userId),
-            eq(userCustomerAssignments.tenantId, tenantId),
-          ),
-        );
-
-      if (assignedCustomerIds.length === 0) return [];
-
-      query = query.where(
-        inArray(
-          customers.id,
-          assignedCustomerIds.map((a) => a.customerId),
-        ),
-      );
-    } else if (roleLevel === 2 && teamId) {
-      // Team lead - team's customers
-      const teamUserIds = await db
-        .select({ userId: users.id })
-        .from(users)
-        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
-
-      const teamCustomerIds = await db
-        .select({ customerId: userCustomerAssignments.customerId })
-        .from(userCustomerAssignments)
-        .where(
-          and(
-            inArray(
-              userCustomerAssignments.userId,
-              teamUserIds.map((u) => u.userId),
-            ),
-            eq(userCustomerAssignments.tenantId, tenantId),
-          ),
-        );
-
-      if (teamCustomerIds.length === 0) return [];
-
-      query = query.where(
-        inArray(
-          customers.id,
-          teamCustomerIds.map((a) => a.customerId),
-        ),
-      );
-    }
-    // Level 3+ (Manager/Director/Admin) see all customers in tenant
-
-    return await query;
-  }
-
-  async getAccessibleLeads(
-    userId: string,
-    tenantId: string,
-    roleLevel: number,
-    teamId?: string,
-  ): Promise<Lead[]> {
-    let query = db.select().from(leads).where(eq(leads.tenantId, tenantId));
-
-    if (roleLevel === 1) {
-      // Individual - only assigned leads
-      query = query.where(eq(leads.ownerId, userId));
-    } else if (roleLevel === 2 && teamId) {
-      // Team lead - team's leads
-      const teamUserIds = await db
-        .select({ userId: users.id })
-        .from(users)
-        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
-
-      query = query.where(
-        inArray(
-          leads.ownerId,
-          teamUserIds.map((u) => u.userId),
-        ),
-      );
-    }
-
-    return await query;
-  }
-
-  async getAccessibleServiceTickets(
-    userId: string,
-    tenantId: string,
-    roleLevel: number,
-    teamId?: string,
-  ): Promise<ServiceTicket[]> {
-    let query = db.select().from(serviceTickets).where(eq(serviceTickets.tenantId, tenantId));
-
-    if (roleLevel === 1) {
-      // Individual technician - only assigned tickets
-      query = query.where(
-        or(eq(serviceTickets.assignedTechnicianId, userId), eq(serviceTickets.createdBy, userId)),
-      );
-    } else if (roleLevel === 2 && teamId) {
-      // Team supervisor - team's tickets
-      const teamTechnicianIds = await db
-        .select({ technicianId: technicians.id })
-        .from(technicians)
-        .innerJoin(users, eq(technicians.userId, users.id))
-        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
-
-      if (teamTechnicianIds.length > 0) {
-        query = query.where(
-          inArray(
-            serviceTickets.assignedTechnicianId,
-            teamTechnicianIds.map((t) => t.technicianId),
-          ),
-        );
-      }
-    }
-
-    return await query;
-  }
-
-  async getAccessibleContracts(
-    userId: string,
-    tenantId: string,
-    roleLevel: number,
-    teamId?: string,
-  ): Promise<Contract[]> {
-    let query = db.select().from(contracts).where(eq(contracts.tenantId, tenantId));
-
-    if (roleLevel === 1) {
-      // Individual sales rep - only assigned contracts
-      query = query.where(eq(contracts.assignedSalespersonId, userId));
-    } else if (roleLevel === 2 && teamId) {
-      // Team lead - team's contracts
-      const teamUserIds = await db
-        .select({ userId: users.id })
-        .from(users)
-        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
-
-      query = query.where(
-        inArray(
-          contracts.assignedSalespersonId,
-          teamUserIds.map((u) => u.userId),
-        ),
-      );
-    }
-
-    return await query;
   }
 
   // Standard CRUD operations (existing methods with tenant filtering)
@@ -2502,16 +2371,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCustomerMeterReadings(customerId: string, tenantId: string): Promise<MeterReading[]> {
-    try {
-      return await db
-        .select()
-        .from(meterReadings)
-        .where(and(eq(meterReadings.customerId, customerId), eq(meterReadings.tenantId, tenantId)))
-        .orderBy(desc(meterReadings.readingDate));
-    } catch (error) {
-      log.info('No meter readings table found, returning empty array');
-      return [];
-    }
+    // meter_readings has no customer_id: a reading belongs to a piece of equipment,
+    // and equipment carries customer_id. The old query named a column that does not
+    // exist, so it raised a syntax error on every call and the catch below turned
+    // that into a silent empty list with a misleading "no table" log line.
+    const rows = await db
+      .select({ reading: meterReadings })
+      .from(meterReadings)
+      .innerJoin(equipment, eq(meterReadings.equipmentId, equipment.id))
+      .where(
+        and(
+          eq(equipment.customerId, customerId),
+          eq(equipment.tenantId, tenantId),
+          eq(meterReadings.tenantId, tenantId),
+        ),
+      )
+      .orderBy(desc(meterReadings.readingDate));
+    return rows.map((row) => row.reading);
   }
 
   async getCustomerInvoices(customerId: string, tenantId: string): Promise<Invoice[]> {
@@ -3310,7 +3186,9 @@ export class DatabaseStorage implements IStorage {
 
       // Combine activities with business record context
       return activities.map((activity) => {
-        const record = recordsMap.get(activity.businessRecordId);
+        const record = activity.businessRecordId
+          ? recordsMap.get(activity.businessRecordId)
+          : undefined;
         return {
           ...activity,
           interactionType: activity.activityType, // Alias for compatibility
@@ -3383,7 +3261,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Product Management Implementation
-  async getProductModels(tenantId: string): Promise<ProductModel[]> {
+  async getProductModels(tenantId: string): Promise<ProductModelSummary[]> {
     return await db
       .select({
         id: productModels.id,
@@ -3693,7 +3571,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(cpcRates)
       .where(and(eq(cpcRates.modelId, modelId), eq(cpcRates.tenantId, tenantId)))
-      .orderBy(cpcRates.colorType);
+      .orderBy(cpcRates.colorMode);
   }
 
   async createCpcRate(rate: InsertCpcRate): Promise<CpcRate> {
@@ -3726,13 +3604,17 @@ export class DatabaseStorage implements IStorage {
   // ============= TASK MANAGEMENT OPERATIONS =============
 
   async getTasks(tenantId: string, userId?: string): Promise<Task[]> {
-    let query = db.select().from(tasks).where(eq(tasks.tenantId, tenantId));
+    // Collect the predicates and apply them ONCE: drizzle's .where() ASSIGNS
+    // rather than ANDs, so a second call would drop the tenant scope.
+    const conditions = [eq(tasks.tenantId, tenantId)];
+    if (userId) conditions.push(eq(tasks.assignedTo, userId));
 
-    if (userId) {
-      query = query.where(eq(tasks.assignedTo, userId));
-    }
-
-    return await query.orderBy(desc(tasks.createdAt)).limit(50);
+    return await db
+      .select()
+      .from(tasks)
+      .where(and(...conditions))
+      .orderBy(desc(tasks.createdAt))
+      .limit(50);
   }
 
   async getTask(id: string, tenantId: string): Promise<Task | undefined> {
@@ -3758,20 +3640,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTaskStats(tenantId: string, userId?: string): Promise<any> {
-    let baseQuery = db
+    const conditions = [eq(tasks.tenantId, tenantId)];
+    if (userId) conditions.push(eq(tasks.assignedTo, userId));
+
+    const results = await db
       .select({
         status: tasks.status,
         count: sql<number>`COUNT(*)`,
         avgHours: sql<number>`AVG(${tasks.actualHours})`,
       })
       .from(tasks)
-      .where(eq(tasks.tenantId, tenantId));
-
-    if (userId) {
-      baseQuery = baseQuery.where(eq(tasks.assignedTo, userId));
-    }
-
-    const results = await baseQuery.groupBy(tasks.status);
+      .where(and(...conditions))
+      .groupBy(tasks.status);
 
     const stats = {
       totalTasks: 0,
@@ -3877,7 +3757,11 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`,
-          eq(systemAlerts.isRead, false),
+          // There is no is_read column. "Active" means nobody has acknowledged
+          // it and it is not resolved - the two columns that do record a human
+          // having dealt with the alert.
+          isNull(systemAlerts.acknowledgedAt),
+          eq(systemAlerts.resolved, false),
           ne(systemAlerts.severity, 'info'),
         ),
       );
@@ -3889,23 +3773,28 @@ export class DatabaseStorage implements IStorage {
 
   async getSystemAlerts(tenantId?: string): Promise<SystemAlert[]> {
     try {
+      // TENANT LEAK, fixed here: this called .where() TWICE. drizzle's where()
+      // ASSIGNS rather than ANDs - `this.config.where = where` in
+      // pg-core/query-builders/select.js - so the second call discarded the
+      // tenant predicate and every caller passing a tenantId received alerts
+      // from EVERY tenant. The two conditions are combined with and() now.
+      //
+      // The projection also named three columns system_alerts does not have -
+      // title, is_read and metadata - which made the select throw before it
+      // could leak anything. The two bugs were masking each other, so fixing
+      // only the columns would have turned a crash into a silent cross-tenant
+      // read. Selecting the whole row rather than a hand-listed projection: the
+      // declared return type is SystemAlert[], which the list could not satisfy
+      // even with the names corrected.
       return await db
-        .select({
-          id: systemAlerts.id,
-          tenantId: systemAlerts.tenantId,
-          title: systemAlerts.title,
-          message: systemAlerts.message,
-          severity: systemAlerts.severity,
-          category: systemAlerts.category,
-          isRead: systemAlerts.isRead,
-          createdAt: systemAlerts.createdAt,
-          updatedAt: systemAlerts.updatedAt,
-          expiresAt: systemAlerts.expiresAt,
-          metadata: systemAlerts.metadata,
-        })
+        .select()
         .from(systemAlerts)
-        .where(tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`)
-        .where(gte(systemAlerts.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000))) // Last 24 hours
+        .where(
+          and(
+            tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`,
+            gte(systemAlerts.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)), // Last 24 hours
+          ),
+        )
         .orderBy(desc(systemAlerts.createdAt))
         .limit(10);
     } catch (error) {
@@ -4197,52 +4086,12 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
-  // Contact operations (used for company contacts)
-  async createContact(
-    contact: Omit<LeadContact, 'id' | 'createdAt' | 'updatedAt'>,
-  ): Promise<LeadContact> {
-    const [result] = await db
-      .insert(leadContacts)
-      .values({
-        ...contact,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
-    return result;
-  }
-
-  async getContactsByCompany(companyId: string, tenantId: string): Promise<LeadContact[]> {
-    return await db
-      .select()
-      .from(leadContacts)
-      .where(
-        and(
-          eq(leadContacts.leadId, companyId), // Using leadId as companyId for now
-          eq(leadContacts.tenantId, tenantId),
-        ),
-      )
-      .orderBy(leadContacts.firstName, leadContacts.lastName);
-  }
-
-  async updateContact(contactId: string, contact: Partial<LeadContact>): Promise<LeadContact> {
-    const [result] = await db
-      .update(leadContacts)
-      .set({
-        ...contact,
-        updatedAt: new Date(),
-      })
-      .where(eq(leadContacts.id, contactId))
-      .returning();
-    return result;
-  }
-
-  async deleteContact(contactId: string, tenantId: string): Promise<boolean> {
-    const result = await db
-      .delete(leadContacts)
-      .where(and(eq(leadContacts.id, contactId), eq(leadContacts.tenantId, tenantId)));
-    return (result.rowCount ?? 0) > 0;
-  }
+  // createContact / getContactsByCompany / updateContact / deleteContact lived here,
+  // declared over CompanyContact but implemented against lead_contacts, filtering
+  // `lead_id = companyId` under a "using leadId as companyId for now" comment — so
+  // they could not return a company's contacts. Nothing called them, and the real
+  // companyContacts CRUD is above (getCompanyContacts / createCompanyContact / ...),
+  // which is the canonical contact table per docs/crm-canonical-model.md.
 
   // Get contacts by company name from enhanced_contacts table
   async getContactsByCompanyName(companyName: string, tenantId: string): Promise<any[]> {
@@ -4517,13 +4366,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Deal management operations
-  async getDeals(
-    tenantId: string,
-    stageId?: string,
-    search?: string,
-    leadId?: string,
-  ): Promise<any[]> {
-    let query = db
+  // `leadId` used to be a fourth parameter here, filtering on deals.leadId — a
+  // column that does not exist on the deals table (the customer link is
+  // customerId). That branch could only ever have thrown.
+  async getDeals(tenantId: string, stageId?: string, search?: string): Promise<any[]> {
+    const conditions = [eq(deals.tenantId, tenantId)];
+    if (stageId) conditions.push(eq(deals.stageId, stageId));
+    if (search) {
+      const term = `%${search}%`;
+      const matches = or(
+        like(deals.title, term),
+        like(deals.companyName, term),
+        like(deals.primaryContactName, term),
+      );
+      if (matches) conditions.push(matches);
+    }
+
+    return await db
       .select({
         id: deals.id,
         title: deals.title,
@@ -4553,27 +4412,8 @@ export class DatabaseStorage implements IStorage {
       .from(deals)
       .leftJoin(dealStages, eq(deals.stageId, dealStages.id))
       .leftJoin(users, eq(deals.ownerId, users.id))
-      .where(eq(deals.tenantId, tenantId));
-
-    if (stageId) {
-      query = query.where(eq(deals.stageId, stageId));
-    }
-
-    if (leadId) {
-      query = query.where(eq(deals.leadId, leadId));
-    }
-
-    if (search) {
-      query = query.where(
-        or(
-          like(deals.title, `%${search}%`),
-          like(deals.companyName, `%${search}%`),
-          like(deals.primaryContactName, `%${search}%`),
-        ),
-      );
-    }
-
-    return await query.orderBy(desc(deals.createdAt));
+      .where(and(...conditions))
+      .orderBy(desc(deals.createdAt));
   }
 
   async getDeal(id: string, tenantId: string): Promise<any> {
@@ -4740,15 +4580,13 @@ export class DatabaseStorage implements IStorage {
 
   // Pricing System Implementation
   async getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSettings | undefined> {
+    // There is no is_active column here — one settings row per tenant. Naming it
+    // made this raise on every call, and GET /api/pricing/company-settings 500'd
+    // along with the max-discount and min-margin policy lookups behind it.
     const [settings] = await db
       .select()
       .from(companyPricingSettings)
-      .where(
-        and(
-          eq(companyPricingSettings.tenantId, tenantId),
-          eq(companyPricingSettings.isActive, true),
-        ),
-      );
+      .where(eq(companyPricingSettings.tenantId, tenantId));
     return settings;
   }
 
@@ -4914,7 +4752,7 @@ export class DatabaseStorage implements IStorage {
     sortOrder: 'asc' | 'desc';
     offset: number;
     limit: number;
-  }): Promise<CompanyContact[]> {
+  }): Promise<ContactListRow[]> {
     // Build where conditions array
     const whereConditions: any[] = [eq(companyContacts.tenantId, options.filters.tenantId)];
 
@@ -5304,20 +5142,21 @@ export class DatabaseStorage implements IStorage {
     serviceTicketId?: string;
     technicianId?: string;
   }): Promise<MobileServiceSession[]> {
-    let query = db
+    // Passing serviceTicketId used to REPLACE the tenant predicate, so anyone
+    // holding another tenant's ticket id got that tenant's sessions back.
+    const conditions = [eq(mobileServiceSessions.tenantId, params.tenantId)];
+    if (params.serviceTicketId) {
+      conditions.push(eq(mobileServiceSessions.serviceTicketId, params.serviceTicketId));
+    }
+    if (params.technicianId) {
+      conditions.push(eq(mobileServiceSessions.technicianId, params.technicianId));
+    }
+
+    return await db
       .select()
       .from(mobileServiceSessions)
-      .where(eq(mobileServiceSessions.tenantId, params.tenantId));
-
-    if (params.serviceTicketId) {
-      query = query.where(eq(mobileServiceSessions.serviceTicketId, params.serviceTicketId));
-    }
-
-    if (params.technicianId) {
-      query = query.where(eq(mobileServiceSessions.technicianId, params.technicianId));
-    }
-
-    return await query.orderBy(desc(mobileServiceSessions.createdAt));
+      .where(and(...conditions))
+      .orderBy(desc(mobileServiceSessions.createdAt));
   }
 
   async createMobileServiceSession(
@@ -5363,17 +5202,20 @@ export class DatabaseStorage implements IStorage {
     serviceTicketId?: string;
     sessionId?: string;
   }): Promise<ServicePhoto[]> {
-    let query = db.select().from(servicePhotos).where(eq(servicePhotos.tenantId, params.tenantId));
-
+    // Same tenant-scope drop as getMobileServiceSessions above.
+    const conditions = [eq(servicePhotos.tenantId, params.tenantId)];
     if (params.serviceTicketId) {
-      query = query.where(eq(servicePhotos.serviceTicketId, params.serviceTicketId));
+      conditions.push(eq(servicePhotos.serviceTicketId, params.serviceTicketId));
     }
-
     if (params.sessionId) {
-      query = query.where(eq(servicePhotos.sessionId, params.sessionId));
+      conditions.push(eq(servicePhotos.sessionId, params.sessionId));
     }
 
-    return await query.orderBy(desc(servicePhotos.takenAt));
+    return await db
+      .select()
+      .from(servicePhotos)
+      .where(and(...conditions))
+      .orderBy(desc(servicePhotos.takenAt));
   }
 
   async createServicePhoto(photo: InsertServicePhoto): Promise<ServicePhoto> {
@@ -5388,28 +5230,28 @@ export class DatabaseStorage implements IStorage {
     startDate?: Date;
     endDate?: Date;
   }): Promise<LocationHistory[]> {
-    let query = db
+    // Five chained .where() calls, each one replacing the last: only the final
+    // predicate survived. A start+end range collapsed to "before endDate", and
+    // any filter at all dropped the tenant scope off technician GPS history.
+    const conditions = [eq(locationHistory.tenantId, params.tenantId)];
+    if (params.technicianId) {
+      conditions.push(eq(locationHistory.technicianId, params.technicianId));
+    }
+    if (params.sessionId) {
+      conditions.push(eq(locationHistory.sessionId, params.sessionId));
+    }
+    if (params.startDate) {
+      conditions.push(gte(locationHistory.timestamp, params.startDate));
+    }
+    if (params.endDate) {
+      conditions.push(lte(locationHistory.timestamp, params.endDate));
+    }
+
+    return await db
       .select()
       .from(locationHistory)
-      .where(eq(locationHistory.tenantId, params.tenantId));
-
-    if (params.technicianId) {
-      query = query.where(eq(locationHistory.technicianId, params.technicianId));
-    }
-
-    if (params.sessionId) {
-      query = query.where(eq(locationHistory.sessionId, params.sessionId));
-    }
-
-    if (params.startDate) {
-      query = query.where(gte(locationHistory.timestamp, params.startDate));
-    }
-
-    if (params.endDate) {
-      query = query.where(lte(locationHistory.timestamp, params.endDate));
-    }
-
-    return await query.orderBy(desc(locationHistory.timestamp));
+      .where(and(...conditions))
+      .orderBy(desc(locationHistory.timestamp));
   }
 
   async createLocationHistory(location: InsertLocationHistory): Promise<LocationHistory> {
@@ -5417,50 +5259,86 @@ export class DatabaseStorage implements IStorage {
     return newLocation;
   }
 
-  // Onboarding operations
-  async getOnboardingChecklists(tenantId: string): Promise<OnboardingChecklist[]> {
+  // Onboarding operations.
+  //
+  // There are TWO onboarding checklist tables and they are unrelated:
+  //   equipment_onboarding_checklists (shared/schema.ts) — the installation
+  //     checklist, with checklistTitle / installationType / customerData /
+  //     siteInformation / scheduledInstallDate, and the one that
+  //     onboarding_equipment / _network_config / _print_management /
+  //     _dynamic_sections / _tasks all carry a checklistId into.
+  //   onboarding_checklists (shared/user-lifecycle-schema.ts) — a NEW-USER
+  //     checklist, keyed on userId with a jsonb `items` array. Owned by
+  //     services/user-lifecycle-service.ts, which is the only thing that should
+  //     touch it.
+  //
+  // Both export a type called OnboardingChecklist, and shared/schema.ts re-exports
+  // the user-lifecycle one, so the name resolved to the wrong table here: these
+  // methods wrote the equipment checklist into the user-lifecycle table, whose
+  // userId / items / totalItems are all NOT NULL and were never supplied. POST
+  // /api/onboarding/checklists could not succeed, and the sibling equipment rows
+  // pointed at ids that were never in the table they FK into.
+  async getOnboardingChecklists(tenantId: string): Promise<EquipmentOnboardingChecklist[]> {
     return await db
       .select()
-      .from(onboardingChecklists)
-      .where(eq(onboardingChecklists.tenantId, tenantId))
-      .orderBy(desc(onboardingChecklists.createdAt));
+      .from(equipmentOnboardingChecklists)
+      .where(eq(equipmentOnboardingChecklists.tenantId, tenantId))
+      .orderBy(desc(equipmentOnboardingChecklists.createdAt));
   }
 
   async getOnboardingChecklist(
     id: string,
     tenantId: string,
-  ): Promise<OnboardingChecklist | undefined> {
+  ): Promise<EquipmentOnboardingChecklist | undefined> {
     const [checklist] = await db
       .select()
-      .from(onboardingChecklists)
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)));
+      .from(equipmentOnboardingChecklists)
+      .where(
+        and(
+          eq(equipmentOnboardingChecklists.id, id),
+          eq(equipmentOnboardingChecklists.tenantId, tenantId),
+        ),
+      );
     return checklist;
   }
 
   async createOnboardingChecklist(
-    checklist: InsertOnboardingChecklist,
-  ): Promise<OnboardingChecklist> {
-    const [newChecklist] = await db.insert(onboardingChecklists).values(checklist).returning();
+    checklist: InsertEquipmentOnboardingChecklist,
+  ): Promise<EquipmentOnboardingChecklist> {
+    const [newChecklist] = await db
+      .insert(equipmentOnboardingChecklists)
+      .values(checklist)
+      .returning();
     return newChecklist;
   }
 
   async updateOnboardingChecklist(
     id: string,
     tenantId: string,
-    checklist: Partial<OnboardingChecklist>,
-  ): Promise<OnboardingChecklist | undefined> {
+    checklist: Partial<EquipmentOnboardingChecklist>,
+  ): Promise<EquipmentOnboardingChecklist | undefined> {
     const [updatedChecklist] = await db
-      .update(onboardingChecklists)
+      .update(equipmentOnboardingChecklists)
       .set({ ...checklist, updatedAt: new Date() })
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)))
+      .where(
+        and(
+          eq(equipmentOnboardingChecklists.id, id),
+          eq(equipmentOnboardingChecklists.tenantId, tenantId),
+        ),
+      )
       .returning();
     return updatedChecklist;
   }
 
   async deleteOnboardingChecklist(id: string, tenantId: string): Promise<void> {
     await db
-      .delete(onboardingChecklists)
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)));
+      .delete(equipmentOnboardingChecklists)
+      .where(
+        and(
+          eq(equipmentOnboardingChecklists.id, id),
+          eq(equipmentOnboardingChecklists.tenantId, tenantId),
+        ),
+      );
   }
 
   async getOnboardingEquipment(
@@ -6056,12 +5934,15 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(signatureRequests.tenantId, tenantId),
-          lte(signatureRequests.expirationDate, futureDate),
+          // The column is expiresAt (expires_at). expirationDate does not exist
+          // on this table, so both references here were undefined - the
+          // predicate emitted an empty operand and Postgres rejected the query.
+          lte(signatureRequests.expiresAt, futureDate),
           ne(signatureRequests.status, 'completed'),
           ne(signatureRequests.status, 'voided'),
         ),
       )
-      .orderBy(signatureRequests.expirationDate);
+      .orderBy(signatureRequests.expiresAt);
   }
 
   async createSignatureRequest(request: InsertSignatureRequest): Promise<SignatureRequest> {
@@ -6182,7 +6063,9 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(eq(signatureAuditLogs.requestId, requestId), eq(signatureAuditLogs.tenantId, tenantId)),
       )
-      .orderBy(desc(signatureAuditLogs.eventTimestamp));
+      // signature_audit_logs records its time in created_at; there is no
+      // eventTimestamp column, so this ordering clause was undefined.
+      .orderBy(desc(signatureAuditLogs.createdAt));
   }
 
   async getSignatureAuditLogsBySigner(
@@ -6195,7 +6078,9 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(eq(signatureAuditLogs.signerId, signerId), eq(signatureAuditLogs.tenantId, tenantId)),
       )
-      .orderBy(desc(signatureAuditLogs.eventTimestamp));
+      // signature_audit_logs records its time in created_at; there is no
+      // eventTimestamp column, so this ordering clause was undefined.
+      .orderBy(desc(signatureAuditLogs.createdAt));
   }
 
   async createSignatureAuditLog(log: InsertSignatureAuditLog): Promise<SignatureAuditLog> {
@@ -6219,7 +6104,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(installations.customerId, filters.customerId));
     }
     if (filters?.technicianId) {
-      conditions.push(eq(installations.technicianId, filters.technicianId));
+      conditions.push(eq(installations.assignedTechnicianId, filters.technicianId));
     }
 
     return await db
@@ -6366,7 +6251,7 @@ export class DatabaseStorage implements IStorage {
           eq(installationChecklists.tenantId, tenantId),
         ),
       )
-      .orderBy(asc(installationChecklists.stepOrder));
+      .orderBy(asc(installationChecklists.itemOrder));
   }
 
   async getInstallationChecklistById(
@@ -6916,50 +6801,102 @@ export class DatabaseStorage implements IStorage {
   // ==================== Multi-Factor Authentication (MFA) Enforcement ====================
 
   // MFA Enrollment & Configuration
+  //
+  // two_factor_enabled and two_factor_secret are columns on USER_SETTINGS, not
+  // on users (shared/schema.ts:1063, migration 0000). Every method below used to
+  // address them on `users`, and the two halves failed in opposite directions:
+  //
+  //   .set({ twoFactorEnabled, twoFactorSecret })  drizzle DROPS keys that are
+  //   not columns of the target table, so the UPDATE became `set updated_at =
+  //   $1`. enableMfaForUser returned the user and reported success while writing
+  //   NOTHING. Enrolling in MFA was a no-op that claimed to have worked.
+  //
+  //   .select({ twoFactorEnabled: users.twoFactorEnabled })  throws
+  //   "Cannot convert undefined or null to object" - so reading the status
+  //   crashed.
+  //
+  // Both verified by building the queries and printing toSQL(). PA-008 describes
+  // this as "TOTP enrolled but never challenged"; on this backend it was never
+  // enrolled either.
+  //
+  // user_settings.tenant_id is NOT NULL and the row may not exist yet, so enable
+  // resolves the tenant from the user and upserts on the unique user_id.
   async enableMfaForUser(userId: string, secret: string): Promise<User | null> {
-    const [updatedUser] = await db
-      .update(users)
-      .set({
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    // user_settings.tenant_id is NOT NULL, and a platform user can have none —
+    // inserting one would fail the constraint rather than enrol anybody.
+    if (!user?.tenantId) return null;
+
+    await db
+      .insert(userSettings)
+      .values({
+        tenantId: user.tenantId,
+        userId,
         twoFactorEnabled: true,
         twoFactorSecret: secret,
-        updatedAt: new Date(),
       })
-      .where(eq(users.id, userId))
-      .returning();
+      .onConflictDoUpdate({
+        target: userSettings.userId,
+        set: { twoFactorEnabled: true, twoFactorSecret: secret, updatedAt: new Date() },
+      });
 
-    return updatedUser || null;
+    return user;
   }
 
   async disableMfaForUser(userId: string): Promise<User | null> {
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        twoFactorEnabled: false,
-        twoFactorSecret: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning();
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return null;
+
+    await db
+      .update(userSettings)
+      .set({ twoFactorEnabled: false, twoFactorSecret: null, updatedAt: new Date() })
+      .where(eq(userSettings.userId, userId));
 
     // Delete all backup codes when disabling MFA
     await this.deleteAllBackupCodes(userId);
 
-    return updatedUser || null;
+    return user;
+  }
+
+  /**
+   * The enrolled TOTP secret, or null when MFA is not enabled.
+   *
+   * Callers used to read user.twoFactorEnabled / user.twoFactorSecret off a
+   * `User`. Those are user_settings columns, so both were always undefined and
+   * every verification path short-circuited to "MFA not enabled for this user" -
+   * a code could never be accepted. Returning them from one place keeps the
+   * routes from having to know which table holds them.
+   */
+  async getUserMfaSecret(userId: string): Promise<{ enabled: boolean; secret: string | null }> {
+    const [settings] = await db
+      .select({
+        twoFactorEnabled: userSettings.twoFactorEnabled,
+        twoFactorSecret: userSettings.twoFactorSecret,
+      })
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId));
+
+    return {
+      enabled: settings?.twoFactorEnabled ?? false,
+      secret: settings?.twoFactorSecret ?? null,
+    };
   }
 
   async getUserMfaStatus(
     userId: string,
   ): Promise<{ enabled: boolean; hasBackupCodes: boolean } | null> {
-    const [user] = await db
-      .select({
-        twoFactorEnabled: users.twoFactorEnabled,
-      })
-      .from(users)
-      .where(eq(users.id, userId));
+    const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
 
     if (!user) {
       return null;
     }
+
+    // No settings row yet means MFA has never been enrolled, which is not the
+    // same as "user not found" - the caller distinguishes null from disabled.
+    const [settings] = await db
+      .select({ twoFactorEnabled: userSettings.twoFactorEnabled })
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId));
 
     const backupCodes = await db
       .select()
@@ -6968,7 +6905,7 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
 
     return {
-      enabled: user.twoFactorEnabled || false,
+      enabled: settings?.twoFactorEnabled ?? false,
       hasBackupCodes: backupCodes.length > 0,
     };
   }
@@ -7112,11 +7049,14 @@ export class DatabaseStorage implements IStorage {
 
     const totalUsers = totalUsersResult[0]?.count || 0;
 
-    // Get MFA-enabled users
+    // Get MFA-enabled users. The flag is on user_settings; joining rather than
+    // counting user_settings alone keeps the tenant scope on `users`, which is
+    // the authoritative membership table.
     const mfaEnabledResult = await db
       .select({ count: count() })
       .from(users)
-      .where(and(eq(users.tenantId, tenantId), eq(users.twoFactorEnabled, true)));
+      .innerJoin(userSettings, eq(userSettings.userId, users.id))
+      .where(and(eq(users.tenantId, tenantId), eq(userSettings.twoFactorEnabled, true)));
 
     const mfaEnabledUsers = mfaEnabledResult[0]?.count || 0;
     const mfaDisabledUsers = totalUsers - mfaEnabledUsers;
@@ -7166,16 +7106,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUsersWithoutMfa(tenantId: string): Promise<User[]> {
-    return await db
-      .select()
+    // LEFT JOIN, not INNER: a user who has never opened settings has no
+    // user_settings row at all, and that user is exactly the one without MFA.
+    // An inner join would have hidden them, which is the wrong direction for a
+    // compliance report.
+    const rows = await db
+      .select({ user: users })
       .from(users)
+      .leftJoin(userSettings, eq(userSettings.userId, users.id))
       .where(
         and(
           eq(users.tenantId, tenantId),
-          or(eq(users.twoFactorEnabled, false), isNull(users.twoFactorEnabled)),
+          or(eq(userSettings.twoFactorEnabled, false), isNull(userSettings.twoFactorEnabled)),
         ),
       )
       .orderBy(asc(users.email));
+
+    return rows.map((row) => row.user);
   }
 
   // ==================== Workflow Automation Methods ====================
@@ -8547,8 +8494,10 @@ export class DatabaseStorage implements IStorage {
     shipmentId: string,
     tenantId: string,
     trackingData: {
-      shipmentStatus?: string;
-      trackingEvents?: any;
+      // shipment_status is a pg enum: a bare string here would be accepted by the
+      // caller and then rejected by Postgres.
+      shipmentStatus?: (typeof shipmentStatusEnum.enumValues)[number];
+      trackingEvents?: unknown;
       lastTrackingUpdate?: Date;
     },
   ): Promise<ManufacturerOrderShipment | null> {
@@ -9935,11 +9884,16 @@ export class DatabaseStorage implements IStorage {
     return anomaly || null;
   }
 
+  // meter_anomalies carries corrected_bw_reading / corrected_color_reading, and a
+  // resolution that corrects the readings is the main reason to record one — this
+  // used to take them from the caller and drop them on the floor.
   async resolveAnomaly(
     anomalyId: string,
     tenantId: string,
     resolutionMethod: string,
     notes: string,
+    correctedBwReading?: number | null,
+    correctedColorReading?: number | null,
   ): Promise<MeterAnomaly | null> {
     const [anomaly] = await db
       .update(meterAnomalies)
@@ -9948,6 +9902,8 @@ export class DatabaseStorage implements IStorage {
         resolvedAt: new Date(),
         resolutionMethod,
         resolutionNotes: notes,
+        ...(correctedBwReading != null ? { correctedBwReading } : {}),
+        ...(correctedColorReading != null ? { correctedColorReading } : {}),
         updatedAt: new Date(),
       })
       .where(and(eq(meterAnomalies.id, anomalyId), eq(meterAnomalies.tenantId, tenantId)))
@@ -10111,17 +10067,19 @@ export class DatabaseStorage implements IStorage {
     return dispute || null;
   }
 
+  // The third argument is who the dispute is escalated TO, not who escalated it —
+  // it was named userId while being written straight into escalated_to.
   async escalateDispute(
     disputeId: string,
     tenantId: string,
-    userId: string,
+    escalatedTo: string,
     reason: string,
   ): Promise<BillingDispute | null> {
     const [dispute] = await db
       .update(billingDisputes)
       .set({
         escalated: true,
-        escalatedTo: userId,
+        escalatedTo,
         escalatedAt: new Date(),
         escalationReason: reason,
         disputeStatus: 'escalated',
