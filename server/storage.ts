@@ -4416,8 +4416,10 @@ export class DatabaseStorage implements IStorage {
         status: deals.status,
         probability: deals.probability,
         stageId: deals.stageId,
-        stageName: dealStages.name,
-        stageColor: dealStages.color,
+        // COP-M07: canonical stage display, falling back to the legacy row so a
+        // stage that predates the mirror still renders rather than going blank.
+        stageName: sql<string>`coalesce(${pipelineStages.displayName}, ${dealStages.name})`,
+        stageColor: sql<string>`coalesce(${pipelineStages.color}, ${dealStages.color})`,
         ownerId: deals.ownerId,
         ownerName: users.firstName,
         createdAt: deals.createdAt,
@@ -4425,6 +4427,13 @@ export class DatabaseStorage implements IStorage {
       })
       .from(deals)
       .leftJoin(dealStages, eq(deals.stageId, dealStages.id))
+      .leftJoin(
+        pipelineStages,
+        and(
+          eq(pipelineStages.legacyStageId, deals.stageId),
+          eq(pipelineStages.tenantId, deals.tenantId),
+        ),
+      )
       .leftJoin(users, eq(deals.ownerId, users.id))
       .where(and(...conditions))
       .orderBy(desc(deals.createdAt));
@@ -4451,8 +4460,10 @@ export class DatabaseStorage implements IStorage {
         status: deals.status,
         probability: deals.probability,
         stageId: deals.stageId,
-        stageName: dealStages.name,
-        stageColor: dealStages.color,
+        // COP-M07: canonical stage display, falling back to the legacy row so a
+        // stage that predates the mirror still renders rather than going blank.
+        stageName: sql<string>`coalesce(${pipelineStages.displayName}, ${dealStages.name})`,
+        stageColor: sql<string>`coalesce(${pipelineStages.color}, ${dealStages.color})`,
         ownerId: deals.ownerId,
         ownerName: users.firstName,
         createdAt: deals.createdAt,
@@ -4460,6 +4471,13 @@ export class DatabaseStorage implements IStorage {
       })
       .from(deals)
       .leftJoin(dealStages, eq(deals.stageId, dealStages.id))
+      .leftJoin(
+        pipelineStages,
+        and(
+          eq(pipelineStages.legacyStageId, deals.stageId),
+          eq(pipelineStages.tenantId, deals.tenantId),
+        ),
+      )
       .leftJoin(users, eq(deals.ownerId, users.id))
       .where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)));
     return deal;
