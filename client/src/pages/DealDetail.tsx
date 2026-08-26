@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/select';
 import { NotesPanel } from '@/components/crm/NotesPanel';
 import { DealInsightsPanel } from '@/components/crm/DealInsightsPanel';
+import { DealEquipmentPanel } from '@/components/crm/DealEquipmentPanel';
 import {
   ArrowLeft,
   Building2,
@@ -513,18 +514,9 @@ export default function DealDetail() {
               </TabsContent>
 
               <TabsContent value="equipment" className="mt-4">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Equipment on this deal</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <EmptyState
-                      icon={Printer}
-                      title="Not available yet"
-                      description="Linking the machines a deal places or replaces needs the deal-to-equipment association (COP-M05), which is blocked on the migration tooling."
-                    />
-                  </CardContent>
-                </Card>
+                {/* COP-M05: real now. Links live in crm_associations with an
+                    explicit 'replaces' / 'places' role. */}
+                <DealEquipmentPanel dealId={dealId} customerId={deal.customerId} />
               </TabsContent>
             </Tabs>
           </div>

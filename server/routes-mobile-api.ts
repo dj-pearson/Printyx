@@ -207,11 +207,18 @@ router.get('/api/equipment', async (req: any, res) => {
     const tenantId = getTenantId(req);
     if (!tenantId) return res.status(400).json({ message: 'Tenant ID required' });
 
-    const { search, limit = '50', page = '1' } = req.query;
+    const { search, customerId, limit = '50', page = '1' } = req.query;
     const limitNum = Math.min(parseInt(limit) || 50, 100);
     const offset = (Math.max(parseInt(page) || 1, 1) - 1) * limitNum;
 
     const conditions: any[] = [eq(equipment.tenantId, tenantId)];
+
+    // COP-M05: the equipment edge function has honoured ?customerId= all along
+    // and this handler ignored it, so a picker scoped to one account showed the
+    // whole tenant's fleet in dev and the right fleet in production.
+    if (customerId) {
+      conditions.push(eq(equipment.customerId, customerId as string));
+    }
 
     if (search) {
       conditions.push(

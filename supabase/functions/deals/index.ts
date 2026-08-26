@@ -3,6 +3,15 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { buildSearchOr, DEAL_LIST_SPEC, parseCrmListQuery } from '../_shared/crm-list-query.ts';
+import {
+  DEAL_EQUIPMENT_RELATIONS,
+  dealEquipmentRelationError,
+} from '../_shared/crm-associations.ts';
+import {
+  monthlyVolumeFromReadings,
+  sumVolumes,
+  totalBuyoutExposure,
+} from '../_shared/installed-base.ts';
 import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
 import {
   buildStageNameMap,
@@ -72,6 +81,136 @@ function toDealResponse(deal: any, stageNames: Record<string, string>) {
     createdAt: deal.created_at,
     updatedAt: deal.updated_at,
   };
+}
+
+/**
+ * COP-M05 / AC5. Derives the COP-M04 fields from every machine currently linked
+ * to the deal as 'replaces', and writes only the ones the deal has not answered.
+ *
+ * Returns a map of what it wrote. Never throws: a failure here must not take
+ * down the attach that already succeeded, so it degrades to writing nothing.
+ */
+async function fillDealFromInstalledBase(
+  admin: ReturnType<typeof createSupabaseServiceClient>,
+  tenantId: string,
+  dealId: string,
+): Promise<Record<string, unknown>> {
+  try {
+    const { data: deal } = await admin
+      .from('deals')
+      .select(
+        'id, lease_buyout_exposure, replaces_contract_id, current_monthly_volume_bw, current_monthly_volume_color',
+      )
+      .eq('id', dealId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+    if (!deal) return {};
+
+    const wantsBuyout = deal.lease_buyout_exposure === null;
+    const wantsContract = deal.replaces_contract_id === null;
+    const wantsBw = deal.current_monthly_volume_bw === null;
+    const wantsColor = deal.current_monthly_volume_color === null;
+    if (!wantsBuyout && !wantsContract && !wantsBw && !wantsColor) return {};
+
+    const { data: links } = await admin
+      .from('crm_associations')
+      .select('source_type, source_id, target_type, target_id')
+      .eq('tenant_id', tenantId)
+      .eq('relation', 'replaces')
+      .or(
+        `and(source_type.eq.deal,source_id.eq.${dealId},target_type.eq.equipment),` +
+          `and(target_type.eq.deal,target_id.eq.${dealId},source_type.eq.equipment)`,
+      );
+
+    const equipmentIds = [
+      ...new Set(
+        (links ?? []).map((l: Record<string, any>) =>
+          l.source_type === 'equipment' ? l.source_id : l.target_id,
+        ),
+      ),
+    ];
+    if (equipmentIds.length === 0) return {};
+
+    const { data: machines } = await admin
+      .from('equipment')
+      .select('id, customer_id, service_contract_number')
+      .eq('tenant_id', tenantId)
+      .in('id', equipmentIds);
+    if (!machines || machines.length === 0) return {};
+
+    const update: Record<string, unknown> = {};
+
+    if (wantsBuyout) {
+      // leases.equipment_ids is a jsonb ARRAY, so this is a containment test,
+      // not an equality one.
+      const perMachine = await Promise.all(
+        equipmentIds.map((id) =>
+          admin
+            .from('leases')
+            .select('buyout_amount')
+            .eq('tenant_id', tenantId)
+            .contains('equipment_ids', [id]),
+        ),
+      );
+      const leases = perMachine.flatMap((r) => r.data ?? []);
+      const exposure = totalBuyoutExposure(leases);
+      if (exposure !== null) update.lease_buyout_exposure = exposure;
+    }
+
+    if (wantsContract) {
+      // equipment.service_contract_number is free text, so this matches on the
+      // contract NUMBER for the same customer rather than on an id that does not
+      // exist. Only taken when exactly one machine points at exactly one
+      // contract — an ambiguous answer is left for the rep.
+      const numbered = machines.filter((m: Record<string, any>) => m.service_contract_number);
+      const distinct = [
+        ...new Set(numbered.map((m: Record<string, any>) => m.service_contract_number)),
+      ];
+      if (distinct.length === 1) {
+        const { data: contracts } = await admin
+          .from('contracts')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('contract_number', distinct[0])
+          .limit(2);
+        if (contracts?.length === 1) update.replaces_contract_id = contracts[0].id;
+      }
+    }
+
+    if (wantsBw || wantsColor) {
+      const perMachine = await Promise.all(
+        equipmentIds.map(async (id) => {
+          const { data } = await admin
+            .from('meter_readings')
+            .select('reading_date, bw_meter_reading, color_meter_reading')
+            .eq('tenant_id', tenantId)
+            .eq('equipment_id', id)
+            .order('reading_date', { ascending: false })
+            .limit(2);
+          return monthlyVolumeFromReadings(data ?? []);
+        }),
+      );
+      const volume = sumVolumes(perMachine);
+      if (wantsBw && volume.bw !== null) update.current_monthly_volume_bw = volume.bw;
+      if (wantsColor && volume.color !== null) update.current_monthly_volume_color = volume.color;
+    }
+
+    if (Object.keys(update).length === 0) return {};
+
+    const { error } = await admin
+      .from('deals')
+      .update({ ...update, updated_at: new Date().toISOString() })
+      .eq('id', dealId)
+      .eq('tenant_id', tenantId);
+    if (error) {
+      console.error('COP-M05: failed to write derived deal fields:', error);
+      return {};
+    }
+    return update;
+  } catch (error) {
+    console.error('COP-M05: installed-base derivation failed:', error);
+    return {};
+  }
 }
 
 export default async function handler(req: Request) {
@@ -209,6 +348,260 @@ export default async function handler(req: Request) {
           201,
           req,
         );
+      }
+
+      return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    }
+
+    // ─── /deals/:id/equipment (COP-M05) ────────────────────────────────────
+    // The installed-base link: which serials a deal REPLACES and which it
+    // PLACES. Stored in the generic crm_associations join (CRMX-006) rather than
+    // a bespoke deal_equipment table, so the link survives the lead -> customer
+    // lifecycle and needs no migration. The rep-facing fields are joined here
+    // rather than left to the client, because a board card or a record panel
+    // that has to fan out one request per serial is the thing COP-I01 exists to
+    // prevent.
+    if (dealId && subResource === 'equipment') {
+      const equipmentId = pathParts[2];
+
+      // Every branch below is scoped by tenant_id on BOTH the association and
+      // the equipment row: a link is only usable if the machine is also ours.
+      if (req.method === 'GET') {
+        const { data: links, error: linkError } = await admin
+          .from('crm_associations')
+          .select('id, source_type, source_id, target_type, target_id, relation, created_at')
+          .eq('tenant_id', tenantId)
+          .or(
+            `and(source_type.eq.deal,source_id.eq.${dealId},target_type.eq.equipment),` +
+              `and(target_type.eq.deal,target_id.eq.${dealId},source_type.eq.equipment)`,
+          )
+          .order('created_at', { ascending: false });
+
+        if (linkError) {
+          console.error('Error fetching deal equipment links:', linkError);
+          return createCorsResponse({ error: 'Failed to fetch deal equipment' }, 500, req);
+        }
+
+        const rows = links ?? [];
+        if (rows.length === 0) return createCorsResponse({ data: [], total: 0 }, 200, req);
+
+        // The deal is one side of the link; the machine is whichever side is not.
+        const idFor = (l: Record<string, any>) =>
+          l.source_type === 'equipment' ? l.source_id : l.target_id;
+        const equipmentIds = [...new Set(rows.map(idFor))];
+
+        const { data: machines, error: equipmentError } = await admin
+          .from('equipment')
+          .select(
+            'id, serial_number, model_number, manufacturer, description, meter_type, ' +
+              'is_color_capable, equipment_status, location_description, install_date, ' +
+              'lease_expires_date, monthly_payment, service_contract_number, customer_id',
+          )
+          .eq('tenant_id', tenantId)
+          .in('id', equipmentIds);
+
+        if (equipmentError) {
+          console.error('Error fetching equipment for deal:', equipmentError);
+          return createCorsResponse({ error: 'Failed to fetch deal equipment' }, 500, req);
+        }
+
+        const byId = new Map((machines ?? []).map((m: Record<string, any>) => [m.id, m]));
+
+        // Current meters and contract rates, which is what makes this list
+        // useful to a rep rather than an inventory dump. Both are fetched in ONE
+        // query each and grouped in memory: a per-machine round trip here is the
+        // fan-out COP-I01 exists to prevent.
+        const { data: readings } = await admin
+          .from('meter_readings')
+          .select('equipment_id, reading_date, bw_meter_reading, color_meter_reading')
+          .eq('tenant_id', tenantId)
+          .in('equipment_id', equipmentIds)
+          .order('reading_date', { ascending: false });
+
+        const readingsByEquipment = new Map<string, Record<string, any>[]>();
+        for (const r of readings ?? []) {
+          const list = readingsByEquipment.get(r.equipment_id) ?? [];
+          // Already ordered newest first, and only the newest pair is used.
+          if (list.length < 2) list.push(r);
+          readingsByEquipment.set(r.equipment_id, list);
+        }
+
+        // equipment.service_contract_number is free text, so the rates come from
+        // the contract carrying that NUMBER for the tenant, not from an id.
+        const contractNumbers = [
+          ...new Set(
+            (machines ?? [])
+              .map((m: Record<string, any>) => m.service_contract_number)
+              .filter(Boolean),
+          ),
+        ];
+        const contractByNumber = new Map<string, Record<string, any>>();
+        if (contractNumbers.length > 0) {
+          const { data: contracts } = await admin
+            .from('contracts')
+            .select('id, contract_number, black_rate, color_rate')
+            .eq('tenant_id', tenantId)
+            .in('contract_number', contractNumbers);
+          for (const c of contracts ?? []) contractByNumber.set(c.contract_number, c);
+        }
+
+        const data = rows
+          // A link whose machine is missing or belongs to another tenant is
+          // dropped rather than returned as a hollow row.
+          .filter((l: Record<string, any>) => byId.has(idFor(l)))
+          .map((l: Record<string, any>) => {
+            const m = byId.get(idFor(l)) as Record<string, any>;
+            const machineReadings = readingsByEquipment.get(m.id) ?? [];
+            const volume = monthlyVolumeFromReadings(machineReadings);
+            const newestReading = machineReadings[0];
+            const contract = m.service_contract_number
+              ? contractByNumber.get(m.service_contract_number)
+              : undefined;
+            return {
+              associationId: l.id,
+              relation: l.relation,
+              linkedAt: l.created_at,
+              equipmentId: m.id,
+              serialNumber: m.serial_number,
+              modelNumber: m.model_number,
+              manufacturer: m.manufacturer,
+              description: m.description,
+              meterType: m.meter_type,
+              isColorCapable: m.is_color_capable,
+              equipmentStatus: m.equipment_status,
+              locationDescription: m.location_description,
+              installDate: m.install_date,
+              leaseExpiresDate: m.lease_expires_date,
+              monthlyPayment: m.monthly_payment,
+              serviceContractNumber: m.service_contract_number,
+              customerId: m.customer_id,
+              // Null rather than 0 when the meters cannot answer — see
+              // monthlyVolumeFromReadings for what makes a period unusable.
+              currentMonthlyVolumeBw: volume.bw,
+              currentMonthlyVolumeColor: volume.color,
+              latestMeterDate: newestReading?.reading_date ?? null,
+              contractId: contract?.id ?? null,
+              contractBlackRate: contract?.black_rate ?? null,
+              contractColorRate: contract?.color_rate ?? null,
+            };
+          });
+
+        return createCorsResponse({ data, total: data.length }, 200, req);
+      }
+
+      if (req.method === 'POST' && !equipmentId) {
+        const body = await req.json().catch(() => ({}));
+        const targetId = body.equipmentId ?? body.equipment_id;
+        const relation = body.relation;
+
+        if (!targetId) {
+          return createCorsResponse({ error: 'equipmentId is required' }, 400, req);
+        }
+        const relationError = dealEquipmentRelationError({
+          sourceType: 'deal',
+          targetType: 'equipment',
+          relation,
+        });
+        if (relationError) {
+          return createCorsResponse(
+            { error: relationError, allowed: DEAL_EQUIPMENT_RELATIONS },
+            400,
+            req,
+          );
+        }
+
+        // Confirm both ends are this tenant's before writing the link. Without
+        // this a rep could attach any serial in the database by id.
+        const [{ data: deal }, { data: machine }] = await Promise.all([
+          admin.from('deals').select('id').eq('id', dealId).eq('tenant_id', tenantId).maybeSingle(),
+          admin
+            .from('equipment')
+            .select('id')
+            .eq('id', targetId)
+            .eq('tenant_id', tenantId)
+            .maybeSingle(),
+        ]);
+        if (!deal) return createCorsResponse({ error: 'Deal not found' }, 404, req);
+        if (!machine) return createCorsResponse({ error: 'Equipment not found' }, 404, req);
+
+        const { data: created, error } = await admin
+          .from('crm_associations')
+          .insert({
+            tenant_id: tenantId,
+            source_type: 'deal',
+            source_id: dealId,
+            target_type: 'equipment',
+            target_id: targetId,
+            relation,
+            created_by: user.id,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          if ((error as { code?: string }).code === '23505') {
+            return createCorsResponse(
+              { error: 'This equipment is already linked to the deal with that role' },
+              409,
+              req,
+            );
+          }
+          console.error('Error linking equipment to deal:', error);
+          return createCorsResponse({ error: 'Failed to link equipment' }, 500, req);
+        }
+
+        // COP-M05 / AC5: fill in the COP-M04 fields the machine already answers,
+        // instead of making the rep retype them. Only for 'replaces' — a machine
+        // going IN has no buyout and no history.
+        //
+        // Fills BLANKS ONLY. A rep who has typed a negotiated buyout must not
+        // have it overwritten by attaching another serial, and a derived number
+        // silently replacing a human one is the kind of thing nobody reports and
+        // everybody distrusts afterwards.
+        const filled =
+          created.relation === 'replaces'
+            ? await fillDealFromInstalledBase(admin, tenantId, dealId)
+            : {};
+
+        return createCorsResponse(
+          {
+            associationId: created.id,
+            equipmentId: created.target_id,
+            relation: created.relation,
+            linkedAt: created.created_at,
+            // What the attach wrote onto the deal, so the UI can say so rather
+            // than leaving the rep to notice fields changing on their own.
+            derived: filled,
+          },
+          201,
+          req,
+        );
+      }
+
+      if (req.method === 'DELETE' && equipmentId) {
+        // Detach by equipment id rather than association id, so the caller does
+        // not have to hold one. ?relation= removes just that role; without it,
+        // both roles go.
+        const relation = url.searchParams.get('relation');
+        let query = admin
+          .from('crm_associations')
+          .delete()
+          .eq('tenant_id', tenantId)
+          .eq('source_type', 'deal')
+          .eq('source_id', dealId)
+          .eq('target_type', 'equipment')
+          .eq('target_id', equipmentId);
+        if (relation) query = query.eq('relation', relation);
+
+        const { data, error } = await query.select();
+        if (error) {
+          console.error('Error unlinking equipment from deal:', error);
+          return createCorsResponse({ error: 'Failed to unlink equipment' }, 500, req);
+        }
+        if (!data || data.length === 0) {
+          return createCorsResponse({ error: 'Association not found' }, 404, req);
+        }
+        return createCorsResponse({ success: true, removed: data.length }, 200, req);
       }
 
       return createCorsResponse({ error: 'Method not allowed' }, 405, req);

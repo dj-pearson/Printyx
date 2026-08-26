@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { associationCreateError } from '../_shared/crm-associations.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -196,12 +197,12 @@ export default async function handler(req: Request) {
 
       if (req.method === 'POST' && !assocId) {
         const body = await req.json().catch(() => ({}));
-        if (!body.sourceType || !body.sourceId || !body.targetType || !body.targetId)
-          return createCorsResponse(
-            { error: 'sourceType, sourceId, targetType, targetId are required' },
-            400,
-            req,
-          );
+        // COP-M05: this used to check only that the four fields were present, so
+        // any string was accepted as a record type. Express validated against
+        // CRM_ASSOCIABLE_TYPES via Zod, but production runs THIS handler, so the
+        // validation lived on the host that does not serve users.
+        const invalid = associationCreateError(body);
+        if (invalid) return createCorsResponse({ error: invalid }, 400, req);
         const { data, error } = await admin
           .from('crm_associations')
           .insert({
