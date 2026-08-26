@@ -5,6 +5,15 @@
  * for service-to-service authentication.
  */
 
+/**
+ * PA-032: the tenant/user foreign-key columns in this file were declared `uuid`
+ * while `tenants.id` and `users.id` are `varchar`, so Postgres REJECTED every
+ * one of those constraints — "key columns are of incompatible types: uuid and
+ * character varying". They have never existed in any database. That is why
+ * migration 0000 could not be applied to an empty one, and why no fresh
+ * environment was reproducible from the migrations alone.
+ */
+
 import {
   pgTable,
   uuid,
@@ -49,7 +58,7 @@ export const apiKeys = pgTable(
   'api_keys',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    tenantId: uuid('tenant_id')
+    tenantId: varchar('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
 
@@ -99,8 +108,8 @@ export const apiKeys = pgTable(
     tags: jsonb('tags').$type<string[]>().default([]),
 
     // Ownership
-    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
-    revokedBy: uuid('revoked_by').references(() => users.id, { onDelete: 'set null' }),
+    createdBy: varchar('created_by').references(() => users.id, { onDelete: 'set null' }),
+    revokedBy: varchar('revoked_by').references(() => users.id, { onDelete: 'set null' }),
     revokedAt: timestamp('revoked_at'),
     revokedReason: text('revoked_reason'),
 
@@ -131,7 +140,7 @@ export const apiKeyUsageLogs = pgTable(
     apiKeyId: uuid('api_key_id')
       .notNull()
       .references(() => apiKeys.id, { onDelete: 'cascade' }),
-    tenantId: uuid('tenant_id')
+    tenantId: varchar('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
 
@@ -218,7 +227,7 @@ export const apiKeyRotations = pgTable(
     apiKeyId: uuid('api_key_id')
       .notNull()
       .references(() => apiKeys.id, { onDelete: 'cascade' }),
-    tenantId: uuid('tenant_id')
+    tenantId: varchar('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
 
@@ -231,7 +240,7 @@ export const apiKeyRotations = pgTable(
 
     // Rotation details
     rotatedAt: timestamp('rotated_at').defaultNow().notNull(),
-    rotatedBy: uuid('rotated_by').references(() => users.id, { onDelete: 'set null' }),
+    rotatedBy: varchar('rotated_by').references(() => users.id, { onDelete: 'set null' }),
     reason: text('reason'),
 
     // Grace period for old key

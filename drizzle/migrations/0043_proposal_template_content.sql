@@ -18,7 +18,24 @@ BEGIN
   ) THEN
     ALTER TABLE "proposal_templates"
       ADD COLUMN IF NOT EXISTS "template_content" jsonb;
+  END IF;
 
+  -- PA-032: the default-per-type index needs its own guard, not just the table's.
+  --
+  -- `proposal_templates` is declared TWICE with different shapes —
+  -- shared/quote-proposal-schema.ts:18 has `template_type`, shared/schema.ts:6148
+  -- has `category` — and it is the schema.ts version the migrations build, so
+  -- `template_type` does not exist on a database built from them. This migration
+  -- was written against the other one and failed on "column o.template_type does
+  -- not exist", which is what kept a fresh database from finishing the chain.
+  -- Guarding the column matches this file's own stated drift tolerance. Which of
+  -- the two declarations wins is the duplicate-table story, not this one.
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'proposal_templates'
+      AND column_name = 'template_type'
+  ) THEN
     -- Before adding the unique index, demote any pre-existing duplicate defaults
     -- so the index can build. Keep the newest default per (tenant, type).
     UPDATE "proposal_templates" t
