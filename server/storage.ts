@@ -413,6 +413,8 @@ import {
   type InsertRenewalOpportunity,
 } from '@shared/customer-success-schema';
 import { db } from './db';
+import { mirrorLegacyStage } from './lib/pipeline-stage-mirror';
+import { pipelineStages } from '@shared/pipeline-configuration-schema';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('storage');
 
@@ -4531,28 +4533,49 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Deal stages operations
+  // COP-M07: the picker keeps returning LEGACY ids, because deals.stage_id lives
+  // in that id space and this list feeds a create. Display and forecast config
+  // come from the canonical mirror, falling back to the legacy row so a stage
+  // that predates the mirror still renders rather than going blank.
   async getDealStages(tenantId: string): Promise<any[]> {
     return await db
       .select({
         id: dealStages.id,
         tenantId: dealStages.tenantId,
-        name: dealStages.name,
+        name: sql<string>`coalesce(${pipelineStages.displayName}, ${dealStages.name})`,
         description: dealStages.description,
-        color: dealStages.color,
+        color: sql<string>`coalesce(${pipelineStages.color}, ${dealStages.color})`,
         sortOrder: dealStages.sortOrder,
         isActive: dealStages.isActive,
         isClosingStage: dealStages.isClosingStage,
         isWonStage: dealStages.isWonStage,
+        // Canonical forecast config. Null when the stage has no mirror yet —
+        // check:stage-resolution reports exactly that case.
+        pipelineStageId: pipelineStages.id,
+        defaultProbability: pipelineStages.defaultProbability,
+        includeInForecast: pipelineStages.includeInForecast,
         createdAt: dealStages.createdAt,
         updatedAt: dealStages.updatedAt,
       })
       .from(dealStages)
+      .leftJoin(
+        pipelineStages,
+        and(
+          eq(pipelineStages.legacyStageId, dealStages.id),
+          eq(pipelineStages.tenantId, dealStages.tenantId),
+        ),
+      )
       .where(and(eq(dealStages.tenantId, tenantId), eq(dealStages.isActive, true)))
       .orderBy(dealStages.sortOrder);
   }
 
+  // COP-M07: both writers mirror into pipeline_stages. A legacy stage with no
+  // canonical mirror is invisible to every surface bound to the canonical model,
+  // and a deal moved into it drops off the board with no error anywhere. The
+  // mirror never throws — see server/lib/pipeline-stage-mirror.ts for why.
   async createDealStage(stage: any): Promise<any> {
     const [newStage] = await db.insert(dealStages).values(stage).returning();
+    if (newStage) await mirrorLegacyStage(newStage);
     return newStage;
   }
 
@@ -4562,6 +4585,7 @@ export class DatabaseStorage implements IStorage {
       .set({ ...stage, updatedAt: new Date() })
       .where(and(eq(dealStages.id, id), eq(dealStages.tenantId, tenantId)))
       .returning();
+    if (updatedStage) await mirrorLegacyStage(updatedStage);
     return updatedStage;
   }
 
