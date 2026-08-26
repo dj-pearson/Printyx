@@ -616,6 +616,13 @@ async function recalculateProposalTotals(
 // Best-effort: the caller swallows thrown errors so a sync failure never blocks
 // the status update.
 
+// COP-M07 AC4 — SANCTIONED reads of the legacy table, not drift.
+//
+// These four helpers resolve a stage ID that is then WRITTEN to deals.stage_id,
+// which lives in the legacy deal_stages id space. Returning a pipeline_stages.id
+// here is exactly the repoint COP-M07 warns orphans deals. Stage CONFIG (name,
+// order, probability, forecast weighting) comes from pipeline_stages elsewhere;
+// stage IDENTITY for a write comes from here. See docs/crm-canonical-model.md.
 async function getStageIdByName(
   db: SB,
   tenantId: string,

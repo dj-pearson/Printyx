@@ -175,6 +175,15 @@ export default async function handler(req: Request) {
       const limit = parseInt(url.searchParams.get('limit') || '50');
       const offset = (page - 1) * limit;
 
+      // COP-M07: deliberately still the legacy embed, not a canonical read.
+      //
+      // PostgREST can only embed across a declared FOREIGN KEY, and
+      // pipeline_stages.legacy_stage_id is not one — going canonical here means
+      // a second query and an in-memory join, the way pipeline-forecast does it.
+      // That is worth doing when it changes an answer, and today it does not:
+      // the mirror COPIES name and colour from the legacy row, so both tables
+      // say the same thing. Revisit if canonical stages ever become
+      // independently editable — see the one-way note in COP-M07.
       let query = admin
         .from('deals')
         .select(

@@ -15,6 +15,12 @@
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { cached, paramKey } from '../_cache.ts';
+import {
+  buildFunnel,
+  buildStatusFallback,
+  type FunnelDeal,
+  type FunnelStage,
+} from '../../_shared/pipeline-funnel.ts';
 
 const TTL_SECONDS = 300;
 
@@ -623,67 +629,66 @@ async function teamPerformance(ctx: HandlerCtx): Promise<unknown> {
 
 // ─── pipeline-funnel ───────────────────────────────────────────────────────
 //
-// Counts deals + value per stage from deal_stages. Conversion rates are
-// computed assuming sequential progression in `sort_order` — approximate
-// because the schema doesn't track stage transitions.
+// Counts deals + value per stage. Conversion rates assume sequential
+// progression by stage order — approximate, because nothing records stage
+// transitions, so this is current occupancy rather than measured flow.
 //
 // COP-M01: this asked for stage_name and order_index. deal_stages has `name`
 // and `sort_order`, so the query answered 42703, `stages` came back empty and
 // the handler silently fell through to its no-stages-configured fallback —
 // every tenant's funnel was three status buckets rather than their pipeline.
+//
+// COP-M07: the stage LIST now comes from the canonical pipeline_stages, so the
+// funnel shows the same names and order as the board rather than a second
+// opinion from the legacy table. Deals are still bucketed by the LEGACY id,
+// which is what deals.stage_id holds; pipeline_stages.legacy_stage_id is the
+// bridge. Falls back to deal_stages for a tenant whose stages predate the
+// mirror, so nothing regresses while that is still possible.
 
 async function pipelineFunnel(ctx: HandlerCtx): Promise<unknown> {
   const { auth, db } = ctx;
-  const [stagesRes, dealsRes] = await Promise.all([
+  const [canonicalRes, legacyRes, dealsRes] = await Promise.all([
+    db
+      .from('pipeline_stages')
+      // `order` is a reserved word; selecting it by name would need quoting that
+      // PostgREST parses inconsistently across versions. A stage list is a
+      // handful of rows, so `*` is cheaper than being clever here.
+      .select('*')
+      .eq('tenant_id', auth.tenantId)
+      .order('order', { ascending: true }),
     db
       .from('deal_stages')
-      .select('id, name, sort_order')
+      .select('id, name, sort_order, is_active')
       .eq('tenant_id', auth.tenantId)
       .order('sort_order', { ascending: true }),
     db.from('deals').select('stage_id, amount, status').eq('tenant_id', auth.tenantId),
   ]);
 
-  const stages = (stagesRes.data ?? []) as Array<{
-    id: string;
-    name: string;
-    sort_order: number | null;
-  }>;
-  const deals = (dealsRes.data ?? []) as Array<{
-    stage_id: string;
-    amount: string | null;
-    status: string;
-  }>;
+  const deals = (dealsRes.data ?? []) as FunnelDeal[];
 
-  if (stages.length === 0) {
-    // Fallback: bucket by status when there are no defined stages.
-    const buckets = ['open', 'won', 'lost'].map((status) => {
-      const subset = deals.filter((d) => d.status === status);
-      return {
-        stage: status,
-        value: subset.reduce((s, d) => s + Number(d.amount ?? 0), 0),
-        count: subset.length,
-        conversionRate: 0,
-      };
-    });
-    return buckets;
-  }
+  const canonical = ((canonicalRes.data ?? []) as Array<Record<string, unknown>>)
+    // A canonical stage with no legacy id cannot hold deals yet, so it would
+    // only add an empty column.
+    .filter((row) => row.legacy_stage_id)
+    .map((row) => ({
+      legacyStageId: row.legacy_stage_id as string,
+      name: (row.display_name as string) || (row.name as string),
+      order: (row.order as number | null) ?? null,
+      isActive: (row.is_active as boolean | null) ?? null,
+    }));
 
-  const out = stages.map((s, idx) => {
-    const subset = deals.filter((d) => d.stage_id === s.id);
-    const prevCount = idx === 0 ? subset.length : null;
-    return {
-      stage: s.name,
-      value: Math.round(subset.reduce((s, d) => s + Number(d.amount ?? 0), 0)),
-      count: subset.length,
-      conversionRate: prevCount === null ? 0 : 100,
-    };
-  });
+  const stages: FunnelStage[] =
+    canonical.length > 0
+      ? canonical
+      : ((legacyRes.data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+          legacyStageId: row.id as string,
+          name: row.name as string,
+          order: (row.sort_order as number | null) ?? null,
+          isActive: (row.is_active as boolean | null) ?? null,
+        }));
 
-  for (let i = 1; i < out.length; i++) {
-    const prev = out[i - 1].count;
-    out[i].conversionRate = prev > 0 ? Math.round((out[i].count / prev) * 100) : 0;
-  }
-  return out;
+  if (stages.length === 0) return buildStatusFallback(deals);
+  return buildFunnel(stages, deals);
 }
 
 // ─── service-forecasts ─────────────────────────────────────────────────────
