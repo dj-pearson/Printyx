@@ -57,6 +57,18 @@ function toDealResponse(deal: any, stageNames: Record<string, string>) {
     nextFollowUpDate: deal.next_follow_up_date,
     createdById: deal.created_by_id,
     customFields: deal.custom_fields,
+    // COP-M04: the copier-deal fields. The raw snake row is already spread above;
+    // these are the camelCase aliases the frontend reads.
+    dealMotion: deal.deal_motion,
+    forecastCategory: deal.forecast_category,
+    incumbentVendor: deal.incumbent_vendor,
+    leaseBuyoutExposure: deal.lease_buyout_exposure,
+    tradeInValue: deal.trade_in_value,
+    currentMonthlyVolumeBw: deal.current_monthly_volume_bw,
+    currentMonthlyVolumeColor: deal.current_monthly_volume_color,
+    targetCpcBlack: deal.target_cpc_black,
+    targetCpcColor: deal.target_cpc_color,
+    replacesContractId: deal.replaces_contract_id,
     createdAt: deal.created_at,
     updatedAt: deal.updated_at,
   };
@@ -229,6 +241,17 @@ export default async function handler(req: Request) {
       dealType: 'deal_type',
       lostReason: 'lost_reason',
       notes: 'notes',
+      // COP-M04
+      dealMotion: 'deal_motion',
+      forecastCategory: 'forecast_category',
+      incumbentVendor: 'incumbent_vendor',
+      leaseBuyoutExposure: 'lease_buyout_exposure',
+      tradeInValue: 'trade_in_value',
+      currentMonthlyVolumeBw: 'current_monthly_volume_bw',
+      currentMonthlyVolumeColor: 'current_monthly_volume_color',
+      targetCpcBlack: 'target_cpc_black',
+      targetCpcColor: 'target_cpc_color',
+      replacesContractId: 'replaces_contract_id',
     };
 
     if (req.method === 'POST' && dealId === 'bulk-update') {
@@ -303,6 +326,10 @@ export default async function handler(req: Request) {
       if (q.filters.status) query = query.eq('status', q.filters.status);
       if (q.filters.priority) query = query.eq('priority', q.filters.priority);
       if (q.filters.customerId) query = query.eq('customer_id', q.filters.customerId);
+      // COP-M04
+      if (q.filters.dealMotion) query = query.eq('deal_motion', q.filters.dealMotion);
+      if (q.filters.forecastCategory)
+        query = query.eq('forecast_category', q.filters.forecastCategory);
 
       const searchOr = buildSearchOr(DEAL_LIST_SPEC, q.search);
       if (searchOr) query = query.or(searchOr);
@@ -403,6 +430,20 @@ export default async function handler(req: Request) {
         primary_contact_email: body.primaryContactEmail || body.primary_contact_email || null,
         primary_contact_phone: body.primaryContactPhone || body.primary_contact_phone || null,
         notes: body.notes || null,
+        // COP-M04. `??` not `||`, because 0 is a real answer for a volume or a
+        // buyout exposure and `||` would write null over it.
+        deal_motion: body.dealMotion ?? body.deal_motion ?? null,
+        forecast_category: body.forecastCategory ?? body.forecast_category ?? null,
+        incumbent_vendor: body.incumbentVendor ?? body.incumbent_vendor ?? null,
+        lease_buyout_exposure: body.leaseBuyoutExposure ?? body.lease_buyout_exposure ?? null,
+        trade_in_value: body.tradeInValue ?? body.trade_in_value ?? null,
+        current_monthly_volume_bw:
+          body.currentMonthlyVolumeBw ?? body.current_monthly_volume_bw ?? null,
+        current_monthly_volume_color:
+          body.currentMonthlyVolumeColor ?? body.current_monthly_volume_color ?? null,
+        target_cpc_black: body.targetCpcBlack ?? body.target_cpc_black ?? null,
+        target_cpc_color: body.targetCpcColor ?? body.target_cpc_color ?? null,
+        replaces_contract_id: body.replacesContractId ?? body.replaces_contract_id ?? null,
         created_by_id: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

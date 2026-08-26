@@ -2555,6 +2555,29 @@ export const deals = pgTable(
     // CRMX-003/004: user-defined custom field values, keyed by custom_field_definitions.key.
     customFields: jsonb('custom_fields').$type<Record<string, unknown>>(),
 
+    // COP-M04: the facts that decide a copier deal. All nullable, so every existing
+    // deal stays valid. varchar rather than pgEnum on the two vocabularies, so adding
+    // a motion later is a code change and not an enum migration.
+    //
+    // dealMotion and forecastCategory do NOT replace dealType or probability. dealType
+    // is free text with existing rows behind it and stays as the generic label; probability
+    // stays as the rep's 0-100 percentage. forecastCategory is the roll-up bucket COP-I06
+    // needs and cannot be derived from probability, because commit-vs-best-case is a
+    // judgement call rather than a threshold. Nothing is back-filled: a guessed motion on a
+    // historical deal would poison the forecast history COP-I06 is built to measure.
+    dealMotion: varchar('deal_motion', { length: 40 }), // new_logo | fleet_refresh | lease_rollover | expansion | renewal | competitive_takeaway | service_only
+    forecastCategory: varchar('forecast_category', { length: 20 }), // pipeline | best_case | commit | closed
+    incumbentVendor: varchar('incumbent_vendor'),
+    leaseBuyoutExposure: decimal('lease_buyout_exposure', { precision: 12, scale: 2 }),
+    tradeInValue: decimal('trade_in_value', { precision: 12, scale: 2 }),
+    currentMonthlyVolumeBw: integer('current_monthly_volume_bw'),
+    currentMonthlyVolumeColor: integer('current_monthly_volume_color'),
+    // Precision 10,4 deliberately matches contracts.blackRate/colorRate, so a target CPC
+    // carried from the deal into a contract cannot disagree by rounding.
+    targetCpcBlack: decimal('target_cpc_black', { precision: 10, scale: 4 }),
+    targetCpcColor: decimal('target_cpc_color', { precision: 10, scale: 4 }),
+    replacesContractId: varchar('replaces_contract_id'), // references contracts.id
+
     // Tracking
     lastActivityDate: timestamp('last_activity_date'),
     nextFollowUpDate: timestamp('next_follow_up_date'),

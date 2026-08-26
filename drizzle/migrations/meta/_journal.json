@@ -288,6 +288,13 @@
       "when": 1787780803516,
       "tag": "0057_cop_m00_schema_reconciliation",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1787781673330,
+      "tag": "0058_cop_m04_deal_copier_fields",
+      "breakpoints": true
     }
   ]
 }
