@@ -55,6 +55,7 @@ import {
   projects,
   businessRecordActivities,
 } from '../../shared/schema';
+import { pipelineStages, pipelineTemplates } from '../../shared/pipeline-configuration-schema';
 
 const log = createModuleLogger('demo-data');
 
@@ -760,6 +761,59 @@ async function seedSalesAndCRM(ctx: DemoSeedContext, results: DemoSeedCounts) {
       .onConflictDoNothing();
   }
 
+  // COP-M07: mirror them into the canonical pipeline_stages, keyed back through
+  // legacy_stage_id as CRMX-005 established.
+  //
+  // Without this a seeded tenant has deal_stages and ZERO pipeline_stages, so
+  // every surface bound to the canonical model sees nothing. It used to be
+  // covered by a lazy bootstrap inside the pipeline-config edge function, but
+  // that bootstrap omitted the NOT NULL pipeline_type and so could never
+  // succeed — see the note there. Seeding both means a demo tenant is in the
+  // state the rest of the model assumes, and the stage-resolution check has
+  // something real to verify.
+  log.info('  → Mirroring deal stages into the canonical pipeline...');
+  const [template] = await db
+    .insert(pipelineTemplates)
+    .values({
+      id: generateId('pipeline-template', 1),
+      tenantId: ctx.tenantId,
+      name: 'Default Sales Pipeline',
+      pipelineType: 'new_business',
+      isActive: true,
+      isDefault: true,
+      createdBy: ctx.userId,
+    })
+    .onConflictDoNothing()
+    .returning();
+
+  const templateId = template?.id ?? generateId('pipeline-template', 1);
+
+  for (const [index, stage] of stageData.entries()) {
+    const isWon = 'isWonStage' in stage && stage.isWonStage === true;
+    const isClosing = 'isClosingStage' in stage && stage.isClosingStage === true;
+    await db
+      .insert(pipelineStages)
+      .values({
+        id: generateId('pipeline-stage', index + 1),
+        tenantId: ctx.tenantId,
+        pipelineTemplateId: templateId,
+        name: stage.name,
+        displayName: stage.name,
+        color: stage.color,
+        order: stage.sortOrder,
+        isFinalStage: isClosing,
+        isClosedWon: isWon,
+        isClosedLost: isClosing && !isWon,
+        // 100 / 0 on the closed stages, a neutral 50 elsewhere: deal_stages has
+        // no probability column to carry over, so anything finer would be made up.
+        defaultProbability: isWon ? 100 : isClosing ? 0 : 50,
+        includeInForecast: true,
+        isActive: true,
+        legacyStageId: stage.id,
+      })
+      .onConflictDoNothing();
+  }
+
   // Seed Opportunities
   log.info('  → Creating opportunities...');
   // opportunities is the Salesforce-shaped table: opportunity_name / account_id /
@@ -993,6 +1047,12 @@ async function seedSalesAndCRM(ctx: DemoSeedContext, results: DemoSeedCounts) {
 
   Object.assign(results, {
     dealStages: stageData.length,
+    // COP-M07: the canonical mirror. Counted separately from dealStages, because
+    // demo-data-seed-shape.test.ts asserts the summary accounts for every insert
+    // the seeder issues — a summary that under-reports is how a silent write
+    // goes unnoticed.
+    pipelineTemplates: 1,
+    pipelineStages: stageData.length,
     opportunities: opportunityData.length,
     deals: dealData.length,
     quotes: quoteData.length,

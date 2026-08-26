@@ -40,8 +40,18 @@ import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { flagsToStageType, stageTypeToFlags } from '../_shared/pipeline-stage-type.ts';
 
 const log = createLogger('pipeline-config');
+
+/**
+ * COP-M07: PipelineConfiguration.tsx reads `stage.stageType`, and the read paths
+ * returned raw rows from a table with no such column, so the select always
+ * showed its placeholder. Derive it from the booleans that are stored.
+ */
+function withStageType<T extends Record<string, unknown>>(rows: T[] | null | undefined) {
+  return (rows ?? []).map((row) => ({ ...row, stageType: flagsToStageType(row) }));
+}
 
 function stripPrefix(path: string): string {
   return path.replace(/^\/+/, '/').replace(/^\/pipeline-config/, '') || '/';
@@ -84,6 +94,13 @@ async function ensureCanonicalPipeline(db: any, tenantId: string, userId: string
       .insert({
         tenant_id: tenantId,
         name: 'Default Sales Pipeline',
+        // COP-M07: pipeline_type is NOT NULL with no default and this insert
+        // omitted it, so the bootstrap ALWAYS failed. `created` came back null,
+        // the function returned { template: null, stages: [] }, and any tenant
+        // without a template got an empty pipeline board forever — which is
+        // every freshly seeded tenant, since the demo seeder creates deal_stages
+        // and no template at all.
+        pipeline_type: 'new_business',
         is_active: true,
         is_default: true,
         created_by: userId,
@@ -218,6 +235,12 @@ export default async function handler(req: Request) {
       }
 
       const tpl = tplInsert.data as { id: string };
+      // COP-M07: this used to write `stage_type` and `allowed_transitions`,
+      // NEITHER of which is a column on pipeline_stages. PostgREST answered
+      // 42703, so every template create returned "Template saved but stage
+      // insert failed" and left the template behind with no stages. stageType
+      // maps onto the real booleans; allowedTransitions is dropped, because it
+      // has no column and no reader anywhere in the tree.
       const stageRows = stages.map((s: Record<string, unknown>, index: number) => ({
         tenant_id: ctx.tenantId,
         pipeline_template_id: tpl.id,
@@ -227,14 +250,14 @@ export default async function handler(req: Request) {
         order: (s.order as number | undefined) ?? index,
         color: s.color ?? '#64748b',
         icon: s.icon ?? null,
-        stage_type: s.stageType ?? 'open',
-        is_final_stage: !!s.isFinalStage,
         automation_triggers: s.automationTriggers ?? [],
         required_fields: s.requiredFields ?? [],
         sla_enabled: !!s.slaEnabled,
         sla_days: s.slaDays ?? null,
         default_probability: (s.defaultProbability as number | undefined) ?? 50,
-        allowed_transitions: s.allowedTransitions ?? [],
+        ...stageTypeToFlags(s.stageType),
+        // An explicit isFinalStage still wins over the one the type implies.
+        ...(s.isFinalStage === undefined ? {} : { is_final_stage: !!s.isFinalStage }),
       }));
 
       const stageInsert = await db.from('pipeline_stages').insert(stageRows).select();
@@ -248,7 +271,7 @@ export default async function handler(req: Request) {
       }
 
       return jsonResponse(
-        { ...tplInsert.data, stages: stageInsert.data ?? [] },
+        { ...tplInsert.data, stages: withStageType(stageInsert.data) },
         201,
         req,
         requestId,
@@ -287,7 +310,7 @@ export default async function handler(req: Request) {
         .eq('pipeline_template_id', id)
         .order('order', { ascending: true });
 
-      return jsonResponse({ ...tpl.data, stages: stages.data ?? [] }, 200, req, requestId);
+      return jsonResponse({ ...tpl.data, stages: withStageType(stages.data) }, 200, req, requestId);
     }
 
     // ─── PUT /templates/:id ─────────────────────────────────────────────────

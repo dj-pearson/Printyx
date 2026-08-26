@@ -155,7 +155,8 @@
     "recordings:consent-coverage": "tsx scripts/report-recording-consent-coverage.ts",
     "check:certifications": "node scripts/check-certification-claims.mjs",
     "purge:plan": "tsx scripts/report-tenant-purge-plan.ts",
-    "check:ai-safety": "node scripts/check-ai-safety.mjs"
+    "check:ai-safety": "node scripts/check-ai-safety.mjs",
+    "check:stage-resolution": "node scripts/check-stage-resolution.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
