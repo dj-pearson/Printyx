@@ -403,7 +403,29 @@ export function registerProductPricingRoutes(app: Express) {
 
         const { quoteId, startDate, endDate, salesRepId } = req.query;
 
-        let query = db
+        // QUALITY-002: drizzle's where() ASSIGNS rather than ANDs. The old chain
+        // called it once per filter, so any filter replaced the tenant predicate
+        // and this margin report leaked every tenant's quotes. `.$dynamic()` made
+        // it type-check, which is why tsc never flagged it.
+        const conditions = [eq(enhancedQuotePricing.tenantId, tenantId)];
+
+        if (quoteId) {
+          conditions.push(eq(enhancedQuotePricing.id, quoteId as string));
+        }
+
+        if (startDate) {
+          conditions.push(sql`${enhancedQuotePricing.createdAt} >= ${startDate}`);
+        }
+
+        if (endDate) {
+          conditions.push(sql`${enhancedQuotePricing.createdAt} <= ${endDate}`);
+        }
+
+        if (salesRepId) {
+          conditions.push(eq(enhancedQuotePricing.createdBy, salesRepId as string));
+        }
+
+        const quotes = await db
           .select({
             quote: enhancedQuotePricing,
             salesRep: {
@@ -415,27 +437,9 @@ export function registerProductPricingRoutes(app: Express) {
           })
           .from(enhancedQuotePricing)
           .leftJoin(users, eq(enhancedQuotePricing.createdBy, users.id))
-          .where(eq(enhancedQuotePricing.tenantId, tenantId))
-          .$dynamic();
-
-        // Apply filters
-        if (quoteId) {
-          query = query.where(eq(enhancedQuotePricing.id, quoteId as string));
-        }
-
-        if (startDate) {
-          query = query.where(sql`${enhancedQuotePricing.createdAt} >= ${startDate}`);
-        }
-
-        if (endDate) {
-          query = query.where(sql`${enhancedQuotePricing.createdAt} <= ${endDate}`);
-        }
-
-        if (salesRepId) {
-          query = query.where(eq(enhancedQuotePricing.createdBy, salesRepId as string));
-        }
-
-        const quotes = await query.orderBy(desc(enhancedQuotePricing.createdAt)).limit(100);
+          .where(and(...conditions))
+          .orderBy(desc(enhancedQuotePricing.createdAt))
+          .limit(100);
 
         // Get line items for each quote
         const quoteIds = quotes.map((q) => q.quote.id);

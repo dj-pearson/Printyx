@@ -1390,36 +1390,30 @@ export class CustomerPortalService {
         break;
     }
 
-    // Get meter readings for the period
-    let query = db
-      .select()
-      .from(customerMeterSubmissions)
-      .where(
-        and(
-          eq(customerMeterSubmissions.tenantId, tenantId),
-          eq(customerMeterSubmissions.customerId, customerId),
-          gte(customerMeterSubmissions.readingDate, startDate.toISOString()),
-          lte(customerMeterSubmissions.readingDate, endDate.toISOString()),
-          eq(customerMeterSubmissions.isValidated, true),
-        ),
-      )
-      .orderBy(desc(customerMeterSubmissions.readingDate));
+    // Get meter readings for the period.
+    //
+    // QUALITY-002: drizzle's where() ASSIGNS rather than ANDs, so the equipment
+    // filter used to be applied by restating all five base predicates in a second
+    // where(). It did not leak, but it duplicated the tenant and customer scope in
+    // two places that had to be kept in step by hand. One condition list instead.
+    const conditions = [
+      eq(customerMeterSubmissions.tenantId, tenantId),
+      eq(customerMeterSubmissions.customerId, customerId),
+      gte(customerMeterSubmissions.readingDate, startDate.toISOString()),
+      lte(customerMeterSubmissions.readingDate, endDate.toISOString()),
+      eq(customerMeterSubmissions.isValidated, true),
+    ];
 
     // Filter by specific equipment if requested
     if (options.equipmentIds && options.equipmentIds.length > 0) {
-      query = query.where(
-        and(
-          eq(customerMeterSubmissions.tenantId, tenantId),
-          eq(customerMeterSubmissions.customerId, customerId),
-          gte(customerMeterSubmissions.readingDate, startDate.toISOString()),
-          lte(customerMeterSubmissions.readingDate, endDate.toISOString()),
-          eq(customerMeterSubmissions.isValidated, true),
-          inArray(customerMeterSubmissions.equipmentId, options.equipmentIds),
-        ),
-      );
+      conditions.push(inArray(customerMeterSubmissions.equipmentId, options.equipmentIds));
     }
 
-    const meterReadings = await query;
+    const meterReadings = await db
+      .select()
+      .from(customerMeterSubmissions)
+      .where(and(...conditions))
+      .orderBy(desc(customerMeterSubmissions.readingDate));
 
     // Calculate analytics
     const analytics = await this.calculateUsageAnalytics(

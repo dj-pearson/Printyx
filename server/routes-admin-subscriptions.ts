@@ -263,23 +263,26 @@ router.get('/discounts', async (req, res) => {
 
     const offset = (Number(page) - 1) * Number(limit);
 
-    let query = db
-      .select()
-      .from(discounts)
-      .orderBy(desc(discounts.createdAt))
-      .limit(Number(limit))
-      .offset(offset)
-      .$dynamic();
+    // QUALITY-002: drizzle's where() ASSIGNS rather than ANDs, so ?active=&search=
+    // together silently dropped the active filter. `discounts` is a platform-level
+    // catalogue with no tenant column, so no tenant scope was at risk here.
+    const conditions = [];
 
     if (active !== undefined) {
-      query = query.where(eq(discounts.isActive, active === 'true'));
+      conditions.push(eq(discounts.isActive, active === 'true'));
     }
 
     if (search) {
-      query = query.where(like(discounts.code, `%${search}%`));
+      conditions.push(like(discounts.code, `%${search}%`));
     }
 
-    const discountsList = await query;
+    const discountsList = await db
+      .select()
+      .from(discounts)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(discounts.createdAt))
+      .limit(Number(limit))
+      .offset(offset);
 
     // Get total count
     const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(discounts);

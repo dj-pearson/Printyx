@@ -193,6 +193,20 @@ const current = countByFile(findings);
 
 const args = process.argv.slice(2);
 if (args.includes('--update-baseline')) {
+  // QUALITY-002: the baseline is closed at 0, so a refresh must never be the way
+  // a new chained where() gets accepted. Recording findings here would re-open
+  // the class silently, which is exactly how the original 24 accumulated.
+  const found = Object.values(current).reduce((a, b) => a + b, 0);
+  if (found > 0) {
+    console.error(
+      `✗ Refusing to baseline ${found} chained-where site(s) across ` +
+        `${Object.keys(current).length} file(s). This ratchet is closed at 0.\n` +
+        '  Collect the conditions into an array and pass them to and() in one\n' +
+        '  where() call, then re-run.\n',
+    );
+    for (const f of findings) console.error(`    ${f}`);
+    process.exit(1);
+  }
   writeFileSync(
     BASELINE,
     JSON.stringify(
@@ -216,6 +230,23 @@ try {
   baseline = JSON.parse(readFileSync(BASELINE, 'utf8')).counts ?? {};
 } catch {
   baseline = {};
+}
+
+// QUALITY-002: the baseline reached 0, so this is a HARD GATE now. Refuse to let
+// it grow back — an --update-baseline that would record a non-empty list is
+// rejected rather than silently re-opening the class. The 24 originals included
+// two real cross-tenant leaks (warehouse kitting operations and auto-invoices,
+// where any query filter replaced the tenant predicate outright) and a margin
+// report that leaked every tenant's quotes because `.$dynamic()` made the same
+// chain type-check.
+const baselineTotal = Object.values(baseline).reduce((a, b) => a + b, 0);
+if (baselineTotal > 0) {
+  console.error(
+    `✗ ${BASELINE} is meant to stay empty (QUALITY-002) but records ${baselineTotal} site(s).\n` +
+      '  Fix the query instead of baselining it: collect the conditions into an\n' +
+      '  array and pass them to and() in a single where() call.',
+  );
+  process.exit(1);
 }
 
 if (args.includes('--list')) {

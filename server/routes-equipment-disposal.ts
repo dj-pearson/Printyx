@@ -182,18 +182,23 @@ router.get('/api/equipment-disposal', async (req: TenantRequest, res: Response) 
 
     const { status, equipmentId } = req.query;
 
-    let query = db.select().from(equipmentDisposal).where(eq(equipmentDisposal.tenantId, tenantId));
+    // QUALITY-002: drizzle's where() ASSIGNS rather than ANDs, so the old chain
+    // dropped the tenant predicate as soon as ?status= or ?equipmentId= was set.
+    const conditions = [eq(equipmentDisposal.tenantId, tenantId)];
 
-    // Apply filters
     if (status && typeof status === 'string') {
-      query = query.where(eq(equipmentDisposal.disposalStatus, status as any));
+      conditions.push(eq(equipmentDisposal.disposalStatus, status as any));
     }
 
     if (equipmentId && typeof equipmentId === 'string') {
-      query = query.where(eq(equipmentDisposal.equipmentId, equipmentId));
+      conditions.push(eq(equipmentDisposal.equipmentId, equipmentId));
     }
 
-    const disposals = await query.orderBy(desc(equipmentDisposal.initiatedAt));
+    const disposals = await db
+      .select()
+      .from(equipmentDisposal)
+      .where(and(...conditions))
+      .orderBy(desc(equipmentDisposal.initiatedAt));
 
     return res.json({
       success: true,

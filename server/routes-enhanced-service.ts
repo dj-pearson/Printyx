@@ -144,7 +144,24 @@ router.get('/customers', async (req, res) => {
     const tenantId = req.headers['x-tenant-id'] as string;
     const { search } = req.query;
 
-    let query = db
+    // QUALITY-002: drizzle's where() ASSIGNS rather than ANDs, so applying the
+    // search predicate second discarded BOTH the tenant scope and the
+    // record_type = 'customer' filter. Every search returned every tenant's
+    // leads and former customers alongside its own.
+    const conditions = [
+      eq(businessRecords.tenantId, tenantId),
+      eq(businessRecords.recordType, 'customer'),
+    ];
+
+    if (search) {
+      conditions.push(
+        sql`(${businessRecords.companyName} ILIKE ${'%' + search + '%'} OR 
+             ${businessRecords.primaryContactName} ILIKE ${'%' + search + '%'} OR
+             ${businessRecords.primaryContactPhone} ILIKE ${'%' + search + '%'})`,
+      );
+    }
+
+    const customers = await db
       .select({
         id: businessRecords.id,
         companyName: businessRecords.companyName,
@@ -160,19 +177,8 @@ router.get('/customers', async (req, res) => {
         type: businessRecords.recordType,
       })
       .from(businessRecords)
-      .where(
-        and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
-      );
-
-    if (search) {
-      query = query.where(
-        sql`(${businessRecords.companyName} ILIKE ${'%' + search + '%'} OR 
-             ${businessRecords.primaryContactName} ILIKE ${'%' + search + '%'} OR
-             ${businessRecords.primaryContactPhone} ILIKE ${'%' + search + '%'})`,
-      );
-    }
-
-    const customers = await query.limit(50);
+      .where(and(...conditions))
+      .limit(50);
     res.json(customers);
   } catch (error) {
     log.error('Error fetching customers for phone-in tickets:', error);

@@ -1954,37 +1954,49 @@ export class DatabaseStorage implements IStorage {
       .from(masterProductAccessories)
       .$dynamic();
 
-    // Apply filters to both queries
+    // Apply filters to both queries.
+    //
+    // QUALITY-002: drizzle's where() ASSIGNS rather than ANDs, so calling it once
+    // per filter meant only the LAST one survived. Searching "Ricoh" inside
+    // category MFP returned every Ricoh item in every category. These two are the
+    // master catalogue and carry no tenant column, so nothing leaked across
+    // tenants here - the results were just wrong.
+    const modelConditions = [];
+    const accessoryConditions = [];
+
     if (params.manufacturer && params.manufacturer !== 'all') {
-      modelQuery = modelQuery.where(eq(masterProductModels.manufacturer, params.manufacturer));
-      accessoryQuery = accessoryQuery.where(
-        eq(masterProductAccessories.manufacturer, params.manufacturer),
-      );
+      modelConditions.push(eq(masterProductModels.manufacturer, params.manufacturer));
+      accessoryConditions.push(eq(masterProductAccessories.manufacturer, params.manufacturer));
     }
     if (params.category && params.category !== 'all') {
-      modelQuery = modelQuery.where(eq(masterProductModels.category, params.category));
-      accessoryQuery = accessoryQuery.where(eq(masterProductAccessories.category, params.category));
+      modelConditions.push(eq(masterProductModels.category, params.category));
+      accessoryConditions.push(eq(masterProductAccessories.category, params.category));
     }
     if (params.status) {
-      modelQuery = modelQuery.where(eq(masterProductModels.status, params.status));
-      accessoryQuery = accessoryQuery.where(eq(masterProductAccessories.status, params.status));
+      modelConditions.push(eq(masterProductModels.status, params.status));
+      accessoryConditions.push(eq(masterProductAccessories.status, params.status));
     }
     if (params.search) {
       const s = `%${params.search.toLowerCase()}%`;
-      modelQuery = modelQuery.where(
+      modelConditions.push(
         or(
           like(masterProductModels.displayName, s),
           like(masterProductModels.modelCode, s),
           like(masterProductModels.manufacturer, s),
         ),
       );
-      accessoryQuery = accessoryQuery.where(
+      accessoryConditions.push(
         or(
           like(masterProductAccessories.displayName, s),
           like(masterProductAccessories.accessoryCode, s),
           like(masterProductAccessories.manufacturer, s),
         ),
       );
+    }
+
+    if (modelConditions.length) modelQuery = modelQuery.where(and(...modelConditions));
+    if (accessoryConditions.length) {
+      accessoryQuery = accessoryQuery.where(and(...accessoryConditions));
     }
 
     // Execute both queries and combine results
