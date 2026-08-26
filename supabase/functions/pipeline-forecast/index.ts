@@ -19,10 +19,20 @@
 // so an embedded select would fail rather than degrade. Fetching the stages
 // separately and joining in JS reproduces the same result.
 //
-// CRMX-005 semantics preserved exactly, because they change the numbers:
-//   - a deal's own probability wins; else the stage's default_probability; else 50
+// CRMX-005 semantics, with the COP-M07 correction:
+//   - a closed stage decides outright (won = 100, lost = 0)
+//   - otherwise a deal's own probability wins, but only when it is > 0
+//   - else the stage's default_probability; else 50
 //   - deals whose stage sets include_in_forecast = false are DROPPED
 //   - quotes default to 50% and proposals to 70%
+//
+// The `> 0` is load-bearing, not defensive. This used to read
+// `d.probability ?? stage.prob ?? 50`, and deals.probability DEFAULTS TO 0
+// rather than null, so the `??` never fell through and the stage's
+// default_probability was read into a map and then never used. Measured on the
+// demo tenant: three open deals worth $158,000, all at probability 0, all in
+// stages configured at 50% — the whole pipeline weighted to $0. See
+// _shared/deal-probability.ts for why 0 has to be read as "unset".
 //
 // Response keys are camelCase — the pages read forecastData.pipeline.totalValue,
 // .breakdown.deals.weightedValue, .remaining.progressPercent directly.
@@ -33,10 +43,14 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamelShallow } from '../_shared/case.ts';
+import {
+  DEAL_FALLBACK_PROBABILITY as SHARED_FALLBACK_PROBABILITY,
+  resolveDealProbability,
+} from '../_shared/deal-probability.ts';
 
 const QUOTE_DEFAULT_PROBABILITY = 50;
 const PROPOSAL_DEFAULT_PROBABILITY = 70;
-const DEAL_FALLBACK_PROBABILITY = 50;
+const DEAL_FALLBACK_PROBABILITY = SHARED_FALLBACK_PROBABILITY;
 
 const num = (v: unknown): number => {
   const n = parseFloat(String(v ?? '0'));
@@ -136,7 +150,9 @@ export default async function handler(req: Request) {
         .not('status', 'in', '("won","lost")'),
       admin
         .from('pipeline_stages')
-        .select('legacy_stage_id, default_probability, include_in_forecast')
+        .select(
+          'legacy_stage_id, default_probability, include_in_forecast, is_closed_won, is_closed_lost',
+        )
         .eq('tenant_id', tenantId),
       admin
         .from('quotes')
@@ -163,17 +179,29 @@ export default async function handler(req: Request) {
     const goalRows = goalsRes.error ? [] : (goalsRes.data ?? []);
 
     // Stage lookup, standing in for the LEFT JOIN (see the header note).
-    const stageByLegacyId = new Map<string, { prob: number | null; include: boolean | null }>();
+    const stageByLegacyId = new Map<
+      string,
+      {
+        prob: number | null;
+        include: boolean | null;
+        isClosedWon: boolean | null;
+        isClosedLost: boolean | null;
+      }
+    >();
     for (const s of stagesRes.data ?? []) {
       const row = s as {
         legacy_stage_id: string | null;
         default_probability: number | null;
         include_in_forecast: boolean | null;
+        is_closed_won: boolean | null;
+        is_closed_lost: boolean | null;
       };
       if (row.legacy_stage_id) {
         stageByLegacyId.set(row.legacy_stage_id, {
           prob: row.default_probability,
           include: row.include_in_forecast,
+          isClosedWon: row.is_closed_won,
+          isClosedLost: row.is_closed_lost,
         });
       }
     }
@@ -187,8 +215,11 @@ export default async function handler(req: Request) {
         id: d.id,
         title: d.title || `Deal ${d.id}`,
         value: num(d.amount),
-        probability:
-          d.probability ?? stageByLegacyId.get(d.stage_id)?.prob ?? DEAL_FALLBACK_PROBABILITY,
+        probability: resolveDealProbability(
+          d.probability,
+          stageByLegacyId.get(d.stage_id),
+          DEAL_FALLBACK_PROBABILITY,
+        ),
         expectedCloseDate: d.expected_close_date || nowIso,
         status: d.status || 'open',
         type: 'deal',
