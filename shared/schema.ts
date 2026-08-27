@@ -8727,6 +8727,90 @@ export type {
   InsertContentCitation,
 } from './content-marketing-schema';
 
+// Re-export Accessibility schemas (QUALITY-002)
+//
+// routes-accessibility.ts calls db.query.userAccessibilityPreferences, and the
+// table was not in the relational schema, so that resolved to undefined and
+// every GET/PUT on /api/accessibility threw a TypeError.
+export {
+  userAccessibilityPreferences,
+  accessibilityFeedback,
+  accessibilityAuditLog,
+  insertUserAccessibilityPreferencesSchema,
+  insertAccessibilityFeedbackSchema,
+  insertAccessibilityAuditLogSchema,
+} from './accessibility-schema';
+
+export type {
+  UserAccessibilityPreferences,
+  NewUserAccessibilityPreferences,
+  AccessibilityFeedback,
+  NewAccessibilityFeedback,
+  AccessibilityAuditLog,
+  NewAccessibilityAuditLog,
+} from './accessibility-schema';
+
+// Re-export GDPR core schemas (QUALITY-002)
+//
+// This whole file was missing from shared/schema.ts, so none of its eleven
+// tables was in the drizzle relational schema. That is not a typing nicety:
+// db.query.consentRecords, .duplicateDetectionRules, .contactMergeHistory and
+// the rest were UNDEFINED, so every code path in contact-deduplication-service,
+// consent-management-service and dpa-management-service that used the
+// relational API threw "Cannot read properties of undefined (reading
+// 'findMany')". The tables themselves are real and migrated.
+export {
+  consentRecords,
+  consentAuditTrail,
+  consentPreferencesTemplate,
+  dataProcessingAgreements,
+  dpaComplianceChecks,
+  personalDataExports,
+  dataExportTemplates,
+  duplicateDetectionRules,
+  duplicateMatches,
+  contactMergeHistory,
+  duplicateScanJobs,
+  duplicateMatchesRelations,
+  contactMergeHistoryRelations,
+  insertConsentRecordSchema,
+  insertConsentAuditTrailSchema,
+  insertConsentPreferencesTemplateSchema,
+  insertDataProcessingAgreementSchema,
+  insertDpaComplianceCheckSchema,
+  insertPersonalDataExportSchema,
+  insertDataExportTemplateSchema,
+  insertDuplicateDetectionRuleSchema,
+  insertDuplicateMatchSchema,
+  insertContactMergeHistorySchema,
+  insertDuplicateScanJobSchema,
+} from './gdpr-core-schema';
+
+export type {
+  ConsentRecord,
+  InsertConsentRecord,
+  ConsentAuditTrail,
+  InsertConsentAuditTrail,
+  ConsentPreferencesTemplate,
+  InsertConsentPreferencesTemplate,
+  DataProcessingAgreement,
+  InsertDataProcessingAgreement,
+  DpaComplianceCheck,
+  InsertDpaComplianceCheck,
+  PersonalDataExport,
+  InsertPersonalDataExport,
+  DataExportTemplate,
+  InsertDataExportTemplate,
+  DuplicateDetectionRule,
+  InsertDuplicateDetectionRule,
+  DuplicateMatch,
+  InsertDuplicateMatch,
+  ContactMergeHistory,
+  InsertContactMergeHistory,
+  DuplicateScanJob,
+  InsertDuplicateScanJob,
+} from './gdpr-core-schema';
+
 // Re-export Lead Scoring schemas (QUALITY-002)
 //
 // These are the TENANT-scoped lead-scoring tables. They were the only feature

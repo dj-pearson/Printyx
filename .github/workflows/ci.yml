@@ -59,6 +59,8 @@ jobs:
         run: npm run check:a11y-names
       - name: Edge-function RBAC ratchet (SEC-EDGE-001)
         run: npm run check:edge-rbac
+      - name: db.query relational-schema registration (QUALITY-002)
+        run: npm run check:db-query-registration
       - name: PRD file-reference ratchet
         run: npm run check:prd-refs
       - name: Raw-fetch ratchet (PROD-013)
