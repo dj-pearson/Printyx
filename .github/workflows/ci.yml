@@ -55,6 +55,8 @@ jobs:
         run: npm run check:query-states
       - name: Fabricated-fallback ratchet (AUDIT-019)
         run: npm run check:fabricated
+      - name: PRD file-reference ratchet
+        run: npm run check:prd-refs
       - name: Raw-fetch ratchet (PROD-013)
         run: npm run check:raw-fetch
       - name: Duplicate route-registration ratchet
