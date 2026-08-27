@@ -39,7 +39,13 @@ export function AssigneeSelect({
   disabled,
   className,
 }: AssigneeSelectProps) {
-  const { data: users = [] } = useOrgUsers();
+  // CR-033: a failed /api/users left this dropdown holding nothing but
+  // "Unassigned", which is indistinguishable from a tenant that genuinely has no
+  // other users — so a workflow step silently could not be assigned and nothing
+  // said why. A picker cannot show a full-width error panel, so the state is
+  // reported as a row inside the list, where the user is already looking.
+  const usersQuery = useOrgUsers();
+  const users = usersQuery.data ?? [];
 
   return (
     <Select
@@ -52,6 +58,22 @@ export function AssigneeSelect({
       </SelectTrigger>
       <SelectContent>
         <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+        {usersQuery.isLoading && (
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">Loading users…</div>
+        )}
+        {usersQuery.isError && (
+          <div className="px-2 py-1.5 text-sm text-destructive">
+            Could not load users.{' '}
+            <button type="button" className="underline" onClick={() => void usersQuery.refetch()}>
+              Retry
+            </button>
+          </div>
+        )}
+        {!usersQuery.isLoading && !usersQuery.isError && users.length === 0 && (
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+            No other users in this organization
+          </div>
+        )}
         {users.map((u) => (
           <SelectItem key={u.id} value={u.id}>
             <span className="flex items-center gap-2">

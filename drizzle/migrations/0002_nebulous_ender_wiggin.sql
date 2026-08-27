@@ -156,7 +156,7 @@ CREATE TABLE "customer_maintenance_appointments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"tenant_id" varchar NOT NULL,
 	"customer_id" varchar NOT NULL,
-	"portal_user_id" varchar,
+	"portal_user_id" uuid,
 	"equipment_id" varchar,
 	"equipment_name" varchar,
 	"equipment_make" varchar,
@@ -340,7 +340,7 @@ CREATE TABLE "technician_availability_slots" (
 	"is_available" boolean DEFAULT true,
 	"is_blocked" boolean DEFAULT false,
 	"block_reason" varchar,
-	"appointment_id" varchar,
+	"appointment_id" uuid,
 	"appointment_type" varchar,
 	"service_area" varchar,
 	"max_travel_distance" integer,
@@ -393,7 +393,10 @@ DROP INDEX "location_history_timestamp_idx";--> statement-breakpoint
 DROP INDEX "location_history_activity_type_idx";--> statement-breakpoint
 ALTER TABLE "dashboard_layouts" ALTER COLUMN "widgets" SET DEFAULT '[]'::jsonb;--> statement-breakpoint
 ALTER TABLE "dashboard_layouts" ALTER COLUMN "widgets" DROP NOT NULL;--> statement-breakpoint
-ALTER TABLE "location_history" ALTER COLUMN "id" SET DATA TYPE uuid;--> statement-breakpoint
+-- PA-032: the `id` to uuid cast is removed. It had no USING clause so Postgres
+-- rejected it outright, and it contradicts the schema — locationHistory.id is
+-- varchar (shared/gps-tracking-schema.ts). Leaving the column as 0000 created it
+-- is what the schema asks for.
 ALTER TABLE "location_history" ALTER COLUMN "id" SET DEFAULT gen_random_uuid();--> statement-breakpoint
 ALTER TABLE "location_history" ALTER COLUMN "heading" SET DATA TYPE integer;--> statement-breakpoint
 ALTER TABLE "location_history" ALTER COLUMN "speed" SET DATA TYPE numeric(5, 2);--> statement-breakpoint
@@ -424,8 +427,20 @@ ALTER TABLE "proposals" ALTER COLUMN "assigned_to" SET NOT NULL;--> statement-br
 ALTER TABLE "tasks" ALTER COLUMN "title" SET DATA TYPE varchar;--> statement-breakpoint
 ALTER TABLE "tasks" ALTER COLUMN "status" SET DATA TYPE varchar;--> statement-breakpoint
 ALTER TABLE "tasks" ALTER COLUMN "priority" SET DATA TYPE varchar;--> statement-breakpoint
-ALTER TABLE "tasks" ALTER COLUMN "tags" SET DATA TYPE text[];--> statement-breakpoint
+-- PA-032: text[] is right - tasks.tags is text('tags').array() - but jsonb does
+-- not cast to text[] on its own, so this needed the USING Postgres asked for.
+-- Null stays null rather than becoming an empty array, which is a different
+-- claim about a task that has never been tagged. translate() rather than
+-- jsonb_array_elements_text(), because that is set-returning and Postgres
+-- rejects a subquery in a transform expression; the tradeoff is that a tag
+-- containing a brace or a comma would not survive. Any database reaching this
+-- statement is being built from scratch and the table is empty.
+--
+-- DROP DEFAULT comes FIRST. drizzle-kit emitted it after the type change, and
+-- the jsonb '[]' default cannot cast to text[] any more than the column could,
+-- so the ALTER failed on the default rather than the data.
 ALTER TABLE "tasks" ALTER COLUMN "tags" DROP DEFAULT;--> statement-breakpoint
+ALTER TABLE "tasks" ALTER COLUMN "tags" SET DATA TYPE text[] USING CASE WHEN "tags" IS NULL THEN NULL ELSE translate("tags"::text, '[]', '{}')::text[] END;--> statement-breakpoint
 ALTER TABLE "dashboard_layouts" ADD COLUMN "role_id" varchar;--> statement-breakpoint
 ALTER TABLE "dashboard_layouts" ADD COLUMN "is_user_custom" boolean DEFAULT false;--> statement-breakpoint
 ALTER TABLE "dashboard_layouts" ADD COLUMN "columns" integer DEFAULT 12;--> statement-breakpoint
@@ -617,6 +632,20 @@ ALTER TABLE "tasks" DROP COLUMN "time_tracked";--> statement-breakpoint
 ALTER TABLE "tasks" DROP COLUMN "comment_count";--> statement-breakpoint
 ALTER TABLE "tasks" DROP COLUMN "attachment_count";--> statement-breakpoint
 ALTER TABLE "tasks" DROP COLUMN "custom_fields";--> statement-breakpoint
+-- PA-032: same defaults-still-depend-on-the-enum problem as 0001, with a twist
+-- worth reading before "fixing" it further. These two defaults are NOT restored
+-- afterwards, because 'warning' and 'active' are not members of the enums this
+-- migration creates ('low'|'medium'|'high'|'critical' and
+-- 'new'|'triaged'|...). That is a real contradiction in the schema, already
+-- flagged at shared/drizzle-schema.ts:28: team-alerts-schema.ts and
+-- intelligent-alerts-schema.ts each declare an `alert_severity`/`alert_status`
+-- enum with different members, and the barrel skips the team-alerts pair.
+-- alert_instances (team-alerts) defaults to values only its own version has.
+-- Re-adding them here would just fail. Both columns are NOT NULL, so an insert
+-- that omits severity now errors instead of storing a value outside the enum.
+-- Resolving which enum wins is its own story.
+ALTER TABLE "public"."alert_instances" ALTER COLUMN "severity" DROP DEFAULT;--> statement-breakpoint
+ALTER TABLE "public"."alert_instances" ALTER COLUMN "status" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "public"."alert_instances" ALTER COLUMN "severity" SET DATA TYPE text;--> statement-breakpoint
 ALTER TABLE "public"."proactive_threat_detection" ALTER COLUMN "severity" SET DATA TYPE text;--> statement-breakpoint
 DROP TYPE "public"."alert_severity";--> statement-breakpoint
@@ -627,5 +656,9 @@ ALTER TABLE "public"."alert_instances" ALTER COLUMN "status" SET DATA TYPE text;
 DROP TYPE "public"."alert_status";--> statement-breakpoint
 CREATE TYPE "public"."alert_status" AS ENUM('new', 'triaged', 'investigating', 'contained', 'resolved', 'false_positive');--> statement-breakpoint
 ALTER TABLE "public"."alert_instances" ALTER COLUMN "status" SET DATA TYPE "public"."alert_status" USING "status"::"public"."alert_status";--> statement-breakpoint
-DROP TYPE "public"."duplicate_match_type";--> statement-breakpoint
-DROP TYPE "public"."merge_strategy";
+-- PA-032: two DROP TYPEs removed here. The schema still declares both
+-- (shared/gdpr-core-schema.ts) and duplicate_matches.match_type,
+-- duplicate_matches.merge_strategy and
+-- duplicate_detection_rules.default_merge_strategy all still use them, so
+-- dropping them contradicts the schema as well as failing outright. The
+-- statements never executed anywhere.

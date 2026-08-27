@@ -677,13 +677,13 @@ export default function WorkflowAutomation() {
                               {workflow.priority} priority
                             </Badge>
                             <div className="flex gap-1">
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="View details" size="sm" variant="outline">
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Edit" size="sm" variant="outline">
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Run" size="sm" variant="outline">
                                 <PlayCircle className="h-4 w-4" />
                               </Button>
                             </div>

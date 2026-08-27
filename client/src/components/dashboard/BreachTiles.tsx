@@ -16,6 +16,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
+import { clickableProps } from '@/lib/accessibility';
 
 interface Breach {
   type: string;
@@ -157,7 +158,7 @@ export default function BreachTiles() {
               <div
                 key={`${breach.type}-${index}`}
                 className={`p-4 rounded-lg border-2 ${config.bgColor} hover:shadow-md transition-shadow cursor-pointer`}
-                onClick={() => handleDrillThrough(breach)}
+                {...clickableProps(() => handleDrillThrough(breach))}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">

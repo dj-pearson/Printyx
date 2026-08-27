@@ -49,6 +49,22 @@ jobs:
         run: npm run check:migrations
       - name: Nav-target ratchet (AUDIT-014)
         run: npm run check:nav
+      - name: Orphaned-file ratchet (AUDIT-018)
+        run: npm run check:orphans
+      - name: Query loading/error-state ratchet (CR-033)
+        run: npm run check:query-states
+      - name: Fabricated-fallback ratchet (AUDIT-019)
+        run: npm run check:fabricated
+      - name: Accessible-name gate for icon buttons and search inputs (CR-035)
+        run: npm run check:a11y-names
+      - name: Edge-function RBAC ratchet (SEC-EDGE-001)
+        run: npm run check:edge-rbac
+      - name: db.query relational-schema registration (QUALITY-002)
+        run: npm run check:db-query-registration
+      - name: tenant_id column-type ratchet (QUALITY-002)
+        run: npm run check:tenant-id-type
+      - name: PRD file-reference ratchet
+        run: npm run check:prd-refs
       - name: Raw-fetch ratchet (PROD-013)
         run: npm run check:raw-fetch
       - name: Duplicate route-registration ratchet

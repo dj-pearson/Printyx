@@ -151,6 +151,7 @@ export default function AdvancedFilter({
       case 'text':
         return (
           <Input
+            aria-label="Search"
             placeholder={filter.placeholder || `Search ${filter.label}`}
             value={currentValue || ''}
             onChange={(e) => updateFilter(filter.id, e.target.value)}

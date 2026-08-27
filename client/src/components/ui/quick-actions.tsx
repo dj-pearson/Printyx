@@ -59,7 +59,7 @@ export function QuickActions({ actions, maxVisible = 4, className }: QuickAction
       {overflow.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button aria-label="More options" variant="outline" size="sm">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>

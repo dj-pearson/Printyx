@@ -83,6 +83,7 @@ export function PWAInstallPrompt({ onDismiss, variant = 'card' }: PWAInstallProm
             </Button>
             {onDismiss && (
               <Button
+                aria-label="Dismiss"
                 onClick={onDismiss}
                 size="sm"
                 variant="ghost"
@@ -114,7 +115,13 @@ export function PWAInstallPrompt({ onDismiss, variant = 'card' }: PWAInstallProm
             </div>
           </div>
           {onDismiss && (
-            <Button onClick={onDismiss} size="sm" variant="ghost" className="h-8 w-8 p-0">
+            <Button
+              aria-label="Dismiss"
+              onClick={onDismiss}
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0"
+            >
               <X className="h-4 w-4" />
             </Button>
           )}

@@ -82,6 +82,25 @@ interface MaintenanceAppointment {
   createdAt: string;
 }
 
+/**
+ * CR-015: five copies of an `x-portal-session` header block used to sit in the
+ * request functions below, each reading `customer-portal-session` from
+ * localStorage. All five were dead on BOTH ends:
+ *
+ *   - Nothing writes that key. Its only writer was pages/CustomerPortal.tsx and
+ *     components/customer-portal/CustomerPortalLogin.tsx, which AUDIT-016 deleted
+ *     as unreachable (the page imported six components that do not exist on disk
+ *     and used the react-router API while importing wouter).
+ *   - Nothing reads that header. `x-portal-session` appears nowhere in server/
+ *     or supabase/functions/. The customer-portal edge function authenticates
+ *     with a normal Supabase JWT off the Authorization header
+ *     (supabase/functions/customer-portal/index.ts:33-40), which apiRequest
+ *     already sends.
+ *
+ * So the header was never actually set and would have been ignored if it had
+ * been. Removing it is behaviour-preserving; leaving it implied a second auth
+ * mechanism that does not exist.
+ */
 export const MaintenanceSchedulingComponent = () => {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
@@ -112,20 +131,9 @@ export const MaintenanceSchedulingComponent = () => {
         duration: '60', // Default duration
       });
 
-      // Add customer portal session header
-      const headers: Record<string, string> = {};
-      if (typeof window !== 'undefined') {
-        const portalSession = localStorage.getItem('customer-portal-session');
-        if (portalSession) {
-          headers['x-portal-session'] = portalSession;
-        }
-      }
-
       return apiRequest(
         `/api/customer-portal/maintenance-availability?${params.toString()}`,
         'GET',
-        undefined,
-        headers,
       );
     },
     enabled: !!selectedDate,
@@ -137,16 +145,7 @@ export const MaintenanceSchedulingComponent = () => {
   const { data: appointmentsData, isLoading: appointmentsLoading } = useQuery({
     queryKey: ['/api/customer-portal/maintenance-appointments'],
     queryFn: async () => {
-      // Add customer portal session header
-      const headers: Record<string, string> = {};
-      if (typeof window !== 'undefined') {
-        const portalSession = localStorage.getItem('customer-portal-session');
-        if (portalSession) {
-          headers['x-portal-session'] = portalSession;
-        }
-      }
-
-      return apiRequest('/api/customer-portal/maintenance-appointments', 'GET', undefined, headers);
+      return apiRequest('/api/customer-portal/maintenance-appointments', 'GET');
     },
     refetchOnWindowFocus: false,
   });
@@ -154,16 +153,7 @@ export const MaintenanceSchedulingComponent = () => {
   // Book appointment mutation
   const bookAppointmentMutation = useMutation({
     mutationFn: (data: MaintenanceSchedulingFormData) => {
-      // Add customer portal session header
-      const headers: Record<string, string> = {};
-      if (typeof window !== 'undefined') {
-        const portalSession = localStorage.getItem('customer-portal-session');
-        if (portalSession) {
-          headers['x-portal-session'] = portalSession;
-        }
-      }
-
-      return apiRequest('/api/customer-portal/maintenance-appointments', 'POST', data, headers);
+      return apiRequest('/api/customer-portal/maintenance-appointments', 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -189,20 +179,10 @@ export const MaintenanceSchedulingComponent = () => {
   // Cancel appointment mutation
   const cancelAppointmentMutation = useMutation({
     mutationFn: ({ appointmentId, reason }: { appointmentId: string; reason?: string }) => {
-      // Add customer portal session header
-      const headers: Record<string, string> = {};
-      if (typeof window !== 'undefined') {
-        const portalSession = localStorage.getItem('customer-portal-session');
-        if (portalSession) {
-          headers['x-portal-session'] = portalSession;
-        }
-      }
-
       return apiRequest(
         `/api/customer-portal/maintenance-appointments/${appointmentId}`,
         'DELETE',
         { reason },
-        headers,
       );
     },
     onSuccess: () => {
@@ -233,20 +213,10 @@ export const MaintenanceSchedulingComponent = () => {
   // Reschedule appointment mutation
   const rescheduleAppointmentMutation = useMutation({
     mutationFn: (data: RescheduleFormData) => {
-      // Add customer portal session header
-      const headers: Record<string, string> = {};
-      if (typeof window !== 'undefined') {
-        const portalSession = localStorage.getItem('customer-portal-session');
-        if (portalSession) {
-          headers['x-portal-session'] = portalSession;
-        }
-      }
-
       return apiRequest(
         `/api/customer-portal/maintenance-appointments/${data.appointmentId}/reschedule`,
         'PUT',
         data,
-        headers,
       );
     },
     onSuccess: () => {

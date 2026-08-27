@@ -24,11 +24,13 @@ export {
   integrationSyncLogs,
   webhooks,
   webhookLogs,
+  inboundWebhookEvents,
   insertPlatformIntegrationSchema,
   insertIntegrationWebhookSchema,
   insertIntegrationSyncLogSchema,
   insertWebhookSchema,
   insertWebhookLogSchema,
+  insertInboundWebhookEventSchema,
 } from './platform-integrations-schema';
 
 export type {
@@ -42,6 +44,8 @@ export type {
   NewWebhook,
   WebhookLog,
   NewWebhookLog,
+  InboundWebhookEvent,
+  NewInboundWebhookEvent,
 } from './platform-integrations-schema';
 
 // Re-export equipment schemas
@@ -80,7 +84,9 @@ export {
   clientRegistrations,
   clientCollectedMetrics,
   monitoredDevices,
-  clientActivityLogs,
+  // clientActivityLogs — EDGE-016a: comes from client-monitor-schema via the
+  // wildcard below. Naming it here made the printyx shape win over the one every
+  // writer is coded against.
   tonerAlerts,
   oidMappings,
   deviceMeterHistory,
@@ -97,8 +103,6 @@ export type {
   NewClientCollectedMetric,
   MonitoredDevice,
   NewMonitoredDevice,
-  ClientActivityLog,
-  NewClientActivityLog,
   TonerAlert,
   NewTonerAlert,
   OidMapping,
@@ -2554,6 +2558,29 @@ export const deals = pgTable(
 
     // CRMX-003/004: user-defined custom field values, keyed by custom_field_definitions.key.
     customFields: jsonb('custom_fields').$type<Record<string, unknown>>(),
+
+    // COP-M04: the facts that decide a copier deal. All nullable, so every existing
+    // deal stays valid. varchar rather than pgEnum on the two vocabularies, so adding
+    // a motion later is a code change and not an enum migration.
+    //
+    // dealMotion and forecastCategory do NOT replace dealType or probability. dealType
+    // is free text with existing rows behind it and stays as the generic label; probability
+    // stays as the rep's 0-100 percentage. forecastCategory is the roll-up bucket COP-I06
+    // needs and cannot be derived from probability, because commit-vs-best-case is a
+    // judgement call rather than a threshold. Nothing is back-filled: a guessed motion on a
+    // historical deal would poison the forecast history COP-I06 is built to measure.
+    dealMotion: varchar('deal_motion', { length: 40 }), // new_logo | fleet_refresh | lease_rollover | expansion | renewal | competitive_takeaway | service_only
+    forecastCategory: varchar('forecast_category', { length: 20 }), // pipeline | best_case | commit | closed
+    incumbentVendor: varchar('incumbent_vendor'),
+    leaseBuyoutExposure: decimal('lease_buyout_exposure', { precision: 12, scale: 2 }),
+    tradeInValue: decimal('trade_in_value', { precision: 12, scale: 2 }),
+    currentMonthlyVolumeBw: integer('current_monthly_volume_bw'),
+    currentMonthlyVolumeColor: integer('current_monthly_volume_color'),
+    // Precision 10,4 deliberately matches contracts.blackRate/colorRate, so a target CPC
+    // carried from the deal into a contract cannot disagree by rounding.
+    targetCpcBlack: decimal('target_cpc_black', { precision: 10, scale: 4 }),
+    targetCpcColor: decimal('target_cpc_color', { precision: 10, scale: 4 }),
+    replacesContractId: varchar('replaces_contract_id'), // references contracts.id
 
     // Tracking
     lastActivityDate: timestamp('last_activity_date'),
@@ -8699,6 +8726,127 @@ export type {
   ContentCitation,
   InsertContentCitation,
 } from './content-marketing-schema';
+
+// Re-export Accessibility schemas (QUALITY-002)
+//
+// routes-accessibility.ts calls db.query.userAccessibilityPreferences, and the
+// table was not in the relational schema, so that resolved to undefined and
+// every GET/PUT on /api/accessibility threw a TypeError.
+export {
+  userAccessibilityPreferences,
+  accessibilityFeedback,
+  accessibilityAuditLog,
+  insertUserAccessibilityPreferencesSchema,
+  insertAccessibilityFeedbackSchema,
+  insertAccessibilityAuditLogSchema,
+} from './accessibility-schema';
+
+export type {
+  UserAccessibilityPreferences,
+  NewUserAccessibilityPreferences,
+  AccessibilityFeedback,
+  NewAccessibilityFeedback,
+  AccessibilityAuditLog,
+  NewAccessibilityAuditLog,
+} from './accessibility-schema';
+
+// Re-export GDPR core schemas (QUALITY-002)
+//
+// This whole file was missing from shared/schema.ts, so none of its eleven
+// tables was in the drizzle relational schema. That is not a typing nicety:
+// db.query.consentRecords, .duplicateDetectionRules, .contactMergeHistory and
+// the rest were UNDEFINED, so every code path in contact-deduplication-service,
+// consent-management-service and dpa-management-service that used the
+// relational API threw "Cannot read properties of undefined (reading
+// 'findMany')". The tables themselves are real and migrated.
+export {
+  consentRecords,
+  consentAuditTrail,
+  consentPreferencesTemplate,
+  dataProcessingAgreements,
+  dpaComplianceChecks,
+  personalDataExports,
+  dataExportTemplates,
+  duplicateDetectionRules,
+  duplicateMatches,
+  contactMergeHistory,
+  duplicateScanJobs,
+  duplicateMatchesRelations,
+  contactMergeHistoryRelations,
+  insertConsentRecordSchema,
+  insertConsentAuditTrailSchema,
+  insertConsentPreferencesTemplateSchema,
+  insertDataProcessingAgreementSchema,
+  insertDpaComplianceCheckSchema,
+  insertPersonalDataExportSchema,
+  insertDataExportTemplateSchema,
+  insertDuplicateDetectionRuleSchema,
+  insertDuplicateMatchSchema,
+  insertContactMergeHistorySchema,
+  insertDuplicateScanJobSchema,
+} from './gdpr-core-schema';
+
+export type {
+  ConsentRecord,
+  InsertConsentRecord,
+  ConsentAuditTrail,
+  InsertConsentAuditTrail,
+  ConsentPreferencesTemplate,
+  InsertConsentPreferencesTemplate,
+  DataProcessingAgreement,
+  InsertDataProcessingAgreement,
+  DpaComplianceCheck,
+  InsertDpaComplianceCheck,
+  PersonalDataExport,
+  InsertPersonalDataExport,
+  DataExportTemplate,
+  InsertDataExportTemplate,
+  DuplicateDetectionRule,
+  InsertDuplicateDetectionRule,
+  DuplicateMatch,
+  InsertDuplicateMatch,
+  ContactMergeHistory,
+  InsertContactMergeHistory,
+  DuplicateScanJob,
+  InsertDuplicateScanJob,
+} from './gdpr-core-schema';
+
+// Re-export Lead Scoring schemas (QUALITY-002)
+//
+// These are the TENANT-scoped lead-scoring tables. They were the only feature
+// schema in shared/ that shared/schema.ts did not re-export, so they were absent
+// from the drizzle relational schema and db.query.leadScoringRules was
+// undefined — which is how auto-lead-routing-service ended up importing the
+// platform_* tables of similar names under these aliases instead.
+export {
+  leadScoringRules,
+  leadScoringFactors,
+  bantQualificationCriteria,
+  leadScoreCalculations,
+  leadQualificationHistory,
+  leadEngagementTracking,
+  insertLeadScoringRuleSchema,
+  insertLeadScoringFactorSchema,
+  insertBantQualificationSchema,
+  insertLeadScoreCalculationSchema,
+  insertLeadQualificationHistorySchema,
+  insertLeadEngagementTrackingSchema,
+} from './lead-scoring-schema';
+
+export type {
+  LeadScoringRule,
+  InsertLeadScoringRule,
+  LeadScoringFactor,
+  InsertLeadScoringFactor,
+  BantQualificationCriteria,
+  InsertBantQualification,
+  LeadScoreCalculation,
+  InsertLeadScoreCalculation,
+  LeadQualificationHistory,
+  InsertLeadQualificationHistory,
+  LeadEngagementTracking,
+  InsertLeadEngagementTracking,
+} from './lead-scoring-schema';
 
 // Re-export Lead Assignment schemas
 export {

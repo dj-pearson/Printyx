@@ -350,6 +350,7 @@ const AISearchKnowledgeDashboard: React.FC = () => {
               <CardContent className="space-y-4">
                 <div className="flex space-x-4">
                   <Input
+                    aria-label="Ask a question"
                     placeholder="Ask anything about your content..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -595,10 +596,10 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Button variant="outline" size="sm">
+                            <Button aria-label="View details" variant="outline" size="sm">
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button aria-label="Open in a new tab" variant="outline" size="sm">
                               <ExternalLink className="h-4 w-4" />
                             </Button>
                           </div>
@@ -868,8 +869,8 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                   <div>
                     <h4 className="font-medium mb-3">Default Search Settings</h4>
                     <div className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium">Max Results</label>
+                      <label>
+                        <span className="text-sm font-medium">Max Results</span>
                         <Select defaultValue="10">
                           <SelectTrigger>
                             <SelectValue />
@@ -881,9 +882,9 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                             <SelectItem value="50">50 results</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Minimum Similarity</label>
+                      </label>
+                      <label>
+                        <span className="text-sm font-medium">Minimum Similarity</span>
                         <Select defaultValue="0.3">
                           <SelectTrigger>
                             <SelectValue />
@@ -896,7 +897,7 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                             <SelectItem value="0.9">90% (Very Strict)</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
+                      </label>
                     </div>
                   </div>
 
@@ -905,19 +906,19 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Enable AI Answers</span>
-                        <Button variant="outline" size="sm">
+                        <Button aria-label="Enable AI Answers" variant="outline" size="sm">
                           <CheckCircle2 className="h-4 w-4 text-green-600" />
                         </Button>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Include Source Citations</span>
-                        <Button variant="outline" size="sm">
+                        <Button aria-label="Include Source Citations" variant="outline" size="sm">
                           <CheckCircle2 className="h-4 w-4 text-green-600" />
                         </Button>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Generate Key Points</span>
-                        <Button variant="outline" size="sm">
+                        <Button aria-label="Generate Key Points" variant="outline" size="sm">
                           <CheckCircle2 className="h-4 w-4 text-green-600" />
                         </Button>
                       </div>

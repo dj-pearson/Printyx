@@ -236,6 +236,7 @@ export default function ContactForm({
                   <Label htmlFor="reportsTo">Reports To</Label>
                   <div className="relative">
                     <Input
+                      aria-label="Search Contacts"
                       placeholder="Search Contacts..."
                       value={reportsToSearch}
                       onChange={(e) => setReportsToSearch(e.target.value)}
@@ -377,7 +378,7 @@ export default function ContactForm({
                   onChange={(e) => setNewRole(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addRole())}
                 />
-                <Button type="button" onClick={addRole} disabled={!newRole.trim()}>
+                <Button aria-label="Add" type="button" onClick={addRole} disabled={!newRole.trim()}>
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>

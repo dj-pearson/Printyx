@@ -2461,9 +2461,15 @@ export async function seedRBAC() {
         permissionsCreated++;
       } catch (error) {
         // Permission might already exist (unique constraint)
-        const existing = await db.query.permissions.findFirst({
-          where: eq(permissions.code, perm.code),
-        });
+        // `permissions` lives in server/enhanced-rbac-schema, which is not part
+        // of the drizzle relational schema (that is built from shared/schema).
+        // db.query.permissions was undefined, so this fallback threw inside the
+        // catch and masked whatever the insert had failed on.
+        const [existing] = await db
+          .select()
+          .from(permissions)
+          .where(eq(permissions.code, perm.code))
+          .limit(1);
         if (existing) {
           permissionMap.set(perm.code, existing.id);
         }

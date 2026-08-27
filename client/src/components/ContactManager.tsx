@@ -322,6 +322,7 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
+                  aria-label="Search contacts by name, email, or title"
                   placeholder="Search contacts by name, email, or title..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -504,7 +505,11 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <Button
+                              aria-label="More options"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -611,7 +616,7 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
                     </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
+                        <Button aria-label="More options" variant="ghost" className="h-8 w-8 p-0">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>

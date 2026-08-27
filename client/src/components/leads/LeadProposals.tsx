@@ -263,6 +263,7 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
+                  aria-label="Search proposals by number or title"
                   placeholder="Search proposals by number or title..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -386,7 +387,11 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <Button
+                              aria-label="More options"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -493,17 +498,17 @@ function ProposalForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Proposal Title *</label>
+        <label className="space-y-2">
+          <span className="text-sm font-medium">Proposal Title *</span>
           <Input
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="Equipment Lease Proposal"
             required
           />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Proposal Type *</label>
+        </label>
+        <label className="space-y-2">
+          <span className="text-sm font-medium">Proposal Type *</span>
           <Select
             value={formData.proposalType}
             onValueChange={(value) => setFormData({ ...formData, proposalType: value })}
@@ -519,12 +524,12 @@ function ProposalForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </label>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Template</label>
+        <label className="space-y-2">
+          <span className="text-sm font-medium">Template</span>
           <Select
             value={formData.templateId}
             onValueChange={(value) => setFormData({ ...formData, templateId: value })}
@@ -540,26 +545,26 @@ function ProposalForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Valid Until</label>
+        </label>
+        <label className="space-y-2">
+          <span className="text-sm font-medium">Valid Until</span>
           <Input
             type="date"
             value={formData.validUntil}
             onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
           />
-        </div>
+        </label>
       </div>
 
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Description</label>
+      <label className="space-y-2">
+        <span className="text-sm font-medium">Description</span>
         <textarea
           className="w-full min-h-[80px] px-3 py-2 border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-md"
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Brief description of the proposal..."
         />
-      </div>
+      </label>
 
       <div className="flex justify-end space-x-2 pt-4">
         <Button type="submit" disabled={isLoading}>

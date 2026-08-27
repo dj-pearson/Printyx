@@ -241,6 +241,7 @@ function DroppableColumn({
               </Badge>
             </CardTitle>
             <Button
+              aria-label="Add"
               variant="ghost"
               size="sm"
               className="h-9 w-9 p-0 touch-manipulation active:scale-95 transition-transform"
@@ -375,6 +376,7 @@ function TaskCard({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
+                aria-label="More options"
                 variant="ghost"
                 size="sm"
                 className="h-9 w-9 p-0 touch-manipulation active:scale-95 transition-transform"

@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/select';
 import { NotesPanel } from '@/components/crm/NotesPanel';
 import { DealInsightsPanel } from '@/components/crm/DealInsightsPanel';
+import { DealEquipmentPanel } from '@/components/crm/DealEquipmentPanel';
 import {
   ArrowLeft,
   Building2,
@@ -86,6 +87,18 @@ interface DealData {
   lastActivityDate?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  // COP-M04: the copier-deal fields. The deals edge function returns each one in
+  // camelCase alongside the raw snake row.
+  dealMotion?: string | null;
+  forecastCategory?: string | null;
+  incumbentVendor?: string | null;
+  leaseBuyoutExposure?: string | null;
+  tradeInValue?: string | null;
+  currentMonthlyVolumeBw?: number | null;
+  currentMonthlyVolumeColor?: number | null;
+  targetCpcBlack?: string | null;
+  targetCpcColor?: string | null;
+  replacesContractId?: string | null;
 }
 
 interface StageOption {
@@ -119,6 +132,36 @@ function money(value?: string | null): string | null {
   const n = Number(value);
   if (Number.isNaN(n)) return null;
   return n.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+}
+
+/**
+ * COP-M04. Target CPC is stored at numeric(10,4) to match contracts.black_rate,
+ * so it must render at four decimals - a copier CPC of $0.0085 rounds to $0.01
+ * under the default currency format, which is a 17% error on the number the
+ * whole deal turns on.
+ */
+function cpc(value?: string | null): string | null {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  if (Number.isNaN(n)) return null;
+  return n.toLocaleString(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  });
+}
+
+function pages(value?: number | null): string | null {
+  if (value == null) return null;
+  return `${value.toLocaleString()} pages/mo`;
+}
+
+/** Underscored vocabulary value to a readable label: lease_rollover -> Lease rollover. */
+function humanize(value?: string | null): string | null {
+  if (!value) return null;
+  const spaced = value.replace(/_/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 function statusVariant(
@@ -204,6 +247,25 @@ export default function DealDetail() {
     if (Array.isArray(timeline)) return timeline;
     return timeline?.data ?? timeline?.records ?? [];
   }, [timeline]);
+
+  // COP-M04: does this deal carry any copier facts at all? Every field is
+  // nullable, so a generic B2B deal has none and gets no card. 0 counts as an
+  // answer for a volume, hence the null check rather than a truthiness test.
+  const hasCopierProfile = useMemo(
+    () =>
+      [
+        deal?.dealMotion,
+        deal?.forecastCategory,
+        deal?.incumbentVendor,
+        deal?.leaseBuyoutExposure,
+        deal?.tradeInValue,
+        deal?.currentMonthlyVolumeBw,
+        deal?.currentMonthlyVolumeColor,
+        deal?.targetCpcBlack,
+        deal?.targetCpcColor,
+      ].some((v) => v != null && v !== ''),
+    [deal],
+  );
 
   const moveStage = useMutation({
     // The endpoint expects `toStageId` (the legacy deal_stages.id the board also
@@ -452,18 +514,9 @@ export default function DealDetail() {
               </TabsContent>
 
               <TabsContent value="equipment" className="mt-4">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Equipment on this deal</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <EmptyState
-                      icon={Printer}
-                      title="Not available yet"
-                      description="Linking the machines a deal places or replaces needs the deal-to-equipment association (COP-M05), which is blocked on the migration tooling."
-                    />
-                  </CardContent>
-                </Card>
+                {/* COP-M05: real now. Links live in crm_associations with an
+                    explicit 'replaces' / 'places' role. */}
+                <DealEquipmentPanel dealId={dealId} customerId={deal.customerId} />
               </TabsContent>
             </Tabs>
           </div>
@@ -545,6 +598,49 @@ export default function DealDetail() {
                 )}
               </CardContent>
             </Card>
+
+            {/* COP-M04: the facts that decide a copier deal. Rendered only when the
+                deal actually carries one, so a generic B2B deal does not grow a card
+                of empty rows. Read-only here; the editable version belongs to the
+                record rebuild in COP-B02. */}
+            {hasCopierProfile && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Copier profile</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Field icon={Target} label="Motion" value={humanize(deal.dealMotion)} />
+                  <Field
+                    icon={ListChecks}
+                    label="Forecast category"
+                    value={humanize(deal.forecastCategory)}
+                  />
+                  <Field icon={Building2} label="Incumbent vendor" value={deal.incumbentVendor} />
+                  <Field
+                    icon={DollarSign}
+                    label="Lease buyout exposure"
+                    value={money(deal.leaseBuyoutExposure)}
+                  />
+                  <Field
+                    icon={DollarSign}
+                    label="Trade-in value"
+                    value={money(deal.tradeInValue)}
+                  />
+                  <Field
+                    icon={Printer}
+                    label="Current B/W volume"
+                    value={pages(deal.currentMonthlyVolumeBw)}
+                  />
+                  <Field
+                    icon={Printer}
+                    label="Current color volume"
+                    value={pages(deal.currentMonthlyVolumeColor)}
+                  />
+                  <Field icon={Percent} label="Target CPC B/W" value={cpc(deal.targetCpcBlack)} />
+                  <Field icon={Percent} label="Target CPC color" value={cpc(deal.targetCpcColor)} />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

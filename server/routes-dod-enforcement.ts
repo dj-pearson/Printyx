@@ -4,12 +4,23 @@ import { db } from './db';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-dod-enforcement');
 
+// QUALITY-002: this file validated five workflow hand-offs against a data
+// model none of these tables has. quotes.lineItems, purchaseOrders.lineItems,
+// proposals.content/sections/branding and warehouseKittingOperations
+// .itemsProcessed are not columns, and business_records has no contactName or
+// email. Drizzle emits nothing for an undefined column rather than throwing, so
+// each .select() built a statement with an empty operand and Postgres rejected
+// the lot with a syntax error — all five validators answered 500.
+//
+// Line items live in their own tables, which is why they were never columns.
 import {
   businessRecords,
   quotes,
+  quoteLineItems,
   proposals,
   serviceTickets,
   purchaseOrders,
+  purchaseOrderItems,
   warehouseKittingOperations,
 } from '@shared/schema';
 
@@ -28,7 +39,6 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
         customerId: quotes.customerId,
         totalAmount: quotes.totalAmount,
         status: quotes.status,
-        lineItems: quotes.lineItems,
       })
       .from(quotes)
       .where(and(eq(quotes.tenantId, tenantId), eq(quotes.id, quoteId)))
@@ -43,8 +53,13 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
 
     const errors: string[] = [];
 
-    // Validate quote has items
-    if (!quote.lineItems || (Array.isArray(quote.lineItems) && quote.lineItems.length === 0)) {
+    // Validate quote has items — quote_line_items, not a column on quotes.
+    const [{ lineItemCount }] = await db
+      .select({ lineItemCount: count() })
+      .from(quoteLineItems)
+      .where(and(eq(quoteLineItems.tenantId, tenantId), eq(quoteLineItems.quoteId, quoteId)));
+
+    if (lineItemCount === 0) {
       errors.push('Quote must have at least one line item');
     }
 
@@ -57,8 +72,8 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
     if (quote.customerId) {
       const [customer] = await db
         .select({
-          contactName: businessRecords.contactName,
-          email: businessRecords.email,
+          contactName: businessRecords.primaryContactName,
+          email: businessRecords.primaryContactEmail,
           phone: businessRecords.phone,
         })
         .from(businessRecords)
@@ -99,13 +114,19 @@ router.get('/validate/proposal-to-contract/:proposalId', async (req, res) => {
     const { proposalId } = req.params;
     const tenantId = req.headers['x-tenant-id'] as string;
 
+    // proposals holds its narrative in named columns rather than a `sections`
+    // array, and its styling in templateId/customStyling rather than
+    // `branding`. Same four checks, against what the table has.
     const [proposal] = await db
       .select({
         id: proposals.id,
         status: proposals.status,
-        content: proposals.content,
-        sections: proposals.sections,
-        branding: proposals.branding,
+        executiveSummary: proposals.executiveSummary,
+        solutionOverview: proposals.solutionOverview,
+        investmentSummary: proposals.investmentSummary,
+        termsAndConditions: proposals.termsAndConditions,
+        templateId: proposals.templateId,
+        customStyling: proposals.customStyling,
       })
       .from(proposals)
       .where(and(eq(proposals.tenantId, tenantId), eq(proposals.id, proposalId)))
@@ -120,27 +141,31 @@ router.get('/validate/proposal-to-contract/:proposalId', async (req, res) => {
 
     const errors: string[] = [];
 
-    // Validate proposal has required sections
-    const requiredSections = ['executive_summary', 'solution_overview', 'pricing', 'terms'];
-    const sections = (proposal.sections as any[]) || [];
+    const requiredSections: Array<[string, string | null]> = [
+      ['executive summary', proposal.executiveSummary],
+      ['solution overview', proposal.solutionOverview],
+      ['pricing', proposal.investmentSummary],
+      ['terms', proposal.termsAndConditions],
+    ];
 
-    for (const requiredSection of requiredSections) {
-      const sectionExists = sections.some((s) => s.type === requiredSection && s.content);
-      if (!sectionExists) {
-        errors.push(`Proposal missing required section: ${requiredSection.replace('_', ' ')}`);
+    for (const [label, value] of requiredSections) {
+      if (!value || value.trim().length === 0) {
+        errors.push(`Proposal missing required section: ${label}`);
       }
     }
 
     // Validate branding is applied
-    if (!proposal.branding) {
+    if (!proposal.templateId && !proposal.customStyling) {
       errors.push('Proposal must have branding/template applied');
     }
 
-    // Validate content exists
-    if (
-      !proposal.content ||
-      (typeof proposal.content === 'string' && proposal.content.trim().length < 100)
-    ) {
+    // Validate content is substantial. The narrative is spread across columns
+    // here, so the length test is over their total rather than one field.
+    const narrativeLength = requiredSections.reduce(
+      (total, [, value]) => total + (value?.trim().length ?? 0),
+      0,
+    );
+    if (narrativeLength < 100) {
       errors.push('Proposal content must be substantial (at least 100 characters)');
     }
 
@@ -169,7 +194,6 @@ router.get('/validate/po-to-warehouse/:poId', async (req, res) => {
         approvedDate: purchaseOrders.approvedDate,
         vendorId: purchaseOrders.vendorId,
         totalAmount: purchaseOrders.totalAmount,
-        lineItems: purchaseOrders.lineItems,
       })
       .from(purchaseOrders)
       .where(and(eq(purchaseOrders.tenantId, tenantId), eq(purchaseOrders.id, poId)))
@@ -199,8 +223,18 @@ router.get('/validate/po-to-warehouse/:poId', async (req, res) => {
       errors.push('Purchase order must have a vendor assigned');
     }
 
-    // Validate has line items
-    if (!po.lineItems || (Array.isArray(po.lineItems) && po.lineItems.length === 0)) {
+    // Validate has line items — purchase_order_items, not a column on the PO.
+    const [{ itemCount }] = await db
+      .select({ itemCount: count() })
+      .from(purchaseOrderItems)
+      .where(
+        and(
+          eq(purchaseOrderItems.tenantId, tenantId),
+          eq(purchaseOrderItems.purchaseOrderId, poId),
+        ),
+      );
+
+    if (itemCount === 0) {
       errors.push('Purchase order must have line items');
     }
 
@@ -233,7 +267,9 @@ router.get('/validate/kitting-to-delivery/:operationId', async (req, res) => {
         operationStatus: warehouseKittingOperations.operationStatus,
         qualityStatus: warehouseKittingOperations.qualityStatus,
         defectsFound: warehouseKittingOperations.defectsFound,
-        itemsProcessed: warehouseKittingOperations.itemsProcessed,
+        // There is no itemsProcessed column; the work is the checklist, whose
+        // entries each carry their own `completed` flag.
+        checklistItems: warehouseKittingOperations.checklistItems,
       })
       .from(warehouseKittingOperations)
       .where(
@@ -264,15 +300,18 @@ router.get('/validate/kitting-to-delivery/:operationId', async (req, res) => {
     }
 
     // Validate items were processed
-    if (!operation.itemsProcessed || operation.itemsProcessed <= 0) {
+    const checklist = Array.isArray(operation.checklistItems) ? operation.checklistItems : [];
+    const processedCount = checklist.filter((item) => item?.completed === true).length;
+    if (processedCount === 0) {
       errors.push('Warehouse operation must have processed items');
     }
 
-    // Validate no critical defects
-    if (operation.defectsFound && operation.defectsFound > 0) {
-      errors.push(
-        `Warehouse operation has ${operation.defectsFound} defects that must be resolved`,
-      );
+    // defects_found is jsonb — an array of defect objects, not a count, so the
+    // old `> 0` was comparing an array to a number and would have been NaN-false
+    // even if the query had run.
+    const defects = Array.isArray(operation.defectsFound) ? operation.defectsFound : [];
+    if (defects.length > 0) {
+      errors.push(`Warehouse operation has ${defects.length} defects that must be resolved`);
     }
 
     res.json({

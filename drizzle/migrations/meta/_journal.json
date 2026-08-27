@@ -281,6 +281,41 @@
       "when": 1784817498195,
       "tag": "0056_email_sequence_enrollments",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1787780803516,
+      "tag": "0057_cop_m00_schema_reconciliation",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1787781673330,
+      "tag": "0058_cop_m04_deal_copier_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1787787311154,
+      "tag": "0059_pa032_fk_column_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1787788215564,
+      "tag": "0060_edge016a_restore_activity_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1787788258337,
+      "tag": "0061_edge016a_drop_event_columns",
+      "breakpoints": true
     }
   ]
 }

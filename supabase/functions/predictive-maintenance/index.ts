@@ -237,6 +237,30 @@ async function dashboard(admin: Admin, tenantId: string, req: Request): Promise<
 
 // ─── /parts-forecast ────────────────────────────────────────────────────────
 
+/**
+ * CR-026: the parts forecast used to issue ONE client_collected_metrics query
+ * per active device, sequentially awaited inside a for-loop over an unbounded
+ * equipment list. A dealer with 400 machines meant 400 round trips in series,
+ * which is the timeout the story was opened for. The story names
+ * server/routes-predictive-maintenance-hub.ts, which has since been deleted;
+ * /api/predictive-maintenance is proxied here, so this is where the N+1 lived.
+ *
+ * The queries now run in bounded-concurrency BATCHES instead of one at a time.
+ *
+ * A single set-based query would be the obvious fix and I wrote it first, then
+ * backed it out: PostgREST has no DISTINCT ON, so "latest row per serial" has to
+ * be expressed as .in(serials) over the window ordered by timestamp descending,
+ * reduced in memory — and that response is subject to PostgREST's max-rows cap.
+ * Saturate it and the devices whose rows sort last silently vanish from a PARTS
+ * FORECAST, which then reads as "these machines need nothing". A wrong parts
+ * order is worse than a slow one. Each query here keeps its exact
+ * .order(desc).limit(1), so the result is identical to the old loop; only the
+ * waiting is parallel.
+ */
+const METRICS_CONCURRENCY = 20;
+/** Bound the fleet a single request will consider. Reported, never silent. */
+const MAX_DEVICES = 2000;
+
 async function partsForecast(admin: Admin, tenantId: string, req: Request): Promise<Response> {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -245,7 +269,8 @@ async function partsForecast(admin: Admin, tenantId: string, req: Request): Prom
     .from('equipment')
     .select('id, serial_number, make, model')
     .eq('tenant_id', tenantId)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .limit(MAX_DEVICES + 1);
 
   const partsForecast: Record<
     string,
@@ -259,21 +284,40 @@ async function partsForecast(admin: Admin, tenantId: string, req: Request): Prom
     }
   > = {};
 
-  for (const device of (equipmentList ?? []) as Array<Record<string, unknown>>) {
+  const allDevices = (equipmentList ?? []) as Array<Record<string, unknown>>;
+  const truncated = allDevices.length > MAX_DEVICES;
+  const devices = truncated ? allDevices.slice(0, MAX_DEVICES) : allDevices;
+
+  const serials = devices
+    .map((d) => d.serial_number as string | null)
+    .filter((sn): sn is string => !!sn);
+
+  const latestBySerial = new Map<string, Record<string, unknown>>();
+  for (let i = 0; i < serials.length; i += METRICS_CONCURRENCY) {
+    const batch = serials.slice(i, i + METRICS_CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(async (serial) => {
+        const { data } = await admin
+          .from('client_collected_metrics')
+          .select('toner_black, toner_cyan, toner_magenta, toner_yellow, fuser_life, drum_life')
+          .eq('serial_number', serial)
+          .eq('tenant_id', Number(tenantId)) // tenantId on this table is integer per Express code
+          .gte('collection_timestamp', thirtyDaysAgo.toISOString())
+          .order('collection_timestamp', { ascending: false })
+          .limit(1);
+        return [serial, (data ?? [])[0] as Record<string, unknown> | undefined] as const;
+      }),
+    );
+    for (const [serial, latest] of results) {
+      if (latest) latestBySerial.set(serial, latest);
+    }
+  }
+
+  for (const device of devices) {
     const serial = device.serial_number as string | null;
     if (!serial) continue;
 
-    // Latest metrics for this device (one row, ordered by collection_timestamp desc)
-    const { data: latestList } = await admin
-      .from('client_collected_metrics')
-      .select('toner_black, toner_cyan, toner_magenta, toner_yellow, fuser_life, drum_life')
-      .eq('serial_number', serial)
-      .eq('tenant_id', Number(tenantId)) // tenantId on this table is integer per Express code
-      .gte('collection_timestamp', thirtyDaysAgo.toISOString())
-      .order('collection_timestamp', { ascending: false })
-      .limit(1);
-
-    const latest = (latestList ?? [])[0] as Record<string, unknown> | undefined;
+    const latest = latestBySerial.get(serial);
     if (!latest) continue;
 
     // Toner check (4 colors)
@@ -352,6 +396,11 @@ async function partsForecast(admin: Admin, tenantId: string, req: Request): Prom
         totalEstimatedCost: totalCost,
         criticalParts: forecast.filter((p) => p.priority === 'critical').length,
         urgentParts: forecast.filter((p) => p.priority === 'urgent').length,
+        // CR-026: a cap that is not reported reads as "your fleet needs no
+        // parts". devicesConsidered is always present; truncated says whether
+        // anything was left out.
+        devicesConsidered: devices.length,
+        truncated,
       },
     },
     200,

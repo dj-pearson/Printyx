@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { BarChart, TrendingUp, AlertTriangle, Target, Calendar } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { ErrorState } from '@/components/ui/error-state';
+import { queryErrorMessage } from '@/components/ui/query-state';
 
 // Phase 3: Control Charts and Trend Widgets
 interface ControlChartData {
@@ -29,7 +31,7 @@ interface TrendWidget {
 
 export const PipelineTrendWidgets: React.FC = () => {
   // Fetch control chart data
-  const { data: controlCharts } = useQuery<ControlChartData[]>({
+  const chartsQuery = useQuery<ControlChartData[]>({
     queryKey: ['/api/analytics/control-charts'],
     select: (data: any) =>
       data || [
@@ -69,7 +71,7 @@ export const PipelineTrendWidgets: React.FC = () => {
   });
 
   // Fetch trend widgets data
-  const { data: widgets } = useQuery<TrendWidget[]>({
+  const widgetsQuery = useQuery<TrendWidget[]>({
     queryKey: ['/api/analytics/trend-widgets'],
     select: (data: any) =>
       data || [
@@ -135,6 +137,32 @@ export const PipelineTrendWidgets: React.FC = () => {
         },
       ],
   });
+
+  // CR-033: these queries inject hardcoded fixtures through `select`
+  // (`select: (data) => data || {…invented numbers}`), and `select` only runs on
+  // SUCCESS. So the two failure modes were: an empty-but-successful response
+  // showed invented figures as if measured, and an actual error left `data`
+  // undefined, hit the `return null` below, and made the whole widget VANISH
+  // from the page with no trace. A widget that disappears is the hardest kind of
+  // wrong to notice. The fixtures themselves are a separate problem — flagged on
+  // the story, not fixed here, because removing them changes what the component
+  // renders on a good day. This only makes the failure visible.
+  // Queries: control-charts, trend-widgets
+  const controlCharts = chartsQuery.data;
+  const widgets = widgetsQuery.data;
+
+  if (chartsQuery.isError || widgetsQuery.isError) {
+    return (
+      <ErrorState
+        title="Could not load pipeline trends"
+        message={queryErrorMessage(chartsQuery.error ?? widgetsQuery.error)}
+        onRetry={() => {
+          void chartsQuery.refetch();
+          void widgetsQuery.refetch();
+        }}
+      />
+    );
+  }
 
   if (!controlCharts || !widgets) return null;
 

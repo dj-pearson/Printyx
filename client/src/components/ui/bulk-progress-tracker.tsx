@@ -53,7 +53,13 @@ export function BulkProgressTracker({ progress, onDismiss, className }: BulkProg
           </span>
         </div>
         {isComplete && (
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onDismiss}>
+          <Button
+            aria-label="Dismiss"
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            onClick={onDismiss}
+          >
             <X className="h-3 w-3" />
           </Button>
         )}

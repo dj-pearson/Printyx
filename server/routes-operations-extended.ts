@@ -14,6 +14,7 @@ import { businessRecords, inventoryItems, serviceTickets, invoices } from '@shar
 import { serviceContracts } from '@shared/schema';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { requireAuth } from './replitAuth';
+import { badRequest, notFound, serverError } from './lib/error-response';
 
 export function registerOperationsExtendedRoutes(app: Express) {
   // ============= REMOTE MONITORING & IoT INTEGRATION ROUTES =============
@@ -186,7 +187,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(metrics);
       } catch (error) {
         log.error('Error fetching performance metrics:', error);
-        res.status(500).json({ error: 'Failed to fetch performance metrics' });
+        serverError(res, 'Failed to fetch performance metrics');
       }
     },
   );
@@ -416,7 +417,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error fetching commission metrics:', error);
-        res.status(500).json({ error: 'Failed to fetch commission metrics' });
+        serverError(res, 'Failed to fetch commission metrics');
       }
     },
   );
@@ -440,7 +441,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching commission structures:', error);
-        res.status(500).json({ error: 'Failed to fetch commission structures' });
+        serverError(res, 'Failed to fetch commission structures');
       }
     },
   );
@@ -494,7 +495,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating commission structure:', error);
-        res.status(500).json({ error: 'Failed to create commission structure' });
+        serverError(res, 'Failed to create commission structure');
       }
     },
   );
@@ -553,7 +554,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching commission calculations:', error);
-        res.status(500).json({ error: 'Failed to fetch commission calculations' });
+        serverError(res, 'Failed to fetch commission calculations');
       }
     },
   );
@@ -594,7 +595,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         const structureId = structureResult.rows[0]?.id;
 
         if (!structureId) {
-          return res.status(400).json({ error: 'No active commission structure found' });
+          return badRequest(res, 'No active commission structure found');
         }
 
         const startDate = new Date();
@@ -636,7 +637,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error running commission calculations:', error);
-        res.status(500).json({ error: 'Failed to run commission calculations' });
+        serverError(res, 'Failed to run commission calculations');
       }
     },
   );
@@ -663,7 +664,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching sales quotas:', error);
-        res.status(500).json({ error: 'Failed to fetch sales quotas' });
+        serverError(res, 'Failed to fetch sales quotas');
       }
     },
   );
@@ -711,7 +712,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating sales quota:', error);
-        res.status(500).json({ error: 'Failed to create sales quota' });
+        serverError(res, 'Failed to create sales quota');
       }
     },
   );
@@ -738,7 +739,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching commission payments:', error);
-        res.status(500).json({ error: 'Failed to fetch commission payments' });
+        serverError(res, 'Failed to fetch commission payments');
       }
     },
   );
@@ -765,7 +766,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching commission disputes:', error);
-        res.status(500).json({ error: 'Failed to fetch commission disputes' });
+        serverError(res, 'Failed to fetch commission disputes');
       }
     },
   );
@@ -816,7 +817,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating commission dispute:', error);
-        res.status(500).json({ error: 'Failed to create commission dispute' });
+        serverError(res, 'Failed to create commission dispute');
       }
     },
   );
@@ -854,7 +855,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error fetching monitoring metrics:', error);
-        res.status(500).json({ error: 'Failed to fetch monitoring metrics' });
+        serverError(res, 'Failed to fetch monitoring metrics');
       }
     },
   );
@@ -896,7 +897,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching IoT devices:', error);
-        res.status(500).json({ error: 'Failed to fetch IoT devices' });
+        serverError(res, 'Failed to fetch IoT devices');
       }
     },
   );
@@ -955,7 +956,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error registering IoT device:', error);
-        res.status(500).json({ error: 'Failed to register IoT device' });
+        serverError(res, 'Failed to register IoT device');
       }
     },
   );
@@ -982,7 +983,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching equipment status:', error);
-        res.status(500).json({ error: 'Failed to fetch equipment status' });
+        serverError(res, 'Failed to fetch equipment status');
       }
     },
   );
@@ -1020,7 +1021,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching predictive alerts:', error);
-        res.status(500).json({ error: 'Failed to fetch predictive alerts' });
+        serverError(res, 'Failed to fetch predictive alerts');
       }
     },
   );
@@ -1047,7 +1048,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching performance trends:', error);
-        res.status(500).json({ error: 'Failed to fetch performance trends' });
+        serverError(res, 'Failed to fetch performance trends');
       }
     },
   );
@@ -1105,7 +1106,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
       });
     } catch (error) {
       log.error('Error syncing devices:', error);
-      res.status(500).json({ error: 'Failed to sync devices' });
+      serverError(res, 'Failed to sync devices');
     }
   });
 
@@ -1130,7 +1131,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching sales representatives:', error);
-        res.status(500).json({ error: 'Failed to fetch sales representatives' });
+        serverError(res, 'Failed to fetch sales representatives');
       }
     },
   );
@@ -1175,7 +1176,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating sales representative:', error);
-        res.status(500).json({ error: 'Failed to create sales representative' });
+        serverError(res, 'Failed to create sales representative');
       }
     },
   );
@@ -1240,7 +1241,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching commission transactions:', error);
-        res.status(500).json({ error: 'Failed to fetch commission transactions' });
+        serverError(res, 'Failed to fetch commission transactions');
       }
     },
   );
@@ -1268,7 +1269,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         const repResult = await db.$client.query(repQuery, [sales_rep_id, tenantId]);
 
         if (repResult.rows.length === 0) {
-          return res.status(404).json({ error: 'Sales representative not found' });
+          return notFound(res, 'Sales representative not found');
         }
 
         const sales_rep_name = repResult.rows[0].rep_name;
@@ -1313,7 +1314,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating commission transaction:', error);
-        res.status(500).json({ error: 'Failed to create commission transaction' });
+        serverError(res, 'Failed to create commission transaction');
       }
     },
   );
@@ -1386,7 +1387,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
       res.json(transformedResults);
     } catch (error) {
       log.error('Error searching companies:', error);
-      res.status(500).json({ error: 'Failed to search companies' });
+      serverError(res, 'Failed to search companies');
     }
   });
 
@@ -1429,7 +1430,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
       res.json(validResults);
     } catch (error) {
       log.error('Error searching contacts:', error);
-      res.status(500).json({ error: 'Failed to search contacts' });
+      serverError(res, 'Failed to search contacts');
     }
   });
 
@@ -1446,7 +1447,7 @@ export function registerOperationsExtendedRoutes(app: Express) {
       res.json(equipmentResults);
     } catch (error: any) {
       log.error('Error fetching equipment:', error);
-      res.status(500).json({ error: 'Failed to fetch equipment' });
+      serverError(res, 'Failed to fetch equipment');
     }
   });
 

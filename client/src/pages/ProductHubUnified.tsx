@@ -584,6 +584,7 @@ export default function ProductHubUnified() {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
+                      aria-label="Search modules"
                       placeholder="Search modules..."
                       value={overviewSearchTerm}
                       onChange={(e) => setOverviewSearchTerm(e.target.value)}
@@ -694,6 +695,7 @@ export default function ProductHubUnified() {
                   <div>
                     <Label>Search Products</Label>
                     <Input
+                      aria-label="Search by name or model"
                       placeholder="Search by name or model..."
                       value={catalogSearchTerm}
                       onChange={(e) => setCatalogSearchTerm(e.target.value)}
@@ -881,7 +883,12 @@ export default function ProductHubUnified() {
                               </div>
                               {isPlatformAdmin && editingProduct === product.id ? (
                                 <div className="flex gap-1 pt-2">
-                                  <Button size="sm" variant="default" onClick={handleSaveEdit}>
+                                  <Button
+                                    aria-label="Save edit"
+                                    size="sm"
+                                    variant="default"
+                                    onClick={handleSaveEdit}
+                                  >
                                     <Save className="h-3 w-3" />
                                   </Button>
                                   <Button
@@ -1018,6 +1025,7 @@ export default function ProductHubUnified() {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
+                      aria-label="Search products"
                       placeholder="Search products..."
                       value={pricingSearchTerm}
                       onChange={(e) => setPricingSearchTerm(e.target.value)}

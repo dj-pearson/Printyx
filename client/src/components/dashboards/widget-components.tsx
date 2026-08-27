@@ -43,6 +43,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import type { WidgetDefinition } from '@/lib/dashboard-widget-registry';
+import { clickableProps } from '@/lib/accessibility';
 
 // ============================================================================
 // ICON MAP
@@ -276,7 +277,7 @@ export function ListWidget({ definition }: { definition: WidgetDefinition }) {
               <div
                 key={item.id}
                 className="flex items-start gap-3 p-2 rounded-md hover:bg-accent cursor-pointer transition-colors"
-                onClick={() => item.href && (window.location.href = item.href)}
+                {...clickableProps(() => item.href && (window.location.href = item.href))}
               >
                 <div
                   className={cn(

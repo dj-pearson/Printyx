@@ -34,6 +34,7 @@ import {
 } from '@shared/schema';
 import { equipmentLifecycle } from '../shared/equipment-schema';
 import { and, eq, sql, desc } from 'drizzle-orm';
+import { forbidden, notFound, serverError } from './lib/error-response';
 
 // Helper function to calculate tiered billing amounts
 function calculateTieredAmount(totalCopies: number, tieredRates: any[], baseRate: number): number {
@@ -105,7 +106,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
       // Only allow platform admins (root) or users from the same tenant
       const isRoot = user?.role?.canAccessAllTenants || (user?.role?.level ?? 0) >= 7;
       if (!isRoot && user?.tenantId !== tenantId) {
-        return res.status(403).json({ error: 'Insufficient permissions' });
+        return forbidden(res, 'Insufficient permissions');
       }
 
       const locationResults = await db
@@ -129,7 +130,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
       res.json(locationResults);
     } catch (error) {
       log.error('Error fetching locations:', error);
-      res.status(500).json({ error: 'Failed to fetch locations' });
+      serverError(res, 'Failed to fetch locations');
     }
   });
 
@@ -147,7 +148,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
 
         // Only allow platform admins or users from the same tenant
         if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
-          return res.status(403).json({ error: 'Insufficient permissions' });
+          return forbidden(res, 'Insufficient permissions');
         }
 
         const tenantRegions = await db
@@ -166,7 +167,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.json(tenantRegions);
       } catch (error) {
         log.error('Error fetching regions:', error);
-        res.status(500).json({ error: 'Failed to fetch regions' });
+        serverError(res, 'Failed to fetch regions');
       }
     },
   );
@@ -185,14 +186,14 @@ export function registerWorkflowMobileRoutes(app: Express) {
 
         // Only allow platform admins or users from the same tenant
         if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
-          return res.status(403).json({ error: 'Insufficient permissions' });
+          return forbidden(res, 'Insufficient permissions');
         }
 
         // Get tenant basic info
         const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
 
         if (!tenant) {
-          return res.status(404).json({ error: 'Tenant not found' });
+          return notFound(res, 'Tenant not found');
         }
 
         // Get location and employee counts
@@ -214,7 +215,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error fetching tenant summary:', error);
-        res.status(500).json({ error: 'Failed to fetch tenant summary' });
+        serverError(res, 'Failed to fetch tenant summary');
       }
     },
   );
@@ -803,7 +804,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
       });
     } catch (error) {
       log.error('Error fetching mobile metrics:', error);
-      res.status(500).json({ error: 'Failed to fetch mobile metrics' });
+      serverError(res, 'Failed to fetch mobile metrics');
     }
   });
 
@@ -852,7 +853,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching mobile work orders:', error);
-        res.status(500).json({ error: 'Failed to fetch mobile work orders' });
+        serverError(res, 'Failed to fetch mobile work orders');
       }
     },
   );
@@ -913,7 +914,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating mobile work order:', error);
-        res.status(500).json({ error: 'Failed to create mobile work order' });
+        serverError(res, 'Failed to create mobile work order');
       }
     },
   );
@@ -937,7 +938,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching mobile parts inventory:', error);
-        res.status(500).json({ error: 'Failed to fetch mobile parts inventory' });
+        serverError(res, 'Failed to fetch mobile parts inventory');
       }
     },
   );
@@ -965,7 +966,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching mobile field orders:', error);
-        res.status(500).json({ error: 'Failed to fetch mobile field orders' });
+        serverError(res, 'Failed to fetch mobile field orders');
       }
     },
   );
@@ -1027,7 +1028,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating mobile field order:', error);
-        res.status(500).json({ error: 'Failed to create mobile field order' });
+        serverError(res, 'Failed to create mobile field order');
       }
     },
   );
@@ -1058,7 +1059,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching technician locations:', error);
-        res.status(500).json({ error: 'Failed to fetch technician locations' });
+        serverError(res, 'Failed to fetch technician locations');
       }
     },
   );
@@ -1085,7 +1086,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching mobile app sessions:', error);
-        res.status(500).json({ error: 'Failed to fetch mobile app sessions' });
+        serverError(res, 'Failed to fetch mobile app sessions');
       }
     },
   );
@@ -1129,7 +1130,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
       });
     } catch (error) {
       log.error('Error syncing mobile data:', error);
-      res.status(500).json({ error: 'Failed to sync mobile data' });
+      serverError(res, 'Failed to sync mobile data');
     }
   });
 
@@ -1186,7 +1187,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error fetching mobile field metrics:', error);
-        res.status(500).json({ error: 'Failed to fetch mobile field metrics' });
+        serverError(res, 'Failed to fetch mobile field metrics');
       }
     },
   );
@@ -1210,7 +1211,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching field technicians:', error);
-        res.status(500).json({ error: 'Failed to fetch field technicians' });
+        serverError(res, 'Failed to fetch field technicians');
       }
     },
   );
@@ -1267,7 +1268,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating field technician:', error);
-        res.status(500).json({ error: 'Failed to create field technician' });
+        serverError(res, 'Failed to create field technician');
       }
     },
   );
@@ -1320,7 +1321,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching field work orders:', error);
-        res.status(500).json({ error: 'Failed to fetch field work orders' });
+        serverError(res, 'Failed to fetch field work orders');
       }
     },
   );
@@ -1384,7 +1385,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating field work order:', error);
-        res.status(500).json({ error: 'Failed to create field work order' });
+        serverError(res, 'Failed to create field work order');
       }
     },
   );
@@ -1409,7 +1410,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.json(result.rows);
       } catch (error) {
         log.error('Error fetching voice notes:', error);
-        res.status(500).json({ error: 'Failed to fetch voice notes' });
+        serverError(res, 'Failed to fetch voice notes');
       }
     },
   );
@@ -1462,7 +1463,7 @@ export function registerWorkflowMobileRoutes(app: Express) {
         res.status(201).json(result.rows[0]);
       } catch (error) {
         log.error('Error creating voice note:', error);
-        res.status(500).json({ error: 'Failed to create voice note' });
+        serverError(res, 'Failed to create voice note');
       }
     },
   );

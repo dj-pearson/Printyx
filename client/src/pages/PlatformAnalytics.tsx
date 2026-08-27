@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { QueryStates } from '@/components/ui/query-state';
+import { DashboardSkeleton } from '@/components/ui/skeletons';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -121,26 +123,37 @@ export default function PlatformAnalytics() {
   const [timeframe, setTimeframe] = useState('30d');
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Fetch analytics data
-  const { data: revenueMetrics } = useQuery<RevenueMetrics>({
+  // CR-033: this page is the sharpest case for a query-state wrapper in the
+  // repo. Every read below is written `revenueMetrics?.mrr || 89000` — a
+  // hardcoded fallback per field — so a failed request did not render blank, it
+  // rendered a confident fake dashboard: $89,000 MRR, 14.1% growth, a full
+  // twelve months of invented chart data. Nothing on screen said the request had
+  // failed, and nothing distinguished that from a real platform doing those
+  // numbers. Holding the query results whole lets the wrapper below say so.
+  const revenueQuery = useQuery<RevenueMetrics>({
     queryKey: [`/api/platform-analytics/revenue-metrics?timeframe=${timeframe}`],
   });
+  const revenueMetrics = revenueQuery.data;
 
-  const { data: conversionMetrics } = useQuery<ConversionMetrics>({
+  const conversionQuery = useQuery<ConversionMetrics>({
     queryKey: [`/api/platform-analytics/conversion-metrics?timeframe=${timeframe}`],
   });
+  const conversionMetrics = conversionQuery.data;
 
-  const { data: pipelineMetrics } = useQuery<PipelineMetrics>({
+  const pipelineQuery = useQuery<PipelineMetrics>({
     queryKey: [`/api/platform-analytics/pipeline-metrics?timeframe=${timeframe}`],
   });
+  const pipelineMetrics = pipelineQuery.data;
 
-  const { data: performanceMetrics } = useQuery<PerformanceMetrics>({
+  const performanceQuery = useQuery<PerformanceMetrics>({
     queryKey: [`/api/platform-analytics/performance-metrics?timeframe=${timeframe}`],
   });
+  const performanceMetrics = performanceQuery.data;
 
-  const { data: growthTrends } = useQuery<GrowthTrends>({
+  const growthQuery = useQuery<GrowthTrends>({
     queryKey: [`/api/platform-analytics/growth-trends?timeframe=${timeframe}`],
   });
+  const growthTrends = growthQuery.data;
 
   // Sample data for charts (replace with actual data from API)
   const revenueData = growthTrends?.revenueData || [
@@ -232,491 +245,501 @@ export default function PlatformAnalytics() {
         </div>
       </div>
 
-      {/* Key Metrics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <MetricCard
-          title="Monthly Recurring Revenue"
-          value={formatCurrency(revenueMetrics?.mrr || 89000)}
-          change={revenueMetrics?.mrrGrowth || 14.1}
-          icon={DollarSign}
-          trend="up"
-        />
-        <MetricCard
-          title="Annual Recurring Revenue"
-          value={formatCurrency(revenueMetrics?.arr || 1068000)}
-          change={revenueMetrics?.arrGrowth || 16.4}
-          icon={TrendingUp}
-          trend="up"
-        />
-        <MetricCard
-          title="Active Tenants"
-          value={String(revenueMetrics?.activeTenants || 347)}
-          change={revenueMetrics?.tenantGrowth || 8.7}
-          icon={Users}
-          trend="up"
-        />
-        <MetricCard
-          title="Net Revenue Retention"
-          value={formatPercent(revenueMetrics?.nrr || 112)}
-          change={revenueMetrics?.nrrChange || 2.3}
-          icon={Percent}
-          trend="up"
-        />
-      </div>
+      {/* CR-033: the timeframe picker and export controls above stay usable —
+          changing the timeframe is how you retry — and everything below is
+          derived from the five queries. */}
+      <QueryStates
+        queries={[revenueQuery, conversionQuery, pipelineQuery, performanceQuery, growthQuery]}
+        loading={<DashboardSkeleton />}
+        errorTitle="Could not load platform analytics"
+        className="py-8"
+      >
+        {/* Key Metrics Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <MetricCard
+            title="Monthly Recurring Revenue"
+            value={formatCurrency(revenueMetrics?.mrr || 89000)}
+            change={revenueMetrics?.mrrGrowth || 14.1}
+            icon={DollarSign}
+            trend="up"
+          />
+          <MetricCard
+            title="Annual Recurring Revenue"
+            value={formatCurrency(revenueMetrics?.arr || 1068000)}
+            change={revenueMetrics?.arrGrowth || 16.4}
+            icon={TrendingUp}
+            trend="up"
+          />
+          <MetricCard
+            title="Active Tenants"
+            value={String(revenueMetrics?.activeTenants || 347)}
+            change={revenueMetrics?.tenantGrowth || 8.7}
+            icon={Users}
+            trend="up"
+          />
+          <MetricCard
+            title="Net Revenue Retention"
+            value={formatPercent(revenueMetrics?.nrr || 112)}
+            change={revenueMetrics?.nrrChange || 2.3}
+            icon={Percent}
+            trend="up"
+          />
+        </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="revenue">Revenue</TabsTrigger>
-          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-          <TabsTrigger value="conversion">Conversion</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-        </TabsList>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="revenue">Revenue</TabsTrigger>
+            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+            <TabsTrigger value="conversion">Conversion</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
+          </TabsList>
 
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Revenue Growth Trend</CardTitle>
+                  <CardDescription>MRR and ARR over time</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={revenueData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                      <Legend />
+                      <Area
+                        type="monotone"
+                        dataKey="mrr"
+                        stackId="1"
+                        stroke="#3b82f6"
+                        fill="#3b82f6"
+                        name="MRR"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="arr"
+                        stackId="2"
+                        stroke="#8b5cf6"
+                        fill="#8b5cf6"
+                        name="ARR"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pipeline Distribution</CardTitle>
+                  <CardDescription>Deals by stage</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={pipelineDistributionData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {pipelineDistributionData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-primary" />
+                    Lead Conversion Rate
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">
+                    {formatPercent(conversionMetrics?.leadConversionRate || 10.2)}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    125 of 1,250 prospects converted
+                  </p>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-primary h-2 rounded-full" style={{ width: '10.2%' }} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-primary" />
+                    Avg. Sales Cycle
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">
+                    {pipelineMetrics?.avgSalesCycle || 32} days
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    <span className="text-green-600 font-medium">-8% </span>
+                    vs. last period
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-green-600">Improving</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Briefcase className="h-5 w-5 text-primary" />
+                    Win Rate
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">
+                    {formatPercent(pipelineMetrics?.winRate || 35.7)}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">125 won of 350 closed deals</p>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-green-600">+4.2% vs. last period</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Revenue Tab */}
+          <TabsContent value="revenue" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Revenue Breakdown</CardTitle>
+                  <CardDescription>New, Expansion, and Churn MRR</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={revenueData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                      <Legend />
+                      <Bar dataKey="new" fill="#10b981" name="New MRR" />
+                      <Bar dataKey="expansion" fill="#3b82f6" name="Expansion MRR" />
+                      <Bar dataKey="churn" fill="#ef4444" name="Churn MRR" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Revenue Metrics</CardTitle>
+                  <CardDescription>Key financial indicators</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <RevenueMetricRow
+                    label="Gross Revenue Retention"
+                    value={formatPercent(revenueMetrics?.grr || 95.3)}
+                    change={1.2}
+                    trend="up"
+                  />
+                  <RevenueMetricRow
+                    label="Net Revenue Retention"
+                    value={formatPercent(revenueMetrics?.nrr || 112.4)}
+                    change={2.8}
+                    trend="up"
+                  />
+                  <RevenueMetricRow
+                    label="Average Revenue Per Account"
+                    value={formatCurrency(revenueMetrics?.arpa || 256)}
+                    change={5.4}
+                    trend="up"
+                  />
+                  <RevenueMetricRow
+                    label="Customer Lifetime Value"
+                    value={formatCurrency(revenueMetrics?.ltv || 18432)}
+                    change={8.1}
+                    trend="up"
+                  />
+                  <RevenueMetricRow
+                    label="Customer Acquisition Cost"
+                    value={formatCurrency(revenueMetrics?.cac || 3250)}
+                    change={-3.2}
+                    trend="down"
+                  />
+                  <RevenueMetricRow
+                    label="LTV:CAC Ratio"
+                    value={`${(revenueMetrics?.ltvCacRatio || 5.67).toFixed(2)}:1`}
+                    change={11.3}
+                    trend="up"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader>
-                <CardTitle>Revenue Growth Trend</CardTitle>
-                <CardDescription>MRR and ARR over time</CardDescription>
+                <CardTitle>Churn Analysis</CardTitle>
+                <CardDescription>Churn rate and reasons</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Legend />
-                    <Area
-                      type="monotone"
-                      dataKey="mrr"
-                      stackId="1"
-                      stroke="#3b82f6"
-                      fill="#3b82f6"
-                      name="MRR"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="arr"
-                      stackId="2"
-                      stroke="#8b5cf6"
-                      fill="#8b5cf6"
-                      name="ARR"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="p-4 bg-red-50 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Gross Churn Rate</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {formatPercent(revenueMetrics?.churnRate || 4.7)}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-orange-50 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Net Churn Rate</p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {formatPercent(revenueMetrics?.netChurnRate || -2.4)}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Churned Customers</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {revenueMetrics?.churnedCustomers || 16}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-purple-50 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Churn MRR</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      {formatCurrency(revenueMetrics?.churnMrr || 4200)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Pipeline Tab */}
+          <TabsContent value="pipeline" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pipeline Value</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">
+                    {formatCurrency(pipelineMetrics?.totalValue || 2450000)}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Total value of active deals</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Weighted Pipeline</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">
+                    {formatCurrency(pipelineMetrics?.weightedValue || 875000)}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Probability-adjusted value</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pipeline Coverage</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">
+                    {(pipelineMetrics?.coverage || 3.4).toFixed(1)}x
+                  </div>
+                  <p className="text-sm text-muted-foreground">Pipeline vs. quota</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Pipeline Velocity</CardTitle>
+                <CardDescription>Average time in each stage</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <VelocityBar stage="Prospecting" days={8} />
+                  <VelocityBar stage="Qualification" days={12} />
+                  <VelocityBar stage="Proposal" days={15} />
+                  <VelocityBar stage="Negotiation" days={18} />
+                  <VelocityBar stage="Closing" days={7} />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Conversion Tab */}
+          <TabsContent value="conversion" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Conversion Funnel</CardTitle>
+                <CardDescription>Prospect to customer journey</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {conversionFunnelData.map((stage, index) => (
+                    <div key={stage.stage} className="relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">{stage.stage}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {stage.count} ({formatPercent(stage.percentage)})
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-8 relative overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-primary to-primary/70 h-8 rounded-full flex items-center justify-end px-3 text-white text-sm font-medium"
+                          style={{ width: `${stage.percentage}%` }}
+                        >
+                          {index > 0 && (
+                            <span className="text-xs">
+                              -
+                              {(
+                                ((conversionFunnelData[index - 1].count - stage.count) /
+                                  conversionFunnelData[index - 1].count) *
+                                100
+                              ).toFixed(0)}
+                              %
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Pipeline Distribution</CardTitle>
-                <CardDescription>Deals by stage</CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-center">
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={pipelineDistributionData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Conversion Rates by Stage</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <ConversionRateRow stage="Prospect → Contact" rate={70.0} />
+                    <ConversionRateRow stage="Contact → Qualified" rate={57.1} />
+                    <ConversionRateRow stage="Qualified → Proposal" rate={60.0} />
+                    <ConversionRateRow stage="Proposal → Negotiation" rate={58.3} />
+                    <ConversionRateRow stage="Negotiation → Won" rate={71.4} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Time to Convert</CardTitle>
+                  <CardDescription>Average days by stage transition</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart
+                      data={[
+                        { stage: 'Contact', days: 3 },
+                        { stage: 'Qualify', days: 7 },
+                        { stage: 'Propose', days: 14 },
+                        { stage: 'Negotiate', days: 12 },
+                        { stage: 'Close', days: 5 },
+                      ]}
                     >
-                      {pipelineDistributionData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="stage" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="days" fill="#3b82f6" name="Days" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Performance Tab */}
+          <TabsContent value="performance" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-primary" />
-                  Lead Conversion Rate
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">
-                  {formatPercent(conversionMetrics?.leadConversionRate || 10.2)}
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  125 of 1,250 prospects converted
-                </p>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-primary h-2 rounded-full" style={{ width: '10.2%' }} />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  Avg. Sales Cycle
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">
-                  {pipelineMetrics?.avgSalesCycle || 32} days
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  <span className="text-green-600 font-medium">-8% </span>
-                  vs. last period
-                </p>
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-green-600" />
-                  <span className="text-sm text-green-600">Improving</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Briefcase className="h-5 w-5 text-primary" />
-                  Win Rate
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">
-                  {formatPercent(pipelineMetrics?.winRate || 35.7)}
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">125 won of 350 closed deals</p>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span className="text-sm text-green-600">+4.2% vs. last period</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Revenue Tab */}
-        <TabsContent value="revenue" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Revenue Breakdown</CardTitle>
-                <CardDescription>New, Expansion, and Churn MRR</CardDescription>
+                <CardTitle>Lead Source Performance</CardTitle>
+                <CardDescription>Leads and conversions by source</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={350}>
-                  <BarChart data={revenueData}>
+                  <BarChart data={leadSourceData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Legend />
-                    <Bar dataKey="new" fill="#10b981" name="New MRR" />
-                    <Bar dataKey="expansion" fill="#3b82f6" name="Expansion MRR" />
-                    <Bar dataKey="churn" fill="#ef4444" name="Churn MRR" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Revenue Metrics</CardTitle>
-                <CardDescription>Key financial indicators</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <RevenueMetricRow
-                  label="Gross Revenue Retention"
-                  value={formatPercent(revenueMetrics?.grr || 95.3)}
-                  change={1.2}
-                  trend="up"
-                />
-                <RevenueMetricRow
-                  label="Net Revenue Retention"
-                  value={formatPercent(revenueMetrics?.nrr || 112.4)}
-                  change={2.8}
-                  trend="up"
-                />
-                <RevenueMetricRow
-                  label="Average Revenue Per Account"
-                  value={formatCurrency(revenueMetrics?.arpa || 256)}
-                  change={5.4}
-                  trend="up"
-                />
-                <RevenueMetricRow
-                  label="Customer Lifetime Value"
-                  value={formatCurrency(revenueMetrics?.ltv || 18432)}
-                  change={8.1}
-                  trend="up"
-                />
-                <RevenueMetricRow
-                  label="Customer Acquisition Cost"
-                  value={formatCurrency(revenueMetrics?.cac || 3250)}
-                  change={-3.2}
-                  trend="down"
-                />
-                <RevenueMetricRow
-                  label="LTV:CAC Ratio"
-                  value={`${(revenueMetrics?.ltvCacRatio || 5.67).toFixed(2)}:1`}
-                  change={11.3}
-                  trend="up"
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Churn Analysis</CardTitle>
-              <CardDescription>Churn rate and reasons</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="p-4 bg-red-50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Gross Churn Rate</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {formatPercent(revenueMetrics?.churnRate || 4.7)}
-                  </p>
-                </div>
-                <div className="p-4 bg-orange-50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Net Churn Rate</p>
-                  <p className="text-2xl font-bold text-orange-600">
-                    {formatPercent(revenueMetrics?.netChurnRate || -2.4)}
-                  </p>
-                </div>
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Churned Customers</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {revenueMetrics?.churnedCustomers || 16}
-                  </p>
-                </div>
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Churn MRR</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {formatCurrency(revenueMetrics?.churnMrr || 4200)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Pipeline Tab */}
-        <TabsContent value="pipeline" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Pipeline Value</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">
-                  {formatCurrency(pipelineMetrics?.totalValue || 2450000)}
-                </div>
-                <p className="text-sm text-muted-foreground">Total value of active deals</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Weighted Pipeline</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">
-                  {formatCurrency(pipelineMetrics?.weightedValue || 875000)}
-                </div>
-                <p className="text-sm text-muted-foreground">Probability-adjusted value</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Pipeline Coverage</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">
-                  {(pipelineMetrics?.coverage || 3.4).toFixed(1)}x
-                </div>
-                <p className="text-sm text-muted-foreground">Pipeline vs. quota</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Pipeline Velocity</CardTitle>
-              <CardDescription>Average time in each stage</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <VelocityBar stage="Prospecting" days={8} />
-                <VelocityBar stage="Qualification" days={12} />
-                <VelocityBar stage="Proposal" days={15} />
-                <VelocityBar stage="Negotiation" days={18} />
-                <VelocityBar stage="Closing" days={7} />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Conversion Tab */}
-        <TabsContent value="conversion" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Conversion Funnel</CardTitle>
-              <CardDescription>Prospect to customer journey</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {conversionFunnelData.map((stage, index) => (
-                  <div key={stage.stage} className="relative">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">{stage.stage}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {stage.count} ({formatPercent(stage.percentage)})
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-8 relative overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-primary to-primary/70 h-8 rounded-full flex items-center justify-end px-3 text-white text-sm font-medium"
-                        style={{ width: `${stage.percentage}%` }}
-                      >
-                        {index > 0 && (
-                          <span className="text-xs">
-                            -
-                            {(
-                              ((conversionFunnelData[index - 1].count - stage.count) /
-                                conversionFunnelData[index - 1].count) *
-                              100
-                            ).toFixed(0)}
-                            %
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Conversion Rates by Stage</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <ConversionRateRow stage="Prospect → Contact" rate={70.0} />
-                  <ConversionRateRow stage="Contact → Qualified" rate={57.1} />
-                  <ConversionRateRow stage="Qualified → Proposal" rate={60.0} />
-                  <ConversionRateRow stage="Proposal → Negotiation" rate={58.3} />
-                  <ConversionRateRow stage="Negotiation → Won" rate={71.4} />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Time to Convert</CardTitle>
-                <CardDescription>Average days by stage transition</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart
-                    data={[
-                      { stage: 'Contact', days: 3 },
-                      { stage: 'Qualify', days: 7 },
-                      { stage: 'Propose', days: 14 },
-                      { stage: 'Negotiate', days: 12 },
-                      { stage: 'Close', days: 5 },
-                    ]}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="stage" />
-                    <YAxis />
+                    <XAxis dataKey="source" />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
                     <Tooltip />
-                    <Bar dataKey="days" fill="#3b82f6" name="Days" />
+                    <Legend />
+                    <Bar yAxisId="left" dataKey="leads" fill="#3b82f6" name="Leads" />
+                    <Bar yAxisId="left" dataKey="conversions" fill="#10b981" name="Conversions" />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="rate"
+                      stroke="#f59e0b"
+                      name="Conv. Rate %"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
 
-        {/* Performance Tab */}
-        <TabsContent value="performance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Lead Source Performance</CardTitle>
-              <CardDescription>Leads and conversions by source</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={leadSourceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="source" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Legend />
-                  <Bar yAxisId="left" dataKey="leads" fill="#3b82f6" name="Leads" />
-                  <Bar yAxisId="left" dataKey="conversions" fill="#10b981" name="Conversions" />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="rate"
-                    stroke="#f59e0b"
-                    name="Conv. Rate %"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Performers</CardTitle>
+                  <CardDescription>Sales reps by closed deals</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <PerformerRow name="Sarah Johnson" deals={28} value={450000} rank={1} />
+                    <PerformerRow name="Mike Chen" deals={24} value={385000} rank={2} />
+                    <PerformerRow name="Emily Davis" deals={21} value={340000} rank={3} />
+                    <PerformerRow name="Alex Rodriguez" deals={18} value={295000} rank={4} />
+                    <PerformerRow name="Jessica Lee" deals={15} value={245000} rank={5} />
+                  </div>
+                </CardContent>
+              </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Performers</CardTitle>
-                <CardDescription>Sales reps by closed deals</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <PerformerRow name="Sarah Johnson" deals={28} value={450000} rank={1} />
-                  <PerformerRow name="Mike Chen" deals={24} value={385000} rank={2} />
-                  <PerformerRow name="Emily Davis" deals={21} value={340000} rank={3} />
-                  <PerformerRow name="Alex Rodriguez" deals={18} value={295000} rank={4} />
-                  <PerformerRow name="Jessica Lee" deals={15} value={245000} rank={5} />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Activity Metrics</CardTitle>
-                <CardDescription>Sales activities logged</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <ActivityMetricRow type="Calls" count={1450} avgPerDay={48} icon="phone" />
-                  <ActivityMetricRow type="Emails" count={2340} avgPerDay={78} icon="mail" />
-                  <ActivityMetricRow type="Meetings" count={687} avgPerDay={23} icon="users" />
-                  <ActivityMetricRow type="Demos" count={234} avgPerDay={8} icon="video" />
-                  <ActivityMetricRow type="Proposals" count={156} avgPerDay={5} icon="file" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Activity Metrics</CardTitle>
+                  <CardDescription>Sales activities logged</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <ActivityMetricRow type="Calls" count={1450} avgPerDay={48} icon="phone" />
+                    <ActivityMetricRow type="Emails" count={2340} avgPerDay={78} icon="mail" />
+                    <ActivityMetricRow type="Meetings" count={687} avgPerDay={23} icon="users" />
+                    <ActivityMetricRow type="Demos" count={234} avgPerDay={8} icon="video" />
+                    <ActivityMetricRow type="Proposals" count={156} avgPerDay={5} icon="file" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </QueryStates>
     </div>
   );
 }

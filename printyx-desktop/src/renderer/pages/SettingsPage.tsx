@@ -108,8 +108,8 @@ export default function SettingsPage({ onConfigured }: SettingsPageProps) {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">API Key *</label>
+        <label>
+          <span className="block text-sm font-medium text-gray-700 mb-2">API Key *</span>
           <input
             type="password"
             value={settings.apiKey}
@@ -117,10 +117,10 @@ export default function SettingsPage({ onConfigured }: SettingsPageProps) {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter your Printyx API key"
           />
-        </div>
+        </label>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Server URL *</label>
+        <label>
+          <span className="block text-sm font-medium text-gray-700 mb-2">Server URL *</span>
           <input
             type="url"
             value={settings.serverUrl}
@@ -128,13 +128,17 @@ export default function SettingsPage({ onConfigured }: SettingsPageProps) {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="https://app.printyx.net"
           />
-        </div>
+        </label>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            className="block text-sm font-medium text-gray-700 mb-2"
+            htmlFor="settings-company-id"
+          >
             Company ID (Optional)
           </label>
           <input
+            id="settings-company-id"
             type="text"
             value={settings.companyId}
             onChange={(e) => setSettings({ ...settings, companyId: e.target.value })}
@@ -145,10 +149,14 @@ export default function SettingsPage({ onConfigured }: SettingsPageProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            className="block text-sm font-medium text-gray-700 mb-2"
+            htmlFor="settings-location-id"
+          >
             Location ID (Optional)
           </label>
           <input
+            id="settings-location-id"
             type="text"
             value={settings.locationId}
             onChange={(e) => setSettings({ ...settings, locationId: e.target.value })}

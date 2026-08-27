@@ -72,6 +72,13 @@ export default function SetupWizard() {
   const [catalogMethod, setCatalogMethod] = useState<'csv' | 'manual' | 'skip'>('skip');
 
   // Load wizard progress from server
+  // CR-033: deliberately has NO error state, and this is the one shape where
+  // that is correct. The queryFn catches its own failure and returns
+  // { currentStep: 0, completedSteps: [], completed: false }, so the query can
+  // never reach isError — a first-time user whose saved wizard state cannot be
+  // read should start at step 0, not be shown an error about state they have
+  // never had. It stays in docs/query-states-baseline.json for this reason;
+  // do not "fix" it by adding a branch that cannot fire.
   const { data: wizardState } = useQuery({
     queryKey: ['/api/onboarding/wizard-state'],
     queryFn: async () => {

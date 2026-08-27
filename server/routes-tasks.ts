@@ -5,6 +5,8 @@ import { insertProjectSchema } from '@shared/schema';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
+// CR-023: the documented error shape, { message, code, details, requestId }.
+import { badRequest, sendError, serverError } from './lib/error-response';
 const log = createModuleLogger('routes-tasks');
 
 // Task management routes using real database data
@@ -23,7 +25,7 @@ export function registerTaskRoutes(app: Express) {
   app.get('/api/projects', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
+      if (!tenantId) return badRequest(res, 'Tenant ID required', { code: 'TENANT_REQUIRED' });
       const { assignedTo, my } = req.query;
 
       let userId: string | undefined;
@@ -37,7 +39,7 @@ export function registerTaskRoutes(app: Express) {
       res.json(projects);
     } catch (error) {
       log.error('Error fetching projects:', error);
-      res.status(500).json({ error: 'Failed to fetch projects' });
+      serverError(res, 'Failed to fetch projects');
     }
   });
 
@@ -46,7 +48,7 @@ export function registerTaskRoutes(app: Express) {
     try {
       log.info('Creating project - request body:', req.body);
       const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
+      if (!tenantId) return badRequest(res, 'Tenant ID required', { code: 'TENANT_REQUIRED' });
       const userId = getUserId(req);
       log.info('Creating project', { tenantId, userId });
 
@@ -80,9 +82,15 @@ export function registerTaskRoutes(app: Express) {
     } catch (error) {
       log.error('Error creating project:', error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Invalid project data', details: error.errors });
+        // The Zod issues stay in `details`, which is what that field is for —
+        // the client can point at the offending field instead of showing a
+        // sentence.
+        return sendError(res, 400, 'Invalid project data', {
+          code: 'VALIDATION_ERROR',
+          details: { errors: error.errors },
+        });
       }
-      res.status(500).json({ error: 'Failed to create project' });
+      serverError(res, 'Failed to create project');
     }
   });
 }

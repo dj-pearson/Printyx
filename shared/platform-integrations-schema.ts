@@ -215,6 +215,69 @@ export const webhookLogs = pgTable(
   }),
 );
 
+// ==================== Inbound Provider Deliveries ====================
+// INTEG-WEBHOOK-001. Everything above this line is OUTBOUND — webhooks this
+// platform SENDS. This one is the opposite direction: one row per delivery a
+// provider (Stripe, Intuit, Salesforce, Google, Microsoft) POSTs to us.
+//
+// It exists because the receiver had nowhere to put an event. WebhookService
+// verified the provider HMAC and then handed the payload to a per-provider sync
+// method — and all eleven of those methods are stubs that return
+// "synchronized successfully" and write nothing. A 200 tells the provider the
+// event was accepted and stops the retry, so every verified delivery was
+// acknowledged and dropped. Recording it first makes the acknowledgement true.
+//
+// tenant_id is NULLABLE on purpose, and that is the interesting column. An
+// inbound webhook carries no tenant context — the mapping runs through the
+// provider's own account id (a Stripe account, a QuickBooks realmId) back to a
+// row in platform_integrations, and when that lookup finds nothing the delivery
+// is still worth keeping. A dropped event cannot be re-requested; an
+// unattributed one can be attributed later.
+
+export const inboundWebhookEvents = pgTable(
+  'inbound_webhook_events',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+
+    // Null when the delivery could not be attributed to a tenant. See above.
+    tenantId: varchar('tenant_id'),
+
+    provider: varchar('provider', { length: 64 }).notNull(),
+    // The provider's own event type: Stripe `type`, Salesforce `event`,
+    // Microsoft `changeType`. Empty string when the payload carries none.
+    eventType: varchar('event_type', { length: 128 }).notNull().default(''),
+    // The provider's id for this delivery, where it sends one. Unique per
+    // provider so a retry of the same event lands on the existing row instead
+    // of a duplicate.
+    externalEventId: varchar('external_event_id', { length: 128 }),
+    // The account the delivery belongs to on the provider's side (Stripe
+    // account, QuickBooks realmId). This is what tenant attribution keys on.
+    externalAccountId: varchar('external_account_id', { length: 128 }),
+
+    payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default({}),
+
+    // received  — signature verified, stored, nothing has looked at it yet
+    // processed — a handler ran and did something
+    // failed    — a handler ran and threw
+    status: varchar('status', { length: 16 }).notNull().default('received'),
+    processingError: text('processing_error'),
+    processedAt: timestamp('processed_at'),
+
+    receivedAt: timestamp('received_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    providerIdx: index('inbound_webhook_events_provider_idx').on(table.provider, table.receivedAt),
+    statusIdx: index('inbound_webhook_events_status_idx').on(table.status, table.receivedAt),
+    tenantIdx: index('inbound_webhook_events_tenant_idx').on(table.tenantId, table.receivedAt),
+    dedupeIdx: uniqueIndex('inbound_webhook_events_dedupe_idx').on(
+      table.provider,
+      table.externalEventId,
+    ),
+  }),
+);
+
 // ==================== Zod Insert Schemas ====================
 
 export const insertPlatformIntegrationSchema = createInsertSchema(platformIntegrations).extend({
@@ -236,6 +299,10 @@ export const insertWebhookSchema = createInsertSchema(webhooks).extend({
 
 export const insertWebhookLogSchema = createInsertSchema(webhookLogs);
 
+export const insertInboundWebhookEventSchema = createInsertSchema(inboundWebhookEvents).extend({
+  payload: z.record(z.unknown()).default({}),
+});
+
 // ==================== Inferred Types ====================
 
 export type PlatformIntegration = typeof platformIntegrations.$inferSelect;
@@ -252,3 +319,6 @@ export type NewWebhook = typeof webhooks.$inferInsert;
 
 export type WebhookLog = typeof webhookLogs.$inferSelect;
 export type NewWebhookLog = typeof webhookLogs.$inferInsert;
+
+export type InboundWebhookEvent = typeof inboundWebhookEvents.$inferSelect;
+export type NewInboundWebhookEvent = typeof inboundWebhookEvents.$inferInsert;

@@ -4,6 +4,15 @@
  * Database schema for SSO provider configurations and user mappings.
  */
 
+/**
+ * PA-032: the tenant/user foreign-key columns in this file were declared `uuid`
+ * while `tenants.id` and `users.id` are `varchar`, so Postgres REJECTED every
+ * one of those constraints — "key columns are of incompatible types: uuid and
+ * character varying". They have never existed in any database. That is why
+ * migration 0000 could not be applied to an empty one, and why no fresh
+ * environment was reproducible from the migrations alone.
+ */
+
 import {
   pgTable,
   uuid,
@@ -53,7 +62,7 @@ export const ssoProviderConfigs = pgTable(
   'sso_provider_configs',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    tenantId: uuid('tenant_id')
+    tenantId: varchar('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
 
@@ -184,10 +193,10 @@ export const ssoUserMappings = pgTable(
   'sso_user_mappings',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    tenantId: uuid('tenant_id')
+    tenantId: varchar('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
+    userId: varchar('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     providerId: uuid('provider_id')
@@ -253,11 +262,11 @@ export const ssoLoginAttempts = pgTable(
   'sso_login_attempts',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    tenantId: uuid('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
+    tenantId: varchar('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
     providerId: uuid('provider_id').references(() => ssoProviderConfigs.id, {
       onDelete: 'set null',
     }),
-    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    userId: varchar('user_id').references(() => users.id, { onDelete: 'set null' }),
 
     // Request Info
     requestId: varchar('request_id', { length: 255 }).notNull(),
@@ -317,10 +326,10 @@ export const ssoSessions = pgTable(
   'sso_sessions',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    tenantId: uuid('tenant_id')
+    tenantId: varchar('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
+    userId: varchar('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     providerId: uuid('provider_id')

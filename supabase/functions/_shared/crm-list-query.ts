@@ -134,6 +134,17 @@ export const DEAL_LIST_SPEC: CrmListSpec = {
     stageId: 'stage_id',
     source: 'source',
     dealType: 'deal_type',
+    // COP-M04: the copier-deal fields, sortable so the deals index can rank by
+    // buyout exposure or target CPC.
+    dealMotion: 'deal_motion',
+    forecastCategory: 'forecast_category',
+    incumbentVendor: 'incumbent_vendor',
+    leaseBuyoutExposure: 'lease_buyout_exposure',
+    tradeInValue: 'trade_in_value',
+    currentMonthlyVolumeBw: 'current_monthly_volume_bw',
+    currentMonthlyVolumeColor: 'current_monthly_volume_color',
+    targetCpcBlack: 'target_cpc_black',
+    targetCpcColor: 'target_cpc_color',
     primaryContactName: 'primary_contact_name',
     estimatedMonthlyValue: 'estimated_monthly_value',
     lastActivityDate: 'last_activity_date',
@@ -148,7 +159,20 @@ export const DEAL_LIST_SPEC: CrmListSpec = {
   defaultLimit: 50,
   searchColumns: ['title', 'company_name', 'primary_contact_name', 'description'],
   searchFields: ['title', 'companyName', 'primaryContactName', 'description'],
-  filterKeys: ['stageId', 'stage', 'ownerId', 'status', 'priority', 'customerId'],
+  filterKeys: [
+    'stageId',
+    'stage',
+    'ownerId',
+    'status',
+    'priority',
+    'customerId',
+    // COP-M04. Only these two of the ten are filter keys: they are the closed
+    // vocabularies. The rest are amounts and volumes, which want a range filter
+    // the list layer does not have, so exposing them as equality filters would
+    // be a control that never matches.
+    'dealMotion',
+    'forecastCategory',
+  ],
 };
 
 export interface CrmListQuery {

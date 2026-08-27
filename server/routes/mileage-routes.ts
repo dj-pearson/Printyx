@@ -188,20 +188,22 @@ router.get('/reports', async (req: Request, res: Response) => {
   try {
     const { technicianId, status, reportType } = req.query;
 
-    let query = db
-      .select()
-      .from(mileageReports)
-      .where(eq(mileageReports.tenantId, user.tenantId))
-      .orderBy(desc(mileageReports.createdAt));
+    // QUALITY-002: drizzle's where() ASSIGNS rather than ANDs. This one restated
+    // the tenant predicate inside the second call, so it happened not to leak,
+    // but it only worked by accident and the `as any` was there to silence the
+    // type that exists to prevent exactly this.
+    const conditions = [eq(mileageReports.tenantId, user.tenantId)];
 
     // Non-admin users can only view their own reports
     if (!isAdminOrManager(user)) {
-      query = query.where(
-        and(eq(mileageReports.tenantId, user.tenantId), eq(mileageReports.technicianId, user.id)),
-      ) as any;
+      conditions.push(eq(mileageReports.technicianId, user.id));
     }
 
-    const reports = await query;
+    const reports = await db
+      .select()
+      .from(mileageReports)
+      .where(and(...conditions))
+      .orderBy(desc(mileageReports.createdAt));
     res.json(reports);
   } catch (error) {
     log.error('Get mileage reports error:', error);

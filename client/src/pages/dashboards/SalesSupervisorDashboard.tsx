@@ -5,20 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import {
-  CalendarIcon,
-  RefreshCw,
-  Building2,
-  DollarSign,
-  TrendingUp,
-  Activity,
-  AlertCircle,
-} from 'lucide-react';
+import { CalendarIcon, RefreshCw, Building2, DollarSign, TrendingUp, Activity } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import LocationPipelineGrid from '@/components/reports/supervisor/LocationPipelineGrid';
 import LocationPerformanceTable from '@/components/reports/supervisor/LocationPerformanceTable';
 import LocationQuotaTracker from '@/components/reports/supervisor/LocationQuotaTracker';
 import LocationActivityChart from '@/components/reports/supervisor/LocationActivityChart';
+import type {
+  ScopedActivityReport,
+  ScopedPerformanceReport,
+  ScopedPipelineReport,
+  ScopedQuotaReport,
+} from '@/types/scoped-sales-reports';
 
 interface DateRange {
   from: Date;
@@ -36,7 +34,7 @@ export default function SalesSupervisorDashboard() {
     data: pipelineData,
     isLoading: pipelineLoading,
     refetch: refetchPipeline,
-  } = useQuery({
+  } = useQuery<ScopedPipelineReport>({
     queryKey: ['reports', 'sales-supervisor', 'location', 'pipeline-overview', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -48,25 +46,26 @@ export default function SalesSupervisorDashboard() {
   });
 
   // Fetch location performance (Report 9)
-  const { data: performanceData, isLoading: performanceLoading } = useQuery({
-    queryKey: ['reports', 'sales-supervisor', 'location', 'performance', dateRange],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        dateFrom: dateRange.from.toISOString(),
-        dateTo: dateRange.to.toISOString(),
-      });
-      return apiRequest(`/api/reports/sales-supervisor/location/performance?${params}`);
-    },
-  });
+  const { data: performanceData, isLoading: performanceLoading } =
+    useQuery<ScopedPerformanceReport>({
+      queryKey: ['reports', 'sales-supervisor', 'location', 'performance', dateRange],
+      queryFn: async () => {
+        const params = new URLSearchParams({
+          dateFrom: dateRange.from.toISOString(),
+          dateTo: dateRange.to.toISOString(),
+        });
+        return apiRequest(`/api/reports/sales-supervisor/location/performance?${params}`);
+      },
+    });
 
   // Fetch location quota (Report 10)
-  const { data: quotaData, isLoading: quotaLoading } = useQuery({
+  const { data: quotaData, isLoading: quotaLoading } = useQuery<ScopedQuotaReport>({
     queryKey: ['reports', 'sales-supervisor', 'location', 'quota', 'current'],
     queryFn: () => apiRequest('/api/reports/sales-supervisor/location/quota?period=current'),
   });
 
   // Fetch location activity (Report 11)
-  const { data: activityData, isLoading: activityLoading } = useQuery({
+  const { data: activityData, isLoading: activityLoading } = useQuery<ScopedActivityReport>({
     queryKey: ['reports', 'sales-supervisor', 'location', 'activity', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -80,6 +79,18 @@ export default function SalesSupervisorDashboard() {
   const handleRefresh = () => {
     refetchPipeline();
   };
+
+  // CR-034: the activity report sends per-unit counts and a `totals` object, but
+  // no grand total and no per-location average — both are summed here.
+  const activityTotals = activityData?.totals;
+  const totalActivities = activityTotals
+    ? activityTotals.calls +
+      activityTotals.emails +
+      activityTotals.meetings +
+      activityTotals.demos +
+      activityTotals.proposals
+    : 0;
+  const locationCount = activityData?.regions?.length ?? 0;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -137,7 +148,7 @@ export default function SalesSupervisorDashboard() {
               </div>
             </PopoverContent>
           </Popover>
-          <Button variant="outline" size="icon" onClick={handleRefresh}>
+          <Button aria-label="Refresh" variant="outline" size="icon" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
@@ -151,7 +162,12 @@ export default function SalesSupervisorDashboard() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pipelineData?.summary?.totalLocations || 0}</div>
+            {/* CR-034: the summary is { totalDeals, totalValue, healthScore }.
+                totalLocations, totalPipeline, overallAttainment, locationsOnTrack,
+                locationsAtRisk and every activity summary field read here were
+                names the handler has never emitted, so all four KPI cards showed
+                a hardcoded 0. The unit count comes off byUnit. */}
+            <div className="text-2xl font-bold">{pipelineData?.byUnit?.length ?? 0}</div>
             <p className="text-xs text-muted-foreground">Active locations</p>
           </CardContent>
         </Card>
@@ -163,7 +179,7 @@ export default function SalesSupervisorDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${((pipelineData?.summary?.totalPipeline || 0) / 1000).toFixed(0)}K
+              ${((pipelineData?.summary?.totalValue ?? 0) / 1000).toFixed(0)}K
             </div>
             <p className="text-xs text-muted-foreground">
               {pipelineData?.summary?.totalDeals || 0} deals
@@ -178,10 +194,14 @@ export default function SalesSupervisorDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {quotaData?.summary?.overallAttainment?.toFixed(0) || 0}%
+              {quotaData?.degraded?.salesQuotasTable
+                ? '--'
+                : `${(quotaData?.summary.averageAttainment ?? 0).toFixed(0)}%`}
             </div>
             <p className="text-xs text-muted-foreground">
-              {quotaData?.summary?.locationsOnTrack || 0} on track
+              {quotaData?.degraded?.salesQuotasTable
+                ? 'No quotas defined'
+                : `${performanceData?.attainmentRanges.onTrack ?? 0} on track`}
             </p>
           </CardContent>
         </Card>
@@ -192,34 +212,20 @@ export default function SalesSupervisorDashboard() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {activityData?.summary?.totalActivities?.toLocaleString() || 0}
-            </div>
+            <div className="text-2xl font-bold">{totalActivities.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {activityData?.summary?.averagePerLocation?.toFixed(0) || 0} per location
+              {locationCount > 0 ? Math.round(totalActivities / locationCount) : 0} per location
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Alert Banner for At-Risk Locations */}
-      {quotaData?.summary?.locationsAtRisk > 0 && (
-        <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-orange-600" />
-              <div>
-                <div className="font-semibold text-orange-900 dark:text-orange-100">
-                  Locations Need Attention
-                </div>
-                <div className="text-sm text-orange-700 dark:text-orange-300">
-                  {quotaData.summary.locationsAtRisk} location(s) below 75% quota attainment
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* CR-034: an at-risk banner used to sit here, gated on
+          quotaData.summary.locationsAtRisk — a field that does not exist, so it
+          never rendered. It cannot be revived from attainmentRanges.atRisk
+          either: the handler sets that to regions.length unconditionally because
+          quotas are unknowable, so the banner would fire for every location on
+          every load and claim they are all below 75% of a target nobody set. */}
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="pipeline" className="space-y-4">
@@ -243,8 +249,8 @@ export default function SalesSupervisorDashboard() {
                 </div>
               ) : (
                 <LocationPipelineGrid
-                  pipelines={pipelineData?.pipelines || []}
-                  aggregated={pipelineData?.aggregated || []}
+                  byUnit={pipelineData?.byUnit ?? []}
+                  aggregated={pipelineData?.aggregated ?? []}
                   summary={pipelineData?.summary}
                 />
               )}
@@ -267,9 +273,8 @@ export default function SalesSupervisorDashboard() {
                 </div>
               ) : (
                 <LocationPerformanceTable
-                  locations={performanceData?.locations || []}
+                  locations={performanceData?.regions ?? []}
                   summary={performanceData?.summary}
-                  insights={performanceData?.insights}
                 />
               )}
             </CardContent>
@@ -288,11 +293,7 @@ export default function SalesSupervisorDashboard() {
                   <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <LocationQuotaTracker
-                  quotas={quotaData?.quotas || []}
-                  summary={quotaData?.summary}
-                  insights={quotaData?.insights}
-                />
+                <LocationQuotaTracker report={quotaData} />
               )}
             </CardContent>
           </Card>
@@ -311,9 +312,8 @@ export default function SalesSupervisorDashboard() {
                 </div>
               ) : (
                 <LocationActivityChart
-                  activities={activityData?.activities || []}
-                  summary={activityData?.summary}
-                  insights={activityData?.insights}
+                  regions={activityData?.regions ?? []}
+                  totals={activityData?.totals}
                 />
               )}
             </CardContent>

@@ -61,6 +61,19 @@ interface JobsResponse {
   pagination: { total: number; limit: number; offset: number; has_more: boolean };
 }
 
+/** Five seconds while jobs are queued or running; a minute when the queue is idle. */
+const ACTIVE_POLL_MS = 5000;
+const IDLE_POLL_MS = 60000;
+
+/** Queued + active is "there is something to watch"; nothing else moves on its own. */
+function pendingJobs(stats: StatsResponse | undefined): number {
+  return (stats?.stats?.queued ?? 0) + (stats?.stats?.active ?? 0);
+}
+
+function pollIntervalFor(stats: StatsResponse | undefined): number {
+  return pendingJobs(stats) > 0 ? ACTIVE_POLL_MS : IDLE_POLL_MS;
+}
+
 const STATUS_COLORS: Record<JobStatus, string> = {
   queued: 'bg-muted text-muted-foreground',
   active: 'bg-blue-100 text-blue-900 dark:bg-blue-900/40 dark:text-blue-200',
@@ -92,11 +105,22 @@ export default function BlogSettingsJobs() {
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // CR-032: both queries polled every 5 seconds unconditionally — 1,440 requests
+  // an hour across the two, whether the queue was busy or empty, for as long as
+  // the tab stayed open. Five seconds is right while work is moving and
+  // pointless when nothing is queued, so the cadence follows the queue.
+  //
+  // refetchInterval takes a FUNCTION in react-query v5, which reads the query's
+  // own latest data. That matters here: the obvious version stores the interval
+  // in state and syncs it from an effect, which needs an extra render to react
+  // to its own response and leaves two sources of truth for one number.
   const { data: stats, isLoading: statsLoading } = useQuery<StatsResponse>({
     queryKey: ['/api/blog-jobs/stats'],
     queryFn: () => apiRequest('/api/blog-jobs/stats'),
-    refetchInterval: 5000,
+    refetchInterval: (query) => pollIntervalFor(query.state.data),
   });
+
+  const pending = pendingJobs(stats);
 
   const { data: list, isLoading: listLoading } = useQuery<JobsResponse>({
     queryKey: ['/api/blog-jobs', filter],
@@ -105,7 +129,7 @@ export default function BlogSettingsJobs() {
       if (filter !== 'all') sp.set('status', filter);
       return apiRequest(`/api/blog-jobs?${sp.toString()}`);
     },
-    refetchInterval: 5000,
+    refetchInterval: pending > 0 ? ACTIVE_POLL_MS : IDLE_POLL_MS,
   });
 
   const runDueMutation = useMutation({

@@ -33,6 +33,7 @@ import { ObjectStorageService } from './objectStorage';
 import { eq, and, or, ilike, sql, desc } from 'drizzle-orm';
 import { db } from './db';
 import puppeteer from 'puppeteer';
+import { badRequest, forbidden, notFound, serverError, unauthorized } from './lib/error-response';
 // PDF Generation Service
 class OnboardingPDFService {
   private async generateChecklistHTML(
@@ -398,12 +399,12 @@ export function registerOnboardingRoutes(app: Express): void {
       // Authentication check supporting both Supabase JWT and session
       const userId = getUserId(req);
       if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
+        return unauthorized(res, 'Not authenticated');
       }
 
       const user = await storage.getUser(userId);
       if (!user?.tenantId) {
-        return res.status(403).json({ error: 'Access denied' });
+        return forbidden(res, 'Access denied');
       }
 
       const tenantId = user.tenantId;
@@ -412,7 +413,7 @@ export function registerOnboardingRoutes(app: Express): void {
       res.json(checklists);
     } catch (error) {
       log.error('Error fetching onboarding checklists:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 
@@ -424,19 +425,19 @@ export function registerOnboardingRoutes(app: Express): void {
       // Authentication check supporting both Supabase JWT and session
       const userId = getUserId(req);
       if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
+        return unauthorized(res, 'Not authenticated');
       }
 
       const user = await storage.getUser(userId);
       if (!user?.tenantId) {
-        return res.status(403).json({ error: 'Access denied' });
+        return forbidden(res, 'Access denied');
       }
 
       const tenantId = user.tenantId;
 
       const checklist = await storage.getOnboardingChecklist(id, tenantId);
       if (!checklist) {
-        return res.status(404).json({ error: 'Checklist not found' });
+        return notFound(res, 'Checklist not found');
       }
 
       // Get related data
@@ -458,7 +459,7 @@ export function registerOnboardingRoutes(app: Express): void {
       });
     } catch (error) {
       log.error('Error fetching onboarding checklist:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 
@@ -468,12 +469,12 @@ export function registerOnboardingRoutes(app: Express): void {
       // Authentication check supporting both Supabase JWT and session
       const userId = getUserId(req);
       if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
+        return unauthorized(res, 'Not authenticated');
       }
 
       const user = await storage.getUser(userId);
       if (!user?.tenantId) {
-        return res.status(403).json({ error: 'Access denied' });
+        return forbidden(res, 'Access denied');
       }
 
       const tenantId = user.tenantId;
@@ -492,10 +493,10 @@ export function registerOnboardingRoutes(app: Express): void {
       res.status(201).json(checklist);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
+        return badRequest(res, 'Validation error', { details: error.errors });
       }
       log.error('Error creating onboarding checklist:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 
@@ -506,12 +507,12 @@ export function registerOnboardingRoutes(app: Express): void {
 
       const userId = getUserId(req);
       if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
+        return unauthorized(res, 'Not authenticated');
       }
 
       const user = await storage.getUser(userId);
       if (!user?.tenantId) {
-        return res.status(403).json({ error: 'Access denied' });
+        return forbidden(res, 'Access denied');
       }
 
       const tenantId = user.tenantId;
@@ -523,13 +524,13 @@ export function registerOnboardingRoutes(app: Express): void {
 
       const checklist = await storage.updateOnboardingChecklist(id, tenantId, updateData);
       if (!checklist) {
-        return res.status(404).json({ error: 'Checklist not found' });
+        return notFound(res, 'Checklist not found');
       }
 
       res.json(checklist);
     } catch (error) {
       log.error('Error updating onboarding checklist:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 
@@ -540,12 +541,12 @@ export function registerOnboardingRoutes(app: Express): void {
       const userId = getUserId(req);
 
       if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
+        return unauthorized(res, 'Not authenticated');
       }
 
       const user = await storage.getUser(userId);
       if (!user?.tenantId) {
-        return res.status(403).json({ error: 'Access denied' });
+        return forbidden(res, 'Access denied');
       }
 
       const tenantId = user.tenantId;
@@ -554,7 +555,7 @@ export function registerOnboardingRoutes(app: Express): void {
       res.status(204).send();
     } catch (error) {
       log.error('Error deleting onboarding checklist:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 
@@ -565,12 +566,12 @@ export function registerOnboardingRoutes(app: Express): void {
       const userId = getUserId(req);
 
       if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
+        return unauthorized(res, 'Not authenticated');
       }
 
       const user = await storage.getUser(userId);
       if (!user?.tenantId) {
-        return res.status(403).json({ error: 'Access denied' });
+        return forbidden(res, 'Access denied');
       }
 
       const tenantId = user.tenantId;
@@ -579,7 +580,7 @@ export function registerOnboardingRoutes(app: Express): void {
       res.json({ pdfUrl });
     } catch (error) {
       log.error('Error generating PDF:', error);
-      res.status(500).json({ error: 'Failed to generate PDF' });
+      serverError(res, 'Failed to generate PDF');
     }
   });
 
@@ -590,12 +591,12 @@ export function registerOnboardingRoutes(app: Express): void {
       const userId = getUserId(req);
 
       if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
+        return unauthorized(res, 'Not authenticated');
       }
 
       const user = await storage.getUser(userId);
       if (!user?.tenantId) {
-        return res.status(403).json({ error: 'Access denied' });
+        return forbidden(res, 'Access denied');
       }
 
       const tenantId = user.tenantId;
@@ -610,10 +611,10 @@ export function registerOnboardingRoutes(app: Express): void {
       res.status(201).json(equipment);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
+        return badRequest(res, 'Validation error', { details: error.errors });
       }
       log.error('Error creating equipment:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 
@@ -624,12 +625,12 @@ export function registerOnboardingRoutes(app: Express): void {
       const userId = getUserId(req);
 
       if (!userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
+        return unauthorized(res, 'Not authenticated');
       }
 
       const user = await storage.getUser(userId);
       if (!user?.tenantId) {
-        return res.status(403).json({ error: 'Access denied' });
+        return forbidden(res, 'Access denied');
       }
 
       const tenantId = user.tenantId;
@@ -644,10 +645,10 @@ export function registerOnboardingRoutes(app: Express): void {
       res.status(201).json(section);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
+        return badRequest(res, 'Validation error', { details: error.errors });
       }
       log.error('Error creating dynamic section:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 
@@ -656,18 +657,18 @@ export function registerOnboardingRoutes(app: Express): void {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return unauthorized(res, 'Unauthorized');
       }
 
       const section = await storage.updateOnboardingDynamicSection(id, tenantId, req.body);
       if (!section) {
-        return res.status(404).json({ error: 'Section not found' });
+        return notFound(res, 'Section not found');
       }
 
       res.json(section);
     } catch (error) {
       log.error('Error updating dynamic section:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 
@@ -676,14 +677,14 @@ export function registerOnboardingRoutes(app: Express): void {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return unauthorized(res, 'Unauthorized');
       }
 
       await storage.deleteOnboardingDynamicSection(id, tenantId);
       res.status(204).send();
     } catch (error) {
       log.error('Error deleting dynamic section:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 
@@ -693,7 +694,7 @@ export function registerOnboardingRoutes(app: Express): void {
       const { checklistId } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return unauthorized(res, 'Unauthorized');
       }
 
       const validatedData = insertOnboardingTaskSchema.parse({
@@ -706,10 +707,10 @@ export function registerOnboardingRoutes(app: Express): void {
       res.status(201).json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Validation error', details: error.errors });
+        return badRequest(res, 'Validation error', { details: error.errors });
       }
       log.error('Error creating task:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 
@@ -718,18 +719,18 @@ export function registerOnboardingRoutes(app: Express): void {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return unauthorized(res, 'Unauthorized');
       }
 
       const task = await storage.updateOnboardingTask(id, tenantId, req.body);
       if (!task) {
-        return res.status(404).json({ error: 'Task not found' });
+        return notFound(res, 'Task not found');
       }
 
       res.json(task);
     } catch (error) {
       log.error('Error updating task:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 
@@ -738,14 +739,14 @@ export function registerOnboardingRoutes(app: Express): void {
       const { id } = req.params;
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return unauthorized(res, 'Unauthorized');
       }
 
       await storage.deleteOnboardingTask(id, tenantId);
       res.status(204).send();
     } catch (error) {
       log.error('Error deleting task:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      serverError(res, 'Internal server error');
     }
   });
 

@@ -123,7 +123,16 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data: searchHits = [], isFetching: searching } = useQuery<UniversalSearchHit[]>({
+  // CR-033: loading was already handled (isFetching drives the spinner), but
+  // not failure — a search that errored fell through to CommandEmpty and told
+  // the user "No results found for X", which is a claim about their data rather
+  // than about the request.
+  const {
+    data: searchHits = [],
+    isFetching: searching,
+    isError: searchFailed,
+    refetch: retrySearch,
+  } = useQuery<UniversalSearchHit[]>({
     queryKey: ['/api/universal-search', debouncedSearch],
     queryFn: () =>
       apiRequest(`/api/universal-search?q=${encodeURIComponent(debouncedSearch)}&limit=20`),
@@ -274,7 +283,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         onValueChange={setSearch}
       />
       <CommandList>
-        {!hasResults && search.length > 0 && (
+        {searchFailed && search.length > 0 && (
+          <div className="py-6 text-center text-sm text-destructive">
+            Search is unavailable.{' '}
+            <button type="button" className="underline" onClick={() => void retrySearch()}>
+              Retry
+            </button>
+          </div>
+        )}
+        {!searchFailed && !hasResults && search.length > 0 && (
           <CommandEmpty>No results found for &quot;{search}&quot;</CommandEmpty>
         )}
 

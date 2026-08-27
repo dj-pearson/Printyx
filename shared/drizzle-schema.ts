@@ -237,7 +237,7 @@ export {
   clientRegistrations,
   clientCollectedMetrics,
   monitoredDevices,
-  // clientActivityLogs — conflicts with client-monitor-schema
+  // clientActivityLogs — declared in client-monitor-schema (EDGE-016a)
   tonerAlerts,
   oidMappings,
   deviceMeterHistory,

@@ -363,8 +363,8 @@ function RepOverviewTab({ reps, summary }: { reps: Rep[]; summary: RepsSummary }
               <p className="text-sm">
                 Reassigning <strong>{reassignTarget.accountName}</strong>
               </p>
-              <div>
-                <label className="text-sm font-medium">New Sales Rep</label>
+              <label>
+                <span className="text-sm font-medium">New Sales Rep</span>
                 <Select value={selectedRepId} onValueChange={setSelectedRepId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select rep..." />
@@ -377,16 +377,16 @@ function RepOverviewTab({ reps, summary }: { reps: Rep[]; summary: RepsSummary }
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Reason (optional)</label>
+              </label>
+              <label>
+                <span className="text-sm font-medium">Reason (optional)</span>
                 <Textarea
                   value={reassignReason}
                   onChange={(e) => setReassignReason(e.target.value)}
                   placeholder="Reason for reassignment..."
                   rows={2}
                 />
-              </div>
+              </label>
             </div>
           )}
           <DialogFooter>
@@ -419,8 +419,8 @@ function RepOverviewTab({ reps, summary }: { reps: Rep[]; summary: RepsSummary }
             <DialogTitle>Bulk Reassign ({selectedIds.size} accounts)</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">New Sales Rep</label>
+            <label>
+              <span className="text-sm font-medium">New Sales Rep</span>
               <Select value={selectedRepId} onValueChange={setSelectedRepId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select rep..." />
@@ -433,16 +433,16 @@ function RepOverviewTab({ reps, summary }: { reps: Rep[]; summary: RepsSummary }
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Reason (optional)</label>
+            </label>
+            <label>
+              <span className="text-sm font-medium">Reason (optional)</span>
               <Textarea
                 value={reassignReason}
                 onChange={(e) => setReassignReason(e.target.value)}
                 placeholder="Reason for reassignment..."
                 rows={2}
               />
-            </div>
+            </label>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBulkReassignOpen(false)}>
@@ -676,8 +676,8 @@ function AreaAssignmentTab({ reps }: { reps: Rep[] }) {
         <CardTitle className="text-lg">Assign Accounts by Area</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <label className="text-sm font-medium">Sales Rep</label>
+        <label>
+          <span className="text-sm font-medium">Sales Rep</span>
           <Select value={selectedRepId} onValueChange={setSelectedRepId}>
             <SelectTrigger>
               <SelectValue placeholder="Select a sales rep..." />
@@ -690,10 +690,10 @@ function AreaAssignmentTab({ reps }: { reps: Rep[] }) {
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </label>
 
-        <div>
-          <label className="text-sm font-medium">Assignment Method</label>
+        <label>
+          <span className="text-sm font-medium">Assignment Method</span>
           <Select
             value={method}
             onValueChange={(v) => {
@@ -711,7 +711,7 @@ function AreaAssignmentTab({ reps }: { reps: Rep[] }) {
               <SelectItem value="city">By City</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </label>
 
         <div>
           <label className="text-sm font-medium">

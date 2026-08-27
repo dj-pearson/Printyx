@@ -10672,12 +10672,12 @@ CREATE TABLE "api_key_rate_limits" (
 CREATE TABLE "api_key_rotations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"api_key_id" uuid NOT NULL,
-	"tenant_id" uuid NOT NULL,
+	"tenant_id" varchar NOT NULL,
 	"old_key_prefix" varchar(12) NOT NULL,
 	"old_key_hash" varchar(128) NOT NULL,
 	"new_key_prefix" varchar(12) NOT NULL,
 	"rotated_at" timestamp DEFAULT now() NOT NULL,
-	"rotated_by" uuid,
+	"rotated_by" varchar,
 	"reason" text,
 	"grace_period_ends_at" timestamp,
 	"old_key_disabled_at" timestamp
@@ -10686,7 +10686,7 @@ CREATE TABLE "api_key_rotations" (
 CREATE TABLE "api_key_usage_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"api_key_id" uuid NOT NULL,
-	"tenant_id" uuid NOT NULL,
+	"tenant_id" varchar NOT NULL,
 	"request_id" varchar(255),
 	"method" varchar(10) NOT NULL,
 	"path" varchar(1024) NOT NULL,
@@ -10702,7 +10702,7 @@ CREATE TABLE "api_key_usage_logs" (
 --> statement-breakpoint
 CREATE TABLE "api_keys" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"tenant_id" uuid NOT NULL,
+	"tenant_id" varchar NOT NULL,
 	"name" varchar(255) NOT NULL,
 	"description" text,
 	"key_type" "api_key_type" DEFAULT 'service' NOT NULL,
@@ -10728,8 +10728,8 @@ CREATE TABLE "api_keys" (
 	"allowed_environments" jsonb DEFAULT '["production"]'::jsonb,
 	"metadata" jsonb DEFAULT '{}'::jsonb,
 	"tags" jsonb DEFAULT '[]'::jsonb,
-	"created_by" uuid,
-	"revoked_by" uuid,
+	"created_by" varchar,
+	"revoked_by" varchar,
 	"revoked_at" timestamp,
 	"revoked_reason" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
@@ -10863,7 +10863,7 @@ CREATE TABLE "customer_maintenance_appointments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"tenant_id" varchar NOT NULL,
 	"customer_id" varchar NOT NULL,
-	"portal_user_id" varchar,
+	"portal_user_id" uuid,
 	"equipment_id" varchar,
 	"equipment_name" varchar,
 	"equipment_make" varchar,
@@ -11030,7 +11030,7 @@ CREATE TABLE "technician_availability_slots" (
 	"is_available" boolean DEFAULT true,
 	"is_blocked" boolean DEFAULT false,
 	"block_reason" varchar,
-	"appointment_id" varchar,
+	"appointment_id" uuid,
 	"appointment_type" varchar,
 	"service_area" varchar,
 	"max_travel_distance" integer,
@@ -12126,9 +12126,9 @@ CREATE TABLE "payment_method_changes" (
 --> statement-breakpoint
 CREATE TABLE "sso_login_attempts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"tenant_id" uuid,
+	"tenant_id" varchar,
 	"provider_id" uuid,
-	"user_id" uuid,
+	"user_id" varchar,
 	"request_id" varchar(255) NOT NULL,
 	"protocol" "sso_protocol" NOT NULL,
 	"initiated_at" timestamp DEFAULT now() NOT NULL,
@@ -12154,7 +12154,7 @@ CREATE TABLE "sso_login_attempts" (
 --> statement-breakpoint
 CREATE TABLE "sso_provider_configs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"tenant_id" uuid NOT NULL,
+	"tenant_id" varchar NOT NULL,
 	"provider_type" "sso_provider_type" NOT NULL,
 	"protocol" "sso_protocol" NOT NULL,
 	"name" varchar(255) NOT NULL,
@@ -12214,8 +12214,8 @@ CREATE TABLE "sso_provider_configs" (
 --> statement-breakpoint
 CREATE TABLE "sso_sessions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"tenant_id" uuid NOT NULL,
-	"user_id" uuid NOT NULL,
+	"tenant_id" varchar NOT NULL,
+	"user_id" varchar NOT NULL,
 	"provider_id" uuid NOT NULL,
 	"session_id" varchar(255) NOT NULL,
 	"app_session_id" varchar(255),
@@ -12240,8 +12240,8 @@ CREATE TABLE "sso_sessions" (
 --> statement-breakpoint
 CREATE TABLE "sso_user_mappings" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"tenant_id" uuid NOT NULL,
-	"user_id" uuid NOT NULL,
+	"tenant_id" varchar NOT NULL,
+	"user_id" varchar NOT NULL,
 	"provider_id" uuid NOT NULL,
 	"external_id" varchar(512) NOT NULL,
 	"external_email" varchar(255),

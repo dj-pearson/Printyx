@@ -97,6 +97,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
+import { clickableProps } from '@/lib/accessibility';
 
 // Available data sources for reporting
 const DATA_SOURCES = [
@@ -401,7 +402,13 @@ function SortableColumn({
           </Select>
         )}
       </div>
-      <Button variant="ghost" size="icon" onClick={onRemove} className="h-8 w-8">
+      <Button
+        aria-label="Remove"
+        variant="ghost"
+        size="icon"
+        onClick={onRemove}
+        className="h-8 w-8"
+      >
         <X className="h-4 w-4" />
       </Button>
     </div>
@@ -738,7 +745,7 @@ export default function CustomReportBuilder() {
                         return (
                           <div
                             key={source.id}
-                            onClick={() => handleDataSourceSelect(source.id)}
+                            {...clickableProps(() => handleDataSourceSelect(source.id))}
                             className={cn(
                               'flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors',
                               isSelected ? 'border-primary bg-primary/5' : 'hover:bg-accent',
@@ -789,7 +796,7 @@ export default function CustomReportBuilder() {
                   <div>
                     <div
                       className="flex items-center gap-2 cursor-pointer mb-3"
-                      onClick={() => toggleSection('columns')}
+                      {...clickableProps(() => toggleSection('columns'))}
                     >
                       {expandedSections.columns ? (
                         <ChevronDown className="h-4 w-4" />
@@ -834,7 +841,7 @@ export default function CustomReportBuilder() {
                   <div>
                     <div
                       className="flex items-center gap-2 cursor-pointer mb-3"
-                      onClick={() => toggleSection('groupings')}
+                      {...clickableProps(() => toggleSection('groupings'))}
                     >
                       {expandedSections.groupings ? (
                         <ChevronDown className="h-4 w-4" />
@@ -1026,7 +1033,9 @@ export default function CustomReportBuilder() {
                         return (
                           <div
                             key={vis.id}
-                            onClick={() => setConfig({ ...config, visualization: vis.id })}
+                            {...clickableProps(() =>
+                              setConfig({ ...config, visualization: vis.id }),
+                            )}
                             className={cn(
                               'flex flex-col items-center gap-2 p-4 rounded-md border cursor-pointer transition-colors',
                               isSelected ? 'border-primary bg-primary/5' : 'hover:bg-accent',

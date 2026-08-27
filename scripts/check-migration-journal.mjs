@@ -12,15 +12,20 @@
 //   (b) a _journal.json entry has no matching *.sql file,
 //   (c) two migration files share the same 4-digit numeric prefix,
 //   (d) journal `idx` values are not a contiguous 0..N-1 sequence,
-//   (e) COP-M00: a journal entry has no matching meta/NNNN_snapshot.json.
+//   (e) COP-M00: the LAST journal entry has no meta/NNNN_snapshot.json (hard),
+//       or the mid-chain snapshot gap has widened past its baseline (ratchet).
 //
 // (e) is a DIFFERENT failure from (a)-(d) and the journal can be perfectly
 // healthy while it holds. drizzle-kit diffs your schema against the snapshot of
-// the LAST journal entry. When snapshots are missing it silently falls back to
+// the LAST journal entry. When that snapshot is missing it silently falls back to
 // the newest one it can find, so `db:generate` re-emits every change made since
 // then — in this repo that produced a 2,281-line / 141-statement migration and a
 // filename that collided with an existing file. The journal guard passed the
 // whole time, which is exactly why this check had to be added.
+//
+// Only the LAST entry's snapshot drives `generate`, so that one is a hard gate.
+// The 25 mid-chain gaps (idx 10-13, 19-39) affect nothing drizzle-kit does today
+// and stay a ratchet.
 //
 // Usage: node scripts/check-migration-journal.mjs
 // Wire:  package.json "audit:migrations": "node scripts/check-migration-journal.mjs"
@@ -100,11 +105,25 @@ if (!existsSync(journalPath)) {
   );
   const missingSnapshots = entries.map((e) => e.idx).filter((idx) => !snapshots.has(idx));
 
-  // RATCHET, not a hard gate. 25 snapshots are already missing (COP-M00) and
-  // restoring them needs DB introspection, so failing outright would just break
-  // CI on a pre-existing condition. Fail only when it gets WORSE — that stops
-  // the hole widening while the real reconciliation is scheduled. Matches how
-  // the typecheck and route-ownership ratchets work in this repo.
+  // The HARD gate: drizzle-kit diffs against the snapshot of the LAST journal
+  // entry and nothing else. Lose that one and `db:generate` silently re-emits
+  // every change made since whatever older snapshot it falls back to.
+  const head = entries[entries.length - 1];
+  if (head && !snapshots.has(head.idx)) {
+    problems.push(
+      `The last journal entry (idx ${head.idx}, "${head.tag}") has no ` +
+        `meta/${String(head.idx).padStart(4, '0')}_snapshot.json. drizzle-kit will fall back to ` +
+        `an older snapshot and re-emit every change made since it. Regenerate via ` +
+        `npm run db:generate — never hand-write the snapshot. See COP-M00.`,
+    );
+  }
+
+  // RATCHET, not a hard gate, for the MID-CHAIN gaps. 25 snapshots are missing
+  // (idx 10-13 and 19-39) and restoring them would mean replaying history that
+  // drizzle-kit cannot reconstruct from SQL. Nothing in the generate path reads
+  // them, so failing outright would break CI on a pre-existing, inert condition.
+  // Fail only when it gets WORSE — same shape as the typecheck and
+  // route-ownership ratchets in this repo.
   const SNAPSHOT_GAP_BASELINE = 25;
   if (missingSnapshots.length > SNAPSHOT_GAP_BASELINE) {
     const shown = missingSnapshots.slice(0, 10).join(', ');
@@ -112,19 +131,13 @@ if (!existsSync(journalPath)) {
     problems.push(
       `Snapshot gap WIDENED: ${missingSnapshots.length} journal entr(ies) have no ` +
         `meta/NNNN_snapshot.json (baseline ${SNAPSHOT_GAP_BASELINE}): idx ${shown}${more}. ` +
-        `drizzle-kit diffs against the LAST entry's snapshot, so gaps make db:generate re-emit ` +
-        `already-migrated changes instead of just your delta. See COP-M00.`,
+        `Generate migrations with npm run db:generate so each one leaves its snapshot behind.`,
     );
   } else if (missingSnapshots.length > 0) {
     console.warn(
-      `⚠ ${missingSnapshots.length} journal entr(ies) have no snapshot (known, baseline ` +
-        `${SNAPSHOT_GAP_BASELINE}). db:generate will over-emit until COP-M00 reconciles this. ` +
-        `Do not "fix" it by absorbing the drift into a snapshot — see ` +
-        `docs/COP-M00-migration-tooling.md.`,
-    );
-  } else if (SNAPSHOT_GAP_BASELINE > 0) {
-    console.log(
-      `✓ Snapshot gap is closed. Drop SNAPSHOT_GAP_BASELINE to 0 in this script to lock it in.`,
+      `⚠ ${missingSnapshots.length} mid-chain journal entr(ies) have no snapshot (known, ` +
+        `baseline ${SNAPSHOT_GAP_BASELINE}). Inert — only the LAST entry's snapshot drives ` +
+        `db:generate, and that one is checked above. See docs/COP-M00-migration-tooling.md.`,
     );
   }
 

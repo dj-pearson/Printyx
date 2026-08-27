@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Check, X, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { clickableProps } from '@/lib/accessibility';
 
 interface InlineEditProps {
   value: string | number;
@@ -122,13 +123,15 @@ export function InlineEdit({
 
   if (!editable || !isEditing) {
     return (
+      // CR-035: spread only when editable — a role=button tab stop that does
+      // nothing is worse than a plain div.
       <div
         className={cn(
           'group relative inline-flex items-center gap-2',
           editable && 'cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1',
           className,
         )}
-        onClick={() => editable && setIsEditing(true)}
+        {...(editable ? clickableProps(() => setIsEditing(true)) : {})}
       >
         <span className={cn(!value && 'text-muted-foreground')}>
           {value ? displayValue : placeholder || 'Click to edit'}
@@ -184,6 +187,7 @@ export function InlineEdit({
         {!autoSave && (
           <div className="flex items-center gap-1">
             <Button
+              aria-label="Save"
               size="sm"
               variant="ghost"
               className="h-8 w-8 p-0"
@@ -193,6 +197,7 @@ export function InlineEdit({
               <Check className="h-4 w-4 text-green-600" />
             </Button>
             <Button
+              aria-label="Cancel"
               size="sm"
               variant="ghost"
               className="h-8 w-8 p-0"

@@ -688,7 +688,9 @@ export const customerMaintenanceAppointments = pgTable('customer_maintenance_app
   id: uuid('id').defaultRandom().primaryKey(),
   tenantId: varchar('tenant_id').notNull(),
   customerId: varchar('customer_id').notNull(),
-  portalUserId: varchar('portal_user_id').references(() => customerPortalAccess.id),
+  // PA-032: customerPortalAccess.id is uuid, so a varchar column here made the
+  // foreign key un-creatable and migration 0000 unapplicable to an empty database.
+  portalUserId: uuid('portal_user_id').references(() => customerPortalAccess.id),
 
   // Equipment information
   equipmentId: varchar('equipment_id'),
@@ -1006,7 +1008,8 @@ export const technicianAvailabilitySlots = pgTable('technician_availability_slot
   blockReason: varchar('block_reason'),
 
   // Appointment assignment
-  appointmentId: varchar('appointment_id').references(() => customerMaintenanceAppointments.id),
+  // PA-032: same shape — customerMaintenanceAppointments.id is uuid.
+  appointmentId: uuid('appointment_id').references(() => customerMaintenanceAppointments.id),
   appointmentType: varchar('appointment_type'), // maintenance, service, demo
 
   // Location and travel

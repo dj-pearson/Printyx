@@ -131,10 +131,14 @@ export default function DiscoveryPage() {
 
         <div className="mt-6 flex gap-4">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              className="block text-sm font-medium text-gray-700 mb-2"
+              htmlFor="discovery-subnet"
+            >
               Subnet (Optional)
             </label>
             <input
+              id="discovery-subnet"
               type="text"
               value={subnet}
               onChange={(e) => setSubnet(e.target.value)}
@@ -211,9 +215,22 @@ export default function DiscoveryPage() {
 
             <div className="grid gap-4">
               {discoveredPrinters.map((printer) => (
+                // CR-035: the selection card was pointer-only. Inlined rather
+                // than using the web app's clickableProps — this Electron
+                // renderer is a separate project and does not resolve @/lib.
                 <div
                   key={printer.ip}
+                  role="checkbox"
+                  aria-checked={printer.selected}
+                  tabIndex={0}
                   onClick={() => toggleSelection(printer.ip)}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      toggleSelection(printer.ip);
+                    }
+                  }}
                   className={`
                     bg-white border-2 rounded-lg p-6 cursor-pointer transition-all
                     ${

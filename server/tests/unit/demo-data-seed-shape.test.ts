@@ -72,6 +72,10 @@ describe('QUALITY-002: demo seed inserts match the real schema', () => {
         'locations',
         'meterReadings',
         'opportunities',
+        // COP-M07: the canonical mirror of dealStages, so a seeded tenant is not
+        // left with a legacy stage list and an empty pipeline.
+        'pipelineStages',
+        'pipelineTemplates',
         'productModels',
         'professionalServices',
         'projects',

@@ -51,6 +51,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { sanitizeBasicHtml } from '@/lib/sanitize-html';
+import { clickableProps } from '@/lib/accessibility';
 
 interface DocumentCategory {
   id: string;
@@ -160,10 +161,10 @@ export default function DocumentManagement() {
         data.recentDocuments?.map((doc: any) => ({
           ...doc,
           lastModified: new Date(doc.lastModified || doc.last_modified),
-        // AUDIT-011a: this endpoint is a hand-built Express mock returning
-        // camelCase literals (server/routes-sample-data.ts:873), so camelCase is authoritative and
-        // there is no snake_case key to fall back to. Collapsed to a single read
-        // rather than invented one.
+          // AUDIT-011a: this endpoint is a hand-built Express mock returning
+          // camelCase literals (server/routes-sample-data.ts:873), so camelCase is authoritative and
+          // there is no snake_case key to fall back to. Collapsed to a single read
+          // rather than invented one.
           createdAt: doc.createdAt,
           workflow: doc.workflow
             ? {
@@ -430,7 +431,7 @@ export default function DocumentManagement() {
                       <div
                         key={category.id}
                         className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => setSelectedCategory(category.id)}
+                        {...clickableProps(() => setSelectedCategory(category.id))}
                       >
                         <div className="flex justify-between items-start mb-3">
                           <div>
@@ -544,13 +545,13 @@ export default function DocumentManagement() {
                             <div className="text-sm text-gray-500">{doc.fileSize}</div>
 
                             <div className="flex gap-1 mt-2">
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="View details" size="sm" variant="outline">
                                 <Eye className="h-3 w-3" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Download" size="sm" variant="outline">
                                 <Download className="h-3 w-3" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Share" size="sm" variant="outline">
                                 <Share className="h-3 w-3" />
                               </Button>
                             </div>
@@ -785,6 +786,7 @@ export default function DocumentManagement() {
                 <div className="flex gap-4 mb-6">
                   <div className="flex-1">
                     <Input
+                      aria-label="Search documents, content, or metadata"
                       placeholder="Search documents, content, or metadata..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}

@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { isAuthenticated } from '../replitAuth';
 import { createModuleLogger } from '../lib/logger';
 import { getUserId, getTenantId } from '../utils/auth-helpers';
+import { badRequest, forbidden, notFound } from '../lib/error-response';
 const log = createModuleLogger('apollo-routes');
 
 const router = express.Router();
@@ -45,7 +46,7 @@ router.post('/search', isAuthenticated, async (req, res) => {
   try {
     const tenantId = (req.user as any)?.tenantId;
     if (!tenantId) {
-      return res.status(403).json({ error: 'No tenant ID found' });
+      return forbidden(res, 'No tenant ID found');
     }
 
     const filters: ApolloSearchFilters = req.body;
@@ -180,7 +181,7 @@ router.post('/leads/:contactId/add-to-crm', isAuthenticated, async (req, res) =>
     const tenantId = (req.user as any)?.tenantId;
     const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
     if (!tenantId || !userId) {
-      return res.status(403).json({ error: 'No tenant ID found' });
+      return forbidden(res, 'No tenant ID found');
     }
 
     const { contactId } = req.params;
@@ -188,7 +189,7 @@ router.post('/leads/:contactId/add-to-crm', isAuthenticated, async (req, res) =>
     // Get contact from centralized cache
     const contact = await apolloStorage.getCentralizedContact(contactId);
     if (!contact) {
-      return res.status(404).json({ error: 'Contact not found' });
+      return notFound(res, 'Contact not found');
     }
 
     // Check if already added
@@ -281,13 +282,13 @@ router.post('/leads/bulk-add', isAuthenticated, async (req, res) => {
     const tenantId = (req.user as any)?.tenantId;
     const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
     if (!tenantId || !userId) {
-      return res.status(403).json({ error: 'No tenant ID found' });
+      return forbidden(res, 'No tenant ID found');
     }
 
     const { contactIds } = req.body as { contactIds: string[] };
 
     if (!Array.isArray(contactIds) || contactIds.length === 0) {
-      return res.status(400).json({ error: 'contactIds array is required' });
+      return badRequest(res, 'contactIds array is required');
     }
 
     const results = {
@@ -393,7 +394,7 @@ router.get('/stats', isAuthenticated, async (req, res) => {
   try {
     const tenantId = (req.user as any)?.tenantId;
     if (!tenantId) {
-      return res.status(403).json({ error: 'No tenant ID found' });
+      return forbidden(res, 'No tenant ID found');
     }
 
     const endDate = new Date();
@@ -420,7 +421,7 @@ router.get('/credentials', isAuthenticated, async (req, res) => {
   try {
     const tenantId = (req.user as any)?.tenantId;
     if (!tenantId) {
-      return res.status(403).json({ error: 'No tenant ID found' });
+      return forbidden(res, 'No tenant ID found');
     }
 
     const { storage } = await import('../storage');
@@ -458,13 +459,13 @@ router.post('/credentials', isAuthenticated, async (req, res) => {
     const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
 
     if (!tenantId || !userId) {
-      return res.status(403).json({ error: 'No tenant ID or user ID found' });
+      return forbidden(res, 'No tenant ID or user ID found');
     }
 
     const { apiKey } = req.body;
 
     if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
-      return res.status(400).json({ error: 'API key is required' });
+      return badRequest(res, 'API key is required');
     }
 
     const { storage } = await import('../storage');
@@ -538,7 +539,7 @@ router.post('/credentials/verify', isAuthenticated, async (req, res) => {
     const tenantId = (req.user as any)?.tenantId;
 
     if (!tenantId) {
-      return res.status(403).json({ error: 'No tenant ID found' });
+      return forbidden(res, 'No tenant ID found');
     }
 
     const { apiKey } = req.body;
@@ -615,7 +616,7 @@ router.delete('/credentials/:id', isAuthenticated, async (req, res) => {
     const tenantId = (req.user as any)?.tenantId;
 
     if (!tenantId) {
-      return res.status(403).json({ error: 'No tenant ID found' });
+      return forbidden(res, 'No tenant ID found');
     }
 
     const { id } = req.params;

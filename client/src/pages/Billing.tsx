@@ -30,10 +30,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
-import { normalizeInvoices } from '@/lib/invoice-normalize';
+import { normalizeInvoices, type NormalizedInvoice } from '@/lib/invoice-normalize';
+import type { BillingAddress, TrialStatusResponse } from '@/types/billing';
 import { fetchInvoicePdfBlob, triggerBlobDownload } from '@/lib/invoice-pdf';
 import MainLayout from '@/components/layout/main-layout';
-import { CreditCard, Download, Plus, Trash2, Edit, CheckCircle, Building2 } from 'lucide-react';
+import { CreditCard, Download, Edit, CheckCircle, Building2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -69,74 +70,50 @@ export default function Billing() {
     },
   });
 
-  // Fetch payment methods
-  const { data: paymentMethods, isLoading: loadingPaymentMethods } = useQuery({
-    queryKey: ['/api/billing/payment-methods'],
-    queryFn: async () => {
-      const response = await apiRequest('/api/billing/payment-methods', 'GET');
-      return extractRecords(response).map((method: any) => ({
-        ...method,
-        id: method.id,
-        createdAt: method.created_at || method.createdAt || '',
-      }));
-    },
-  });
+  // CR-034: a /api/billing/payment-methods query and a delete mutation used to
+  // sit here. The Payment Methods card below has been a "coming soon" placeholder
+  // for some time and renders neither, so the page fetched the list on every load
+  // and threw it away, and nothing could ever invoke the delete. Both are removed
+  // rather than typed; they are in git history if the card comes back.
 
   // Fetch billing history
-  const { data: invoices, isLoading: loadingInvoices } = useQuery({
+  const { data: invoices, isLoading: loadingInvoices } = useQuery<NormalizedInvoice[]>({
     queryKey: ['/api/billing/invoices'],
     queryFn: async () => {
-      const response = await apiRequest('/api/billing/invoices', 'GET');
+      const response = await apiRequest<unknown>('/api/billing/invoices', 'GET');
       // AUDIT-011: shared normalizer — this page's inline bridge preferred the
       // LEGACY `status` column over the canonical `invoice_status`, so an invoice
       // that is invoice_status='paid' but status='draft' rendered as draft (and
       // disagreed with the ?status= filter, which queries invoice_status).
+      // extractRecords unwraps the { data, total } envelope the list endpoint
+      // returns; normalizeInvoices coerces PostgREST decimal strings to numbers
+      // and picks invoice_status over the legacy status column (AUDIT-011).
       return normalizeInvoices(extractRecords(response));
     },
   });
 
   // Fetch trial status
-  const { data: trialStatus } = useQuery({
+  // CR-034: this bridged `trial_end`/`trialEnd` and `is_trialing`/`isTrialing`.
+  // The endpoint sends none of the four. TrialManagementService.getTrialStatus
+  // returns { userId, tenantId, trialStartDate, trialEndDate, daysRemaining,
+  // status }, so `trialEnd` resolved to null on every load and the banner told
+  // every trialing tenant their trial ends "N/A". `isTrialing` was read by
+  // nothing. The date field is trialEndDate.
+  const { data: trialStatus } = useQuery<TrialStatusResponse>({
     queryKey: ['/api/trial/status'],
-    queryFn: async () => {
-      const response = await apiRequest('/api/trial/status', 'GET');
-      return {
-        ...response,
-        trialEnd: response?.trial_end || response?.trialEnd || null,
-        isTrialing: response?.is_trialing || response?.isTrialing || false,
-      };
-    },
+    queryFn: () => apiRequest('/api/trial/status', 'GET'),
     retry: false, // Don't retry if not in trial
   });
 
   // Fetch billing info
-  const { data: billingInfo } = useQuery({
+  // CR-034: this coerced the response with `response || {}`, which defeated the
+  // `{billingInfo ? ... : "No billing address on file"}` check further down - {}
+  // is truthy, so a tenant with no default payment method got the populated
+  // layout full of "Not set" placeholders instead of the empty state. null is the
+  // endpoint's real answer for "no address" and now survives to the render.
+  const { data: billingInfo } = useQuery<BillingAddress | null>({
     queryKey: ['/api/billing/info'],
-    queryFn: async () => {
-      const response = await apiRequest('/api/billing/info', 'GET');
-      return response || {};
-    },
-  });
-
-  // Delete payment method mutation
-  const deletePaymentMutation = useMutation({
-    mutationFn: async (paymentMethodId: string) => {
-      return await apiRequest(`/api/billing/payment-methods/${paymentMethodId}`, 'DELETE');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/billing/payment-methods'] });
-      toast({
-        title: 'Payment method removed',
-        description: 'Your payment method has been successfully removed.',
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Failed to remove payment method',
-        description: error.message || 'Please try again',
-        variant: 'destructive',
-      });
-    },
+    queryFn: () => apiRequest('/api/billing/info', 'GET'),
   });
 
   // Update billing address mutation
@@ -152,14 +129,31 @@ export default function Billing() {
         description: 'Your billing address has been successfully updated.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: 'Failed to update address',
-        description: error.message || 'Please try again',
+        description: error instanceof Error ? error.message : 'Please try again',
         variant: 'destructive',
       });
     },
   });
+
+  // CR-034: `useEffect` was imported and never used - the leftover of exactly
+  // this. Editing an address on file opened a blank form, so changing one line
+  // meant retyping all six.
+  useEffect(() => {
+    if (isEditAddressOpen && billingInfo) {
+      form.reset({
+        name: billingInfo.name ?? '',
+        addressLine1: billingInfo.addressLine1 ?? '',
+        addressLine2: billingInfo.addressLine2 ?? '',
+        city: billingInfo.city ?? '',
+        state: billingInfo.state ?? '',
+        postalCode: billingInfo.postalCode ?? '',
+        country: billingInfo.country ?? 'US',
+      });
+    }
+  }, [isEditAddressOpen, billingInfo, form]);
 
   const onSubmitAddress = async (data: BillingAddressForm) => {
     await updateBillingAddressMutation.mutateAsync(data);
@@ -169,7 +163,7 @@ export default function Billing() {
     try {
       const blob = await fetchInvoicePdfBlob(invoiceId);
       triggerBlobDownload(blob, `invoice-${invoiceId}.pdf`);
-    } catch (error) {
+    } catch {
       toast({
         title: 'Failed to download invoice',
         description: 'Please try again',
@@ -203,8 +197,8 @@ export default function Billing() {
                   <div>
                     <p className="text-sm font-medium text-blue-900">Trial ends on:</p>
                     <p className="text-sm text-blue-700">
-                      {trialStatus.trialEnd
-                        ? new Date(trialStatus.trialEnd).toLocaleDateString('en-US', {
+                      {trialStatus.trialEndDate
+                        ? new Date(trialStatus.trialEndDate).toLocaleDateString('en-US', {
                             month: 'long',
                             day: 'numeric',
                             year: 'numeric',
@@ -448,7 +442,7 @@ export default function Billing() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoices.map((invoice: any) => (
+                  {invoices.map((invoice) => (
                     <TableRow key={invoice.id}>
                       <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
                       <TableCell>

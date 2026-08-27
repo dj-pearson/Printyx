@@ -64,6 +64,7 @@ import {
   List,
   ListOrdered,
 } from 'lucide-react';
+import { clickableProps } from '@/lib/accessibility';
 
 interface ProposalSection {
   id: string;
@@ -159,7 +160,7 @@ function SortableSection({
           ? 'border-primary ring-2 ring-primary/20'
           : 'border-transparent hover:border-gray-300 active:border-gray-400'
       } ${section.isLocked ? 'opacity-75' : ''}`}
-      onClick={onClick}
+      {...clickableProps(onClick)}
     >
       {/* Drag Handle */}
       <div
@@ -175,6 +176,7 @@ function SortableSection({
       {/* Section Controls */}
       <div className="absolute top-2 right-2 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex gap-1">
         <Button
+          aria-label="Settings"
           size="sm"
           variant="secondary"
           className="h-8 w-8 sm:h-10 sm:w-10 p-0 touch-manipulation active:scale-[0.98]"
@@ -182,6 +184,7 @@ function SortableSection({
           <Settings className="h-4 w-4" />
         </Button>
         <Button
+          aria-label="Copy"
           size="sm"
           variant="secondary"
           className="h-8 w-8 sm:h-10 sm:w-10 p-0 touch-manipulation active:scale-[0.98]"
@@ -189,6 +192,7 @@ function SortableSection({
           <Copy className="h-4 w-4" />
         </Button>
         <Button
+          aria-label="Delete"
           size="sm"
           variant="destructive"
           className="h-8 w-8 sm:h-10 sm:w-10 p-0 touch-manipulation active:scale-[0.98]"
@@ -227,8 +231,21 @@ function SortableSection({
             }}
           />
         ) : (
+          // CR-035: double-click was the ONLY way into the editor, which no
+          // keyboard reaches. F2 is the grid/tree convention for "edit this
+          // cell" and does not collide with the wrapper's Enter (select).
           <div
+            role="button"
+            tabIndex={0}
+            aria-label={`Edit ${section.title || 'section'} content`}
             onDoubleClick={() => setIsEditing(true)}
+            onKeyDown={(event) => {
+              if (event.target !== event.currentTarget) return;
+              if (event.key === 'F2') {
+                event.preventDefault();
+                setIsEditing(true);
+              }
+            }}
             className="cursor-text"
             dangerouslySetInnerHTML={{
               __html: sanitizeRichHtml(
@@ -787,7 +804,7 @@ export default function ProposalVisualBuilder({
                         ? 'bg-primary/10 border-primary'
                         : 'hover:bg-gray-50 active:bg-gray-100'
                     }`}
-                    onClick={() => setSelectedSectionId(section.id)}
+                    {...clickableProps(() => setSelectedSectionId(section.id))}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs sm:text-sm font-medium truncate">

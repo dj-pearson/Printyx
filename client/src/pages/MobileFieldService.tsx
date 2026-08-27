@@ -341,15 +341,15 @@ export default function MobileFieldService() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Service Notes</label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium">Service Notes</span>
                   <Textarea
                     value={serviceNotes}
                     onChange={(e) => setServiceNotes(e.target.value)}
                     placeholder="Document service activities, findings, or recommendations..."
                     rows={4}
                   />
-                </div>
+                </label>
 
                 <Button
                   onClick={handleCheckOut}

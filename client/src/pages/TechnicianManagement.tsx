@@ -540,6 +540,7 @@ export default function TechnicianManagement() {
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
+                    aria-label="Search technicians"
                     placeholder="Search technicians..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}

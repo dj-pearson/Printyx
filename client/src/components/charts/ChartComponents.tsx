@@ -207,6 +207,7 @@ export function ChartWrapper({
             <div className={cn('flex items-center', isMobile ? 'space-x-1 self-end' : 'space-x-2')}>
               {onRefresh && (
                 <Button
+                  aria-label="Refresh"
                   variant="ghost"
                   size={isMobile ? 'sm' : 'sm'}
                   onClick={onRefresh}
@@ -217,6 +218,7 @@ export function ChartWrapper({
               )}
               {onExport && (
                 <Button
+                  aria-label="Export"
                   variant="ghost"
                   size={isMobile ? 'sm' : 'sm'}
                   onClick={onExport}
@@ -227,6 +229,7 @@ export function ChartWrapper({
               )}
               {onExpand && (
                 <Button
+                  aria-label="Expand"
                   variant="ghost"
                   size={isMobile ? 'sm' : 'sm'}
                   onClick={onExpand}

@@ -146,7 +146,7 @@ export default function TaskHub() {
                 <Plus className="h-4 w-4 mr-2" />
                 New Task
               </Button>
-              <Button variant="outline" size="sm">
+              <Button aria-label="Settings" variant="outline" size="sm">
                 <Settings className="h-4 w-4" />
               </Button>
             </div>

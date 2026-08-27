@@ -5,6 +5,19 @@ import { sendEmail } from './email-service';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('ticket-creation-service');
 
+/** users has firstName/lastName; there is no `name` column. */
+function technicianName(tech: { firstName?: string | null; lastName?: string | null }): string {
+  return [tech.firstName, tech.lastName].filter(Boolean).join(' ') || 'Unnamed technician';
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export interface ParsedTicketData {
   customerName?: string;
   customerEmail: string;
@@ -92,28 +105,42 @@ export class TicketCreationService {
     });
 
     if (customer) {
-      log.info(`[TicketCreation] Found existing customer: ${customer.name} (${customer.id})`);
+      log.info(
+        `[TicketCreation] Found existing customer: ${customer.companyName} (${customer.id})`,
+      );
       return customer.id;
     }
 
     // Create new customer (lead)
     log.info('[TicketCreation] Creating new customer from email');
 
+    // Every key here used to be a field business_records does not have — name,
+    // email and source, where the columns are companyName, primaryContactEmail
+    // and leadSource. Drizzle drops unknown keys silently, so what actually ran
+    // was an insert of tenant_id and nothing else, against a table where
+    // company_name and created_by are both NOT NULL with no default
+    // (migration 0000). It threw every time, which means no email from an
+    // unrecognised sender has ever become a ticket.
     const [newCustomer] = await db
       .insert(businessRecords)
       .values({
         tenantId: this.tenantId,
-        name: ticketData.customerName || ticketData.customerEmail.split('@')[0],
-        email: ticketData.customerEmail,
-        phone: ticketData.contactPhone || null,
-        status: 'lead', // Start as lead since they're contacting us
-        source: 'email',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        companyName: ticketData.customerName || ticketData.customerEmail.split('@')[0],
+        primaryContactName: ticketData.customerName || null,
+        primaryContactEmail: ticketData.customerEmail,
+        primaryContactPhone: ticketData.contactPhone || null,
+        recordType: 'lead',
+        status: 'new',
+        leadSource: 'email',
+        // No user raises these — the email monitor does. 'system' is the
+        // sentinel the seeders already use for a row with no human author.
+        createdBy: 'system',
       })
       .returning();
 
-    log.info(`[TicketCreation] Created new customer: ${newCustomer.name} (${newCustomer.id})`);
+    log.info(
+      `[TicketCreation] Created new customer: ${newCustomer.companyName} (${newCustomer.id})`,
+    );
 
     return newCustomer.id;
   }
@@ -130,16 +157,19 @@ export class TicketCreationService {
     });
 
     // Try fuzzy matching
+    // The columns are modelNumber and locationDescription; `model` and
+    // `location` do not exist, so both of those clauses were always undefined
+    // and only a serial-number match could ever succeed.
     const match = customerEquipment.find(
       (e) =>
         e.serialNumber?.toLowerCase().includes(identifierLower) ||
-        e.model?.toLowerCase().includes(identifierLower) ||
-        e.location?.toLowerCase().includes(identifierLower),
+        e.modelNumber?.toLowerCase().includes(identifierLower) ||
+        e.locationDescription?.toLowerCase().includes(identifierLower),
     );
 
     if (match) {
       log.info(
-        `[TicketCreation] Matched equipment: ${match.manufacturer} ${match.model} (${match.id})`,
+        `[TicketCreation] Matched equipment: ${match.manufacturer} ${match.modelNumber} (${match.id})`,
       );
       return match.id;
     }
@@ -274,7 +304,8 @@ export class TicketCreationService {
         where: and(
           eq(users.tenantId, this.tenantId),
           eq(users.role, 'Technician'),
-          eq(users.status, 'active'),
+          // users has isActive, not status (there is no status column).
+          eq(users.isActive, true),
         ),
       });
 
@@ -313,8 +344,8 @@ export class TicketCreationService {
           // 2. Skills Match (25 points max)
           const skillsScore = await this.calculateSkillsScore(
             tech,
-            equipmentData?.make || '',
-            equipmentData?.model || '',
+            equipmentData?.manufacturer || '',
+            equipmentData?.modelNumber || '',
           );
           score += skillsScore;
           if (skillsScore > 15) {
@@ -324,7 +355,11 @@ export class TicketCreationService {
           }
 
           // 3. Geographic Proximity (15 points max)
-          const proximityScore = await this.calculateProximityScore(tech, customer?.address || '');
+          // business_records has addressLine1/city/state, not a single address.
+          const proximityScore = await this.calculateProximityScore(
+            tech,
+            [customer?.addressLine1, customer?.city, customer?.state].filter(Boolean).join(', '),
+          );
           score += proximityScore;
           if (proximityScore > 10) {
             reasons.push('Close proximity to customer');
@@ -353,7 +388,7 @@ export class TicketCreationService {
       // Auto-assign if confidence is high enough (>= 80 points)
       if (bestMatch.score >= 80) {
         log.info(
-          `[SmartDispatch] ✅ AI AUTO-ASSIGNED to ${bestMatch.technician.name} (Score: ${bestMatch.score}/100)`,
+          `[SmartDispatch] ✅ AI AUTO-ASSIGNED to ${technicianName(bestMatch.technician)} (Score: ${bestMatch.score}/100)`,
         );
         log.info(`[SmartDispatch] Reasons: ${bestMatch.reasons.join(', ')}`);
 
@@ -377,7 +412,7 @@ export class TicketCreationService {
         log.info(`[SmartDispatch] Top candidates:`);
         scoredTechnicians.slice(0, 3).forEach((match, i) => {
           log.info(
-            `  ${i + 1}. ${match.technician.name} (${match.score} pts) - ${match.reasons.join(', ')}`,
+            `  ${i + 1}. ${technicianName(match.technician)} (${match.score} pts) - ${match.reasons.join(', ')}`,
           );
         });
 
@@ -544,10 +579,14 @@ Printyx Support Team
 ---
 This ticket was created automatically from your email. If you did not request service, please contact us immediately.`;
 
+      // sendEmail takes { to, subject, html, text? }. `body` was not a field on
+      // it, and Drizzle is not the only thing that drops unknown keys — the
+      // confirmation went out with no content at all.
       await sendEmail({
         to: customerEmail,
         subject,
-        body,
+        text: body,
+        html: `<pre style="font-family:inherit;white-space:pre-wrap">${escapeHtml(body)}</pre>`,
       });
 
       log.info(`[TicketCreation] ✓ Sent confirmation email to ${customerEmail}`);

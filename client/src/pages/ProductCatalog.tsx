@@ -542,6 +542,7 @@ export default function ProductCatalog() {
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Search Products</Label>
                     <Input
+                      aria-label="Search by name or model"
                       placeholder="Search by name or model..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}

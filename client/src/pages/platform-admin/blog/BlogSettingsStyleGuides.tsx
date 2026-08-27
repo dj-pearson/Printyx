@@ -573,7 +573,7 @@ function GuideFormCard({
               pattern, severity, and a message shown to writers.
             </CardDescription>
           </div>
-          <Button size="sm" variant="ghost" onClick={onCancel} type="button">
+          <Button aria-label="Cancel" size="sm" variant="ghost" onClick={onCancel} type="button">
             <X className="h-4 w-4" />
           </Button>
         </div>

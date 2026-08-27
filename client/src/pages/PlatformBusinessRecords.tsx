@@ -322,6 +322,7 @@ export default function PlatformBusinessRecords() {
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
+                    aria-label="Search business records"
                     placeholder="Company name, email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -587,7 +588,7 @@ export default function PlatformBusinessRecords() {
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
+                                <Button aria-label="More options" variant="ghost" size="sm">
                                   <MoreVertical className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>

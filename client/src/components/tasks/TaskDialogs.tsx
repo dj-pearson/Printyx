@@ -380,6 +380,7 @@ export function CreateTaskDialog({
                     className="h-11 touch-manipulation text-base"
                   />
                   <Button
+                    aria-label="Add"
                     type="button"
                     variant="outline"
                     size="sm"

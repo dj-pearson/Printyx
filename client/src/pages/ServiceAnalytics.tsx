@@ -1468,10 +1468,10 @@ export default function ServiceAnalytics() {
                               </div>
                             )}
                             <div className="flex space-x-1">
-                              <Button variant="outline" size="sm">
+                              <Button aria-label="View details" variant="outline" size="sm">
                                 <Eye className="h-3 w-3" />
                               </Button>
-                              <Button variant="outline" size="sm">
+                              <Button aria-label="Settings" variant="outline" size="sm">
                                 <Settings className="h-3 w-3" />
                               </Button>
                             </div>

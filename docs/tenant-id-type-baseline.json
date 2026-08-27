@@ -1,0 +1,26 @@
+{
+  "note": "QUALITY-002. Tables whose tenant_id is not the type tenants.id is (varchar uuid), so no real tenant id can match. This list only shrinks: fixing one means a migration, and a data migration where the table holds rows. A NEW entry is a defect, not debt.",
+  "allowed": [
+    "auto-supply-replenishment-schema.ts:autoSupplyOrders",
+    "auto-supply-replenishment-schema.ts:supplyMonitoring",
+    "auto-supply-replenishment-schema.ts:supplyReplenishmentAnalytics",
+    "auto-supply-replenishment-schema.ts:supplyReplenishmentRules",
+    "auto-supply-replenishment-schema.ts:supplyUsageHistory",
+    "contract-renewal-schema.ts:contractRenewalTracking",
+    "contract-renewal-schema.ts:renewalAnalytics",
+    "contract-renewal-schema.ts:renewalAutomationRules",
+    "contract-renewal-schema.ts:renewalCommunicationLog",
+    "contract-renewal-schema.ts:renewalProposals",
+    "document-automation-schema.ts:documentFieldMappings",
+    "document-automation-schema.ts:documentNotifications",
+    "document-automation-schema.ts:documentTemplates",
+    "document-automation-schema.ts:documentUploads",
+    "document-automation-schema.ts:documentWorkflowActions",
+    "document-automation-schema.ts:generatedDocuments",
+    "printyx-client-schema.ts:clientCollectedMetrics",
+    "printyx-client-schema.ts:clientRegistrations",
+    "printyx-client-schema.ts:deviceMeterHistory",
+    "printyx-client-schema.ts:monitoredDevices",
+    "printyx-client-schema.ts:tonerAlerts"
+  ]
+}

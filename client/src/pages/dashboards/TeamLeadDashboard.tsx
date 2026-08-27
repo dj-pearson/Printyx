@@ -125,7 +125,7 @@ export default function TeamLeadDashboard() {
               </div>
             </PopoverContent>
           </Popover>
-          <Button variant="outline" size="icon" onClick={handleRefresh}>
+          <Button aria-label="Refresh" variant="outline" size="icon" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>

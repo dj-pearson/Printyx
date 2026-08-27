@@ -98,7 +98,7 @@ export function ChurnRiskHeatmap({ data }: ChurnRiskHeatmapProps) {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm">
+                      <Button aria-label="Call" variant="outline" size="sm">
                         <Phone className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
@@ -109,7 +109,7 @@ export function ChurnRiskHeatmap({ data }: ChurnRiskHeatmapProps) {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm">
+                      <Button aria-label="Send email" variant="outline" size="sm">
                         <Mail className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>

@@ -653,6 +653,7 @@ export default function IntegrationHub() {
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                           <Input
+                            aria-label="Search APIs and integrations"
                             placeholder="Search APIs and integrations..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -919,13 +920,13 @@ export default function IntegrationHub() {
                                 ID: {integration.id?.substring(0, 8)}...
                               </div>
                               <div className="flex gap-2">
-                                <Button size="sm" variant="outline">
+                                <Button aria-label="View details" size="sm" variant="outline">
                                   <Eye className="h-4 w-4" />
                                 </Button>
-                                <Button size="sm" variant="outline">
+                                <Button aria-label="Settings" size="sm" variant="outline">
                                   <Settings className="h-4 w-4" />
                                 </Button>
-                                <Button size="sm">
+                                <Button aria-label="Refresh" size="sm">
                                   <RefreshCw className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -1099,13 +1100,17 @@ export default function IntegrationHub() {
                                         {integration.errorCount} errors today
                                       </div>
                                       <div className="flex gap-2">
-                                        <Button size="sm" variant="outline">
+                                        <Button
+                                          aria-label="View details"
+                                          size="sm"
+                                          variant="outline"
+                                        >
                                           <Eye className="h-4 w-4" />
                                         </Button>
-                                        <Button size="sm" variant="outline">
+                                        <Button aria-label="Settings" size="sm" variant="outline">
                                           <Settings className="h-4 w-4" />
                                         </Button>
-                                        <Button size="sm">
+                                        <Button aria-label="Refresh" size="sm">
                                           <RefreshCw className="h-4 w-4" />
                                         </Button>
                                       </div>

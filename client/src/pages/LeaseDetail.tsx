@@ -195,7 +195,7 @@ export default function LeaseDetail() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/leases">
-            <Button variant="ghost" size="icon" data-testid="button-back">
+            <Button aria-label="Go back" variant="ghost" size="icon" data-testid="button-back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>

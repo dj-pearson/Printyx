@@ -68,6 +68,29 @@ export interface CrmObjectConfig {
 
 // ─── Deals Configuration ───────────────────────────────────────────
 
+/**
+ * COP-M04. The two closed vocabularies on `deals`, shared by the column
+ * renderer and the quick filter so a value can never be spelled two ways.
+ * Stored as varchar rather than a pgEnum, so adding a motion is a change here
+ * plus wherever the deal form offers it, not a migration.
+ */
+export const DEAL_MOTION_OPTIONS = [
+  { value: 'new_logo', label: 'New Logo' },
+  { value: 'fleet_refresh', label: 'Fleet Refresh' },
+  { value: 'lease_rollover', label: 'Lease Rollover' },
+  { value: 'expansion', label: 'Expansion' },
+  { value: 'renewal', label: 'Renewal' },
+  { value: 'competitive_takeaway', label: 'Competitive Takeaway' },
+  { value: 'service_only', label: 'Service Only' },
+];
+
+export const FORECAST_CATEGORY_OPTIONS = [
+  { value: 'pipeline', label: 'Pipeline' },
+  { value: 'best_case', label: 'Best Case' },
+  { value: 'commit', label: 'Commit' },
+  { value: 'closed', label: 'Closed' },
+];
+
 const dealsConfig: CrmObjectConfig = {
   objectType: 'deals',
   label: 'Deal',
@@ -151,6 +174,84 @@ const dealsConfig: CrmObjectConfig = {
       width: 'min-w-[100px]',
     },
     { field: 'createdAt', label: 'Created', type: 'date', sortable: true, width: 'min-w-[130px]' },
+    // COP-M04: the copier-deal fields. Available as columns and sortable (every
+    // one is in DEAL_LIST_SPEC.sortFields), but deliberately NOT in
+    // defaultColumns - a rep working new logos should not carry a lease-buyout
+    // column by default. Add them to a saved view instead.
+    {
+      field: 'dealMotion',
+      label: 'Motion',
+      type: 'select',
+      sortable: true,
+      editable: true,
+      width: 'min-w-[160px]',
+      options: DEAL_MOTION_OPTIONS,
+    },
+    {
+      field: 'forecastCategory',
+      label: 'Forecast',
+      type: 'select',
+      sortable: true,
+      editable: true,
+      width: 'min-w-[130px]',
+      options: FORECAST_CATEGORY_OPTIONS,
+    },
+    {
+      field: 'incumbentVendor',
+      label: 'Incumbent',
+      type: 'text',
+      sortable: true,
+      editable: true,
+      width: 'min-w-[150px]',
+    },
+    {
+      field: 'leaseBuyoutExposure',
+      label: 'Buyout Exposure',
+      type: 'currency',
+      sortable: true,
+      editable: true,
+      width: 'min-w-[140px]',
+    },
+    {
+      field: 'tradeInValue',
+      label: 'Trade-In',
+      type: 'currency',
+      sortable: true,
+      editable: true,
+      width: 'min-w-[120px]',
+    },
+    {
+      field: 'currentMonthlyVolumeBw',
+      label: 'Current B/W Vol.',
+      type: 'number',
+      sortable: true,
+      editable: true,
+      width: 'min-w-[140px]',
+    },
+    {
+      field: 'currentMonthlyVolumeColor',
+      label: 'Current Color Vol.',
+      type: 'number',
+      sortable: true,
+      editable: true,
+      width: 'min-w-[150px]',
+    },
+    {
+      field: 'targetCpcBlack',
+      label: 'Target CPC B/W',
+      type: 'number',
+      sortable: true,
+      editable: true,
+      width: 'min-w-[140px]',
+    },
+    {
+      field: 'targetCpcColor',
+      label: 'Target CPC Color',
+      type: 'number',
+      sortable: true,
+      editable: true,
+      width: 'min-w-[150px]',
+    },
   ],
   defaultColumns: [
     'title',
@@ -185,6 +286,22 @@ const dealsConfig: CrmObjectConfig = {
         { value: 'high', label: 'High' },
         { value: 'urgent', label: 'Urgent' },
       ],
+    },
+    // COP-M04. Only the two closed vocabularies get quick filters; the amounts
+    // and volumes want a range control the list layer does not have, and an
+    // equality filter on a currency would never match. serverKey matches
+    // DEAL_LIST_SPEC.filterKeys, which the deals handler reads.
+    {
+      field: 'dealMotion',
+      label: 'Motion',
+      serverKey: 'dealMotion',
+      options: DEAL_MOTION_OPTIONS,
+    },
+    {
+      field: 'forecastCategory',
+      label: 'Forecast',
+      serverKey: 'forecastCategory',
+      options: FORECAST_CATEGORY_OPTIONS,
     },
   ],
   statusConfigs: [

@@ -27,7 +27,47 @@ export const CRM_ASSOCIABLE_TYPES = [
   'task',
   'activity',
   'note',
+  // COP-M05: installed-base machines. A copier deal is defined by the serials it
+  // replaces and the serials it places, and `deals` had no link to `equipment`
+  // at all. It goes through this generic join rather than a bespoke deal_equipment
+  // table, so the link survives the lead -> customer lifecycle like every other
+  // association and needs no migration.
+  'equipment',
 ] as const;
+
+/**
+ * COP-M05. A deal<->equipment link MUST say which way it points. 'replaces' is a
+ * machine going out (its buyout and current volume price the deal); 'places' is a
+ * machine going in (it prices the proposal). The default 'related' is meaningless
+ * here and would make the Opportunity Radar in COP-B04 unable to tell the two
+ * apart, so it is rejected rather than accepted and guessed at later.
+ */
+export const DEAL_EQUIPMENT_RELATIONS = ['replaces', 'places'] as const;
+
+/** True when the pair is a deal<->equipment link, in either direction. */
+export function isDealEquipmentLink(sourceType: string, targetType: string): boolean {
+  return (
+    (sourceType === 'deal' && targetType === 'equipment') ||
+    (sourceType === 'equipment' && targetType === 'deal')
+  );
+}
+
+/**
+ * Returns an error message when the association is a deal<->equipment link
+ * carrying a relation outside DEAL_EQUIPMENT_RELATIONS, otherwise null.
+ * Duplicated for Deno at supabase/functions/_shared/crm-associations.ts and
+ * locked by server/tests/unit/crm-associations-parity.test.ts.
+ */
+export function dealEquipmentRelationError(link: {
+  sourceType: string;
+  targetType: string;
+  relation?: string | null;
+}): string | null {
+  if (!isDealEquipmentLink(link.sourceType, link.targetType)) return null;
+  const relation = link.relation ?? 'related';
+  if ((DEAL_EQUIPMENT_RELATIONS as readonly string[]).includes(relation)) return null;
+  return `A deal-equipment association needs relation ${DEAL_EQUIPMENT_RELATIONS.map((r) => `'${r}'`).join(' or ')}, got '${relation}'.`;
+}
 
 // ==================== Notes ====================
 
@@ -122,7 +162,14 @@ export const insertCrmAssociationSchema = createInsertSchema(crmAssociations, {
   targetType: z.enum(CRM_ASSOCIABLE_TYPES),
   targetId: z.string().min(1),
   relation: z.string().max(40).optional(),
-}).omit({ id: true, tenantId: true, createdBy: true, createdAt: true });
+})
+  .omit({ id: true, tenantId: true, createdBy: true, createdAt: true })
+  // COP-M05: the role is mandatory on a deal<->equipment link. Every other pair
+  // keeps the free-form label and its 'related' default.
+  .superRefine((link, ctx) => {
+    const message = dealEquipmentRelationError(link);
+    if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['relation'], message });
+  });
 
 export type CrmNote = typeof crmNotes.$inferSelect;
 export type InsertCrmNote = z.infer<typeof insertCrmNoteSchema>;

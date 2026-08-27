@@ -203,6 +203,7 @@ export default function MobileLogsViewer() {
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
+                  aria-label="Search message"
                   placeholder="Search message..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}

@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
+import { clickableProps } from '@/lib/accessibility';
 
 interface Deal {
   id: string;
@@ -499,9 +500,9 @@ export default function PlatformDealDetail() {
                         <span className="text-muted-foreground">Company:</span>
                         <span
                           className="font-semibold text-primary hover:underline cursor-pointer"
-                          onClick={() =>
-                            setLocation(`/platform-crm/business-records/${deal.businessRecordId}`)
-                          }
+                          {...clickableProps(() =>
+                            setLocation(`/platform-crm/business-records/${deal.businessRecordId}`),
+                          )}
                         >
                           {deal.businessRecordName || 'Unknown'}
                         </span>

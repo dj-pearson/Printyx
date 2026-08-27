@@ -1194,6 +1194,7 @@ export default function Contacts() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
+                    aria-label="Search name, phone, email"
                     placeholder="Search name, phone, email..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -1261,6 +1262,7 @@ export default function Contacts() {
                 </Button>
 
                 <Button
+                  aria-label="Settings"
                   variant="outline"
                   size="sm"
                   className="min-h-[44px] touch-manipulation active:scale-[0.98]"
@@ -1537,7 +1539,7 @@ export default function Contacts() {
                           <td className="p-4">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
+                                <Button aria-label="More options" variant="ghost" size="sm">
                                   <MoreHorizontal className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -1627,6 +1629,7 @@ export default function Contacts() {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
+                              aria-label="More options"
                               variant="ghost"
                               size="sm"
                               className="min-w-[44px] min-h-[44px] touch-manipulation active:scale-[0.98]"

@@ -79,6 +79,7 @@ import { ColumnMappingInterface } from './ColumnMappingInterface';
 import { apiRequest, apiFormRequest } from '@/lib/queryClient';
 import { getAccessToken } from '@/lib/supabase';
 import { config, getApiUrl } from '@/lib/config';
+import { clickableProps } from '@/lib/accessibility';
 
 // Types
 interface EntityType {
@@ -569,7 +570,10 @@ export function CsvImportWizard({
       case 'upload':
         return (
           <div className="space-y-6">
-            {/* File drop zone */}
+            {/* File drop zone. CR-035: role/tabIndex/onKeyDown all come from
+                clickableProps. The rule fires anyway because this element keeps
+                its own drag handlers and cannot see through a spread. */}
+            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                 selectedFile
@@ -578,7 +582,7 @@ export function CsvImportWizard({
               }`}
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
-              onClick={() => fileInputRef.current?.click()}
+              {...clickableProps(() => fileInputRef.current?.click())}
             >
               <input
                 ref={fileInputRef}

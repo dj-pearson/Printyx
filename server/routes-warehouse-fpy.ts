@@ -50,28 +50,32 @@ router.get('/warehouse-kitting-operations', async (req, res) => {
     const tenantId = req.headers['x-tenant-id'] as string;
     const { status, technician, fromDate, toDate } = req.query;
 
-    let query = db
-      .select()
-      .from(warehouseKittingOperations)
-      .where(eq(warehouseKittingOperations.tenantId, tenantId));
+    // QUALITY-002: drizzle's where() ASSIGNS rather than ANDs, so the old
+    // `query = query.where(...)` chain replaced the tenant predicate outright.
+    // Passing ?status=open returned every tenant's kitting operations.
+    const conditions = [eq(warehouseKittingOperations.tenantId, tenantId)];
 
     if (status) {
-      query = query.where(eq(warehouseKittingOperations.operationStatus, status as string));
+      conditions.push(eq(warehouseKittingOperations.operationStatus, status as string));
     }
 
     if (technician) {
-      query = query.where(eq(warehouseKittingOperations.assignedTechnician, technician as string));
+      conditions.push(eq(warehouseKittingOperations.assignedTechnician, technician as string));
     }
 
     if (fromDate) {
-      query = query.where(gte(warehouseKittingOperations.createdAt, new Date(fromDate as string)));
+      conditions.push(gte(warehouseKittingOperations.createdAt, new Date(fromDate as string)));
     }
 
     if (toDate) {
-      query = query.where(lte(warehouseKittingOperations.createdAt, new Date(toDate as string)));
+      conditions.push(lte(warehouseKittingOperations.createdAt, new Date(toDate as string)));
     }
 
-    const operations = await query.orderBy(desc(warehouseKittingOperations.createdAt));
+    const operations = await db
+      .select()
+      .from(warehouseKittingOperations)
+      .where(and(...conditions))
+      .orderBy(desc(warehouseKittingOperations.createdAt));
 
     res.json(operations);
   } catch (error) {
@@ -345,29 +349,31 @@ router.get('/auto-invoices', async (req, res) => {
     const tenantId = req.headers['x-tenant-id'] as string;
     const { status, fromDate, toDate, delayFilter } = req.query;
 
-    let query = db
-      .select()
-      .from(autoInvoiceGeneration)
-      .where(eq(autoInvoiceGeneration.tenantId, tenantId));
+    // QUALITY-002: see the kitting-operations note above. Same defect, same fix.
+    const conditions = [eq(autoInvoiceGeneration.tenantId, tenantId)];
 
     if (status) {
-      query = query.where(eq(autoInvoiceGeneration.generationStatus, status as string));
+      conditions.push(eq(autoInvoiceGeneration.generationStatus, status as string));
     }
 
     if (fromDate) {
-      query = query.where(gte(autoInvoiceGeneration.triggeredAt, new Date(fromDate as string)));
+      conditions.push(gte(autoInvoiceGeneration.triggeredAt, new Date(fromDate as string)));
     }
 
     if (toDate) {
-      query = query.where(lte(autoInvoiceGeneration.triggeredAt, new Date(toDate as string)));
+      conditions.push(lte(autoInvoiceGeneration.triggeredAt, new Date(toDate as string)));
     }
 
     // Filter for issuance delay > 24 hours
     if (delayFilter === 'gt_24h') {
-      query = query.where(sql`${autoInvoiceGeneration.issuanceDelayHours} > 24`);
+      conditions.push(sql`${autoInvoiceGeneration.issuanceDelayHours} > 24`);
     }
 
-    const invoices = await query.orderBy(desc(autoInvoiceGeneration.triggeredAt));
+    const invoices = await db
+      .select()
+      .from(autoInvoiceGeneration)
+      .where(and(...conditions))
+      .orderBy(desc(autoInvoiceGeneration.triggeredAt));
 
     res.json(invoices);
   } catch (error) {

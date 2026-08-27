@@ -17,6 +17,7 @@ import { serviceTickets } from '../shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 // Auth helpers for Supabase JWT + session fallback
 import { getTenantId } from './utils/auth-helpers';
+import { badRequest, notFound, serverError } from './lib/error-response';
 
 // Every handler here reads the tenant from the request and then filters by it.
 // getTenantId returns `string | undefined`, and passing undefined into eq() does
@@ -30,7 +31,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
       const { ticketId } = req.params;
 
@@ -48,7 +49,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       res.json(analysis);
     } catch (error) {
       log.error('Error fetching service analysis:', error);
-      res.status(500).json({ error: 'Failed to fetch service analysis' });
+      serverError(res, 'Failed to fetch service analysis');
     }
   });
 
@@ -57,7 +58,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
       const { ticketId } = req.params;
       const analysisData = insertServiceCallAnalysisSchema.parse({
@@ -84,7 +85,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       res.status(201).json(newAnalysis);
     } catch (error) {
       log.error('Error creating service analysis:', error);
-      res.status(500).json({ error: 'Failed to create service analysis' });
+      serverError(res, 'Failed to create service analysis');
     }
   });
 
@@ -93,7 +94,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
       const { id } = req.params;
       const updateData = req.body;
@@ -105,13 +106,13 @@ export function registerServiceAnalysisRoutes(app: Express) {
         .returning();
 
       if (!updatedAnalysis) {
-        return res.status(404).json({ error: 'Service analysis not found' });
+        return notFound(res, 'Service analysis not found');
       }
 
       res.json(updatedAnalysis);
     } catch (error) {
       log.error('Error updating service analysis:', error);
-      res.status(500).json({ error: 'Failed to update service analysis' });
+      serverError(res, 'Failed to update service analysis');
     }
   });
 
@@ -120,7 +121,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
       const { analysisId } = req.params;
 
@@ -134,7 +135,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       res.json(parts);
     } catch (error) {
       log.error('Error fetching parts used:', error);
-      res.status(500).json({ error: 'Failed to fetch parts used' });
+      serverError(res, 'Failed to fetch parts used');
     }
   });
 
@@ -143,7 +144,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
       const { analysisId } = req.params;
       const partsData = insertServicePartsUsedSchema.parse({
@@ -157,7 +158,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       res.status(201).json(newPart);
     } catch (error) {
       log.error('Error adding parts used:', error);
-      res.status(500).json({ error: 'Failed to add parts used' });
+      serverError(res, 'Failed to add parts used');
     }
   });
 
@@ -166,7 +167,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
       const { analysisId } = req.params;
 
@@ -180,7 +181,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
         .limit(1);
 
       if (!analysis.length) {
-        return res.status(404).json({ error: 'Service analysis not found' });
+        return notFound(res, 'Service analysis not found');
       }
 
       const orderData = insertPartsOrderSchema.parse({
@@ -196,7 +197,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       res.status(201).json(newOrder);
     } catch (error) {
       log.error('Error creating parts order:', error);
-      res.status(500).json({ error: 'Failed to create parts order' });
+      serverError(res, 'Failed to create parts order');
     }
   });
 
@@ -205,7 +206,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
       const { analysisId } = req.params;
 
@@ -218,7 +219,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       res.json(orders);
     } catch (error) {
       log.error('Error fetching parts orders:', error);
-      res.status(500).json({ error: 'Failed to fetch parts orders' });
+      serverError(res, 'Failed to fetch parts orders');
     }
   });
 
@@ -227,7 +228,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
       const { orderId } = req.params;
       const { status, trackingNumber, actualDeliveryDate } = req.body;
@@ -244,13 +245,13 @@ export function registerServiceAnalysisRoutes(app: Express) {
         .returning();
 
       if (!updatedOrder) {
-        return res.status(404).json({ error: 'Parts order not found' });
+        return notFound(res, 'Parts order not found');
       }
 
       res.json(updatedOrder);
     } catch (error) {
       log.error('Error updating parts order:', error);
-      res.status(500).json({ error: 'Failed to update parts order' });
+      serverError(res, 'Failed to update parts order');
     }
   });
 
@@ -259,7 +260,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
       const { orderId } = req.params;
       const itemsData = req.body.items || [req.body]; // Support both single item and array
@@ -277,7 +278,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       res.status(201).json(newItems);
     } catch (error) {
       log.error('Error adding parts order items:', error);
-      res.status(500).json({ error: 'Failed to add parts order items' });
+      serverError(res, 'Failed to add parts order items');
     }
   });
 
@@ -286,7 +287,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
       const { orderId } = req.params;
 
@@ -298,7 +299,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       res.json(items);
     } catch (error) {
       log.error('Error fetching parts order items:', error);
-      res.status(500).json({ error: 'Failed to fetch parts order items' });
+      serverError(res, 'Failed to fetch parts order items');
     }
   });
 
@@ -307,7 +308,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
 
       const stats = await db
@@ -337,7 +338,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       });
     } catch (error) {
       log.error('Error fetching service analysis stats:', error);
-      res.status(500).json({ error: 'Failed to fetch service analysis stats' });
+      serverError(res, 'Failed to fetch service analysis stats');
     }
   });
 
@@ -346,7 +347,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
+        return badRequest(res, 'Tenant ID is required');
       }
       const limit = parseInt(req.query.limit as string) || 10;
 
@@ -371,7 +372,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       res.json(recentAnalyses);
     } catch (error) {
       log.error('Error fetching recent service analyses:', error);
-      res.status(500).json({ error: 'Failed to fetch recent service analyses' });
+      serverError(res, 'Failed to fetch recent service analyses');
     }
   });
 }

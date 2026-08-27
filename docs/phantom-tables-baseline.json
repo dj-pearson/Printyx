@@ -100,7 +100,6 @@
     "service_analyses (supabase/functions/service-analysis/index.ts)",
     "service_analysis_parts (supabase/functions/service-analysis/index.ts)",
     "service_appointments (supabase/functions/appointments/index.ts)",
-    "t (supabase/functions/_shared/case.ts)",
     "task_time_entries (supabase/functions/task-comments/index.ts)",
     "tax_rates (supabase/functions/tax-rates/index.ts)",
     "team_members (supabase/functions/team-reports/index.ts)",

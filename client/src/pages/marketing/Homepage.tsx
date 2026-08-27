@@ -279,7 +279,7 @@ const Homepage = () => {
             <div className="md:hidden">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm">
+                  <Button aria-label="Open menu" variant="ghost" size="sm">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>

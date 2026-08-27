@@ -413,6 +413,8 @@ import {
   type InsertRenewalOpportunity,
 } from '@shared/customer-success-schema';
 import { db } from './db';
+import { mirrorLegacyStage } from './lib/pipeline-stage-mirror';
+import { pipelineStages } from '@shared/pipeline-configuration-schema';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('storage');
 
@@ -1426,6 +1428,10 @@ export interface IStorage {
     tenantId: string,
     ticketId: string,
   ): Promise<GpsLocationHistory[]>;
+  /** Every technician's activity on one ticket. GET
+   *  /api/gps/tickets/:ticketId/activity-timeline has no technician in its path
+   *  and was calling a method of this name that did not exist. */
+  getTicketActivityTimeline(ticketId: string, tenantId: string): Promise<GpsLocationHistory[]>;
   calculateDistanceTraveled(
     technicianId: string,
     tenantId: string,
@@ -1504,6 +1510,12 @@ export interface IStorage {
   getLatestEtaForTicket(
     ticketId: string,
     technicianId: string,
+    tenantId: string,
+  ): Promise<EtaCalculation | null>;
+  /** Latest ETA for a ticket whichever technician it was calculated for. GET
+   *  /api/gps/tickets/:ticketId/eta has no technician in its path. */
+  getLatestEtaForTicketAnyTechnician(
+    ticketId: string,
     tenantId: string,
   ): Promise<EtaCalculation | null>;
   updateActualArrival(
@@ -1954,37 +1966,49 @@ export class DatabaseStorage implements IStorage {
       .from(masterProductAccessories)
       .$dynamic();
 
-    // Apply filters to both queries
+    // Apply filters to both queries.
+    //
+    // QUALITY-002: drizzle's where() ASSIGNS rather than ANDs, so calling it once
+    // per filter meant only the LAST one survived. Searching "Ricoh" inside
+    // category MFP returned every Ricoh item in every category. These two are the
+    // master catalogue and carry no tenant column, so nothing leaked across
+    // tenants here - the results were just wrong.
+    const modelConditions = [];
+    const accessoryConditions = [];
+
     if (params.manufacturer && params.manufacturer !== 'all') {
-      modelQuery = modelQuery.where(eq(masterProductModels.manufacturer, params.manufacturer));
-      accessoryQuery = accessoryQuery.where(
-        eq(masterProductAccessories.manufacturer, params.manufacturer),
-      );
+      modelConditions.push(eq(masterProductModels.manufacturer, params.manufacturer));
+      accessoryConditions.push(eq(masterProductAccessories.manufacturer, params.manufacturer));
     }
     if (params.category && params.category !== 'all') {
-      modelQuery = modelQuery.where(eq(masterProductModels.category, params.category));
-      accessoryQuery = accessoryQuery.where(eq(masterProductAccessories.category, params.category));
+      modelConditions.push(eq(masterProductModels.category, params.category));
+      accessoryConditions.push(eq(masterProductAccessories.category, params.category));
     }
     if (params.status) {
-      modelQuery = modelQuery.where(eq(masterProductModels.status, params.status));
-      accessoryQuery = accessoryQuery.where(eq(masterProductAccessories.status, params.status));
+      modelConditions.push(eq(masterProductModels.status, params.status));
+      accessoryConditions.push(eq(masterProductAccessories.status, params.status));
     }
     if (params.search) {
       const s = `%${params.search.toLowerCase()}%`;
-      modelQuery = modelQuery.where(
+      modelConditions.push(
         or(
           like(masterProductModels.displayName, s),
           like(masterProductModels.modelCode, s),
           like(masterProductModels.manufacturer, s),
         ),
       );
-      accessoryQuery = accessoryQuery.where(
+      accessoryConditions.push(
         or(
           like(masterProductAccessories.displayName, s),
           like(masterProductAccessories.accessoryCode, s),
           like(masterProductAccessories.manufacturer, s),
         ),
       );
+    }
+
+    if (modelConditions.length) modelQuery = modelQuery.where(and(...modelConditions));
+    if (accessoryConditions.length) {
+      accessoryQuery = accessoryQuery.where(and(...accessoryConditions));
     }
 
     // Execute both queries and combine results
@@ -4402,8 +4426,10 @@ export class DatabaseStorage implements IStorage {
         status: deals.status,
         probability: deals.probability,
         stageId: deals.stageId,
-        stageName: dealStages.name,
-        stageColor: dealStages.color,
+        // COP-M07: canonical stage display, falling back to the legacy row so a
+        // stage that predates the mirror still renders rather than going blank.
+        stageName: sql<string>`coalesce(${pipelineStages.displayName}, ${dealStages.name})`,
+        stageColor: sql<string>`coalesce(${pipelineStages.color}, ${dealStages.color})`,
         ownerId: deals.ownerId,
         ownerName: users.firstName,
         createdAt: deals.createdAt,
@@ -4411,6 +4437,13 @@ export class DatabaseStorage implements IStorage {
       })
       .from(deals)
       .leftJoin(dealStages, eq(deals.stageId, dealStages.id))
+      .leftJoin(
+        pipelineStages,
+        and(
+          eq(pipelineStages.legacyStageId, deals.stageId),
+          eq(pipelineStages.tenantId, deals.tenantId),
+        ),
+      )
       .leftJoin(users, eq(deals.ownerId, users.id))
       .where(and(...conditions))
       .orderBy(desc(deals.createdAt));
@@ -4437,8 +4470,10 @@ export class DatabaseStorage implements IStorage {
         status: deals.status,
         probability: deals.probability,
         stageId: deals.stageId,
-        stageName: dealStages.name,
-        stageColor: dealStages.color,
+        // COP-M07: canonical stage display, falling back to the legacy row so a
+        // stage that predates the mirror still renders rather than going blank.
+        stageName: sql<string>`coalesce(${pipelineStages.displayName}, ${dealStages.name})`,
+        stageColor: sql<string>`coalesce(${pipelineStages.color}, ${dealStages.color})`,
         ownerId: deals.ownerId,
         ownerName: users.firstName,
         createdAt: deals.createdAt,
@@ -4446,6 +4481,13 @@ export class DatabaseStorage implements IStorage {
       })
       .from(deals)
       .leftJoin(dealStages, eq(deals.stageId, dealStages.id))
+      .leftJoin(
+        pipelineStages,
+        and(
+          eq(pipelineStages.legacyStageId, deals.stageId),
+          eq(pipelineStages.tenantId, deals.tenantId),
+        ),
+      )
       .leftJoin(users, eq(deals.ownerId, users.id))
       .where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)));
     return deal;
@@ -4519,28 +4561,49 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Deal stages operations
+  // COP-M07: the picker keeps returning LEGACY ids, because deals.stage_id lives
+  // in that id space and this list feeds a create. Display and forecast config
+  // come from the canonical mirror, falling back to the legacy row so a stage
+  // that predates the mirror still renders rather than going blank.
   async getDealStages(tenantId: string): Promise<any[]> {
     return await db
       .select({
         id: dealStages.id,
         tenantId: dealStages.tenantId,
-        name: dealStages.name,
+        name: sql<string>`coalesce(${pipelineStages.displayName}, ${dealStages.name})`,
         description: dealStages.description,
-        color: dealStages.color,
+        color: sql<string>`coalesce(${pipelineStages.color}, ${dealStages.color})`,
         sortOrder: dealStages.sortOrder,
         isActive: dealStages.isActive,
         isClosingStage: dealStages.isClosingStage,
         isWonStage: dealStages.isWonStage,
+        // Canonical forecast config. Null when the stage has no mirror yet —
+        // check:stage-resolution reports exactly that case.
+        pipelineStageId: pipelineStages.id,
+        defaultProbability: pipelineStages.defaultProbability,
+        includeInForecast: pipelineStages.includeInForecast,
         createdAt: dealStages.createdAt,
         updatedAt: dealStages.updatedAt,
       })
       .from(dealStages)
+      .leftJoin(
+        pipelineStages,
+        and(
+          eq(pipelineStages.legacyStageId, dealStages.id),
+          eq(pipelineStages.tenantId, dealStages.tenantId),
+        ),
+      )
       .where(and(eq(dealStages.tenantId, tenantId), eq(dealStages.isActive, true)))
       .orderBy(dealStages.sortOrder);
   }
 
+  // COP-M07: both writers mirror into pipeline_stages. A legacy stage with no
+  // canonical mirror is invisible to every surface bound to the canonical model,
+  // and a deal moved into it drops off the board with no error anywhere. The
+  // mirror never throws — see server/lib/pipeline-stage-mirror.ts for why.
   async createDealStage(stage: any): Promise<any> {
     const [newStage] = await db.insert(dealStages).values(stage).returning();
+    if (newStage) await mirrorLegacyStage(newStage);
     return newStage;
   }
 
@@ -4550,6 +4613,7 @@ export class DatabaseStorage implements IStorage {
       .set({ ...stage, updatedAt: new Date() })
       .where(and(eq(dealStages.id, id), eq(dealStages.tenantId, tenantId)))
       .returning();
+    if (updatedStage) await mirrorLegacyStage(updatedStage);
     return updatedStage;
   }
 
@@ -8974,6 +9038,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(gpsLocationHistory.timestamp));
   }
 
+  async getTicketActivityTimeline(
+    ticketId: string,
+    tenantId: string,
+  ): Promise<GpsLocationHistory[]> {
+    return await db
+      .select()
+      .from(gpsLocationHistory)
+      .where(
+        and(eq(gpsLocationHistory.tenantId, tenantId), eq(gpsLocationHistory.ticketId, ticketId)),
+      )
+      .orderBy(asc(gpsLocationHistory.timestamp));
+  }
+
   async calculateDistanceTraveled(
     technicianId: string,
     tenantId: string,
@@ -9332,6 +9409,19 @@ export class DatabaseStorage implements IStorage {
           eq(etaCalculations.technicianId, technicianId),
         ),
       )
+      .orderBy(desc(etaCalculations.calculatedAt))
+      .limit(1);
+    return eta || null;
+  }
+
+  async getLatestEtaForTicketAnyTechnician(
+    ticketId: string,
+    tenantId: string,
+  ): Promise<EtaCalculation | null> {
+    const [eta] = await db
+      .select()
+      .from(etaCalculations)
+      .where(and(eq(etaCalculations.tenantId, tenantId), eq(etaCalculations.ticketId, ticketId)))
       .orderBy(desc(etaCalculations.calculatedAt))
       .limit(1);
     return eta || null;

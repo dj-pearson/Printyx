@@ -1306,7 +1306,7 @@ export class CsvImportService {
         }
 
         // Create new record
-        const newId = await createNewRecord(entityType, tenantId, row);
+        const newId = await createNewRecord(entityType, tenantId, row, job.userId);
 
         // Update duplicate record if it was marked create_new
         if (duplicateRowNumbers.has(rowNumber)) {
@@ -1478,6 +1478,9 @@ async function createNewRecord(
   entityType: string,
   tenantId: string,
   data: Record<string, any>,
+  /** Who ran the import. business_records.created_by is NOT NULL with no
+   *  default (migration 0000), and a CSV never supplies it. */
+  createdBy: string,
 ): Promise<string> {
   switch (entityType) {
     case 'business_records': {
@@ -1493,6 +1496,8 @@ async function createNewRecord(
       const [br] = await db
         .insert(businessRecords)
         .values({
+          createdBy,
+          // ...data last so a mapped CSV column still wins.
           ...data,
           tenantId,
           createdAt: new Date(),

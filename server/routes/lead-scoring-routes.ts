@@ -10,6 +10,7 @@ import {
   insertBantQualificationSchema,
   insertLeadEngagementTrackingSchema,
 } from '@shared/lead-scoring-schema';
+import { badRequest, forbidden, notFound, serverError, unauthorized } from '../lib/error-response';
 
 const router = express.Router();
 
@@ -34,14 +35,12 @@ function canManageScoringRules(user: any): boolean {
 router.post('/rules', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   // Check for admin/manager role
   if (!canManageScoringRules(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
+    return forbidden(res, 'Forbidden: Admin or Manager role required to manage scoring rules');
   }
 
   try {
@@ -55,10 +54,10 @@ router.post('/rules', async (req: Request, res: Response) => {
     res.json(rule);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
+      return badRequest(res, 'Invalid request data', { details: error.errors });
     }
     log.error('Create scoring rule error:', error);
-    res.status(500).json({ error: 'Failed to create scoring rule' });
+    serverError(res, 'Failed to create scoring rule');
   }
 });
 
@@ -66,7 +65,7 @@ router.post('/rules', async (req: Request, res: Response) => {
 router.get('/rules', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
@@ -75,7 +74,7 @@ router.get('/rules', async (req: Request, res: Response) => {
     res.json(rules);
   } catch (error) {
     log.error('Get scoring rules error:', error);
-    res.status(500).json({ error: 'Failed to fetch scoring rules' });
+    serverError(res, 'Failed to fetch scoring rules');
   }
 });
 
@@ -83,7 +82,7 @@ router.get('/rules', async (req: Request, res: Response) => {
 router.get('/rules/active', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
@@ -91,7 +90,7 @@ router.get('/rules/active', async (req: Request, res: Response) => {
     res.json(rules);
   } catch (error) {
     log.error('Get active scoring rules error:', error);
-    res.status(500).json({ error: 'Failed to fetch active scoring rules' });
+    serverError(res, 'Failed to fetch active scoring rules');
   }
 });
 
@@ -99,19 +98,19 @@ router.get('/rules/active', async (req: Request, res: Response) => {
 router.get('/rules/:id', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
     const rule = await storage.getLeadScoringRule(req.params.id);
     if (!rule || rule.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Scoring rule not found' });
+      return notFound(res, 'Scoring rule not found');
     }
 
     res.json(rule);
   } catch (error) {
     log.error('Get scoring rule error:', error);
-    res.status(500).json({ error: 'Failed to fetch scoring rule' });
+    serverError(res, 'Failed to fetch scoring rule');
   }
 });
 
@@ -119,20 +118,18 @@ router.get('/rules/:id', async (req: Request, res: Response) => {
 router.put('/rules/:id', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   // Check for admin/manager role
   if (!canManageScoringRules(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
+    return forbidden(res, 'Forbidden: Admin or Manager role required to manage scoring rules');
   }
 
   try {
     const existing = await storage.getLeadScoringRule(req.params.id);
     if (!existing || existing.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Scoring rule not found' });
+      return notFound(res, 'Scoring rule not found');
     }
 
     const data = insertLeadScoringRuleSchema.partial().parse(req.body);
@@ -141,10 +138,10 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
     res.json(rule);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
+      return badRequest(res, 'Invalid request data', { details: error.errors });
     }
     log.error('Update scoring rule error:', error);
-    res.status(500).json({ error: 'Failed to update scoring rule' });
+    serverError(res, 'Failed to update scoring rule');
   }
 });
 
@@ -152,27 +149,25 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
 router.delete('/rules/:id', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   // Check for admin/manager role
   if (!canManageScoringRules(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
+    return forbidden(res, 'Forbidden: Admin or Manager role required to manage scoring rules');
   }
 
   try {
     const rule = await storage.getLeadScoringRule(req.params.id);
     if (!rule || rule.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Scoring rule not found' });
+      return notFound(res, 'Scoring rule not found');
     }
 
     await storage.deleteLeadScoringRule(req.params.id);
     res.json({ success: true });
   } catch (error) {
     log.error('Delete scoring rule error:', error);
-    res.status(500).json({ error: 'Failed to delete scoring rule' });
+    serverError(res, 'Failed to delete scoring rule');
   }
 });
 
@@ -182,7 +177,7 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
 router.post('/calculate/:leadId', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
@@ -191,7 +186,7 @@ router.post('/calculate/:leadId', async (req: Request, res: Response) => {
     // Get the lead to verify access
     const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Lead not found' });
+      return notFound(res, 'Lead not found');
     }
 
     // Get active scoring rules
@@ -373,7 +368,7 @@ router.post('/calculate/:leadId', async (req: Request, res: Response) => {
     });
   } catch (error) {
     log.error('Calculate lead score error:', error);
-    res.status(500).json({ error: 'Failed to calculate lead score' });
+    serverError(res, 'Failed to calculate lead score');
   }
 });
 
@@ -381,7 +376,7 @@ router.post('/calculate/:leadId', async (req: Request, res: Response) => {
 router.get('/score/:leadId', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
@@ -389,12 +384,12 @@ router.get('/score/:leadId', async (req: Request, res: Response) => {
 
     const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Lead not found' });
+      return notFound(res, 'Lead not found');
     }
 
     const score = await storage.getLatestLeadScore(leadId);
     if (!score) {
-      return res.status(404).json({ error: 'No score calculated for this lead' });
+      return notFound(res, 'No score calculated for this lead');
     }
 
     const factors = await storage.getLeadScoringFactors(leadId);
@@ -405,7 +400,7 @@ router.get('/score/:leadId', async (req: Request, res: Response) => {
     });
   } catch (error) {
     log.error('Get lead score error:', error);
-    res.status(500).json({ error: 'Failed to fetch lead score' });
+    serverError(res, 'Failed to fetch lead score');
   }
 });
 
@@ -413,26 +408,26 @@ router.get('/score/:leadId', async (req: Request, res: Response) => {
 router.get('/score/:leadId/history', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
     const { leadId } = req.params;
     const limit = parseListLimit(req.query.limit, { def: 50 });
     if (limit === null) {
-      return res.status(400).json({ error: 'Invalid limit parameter' });
+      return badRequest(res, 'Invalid limit parameter');
     }
 
     const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Lead not found' });
+      return notFound(res, 'Lead not found');
     }
 
     const history = await storage.getLeadScoreHistory(leadId, limit);
     res.json(history);
   } catch (error) {
     log.error('Get lead score history error:', error);
-    res.status(500).json({ error: 'Failed to fetch lead score history' });
+    serverError(res, 'Failed to fetch lead score history');
   }
 });
 
@@ -440,13 +435,13 @@ router.get('/score/:leadId/history', async (req: Request, res: Response) => {
 router.get('/leaderboard', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
     const limit = parseListLimit(req.query.limit, { def: 100 });
     if (limit === null) {
-      return res.status(400).json({ error: 'Invalid limit parameter' });
+      return badRequest(res, 'Invalid limit parameter');
     }
     const topLeads = await storage.getTopScoredLeads(user.tenantId, limit);
 
@@ -471,7 +466,7 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
     res.json(enrichedLeads);
   } catch (error) {
     log.error('Get leaderboard error:', error);
-    res.status(500).json({ error: 'Failed to fetch leaderboard' });
+    serverError(res, 'Failed to fetch leaderboard');
   }
 });
 
@@ -479,7 +474,7 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
 router.get('/grade/:grade', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
@@ -507,7 +502,7 @@ router.get('/grade/:grade', async (req: Request, res: Response) => {
     res.json(enrichedLeads);
   } catch (error) {
     log.error('Get leads by grade error:', error);
-    res.status(500).json({ error: 'Failed to fetch leads by grade' });
+    serverError(res, 'Failed to fetch leads by grade');
   }
 });
 
@@ -517,7 +512,7 @@ router.get('/grade/:grade', async (req: Request, res: Response) => {
 router.post('/bant/:leadId', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
@@ -525,7 +520,7 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
 
     const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Lead not found' });
+      return notFound(res, 'Lead not found');
     }
 
     const data = insertBantQualificationSchema.parse(req.body);
@@ -602,10 +597,10 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
     res.json(qualification);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
+      return badRequest(res, 'Invalid request data', { details: error.errors });
     }
     log.error('Create/update BANT qualification error:', error);
-    res.status(500).json({ error: 'Failed to save BANT qualification' });
+    serverError(res, 'Failed to save BANT qualification');
   }
 });
 
@@ -613,7 +608,7 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
 router.get('/bant/:leadId', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
@@ -621,18 +616,18 @@ router.get('/bant/:leadId', async (req: Request, res: Response) => {
 
     const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Lead not found' });
+      return notFound(res, 'Lead not found');
     }
 
     const qualification = await storage.getBantQualification(leadId);
     if (!qualification) {
-      return res.status(404).json({ error: 'No BANT qualification found for this lead' });
+      return notFound(res, 'No BANT qualification found for this lead');
     }
 
     res.json(qualification);
   } catch (error) {
     log.error('Get BANT qualification error:', error);
-    res.status(500).json({ error: 'Failed to fetch BANT qualification' });
+    serverError(res, 'Failed to fetch BANT qualification');
   }
 });
 
@@ -640,7 +635,7 @@ router.get('/bant/:leadId', async (req: Request, res: Response) => {
 router.get('/qualified', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
@@ -668,7 +663,7 @@ router.get('/qualified', async (req: Request, res: Response) => {
     res.json(enrichedLeads);
   } catch (error) {
     log.error('Get qualified leads error:', error);
-    res.status(500).json({ error: 'Failed to fetch qualified leads' });
+    serverError(res, 'Failed to fetch qualified leads');
   }
 });
 
@@ -678,7 +673,7 @@ router.get('/qualified', async (req: Request, res: Response) => {
 router.post('/engagement/:leadId', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
@@ -686,7 +681,7 @@ router.post('/engagement/:leadId', async (req: Request, res: Response) => {
 
     const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Lead not found' });
+      return notFound(res, 'Lead not found');
     }
 
     const data = insertLeadEngagementTrackingSchema.parse(req.body);
@@ -700,10 +695,10 @@ router.post('/engagement/:leadId', async (req: Request, res: Response) => {
     res.json(engagement);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Invalid request data', details: error.errors });
+      return badRequest(res, 'Invalid request data', { details: error.errors });
     }
     log.error('Track engagement error:', error);
-    res.status(500).json({ error: 'Failed to track engagement' });
+    serverError(res, 'Failed to track engagement');
   }
 });
 
@@ -711,26 +706,26 @@ router.post('/engagement/:leadId', async (req: Request, res: Response) => {
 router.get('/engagement/:leadId', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
     const { leadId } = req.params;
     const limit = parseListLimit(req.query.limit, { def: 100 });
     if (limit === null) {
-      return res.status(400).json({ error: 'Invalid limit parameter' });
+      return badRequest(res, 'Invalid limit parameter');
     }
 
     const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Lead not found' });
+      return notFound(res, 'Lead not found');
     }
 
     const engagements = await storage.getLeadEngagements(leadId, limit);
     res.json(engagements);
   } catch (error) {
     log.error('Get engagement history error:', error);
-    res.status(500).json({ error: 'Failed to fetch engagement history' });
+    serverError(res, 'Failed to fetch engagement history');
   }
 });
 
@@ -740,14 +735,12 @@ router.get('/engagement/:leadId', async (req: Request, res: Response) => {
 router.get('/analytics', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   // Check for admin/manager role for analytics
   if (!isAdminOrManager(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to view analytics' });
+    return forbidden(res, 'Forbidden: Admin or Manager role required to view analytics');
   }
 
   try {
@@ -755,7 +748,7 @@ router.get('/analytics', async (req: Request, res: Response) => {
     res.json(analytics);
   } catch (error) {
     log.error('Get lead scoring analytics error:', error);
-    res.status(500).json({ error: 'Failed to fetch analytics' });
+    serverError(res, 'Failed to fetch analytics');
   }
 });
 
@@ -763,14 +756,12 @@ router.get('/analytics', async (req: Request, res: Response) => {
 router.get('/bant-analytics', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   // Check for admin/manager role for analytics
   if (!isAdminOrManager(user)) {
-    return res
-      .status(403)
-      .json({ error: 'Forbidden: Admin or Manager role required to view analytics' });
+    return forbidden(res, 'Forbidden: Admin or Manager role required to view analytics');
   }
 
   try {
@@ -778,7 +769,7 @@ router.get('/bant-analytics', async (req: Request, res: Response) => {
     res.json(analytics);
   } catch (error) {
     log.error('Get BANT analytics error:', error);
-    res.status(500).json({ error: 'Failed to fetch BANT analytics' });
+    serverError(res, 'Failed to fetch BANT analytics');
   }
 });
 
@@ -786,7 +777,7 @@ router.get('/bant-analytics', async (req: Request, res: Response) => {
 router.get('/qualification-history/:leadId', async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return unauthorized(res, 'Not authenticated');
   }
 
   try {
@@ -794,14 +785,14 @@ router.get('/qualification-history/:leadId', async (req: Request, res: Response)
 
     const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: 'Lead not found' });
+      return notFound(res, 'Lead not found');
     }
 
     const history = await storage.getLeadQualificationHistory(leadId);
     res.json(history);
   } catch (error) {
     log.error('Get qualification history error:', error);
-    res.status(500).json({ error: 'Failed to fetch qualification history' });
+    serverError(res, 'Failed to fetch qualification history');
   }
 });
 

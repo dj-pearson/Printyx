@@ -446,10 +446,10 @@ export default function RootAdminDashboard() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
-                            <Button size="sm" variant="outline">
+                            <Button aria-label="View details" size="sm" variant="outline">
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button aria-label="Settings" size="sm" variant="outline">
                               <Settings className="w-4 h-4" />
                             </Button>
                           </div>

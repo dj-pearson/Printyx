@@ -232,6 +232,7 @@ export default function Leases() {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
+                  aria-label="Search by lease name or number"
                   placeholder="Search by lease name or number..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

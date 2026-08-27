@@ -197,6 +197,7 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
+                  aria-label="Search quotes"
                   placeholder="Search quotes..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -355,7 +356,7 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
+                              <Button aria-label="More options" variant="ghost" size="sm">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>

@@ -142,14 +142,22 @@ function batchSimilarNotifications(notifications: Notification[]): Array<{
     .sort((a, b) => b.count - a.count);
 }
 
+// CR-033: a module-level constant, not a fresh `?? []` per render — this value
+// feeds derived lists on every 30s poll.
+const EMPTY_NOTIFICATIONS: Notification[] = [];
+
 export function EnhancedNotificationBell() {
   const [open, setOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'all' | 'unread'>('unread');
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  // Fetch notifications
-  const { data: notifications = [] } = useQuery<Notification[]>({
+  // CR-033: this kept only `.data`, so a failure fell through to the empty
+  // block below and told the user "No unread notifications". Note the queryFn
+  // already falls back to /api/performance/alerts when /api/notifications
+  // fails, so reaching isError means BOTH endpoints failed — which makes the
+  // error worth showing rather than swallowing.
+  const notificationsQuery = useQuery<Notification[]>({
     queryKey: ['/api/notifications'],
     queryFn: async () => {
       // Fallback to alerts endpoint if notifications endpoint doesn't exist
@@ -184,6 +192,7 @@ export function EnhancedNotificationBell() {
     },
     refetchInterval: 30_000, // Refresh every 30 seconds
   });
+  const notifications = notificationsQuery.data ?? EMPTY_NOTIFICATIONS;
 
   // Mark as read mutation
   const markAsReadMutation = useMutation({
@@ -285,7 +294,7 @@ export function EnhancedNotificationBell() {
                 Mark all read
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button aria-label="Settings" variant="ghost" size="icon" className="h-8 w-8">
               <Settings className="h-4 w-4" />
             </Button>
           </div>
@@ -313,11 +322,25 @@ export function EnhancedNotificationBell() {
           </ScrollArea>
         </Tabs>
 
-        {displayNotifications.length === 0 && (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            <Bell className="h-12 w-12 mx-auto mb-2 opacity-20" />
-            <p>No {selectedTab === 'unread' ? 'unread' : ''} notifications</p>
+        {notificationsQuery.isError ? (
+          <div className="p-8 text-center text-sm">
+            <Bell className="h-12 w-12 mx-auto mb-2 opacity-20 text-destructive" />
+            <p className="text-destructive">Could not load notifications</p>
+            <button
+              type="button"
+              className="mt-2 text-xs underline text-muted-foreground"
+              onClick={() => void notificationsQuery.refetch()}
+            >
+              Retry
+            </button>
           </div>
+        ) : (
+          displayNotifications.length === 0 && (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              <Bell className="h-12 w-12 mx-auto mb-2 opacity-20" />
+              <p>No {selectedTab === 'unread' ? 'unread' : ''} notifications</p>
+            </div>
+          )
         )}
       </DropdownMenuContent>
     </DropdownMenu>

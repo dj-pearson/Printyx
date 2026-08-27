@@ -557,7 +557,7 @@ export default function BrandManager({
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <Label>Gradients</Label>
-                    <Button size="sm" variant="outline" onClick={addGradient}>
+                    <Button aria-label="Add" size="sm" variant="outline" onClick={addGradient}>
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>

@@ -4,16 +4,15 @@ import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import {
-  RefreshCw,
-  MapPin,
-  DollarSign,
-  TrendingUp,
-  Target,
-  Activity,
-  AlertCircle,
-} from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon, RefreshCw, MapPin, DollarSign, TrendingUp, Target } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import type {
+  ScopedActivityReport,
+  ScopedPerformanceReport,
+  ScopedPipelineReport,
+  ScopedQuotaReport,
+} from '@/types/scoped-sales-reports';
 
 interface DateRange {
   from: Date;
@@ -31,7 +30,7 @@ export default function SalesManagerDashboard() {
     data: pipelineData,
     isLoading: pipelineLoading,
     refetch: refetchPipeline,
-  } = useQuery({
+  } = useQuery<ScopedPipelineReport>({
     queryKey: ['reports', 'sales-manager', 'regional-pipeline', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -43,19 +42,20 @@ export default function SalesManagerDashboard() {
   });
 
   // Fetch regional performance (Report 13)
-  const { data: performanceData, isLoading: performanceLoading } = useQuery({
-    queryKey: ['reports', 'sales-manager', 'regional-performance', dateRange],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        dateFrom: dateRange.from.toISOString(),
-        dateTo: dateRange.to.toISOString(),
-      });
-      return apiRequest(`/api/reports/sales-manager/regional-performance?${params}`);
-    },
-  });
+  const { data: performanceData, isLoading: performanceLoading } =
+    useQuery<ScopedPerformanceReport>({
+      queryKey: ['reports', 'sales-manager', 'regional-performance', dateRange],
+      queryFn: async () => {
+        const params = new URLSearchParams({
+          dateFrom: dateRange.from.toISOString(),
+          dateTo: dateRange.to.toISOString(),
+        });
+        return apiRequest(`/api/reports/sales-manager/regional-performance?${params}`);
+      },
+    });
 
   // Fetch regional quota (Report 14)
-  const { data: quotaData, isLoading: quotaLoading } = useQuery({
+  const { data: quotaData, isLoading: quotaLoading } = useQuery<ScopedQuotaReport>({
     queryKey: ['reports', 'sales-manager', 'regional-quota', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -67,7 +67,7 @@ export default function SalesManagerDashboard() {
   });
 
   // Fetch regional activity (Report 15)
-  const { data: activityData, isLoading: activityLoading } = useQuery({
+  const { data: activityData, isLoading: activityLoading } = useQuery<ScopedActivityReport>({
     queryKey: ['reports', 'sales-manager', 'regional-activity', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -93,6 +93,48 @@ export default function SalesManagerDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* CR-034: every query on this page keys on `dateRange`, but nothing
+              ever called setDateRange — the range was frozen to the current
+              month and the imported date helpers sat unused. This is the picker
+              the supervisor dashboard already has. */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <div className="p-3 space-y-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() =>
+                    setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })
+                  }
+                >
+                  This Month
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => setDateRange({ from: subDays(new Date(), 30), to: new Date() })}
+                >
+                  Last 30 Days
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => setDateRange({ from: subDays(new Date(), 90), to: new Date() })}
+                >
+                  Last 90 Days
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={pipelineLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${pipelineLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -108,7 +150,8 @@ export default function SalesManagerDashboard() {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pipelineData?.summary?.totalRegions || 0}</div>
+            {/* CR-034: summary has no totalRegions — the unit list is byUnit. */}
+            <div className="text-2xl font-bold">{pipelineData?.byUnit.length ?? 0}</div>
             <p className="text-xs text-muted-foreground">Across your territory</p>
           </CardContent>
         </Card>
@@ -120,10 +163,11 @@ export default function SalesManagerDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${((pipelineData?.summary?.totalPipeline || 0) / 1000).toFixed(0)}K
+              {/* CR-034: the field is totalValue; totalPipeline does not exist. */}$
+              {((pipelineData?.summary.totalValue ?? 0) / 1000).toFixed(0)}K
             </div>
             <p className="text-xs text-muted-foreground">
-              {pipelineData?.summary?.totalDeals || 0} active deals
+              {pipelineData?.summary.totalDeals ?? 0} active deals
             </p>
           </CardContent>
         </Card>
@@ -135,11 +179,17 @@ export default function SalesManagerDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {quotaData?.summary?.overallAttainment?.toFixed(1) || 0}%
+              {/* CR-034: averageAttainment, not overallAttainment. Always 0
+                  today — the quota report is degraded, there is no
+                  sales_quotas table. */}
+              {(quotaData?.summary.averageAttainment ?? 0).toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {quotaData?.summary?.regionsOnTrack || 0} on track /{' '}
-              {quotaData?.summary?.regionsAtRisk || 0} at risk
+              {/* CR-034: these counts are on the PERFORMANCE report, under
+                  attainmentRanges — never on the quota one. Both read 0 and
+                  every unit counts as at-risk while quotas are unknowable. */}
+              {performanceData?.attainmentRanges.onTrack ?? 0} on track /{' '}
+              {performanceData?.attainmentRanges.atRisk ?? 0} at risk
             </p>
           </CardContent>
         </Card>
@@ -180,7 +230,7 @@ export default function SalesManagerDashboard() {
                 <div className="text-center py-8">Loading...</div>
               ) : (
                 <div className="space-y-4">
-                  {pipelineData?.aggregated?.map((stage: any) => (
+                  {pipelineData?.aggregated?.map((stage) => (
                     <div
                       key={stage.stage}
                       className="flex items-center justify-between p-4 border rounded-lg"
@@ -216,31 +266,40 @@ export default function SalesManagerDashboard() {
                 <div className="text-center py-8">Loading...</div>
               ) : (
                 <div className="space-y-2">
-                  {performanceData?.regions?.map((region: any) => (
-                    <div
-                      key={region.regionId}
-                      className="flex items-center justify-between p-4 border rounded-lg"
-                    >
-                      <div className="space-y-1">
-                        <div className="font-medium">
-                          #{region.ranking} {region.regionName}
+                  {/* CR-034: the report returns { unitId, unitName, revenue,
+                      deals, winRate, pipelineValue }. This list read ranking,
+                      regionName, locationCount, teamSize, dealsWon and
+                      totalRevenue — six names the handler has never emitted, so
+                      every row rendered blank against live data. It also has no
+                      order of its own, so the ranking is derived here from
+                      revenue rather than read off a field that does not exist.
+                      quotaAttainment is dropped: it is hardcoded 0 upstream. */}
+                  {[...(performanceData?.regions ?? [])]
+                    .sort((a, b) => b.revenue - a.revenue)
+                    .map((region, index) => (
+                      <div
+                        key={region.unitId}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div className="space-y-1">
+                          <div className="font-medium">
+                            #{index + 1} {region.unitName}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {region.deals} deals won · ${(region.pipelineValue / 1000).toFixed(0)}K
+                            open pipeline
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {region.locationCount} locations · {region.teamSize} reps ·{' '}
-                          {region.dealsWon} deals won
+                        <div className="text-right space-y-1">
+                          <div className="text-lg font-bold">
+                            ${(region.revenue / 1000).toFixed(0)}K
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {region.winRate.toFixed(1)}% win rate
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right space-y-1">
-                        <div className="text-lg font-bold">
-                          ${(region.totalRevenue / 1000).toFixed(0)}K
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {region.winRate.toFixed(1)}% win rate ·{' '}
-                          {region.quotaAttainment.toFixed(0)}% quota
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </CardContent>
@@ -254,37 +313,26 @@ export default function SalesManagerDashboard() {
               <CardDescription>Track quota performance across regions</CardDescription>
             </CardHeader>
             <CardContent>
+              {/* CR-034: this tab mapped quotaData.quotas, reading regionId,
+                  regionName, locationCount, quotaAmount, actualRevenue, onTrack
+                  and attainmentPercent. None of them exist. The endpoint returns
+                  { regions: [], summary: { totalQuota: 0, totalActual: 0,
+                  averageAttainment: 0 }, degraded: { salesQuotasTable: true } }
+                  unconditionally — there is no sales_quotas table, so it never
+                  reaches a query. The list was therefore always empty and the
+                  card rendered as a blank box. Say why instead. */}
               {quotaLoading ? (
                 <div className="text-center py-8">Loading...</div>
-              ) : (
-                <div className="space-y-2">
-                  {quotaData?.quotas?.map((quota: any) => (
-                    <div
-                      key={quota.regionId}
-                      className="flex items-center justify-between p-4 border rounded-lg"
-                    >
-                      <div className="space-y-1">
-                        <div className="font-medium">{quota.regionName}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {quota.locationCount} locations · ${(quota.quotaAmount / 1000).toFixed(0)}
-                          K quota
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div
-                          className={`text-2xl font-bold ${quota.onTrack ? 'text-green-600' : 'text-red-600'}`}
-                        >
-                          {quota.attainmentPercent.toFixed(1)}%
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          ${(quota.actualRevenue / 1000).toFixed(0)}K / $
-                          {(quota.quotaAmount / 1000).toFixed(0)}K
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              ) : quotaData?.degraded?.salesQuotasTable || quotaData?.regions?.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <Target className="h-10 w-10 mb-3 text-muted-foreground opacity-40" />
+                  <p className="font-medium">Quota tracking is not set up</p>
+                  <p className="text-sm text-muted-foreground max-w-md mt-1">
+                    No quotas have been defined, so attainment cannot be measured. The zeros on this
+                    dashboard mean unknown, not missed.
+                  </p>
                 </div>
-              )}
+              ) : null}
             </CardContent>
           </Card>
         </TabsContent>
@@ -300,23 +348,32 @@ export default function SalesManagerDashboard() {
                 <div className="text-center py-8">Loading...</div>
               ) : (
                 <div className="space-y-2">
-                  {activityData?.activities?.map((activity: any) => (
-                    <div key={activity.regionId} className="p-4 border rounded-lg">
-                      <div className="font-medium mb-2">{activity.regionName}</div>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>Calls: {activity.calls}</div>
-                        <div>Emails: {activity.emails}</div>
-                        <div>Meetings: {activity.meetings}</div>
-                        <div>Demos: {activity.demos}</div>
-                        <div>Proposals: {activity.proposals}</div>
-                        <div className="font-medium">Total: {activity.totalActivities}</div>
+                  {/* CR-034: the collection is `regions`, keyed by unitId /
+                      unitName. This read `activities` with regionId, regionName,
+                      totalActivities, locationCount and activitiesPerRep — the
+                      list was undefined, so the tab was empty. Total is summed
+                      here because the handler does not send one. */}
+                  {activityData?.regions?.map((activity) => {
+                    const total =
+                      activity.calls +
+                      activity.emails +
+                      activity.meetings +
+                      activity.demos +
+                      activity.proposals;
+                    return (
+                      <div key={activity.unitId} className="p-4 border rounded-lg">
+                        <div className="font-medium mb-2">{activity.unitName}</div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>Calls: {activity.calls}</div>
+                          <div>Emails: {activity.emails}</div>
+                          <div>Meetings: {activity.meetings}</div>
+                          <div>Demos: {activity.demos}</div>
+                          <div>Proposals: {activity.proposals}</div>
+                          <div className="font-medium">Total: {total}</div>
+                        </div>
                       </div>
-                      <div className="mt-2 pt-2 border-t text-sm text-muted-foreground">
-                        {activity.locationCount} locations · {activity.activitiesPerRep.toFixed(1)}{' '}
-                        per rep
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

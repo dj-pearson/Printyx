@@ -272,6 +272,7 @@ function WidgetCatalog({
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
+            aria-label="Search widgets"
             placeholder="Search widgets..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -334,7 +335,12 @@ function WidgetCatalog({
                         {CATEGORY_CONFIG[widget.category]?.label || widget.category}
                       </Badge>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                    <Button
+                      aria-label="Add"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 flex-shrink-0"
+                    >
                       <Plus className="h-3.5 w-3.5" />
                     </Button>
                   </div>

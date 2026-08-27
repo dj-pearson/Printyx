@@ -24,6 +24,7 @@ import {
 } from './middleware/rbac-route-helper';
 
 import { getUserId, getTenantId, authed } from './utils/auth-helpers';
+import { badRequest, notFound, serverError } from './lib/error-response';
 // Validation schema for update operations.
 // Accepts both the real column names and the friendlier aliases the client
 // sends (name -> first/last, specialties -> skills, location ->
@@ -147,7 +148,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         res.json(technicianStats);
       } catch (error) {
         log.error('Error fetching technicians:', error);
-        res.status(500).json({ error: 'Failed to fetch technicians' });
+        serverError(res, 'Failed to fetch technicians');
       }
     }),
   );
@@ -168,7 +169,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
           .where(and(eq(technicians.id, technicianId), eq(technicians.tenantId, tenantId)));
 
         if (!technician) {
-          return res.status(404).json({ error: 'Technician not found' });
+          return notFound(res, 'Technician not found');
         }
 
         // Get technician's service tickets
@@ -205,7 +206,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error fetching technician:', error);
-        res.status(500).json({ error: 'Failed to fetch technician' });
+        serverError(res, 'Failed to fetch technician');
       }
     }),
   );
@@ -253,9 +254,9 @@ export function registerTechnicianManagementRoutes(app: Express) {
       } catch (error: any) {
         log.error('Error creating technician:', error);
         if (error.name === 'ZodError') {
-          res.status(400).json({ error: 'Invalid data', details: error.errors });
+          badRequest(res, 'Invalid data', { details: error.errors });
         } else {
-          res.status(500).json({ error: 'Failed to create technician' });
+          serverError(res, 'Failed to create technician');
         }
       }
     }),
@@ -314,16 +315,16 @@ export function registerTechnicianManagementRoutes(app: Express) {
           .returning();
 
         if (!updatedTechnician) {
-          return res.status(404).json({ error: 'Technician not found' });
+          return notFound(res, 'Technician not found');
         }
 
         res.json(updatedTechnician);
       } catch (error: any) {
         log.error('Error updating technician:', error);
         if (error.name === 'ZodError') {
-          res.status(400).json({ error: 'Invalid data', details: error.errors });
+          badRequest(res, 'Invalid data', { details: error.errors });
         } else {
-          res.status(500).json({ error: 'Failed to update technician' });
+          serverError(res, 'Failed to update technician');
         }
       }
     }),
@@ -364,13 +365,13 @@ export function registerTechnicianManagementRoutes(app: Express) {
           .returning();
 
         if (!deletedTechnician) {
-          return res.status(404).json({ error: 'Technician not found' });
+          return notFound(res, 'Technician not found');
         }
 
         res.json({ message: 'Technician deleted successfully' });
       } catch (error) {
         log.error('Error deleting technician:', error);
-        res.status(500).json({ error: 'Failed to delete technician' });
+        serverError(res, 'Failed to delete technician');
       }
     }),
   );
@@ -426,7 +427,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         }
       } catch (error) {
         log.error('Error fetching technician availability:', error);
-        res.status(500).json({ error: 'Failed to fetch technician availability' });
+        serverError(res, 'Failed to fetch technician availability');
       }
     }),
   );
@@ -474,10 +475,10 @@ export function registerTechnicianManagementRoutes(app: Express) {
       } catch (error: any) {
         if (error.name === 'ZodError') {
           log.warn('Invalid performance query parameters:', error.errors);
-          return res.status(400).json({ error: 'Invalid query parameters', details: error.errors });
+          return badRequest(res, 'Invalid query parameters', { details: error.errors });
         }
         log.error('Error fetching technician performance:', error);
-        res.status(500).json({ error: 'Failed to fetch technician performance' });
+        serverError(res, 'Failed to fetch technician performance');
       }
     }),
   );
@@ -537,7 +538,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error fetching technician dashboard:', error);
-        res.status(500).json({ error: 'Failed to fetch technician dashboard' });
+        serverError(res, 'Failed to fetch technician dashboard');
       }
     }),
   );

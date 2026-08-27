@@ -28,13 +28,30 @@ const rawBodyParser = express.raw({ type: 'application/json' });
 router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
   try {
     const { provider } = req.params;
-    const rawBody = req.body.toString();
-    const payload = JSON.parse(rawBody);
+    const rawBody = req.body?.toString() ?? '';
     const headers = req.headers as Record<string, string>;
+
+    // A Google Calendar push notification has an EMPTY body — everything that
+    // identifies it rides in x-goog-* headers. JSON.parse('') throws, so this
+    // route answered 500 to every one of them, which Google reads as a failing
+    // endpoint and eventually unsubscribes the channel.
+    let payload: any = {};
+    if (rawBody.trim() !== '') {
+      payload = JSON.parse(rawBody);
+    }
+    if (provider === 'google-calendar') {
+      payload = {
+        ...payload,
+        channelId: headers['x-goog-channel-id'],
+        resourceId: headers['x-goog-resource-id'],
+        resourceState: headers['x-goog-resource-state'],
+        messageNumber: headers['x-goog-message-number'],
+      };
+    }
 
     log.info(`Received webhook from ${provider}`, {
       headers: stripSensitiveHeaders(headers),
-      event: payload?.type || payload?.event || 'unknown',
+      event: payload?.type || payload?.event || payload?.resourceState || 'unknown',
     });
 
     const result = await WebhookService.processWebhook(provider, payload, headers, rawBody);
@@ -43,13 +60,21 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
       res.status(200).json({
         message: result.message,
         processed: result.processed,
+        eventId: result.eventId,
+        duplicate: result.duplicate ?? false,
       });
-    } else {
-      res.status(400).json({
-        error: result.message,
-        details: result.error,
-      });
+      return;
     }
+
+    // A rejected signature is the caller's problem and will never succeed on a
+    // retry, so 400. Anything else means WE failed to store a delivery we
+    // accepted responsibility for, and the provider SHOULD retry — answering
+    // 400 there would tell it to give up on an event we then do not have.
+    const clientError = result.error === 'Signature verification failed';
+    res.status(clientError ? 400 : 503).json({
+      error: result.message,
+      details: result.error,
+    });
   } catch (error) {
     log.error(`Webhook error for ${req.params.provider}:`, error);
     res.status(500).json({

@@ -2,21 +2,29 @@ import { db } from '../db';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('auto-lead-routing-service');
 
+// QUALITY-002: these were imported as `platformX as x` — the PLATFORM CRM
+// tables (shared/platform-crm-schema.ts), which are the root-admin surface and
+// carry no tenant_id at all. Every query here filters by tenantId, this service
+// is invoked per tenant from web-form-processor, and the capacity update a few
+// lines further down is raw SQL against `rep_capacity`, the tenant table. So the
+// aliases were pointing at the wrong tables while the rest of the file assumed
+// the right ones: the reads would have raised "column tenant_id does not exist"
+// and the raw-SQL write went somewhere the reads never looked.
 import {
   businessRecords,
-  platformLeadScoringRules as leadScoringRules,
-  platformLeadScoreCalculations as leadScoreCalculations,
-  platformBantQualification as bantQualificationCriteria,
-  platformLeadAssignmentRules as leadAssignmentRules,
-  platformRepCapacity as repCapacity,
-  platformSalesTerritories as salesTerritories,
-  platformLeadAssignmentHistory as leadAssignmentHistory,
+  leadScoringRules,
+  leadScoreCalculations,
+  bantQualificationCriteria,
+  leadAssignmentRules,
+  repCapacity,
+  salesTerritories,
+  leadAssignmentHistory,
   leadAssignmentQueue,
   users,
   type InsertLeadAssignmentHistory,
   type InsertLeadAssignmentQueue,
+  type InsertLeadScoreCalculation,
 } from '@shared/schema';
-import type { InsertLeadScoreCalculation } from '@shared/lead-scoring-schema';
 import { eq, and, desc, gte, lte, sql, inArray } from 'drizzle-orm';
 
 // Batch helper: fetch full names for multiple user IDs in a single query
@@ -217,6 +225,13 @@ export class AutoLeadRoutingService {
     const leadTier = totalScore >= 70 ? 'hot' : totalScore >= 50 ? 'warm' : 'cold';
 
     // Save score calculation
+    // aiInsights and aiRecommendations are NOT columns on
+    // lead_score_calculations, so Drizzle dropped both and the AI analysis was
+    // computed on every scoring pass and then thrown away. The table's own
+    // fields for this are recommendedAction (varchar) and calculationMethod;
+    // there is nowhere to keep the prose, so it is logged rather than
+    // pretended into a column that does not exist.
+    // predictionScore is a decimal, which Drizzle takes as a string.
     await db.insert(leadScoreCalculations).values({
       leadId: lead.id,
       tenantId,
@@ -228,10 +243,14 @@ export class AutoLeadRoutingService {
       totalScore,
       leadGrade,
       leadTier,
-      predictionScore: aiAnalysis.conversionProbability,
-      aiInsights: aiAnalysis.insights,
-      aiRecommendations: aiAnalysis.recommendations,
+      predictionScore: aiAnalysis.conversionProbability.toFixed(2),
+      recommendedAction: aiAnalysis.recommendations[0] ?? null,
+      calculationMethod: 'hybrid',
     });
+
+    if (aiAnalysis.insights) {
+      log.info(`[LeadScoring] ${lead.id}: ${aiAnalysis.insights}`);
+    }
 
     return {
       totalScore,
@@ -363,8 +382,11 @@ Format as JSON:
     });
 
     // Group territories by ownerId
+    // sales_territories.owner_id is nullable — an unassigned territory has no
+    // owner and cannot be grouped under one.
     const territoriesByOwner = new Map<string, typeof allTerritories>();
     for (const territory of allTerritories) {
+      if (!territory.ownerId) continue;
       const existing = territoriesByOwner.get(territory.ownerId) || [];
       existing.push(territory);
       territoriesByOwner.set(territory.ownerId, existing);
@@ -439,8 +461,12 @@ Format as JSON:
         score,
         reasons,
         capacity: {
-          available: rep.isAvailable,
-          currentLoad: rep.currentActiveLeads,
+          // Both are nullable in rep_capacity. A null availability is not
+          // "available", and a null load is not zero known leads — but zero is
+          // the only number the caller's arithmetic can use, so it is stated
+          // here rather than left to coerce further down.
+          available: rep.isAvailable ?? false,
+          currentLoad: rep.currentActiveLeads ?? 0,
           maxLoad: rep.maxActiveLeads || 50,
         },
         performance: {

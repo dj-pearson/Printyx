@@ -85,7 +85,7 @@ export function ProjectsView({ projects, isLoading, teamMembers }: ProjectsViewP
                 />
                 <CardTitle className="text-lg">{project.name}</CardTitle>
               </div>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Button aria-label="More options" variant="ghost" size="sm" className="h-8 w-8 p-0">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </div>

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { QueryStates } from '@/components/ui/query-state';
+import { DashboardSkeleton } from '@/components/ui/skeletons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,13 +45,19 @@ export default function TenantManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: tenants } = useQuery<any[]>({
+  const tenantsQuery = useQuery<any[]>({
     queryKey: ['/api/admin/tenants'],
   });
 
-  const { data: tenantStats } = useQuery<TenantStats>({
+  const statsQuery = useQuery<TenantStats>({
     queryKey: ['/api/admin/tenant-stats'],
   });
+
+  // CR-033: both kept only `.data`, so a failed request rendered a platform
+  // with zero tenants and an empty list — indistinguishable from a brand-new
+  // install, on the page a platform admin uses to see who is on the system.
+  const tenants = tenantsQuery.data;
+  const tenantStats = statsQuery.data;
 
   const createTenantMutation = useMutation({
     mutationFn: async (tenantData: any) => {
@@ -123,333 +131,351 @@ export default function TenantManagement() {
           </Dialog>
         </div>
 
-        {/* Tenant Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Tenants</CardTitle>
-              <Building2 className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{tenantStats?.totalTenants || 'Loading...'}</div>
-              <p className="text-xs text-green-600 mt-2">
-                {tenantStats?.tenantGrowth || 'Loading...'}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-              <Users className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{tenantStats?.activeUsers || 'Loading...'}</div>
-              <p className="text-xs text-green-600 mt-2">
-                {tenantStats?.userGrowth || 'Loading...'}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{tenantStats?.totalRevenue || 'Loading...'}</div>
-              <p className="text-xs text-green-600 mt-2">
-                {tenantStats?.revenueGrowth || 'Loading...'}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Trial Conversions</CardTitle>
-              <Activity className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {tenantStats?.conversionRate || 'Loading...'}
-              </div>
-              <p className="text-xs text-green-600 mt-2">
-                {tenantStats?.conversionTrend || 'Loading...'}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="tenants">All Tenants</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Tenant Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {tenants && tenants.length > 0 ? (
-                      tenants.slice(0, 5).map((tenant: any) => (
-                        <div
-                          key={tenant.id}
-                          className="flex items-center justify-between py-2 border-b"
-                        >
-                          <div>
-                            <p className="font-medium">{tenant.name}</p>
-                            <p className="text-sm text-gray-500">{tenant.domain}</p>
-                          </div>
-                          <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
-                            {tenant.status}
-                          </Badge>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-gray-500">No recent tenant activity</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tenant Distribution</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span>Enterprise Plan</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: '65%' }}
-                          ></div>
-                        </div>
-                        <span className="text-sm">65%</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>Professional Plan</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-green-600 h-2 rounded-full"
-                            style={{ width: '25%' }}
-                          ></div>
-                        </div>
-                        <span className="text-sm">25%</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span>Starter Plan</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-orange-600 h-2 rounded-full"
-                            style={{ width: '10%' }}
-                          ></div>
-                        </div>
-                        <span className="text-sm">10%</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="tenants" className="space-y-6">
+        {/* CR-033: the heading and Create Tenant control above stay usable. */}
+        <QueryStates
+          queries={[tenantsQuery, statsQuery]}
+          loading={<DashboardSkeleton />}
+          errorTitle="Could not load tenants"
+          className="py-6"
+        >
+          {/* Tenant Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
-              <CardHeader>
-                <CardTitle>All Tenants</CardTitle>
-                <CardDescription>
-                  Complete list of tenant organizations with management actions
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Tenants</CardTitle>
+                <Building2 className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <Input placeholder="Search tenants..." className="max-w-sm" />
-                    <Select>
-                      <SelectTrigger className="w-32">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="trial">Trial</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select>
-                      <SelectTrigger className="w-32">
-                        <SelectValue placeholder="Plan" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Plans</SelectItem>
-                        <SelectItem value="enterprise">Enterprise</SelectItem>
-                        <SelectItem value="professional">Professional</SelectItem>
-                        <SelectItem value="starter">Starter</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="text-2xl font-bold">
+                  {tenantStats?.totalTenants || 'Loading...'}
+                </div>
+                <p className="text-xs text-green-600 mt-2">
+                  {tenantStats?.tenantGrowth || 'Loading...'}
+                </p>
+              </CardContent>
+            </Card>
 
-                  <div className="border rounded-lg">
-                    <div className="grid grid-cols-7 gap-4 p-4 border-b bg-gray-50 font-medium">
-                      <div>Company</div>
-                      <div>Domain</div>
-                      <div>Status</div>
-                      <div>Plan</div>
-                      <div>Users</div>
-                      <div>Revenue</div>
-                      <div>Actions</div>
-                    </div>
-                    {tenants && tenants.length > 0 ? (
-                      tenants.map((tenant: any) => (
-                        <div
-                          key={tenant.id}
-                          className="grid grid-cols-7 gap-4 p-4 border-b items-center"
-                        >
-                          <div>
-                            <p className="font-medium">{tenant.name}</p>
-                            <p className="text-sm text-gray-500">ID: {tenant.id}</p>
-                          </div>
-                          <div className="text-sm">{tenant.domain}</div>
-                          <div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+                <Users className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{tenantStats?.activeUsers || 'Loading...'}</div>
+                <p className="text-xs text-green-600 mt-2">
+                  {tenantStats?.userGrowth || 'Loading...'}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                <DollarSign className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {tenantStats?.totalRevenue || 'Loading...'}
+                </div>
+                <p className="text-xs text-green-600 mt-2">
+                  {tenantStats?.revenueGrowth || 'Loading...'}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Trial Conversions</CardTitle>
+                <Activity className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {tenantStats?.conversionRate || 'Loading...'}
+                </div>
+                <p className="text-xs text-green-600 mt-2">
+                  {tenantStats?.conversionTrend || 'Loading...'}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="tenants">All Tenants</TabsTrigger>
+              <TabsTrigger value="billing">Billing</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Tenant Activity</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {tenants && tenants.length > 0 ? (
+                        tenants.slice(0, 5).map((tenant: any) => (
+                          <div
+                            key={tenant.id}
+                            className="flex items-center justify-between py-2 border-b"
+                          >
+                            <div>
+                              <p className="font-medium">{tenant.name}</p>
+                              <p className="text-sm text-gray-500">{tenant.domain}</p>
+                            </div>
                             <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
                               {tenant.status}
                             </Badge>
                           </div>
-                          <div className="capitalize">{tenant.plan}</div>
-                          <div>{tenant.users}</div>
-                          <div>${tenant.revenue?.toLocaleString() || 0}</div>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
-                              <Eye className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                        ))
+                      ) : (
+                        <p className="text-gray-500">No recent tenant activity</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Tenant Distribution</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span>Enterprise Plan</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{ width: '65%' }}
+                            ></div>
                           </div>
+                          <span className="text-sm">65%</span>
                         </div>
-                      ))
-                    ) : (
-                      <div className="p-8 text-center text-gray-500">No tenants found</div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="billing" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Billing Overview</CardTitle>
-                <CardDescription>
-                  Revenue tracking and billing management across all tenants
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">$284,750</div>
-                      <p className="text-sm text-gray-600">Monthly Recurring Revenue</p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Professional Plan</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-green-600 h-2 rounded-full"
+                              style={{ width: '25%' }}
+                            ></div>
+                          </div>
+                          <span className="text-sm">25%</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Starter Plan</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-orange-600 h-2 rounded-full"
+                              style={{ width: '10%' }}
+                            ></div>
+                          </div>
+                          <span className="text-sm">10%</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">$3,417,000</div>
-                      <p className="text-sm text-gray-600">Annual Recurring Revenue</p>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600">$45,200</div>
-                      <p className="text-sm text-gray-600">Outstanding Invoices</p>
-                    </div>
-                  </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
 
-                  <div className="space-y-3">
-                    <Button className="w-full" variant="outline">
-                      Generate Revenue Report
-                    </Button>
-                    <Button className="w-full" variant="outline">
-                      Export Billing Data
-                    </Button>
-                    <Button className="w-full" variant="outline">
-                      Manage Payment Methods
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="settings" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Platform Settings</CardTitle>
-                <CardDescription>
-                  Global configuration settings that affect all tenants
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
+            <TabsContent value="tenants" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Tenants</CardTitle>
+                  <CardDescription>
+                    Complete list of tenant organizations with management actions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="defaultPlan">Default Plan for New Tenants</Label>
+                    <div className="flex gap-4">
+                      <Input
+                        aria-label="Search tenants"
+                        placeholder="Search tenants..."
+                        className="max-w-sm"
+                      />
                       <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select default plan" />
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="starter">Starter (30-day trial)</SelectItem>
-                          <SelectItem value="professional">Professional (14-day trial)</SelectItem>
-                          <SelectItem value="enterprise">Enterprise (Custom)</SelectItem>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="trial">Trial</SelectItem>
+                          <SelectItem value="suspended">Suspended</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="Plan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Plans</SelectItem>
+                          <SelectItem value="enterprise">Enterprise</SelectItem>
+                          <SelectItem value="professional">Professional</SelectItem>
+                          <SelectItem value="starter">Starter</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
-                    <div>
-                      <Label htmlFor="maxUsers">Default Max Users per Tenant</Label>
-                      <Input id="maxUsers" type="number" defaultValue="100" />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="trialDays">Trial Period (Days)</Label>
-                      <Input id="trialDays" type="number" defaultValue="30" />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="welcomeMessage">Welcome Message for New Tenants</Label>
-                      <Textarea
-                        id="welcomeMessage"
-                        placeholder="Enter welcome message..."
-                        defaultValue="Welcome to Printyx! Your account has been successfully created."
-                      />
+                    <div className="border rounded-lg">
+                      <div className="grid grid-cols-7 gap-4 p-4 border-b bg-gray-50 font-medium">
+                        <div>Company</div>
+                        <div>Domain</div>
+                        <div>Status</div>
+                        <div>Plan</div>
+                        <div>Users</div>
+                        <div>Revenue</div>
+                        <div>Actions</div>
+                      </div>
+                      {tenants && tenants.length > 0 ? (
+                        tenants.map((tenant: any) => (
+                          <div
+                            key={tenant.id}
+                            className="grid grid-cols-7 gap-4 p-4 border-b items-center"
+                          >
+                            <div>
+                              <p className="font-medium">{tenant.name}</p>
+                              <p className="text-sm text-gray-500">ID: {tenant.id}</p>
+                            </div>
+                            <div className="text-sm">{tenant.domain}</div>
+                            <div>
+                              <Badge variant={tenant.status === 'active' ? 'default' : 'secondary'}>
+                                {tenant.status}
+                              </Badge>
+                            </div>
+                            <div className="capitalize">{tenant.plan}</div>
+                            <div>{tenant.users}</div>
+                            <div>${tenant.revenue?.toLocaleString() || 0}</div>
+                            <div className="flex gap-2">
+                              <Button aria-label="View details" size="sm" variant="outline">
+                                <Eye className="h-3 w-3" />
+                              </Button>
+                              <Button aria-label="Edit" size="sm" variant="outline">
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button aria-label="Delete" size="sm" variant="outline">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center text-gray-500">No tenants found</div>
+                      )}
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                  <div className="space-y-3">
-                    <Button className="w-full">Save Settings</Button>
-                    <Button className="w-full" variant="outline">
-                      Reset to Defaults
-                    </Button>
+            <TabsContent value="billing" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Billing Overview</CardTitle>
+                  <CardDescription>
+                    Revenue tracking and billing management across all tenants
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center p-4 border rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">$284,750</div>
+                        <p className="text-sm text-gray-600">Monthly Recurring Revenue</p>
+                      </div>
+                      <div className="text-center p-4 border rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">$3,417,000</div>
+                        <p className="text-sm text-gray-600">Annual Recurring Revenue</p>
+                      </div>
+                      <div className="text-center p-4 border rounded-lg">
+                        <div className="text-2xl font-bold text-orange-600">$45,200</div>
+                        <p className="text-sm text-gray-600">Outstanding Invoices</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Button className="w-full" variant="outline">
+                        Generate Revenue Report
+                      </Button>
+                      <Button className="w-full" variant="outline">
+                        Export Billing Data
+                      </Button>
+                      <Button className="w-full" variant="outline">
+                        Manage Payment Methods
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="settings" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Platform Settings</CardTitle>
+                  <CardDescription>
+                    Global configuration settings that affect all tenants
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="defaultPlan">Default Plan for New Tenants</Label>
+                        <Select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select default plan" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="starter">Starter (30-day trial)</SelectItem>
+                            <SelectItem value="professional">
+                              Professional (14-day trial)
+                            </SelectItem>
+                            <SelectItem value="enterprise">Enterprise (Custom)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="maxUsers">Default Max Users per Tenant</Label>
+                        <Input id="maxUsers" type="number" defaultValue="100" />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="trialDays">Trial Period (Days)</Label>
+                        <Input id="trialDays" type="number" defaultValue="30" />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="welcomeMessage">Welcome Message for New Tenants</Label>
+                        <Textarea
+                          id="welcomeMessage"
+                          placeholder="Enter welcome message..."
+                          defaultValue="Welcome to Printyx! Your account has been successfully created."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Button className="w-full">Save Settings</Button>
+                      <Button className="w-full" variant="outline">
+                        Reset to Defaults
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </QueryStates>
       </div>
     </MainLayout>
   );

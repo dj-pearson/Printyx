@@ -136,6 +136,7 @@ export default function KnowledgeBase() {
                 <Input
                   data-testid="input-knowledge-search"
                   type="text"
+                  aria-label="Search articles, guides, and tutorials"
                   placeholder="Search articles, guides, and tutorials..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

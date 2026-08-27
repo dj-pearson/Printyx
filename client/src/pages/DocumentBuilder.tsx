@@ -629,7 +629,7 @@ export default function DocumentBuilder() {
                       >
                         <Download className="w-4 h-4" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button aria-label="Edit" variant="outline" size="sm">
                         <Edit className="w-4 h-4" />
                       </Button>
                     </div>

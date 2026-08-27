@@ -24,6 +24,33 @@ interface LogEntry {
 const FLUSH_INTERVAL_MS = 5000;
 const MAX_BUFFER_SIZE = 50;
 
+/**
+ * CR-033: "is there a window?" is not the same question as "is this a browser".
+ *
+ * This module builds its singleton at import time (bottom of the file), so any
+ * throw in the constructor happens at MODULE SCOPE and takes down whatever
+ * imported it — in practice queryClient.ts, and therefore every test file that
+ * touches it. The old checks were four separate `typeof window !== 'undefined'`
+ * guards, each of which then reached for something else: document, and
+ * window.location. That holds in a browser and in plain Node, and fails in
+ * between: this repo's vitest suite runs every file in ONE fork where something
+ * defines a global `window` with no `document` and no `location`, so
+ * crm-kpi-pagination.test.ts failed about half the time, passed in isolation,
+ * and moved to a different line each time a single guard was patched. Partial
+ * DOM shims and SSR environments have the same shape.
+ *
+ * So the predicate asks for the three globals this file actually uses, together.
+ * Everything else here (localStorage, navigator, sendBeacon) was already either
+ * try/caught or feature-detected on its own.
+ */
+function hasBrowserGlobals(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof document !== 'undefined' &&
+    typeof window.location !== 'undefined'
+  );
+}
+
 class MobileLogger {
   private buffer: LogEntry[] = [];
   private flushTimer: ReturnType<typeof setInterval> | null = null;
@@ -86,7 +113,7 @@ class MobileLogger {
   }
 
   private attachGlobalHandlers() {
-    if (typeof window === 'undefined') return;
+    if (!hasBrowserGlobals()) return;
 
     // Capture unhandled errors
     window.addEventListener('error', (event) => {
@@ -116,7 +143,7 @@ class MobileLogger {
   }
 
   private addEntry(level: LogEntry['level'], message: string, data?: Record<string, unknown>) {
-    const screen = typeof window !== 'undefined' ? window.location.pathname : undefined;
+    const screen = hasBrowserGlobals() ? window.location.pathname : undefined;
     this.buffer.push({
       level,
       message,
@@ -155,7 +182,7 @@ class MobileLogger {
       message: error.message,
       stack: error.stack?.slice(0, 500),
       componentStack: errorInfo?.componentStack?.slice(0, 500),
-      url: typeof window !== 'undefined' ? window.location.href : undefined,
+      url: hasBrowserGlobals() ? window.location.href : undefined,
     });
   }
 

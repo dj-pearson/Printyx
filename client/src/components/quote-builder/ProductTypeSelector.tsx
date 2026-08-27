@@ -560,6 +560,7 @@ export default function ProductTypeSelector({
           <div className="relative sm:col-span-2 lg:col-span-1">
             <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
             <Input
+              aria-label="Search products… (↑/↓ to highlight, Enter to add)"
               ref={searchInputRef}
               placeholder="Search products… (↑/↓ to highlight, Enter to add)"
               value={searchTerm}

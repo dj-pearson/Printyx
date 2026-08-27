@@ -213,8 +213,8 @@ export default function ProductImport({ productType, onImportComplete }: Product
         <div className="space-y-6">
           {/* Product Type Selection */}
           {!productType && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Product Type</label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Product Type</span>
               <Select value={selectedProductType} onValueChange={setSelectedProductType}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select product type to import" />
@@ -227,7 +227,7 @@ export default function ProductImport({ productType, onImportComplete }: Product
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </label>
           )}
 
           {/* Template Download */}
@@ -257,7 +257,9 @@ export default function ProductImport({ productType, onImportComplete }: Product
           {/* File Upload */}
           {selectedProductType && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">Upload CSV File</label>
+              <label className="text-sm font-medium" htmlFor="csv-upload">
+                Upload CSV File
+              </label>
               <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
                 <input
                   type="file"

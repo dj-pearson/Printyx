@@ -280,13 +280,25 @@ export default function BlogCalendar() {
                 />
               </div>
               <div className="flex items-end gap-1 justify-end">
-                <Button size="sm" variant="ghost" onClick={prevMonth} className="h-8 w-8 p-0">
+                <Button
+                  aria-label="Previous"
+                  size="sm"
+                  variant="ghost"
+                  onClick={prevMonth}
+                  className="h-8 w-8 p-0"
+                >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button size="sm" variant="outline" onClick={goToday} className="h-8 text-xs">
                   Today
                 </Button>
-                <Button size="sm" variant="ghost" onClick={nextMonth} className="h-8 w-8 p-0">
+                <Button
+                  aria-label="Next"
+                  size="sm"
+                  variant="ghost"
+                  onClick={nextMonth}
+                  className="h-8 w-8 p-0"
+                >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -323,6 +335,11 @@ export default function BlogCalendar() {
                     const isToday = key === todayKey;
                     const buckets = postsByDate.get(key) ?? [];
                     return (
+                      // CR-035: a drop target, not a control. There is no
+                      // click here to give a key equivalent to, and role=button
+                      // would announce a day cell as a button. Rescheduling
+                      // without a mouse goes through the post's own date field.
+                      // eslint-disable-next-line jsx-a11y/no-static-element-interactions
                       <div
                         key={key}
                         onDragOver={(e) => {

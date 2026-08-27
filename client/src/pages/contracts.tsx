@@ -349,6 +349,7 @@ export default function Contracts() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
+              aria-label="Search contracts"
               placeholder="Search contracts..."
               className="pl-10"
               value={searchQuery}
@@ -376,6 +377,7 @@ export default function Contracts() {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
+                        aria-label="Search quotes"
                         value={quoteSearch}
                         onChange={(e) => setQuoteSearch(e.target.value)}
                         placeholder="Search quotes..."
@@ -589,7 +591,7 @@ export default function Contracts() {
                             <td className="p-4">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
+                                  <Button aria-label="More options" variant="ghost" size="sm">
                                     <MoreHorizontal className="w-4 h-4" />
                                   </Button>
                                 </DropdownMenuTrigger>

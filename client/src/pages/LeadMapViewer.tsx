@@ -412,20 +412,18 @@ export default function LeadMapViewer() {
 
           {filtersOpen && (
             <div className="px-3 pb-4 space-y-4">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                  Search
-                </label>
+              <label>
+                <span className="text-xs font-medium text-muted-foreground mb-1 block">Search</span>
                 <Input
                   placeholder="Company or contact..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 text-sm"
                 />
-              </div>
+              </label>
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">City</label>
+              <label>
+                <span className="text-xs font-medium text-muted-foreground mb-1 block">City</span>
                 <Select
                   value={cityFilter || 'all'}
                   onValueChange={(v) => setCityFilter(v === 'all' ? '' : v)}
@@ -442,12 +440,10 @@ export default function LeadMapViewer() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </label>
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                  Brand
-                </label>
+              <label>
+                <span className="text-xs font-medium text-muted-foreground mb-1 block">Brand</span>
                 <Select value={brandFilter} onValueChange={setBrandFilter}>
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="All brands" />
@@ -461,12 +457,12 @@ export default function LeadMapViewer() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </label>
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <label>
+                <span className="text-xs font-medium text-muted-foreground mb-1 block">
                   UCC Status
-                </label>
+                </span>
                 <Select value={uccFilter} onValueChange={setUccFilter}>
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="All statuses" />
@@ -480,7 +476,7 @@ export default function LeadMapViewer() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </label>
 
               <div className="flex items-center gap-2">
                 <Checkbox

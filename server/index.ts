@@ -62,6 +62,21 @@ const serverLog = createModuleLogger('server');
 // Trust reverse proxy (needed for secure cookies and rate limits behind proxies)
 app.set('trust proxy', 1);
 
+// CR-023: one request id per request, attached before anything else can fail.
+//
+// The error contract in CLAUDE.md carries a requestId, and its whole value is
+// that the body a user screenshots, the X-Request-Id header and the access-log
+// line all name the SAME request. Until now only api-key-auth minted one, so
+// every other error either had no id or had one invented at the moment of
+// failure, which cannot be looked up anywhere. An inbound X-Request-Id is
+// honoured so a caller can correlate across a retry.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const inbound = req.header('x-request-id');
+  req.requestId = inbound && inbound.length <= 200 ? inbound : randomUUID();
+  res.setHeader('X-Request-Id', req.requestId);
+  next();
+});
+
 // CSP nonce generation middleware - must run before helmet
 app.use((req: Request, res: Response, next: NextFunction) => {
   // Generate a unique nonce for each request

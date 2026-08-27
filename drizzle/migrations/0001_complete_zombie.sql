@@ -34,9 +34,15 @@ DROP INDEX "client_tenant_time_idx";--> statement-breakpoint
 DROP INDEX "client_activity_time_idx";--> statement-breakpoint
 DROP INDEX "client_activity_idx";--> statement-breakpoint
 DROP INDEX "client_activity_status_idx";--> statement-breakpoint
-ALTER TABLE "client_activity_logs" ALTER COLUMN "id" SET DATA TYPE serial;--> statement-breakpoint
-ALTER TABLE "client_activity_logs" ALTER COLUMN "id" DROP DEFAULT;--> statement-breakpoint
-ALTER TABLE "client_activity_logs" ALTER COLUMN "tenant_id" SET DATA TYPE integer;--> statement-breakpoint
+-- PA-032: two statements removed here. `serial` is not a TYPE — it is shorthand
+-- for integer plus a sequence — so `SET DATA TYPE serial` is invalid SQL that
+-- Postgres has always rejected, and `tenant_id` to integer had no USING clause
+-- and could not cast either. Both also contradict the schema as it stands:
+-- client_activity_logs.id and .tenant_id are uuid, which is what 0000 already
+-- creates. They never executed anywhere; removing them is what lets this
+-- migration apply to an empty database. The `id DROP DEFAULT` that sat between
+-- them goes with them: it existed only because a serial column takes its default
+-- from a sequence, and the schema wants defaultRandom() on that uuid.
 ALTER TABLE "client_activity_logs" ALTER COLUMN "client_id" SET DATA TYPE text;--> statement-breakpoint
 ALTER TABLE "purchase_order_items" ALTER COLUMN "id" SET DATA TYPE varchar;--> statement-breakpoint
 ALTER TABLE "purchase_order_items" ALTER COLUMN "tenant_id" SET DATA TYPE varchar;--> statement-breakpoint
@@ -85,6 +91,16 @@ ALTER TABLE "purchase_order_items" DROP COLUMN "serial_number";--> statement-bre
 ALTER TABLE "purchase_order_items" DROP COLUMN "updated_at";--> statement-breakpoint
 ALTER TABLE "purchase_orders" DROP COLUMN "expected_delivery_date";--> statement-breakpoint
 ALTER TABLE "purchase_orders" DROP COLUMN "notes";--> statement-breakpoint
+-- PA-032: the three DROP DEFAULTs below are added. A column default keeps
+-- depending on the enum after the column itself is switched to text — it stays
+-- as 'json'::export_format — so DROP TYPE failed with "cannot drop type
+-- export_format because other objects depend on it" and the whole rewrite
+-- unravelled from there. drizzle-kit does not emit them. The defaults are
+-- restored after the type is recreated; all three values are members of the new
+-- enum, so they survive the round trip unchanged.
+ALTER TABLE "public"."data_export_templates" ALTER COLUMN "format" DROP DEFAULT;--> statement-breakpoint
+ALTER TABLE "public"."personal_data_exports" ALTER COLUMN "format" DROP DEFAULT;--> statement-breakpoint
+ALTER TABLE "public"."report_schedules" ALTER COLUMN "export_format" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "public"."data_export_templates" ALTER COLUMN "format" SET DATA TYPE text;--> statement-breakpoint
 ALTER TABLE "public"."personal_data_exports" ALTER COLUMN "format" SET DATA TYPE text;--> statement-breakpoint
 ALTER TABLE "public"."report_executions" ALTER COLUMN "export_format" SET DATA TYPE text;--> statement-breakpoint
@@ -95,6 +111,10 @@ ALTER TABLE "public"."data_export_templates" ALTER COLUMN "format" SET DATA TYPE
 ALTER TABLE "public"."personal_data_exports" ALTER COLUMN "format" SET DATA TYPE "public"."export_format" USING "format"::"public"."export_format";--> statement-breakpoint
 ALTER TABLE "public"."report_executions" ALTER COLUMN "export_format" SET DATA TYPE "public"."export_format" USING "export_format"::"public"."export_format";--> statement-breakpoint
 ALTER TABLE "public"."report_schedules" ALTER COLUMN "export_format" SET DATA TYPE "public"."export_format" USING "export_format"::"public"."export_format";--> statement-breakpoint
+-- PA-032: restore the defaults dropped above, now that the enum exists again.
+ALTER TABLE "public"."data_export_templates" ALTER COLUMN "format" SET DEFAULT 'json';--> statement-breakpoint
+ALTER TABLE "public"."personal_data_exports" ALTER COLUMN "format" SET DEFAULT 'json';--> statement-breakpoint
+ALTER TABLE "public"."report_schedules" ALTER COLUMN "export_format" SET DEFAULT 'pdf';--> statement-breakpoint
 DROP TYPE "public"."blog_content_queue_status";--> statement-breakpoint
 DROP TYPE "public"."appointment_status";--> statement-breakpoint
 DROP TYPE "public"."equipment_health_status";--> statement-breakpoint

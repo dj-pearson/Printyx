@@ -664,13 +664,13 @@ export default function ERPIntegration() {
                               Duration: {system.recentSync.duration} min
                             </div>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="View details" size="sm" variant="outline">
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Settings" size="sm" variant="outline">
                                 <Settings className="h-4 w-4" />
                               </Button>
-                              <Button size="sm">
+                              <Button aria-label="Sync" size="sm">
                                 <Sync className="h-4 w-4" />
                               </Button>
                             </div>

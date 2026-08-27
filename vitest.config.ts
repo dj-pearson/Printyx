@@ -60,6 +60,15 @@ export default defineConfig({
       },
     },
   },
+  // JSX for component tests (CR-033). tsconfig.json sets "jsx": "preserve" because
+  // Vite's React plugin does the real transform in the app; esbuild reads that,
+  // falls back to the CLASSIC transform, and every .tsx test dies with "React is
+  // not defined" — including inside components that correctly do not import
+  // React. Nothing hit this before because query-state.test.tsx is the repo's
+  // first .tsx test.
+  esbuild: {
+    jsx: 'automatic',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './client/src'),

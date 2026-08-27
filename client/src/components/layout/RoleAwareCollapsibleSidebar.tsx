@@ -790,6 +790,7 @@ export function RoleAwareCollapsibleSidebar({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
+              aria-label="Search menu"
               type="text"
               placeholder="Search menu..."
               value={searchQuery}
@@ -1001,6 +1002,7 @@ export function RoleAwareCollapsibleSidebar({
           </div>
           <Link href="/settings">
             <Button
+              aria-label="Settings"
               variant="ghost"
               size="icon"
               className="h-8 w-8 group-data-[collapsible=icon]:hidden"

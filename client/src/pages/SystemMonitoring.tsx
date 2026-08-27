@@ -445,7 +445,7 @@ export default function SystemMonitoring() {
                         <TableCell>{format(new Date(service.lastCheck), 'HH:mm:ss')}</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
-                            <Button size="sm" variant="outline">
+                            <Button aria-label="Refresh" size="sm" variant="outline">
                               <RefreshCw className="w-4 h-4" />
                             </Button>
                             <Button size="sm" variant="outline">

@@ -105,16 +105,16 @@ export function TrendLineChart({
         </div>
         <div className="flex items-center gap-1">
           {onExport && (
-            <Button variant="ghost" size="sm" onClick={onExport}>
+            <Button aria-label="Export" variant="ghost" size="sm" onClick={onExport}>
               <Download className="h-4 w-4" />
             </Button>
           )}
           {onMaximize && (
-            <Button variant="ghost" size="sm" onClick={onMaximize}>
+            <Button aria-label="Maximize" variant="ghost" size="sm" onClick={onMaximize}>
               <Maximize2 className="h-4 w-4" />
             </Button>
           )}
-          <Button variant="ghost" size="sm">
+          <Button aria-label="More options" variant="ghost" size="sm">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </div>
@@ -170,12 +170,12 @@ export function AreaVolumeChart({
         </div>
         <div className="flex items-center gap-1">
           {onExport && (
-            <Button variant="ghost" size="sm" onClick={onExport}>
+            <Button aria-label="Export" variant="ghost" size="sm" onClick={onExport}>
               <Download className="h-4 w-4" />
             </Button>
           )}
           {onMaximize && (
-            <Button variant="ghost" size="sm" onClick={onMaximize}>
+            <Button aria-label="Maximize" variant="ghost" size="sm" onClick={onMaximize}>
               <Maximize2 className="h-4 w-4" />
             </Button>
           )}
@@ -228,12 +228,12 @@ export function ComparisonBarChart({
         </div>
         <div className="flex items-center gap-1">
           {onExport && (
-            <Button variant="ghost" size="sm" onClick={onExport}>
+            <Button aria-label="Export" variant="ghost" size="sm" onClick={onExport}>
               <Download className="h-4 w-4" />
             </Button>
           )}
           {onMaximize && (
-            <Button variant="ghost" size="sm" onClick={onMaximize}>
+            <Button aria-label="Maximize" variant="ghost" size="sm" onClick={onMaximize}>
               <Maximize2 className="h-4 w-4" />
             </Button>
           )}
@@ -284,12 +284,12 @@ export function InsightsPieChart({
         </div>
         <div className="flex items-center gap-1">
           {onExport && (
-            <Button variant="ghost" size="sm" onClick={onExport}>
+            <Button aria-label="Export" variant="ghost" size="sm" onClick={onExport}>
               <Download className="h-4 w-4" />
             </Button>
           )}
           {onMaximize && (
-            <Button variant="ghost" size="sm" onClick={onMaximize}>
+            <Button aria-label="Maximize" variant="ghost" size="sm" onClick={onMaximize}>
               <Maximize2 className="h-4 w-4" />
             </Button>
           )}
@@ -364,12 +364,12 @@ export function PerformanceRadarChart({
         </div>
         <div className="flex items-center gap-1">
           {onExport && (
-            <Button variant="ghost" size="sm" onClick={onExport}>
+            <Button aria-label="Export" variant="ghost" size="sm" onClick={onExport}>
               <Download className="h-4 w-4" />
             </Button>
           )}
           {onMaximize && (
-            <Button variant="ghost" size="sm" onClick={onMaximize}>
+            <Button aria-label="Maximize" variant="ghost" size="sm" onClick={onMaximize}>
               <Maximize2 className="h-4 w-4" />
             </Button>
           )}
@@ -416,12 +416,12 @@ export function SalesFunnelChart({
         </div>
         <div className="flex items-center gap-1">
           {onExport && (
-            <Button variant="ghost" size="sm" onClick={onExport}>
+            <Button aria-label="Export" variant="ghost" size="sm" onClick={onExport}>
               <Download className="h-4 w-4" />
             </Button>
           )}
           {onMaximize && (
-            <Button variant="ghost" size="sm" onClick={onMaximize}>
+            <Button aria-label="Maximize" variant="ghost" size="sm" onClick={onMaximize}>
               <Maximize2 className="h-4 w-4" />
             </Button>
           )}

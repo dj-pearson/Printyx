@@ -67,6 +67,10 @@ interface QuoteTemplatesProps {
   className?: string;
 }
 
+// CR-033: module-level, not a fresh `?? []` per render — this feeds a useMemo
+// dependency array and a new identity each render defeats the memo.
+const EMPTY_TEMPLATES: QuoteTemplate[] = [];
+
 export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -88,13 +92,19 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
   // If these ever do move server-side, add the table + migration and the edge function
   // FIRST, then switch this to a real path — do not restore the API-shaped key while
   // the data is still local.
-  const { data: templates = [] } = useQuery<QuoteTemplate[]>({
+  // CR-033: this reads localStorage, not the network, so an error here is rare
+  // — but not impossible, and the failure mode is the bad one. JSON.parse throws
+  // on a corrupted value, the query errors, and the component fell through to
+  // "No Templates Yet": the user is told their saved templates do not exist
+  // when in fact they are sitting in storage unreadable. Worth one branch.
+  const templatesQuery = useQuery<QuoteTemplate[]>({
     queryKey: ['local:quote-templates'],
     queryFn: async () => {
       const stored = localStorage.getItem('quoteTemplates');
       return stored ? JSON.parse(stored) : [];
     },
   });
+  const templates = templatesQuery.data ?? EMPTY_TEMPLATES;
 
   // Save template mutation
   const saveTemplateMutation = useMutation({
@@ -214,7 +224,16 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto py-4">
-            {templates.length === 0 ? (
+            {templatesQuery.isError ? (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 mx-auto mb-4 text-destructive opacity-50" />
+                <h3 className="text-lg font-semibold mb-2">Saved templates could not be read</h3>
+                <p className="text-muted-foreground mb-4">
+                  Your browser has stored templates but they could not be parsed. They have not been
+                  deleted.
+                </p>
+              </div>
+            ) : templates.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                 <h3 className="text-lg font-semibold mb-2">No Templates Yet</h3>
@@ -252,7 +271,12 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button
+                              aria-label="More options"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
