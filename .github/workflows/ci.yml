@@ -61,6 +61,8 @@ jobs:
         run: npm run check:edge-rbac
       - name: db.query relational-schema registration (QUALITY-002)
         run: npm run check:db-query-registration
+      - name: tenant_id column-type ratchet (QUALITY-002)
+        run: npm run check:tenant-id-type
       - name: PRD file-reference ratchet
         run: npm run check:prd-refs
       - name: Raw-fetch ratchet (PROD-013)

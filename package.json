@@ -47,6 +47,7 @@
     "check:a11y-names": "node scripts/check-accessible-names.mjs",
     "check:edge-rbac": "node scripts/check-edge-rbac.mjs",
     "check:db-query-registration": "node scripts/check-db-query-registration.mjs",
+    "check:tenant-id-type": "node scripts/check-tenant-id-type.mjs",
     "check:drift": "tsx scripts/check-schema-drift.ts",
     "check:drift:sql": "tsx scripts/check-schema-drift.ts --live-sql",
     "check:datadumps": "node scripts/check-no-data-dumps.mjs",
