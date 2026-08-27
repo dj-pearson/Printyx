@@ -169,31 +169,21 @@ export const monitoredDevices = pgTable(
 );
 
 /**
- * Client Activity Logs
- * Audit trail for client operations
+ * Client Activity Logs — DECLARED IN shared/client-monitor-schema.ts (EDGE-016a).
+ *
+ * A second declaration of `client_activity_logs` lived here with a serial id, an
+ * INTEGER tenant_id and a TEXT client_id, and it won inside @shared/schema
+ * because schema.ts named it in an explicit re-export that beat the wildcard.
+ * So the TYPE the app saw was this one while every writer in the repo was
+ * written against the other: uuid tenantId, uuid clientId, and
+ * activity/status/details/errorCode. That mismatch is what the 11 TS2769s on
+ * this one table were, and the ingest path 42703'd on every write.
+ *
+ * client-monitor-schema is canonical. integer('tenant_id') is a foreign
+ * convention — this application keys tenants by uuid everywhere else — and the
+ * live table already carries a uuid id and tenant_id, because the statements in
+ * 0001 that would have narrowed them were invalid SQL and never executed.
  */
-export const clientActivityLogs = pgTable(
-  'client_activity_logs',
-  {
-    id: serial('id').primaryKey(),
-    tenantId: integer('tenant_id').notNull(),
-    clientId: text('client_id').notNull(),
-    eventType: text('event_type').notNull(), // heartbeat, metrics, error, config_update, discovery, offline, online
-    eventData: jsonb('event_data'), // Additional context
-    severity: text('severity').notNull().default('info'), // info, warning, error, critical
-    message: text('message'),
-    timestamp: timestamp('timestamp').defaultNow().notNull(),
-  },
-  (table) => ({
-    tenantClientIdx: index('client_activity_logs_tenant_client_idx').on(
-      table.tenantId,
-      table.clientId,
-    ),
-    eventTypeIdx: index('client_activity_logs_event_type_idx').on(table.eventType),
-    timestampIdx: index('client_activity_logs_timestamp_idx').on(table.timestamp),
-    severityIdx: index('client_activity_logs_severity_idx').on(table.severity),
-  }),
-);
 
 /**
  * Toner Alerts
@@ -311,7 +301,7 @@ export const deviceMeterHistory = pgTable(
 export const clientRegistrationsRelations = relations(clientRegistrations, ({ many }) => ({
   devices: many(monitoredDevices),
   metrics: many(clientCollectedMetrics),
-  activityLogs: many(clientActivityLogs),
+  // activityLogs — the table is declared in client-monitor-schema (EDGE-016a).
   alerts: many(tonerAlerts),
 }));
 
@@ -349,8 +339,6 @@ export type ClientCollectedMetric = typeof clientCollectedMetrics.$inferSelect;
 export type NewClientCollectedMetric = typeof clientCollectedMetrics.$inferInsert;
 export type MonitoredDevice = typeof monitoredDevices.$inferSelect;
 export type NewMonitoredDevice = typeof monitoredDevices.$inferInsert;
-export type ClientActivityLog = typeof clientActivityLogs.$inferSelect;
-export type NewClientActivityLog = typeof clientActivityLogs.$inferInsert;
 export type TonerAlert = typeof tonerAlerts.$inferSelect;
 export type NewTonerAlert = typeof tonerAlerts.$inferInsert;
 export type OidMapping = typeof oidMappings.$inferSelect;

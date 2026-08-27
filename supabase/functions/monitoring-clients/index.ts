@@ -794,12 +794,17 @@ export default async function handler(req: Request) {
     }
 
     // ── activity log ─────────────────────────────────────────────────
-    // Columns are the post-0001 shape: event_type/severity/event_data, NOT
-    // the activity/status/details that shared/client-monitor-schema.ts still
-    // declares (migration 0001_complete_zombie dropped those six columns and
-    // narrowed tenant_id to integer). That is why this filters on client_id
-    // alone - the client was already tenant-checked above, and comparing a
-    // uuid tenantId against an integer column errors at the database.
+    // EDGE-016a: reads the canonical shape — activity/status/details, as
+    // shared/client-monitor-schema.ts declares — and scopes by tenant_id as well
+    // as client_id.
+    //
+    // It used to read event_type/severity/event_data and filter on client_id
+    // ALONE, on the reasoning that tenant_id had been narrowed to integer by
+    // migration 0001 so a uuid comparison would error. That was never true: the
+    // statement narrowing it was invalid SQL and Postgres rejected it, so
+    // tenant_id has been uuid all along. The tenant filter belongs here on its
+    // own merits — the client is tenant-checked above, but a query that carries
+    // its own scope cannot be broken by a change to that check.
     if (req.method === 'GET' && clientId && action === 'activity') {
       const client = await findClientForTenant(admin, clientId, tenantId);
       if (!client) return createCorsResponse({ message: 'Client not found' }, 404, req);
@@ -807,7 +812,8 @@ export default async function handler(req: Request) {
       const limit = Math.min(Number(url.searchParams.get('limit')) || 100, 500);
       const { data: rows, error } = await admin
         .from('client_activity_logs')
-        .select('id, client_id, event_type, event_data, severity, message, timestamp')
+        .select('id, client_id, activity, status, details, error_code, message, timestamp')
+        .eq('tenant_id', tenantId)
         .eq('client_id', client.id)
         .order('timestamp', { ascending: false })
         .limit(limit);
@@ -818,11 +824,15 @@ export default async function handler(req: Request) {
           req,
         );
       }
+      // The UI still reads eventType/eventData/severity, so the mapping stays —
+      // same as the detail handler above. activity is the event, status is its
+      // severity, details is the payload.
       const activity = (rows || []).map((r: any) => ({
         id: r.id,
-        eventType: r.event_type,
-        eventData: r.event_data,
-        severity: r.severity,
+        eventType: r.activity,
+        eventData: r.details,
+        severity: r.status,
+        errorCode: r.error_code,
         message: r.message,
         timestamp: r.timestamp,
       }));

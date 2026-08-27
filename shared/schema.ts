@@ -80,7 +80,9 @@ export {
   clientRegistrations,
   clientCollectedMetrics,
   monitoredDevices,
-  clientActivityLogs,
+  // clientActivityLogs — EDGE-016a: comes from client-monitor-schema via the
+  // wildcard below. Naming it here made the printyx shape win over the one every
+  // writer is coded against.
   tonerAlerts,
   oidMappings,
   deviceMeterHistory,
@@ -97,8 +99,6 @@ export type {
   NewClientCollectedMetric,
   MonitoredDevice,
   NewMonitoredDevice,
-  ClientActivityLog,
-  NewClientActivityLog,
   TonerAlert,
   NewTonerAlert,
   OidMapping,

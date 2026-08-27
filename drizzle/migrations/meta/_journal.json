@@ -302,6 +302,20 @@
       "when": 1787787311154,
       "tag": "0059_pa032_fk_column_types",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1787788215564,
+      "tag": "0060_edge016a_restore_activity_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1787788258337,
+      "tag": "0061_edge016a_drop_event_columns",
+      "breakpoints": true
     }
   ]
 }
