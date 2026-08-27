@@ -15,6 +15,7 @@ import {
 } from './middleware/rbac-route-helper';
 
 import { getUserId, getTenantId, authed } from './utils/auth-helpers';
+import { badRequest, notFound, serverError } from './lib/error-response';
 // Validation schemas for update operations
 const purchaseOrderStatusSchema = z.object({
   status: z.enum([
@@ -86,7 +87,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         res.json(purchaseOrders);
       } catch (error) {
         log.error('Error fetching purchase orders:', error);
-        res.status(500).json({ error: 'Failed to fetch purchase orders' });
+        serverError(res, 'Failed to fetch purchase orders');
       }
     }),
   );
@@ -102,7 +103,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         const purchaseOrder = await storage.getPurchaseOrder(id, tenantId);
         if (!purchaseOrder) {
-          return res.status(404).json({ error: 'Purchase order not found' });
+          return notFound(res, 'Purchase order not found');
         }
 
         // Get line items for this purchase order
@@ -111,7 +112,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         res.json({ ...purchaseOrder, items });
       } catch (error) {
         log.error('Error fetching purchase order:', error);
-        res.status(500).json({ error: 'Failed to fetch purchase order' });
+        serverError(res, 'Failed to fetch purchase order');
       }
     }),
   );
@@ -154,9 +155,9 @@ export function registerPurchaseOrderRoutes(app: Express) {
       } catch (error: any) {
         log.error('Error creating purchase order:', error);
         if (error.name === 'ZodError') {
-          res.status(400).json({ error: 'Invalid data', details: error.errors });
+          badRequest(res, 'Invalid data', { details: error.errors });
         } else {
-          res.status(500).json({ error: 'Failed to create purchase order' });
+          serverError(res, 'Failed to create purchase order');
         }
       }
     }),
@@ -179,16 +180,16 @@ export function registerPurchaseOrderRoutes(app: Express) {
           tenantId,
         );
         if (!purchaseOrder) {
-          return res.status(404).json({ error: 'Purchase order not found' });
+          return notFound(res, 'Purchase order not found');
         }
 
         res.json(purchaseOrder);
       } catch (error: any) {
         log.error('Error updating purchase order:', error);
         if (error.name === 'ZodError') {
-          res.status(400).json({ error: 'Invalid data', details: error.errors });
+          badRequest(res, 'Invalid data', { details: error.errors });
         } else {
-          res.status(500).json({ error: 'Failed to update purchase order' });
+          serverError(res, 'Failed to update purchase order');
         }
       }
     }),
@@ -205,13 +206,13 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         const success = await storage.deletePurchaseOrder(id, tenantId);
         if (!success) {
-          return res.status(404).json({ error: 'Purchase order not found' });
+          return notFound(res, 'Purchase order not found');
         }
 
         res.json({ success: true });
       } catch (error) {
         log.error('Error deleting purchase order:', error);
-        res.status(500).json({ error: 'Failed to delete purchase order' });
+        serverError(res, 'Failed to delete purchase order');
       }
     }),
   );
@@ -242,17 +243,17 @@ export function registerPurchaseOrderRoutes(app: Express) {
         );
 
         if (!purchaseOrder) {
-          return res.status(404).json({ error: 'Purchase order not found' });
+          return notFound(res, 'Purchase order not found');
         }
 
         res.json(purchaseOrder);
       } catch (error: any) {
         if (error.name === 'ZodError') {
           log.warn('Invalid purchase order status update:', error.errors);
-          return res.status(400).json({ error: 'Invalid status value', details: error.errors });
+          return badRequest(res, 'Invalid status value', { details: error.errors });
         }
         log.error('Error updating purchase order status:', error);
-        res.status(500).json({ error: 'Failed to update purchase order status' });
+        serverError(res, 'Failed to update purchase order status');
       }
     }),
   );
@@ -271,7 +272,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         res.json(items);
       } catch (error) {
         log.error('Error fetching purchase order items:', error);
-        res.status(500).json({ error: 'Failed to fetch purchase order items' });
+        serverError(res, 'Failed to fetch purchase order items');
       }
     }),
   );
@@ -296,9 +297,9 @@ export function registerPurchaseOrderRoutes(app: Express) {
       } catch (error: any) {
         log.error('Error creating purchase order item:', error);
         if (error.name === 'ZodError') {
-          res.status(400).json({ error: 'Invalid data', details: error.errors });
+          badRequest(res, 'Invalid data', { details: error.errors });
         } else {
-          res.status(500).json({ error: 'Failed to create purchase order item' });
+          serverError(res, 'Failed to create purchase order item');
         }
       }
     }),
@@ -317,16 +318,16 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         const item = await storage.updatePurchaseOrderItem(id, validatedData, tenantId);
         if (!item) {
-          return res.status(404).json({ error: 'Purchase order item not found' });
+          return notFound(res, 'Purchase order item not found');
         }
 
         res.json(item);
       } catch (error: any) {
         log.error('Error updating purchase order item:', error);
         if (error.name === 'ZodError') {
-          res.status(400).json({ error: 'Invalid data', details: error.errors });
+          badRequest(res, 'Invalid data', { details: error.errors });
         } else {
-          res.status(500).json({ error: 'Failed to update purchase order item' });
+          serverError(res, 'Failed to update purchase order item');
         }
       }
     }),
@@ -343,13 +344,13 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         const success = await storage.deletePurchaseOrderItem(id, tenantId);
         if (!success) {
-          return res.status(404).json({ error: 'Purchase order item not found' });
+          return notFound(res, 'Purchase order item not found');
         }
 
         res.json({ success: true });
       } catch (error) {
         log.error('Error deleting purchase order item:', error);
-        res.status(500).json({ error: 'Failed to delete purchase order item' });
+        serverError(res, 'Failed to delete purchase order item');
       }
     }),
   );
@@ -390,7 +391,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         res.json(stats);
       } catch (error) {
         log.error('Error fetching purchase order stats:', error);
-        res.status(500).json({ error: 'Failed to fetch purchase order statistics' });
+        serverError(res, 'Failed to fetch purchase order statistics');
       }
     }),
   );

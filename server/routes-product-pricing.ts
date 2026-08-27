@@ -33,6 +33,7 @@ import {
 } from './services/pricing-service';
 
 import { getUserId, getTenantId, authed } from './utils/auth-helpers';
+import { badRequest, forbidden, notFound, serverError } from './lib/error-response';
 /**
  * Product Pricing Routes - Three-Tier Pricing Management
  *
@@ -62,14 +63,14 @@ export function registerProductPricingRoutes(app: Express) {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const settings = await getOrCreatePricingSettings(tenantId);
       res.json(settings);
     } catch (error) {
       log.error('Error fetching pricing settings:', error);
-      res.status(500).json({ error: 'Failed to fetch pricing settings' });
+      serverError(res, 'Failed to fetch pricing settings');
     }
   });
 
@@ -83,12 +84,12 @@ export function registerProductPricingRoutes(app: Express) {
       const userRole = req.user?.role || 'standard';
 
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       // Check if user can edit settings (admins and above)
       if (!canEditDealerCost(userRole)) {
-        return res.status(403).json({ error: 'Insufficient permissions to edit pricing settings' });
+        return forbidden(res, 'Insufficient permissions to edit pricing settings');
       }
 
       const {
@@ -129,7 +130,7 @@ export function registerProductPricingRoutes(app: Express) {
       res.json(updated);
     } catch (error) {
       log.error('Error updating pricing settings:', error);
-      res.status(500).json({ error: 'Failed to update pricing settings' });
+      serverError(res, 'Failed to update pricing settings');
     }
   });
 
@@ -143,14 +144,14 @@ export function registerProductPricingRoutes(app: Express) {
       const userRole = req.user?.role || 'standard';
 
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const visibility = await getPricingVisibility(tenantId, userRole);
       res.json(visibility);
     } catch (error) {
       log.error('Error fetching pricing visibility:', error);
-      res.status(500).json({ error: 'Failed to fetch pricing visibility' });
+      serverError(res, 'Failed to fetch pricing visibility');
     }
   });
 
@@ -165,13 +166,13 @@ export function registerProductPricingRoutes(app: Express) {
       try {
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ error: 'Tenant ID required' });
+          return badRequest(res, 'Tenant ID required');
         }
 
         const { dealerCost, markupPercentage, productCategory } = req.body;
 
         if (!dealerCost || isNaN(parseFloat(dealerCost))) {
-          return res.status(400).json({ error: 'Valid dealer cost required' });
+          return badRequest(res, 'Valid dealer cost required');
         }
 
         const settings = await getOrCreatePricingSettings(tenantId);
@@ -189,7 +190,7 @@ export function registerProductPricingRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error calculating rep cost:', error);
-        res.status(500).json({ error: 'Failed to calculate rep cost' });
+        serverError(res, 'Failed to calculate rep cost');
       }
     }),
   );
@@ -208,7 +209,7 @@ export function registerProductPricingRoutes(app: Express) {
         const productId = req.params.id;
 
         if (!tenantId) {
-          return res.status(400).json({ error: 'Tenant ID required' });
+          return badRequest(res, 'Tenant ID required');
         }
 
         const {
@@ -220,7 +221,7 @@ export function registerProductPricingRoutes(app: Express) {
         } = req.body;
 
         if (!tier) {
-          return res.status(400).json({ error: 'Pricing tier required' });
+          return badRequest(res, 'Pricing tier required');
         }
 
         // Get current product
@@ -231,7 +232,7 @@ export function registerProductPricingRoutes(app: Express) {
           .limit(1);
 
         if (!product) {
-          return res.status(404).json({ error: 'Product not found' });
+          return notFound(res, 'Product not found');
         }
 
         const settings = await getOrCreatePricingSettings(tenantId);
@@ -240,7 +241,7 @@ export function registerProductPricingRoutes(app: Express) {
         // Dealer cost update (admins only)
         if (dealerCost !== undefined) {
           if (!canEditDealerCost(userRole)) {
-            return res.status(403).json({ error: 'Insufficient permissions to edit dealer cost' });
+            return forbidden(res, 'Insufficient permissions to edit dealer cost');
           }
 
           updateData[`${tier}DealerCost`] = dealerCost;
@@ -258,7 +259,7 @@ export function registerProductPricingRoutes(app: Express) {
         // Rep markup percentage update
         if (repMarkupPercentage !== undefined) {
           if (!canEditDealerCost(userRole)) {
-            return res.status(403).json({ error: 'Insufficient permissions to edit markup' });
+            return forbidden(res, 'Insufficient permissions to edit markup');
           }
 
           updateData[`${tier}RepMarkupPercentage`] = repMarkupPercentage;
@@ -298,7 +299,7 @@ export function registerProductPricingRoutes(app: Express) {
         res.json(filtered);
       } catch (error) {
         log.error('Error updating product pricing:', error);
-        res.status(500).json({ error: 'Failed to update product pricing' });
+        serverError(res, 'Failed to update product pricing');
       }
     }),
   );
@@ -317,17 +318,17 @@ export function registerProductPricingRoutes(app: Express) {
         const userRole = req.user?.role || 'standard';
 
         if (!tenantId) {
-          return res.status(400).json({ error: 'Tenant ID required' });
+          return badRequest(res, 'Tenant ID required');
         }
 
         if (!canEditDealerCost(userRole)) {
-          return res.status(403).json({ error: 'Insufficient permissions' });
+          return forbidden(res, 'Insufficient permissions');
         }
 
         const { updates } = req.body; // Array of { productId, tier, dealerCost }
 
         if (!Array.isArray(updates)) {
-          return res.status(400).json({ error: 'Updates must be an array' });
+          return badRequest(res, 'Updates must be an array');
         }
 
         const settings = await getOrCreatePricingSettings(tenantId);
@@ -374,7 +375,7 @@ export function registerProductPricingRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error bulk updating dealer costs:', error);
-        res.status(500).json({ error: 'Failed to bulk update dealer costs' });
+        serverError(res, 'Failed to bulk update dealer costs');
       }
     }),
   );
@@ -393,12 +394,12 @@ export function registerProductPricingRoutes(app: Express) {
         const userRole = req.user?.role || 'standard';
 
         if (!tenantId) {
-          return res.status(400).json({ error: 'Tenant ID required' });
+          return badRequest(res, 'Tenant ID required');
         }
 
         // Only managers and above can see margin reports
         if (!canSeeDealerCost(userRole)) {
-          return res.status(403).json({ error: 'Insufficient permissions to view margin report' });
+          return forbidden(res, 'Insufficient permissions to view margin report');
         }
 
         const { quoteId, startDate, endDate, salesRepId } = req.query;
@@ -501,7 +502,7 @@ export function registerProductPricingRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error generating margin report:', error);
-        res.status(500).json({ error: 'Failed to generate margin report' });
+        serverError(res, 'Failed to generate margin report');
       }
     }),
   );
@@ -519,11 +520,11 @@ export function registerProductPricingRoutes(app: Express) {
         const userRole = req.user?.role || 'standard';
 
         if (!tenantId) {
-          return res.status(400).json({ error: 'Tenant ID required' });
+          return badRequest(res, 'Tenant ID required');
         }
 
         if (!canSeeDealerCost(userRole)) {
-          return res.status(403).json({ error: 'Insufficient permissions' });
+          return forbidden(res, 'Insufficient permissions');
         }
 
         // Get margin report data (reuse logic from above)
@@ -577,7 +578,7 @@ export function registerProductPricingRoutes(app: Express) {
         res.send(csv);
       } catch (error) {
         log.error('Error exporting margin report:', error);
-        res.status(500).json({ error: 'Failed to export margin report' });
+        serverError(res, 'Failed to export margin report');
       }
     }),
   );
@@ -595,7 +596,7 @@ export function registerProductPricingRoutes(app: Express) {
         const userId = req.user?.id;
 
         if (!tenantId || !userId) {
-          return res.status(400).json({ error: 'Tenant ID and User ID required' });
+          return badRequest(res, 'Tenant ID and User ID required');
         }
 
         const {
@@ -607,7 +608,7 @@ export function registerProductPricingRoutes(app: Express) {
         } = req.body;
 
         if (!requestType || !referenceId || !requestedPrice || !requestReason) {
-          return res.status(400).json({ error: 'Missing required fields' });
+          return badRequest(res, 'Missing required fields');
         }
 
         const discountAmount = (originalPrice || 0) - requestedPrice;
@@ -632,7 +633,7 @@ export function registerProductPricingRoutes(app: Express) {
         res.status(201).json(approval);
       } catch (error) {
         log.error('Error creating price approval request:', error);
-        res.status(500).json({ error: 'Failed to create approval request' });
+        serverError(res, 'Failed to create approval request');
       }
     }),
   );
@@ -652,18 +653,18 @@ export function registerProductPricingRoutes(app: Express) {
         const approvalId = req.params.id;
 
         if (!tenantId || !userId) {
-          return res.status(400).json({ error: 'Tenant ID and User ID required' });
+          return badRequest(res, 'Tenant ID and User ID required');
         }
 
         // Only managers and above can approve
         if (!canSeeDealerCost(userRole)) {
-          return res.status(403).json({ error: 'Insufficient permissions to approve pricing' });
+          return forbidden(res, 'Insufficient permissions to approve pricing');
         }
 
         const { status, approvalNotes, rejectionReason } = req.body;
 
         if (!['approved', 'rejected'].includes(status)) {
-          return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
+          return badRequest(res, "Status must be 'approved' or 'rejected'");
         }
 
         const [updated] = await db
@@ -687,7 +688,7 @@ export function registerProductPricingRoutes(app: Express) {
         res.json(updated);
       } catch (error) {
         log.error('Error updating approval status:', error);
-        res.status(500).json({ error: 'Failed to update approval status' });
+        serverError(res, 'Failed to update approval status');
       }
     }),
   );
@@ -705,11 +706,11 @@ export function registerProductPricingRoutes(app: Express) {
         const userRole = req.user?.role || 'standard';
 
         if (!tenantId) {
-          return res.status(400).json({ error: 'Tenant ID required' });
+          return badRequest(res, 'Tenant ID required');
         }
 
         if (!canSeeDealerCost(userRole)) {
-          return res.status(403).json({ error: 'Insufficient permissions' });
+          return forbidden(res, 'Insufficient permissions');
         }
 
         const pending = await db
@@ -734,7 +735,7 @@ export function registerProductPricingRoutes(app: Express) {
         res.json(pending);
       } catch (error) {
         log.error('Error fetching pending approvals:', error);
-        res.status(500).json({ error: 'Failed to fetch pending approvals' });
+        serverError(res, 'Failed to fetch pending approvals');
       }
     }),
   );

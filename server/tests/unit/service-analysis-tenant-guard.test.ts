@@ -67,7 +67,12 @@ describe('QUALITY-002: no tenant on the request means no query', () => {
   it.each(READS)('GET %s answers 400 and issues no SQL', async (path) => {
     const res = await request(buildApp()).get(path);
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('Tenant ID is required');
+    // CR-023: the body is the documented { message, code, requestId } shape now,
+    // not { error }. The guard's contract - 400 and no SQL - is unchanged; only
+    // the key carrying the sentence moved, so the code is asserted alongside it.
+    expect(res.body.message).toBe('Tenant ID is required');
+    expect(res.body.code).toBe('BAD_REQUEST');
+    expect(res.body.requestId).toEqual(expect.any(String));
     expect(state.queries, `${path} queried anyway`).toHaveLength(0);
   });
 
