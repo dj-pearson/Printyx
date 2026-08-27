@@ -4,10 +4,15 @@ import { autoLeadRoutingService } from './services/auto-lead-routing-service';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-auto-lead-routing');
 
+// QUALITY-002: same defect as the service this router drives — these were
+// imported as `platformX as x`, the root-admin platform CRM tables, which have
+// no tenant_id at all. Every query below filters by tenantId, so the reads
+// raised 42703. The aliases are the export names of the tenant tables, which is
+// what was meant.
 import {
-  platformLeadAssignmentHistory as leadAssignmentHistory,
-  platformLeadScoreCalculations as leadScoreCalculations,
-  platformRepCapacity as repCapacity,
+  leadAssignmentHistory,
+  leadScoreCalculations,
+  repCapacity,
   businessRecords,
 } from '@shared/schema';
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
@@ -221,8 +226,11 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         })),
         repWorkload: repWorkload.map((rep) => ({
           userId: rep.userId,
-          utilizationPercent: ((rep.currentLoad / (rep.maxLoad || 50)) * 100).toFixed(0),
-          currentLoad: rep.currentLoad,
+          // rep_capacity.current_active_leads is nullable; a rep with no row
+          // value has no known load, and 0 is the only number this arithmetic
+          // can use.
+          utilizationPercent: (((rep.currentLoad ?? 0) / (rep.maxLoad || 50)) * 100).toFixed(0),
+          currentLoad: rep.currentLoad ?? 0,
           maxLoad: rep.maxLoad || 50,
           leadsToday: rep.leadsToday,
           conversionRate: parseFloat(rep.conversionRate?.toString() || '0') * 100,
