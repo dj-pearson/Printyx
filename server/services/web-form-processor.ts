@@ -116,6 +116,12 @@ export async function processFormSubmission(submissionId: string): Promise<strin
           primaryContactPhone:
             asString(lead.primaryContactPhone) ?? asString(payload.phone) ?? null,
           leadSource: resolvedForm.settings?.leadSource ?? 'web_form',
+          // business_records.created_by is NOT NULL with no default
+          // (migration 0000) and nobody is logged in when a web form is
+          // submitted. Without this the insert throws and the submission is
+          // never converted — the `as $inferInsert` cast below is why tsc did
+          // not say so. 'system' is the sentinel the seeders use.
+          createdBy: 'system',
           ownerId: resolvedForm.settings?.defaultOwnerId ?? null,
           customFields: custom,
           externalData: {
