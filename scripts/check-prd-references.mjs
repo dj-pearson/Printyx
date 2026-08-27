@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * PRD file-reference ratchet.
+ * Story + guidance file-reference ratchet.
  *
  * WHAT IT IS FOR. A story's acceptance criteria name the files to change. When
  * someone deletes or moves one of those files, nothing tells the story, and the
@@ -16,16 +16,26 @@
  *   - CR-034 spent three batches typing five role dashboards before anyone
  *     checked they were unrouted (that is check:orphans' story now).
  *
- * So this fails when a path named in an OPEN story stops resolving. It is not a
- * claim that the story is wrong — see the caveats — it is a prompt to re-read it.
+ * It happened a fourth time to CLAUDE.md itself, which is worse: that file is what
+ * every session reads before touching the repo. Its workflow paragraph told the
+ * next person to wire automation into server/routes-deals.ts, deleted; and a
+ * QUALITY-002 note described server/routes-predictive-service-dispatch.ts as a
+ * deferred 69-error problem long after CR-017 deleted it. Guidance pointing at a
+ * file that is not there is worse than no guidance, so CLAUDE.md is scanned too.
+ *
+ * So this fails when a path named in an OPEN story, or in CLAUDE.md, stops
+ * resolving. It is not a claim that the text is wrong — see the caveats — it is a
+ * prompt to re-read it.
  *
  * WHAT A FINDING DOES AND DOES NOT MEAN:
  *   - A NEW finding means a path that used to resolve no longer does. Someone
  *     deleted or moved it. Re-read the story: it may be resolved, void, or just
  *     need the path updated.
- *   - The BASELINE is not a defect list. 26 of the 53 entries recorded when this
- *     was written are AOS-* stories naming files they would CREATE, which is what
- *     a forward-looking story is supposed to do. Do not "fix" those.
+ *   - The BASELINE is not a defect list. Most entries are AOS-* stories naming
+ *     files they would CREATE, which is what a forward-looking story is supposed
+ *     to do, and the CLAUDE.md entries are deliberate references to files it
+ *     records as DELETED ("PROD-008b deleted it"). Do not "fix" those. A NEW
+ *     entry is the signal; the list itself is not.
  *
  * WHY IT DOES NOT TRY TO SAY WHICH: distinguishing "deleted" from "not built
  * yet" needs git history, and this repo is cloned SHALLOW in CI and in the
@@ -71,6 +81,15 @@ function resolves(relPath) {
   }
 }
 
+/** Every repo path mentioned in a blob, deduped and sorted. */
+function pathsIn(text) {
+  const seen = new Set();
+  let m;
+  PATH_RE.lastIndex = 0;
+  while ((m = PATH_RE.exec(text)) !== null) seen.add(m[1]);
+  return [...seen].sort();
+}
+
 const prd = JSON.parse(readFileSync(PRD, 'utf8'));
 const findings = [];
 for (const story of prd.userStories ?? []) {
@@ -78,12 +97,18 @@ for (const story of prd.userStories ?? []) {
   const text = [story.title, story.description, ...(story.acceptanceCriteria ?? [])]
     .filter(Boolean)
     .join('\n');
-  const seen = new Set();
-  let m;
-  PATH_RE.lastIndex = 0;
-  while ((m = PATH_RE.exec(text)) !== null) seen.add(m[1]);
-  for (const p of [...seen].sort()) {
+  for (const p of pathsIn(text)) {
     if (!resolves(p)) findings.push(`${story.id} ${p}`);
+  }
+}
+
+// Guidance documents, scanned whole: unlike a story, every path in these is an
+// instruction to go and look at something.
+for (const doc of ['CLAUDE.md']) {
+  const abs = join(repoRoot, doc);
+  if (!existsSync(abs)) continue;
+  for (const p of pathsIn(readFileSync(abs, 'utf8'))) {
+    if (!resolves(p)) findings.push(`${doc} ${p}`);
   }
 }
 findings.sort();
@@ -102,8 +127,8 @@ if (UPDATE) {
     `${JSON.stringify(
       {
         note:
-          'PRD file-reference ratchet. scripts/check-prd-references.mjs fails when a path named in ' +
-          'an OPEN story stops resolving — usually because someone deleted or moved the file, which ' +
+          'Story + guidance file-reference ratchet. scripts/check-prd-references.mjs fails when a ' +
+          'path named in an OPEN story or in CLAUDE.md stops resolving — usually because someone deleted or moved the file, which ' +
           'means that story now describes a place that does not exist and needs re-reading. THIS ' +
           'LIST IS NOT A DEFECT LIST: many entries are forward-looking stories naming files they ' +
           'would create (the AOS-* subsystem is entirely of this kind). Do not "fix" those. ' +
@@ -121,13 +146,13 @@ if (UPDATE) {
 }
 
 if (added.length > 0) {
-  console.error(`✗ ${added.length} open story reference(s) no longer resolve:\n`);
+  console.error(`✗ ${added.length} story/guidance reference(s) no longer resolve:\n`);
   for (const f of added) {
     const [id, ...rest] = f.split(' ');
     console.error(`    ${id.padEnd(22)} ${rest.join(' ')}`);
   }
   console.error(
-    '\n  A path these stories name is not there any more. Re-read each one: the work may\n' +
+    '\n  A path this text names is not there any more. Re-read each one: for a story the work may\n' +
       '  already be done, the story may be void, or the path may just need updating —\n' +
       '  all three have happened. Then record the new state with:\n' +
       '      node scripts/check-prd-references.mjs --update-baseline\n',
