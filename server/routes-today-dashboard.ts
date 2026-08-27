@@ -180,9 +180,32 @@ export function registerTodayDashboardRoutes(app: Router) {
       const hotLeadIds = [
         ...new Set(hotLeads.map((l) => l.leadId).filter((id): id is string => !!id)),
       ];
+      // CR-030: two changes, and it is worth being precise about which is which.
+      //
+      // The projection is the real win: this read all ~80 columns of
+      // business_records to use five of them, on every dashboard load.
+      //
+      // The tenantId predicate is DEFENCE IN DEPTH, not a leak fix. The ids come
+      // from leadScoreCalculations, which is itself tenant-scoped, so they were
+      // already this tenant's rows - the same provenance argument that makes the
+      // parent-then-child lookups in routes-sales-handoff.ts correct. It is added
+      // because CLAUDE.md's first rule is unconditional and because the predicate
+      // costs nothing next to an inArray of at most ten ids, not because a leak
+      // was found here.
       const hotLeadRecords = hotLeadIds.length
         ? ((await db.query.businessRecords?.findMany({
-            where: inArray(businessRecords.id, hotLeadIds),
+            where: and(
+              eq(businessRecords.tenantId, tenantId),
+              inArray(businessRecords.id, hotLeadIds),
+            ),
+            columns: {
+              id: true,
+              companyName: true,
+              primaryContactName: true,
+              estimatedAmount: true,
+              status: true,
+              lastContactDate: true,
+            },
           })) ?? [])
         : [];
       const businessRecordById = new Map(hotLeadRecords.map((r) => [r.id, r]));
@@ -235,6 +258,8 @@ export function registerTodayDashboardRoutes(app: Router) {
       const stageRows = stageIds.length
         ? await db.query.pipelineStages.findMany({
             where: and(eq(pipelineStages.tenantId, tenantId), inArray(pipelineStages.id, stageIds)),
+            // CR-030: only the id and the two name columns are read below.
+            columns: { id: true, name: true, displayName: true },
           })
         : [];
       const stageNameById = new Map(
