@@ -84,8 +84,22 @@ const known = knownRelations();
 const findings = [];
 const swallowing = [];
 
+/**
+ * PA-031: strip comments before matching. `_shared/case.ts` documents its usage
+ * with `db.from('t')` inside a JSDoc block, and that produced a phantom table
+ * called `t` — a finding about a code sample, baselined as though it were a
+ * defect. Same limitation the nav-target checker had.
+ *
+ * Deliberately crude: it does not parse, so a `//` inside a string literal takes
+ * the rest of that line with it. A `.from('x')` is never to the right of one in
+ * this codebase, and over-stripping loses a finding rather than inventing one.
+ */
+function stripComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+
 for (const file of walk(join(repo, 'supabase', 'functions'))) {
-  const src = readFileSync(file, 'utf8');
+  const src = stripComments(readFileSync(file, 'utf8'));
   const swallows = /42P01|PGRST205/.test(src);
   const rel = relative(repo, file).replace(/\\/g, '/');
   const seen = new Set();
@@ -130,7 +144,9 @@ if (update) {
       2,
     ) + '\n',
   );
-  console.log(`✓ Baseline updated: ${new Set(findings.map(key)).size} undeclared table reference(s).`);
+  console.log(
+    `✓ Baseline updated: ${new Set(findings.map(key)).size} undeclared table reference(s).`,
+  );
   process.exit(0);
 }
 
