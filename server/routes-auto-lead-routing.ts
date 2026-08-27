@@ -21,6 +21,7 @@ import {
 } from './middleware/rbac-route-helper';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { badRequest, notFound } from './lib/error-response';
 export function registerAutoLeadRoutingRoutes(app: Express) {
   // Apply authentication and RBAC context to all auto-lead-routing routes
   // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires
@@ -34,7 +35,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
       const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       log.info(`🤖 Auto-routing lead ${leadId} for tenant ${tenantId}...`);
@@ -66,11 +67,11 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
       const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       if (!Array.isArray(leadIds) || leadIds.length === 0) {
-        return res.status(400).json({ error: 'leadIds array required' });
+        return badRequest(res, 'leadIds array required');
       }
 
       log.info(`🤖 Batch routing ${leadIds.length} leads...`);
@@ -111,7 +112,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
       const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       // Get routing statistics for the last 30 days
@@ -245,7 +246,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
       const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       // TODO: Fetch from tenant settings table
@@ -279,7 +280,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
       const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       const config = req.body;
@@ -309,7 +310,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
       const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
+        return badRequest(res, 'Tenant ID required');
       }
 
       // Fetch lead
@@ -318,7 +319,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
       });
 
       if (!lead) {
-        return res.status(404).json({ error: 'Lead not found' });
+        return notFound(res, 'Lead not found');
       }
 
       // Score lead (but don't save)

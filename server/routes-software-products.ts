@@ -6,6 +6,7 @@ import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-software-products');
 
 import { softwareProducts, insertSoftwareProductSchema } from '@shared/schema';
+import { badRequest, notFound, serverError } from './lib/error-response';
 
 export function registerSoftwareProductsRoutes(app: Express) {
   // Get all software products
@@ -51,7 +52,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
       res.json(products);
     } catch (error) {
       log.error('Error fetching software products:', error);
-      res.status(500).json({ error: 'Failed to fetch software products' });
+      serverError(res, 'Failed to fetch software products');
     }
   });
 
@@ -79,7 +80,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
       res.json(categories.map((c) => c.category));
     } catch (error) {
       log.error('Error fetching software categories:', error);
-      res.status(500).json({ error: 'Failed to fetch software categories' });
+      serverError(res, 'Failed to fetch software categories');
     }
   });
 
@@ -98,7 +99,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
       res.json(vendors.map((v) => v.vendor));
     } catch (error) {
       log.error('Error fetching vendors:', error);
-      res.status(500).json({ error: 'Failed to fetch vendors' });
+      serverError(res, 'Failed to fetch vendors');
     }
   });
 
@@ -141,7 +142,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
       res.json({ totalProducts, activeProducts });
     } catch (error) {
       log.error('Error fetching software products dashboard:', error);
-      res.status(500).json({ error: 'Failed to fetch software products dashboard' });
+      serverError(res, 'Failed to fetch software products dashboard');
     }
   });
 
@@ -157,13 +158,13 @@ export function registerSoftwareProductsRoutes(app: Express) {
         .where(and(eq(softwareProducts.id, productId), eq(softwareProducts.tenantId, tenantId)));
 
       if (!product) {
-        return res.status(404).json({ error: 'Software product not found' });
+        return notFound(res, 'Software product not found');
       }
 
       res.json(product);
     } catch (error) {
       log.error('Error fetching software product:', error);
-      res.status(500).json({ error: 'Failed to fetch software product' });
+      serverError(res, 'Failed to fetch software product');
     }
   });
 
@@ -183,7 +184,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
       res.status(201).json(newProduct);
     } catch (error) {
       log.error('Error creating software product:', error);
-      res.status(500).json({ error: 'Failed to create software product' });
+      serverError(res, 'Failed to create software product');
     }
   });
 
@@ -203,13 +204,13 @@ export function registerSoftwareProductsRoutes(app: Express) {
         .returning();
 
       if (!updatedProduct) {
-        return res.status(404).json({ error: 'Software product not found' });
+        return notFound(res, 'Software product not found');
       }
 
       res.json(updatedProduct);
     } catch (error) {
       log.error('Error updating software product:', error);
-      res.status(500).json({ error: 'Failed to update software product' });
+      serverError(res, 'Failed to update software product');
     }
   });
 
@@ -221,7 +222,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
       const tenantId = req.user.tenantId;
       const { ids } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
-        return res.status(400).json({ error: 'IDs array is required' });
+        return badRequest(res, 'IDs array is required');
       }
       const deleted = await db
         .delete(softwareProducts)
@@ -233,7 +234,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
       });
     } catch (error) {
       log.error('Error bulk deleting software products:', error);
-      res.status(500).json({ error: 'Failed to bulk delete software products' });
+      serverError(res, 'Failed to bulk delete software products');
     }
   });
 
@@ -249,13 +250,13 @@ export function registerSoftwareProductsRoutes(app: Express) {
         .returning();
 
       if (!deletedProduct) {
-        return res.status(404).json({ error: 'Software product not found' });
+        return notFound(res, 'Software product not found');
       }
 
       res.json({ message: 'Software product deleted successfully' });
     } catch (error) {
       log.error('Error deleting software product:', error);
-      res.status(500).json({ error: 'Failed to delete software product' });
+      serverError(res, 'Failed to delete software product');
     }
   });
 }

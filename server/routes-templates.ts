@@ -12,6 +12,7 @@ import { isAuthenticated } from './replitAuth.js';
 import { z } from 'zod';
 import { createModuleLogger } from './lib/logger';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { notFound, serverError } from './lib/error-response';
 const log = createModuleLogger('routes-templates');
 
 export function registerTemplateRoutes(app: Express) {
@@ -29,7 +30,7 @@ export function registerTemplateRoutes(app: Express) {
       res.json(templates);
     } catch (error) {
       log.error('Error fetching templates:', error);
-      res.status(500).json({ error: 'Failed to fetch templates' });
+      serverError(res, 'Failed to fetch templates');
     }
   });
 
@@ -45,13 +46,13 @@ export function registerTemplateRoutes(app: Express) {
         .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenantId, tenantId)));
 
       if (!template) {
-        return res.status(404).json({ error: 'Template not found' });
+        return notFound(res, 'Template not found');
       }
 
       res.json(template);
     } catch (error) {
       log.error('Error fetching template:', error);
-      res.status(500).json({ error: 'Failed to fetch template' });
+      serverError(res, 'Failed to fetch template');
     }
   });
 
@@ -72,7 +73,7 @@ export function registerTemplateRoutes(app: Express) {
       res.status(201).json(newTemplate);
     } catch (error) {
       log.error('Error creating template:', error);
-      res.status(500).json({ error: 'Failed to create template' });
+      serverError(res, 'Failed to create template');
     }
   });
 
@@ -89,13 +90,13 @@ export function registerTemplateRoutes(app: Express) {
         .returning();
 
       if (!updatedTemplate) {
-        return res.status(404).json({ error: 'Template not found' });
+        return notFound(res, 'Template not found');
       }
 
       res.json(updatedTemplate);
     } catch (error) {
       log.error('Error updating template:', error);
-      res.status(500).json({ error: 'Failed to update template' });
+      serverError(res, 'Failed to update template');
     }
   });
 
@@ -112,7 +113,7 @@ export function registerTemplateRoutes(app: Express) {
       res.json({ success: true });
     } catch (error) {
       log.error('Error deleting template:', error);
-      res.status(500).json({ error: 'Failed to delete template' });
+      serverError(res, 'Failed to delete template');
     }
   });
 
@@ -130,7 +131,7 @@ export function registerTemplateRoutes(app: Express) {
         .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenantId, tenantId)));
 
       if (!template) {
-        return res.status(404).json({ error: 'Template not found' });
+        return notFound(res, 'Template not found');
       }
 
       // Create project from template
@@ -184,7 +185,7 @@ export function registerTemplateRoutes(app: Express) {
       });
     } catch (error) {
       log.error('Error instantiating template:', error);
-      res.status(500).json({ error: 'Failed to create project from template' });
+      serverError(res, 'Failed to create project from template');
     }
   });
 
@@ -202,7 +203,7 @@ export function registerTemplateRoutes(app: Express) {
         .where(and(eq(projects.id, projectId), eq(projects.tenantId, tenantId)));
 
       if (!project) {
-        return res.status(404).json({ error: 'Project not found' });
+        return notFound(res, 'Project not found');
       }
 
       // Get project tasks
@@ -236,7 +237,7 @@ export function registerTemplateRoutes(app: Express) {
       res.status(201).json(newTemplate);
     } catch (error) {
       log.error('Error creating template from project:', error);
-      res.status(500).json({ error: 'Failed to create template from project' });
+      serverError(res, 'Failed to create template from project');
     }
   });
 }

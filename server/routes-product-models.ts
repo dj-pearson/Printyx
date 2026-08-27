@@ -15,6 +15,7 @@ import {
 } from './middleware/rbac-route-helper';
 
 import { authed } from './utils/auth-helpers';
+import { badRequest, notFound, serverError } from './lib/error-response';
 // QUALITY-002 (batch: phantom-shape server file). This file was written against
 // a product_models table that does not exist. The real one (shared/schema.ts) is
 // an equipment CATALOGUE - productCode, productName, category, manufacturer,
@@ -91,7 +92,7 @@ export function registerProductModelsRoutes(app: Express) {
         res.json(models);
       } catch (error) {
         log.error('Error fetching product models:', error);
-        res.status(500).json({ error: 'Failed to fetch product models' });
+        serverError(res, 'Failed to fetch product models');
       }
     }),
   );
@@ -120,7 +121,7 @@ export function registerProductModelsRoutes(app: Express) {
         res.json(categories.map((c) => c.category));
       } catch (error) {
         log.error('Error fetching product categories:', error);
-        res.status(500).json({ error: 'Failed to fetch product categories' });
+        serverError(res, 'Failed to fetch product categories');
       }
     }),
   );
@@ -147,7 +148,7 @@ export function registerProductModelsRoutes(app: Express) {
         res.json(manufacturers.map((m) => m.manufacturer));
       } catch (error) {
         log.error('Error fetching manufacturers:', error);
-        res.status(500).json({ error: 'Failed to fetch manufacturers' });
+        serverError(res, 'Failed to fetch manufacturers');
       }
     }),
   );
@@ -206,7 +207,7 @@ export function registerProductModelsRoutes(app: Express) {
         });
       } catch (error) {
         log.error('Error fetching product models dashboard:', error);
-        res.status(500).json({ error: 'Failed to fetch product models dashboard' });
+        serverError(res, 'Failed to fetch product models dashboard');
       }
     }),
   );
@@ -227,13 +228,13 @@ export function registerProductModelsRoutes(app: Express) {
           .where(and(eq(productModels.id, modelId), eq(productModels.tenantId, tenantId)));
 
         if (!model) {
-          return res.status(404).json({ error: 'Product model not found' });
+          return notFound(res, 'Product model not found');
         }
 
         res.json(model);
       } catch (error) {
         log.error('Error fetching product model:', error);
-        res.status(500).json({ error: 'Failed to fetch product model' });
+        serverError(res, 'Failed to fetch product model');
       }
     }),
   );
@@ -258,9 +259,9 @@ export function registerProductModelsRoutes(app: Express) {
       } catch (error: any) {
         log.error('Error creating product model:', error);
         if (error.name === 'ZodError') {
-          res.status(400).json({ error: 'Invalid data', details: error.errors });
+          badRequest(res, 'Invalid data', { details: error.errors });
         } else {
-          res.status(500).json({ error: 'Failed to create product model' });
+          serverError(res, 'Failed to create product model');
         }
       }
     }),
@@ -290,16 +291,16 @@ export function registerProductModelsRoutes(app: Express) {
         .returning();
 
       if (!updatedModel) {
-        return res.status(404).json({ error: 'Product model not found' });
+        return notFound(res, 'Product model not found');
       }
 
       res.json(updatedModel);
     } catch (error: any) {
       log.error('Error updating product model:', error);
       if (error.name === 'ZodError') {
-        res.status(400).json({ error: 'Invalid data', details: error.errors });
+        badRequest(res, 'Invalid data', { details: error.errors });
       } else {
-        res.status(500).json({ error: 'Failed to update product model' });
+        serverError(res, 'Failed to update product model');
       }
     }
   });
@@ -329,13 +330,13 @@ export function registerProductModelsRoutes(app: Express) {
           .returning();
 
         if (!deletedModel) {
-          return res.status(404).json({ error: 'Product model not found' });
+          return notFound(res, 'Product model not found');
         }
 
         res.json({ message: 'Product model deleted successfully' });
       } catch (error) {
         log.error('Error deleting product model:', error);
-        res.status(500).json({ error: 'Failed to delete product model' });
+        serverError(res, 'Failed to delete product model');
       }
     }),
   );

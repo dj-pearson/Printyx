@@ -9,6 +9,7 @@ import { Router } from 'express';
 import { requireAuth } from './replitAuth';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
+import { serverError, unauthorized } from './lib/error-response';
 const log = createModuleLogger('routes-oid-mappings');
 
 const router = Router();
@@ -19,7 +20,7 @@ router.get('/', requireAuth, async (req: any, res) => {
     const tenantId = getTenantId(req);
 
     if (!tenantId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return unauthorized(res, 'Authentication required');
     }
 
     const { manufacturer } = req.query;
@@ -49,7 +50,7 @@ router.get('/', requireAuth, async (req: any, res) => {
     res.json(manufacturer ? mappings.filter((m) => m.manufacturer === manufacturer) : mappings);
   } catch (error: any) {
     log.error('Error fetching OID mappings:', error);
-    res.status(500).json({ error: 'Failed to fetch OID mappings' });
+    serverError(res, 'Failed to fetch OID mappings');
   }
 });
 
@@ -59,7 +60,7 @@ router.get('/:id', requireAuth, async (req: any, res) => {
     const tenantId = getTenantId(req);
 
     if (!tenantId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return unauthorized(res, 'Authentication required');
     }
 
     const { id } = req.params;
@@ -77,7 +78,7 @@ router.get('/:id', requireAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     log.error('Error fetching OID mapping:', error);
-    res.status(500).json({ error: 'Failed to fetch OID mapping' });
+    serverError(res, 'Failed to fetch OID mapping');
   }
 });
 
@@ -88,7 +89,7 @@ router.post('/', requireAuth, async (req: any, res) => {
     const tenantId = getTenantId(req);
 
     if (!userId || !tenantId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return unauthorized(res, 'Authentication required');
     }
 
     const { manufacturer, modelSeries, mappingName, oids, description, isDefault } = req.body;
@@ -109,7 +110,7 @@ router.post('/', requireAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     log.error('Error creating OID mapping:', error);
-    res.status(500).json({ error: 'Failed to create OID mapping' });
+    serverError(res, 'Failed to create OID mapping');
   }
 });
 
@@ -119,7 +120,7 @@ router.put('/:id', requireAuth, async (req: any, res) => {
     const tenantId = getTenantId(req);
 
     if (!tenantId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return unauthorized(res, 'Authentication required');
     }
 
     const { id } = req.params;
@@ -138,7 +139,7 @@ router.put('/:id', requireAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     log.error('Error updating OID mapping:', error);
-    res.status(500).json({ error: 'Failed to update OID mapping' });
+    serverError(res, 'Failed to update OID mapping');
   }
 });
 
@@ -148,7 +149,7 @@ router.delete('/:id', requireAuth, async (req: any, res) => {
     const tenantId = getTenantId(req);
 
     if (!tenantId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return unauthorized(res, 'Authentication required');
     }
 
     const { id } = req.params;
@@ -157,7 +158,7 @@ router.delete('/:id', requireAuth, async (req: any, res) => {
     res.json({ success: true, message: `OID mapping ${id} deleted` });
   } catch (error: any) {
     log.error('Error deleting OID mapping:', error);
-    res.status(500).json({ error: 'Failed to delete OID mapping' });
+    serverError(res, 'Failed to delete OID mapping');
   }
 });
 
@@ -167,7 +168,7 @@ router.post('/:id/test', requireAuth, async (req: any, res) => {
     const tenantId = getTenantId(req);
 
     if (!tenantId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return unauthorized(res, 'Authentication required');
     }
 
     const { id } = req.params;
@@ -183,7 +184,7 @@ router.post('/:id/test', requireAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     log.error('Error testing OID mapping:', error);
-    res.status(500).json({ error: 'Failed to test OID mapping' });
+    serverError(res, 'Failed to test OID mapping');
   }
 });
 
@@ -194,7 +195,7 @@ router.post('/import', requireAuth, async (req: any, res) => {
     const tenantId = getTenantId(req);
 
     if (!userId || !tenantId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return unauthorized(res, 'Authentication required');
     }
 
     const { mappings, overwriteExisting } = req.body;
@@ -208,7 +209,7 @@ router.post('/import', requireAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     log.error('Error importing OID mappings:', error);
-    res.status(500).json({ error: 'Failed to import OID mappings' });
+    serverError(res, 'Failed to import OID mappings');
   }
 });
 

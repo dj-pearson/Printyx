@@ -15,6 +15,7 @@ import {
   insertPlatformIntegrationSchema,
 } from '@shared/platform-integrations-schema';
 import { IntegrationsService } from './services/integrations-service';
+import { badRequest, notFound, serverError } from './lib/error-response';
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ const router = express.Router();
 router.get('/api/integrations', async (req: any, res) => {
   try {
     const tenantId = req.header('x-tenant-id');
-    if (!tenantId) return res.status(400).json({ error: 'Missing x-tenant-id header' });
+    if (!tenantId) return badRequest(res, 'Missing x-tenant-id header');
 
     const integrations = await db.query.platformIntegrations.findMany({
       where: eq(platformIntegrations.tenantId, tenantId),
@@ -37,7 +38,7 @@ router.get('/api/integrations', async (req: any, res) => {
       })),
     );
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch integrations' });
+    serverError(res, 'Failed to fetch integrations');
   }
 });
 
@@ -45,7 +46,7 @@ router.get('/api/integrations', async (req: any, res) => {
 router.post('/api/integrations', async (req: any, res) => {
   try {
     const tenantId = req.header('x-tenant-id');
-    if (!tenantId) return res.status(400).json({ error: 'Missing x-tenant-id header' });
+    if (!tenantId) return badRequest(res, 'Missing x-tenant-id header');
 
     const { integrationKey, integrationName, credentials, config } = req.body;
 
@@ -69,7 +70,7 @@ router.post('/api/integrations', async (req: any, res) => {
     res.status(201).json(integration);
   } catch (error) {
     log.error('Error creating integration:', error);
-    res.status(400).json({ error: 'Invalid integration configuration' });
+    badRequest(res, 'Invalid integration configuration');
   }
 });
 
@@ -77,7 +78,7 @@ router.post('/api/integrations', async (req: any, res) => {
 router.put('/api/integrations/:id', async (req: any, res) => {
   try {
     const tenantId = req.header('x-tenant-id');
-    if (!tenantId) return res.status(400).json({ error: 'Missing x-tenant-id header' });
+    if (!tenantId) return badRequest(res, 'Missing x-tenant-id header');
 
     const { id } = req.params;
     const { config, fieldMappings, syncFrequency } = req.body;
@@ -95,7 +96,7 @@ router.put('/api/integrations/:id', async (req: any, res) => {
 
     res.json(integration);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update integration' });
+    serverError(res, 'Failed to update integration');
   }
 });
 
@@ -103,7 +104,7 @@ router.put('/api/integrations/:id', async (req: any, res) => {
 router.post('/api/integrations/:id/test', async (req: any, res) => {
   try {
     const tenantId = req.header('x-tenant-id');
-    if (!tenantId) return res.status(400).json({ error: 'Missing x-tenant-id header' });
+    if (!tenantId) return badRequest(res, 'Missing x-tenant-id header');
 
     const { id } = req.params;
 
@@ -111,7 +112,7 @@ router.post('/api/integrations/:id/test', async (req: any, res) => {
       where: and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenantId, tenantId)),
     });
 
-    if (!integration) return res.status(404).json({ error: 'Integration not found' });
+    if (!integration) return notFound(res, 'Integration not found');
 
     const isConnected = await IntegrationsService.testConnection(
       integration.integrationKey,
@@ -139,11 +140,11 @@ router.post('/api/integrations/:id/test', async (req: any, res) => {
         })
         .where(eq(platformIntegrations.id, id));
 
-      return res.status(400).json({ error: 'Connection test failed' });
+      return badRequest(res, 'Connection test failed');
     }
   } catch (error) {
     log.error('Error testing connection:', error);
-    res.status(500).json({ error: 'Failed to test connection' });
+    serverError(res, 'Failed to test connection');
   }
 });
 
@@ -151,7 +152,7 @@ router.post('/api/integrations/:id/test', async (req: any, res) => {
 router.post('/api/integrations/:id/sync', async (req: any, res) => {
   try {
     const tenantId = req.header('x-tenant-id');
-    if (!tenantId) return res.status(400).json({ error: 'Missing x-tenant-id header' });
+    if (!tenantId) return badRequest(res, 'Missing x-tenant-id header');
 
     const { id } = req.params;
     const { entityType } = req.body; // leads, customers, invoices, equipment
@@ -160,7 +161,7 @@ router.post('/api/integrations/:id/sync', async (req: any, res) => {
       where: and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenantId, tenantId)),
     });
 
-    if (!integration) return res.status(404).json({ error: 'Integration not found' });
+    if (!integration) return notFound(res, 'Integration not found');
 
     // Create sync log
     const [syncLog] = await db
@@ -256,7 +257,7 @@ router.post('/api/integrations/:id/sync', async (req: any, res) => {
     }
   } catch (error) {
     log.error('Error syncing integration:', error);
-    res.status(500).json({ error: 'Failed to sync integration' });
+    serverError(res, 'Failed to sync integration');
   }
 });
 
@@ -264,7 +265,7 @@ router.post('/api/integrations/:id/sync', async (req: any, res) => {
 router.get('/api/integrations/:id/sync-logs', async (req: any, res) => {
   try {
     const tenantId = req.header('x-tenant-id');
-    if (!tenantId) return res.status(400).json({ error: 'Missing x-tenant-id header' });
+    if (!tenantId) return badRequest(res, 'Missing x-tenant-id header');
 
     const { id } = req.params;
 
@@ -276,7 +277,7 @@ router.get('/api/integrations/:id/sync-logs', async (req: any, res) => {
 
     res.json(logs);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch sync logs' });
+    serverError(res, 'Failed to fetch sync logs');
   }
 });
 
@@ -284,7 +285,7 @@ router.get('/api/integrations/:id/sync-logs', async (req: any, res) => {
 router.post('/api/integrations/:id/disconnect', async (req: any, res) => {
   try {
     const tenantId = req.header('x-tenant-id');
-    if (!tenantId) return res.status(400).json({ error: 'Missing x-tenant-id header' });
+    if (!tenantId) return badRequest(res, 'Missing x-tenant-id header');
 
     const { id } = req.params;
 
@@ -299,7 +300,7 @@ router.post('/api/integrations/:id/disconnect', async (req: any, res) => {
 
     res.json({ success: true, message: 'Integration disconnected' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to disconnect integration' });
+    serverError(res, 'Failed to disconnect integration');
   }
 });
 

@@ -13,6 +13,7 @@ import {
 import crypto from 'crypto';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { badRequest, serverError } from './lib/error-response';
 // Extend session interface to include QuickBooks data
 declare module 'express-session' {
   interface SessionData {
@@ -54,7 +55,7 @@ export function registerQuickBooksRoutes(app: Express) {
       });
     } catch (error) {
       log.error('QuickBooks connect error:', error);
-      res.status(500).json({ error: 'Failed to initialize QuickBooks connection' });
+      serverError(res, 'Failed to initialize QuickBooks connection');
     }
   });
 
@@ -65,11 +66,11 @@ export function registerQuickBooksRoutes(app: Express) {
 
       // Verify state parameter
       if (state !== req.session.qb_oauth_state) {
-        return res.status(400).json({ error: 'Invalid state parameter' });
+        return badRequest(res, 'Invalid state parameter');
       }
 
       if (!code) {
-        return res.status(400).json({ error: 'Authorization code not received' });
+        return badRequest(res, 'Authorization code not received');
       }
 
       // Exchange authorization code for access token
@@ -107,7 +108,7 @@ export function registerQuickBooksRoutes(app: Express) {
       res.redirect('/?quickbooks=connected');
     } catch (error) {
       log.error('QuickBooks callback error:', error);
-      res.status(500).json({ error: 'Failed to complete QuickBooks authorization' });
+      serverError(res, 'Failed to complete QuickBooks authorization');
     }
   });
 
@@ -127,7 +128,7 @@ export function registerQuickBooksRoutes(app: Express) {
       });
     } catch (error) {
       log.error('QuickBooks status error:', error);
-      res.status(500).json({ error: 'Failed to get QuickBooks status' });
+      serverError(res, 'Failed to get QuickBooks status');
     }
   });
 
@@ -143,7 +144,7 @@ export function registerQuickBooksRoutes(app: Express) {
       res.json({ message: 'QuickBooks disconnected successfully' });
     } catch (error) {
       log.error('QuickBooks disconnect error:', error);
-      res.status(500).json({ error: 'Failed to disconnect QuickBooks' });
+      serverError(res, 'Failed to disconnect QuickBooks');
     }
   });
 
@@ -154,7 +155,7 @@ export function registerQuickBooksRoutes(app: Express) {
       const companyId = req.session.qb_company_id;
 
       if (!accessToken || !companyId) {
-        return res.status(400).json({ error: 'QuickBooks not connected' });
+        return badRequest(res, 'QuickBooks not connected');
       }
 
       // Refresh token if needed
@@ -203,7 +204,7 @@ export function registerQuickBooksRoutes(app: Express) {
       });
     } catch (error) {
       log.error('QuickBooks customer sync error:', error);
-      res.status(500).json({ error: 'Failed to sync customers from QuickBooks' });
+      serverError(res, 'Failed to sync customers from QuickBooks');
     }
   });
 
@@ -214,7 +215,7 @@ export function registerQuickBooksRoutes(app: Express) {
       const companyId = req.session.qb_company_id;
 
       if (!accessToken || !companyId) {
-        return res.status(400).json({ error: 'QuickBooks not connected' });
+        return badRequest(res, 'QuickBooks not connected');
       }
 
       // Refresh token if needed
@@ -258,7 +259,7 @@ export function registerQuickBooksRoutes(app: Express) {
       });
     } catch (error) {
       log.error('QuickBooks items sync error:', error);
-      res.status(500).json({ error: 'Failed to sync items from QuickBooks' });
+      serverError(res, 'Failed to sync items from QuickBooks');
     }
   });
 
@@ -270,7 +271,7 @@ export function registerQuickBooksRoutes(app: Express) {
       const customerData = req.body;
 
       if (!accessToken || !companyId) {
-        return res.status(400).json({ error: 'QuickBooks not connected' });
+        return badRequest(res, 'QuickBooks not connected');
       }
 
       // Transform Printyx customer data to QuickBooks format
@@ -304,7 +305,7 @@ export function registerQuickBooksRoutes(app: Express) {
       });
     } catch (error) {
       log.error('QuickBooks create customer error:', error);
-      res.status(500).json({ error: 'Failed to create customer in QuickBooks' });
+      serverError(res, 'Failed to create customer in QuickBooks');
     }
   });
 
