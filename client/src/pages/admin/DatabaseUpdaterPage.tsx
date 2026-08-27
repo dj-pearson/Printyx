@@ -56,7 +56,13 @@ export default function DatabaseUpdaterPage() {
   } = useQuery<DatabaseUpdaterStatus>({
     queryKey: ['/api/database-updater/status'],
     refetchInterval: autoRefresh ? 5000 : false,
-    refetchIntervalInBackground: true,
+    // CR-032: `refetchIntervalInBackground: true` used to sit here, and it is
+    // what made this poll unbounded. TanStack Query's default is false, which
+    // pauses an interval while the tab is hidden; overriding it meant a 5-second
+    // poll kept running in a forgotten background tab until the admin remembered
+    // to switch autoRefresh off. Five seconds is the right cadence for watching a
+    // migration you are actually looking at — the toggle already scopes that —
+    // and no cadence is right for a tab nobody is looking at.
   });
 
   // Start system mutation
