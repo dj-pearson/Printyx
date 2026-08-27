@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Check, X, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { clickableProps } from '@/lib/accessibility';
 
 interface InlineEditProps {
   value: string | number;
@@ -122,13 +123,15 @@ export function InlineEdit({
 
   if (!editable || !isEditing) {
     return (
+      // CR-035: spread only when editable — a role=button tab stop that does
+      // nothing is worse than a plain div.
       <div
         className={cn(
           'group relative inline-flex items-center gap-2',
           editable && 'cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1',
           className,
         )}
-        onClick={() => editable && setIsEditing(true)}
+        {...(editable ? clickableProps(() => setIsEditing(true)) : {})}
       >
         <span className={cn(!value && 'text-muted-foreground')}>
           {value ? displayValue : placeholder || 'Click to edit'}

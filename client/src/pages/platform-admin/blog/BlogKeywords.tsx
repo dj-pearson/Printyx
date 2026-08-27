@@ -147,8 +147,8 @@ export default function BlogKeywords() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap items-end gap-3">
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Intent</label>
+              <label className="space-y-1">
+                <span className="text-xs text-muted-foreground">Intent</span>
                 <Select value={intentFilter} onValueChange={setIntentFilter}>
                   <SelectTrigger className="w-56">
                     <SelectValue />
@@ -163,10 +163,12 @@ export default function BlogKeywords() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </label>
 
               <div className="space-y-1 flex-1 min-w-[220px]">
-                <label className="text-xs text-muted-foreground">Search</label>
+                <label className="text-xs text-muted-foreground" htmlFor="blog-keywords-search">
+                  Search
+                </label>
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -175,6 +177,7 @@ export default function BlogKeywords() {
                   className="flex gap-2"
                 >
                   <Input
+                    id="blog-keywords-search"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Filter keywords…"

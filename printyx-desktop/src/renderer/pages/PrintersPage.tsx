@@ -171,17 +171,17 @@ function PrinterCard({ printer, isEditing, onEdit, onCancel, onSave, onDelete }:
       <div className="bg-white border-2 border-blue-500 rounded-lg p-6">
         <div className="grid gap-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">IP Address</label>
+            <label>
+              <span className="block text-sm font-medium text-gray-700 mb-1">IP Address</span>
               <input
                 type="text"
                 value={editedPrinter.ip}
                 onChange={(e) => setEditedPrinter({ ...editedPrinter, ip: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">SNMP Community</label>
+            </label>
+            <label>
+              <span className="block text-sm font-medium text-gray-700 mb-1">SNMP Community</span>
               <input
                 type="text"
                 value={editedPrinter.snmpCommunity || 'public'}
@@ -193,18 +193,18 @@ function PrinterCard({ printer, isEditing, onEdit, onCancel, onSave, onDelete }:
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+            </label>
+            <label>
+              <span className="block text-sm font-medium text-gray-700 mb-1">Location</span>
               <input
                 type="text"
                 value={editedPrinter.location || ''}
                 onChange={(e) => setEditedPrinter({ ...editedPrinter, location: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">SNMP Version</label>
+            </label>
+            <label>
+              <span className="block text-sm font-medium text-gray-700 mb-1">SNMP Version</span>
               <select
                 value={editedPrinter.snmpVersion || 'v2c'}
                 onChange={(e) =>
@@ -219,7 +219,7 @@ function PrinterCard({ printer, isEditing, onEdit, onCancel, onSave, onDelete }:
                 <option value="v2c">SNMP v2c</option>
                 <option value="v3">SNMP v3</option>
               </select>
-            </div>
+            </label>
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">

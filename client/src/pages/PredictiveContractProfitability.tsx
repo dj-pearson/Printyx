@@ -13,6 +13,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { clickableProps } from '@/lib/accessibility';
 
 // Mock data - in production, this would come from API
 const contractData = [
@@ -215,7 +216,7 @@ const PredictiveContractProfitability = () => {
                 .map((contract) => (
                   <div
                     key={contract.id}
-                    onClick={() => setSelectedContract(contract)}
+                    {...clickableProps(() => setSelectedContract(contract))}
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                       selectedContract.id === contract.id
                         ? 'border-blue-500 bg-blue-50'

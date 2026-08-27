@@ -75,6 +75,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
+import { clickableProps } from '@/lib/accessibility';
 
 // Enhanced onboarding schema with auto-population and machine replacement
 const enhancedOnboardingSchema = z.object({
@@ -1041,14 +1042,14 @@ export default function EnhancedOnboardingForm() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Search Quotes</label>
+                  <label>
+                    <span className="text-sm font-medium">Search Quotes</span>
                     <Input
                       placeholder="Type quote number or description..."
                       value={quoteSearch}
                       onChange={(e) => setQuoteSearch(e.target.value)}
                     />
-                  </div>
+                  </label>
 
                   {quotes.length > 0 && (
                     <div className="border rounded-lg max-h-40 overflow-y-auto">
@@ -1056,12 +1057,14 @@ export default function EnhancedOnboardingForm() {
                         <div
                           key={quote.id}
                           className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
-                          onClick={() => {
+                          {...clickableProps(() => {
                             setSelectedQuote(quote);
                             setQuoteSearch('');
-                          }}
+                          })}
                         >
-                          <div className="font-medium">{quote.title || quote.quote_number || quote.quoteNumber}</div>
+                          <div className="font-medium">
+                            {quote.title || quote.quote_number || quote.quoteNumber}
+                          </div>
                           <div className="text-sm text-gray-600">
                             Created{' '}
                             {/* AUDIT-011a: the quotes list returns the raw row
@@ -1317,12 +1320,14 @@ export default function EnhancedOnboardingForm() {
                                 ? 'bg-blue-50 border-blue-200'
                                 : 'hover:bg-gray-50'
                             }`}
-                            onClick={() => setSelectedQuote(quote)}
+                            {...clickableProps(() => setSelectedQuote(quote))}
                           >
                             <div className="flex justify-between items-start">
                               <div>
                                 <p className="font-medium">
-                                  {quote.quote_number || quote.quoteNumber || `Quote #${quote.id.slice(-6)}`}
+                                  {quote.quote_number ||
+                                    quote.quoteNumber ||
+                                    `Quote #${quote.id.slice(-6)}`}
                                 </p>
                                 <p className="text-sm text-gray-600">
                                   {quote.title || 'Untitled Quote'}

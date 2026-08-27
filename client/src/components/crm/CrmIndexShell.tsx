@@ -789,17 +789,17 @@ export function CrmIndexShell({
             <DialogTitle>Save View</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">View Name</label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">View Name</span>
               <Input
                 value={saveViewName}
                 onChange={(e) => setSaveViewName(e.target.value)}
                 placeholder="My custom view"
                 autoFocus
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Visibility</label>
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Visibility</span>
               <Select value={saveVisibility} onValueChange={(v) => setSaveVisibility(v as any)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -810,7 +810,7 @@ export function CrmIndexShell({
                   <SelectItem value="everyone">Everyone (all users)</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </label>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSaveDialog(false)}>

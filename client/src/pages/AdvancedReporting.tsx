@@ -291,12 +291,12 @@ export default function AdvancedReporting() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-4 items-end">
-              <div className="flex-1">
-                <label className="text-sm font-medium mb-2 block">Date Range</label>
+              <label className="flex-1">
+                <span className="text-sm font-medium mb-2 block">Date Range</span>
                 <DateRangePicker onChange={(range) => range && handleDateRangeChange(range)} />
-              </div>
-              <div className="w-full sm:w-48">
-                <label className="text-sm font-medium mb-2 block">Customer</label>
+              </label>
+              <label className="w-full sm:w-48">
+                <span className="text-sm font-medium mb-2 block">Customer</span>
                 <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
                   <SelectTrigger>
                     <SelectValue placeholder="All Customers" />
@@ -310,7 +310,7 @@ export default function AdvancedReporting() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </label>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm">
                   <Filter className="w-4 h-4 mr-2" />

@@ -389,7 +389,7 @@ export default function Supplies() {
                         )}
                       />
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Record Type</label>
+                        <span className="text-sm font-medium">Record Type</span>
                         <div className="text-sm text-blue-600">Supply</div>
                       </div>
                     </div>
@@ -399,30 +399,30 @@ export default function Supplies() {
                         control={form.control}
                         name="isActive"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Active</label>
-                          </div>
+                            <span className="text-sm font-medium">Active</span>
+                          </label>
                         )}
                       />
                       <FormField
                         control={form.control}
                         name="availableForAll"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Available for All</label>
-                          </div>
+                            <span className="text-sm font-medium">Available for All</span>
+                          </label>
                         )}
                       />
                       <FormField
                         control={form.control}
                         name="repostEdit"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Repost Edit</label>
-                          </div>
+                            <span className="text-sm font-medium">Repost Edit</span>
+                          </label>
                         )}
                       />
                     </div>
@@ -432,20 +432,20 @@ export default function Supplies() {
                         control={form.control}
                         name="salesRepCredit"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Sales Rep Credit</label>
-                          </div>
+                            <span className="text-sm font-medium">Sales Rep Credit</span>
+                          </label>
                         )}
                       />
                       <FormField
                         control={form.control}
                         name="funding"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Funding</label>
-                          </div>
+                            <span className="text-sm font-medium">Funding</span>
+                          </label>
                         )}
                       />
                     </div>
@@ -598,10 +598,10 @@ export default function Supplies() {
                         control={form.control}
                         name="lease"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Lease</label>
-                          </div>
+                            <span className="text-sm font-medium">Lease</span>
+                          </label>
                         )}
                       />
                       <FormField
@@ -637,10 +637,10 @@ export default function Supplies() {
                           control={form.control}
                           name="newActive"
                           render={({ field }) => (
-                            <div className="flex items-center space-x-2">
+                            <label className="flex items-center space-x-2">
                               <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                              <label className="text-sm font-medium">New Active</label>
-                            </div>
+                              <span className="text-sm font-medium">New Active</span>
+                            </label>
                           )}
                         />
                         <FormField
@@ -669,10 +669,10 @@ export default function Supplies() {
                           control={form.control}
                           name="upgradeActive"
                           render={({ field }) => (
-                            <div className="flex items-center space-x-2">
+                            <label className="flex items-center space-x-2">
                               <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                              <label className="text-sm font-medium">Upgrade Active</label>
-                            </div>
+                              <span className="text-sm font-medium">Upgrade Active</span>
+                            </label>
                           )}
                         />
                         <FormField
@@ -703,10 +703,10 @@ export default function Supplies() {
                           control={form.control}
                           name="lexmarkActive"
                           render={({ field }) => (
-                            <div className="flex items-center space-x-2">
+                            <label className="flex items-center space-x-2">
                               <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                              <label className="text-sm font-medium">Lexmark Active</label>
-                            </div>
+                              <span className="text-sm font-medium">Lexmark Active</span>
+                            </label>
                           )}
                         />
                         <FormField
@@ -735,10 +735,10 @@ export default function Supplies() {
                           control={form.control}
                           name="graphicActive"
                           render={({ field }) => (
-                            <div className="flex items-center space-x-2">
+                            <label className="flex items-center space-x-2">
                               <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                              <label className="text-sm font-medium">Graphic Active</label>
-                            </div>
+                              <span className="text-sm font-medium">Graphic Active</span>
+                            </label>
                           )}
                         />
                         <FormField

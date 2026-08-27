@@ -63,6 +63,7 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { CustomerSatisfactionForm } from './CustomerSatisfactionForm';
+import { clickableProps } from '@/lib/accessibility';
 
 // Types - Aligned with actual API data structure (snake_case)
 type ServiceRequest = {
@@ -815,7 +816,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200'
                       }`}
-                      onClick={() => setSelectedRequestId(request.id)}
+                      {...clickableProps(() => setSelectedRequestId(request.id))}
                       data-testid={`request-item-${request.id}`}
                     >
                       <div className="flex items-start justify-between">

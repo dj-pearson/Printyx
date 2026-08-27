@@ -51,6 +51,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { sanitizeBasicHtml } from '@/lib/sanitize-html';
+import { clickableProps } from '@/lib/accessibility';
 
 interface DocumentCategory {
   id: string;
@@ -160,10 +161,10 @@ export default function DocumentManagement() {
         data.recentDocuments?.map((doc: any) => ({
           ...doc,
           lastModified: new Date(doc.lastModified || doc.last_modified),
-        // AUDIT-011a: this endpoint is a hand-built Express mock returning
-        // camelCase literals (server/routes-sample-data.ts:873), so camelCase is authoritative and
-        // there is no snake_case key to fall back to. Collapsed to a single read
-        // rather than invented one.
+          // AUDIT-011a: this endpoint is a hand-built Express mock returning
+          // camelCase literals (server/routes-sample-data.ts:873), so camelCase is authoritative and
+          // there is no snake_case key to fall back to. Collapsed to a single read
+          // rather than invented one.
           createdAt: doc.createdAt,
           workflow: doc.workflow
             ? {
@@ -430,7 +431,7 @@ export default function DocumentManagement() {
                       <div
                         key={category.id}
                         className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => setSelectedCategory(category.id)}
+                        {...clickableProps(() => setSelectedCategory(category.id))}
                       >
                         <div className="flex justify-between items-start mb-3">
                           <div>

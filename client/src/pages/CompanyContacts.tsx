@@ -113,24 +113,24 @@ export default function CompanyContacts() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="text-sm font-medium text-gray-500">Company Name</label>
+                <span className="text-sm font-medium text-gray-500">Company Name</span>
                 <p className="text-lg font-semibold text-gray-900">{company.name}</p>
               </div>
               {company.industry && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Industry</label>
+                  <span className="text-sm font-medium text-gray-500">Industry</span>
                   <p className="text-gray-900">{company.industry}</p>
                 </div>
               )}
               {company.phone && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Phone</label>
+                  <span className="text-sm font-medium text-gray-500">Phone</span>
                   <p className="text-gray-900">{company.phone}</p>
                 </div>
               )}
               {company.website && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Website</label>
+                  <span className="text-sm font-medium text-gray-500">Website</span>
                   <p className="text-gray-900">
                     <a
                       href={
@@ -149,7 +149,7 @@ export default function CompanyContacts() {
               )}
               {company.address && (
                 <div className="md:col-span-2">
-                  <label className="text-sm font-medium text-gray-500">Address</label>
+                  <span className="text-sm font-medium text-gray-500">Address</span>
                   <p className="text-gray-900">{company.address}</p>
                 </div>
               )}

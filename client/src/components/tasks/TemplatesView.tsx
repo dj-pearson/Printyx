@@ -248,15 +248,15 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Project Name</label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Project Name</span>
               <Input placeholder="Enter project name" />
-            </div>
+            </label>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description (Optional)</label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Description (Optional)</span>
               <Textarea placeholder="Enter project description" rows={3} />
-            </div>
+            </label>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-blue-800">
@@ -292,18 +292,18 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
             <DialogDescription>Create a reusable project template from scratch</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Template Name</label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Template Name</span>
               <Input placeholder="e.g., Equipment Installation Workflow" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Description</span>
               <Textarea placeholder="Describe what this template is for..." rows={3} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Category</label>
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Category</span>
               <Input placeholder="e.g., equipment, service, sales" />
-            </div>
+            </label>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-blue-800">
                 After creating the template, you can add tasks and configure the workflow from the

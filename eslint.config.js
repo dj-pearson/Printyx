@@ -20,6 +20,7 @@ import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import prettier from 'eslint-config-prettier';
 
 const browserAndNodeGlobals = {
@@ -106,6 +107,7 @@ export default [
       '@typescript-eslint': tsPlugin,
       react: reactPlugin,
       'react-hooks': reactHooks,
+      'jsx-a11y': jsxA11y,
     },
     settings: {
       react: { version: 'detect' },
@@ -116,6 +118,54 @@ export default [
       ...reactPlugin.configs.recommended.rules,
       ...reactPlugin.configs['jsx-runtime'].rules,
       ...reactHooks.configs.recommended.rules,
+
+      // Accessibility (CR-035). A CURATED set, not jsx-a11y's `recommended`.
+      //
+      // Running recommended over client/src reports 232 problems, and the tail
+      // of it is noise this codebase would learn to ignore:
+      //   heading-has-content / anchor-has-content fire on the shadcn
+      //     primitives in components/ui, which forward children through a
+      //     {...props} spread the rule cannot see — both are false positives.
+      //   no-autofocus fires 10 times, every one of them a search dialog or an
+      //     inline editor where focusing the field IS the interaction.
+      //   no-noninteractive-tabindex fires on FocusManager.tsx, a component
+      //     whose entire job is managing tabindex.
+      // Enabling those alongside the real findings is how a lint rule becomes
+      // something people disable. The four below each catch a defect an
+      // assistive-technology user would actually hit, and anchor-is-valid
+      // already found a real one: a wouter v2 <Link><a> nesting left in
+      // PlatformCustomerSuccess, which emits a nested anchor under wouter 3.
+      'jsx-a11y/label-has-associated-control': [
+        'error',
+        {
+          // The shadcn wrappers ARE the form controls in this codebase; without
+          // naming them the rule cannot see the <Input> nested inside a
+          // <label><span>Name</span><Input/></label> and reports 41 correctly
+          // associated labels as unlabelled. depth 3 is for the same reason:
+          // the text sits under a <Button asChild><span> in the CSV-upload
+          // labels, one level past the default.
+          controlComponents: [
+            'Input',
+            'InputOTP',
+            'Textarea',
+            'TextareaWithCounter',
+            'Select',
+            'SelectTrigger',
+            'Checkbox',
+            'Switch',
+            'RadioGroup',
+            'RadioGroupItem',
+            'Slider',
+            'Calendar',
+            'DateRangePicker',
+            'InlineEdit',
+          ],
+          depth: 3,
+        },
+      ],
+      'jsx-a11y/click-events-have-key-events': 'error',
+      'jsx-a11y/no-static-element-interactions': 'error',
+      'jsx-a11y/anchor-is-valid': 'error',
 
       // Core rules that overlap with typescript-eslint are disabled in favor
       // of the TS-aware versions (recommended does this; restated for clarity).

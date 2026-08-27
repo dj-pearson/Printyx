@@ -323,6 +323,11 @@ export default function BlogCalendar() {
                     const isToday = key === todayKey;
                     const buckets = postsByDate.get(key) ?? [];
                     return (
+                      // CR-035: a drop target, not a control. There is no
+                      // click here to give a key equivalent to, and role=button
+                      // would announce a day cell as a button. Rescheduling
+                      // without a mouse goes through the post's own date field.
+                      // eslint-disable-next-line jsx-a11y/no-static-element-interactions
                       <div
                         key={key}
                         onDragOver={(e) => {

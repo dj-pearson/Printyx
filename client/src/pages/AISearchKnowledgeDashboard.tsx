@@ -868,8 +868,8 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                   <div>
                     <h4 className="font-medium mb-3">Default Search Settings</h4>
                     <div className="space-y-3">
-                      <div>
-                        <label className="text-sm font-medium">Max Results</label>
+                      <label>
+                        <span className="text-sm font-medium">Max Results</span>
                         <Select defaultValue="10">
                           <SelectTrigger>
                             <SelectValue />
@@ -881,9 +881,9 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                             <SelectItem value="50">50 results</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Minimum Similarity</label>
+                      </label>
+                      <label>
+                        <span className="text-sm font-medium">Minimum Similarity</span>
                         <Select defaultValue="0.3">
                           <SelectTrigger>
                             <SelectValue />
@@ -896,7 +896,7 @@ const AISearchKnowledgeDashboard: React.FC = () => {
                             <SelectItem value="0.9">90% (Very Strict)</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
+                      </label>
                     </div>
                   </div>
 

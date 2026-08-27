@@ -193,8 +193,8 @@ export function InteractiveChart({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-4">
           {availableMetrics.length > 1 && (
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium">Metric:</label>
+            <label className="flex items-center space-x-2">
+              <span className="text-sm font-medium">Metric:</span>
               <Select value={selectedMetric} onValueChange={setSelectedMetric}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
@@ -207,7 +207,7 @@ export function InteractiveChart({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </label>
           )}
         </div>
 

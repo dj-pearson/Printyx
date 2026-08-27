@@ -1054,7 +1054,7 @@ export default function WarehouseOperations() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium">Operation Type</label>
+                    <span className="text-sm font-medium">Operation Type</span>
                     <p className="text-sm text-muted-foreground">
                       {(selectedOperation as WarehouseOperation).operationType
                         ?.replace('_', ' ')
@@ -1062,7 +1062,7 @@ export default function WarehouseOperations() {
                     </p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Status</label>
+                    <span className="text-sm font-medium">Status</span>
                     <Badge
                       className={
                         statusColors[
@@ -1077,7 +1077,7 @@ export default function WarehouseOperations() {
                 </div>
                 {(selectedOperation as WarehouseOperation).notes && (
                   <div>
-                    <label className="text-sm font-medium">Notes</label>
+                    <span className="text-sm font-medium">Notes</span>
                     <p className="text-sm text-muted-foreground">
                       {(selectedOperation as WarehouseOperation).notes}
                     </p>

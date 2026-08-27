@@ -395,11 +395,24 @@ const SidebarResizeHandle = React.forwardRef<HTMLDivElement, React.ComponentProp
     if (state === 'collapsed') return null;
 
     return (
+      // CR-035: drag-to-resize is pointer-only. The separator role plus Enter
+      // gives the keyboard the same collapse/expand the double-click does;
+      // resizing by drag stays a pointer affordance.
       <div
         ref={ref}
         data-sidebar="resize-handle"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+        tabIndex={0}
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleSidebar();
+          }
+        }}
         className={cn(
           'absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 cursor-col-resize transition-colors ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex',
           'group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar',

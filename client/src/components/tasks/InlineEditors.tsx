@@ -23,6 +23,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { format, isToday, isTomorrow, isYesterday } from 'date-fns';
+import { clickableProps } from '@/lib/accessibility';
 
 // Priority configuration
 const priorityConfig = {
@@ -342,7 +343,7 @@ export function InlineProgressEditor({
   return (
     <div
       className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 rounded px-1 py-1"
-      onClick={() => setIsEditing(true)}
+      {...clickableProps(() => setIsEditing(true))}
     >
       <div className="flex-1 bg-gray-200 rounded-full h-2">
         <div

@@ -1115,7 +1115,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         )}
                       />
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Record Type</label>
+                        <span className="text-sm font-medium">Record Type</span>
                         <div className="text-sm text-blue-600">Software</div>
                       </div>
                     </div>
@@ -1186,30 +1186,30 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         control={form.control}
                         name="isActive"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Active</label>
-                          </div>
+                            <span className="text-sm font-medium">Active</span>
+                          </label>
                         )}
                       />
                       <FormField
                         control={form.control}
                         name="availableForAll"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Available for All</label>
-                          </div>
+                            <span className="text-sm font-medium">Available for All</span>
+                          </label>
                         )}
                       />
                       <FormField
                         control={form.control}
                         name="repostEdit"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Repost Edit</label>
-                          </div>
+                            <span className="text-sm font-medium">Repost Edit</span>
+                          </label>
                         )}
                       />
                     </div>
@@ -1219,20 +1219,20 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         control={form.control}
                         name="salesRepCredit"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Sales Rep Credit</label>
-                          </div>
+                            <span className="text-sm font-medium">Sales Rep Credit</span>
+                          </label>
                         )}
                       />
                       <FormField
                         control={form.control}
                         name="funding"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Funding</label>
-                          </div>
+                            <span className="text-sm font-medium">Funding</span>
+                          </label>
                         )}
                       />
                     </div>
@@ -1369,10 +1369,10 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         control={form.control}
                         name="lease"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Lease</label>
-                          </div>
+                            <span className="text-sm font-medium">Lease</span>
+                          </label>
                         )}
                       />
                       <FormField
@@ -1407,10 +1407,10 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         control={form.control}
                         name="standardActive"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Standard Active</label>
-                          </div>
+                            <span className="text-sm font-medium">Standard Active</span>
+                          </label>
                         )}
                       />
                       <div className="grid grid-cols-2 gap-4">
@@ -1461,10 +1461,10 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         control={form.control}
                         name="newActive"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">New Active</label>
-                          </div>
+                            <span className="text-sm font-medium">New Active</span>
+                          </label>
                         )}
                       />
                       <div className="grid grid-cols-2 gap-4">
@@ -1515,10 +1515,10 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         control={form.control}
                         name="upgradeActive"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Upgrade Active</label>
-                          </div>
+                            <span className="text-sm font-medium">Upgrade Active</span>
+                          </label>
                         )}
                       />
                       <div className="grid grid-cols-2 gap-4">
@@ -1947,20 +1947,20 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       control={editForm.control}
                       name="isActive"
                       render={({ field }) => (
-                        <div className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2">
                           <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                          <label className="text-sm font-medium">Active</label>
-                        </div>
+                          <span className="text-sm font-medium">Active</span>
+                        </label>
                       )}
                     />
                     <FormField
                       control={editForm.control}
                       name="availableForAll"
                       render={({ field }) => (
-                        <div className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2">
                           <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                          <label className="text-sm font-medium">Available for All</label>
-                        </div>
+                          <span className="text-sm font-medium">Available for All</span>
+                        </label>
                       )}
                     />
                   </div>
@@ -1977,30 +1977,30 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       control={editForm.control}
                       name="salesRepCredit"
                       render={({ field }) => (
-                        <div className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2">
                           <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                          <label className="text-sm font-medium">Sales Rep Credit</label>
-                        </div>
+                          <span className="text-sm font-medium">Sales Rep Credit</span>
+                        </label>
                       )}
                     />
                     <FormField
                       control={editForm.control}
                       name="funding"
                       render={({ field }) => (
-                        <div className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2">
                           <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                          <label className="text-sm font-medium">Funding</label>
-                        </div>
+                          <span className="text-sm font-medium">Funding</span>
+                        </label>
                       )}
                     />
                     <FormField
                       control={editForm.control}
                       name="lease"
                       render={({ field }) => (
-                        <div className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2">
                           <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                          <label className="text-sm font-medium">Lease</label>
-                        </div>
+                          <span className="text-sm font-medium">Lease</span>
+                        </label>
                       )}
                     />
                   </div>
@@ -2011,10 +2011,10 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       control={editForm.control}
                       name="standardActive"
                       render={({ field }) => (
-                        <div className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2">
                           <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                          <label className="text-sm font-medium">Standard Active</label>
-                        </div>
+                          <span className="text-sm font-medium">Standard Active</span>
+                        </label>
                       )}
                     />
                     <div className="grid grid-cols-2 gap-4">
@@ -2065,10 +2065,10 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       control={editForm.control}
                       name="newActive"
                       render={({ field }) => (
-                        <div className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2">
                           <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                          <label className="text-sm font-medium">New Active</label>
-                        </div>
+                          <span className="text-sm font-medium">New Active</span>
+                        </label>
                       )}
                     />
                     <div className="grid grid-cols-2 gap-4">
@@ -2119,10 +2119,10 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       control={editForm.control}
                       name="upgradeActive"
                       render={({ field }) => (
-                        <div className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2">
                           <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                          <label className="text-sm font-medium">Upgrade Active</label>
-                        </div>
+                          <span className="text-sm font-medium">Upgrade Active</span>
+                        </label>
                       )}
                     />
                     <div className="grid grid-cols-2 gap-4">

@@ -56,6 +56,7 @@ import {
 
 // Icon mapping for dynamic stages
 import type { LucideIcon } from 'lucide-react';
+import { clickableProps } from '@/lib/accessibility';
 const ICON_MAP: Record<string, LucideIcon> = {
   Users,
   Phone,
@@ -520,7 +521,7 @@ export default function SalesPipelineWorkflow() {
                             <div
                               key={opportunity.id}
                               className="border rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => setSelectedOpportunity(opportunity)}
+                              {...clickableProps(() => setSelectedOpportunity(opportunity))}
                             >
                               <div className="flex items-start justify-between mb-2">
                                 <div>
@@ -840,15 +841,15 @@ export default function SalesPipelineWorkflow() {
             </DialogHeader>
 
             <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Notes</label>
+              <label>
+                <span className="text-sm font-medium">Notes</span>
                 <Textarea
                   value={actionNotes}
                   onChange={(e) => setActionNotes(e.target.value)}
                   placeholder={`Add notes about this ${actionType}...`}
                   rows={3}
                 />
-              </div>
+              </label>
 
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>

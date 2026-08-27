@@ -1532,8 +1532,8 @@ export default function LineItemManager({
             {editingItem && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Quantity</label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium">Quantity</span>
                     <Input
                       type="number"
                       value={editingItem.quantity}
@@ -1546,9 +1546,9 @@ export default function LineItemManager({
                       min="1"
                       className="min-h-[44px]"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Unit Price</label>
+                  </label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium">Unit Price</span>
                     <Input
                       type="number"
                       value={editingItem.unitPrice}
@@ -1561,12 +1561,12 @@ export default function LineItemManager({
                       step="0.01"
                       className="min-h-[44px]"
                     />
-                  </div>
+                  </label>
                 </div>
                 {/* QUOTE-016: per-line discount, entered as % or $ (stored as $) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Discount Type</label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium">Discount Type</span>
                     <Select
                       value={editDiscountMode}
                       onValueChange={(value: 'amount' | 'percent') => setEditDiscountMode(value)}
@@ -1579,7 +1579,7 @@ export default function LineItemManager({
                         <SelectItem value="percent">Percentage</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </label>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
                       Discount {editDiscountMode === 'percent' ? '(%)' : '($)'}
@@ -1617,8 +1617,8 @@ export default function LineItemManager({
                 })()}
                 {/* QUOTE-017: one-time vs recurring billing */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Billing</label>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium">Billing</span>
                     <Select
                       value={editingItem.isRecurring ? 'recurring' : 'one_time'}
                       onValueChange={(value) =>
@@ -1642,11 +1642,11 @@ export default function LineItemManager({
                         <SelectItem value="recurring">Recurring</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </label>
                   {editingItem.isRecurring && (
                     <>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Frequency</label>
+                      <label className="space-y-2">
+                        <span className="text-sm font-medium">Frequency</span>
                         <Select
                           value={normalizeFrequency(editingItem.recurringFrequency)}
                           onValueChange={(value) =>
@@ -1664,9 +1664,9 @@ export default function LineItemManager({
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Periods</label>
+                      </label>
+                      <label className="space-y-2">
+                        <span className="text-sm font-medium">Periods</span>
                         <Input
                           type="number"
                           value={editingItem.recurringDuration ?? ''}
@@ -1681,7 +1681,7 @@ export default function LineItemManager({
                           placeholder="Ongoing"
                           className="min-h-[44px]"
                         />
-                      </div>
+                      </label>
                     </>
                   )}
                 </div>
@@ -1692,8 +1692,8 @@ export default function LineItemManager({
                     Leave Periods blank for an ongoing contract.
                   </div>
                 )}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Notes</label>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium">Notes</span>
                   <Input
                     value={editingItem.notes || ''}
                     onChange={(e) =>
@@ -1705,7 +1705,7 @@ export default function LineItemManager({
                     placeholder="Additional notes for this item..."
                     className="min-h-[44px]"
                   />
-                </div>
+                </label>
                 <div className="flex flex-col sm:flex-row justify-end gap-2">
                   <Button
                     variant="outline"

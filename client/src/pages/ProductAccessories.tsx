@@ -343,8 +343,8 @@ export default function ProductAccessories() {
                           </FormItem>
                         )}
                       />
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Product Type</label>
+                      <label className="space-y-2">
+                        <span className="text-sm font-medium">Product Type</span>
                         <Select value="Accessory" disabled>
                           <SelectTrigger>
                             <SelectValue />
@@ -353,7 +353,7 @@ export default function ProductAccessories() {
                             <SelectItem value="Accessory">Accessory</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
+                      </label>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -377,7 +377,7 @@ export default function ProductAccessories() {
                         )}
                       />
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Record Type</label>
+                        <span className="text-sm font-medium">Record Type</span>
                         <div className="text-sm text-blue-600">Accessory</div>
                       </div>
                     </div>
@@ -453,50 +453,50 @@ export default function ProductAccessories() {
                           </FormItem>
                         )}
                       />
-                      <div className="space-y-3">
-                        <label className="text-sm font-medium">Options</label>
+                      <fieldset className="space-y-3">
+                        <legend className="text-sm font-medium">Options</legend>
                         <div className="space-y-2">
                           <FormField
                             control={form.control}
                             name="salesRepCredit"
                             render={({ field }) => (
-                              <div className="flex items-center space-x-2">
+                              <label className="flex items-center space-x-2">
                                 <Checkbox
                                   checked={!!field.value}
                                   onCheckedChange={field.onChange}
                                 />
-                                <label className="text-sm">Sales Rep Credit</label>
-                              </div>
+                                <span className="text-sm">Sales Rep Credit</span>
+                              </label>
                             )}
                           />
                           <FormField
                             control={form.control}
                             name="funding"
                             render={({ field }) => (
-                              <div className="flex items-center space-x-2">
+                              <label className="flex items-center space-x-2">
                                 <Checkbox
                                   checked={!!field.value}
                                   onCheckedChange={field.onChange}
                                 />
-                                <label className="text-sm">Funding</label>
-                              </div>
+                                <span className="text-sm">Funding</span>
+                              </label>
                             )}
                           />
                           <FormField
                             control={form.control}
                             name="lease"
                             render={({ field }) => (
-                              <div className="flex items-center space-x-2">
+                              <label className="flex items-center space-x-2">
                                 <Checkbox
                                   checked={!!field.value}
                                   onCheckedChange={field.onChange}
                                 />
-                                <label className="text-sm">Lease</label>
-                              </div>
+                                <span className="text-sm">Lease</span>
+                              </label>
                             )}
                           />
                         </div>
-                      </div>
+                      </fieldset>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -504,20 +504,20 @@ export default function ProductAccessories() {
                         control={form.control}
                         name="isActive"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Active</label>
-                          </div>
+                            <span className="text-sm font-medium">Active</span>
+                          </label>
                         )}
                       />
                       <FormField
                         control={form.control}
                         name="availableForAll"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                             <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                            <label className="text-sm font-medium">Available for All</label>
-                          </div>
+                            <span className="text-sm font-medium">Available for All</span>
+                          </label>
                         )}
                       />
                     </div>
@@ -530,13 +530,13 @@ export default function ProductAccessories() {
                     <h3 className="text-lg font-semibold">Detail</h3>
 
                     <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium">Summary</label>
+                      <label>
+                        <span className="text-sm font-medium">Summary</span>
                         <Textarea
                           placeholder="Brief summary of the accessory..."
                           className="mt-1"
                         />
-                      </div>
+                      </label>
 
                       <FormField
                         control={form.control}

@@ -41,6 +41,7 @@ import {
   Save,
   RotateCcw,
 } from 'lucide-react';
+import { clickableProps } from '@/lib/accessibility';
 
 interface Widget {
   id: string;
@@ -177,7 +178,7 @@ export function DashboardCustomizer() {
                     <div
                       key={widget.id}
                       className="flex items-center justify-between p-2 border rounded hover:bg-accent cursor-pointer"
-                      onClick={() => handleAddWidget(widget)}
+                      {...clickableProps(() => handleAddWidget(widget))}
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{widget.name}</p>
@@ -196,15 +197,15 @@ export function DashboardCustomizer() {
           {/* Layout Configuration */}
           <div className="w-2/3 pl-4">
             <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Layout Name</label>
+              <label>
+                <span className="text-sm font-medium">Layout Name</span>
                 <Input
                   value={layoutName}
                   onChange={(e) => setLayoutName(e.target.value)}
                   placeholder="e.g., Sales Focus, Service Manager"
                   className="mt-1"
                 />
-              </div>
+              </label>
 
               <div>
                 <h3 className="font-semibold mb-2 flex items-center gap-2">

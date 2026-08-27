@@ -454,8 +454,17 @@ export default function PlatformCustomerSuccess() {
                         <TableRow key={tenant.id}>
                           <TableCell>
                             <div>
-                              <Link href={`/platform-crm/business-records/${tenant.tenantId}`}>
-                                <a className="font-medium hover:underline">{tenant.companyName}</a>
+                              {/* CR-035: was <Link><a>…</a></Link>, the wouter v2 idiom.
+                                  wouter is 3.3.5 here and <Link> renders its OWN
+                                  anchor, so that nested a second one inside it —
+                                  invalid HTML, and undefined behaviour once the
+                                  browser unnests it. The only such nesting left in
+                                  the tree; jsx-a11y/anchor-is-valid found it. */}
+                              <Link
+                                href={`/platform-crm/business-records/${tenant.tenantId}`}
+                                className="font-medium hover:underline"
+                              >
+                                {tenant.companyName}
                               </Link>
                               <div className="text-sm text-muted-foreground">
                                 ID: {tenant.tenantId}

@@ -23,6 +23,7 @@ import {
   addMonths,
   subMonths,
 } from 'date-fns';
+import { clickableProps } from '@/lib/accessibility';
 
 interface CalendarEvent {
   id: string;
@@ -241,7 +242,7 @@ export default function CalendarView({ className }: CalendarViewProps) {
                     ${isSelected ? 'bg-blue-50 border-blue-300' : 'hover:bg-gray-50'}
                     ${!isCurrentMonth ? 'text-gray-400 bg-gray-50' : ''}
                   `}
-                  onClick={() => setSelectedDate(date)}
+                  {...clickableProps(() => setSelectedDate(date))}
                 >
                   <div className="text-sm font-medium mb-1">{format(date, 'd')}</div>
 

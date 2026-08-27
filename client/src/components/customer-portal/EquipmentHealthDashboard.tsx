@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { LineChart, BarChart, PieChart } from '@/components/charts/ChartComponents';
 import { apiRequest } from '@/lib/queryClient';
+import { clickableProps } from '@/lib/accessibility';
 
 interface EquipmentHealth {
   id: string;
@@ -293,7 +294,7 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                 className={`p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
                   selectedEquipment === equipment.id ? 'border-primary bg-muted/30' : ''
                 }`}
-                onClick={() => setSelectedEquipment(equipment.id)}
+                {...clickableProps(() => setSelectedEquipment(equipment.id))}
                 data-testid={`equipment-item-${equipment.id}`}
               >
                 <div className="flex items-center justify-between">

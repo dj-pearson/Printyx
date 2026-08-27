@@ -512,7 +512,7 @@ function HotLeadItem({ lead }: { lead: Lead }) {
   return (
     <div
       className="p-3 bg-white rounded-lg border border-purple-200 hover:border-purple-300 transition-all cursor-pointer hover:shadow-sm"
-      onClick={() => navigate(`/business-records/${lead.id}`)}
+      {...clickableProps(() => navigate(`/business-records/${lead.id}`))}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
@@ -549,7 +549,7 @@ function DealAlertItem({ deal }: { deal: Deal }) {
   return (
     <div
       className="p-3 bg-white rounded-lg border border-orange-200 hover:border-orange-300 transition-all cursor-pointer"
-      onClick={() => navigate(`/deals/${deal.id}`)}
+      {...clickableProps(() => navigate(`/deals/${deal.id}`))}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
@@ -580,7 +580,7 @@ function WinItem({ deal }: { deal: Deal }) {
   return (
     <div
       className="p-3 bg-white rounded-lg border border-green-200 hover:border-green-300 transition-all cursor-pointer"
-      onClick={() => navigate(`/deals/${deal.id}`)}
+      {...clickableProps(() => navigate(`/deals/${deal.id}`))}
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
@@ -604,3 +604,4 @@ function getTimeOfDay(): string {
 
 // Missing import
 import { Plus } from 'lucide-react';
+import { clickableProps } from '@/lib/accessibility';

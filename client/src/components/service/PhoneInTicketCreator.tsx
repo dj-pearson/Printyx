@@ -34,6 +34,7 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { clickableProps } from '@/lib/accessibility';
 
 interface PhoneInTicketCreatorProps {
   isOpen: boolean;
@@ -402,7 +403,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
                   <div
                     key={company.id}
                     className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
-                    onClick={() => handleCompanySelect(company)}
+                    {...clickableProps(() => handleCompanySelect(company))}
                   >
                     <div className="font-medium">{company.name}</div>
                     <div className="text-sm text-gray-600">{company.address}</div>
@@ -467,7 +468,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
                         <div
                           key={contact.id}
                           className="p-3 hover:bg-gray-50 cursor-pointer border-b"
-                          onClick={() => handleContactSelect(contact)}
+                          {...clickableProps(() => handleContactSelect(contact))}
                         >
                           <div className="font-medium">{contact.name}</div>
                           <div className="text-sm text-gray-600">{contact.phone}</div>
@@ -477,7 +478,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
                       {contactSearchTerm && (
                         <div
                           className="p-3 hover:bg-blue-50 cursor-pointer border-t bg-blue-25"
-                          onClick={() => setShowNewContactForm(true)}
+                          {...clickableProps(() => setShowNewContactForm(true))}
                         >
                           <div className="flex items-center gap-2 text-blue-600">
                             <Plus className="h-4 w-4" />
@@ -495,7 +496,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
                         : 'No contacts available'}
                       <div
                         className="mt-2 text-blue-600 cursor-pointer hover:underline flex items-center gap-1"
-                        onClick={() => setShowNewContactForm(true)}
+                        {...clickableProps(() => setShowNewContactForm(true))}
                       >
                         <Plus className="h-4 w-4" />
                         Create new contact
@@ -660,7 +661,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
                   <div
                     key={item.id}
                     className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
-                    onClick={() => handleEquipmentSelect(item)}
+                    {...clickableProps(() => handleEquipmentSelect(item))}
                   >
                     <div className="font-medium">
                       {item.brand} {item.model}
