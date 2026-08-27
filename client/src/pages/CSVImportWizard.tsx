@@ -268,10 +268,6 @@ export default function CSVImportWizard() {
   // Preview mapping mutation
   const previewMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      // CRMX-011a: same transport fix as upload. NOTE the endpoint itself does
-      // not exist — supabase/functions/import/ has no preview-mapping branch and
-      // there is no Express /api/import router — so this now fails as an honest
-      // 404 instead of "Unexpected token < in JSON". See the story note.
       return apiFormRequest('/api/import/preview-mapping', 'POST', formData);
     },
     onSuccess: (data) => {
@@ -283,8 +279,9 @@ export default function CSVImportWizard() {
   // AI mapping mutation
   const aiMappingMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      // CRMX-011a: same transport fix, and the same caveat — the edge function
-      // serves ai/status but has no ai/map-columns branch.
+      // Served by Express in dev and by the edge function in prod, which has no
+      // AI client and answers 503 — the same thing GET ai/status reports, and
+      // what gates the button that reaches this.
       return apiFormRequest('/api/import/ai/map-columns', 'POST', formData);
     },
     onSuccess: (data) => {

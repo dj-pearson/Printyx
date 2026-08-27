@@ -2,9 +2,51 @@
 // Handles CSV import with intelligent Salesforce mapping
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { parseCsv, overallConfidence } from './_csv.ts';
 
-// In-memory job storage (temporary - should use database in production)
-const importJobs = new Map<string, any>();
+// CRMX-011a: job state lives in csv_import_jobs, not in this process.
+//
+// It used to be `const importJobs = new Map()` with a comment saying it should
+// use the database in production. Edge invocations are stateless and
+// multi-instance, so the job created by /upload was not visible to the
+// /validate and /execute calls that followed it — the wizard is a multi-step
+// flow, and step two could never find step one. The table already existed and
+// the Express side (server/services/csv-import-service.ts) already wrote to it;
+// only this side kept its own copy in memory.
+//
+// The rows below are the shape Express writes, deliberately: raw_data is an
+// array of objects keyed by CSV header (not an array of cells), so a job
+// started on either host can be read by the other.
+
+/** Columns of csv_import_jobs this function reads back. */
+const JOB_COLUMNS =
+  'id, tenant_id, user_id, entity_type, file_name, status, original_headers, column_mappings, unmapped_columns, total_rows, valid_rows, invalid_rows, imported_rows, skipped_rows, merged_rows, duplicates_detected, duplicate_strategy, raw_data';
+
+async function loadJob(admin: any, jobId: string, tenantId: string) {
+  const { data, error } = await admin
+    .from('csv_import_jobs')
+    .select(JOB_COLUMNS)
+    .eq('id', jobId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[IMPORT] job load failed:', error);
+    return null;
+  }
+  return data;
+}
+
+async function updateJob(admin: any, jobId: string, tenantId: string, patch: Record<string, any>) {
+  const { error } = await admin
+    .from('csv_import_jobs')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', jobId)
+    .eq('tenant_id', tenantId);
+
+  if (error) console.error('[IMPORT] job update failed:', error);
+  return !error;
+}
 
 // Entity type definitions
 const ENTITY_TYPES = {
@@ -118,48 +160,101 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'No file uploaded' }, 400, req);
       }
 
-      // Parse CSV
-      const text = await file.text();
-      const lines = text.split('\n').filter((line) => line.trim());
+      const { headers, rows } = parseCsv(await file.text());
 
-      if (lines.length === 0) {
+      if (headers.length === 0) {
         return createCorsResponse({ error: 'CSV file is empty' }, 400, req);
       }
 
-      const headers = parseCSVLine(lines[0]);
-      const allRows = lines.slice(1).map((line) => parseCSVLine(line));
-      const sampleRows = allRows.slice(0, 5); // First 5 rows for preview
+      const sampleRows = rows.slice(0, 5); // First 5 rows for preview
 
       // Auto-map columns
       const columnMappings = autoMapColumns(headers, entityType);
+      const unmappedColumns = headers.filter(
+        (h: string) => !columnMappings.find((m: any) => m.sourceColumn === h && m.targetField),
+      );
 
-      // Create import job and store in memory
-      const jobId = crypto.randomUUID();
+      const { data: job, error: jobError } = await admin
+        .from('csv_import_jobs')
+        .insert({
+          tenant_id: tenantId,
+          user_id: user.id,
+          entity_type: entityType,
+          file_name: file.name,
+          file_size_bytes: file.size,
+          status: 'validating',
+          original_headers: headers,
+          column_mappings: columnMappings,
+          unmapped_columns: unmappedColumns,
+          total_rows: rows.length,
+          duplicate_strategy: (formData.get('duplicateStrategy') as string) || 'prompt',
+          raw_data: rows,
+        })
+        .select('id')
+        .single();
 
-      importJobs.set(jobId, {
-        id: jobId,
-        tenantId,
-        userId: user.id,
-        entityType,
-        headers,
-        allRows,
-        columnMappings,
-        totalRows: allRows.length,
-        status: 'mapping',
-        createdAt: new Date().toISOString(),
-      });
+      if (jobError || !job) {
+        console.error('[IMPORT] could not create job:', jobError);
+        return createCorsResponse({ error: 'Failed to create import job' }, 500, req);
+      }
 
       return createCorsResponse(
         {
-          jobId,
+          jobId: job.id,
           columnMappings,
-          totalRows: allRows.length,
+          totalRows: rows.length,
           sampleData: sampleRows,
-          unmappedColumns: headers.filter(
-            (h: string) => !columnMappings.find((m: any) => m.sourceColumn === h && m.targetField),
-          ),
+          unmappedColumns,
         },
         200,
+        req,
+      );
+    }
+
+    // POST /import/preview-mapping — map a file WITHOUT creating a job, so the
+    // wizard's mapping step can be re-run on a different file. Matches the
+    // Express handler's response shape (routes-csv-import.ts:203).
+    if (req.method === 'POST' && pathParts[0] === 'preview-mapping') {
+      const formData = await req.formData();
+      const file = formData.get('file') as File;
+      const entityType = formData.get('entityType') as string;
+
+      if (!file) return createCorsResponse({ error: 'No file uploaded' }, 400, req);
+      if (!entityType || !(entityType in ENTITY_TYPES)) {
+        return createCorsResponse({ error: 'Invalid or missing entityType' }, 400, req);
+      }
+
+      const { headers, rows } = parseCsv(await file.text());
+      if (headers.length === 0) {
+        return createCorsResponse({ error: 'CSV file is empty' }, 400, req);
+      }
+
+      const mappings = autoMapColumns(headers, entityType);
+
+      return createCorsResponse(
+        {
+          totalRows: rows.length,
+          headers,
+          mappings,
+          unmappedColumns: headers.filter(
+            (h: string) => !mappings.find((m: any) => m.sourceColumn === h && m.targetField),
+          ),
+          overallConfidence: overallConfidence(mappings),
+          sampleData: rows.slice(0, 5),
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /import/ai/map-columns — there is no AI client in this runtime, which
+    // is what GET /import/ai/status already reports. Answering 503 with the same
+    // message as the Express handler (routes-csv-import.ts:655) is the honest
+    // parity: the wizard shows the failure instead of hanging on a 404.
+    if (req.method === 'POST' && pathParts[0] === 'ai' && pathParts[1] === 'map-columns') {
+      return createCorsResponse(
+        { message: 'AI refinement is not available on this deployment.' },
+        503,
         req,
       );
     }
@@ -171,8 +266,7 @@ export default async function handler(req: Request) {
 
     // GET /import/jobs/:jobId
     if (req.method === 'GET' && pathParts[0] === 'jobs' && pathParts[1] && !pathParts[2]) {
-      const jobId = pathParts[1];
-      const job = importJobs.get(jobId);
+      const job = await loadJob(admin, pathParts[1], tenantId);
 
       if (!job) {
         return createCorsResponse({ error: 'Job not found' }, 404, req);
@@ -182,16 +276,56 @@ export default async function handler(req: Request) {
         {
           id: job.id,
           status: job.status,
-          totalRows: job.totalRows,
-          validRows: job.validRows || job.totalRows,
-          invalidRows: job.invalidRows || 0,
-          importedRows: job.importedRows || 0,
-          skippedRows: job.skippedRows || 0,
-          duplicatesDetected: job.duplicatesDetected || 0,
+          totalRows: job.total_rows,
+          validRows: job.valid_rows ?? job.total_rows,
+          invalidRows: job.invalid_rows ?? 0,
+          importedRows: job.imported_rows ?? 0,
+          skippedRows: job.skipped_rows ?? 0,
+          duplicatesDetected: job.duplicates_detected ?? 0,
+          columnMappings: job.column_mappings ?? [],
+          unmappedColumns: job.unmapped_columns ?? [],
         },
         200,
         req,
       );
+    }
+
+    // PUT /import/jobs/:jobId/mappings — the wizard saves the user's column
+    // choices here before validating. Matches routes-csv-import.ts:314.
+    if (
+      req.method === 'PUT' &&
+      pathParts[0] === 'jobs' &&
+      pathParts[1] &&
+      pathParts[2] === 'mappings'
+    ) {
+      const jobId = pathParts[1];
+      const job = await loadJob(admin, jobId, tenantId);
+      if (!job) return createCorsResponse({ error: 'Job not found' }, 404, req);
+
+      const body = await req.json().catch(() => ({}));
+      const submitted = Array.isArray(body?.mappings) ? body.mappings : null;
+      if (!submitted) {
+        return createCorsResponse({ error: 'mappings must be an array' }, 400, req);
+      }
+
+      // Keep the auto-mapper's confidence/dataType and overwrite only what the
+      // user actually decided, exactly as the Express handler does.
+      const existing = (job.column_mappings as any[]) || [];
+      const merged = submitted.map((m: any) => ({
+        ...existing.find((e: any) => e.sourceColumn === m.sourceColumn),
+        sourceColumn: m.sourceColumn,
+        targetField: m.targetField,
+        userConfirmed: m.confirmed === true,
+      }));
+
+      const ok = await updateJob(admin, jobId, tenantId, {
+        column_mappings: merged,
+        unmapped_columns: merged.filter((m: any) => !m.targetField).map((m: any) => m.sourceColumn),
+      });
+
+      return ok
+        ? createCorsResponse({ message: 'Column mappings updated' }, 200, req)
+        : createCorsResponse({ error: 'Failed to update mappings' }, 500, req);
     }
 
     // POST /import/jobs/:jobId/validate
@@ -202,28 +336,58 @@ export default async function handler(req: Request) {
       pathParts[2] === 'validate'
     ) {
       const jobId = pathParts[1];
-      const job = importJobs.get(jobId);
+      const job = await loadJob(admin, jobId, tenantId);
 
       if (!job) {
         return createCorsResponse({ error: 'Job not found' }, 404, req);
       }
 
-      // Update job with validation results
-      job.status = 'validated';
-      job.validRows = job.totalRows;
-      job.invalidRows = 0;
-      job.duplicatesDetected = 0;
+      // A row is valid when every mapped required column has a value. That is
+      // weaker than the Express validator (which also type-checks and looks for
+      // duplicates), and it is deliberately not dressed up as more: rows with an
+      // empty company name are what actually break the import, and they are now
+      // counted instead of being reported as "all valid" the way the previous
+      // hardcoded validRows = totalRows did.
+      const mappings = (job.column_mappings as any[]) || [];
+      const rows = (job.raw_data as Record<string, string>[]) || [];
+      const nameColumn = mappings.find(
+        (m) => m.targetField === 'companyName' || m.targetField === 'businessName',
+      )?.sourceColumn;
 
-      importJobs.set(jobId, job);
+      const validationErrors: any[] = [];
+      if (nameColumn) {
+        rows.forEach((row, index) => {
+          if (!row[nameColumn]?.trim()) {
+            validationErrors.push({
+              rowNumber: index + 1,
+              field: nameColumn,
+              message: 'Required value is empty',
+            });
+          }
+        });
+      }
+
+      const invalidRows = validationErrors.length;
+      const validRows = rows.length - invalidRows;
+
+      await updateJob(admin, jobId, tenantId, {
+        status: 'awaiting_review',
+        valid_rows: validRows,
+        invalid_rows: invalidRows,
+        duplicates_detected: 0,
+        validation_errors: validationErrors,
+      });
 
       return createCorsResponse(
         {
-          validRows: job.validRows,
-          invalidRows: job.invalidRows,
-          duplicatesDetected: job.duplicatesDetected,
+          validRows,
+          invalidRows,
+          duplicatesDetected: 0,
           needsDuplicateReview: false,
-          canProceed: true,
-          validationErrors: [],
+          canProceed: validRows > 0,
+          // Capped so a wholly malformed file does not return a response the
+          // browser has to render row by row.
+          validationErrors: validationErrors.slice(0, 100),
         },
         200,
         req,
@@ -267,13 +431,14 @@ export default async function handler(req: Request) {
       pathParts[2] === 'execute'
     ) {
       const jobId = pathParts[1];
-      const job = importJobs.get(jobId);
+      const job = await loadJob(admin, jobId, tenantId);
 
       if (!job) {
         return createCorsResponse({ error: 'Job not found' }, 404, req);
       }
 
-      job.status = 'processing';
+      const allRows = (job.raw_data as Record<string, string>[]) || [];
+      const jobMappings = (job.column_mappings as any[]) || [];
 
       let importedRows = 0;
       let skippedRows = 0;
@@ -286,12 +451,19 @@ export default async function handler(req: Request) {
 
       try {
         // Get the starting position from the request body
-        const body = await req.json();
-        const startIndex = body.startIndex || 0;
-        const rowsToProcess = job.allRows.slice(startIndex, startIndex + MAX_ROWS_PER_BATCH);
+        const body = await req.json().catch(() => ({}));
+        const startIndex = body?.startIndex || 0;
+        const rowsToProcess = allRows.slice(startIndex, startIndex + MAX_ROWS_PER_BATCH);
+
+        if (startIndex === 0) {
+          await updateJob(admin, jobId, tenantId, {
+            status: 'processing',
+            started_at: new Date().toISOString(),
+          });
+        }
 
         console.log(
-          `[IMPORT] Processing batch: rows ${startIndex} to ${startIndex + rowsToProcess.length} of ${job.allRows.length}`,
+          `[IMPORT] Processing batch: rows ${startIndex} to ${startIndex + rowsToProcess.length} of ${allRows.length}`,
         );
 
         // Process each row in this batch
@@ -307,15 +479,21 @@ export default async function handler(req: Request) {
             // Map CSV row to database fields
             const mappedData: any = {};
 
-            for (const mapping of job.columnMappings) {
-              if (mapping.targetField && row[job.headers.indexOf(mapping.sourceColumn)]) {
-                const value = row[job.headers.indexOf(mapping.sourceColumn)];
-                mappedData[mapping.targetField] = value;
-              }
+            for (const mapping of jobMappings) {
+              // raw_data rows are keyed by CSV header, so this is a lookup, not
+              // a positional index into a cell array as it was before.
+              const value = mapping.targetField ? row[mapping.sourceColumn] : '';
+              if (value) mappedData[mapping.targetField] = value;
             }
 
             // Insert into companies table with duplicate detection
-            if (job.entityType === 'business_records') {
+            // job is a PostgREST row now, so this is entity_type. It read
+            // job.entityType against an in-memory object that used camelCase —
+            // but the same block read job.tenant_id and job.user_id, which that
+            // object did NOT have, so every tenant filter in this loop was
+            // .eq('tenant_id', undefined) and every insert sent a null tenant.
+            // Both spellings are correct against the row.
+            if (job.entity_type === 'business_records') {
               const businessName = mappedData.companyName || mappedData.businessName || 'Unknown';
               const contactEmail = mappedData.primaryContactEmail || mappedData.email || null;
               const phone = mappedData.primaryContactPhone || mappedData.phone || null;
@@ -753,31 +931,34 @@ export default async function handler(req: Request) {
           }
         }
 
-        // Update job progress
-        job.importedRows = (job.importedRows || 0) + importedRows;
-        job.skippedRows = (job.skippedRows || 0) + skippedRows;
-        job.mergedRows = (job.mergedRows || 0) + mergedRows;
+        // Totals are cumulative across batches, so they are read from the row
+        // this batch started from rather than kept in a variable that dies with
+        // the invocation.
+        const totalImported = (job.imported_rows ?? 0) + importedRows;
+        const totalSkipped = (job.skipped_rows ?? 0) + skippedRows;
+        const totalMerged = (job.merged_rows ?? 0) + mergedRows;
 
         const processedRows = startIndex + rowsToProcess.length;
-        const totalRows = job.allRows.length;
+        const totalRows = allRows.length;
         const hasMore = processedRows < totalRows;
 
-        if (!hasMore) {
-          job.status = 'completed';
-        }
-
-        importJobs.set(jobId, job);
+        await updateJob(admin, jobId, tenantId, {
+          imported_rows: totalImported,
+          skipped_rows: totalSkipped,
+          merged_rows: totalMerged,
+          ...(hasMore ? {} : { status: 'completed', completed_at: new Date().toISOString() }),
+        });
 
         console.log(
-          `[IMPORT] Batch complete: ${processedRows}/${totalRows} rows processed. Imported: ${job.importedRows}, Skipped: ${job.skippedRows}, Merged: ${job.mergedRows}`,
+          `[IMPORT] Batch complete: ${processedRows}/${totalRows} rows processed. Imported: ${totalImported}, Skipped: ${totalSkipped}, Merged: ${totalMerged}`,
         );
 
         return createCorsResponse(
           {
             message: hasMore ? 'Batch completed' : 'Import completed',
-            importedRows: job.importedRows,
-            skippedRows: job.skippedRows,
-            mergedRows: job.mergedRows,
+            importedRows: totalImported,
+            skippedRows: totalSkipped,
+            mergedRows: totalMerged,
             processedRows,
             totalRows,
             hasMore,
@@ -788,8 +969,10 @@ export default async function handler(req: Request) {
         );
       } catch (error: any) {
         console.error('Import execution error:', error);
-        job.status = 'failed';
-        importJobs.set(jobId, job);
+        await updateJob(admin, jobId, tenantId, {
+          status: 'failed',
+          import_errors: [{ message: error?.message || 'Unknown error' }],
+        });
 
         return createCorsResponse(
           {
@@ -811,27 +994,6 @@ export default async function handler(req: Request) {
 }
 
 // Helper functions
-function parseCSVLine(line: string): string[] {
-  const result = [];
-  let current = '';
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-
-    if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
-      result.push(current.trim());
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-
-  result.push(current.trim());
-  return result.map((cell) => cell.replace(/^"|"$/g, ''));
-}
 
 function autoMapColumns(csvHeaders: string[], entityType: string) {
   const mappings: any[] = [];
