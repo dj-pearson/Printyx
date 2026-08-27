@@ -51,6 +51,8 @@ jobs:
         run: npm run check:nav
       - name: Orphaned-file ratchet (AUDIT-018)
         run: npm run check:orphans
+      - name: Query loading/error-state ratchet (CR-033)
+        run: npm run check:query-states
       - name: Raw-fetch ratchet (PROD-013)
         run: npm run check:raw-fetch
       - name: Duplicate route-registration ratchet

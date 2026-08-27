@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { QueryStates } from '@/components/ui/query-state';
+import { DashboardSkeleton } from '@/components/ui/skeletons';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -138,7 +140,7 @@ export default function FinancialIntelligenceDashboard() {
   const [alertFilter, setAlertFilter] = useState<'all' | 'critical' | 'overdue'>('all');
 
   // Fetch financial summary
-  const { data: financialSummary } = useQuery<FinancialSummary>({
+  const summaryQuery = useQuery<FinancialSummary>({
     queryKey: ['/api/reports/financial-summary', selectedPeriod, selectedTerritory],
     queryFn: () =>
       apiRequest(
@@ -147,19 +149,19 @@ export default function FinancialIntelligenceDashboard() {
   });
 
   // Fetch payment alerts
-  const { data: paymentAlerts = [] } = useQuery<PaymentAlert[]>({
+  const alertsQuery = useQuery<PaymentAlert[]>({
     queryKey: ['/api/reports/payment-alerts', alertFilter],
     queryFn: () => apiRequest(`/api/reports/payment-alerts?filter=${alertFilter}`),
   });
 
   // Fetch AR aging
-  const { data: arAging = [] } = useQuery<ARAgingBucket[]>({
+  const agingQuery = useQuery<ARAgingBucket[]>({
     queryKey: ['/api/reports/ar-aging', selectedTerritory],
     queryFn: () => apiRequest(`/api/reports/ar-aging?territory=${selectedTerritory}`),
   });
 
   // Fetch customer profitability
-  const { data: customerProfitability = [] } = useQuery<CustomerProfitability[]>({
+  const profitabilityQuery = useQuery<CustomerProfitability[]>({
     queryKey: ['/api/reports/customer-profitability', selectedPeriod, selectedTerritory],
     queryFn: () =>
       apiRequest(
@@ -168,16 +170,28 @@ export default function FinancialIntelligenceDashboard() {
   });
 
   // Fetch cash flow forecast
-  const { data: cashFlowForecast = [] } = useQuery<CashFlowForecast[]>({
+  const cashFlowQuery = useQuery<CashFlowForecast[]>({
     queryKey: ['/api/reports/cash-flow-forecast'],
     queryFn: () => apiRequest('/api/reports/cash-flow-forecast?horizon=90d'),
   });
 
   // Fetch territory financials
-  const { data: territoryFinancials = [] } = useQuery<TerritoryFinancials[]>({
+  const territoryQuery = useQuery<TerritoryFinancials[]>({
     queryKey: ['/api/reports/territory-financials', selectedPeriod],
     queryFn: () => apiRequest(`/api/reports/territory-financials?period=${selectedPeriod}`),
   });
+
+  // CR-033: all six kept only `.data`. On a failed request this page rendered
+  // its full layout with zeroed AR aging, an empty payment-alert list and a flat
+  // cash-flow chart — which reads as "nothing is overdue and cash is fine", the
+  // most expensive possible way to be wrong about money. Held whole so the
+  // wrapper can distinguish that from an outage.
+  const financialSummary = summaryQuery.data;
+  const paymentAlerts = alertsQuery.data ?? [];
+  const arAging = agingQuery.data ?? [];
+  const customerProfitability = profitabilityQuery.data ?? [];
+  const cashFlowForecast = cashFlowQuery.data ?? [];
+  const territoryFinancials = territoryQuery.data ?? [];
 
   // Get alert severity color
   const getAlertSeverityColor = (severity: string) => {
@@ -267,290 +281,383 @@ export default function FinancialIntelligenceDashboard() {
           </CardContent>
         </Card>
 
-        {/* Critical Alerts */}
-        {paymentAlerts.filter((alert) => alert.severity === 'critical').length > 0 && (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
-              <strong>Critical Payment Issues:</strong>{' '}
-              {paymentAlerts.filter((alert) => alert.severity === 'critical').length} customers
-              require immediate attention.
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* CR-033: the period, territory and alert filters above stay usable —
+            changing one is the retry — so the wrapper starts at the first
+            section derived from the data. */}
+        <QueryStates
+          queries={[
+            summaryQuery,
+            alertsQuery,
+            agingQuery,
+            profitabilityQuery,
+            cashFlowQuery,
+            territoryQuery,
+          ]}
+          loading={<DashboardSkeleton />}
+          errorTitle="Could not load financial data"
+          className="py-6"
+        >
+          {/* Critical Alerts */}
+          {paymentAlerts.filter((alert) => alert.severity === 'critical').length > 0 && (
+            <Alert className="border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">
+                <strong>Critical Payment Issues:</strong>{' '}
+                {paymentAlerts.filter((alert) => alert.severity === 'critical').length} customers
+                require immediate attention.
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {/* Key Financial Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                  <p className="text-2xl font-bold">
-                    ${financialSummary?.totalRevenue?.toLocaleString() || '0'}
-                  </p>
-                  <div className="flex items-center text-xs mt-1">
-                    {financialSummary?.revenueChange !== undefined && (
-                      <>
-                        {getTrendIcon(financialSummary.revenueChange)({
-                          className: `h-3 w-3 mr-1 ${getTrendColor(financialSummary.revenueChange)}`,
-                        })}
-                        <span className={getTrendColor(financialSummary.revenueChange)}>
-                          {financialSummary.revenueChange >= 0 ? '+' : ''}
-                          {financialSummary.revenueChange.toFixed(1)}% vs last period
-                        </span>
-                      </>
-                    )}
+          {/* Key Financial Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                    <p className="text-2xl font-bold">
+                      ${financialSummary?.totalRevenue?.toLocaleString() || '0'}
+                    </p>
+                    <div className="flex items-center text-xs mt-1">
+                      {financialSummary?.revenueChange !== undefined && (
+                        <>
+                          {getTrendIcon(financialSummary.revenueChange)({
+                            className: `h-3 w-3 mr-1 ${getTrendColor(financialSummary.revenueChange)}`,
+                          })}
+                          <span className={getTrendColor(financialSummary.revenueChange)}>
+                            {financialSummary.revenueChange >= 0 ? '+' : ''}
+                            {financialSummary.revenueChange.toFixed(1)}% vs last period
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
+                  <DollarSign className="h-8 w-8 text-green-600" />
                 </div>
-                <DollarSign className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Accounts Receivable</p>
-                  <p className="text-2xl font-bold">
-                    ${financialSummary?.totalAR?.toLocaleString() || '0'}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    DSO: {financialSummary?.dso || 0} days
-                  </p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Accounts Receivable</p>
+                    <p className="text-2xl font-bold">
+                      ${financialSummary?.totalAR?.toLocaleString() || '0'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      DSO: {financialSummary?.dso || 0} days
+                    </p>
+                  </div>
+                  <CreditCard className="h-8 w-8 text-blue-600" />
                 </div>
-                <CreditCard className="h-8 w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Overdue Amount</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    ${financialSummary?.overdueAmount?.toLocaleString() || '0'}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {financialSummary?.overdueCount || 0} accounts
-                  </p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Overdue Amount</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      ${financialSummary?.overdueAmount?.toLocaleString() || '0'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {financialSummary?.overdueCount || 0} accounts
+                    </p>
+                  </div>
+                  <AlertTriangle className="h-8 w-8 text-red-600" />
                 </div>
-                <AlertTriangle className="h-8 w-8 text-red-600" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Collection Rate</p>
-                  <p className="text-2xl font-bold">{financialSummary?.collectionRate || 0}%</p>
-                  <Progress value={financialSummary?.collectionRate || 0} className="mt-2" />
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Collection Rate</p>
+                    <p className="text-2xl font-bold">{financialSummary?.collectionRate || 0}%</p>
+                    <Progress value={financialSummary?.collectionRate || 0} className="mt-2" />
+                  </div>
+                  <Target className="h-8 w-8 text-purple-600" />
                 </div>
-                <Target className="h-8 w-8 text-purple-600" />
+              </CardContent>
+            </Card>
+          </div>
+
+          <Tabs defaultValue="alerts" className="w-full">
+            <TabsList>
+              <TabsTrigger value="alerts">Payment Alerts</TabsTrigger>
+              <TabsTrigger value="ar-aging">AR Aging</TabsTrigger>
+              <TabsTrigger value="profitability">Customer Profitability</TabsTrigger>
+              <TabsTrigger value="cash-flow">Cash Flow Forecast</TabsTrigger>
+              <TabsTrigger value="territories">Territory Analysis</TabsTrigger>
+            </TabsList>
+
+            {/* Payment Alerts */}
+            <TabsContent value="alerts" className="space-y-6">
+              <div className="flex gap-4 mb-4">
+                <Select value={alertFilter} onValueChange={(value: any) => setAlertFilter(value)}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Alerts</SelectItem>
+                    <SelectItem value="critical">Critical Only</SelectItem>
+                    <SelectItem value="overdue">Overdue Only</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        <Tabs defaultValue="alerts" className="w-full">
-          <TabsList>
-            <TabsTrigger value="alerts">Payment Alerts</TabsTrigger>
-            <TabsTrigger value="ar-aging">AR Aging</TabsTrigger>
-            <TabsTrigger value="profitability">Customer Profitability</TabsTrigger>
-            <TabsTrigger value="cash-flow">Cash Flow Forecast</TabsTrigger>
-            <TabsTrigger value="territories">Territory Analysis</TabsTrigger>
-          </TabsList>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Active Payment Alerts</CardTitle>
+                    <CardDescription>
+                      Automated payment monitoring and recommended actions
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {paymentAlerts.map((alert, index) => {
+                        const AlertIcon = getAlertTypeIcon(alert.type);
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-start space-x-4 p-4 border rounded-lg"
+                          >
+                            <div
+                              className={`p-2 rounded-lg ${
+                                alert.severity === 'critical'
+                                  ? 'bg-red-100'
+                                  : alert.severity === 'high'
+                                    ? 'bg-orange-100'
+                                    : alert.severity === 'medium'
+                                      ? 'bg-yellow-100'
+                                      : 'bg-blue-100'
+                              }`}
+                            >
+                              <AlertIcon
+                                className={`h-4 w-4 ${
+                                  alert.severity === 'critical'
+                                    ? 'text-red-600'
+                                    : alert.severity === 'high'
+                                      ? 'text-orange-600'
+                                      : alert.severity === 'medium'
+                                        ? 'text-yellow-600'
+                                        : 'text-blue-600'
+                                }`}
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <h4 className="font-medium">{alert.customerName}</h4>
+                                <Badge variant={getAlertSeverityColor(alert.severity)}>
+                                  {alert.severity}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {alert.description}
+                              </p>
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm">
+                                  <span className="font-medium">
+                                    ${alert.amount.toLocaleString()}
+                                  </span>
+                                  {alert.daysPastDue && (
+                                    <span className="text-red-600 ml-2">
+                                      {alert.daysPastDue} days overdue
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  {alert.autoActionAvailable && (
+                                    <Button size="sm" variant="outline">
+                                      Auto Action
+                                    </Button>
+                                  )}
+                                  <Button size="sm">View Details</Button>
+                                </div>
+                              </div>
+                              <div className="mt-2 p-2 bg-muted rounded text-xs">
+                                <strong>Recommended:</strong> {alert.recommendedAction}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
 
-          {/* Payment Alerts */}
-          <TabsContent value="alerts" className="space-y-6">
-            <div className="flex gap-4 mb-4">
-              <Select value={alertFilter} onValueChange={(value: any) => setAlertFilter(value)}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Alerts</SelectItem>
-                  <SelectItem value="critical">Critical Only</SelectItem>
-                  <SelectItem value="overdue">Overdue Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Alert Summary</CardTitle>
+                    <CardDescription>Distribution by severity</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <RechartsPieChart>
+                        <Pie
+                          data={[
+                            {
+                              name: 'Critical',
+                              value: paymentAlerts.filter((a) => a.severity === 'critical').length,
+                            },
+                            {
+                              name: 'High',
+                              value: paymentAlerts.filter((a) => a.severity === 'high').length,
+                            },
+                            {
+                              name: 'Medium',
+                              value: paymentAlerts.filter((a) => a.severity === 'medium').length,
+                            },
+                            {
+                              name: 'Low',
+                              value: paymentAlerts.filter((a) => a.severity === 'low').length,
+                            },
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, value }) => `${name}: ${value}`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {COLORS.map((color, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2">
+            {/* AR Aging */}
+            <TabsContent value="ar-aging" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>AR Aging Analysis</CardTitle>
+                    <CardDescription>Outstanding receivables by aging bucket</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={arAging}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="bucket" />
+                        <YAxis />
+                        <Tooltip
+                          formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Amount']}
+                        />
+                        <Bar dataKey="amount" fill="#8884d8" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Aging Distribution</CardTitle>
+                    <CardDescription>Percentage breakdown by bucket</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {arAging.map((bucket, index) => (
+                        <div key={index} className="space-y-2">
+                          <div className="flex justify-between items-center text-sm">
+                            <span>{bucket.bucket}</span>
+                            <div className="text-right">
+                              <div className="font-medium">${bucket.amount.toLocaleString()}</div>
+                              <div className="text-muted-foreground">{bucket.count} invoices</div>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Progress value={bucket.percentage} />
+                            <div className="text-xs text-muted-foreground">
+                              {bucket.percentage.toFixed(1)}% of total AR
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Customer Profitability */}
+            <TabsContent value="profitability" className="space-y-6">
+              <Card>
                 <CardHeader>
-                  <CardTitle>Active Payment Alerts</CardTitle>
-                  <CardDescription>
-                    Automated payment monitoring and recommended actions
-                  </CardDescription>
+                  <CardTitle>Customer Profitability Analysis</CardTitle>
+                  <CardDescription>Revenue, costs, and profit margins by customer</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {paymentAlerts.map((alert, index) => {
-                      const AlertIcon = getAlertTypeIcon(alert.type);
-                      return (
-                        <div
-                          key={index}
-                          className="flex items-start space-x-4 p-4 border rounded-lg"
-                        >
-                          <div
-                            className={`p-2 rounded-lg ${
-                              alert.severity === 'critical'
-                                ? 'bg-red-100'
-                                : alert.severity === 'high'
-                                  ? 'bg-orange-100'
-                                  : alert.severity === 'medium'
-                                    ? 'bg-yellow-100'
-                                    : 'bg-blue-100'
-                            }`}
-                          >
-                            <AlertIcon
-                              className={`h-4 w-4 ${
-                                alert.severity === 'critical'
-                                  ? 'text-red-600'
-                                  : alert.severity === 'high'
-                                    ? 'text-orange-600'
-                                    : alert.severity === 'medium'
-                                      ? 'text-yellow-600'
-                                      : 'text-blue-600'
-                              }`}
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <h4 className="font-medium">{alert.customerName}</h4>
-                              <Badge variant={getAlertSeverityColor(alert.severity)}>
-                                {alert.severity}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              {alert.description}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm">
-                                <span className="font-medium">
-                                  ${alert.amount.toLocaleString()}
-                                </span>
-                                {alert.daysPastDue && (
-                                  <span className="text-red-600 ml-2">
-                                    {alert.daysPastDue} days overdue
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex gap-2">
-                                {alert.autoActionAvailable && (
-                                  <Button size="sm" variant="outline">
-                                    Auto Action
-                                  </Button>
-                                )}
-                                <Button size="sm">View Details</Button>
-                              </div>
-                            </div>
-                            <div className="mt-2 p-2 bg-muted rounded text-xs">
-                              <strong>Recommended:</strong> {alert.recommendedAction}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Alert Summary</CardTitle>
-                  <CardDescription>Distribution by severity</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <RechartsPieChart>
-                      <Pie
-                        data={[
-                          {
-                            name: 'Critical',
-                            value: paymentAlerts.filter((a) => a.severity === 'critical').length,
-                          },
-                          {
-                            name: 'High',
-                            value: paymentAlerts.filter((a) => a.severity === 'high').length,
-                          },
-                          {
-                            name: 'Medium',
-                            value: paymentAlerts.filter((a) => a.severity === 'medium').length,
-                          },
-                          {
-                            name: 'Low',
-                            value: paymentAlerts.filter((a) => a.severity === 'low').length,
-                          },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, value }) => `${name}: ${value}`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
+                    {customerProfitability.slice(0, 10).map((customer, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-4 border rounded-lg"
                       >
-                        {COLORS.map((color, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* AR Aging */}
-          <TabsContent value="ar-aging" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>AR Aging Analysis</CardTitle>
-                  <CardDescription>Outstanding receivables by aging bucket</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={arAging}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="bucket" />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Amount']}
-                      />
-                      <Bar dataKey="amount" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Aging Distribution</CardTitle>
-                  <CardDescription>Percentage breakdown by bucket</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {arAging.map((bucket, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex justify-between items-center text-sm">
-                          <span>{bucket.bucket}</span>
-                          <div className="text-right">
-                            <div className="font-medium">${bucket.amount.toLocaleString()}</div>
-                            <div className="text-muted-foreground">{bucket.count} invoices</div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">{customer.customerName}</h4>
+                            <Badge
+                              variant={
+                                customer.profitMargin >= 30
+                                  ? 'default'
+                                  : customer.profitMargin >= 15
+                                    ? 'secondary'
+                                    : 'destructive'
+                              }
+                            >
+                              {customer.profitMargin.toFixed(1)}% margin
+                            </Badge>
                           </div>
-                        </div>
-                        <div className="space-y-1">
-                          <Progress value={bucket.percentage} />
-                          <div className="text-xs text-muted-foreground">
-                            {bucket.percentage.toFixed(1)}% of total AR
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Revenue</p>
+                              <p className="font-medium">
+                                ${customer.totalRevenue.toLocaleString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Gross Profit</p>
+                              <p className="font-medium">
+                                ${customer.grossProfit.toLocaleString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Growth</p>
+                              <p className={`font-medium ${getTrendColor(customer.revenueGrowth)}`}>
+                                {customer.revenueGrowth >= 0 ? '+' : ''}
+                                {customer.revenueGrowth.toFixed(1)}%
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Risk Score</p>
+                              <p
+                                className={`font-medium ${
+                                  customer.riskScore <= 30
+                                    ? 'text-green-600'
+                                    : customer.riskScore <= 60
+                                      ? 'text-yellow-600'
+                                      : 'text-red-600'
+                                }`}
+                              >
+                                {customer.riskScore}/100
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            Avg payment: {customer.paymentHistory.avgDaysToPay} days | On-time rate:{' '}
+                            {customer.paymentHistory.onTimePaymentRate}%
                           </div>
                         </div>
                       </div>
@@ -558,172 +665,100 @@ export default function FinancialIntelligenceDashboard() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          {/* Customer Profitability */}
-          <TabsContent value="profitability" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Customer Profitability Analysis</CardTitle>
-                <CardDescription>Revenue, costs, and profit margins by customer</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {customerProfitability.slice(0, 10).map((customer, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-4 border rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium">{customer.customerName}</h4>
-                          <Badge
-                            variant={
-                              customer.profitMargin >= 30
-                                ? 'default'
-                                : customer.profitMargin >= 15
-                                  ? 'secondary'
-                                  : 'destructive'
-                            }
-                          >
-                            {customer.profitMargin.toFixed(1)}% margin
-                          </Badge>
+            {/* Cash Flow Forecast */}
+            <TabsContent value="cash-flow" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cash Flow Forecast</CardTitle>
+                  <CardDescription>90-day projected inflows and outflows</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <LineChart data={cashFlowForecast}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={(date) => format(new Date(date), 'MMM dd')}
+                      />
+                      <YAxis />
+                      <Tooltip
+                        labelFormatter={(date) => format(new Date(date), 'MMM dd, yyyy')}
+                        formatter={(value) => [`$${Number(value).toLocaleString()}`, '']}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="projectedInflow"
+                        stroke="#82ca9d"
+                        name="Inflow"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="projectedOutflow"
+                        stroke="#ff7c7c"
+                        name="Outflow"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="netCashFlow"
+                        stroke="#8884d8"
+                        name="Net Cash Flow"
+                        strokeWidth={3}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Territory Analysis */}
+            <TabsContent value="territories" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Territory Financial Performance</CardTitle>
+                  <CardDescription>Revenue and profitability by territory</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {territoryFinancials.map((territory, index) => (
+                      <div key={index} className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium">{territory.territory} Territory</h4>
+                          <Badge variant="outline">{territory.customerCount} customers</Badge>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
                             <p className="text-muted-foreground">Revenue</p>
-                            <p className="font-medium">${customer.totalRevenue.toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Gross Profit</p>
-                            <p className="font-medium">${customer.grossProfit.toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Growth</p>
-                            <p className={`font-medium ${getTrendColor(customer.revenueGrowth)}`}>
-                              {customer.revenueGrowth >= 0 ? '+' : ''}
-                              {customer.revenueGrowth.toFixed(1)}%
+                            <p className="font-medium text-lg">
+                              ${territory.revenue.toLocaleString()}
+                            </p>
+                            <p className={`text-xs ${getTrendColor(territory.revenueGrowth)}`}>
+                              {territory.revenueGrowth >= 0 ? '+' : ''}
+                              {territory.revenueGrowth.toFixed(1)}%
                             </p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Risk Score</p>
-                            <p
-                              className={`font-medium ${
-                                customer.riskScore <= 30
-                                  ? 'text-green-600'
-                                  : customer.riskScore <= 60
-                                    ? 'text-yellow-600'
-                                    : 'text-red-600'
-                              }`}
-                            >
-                              {customer.riskScore}/100
-                            </p>
+                            <p className="text-muted-foreground">Avg Deal Size</p>
+                            <p className="font-medium">${territory.avgDealSize.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Profitability</p>
+                            <p className="font-medium">{territory.profitability.toFixed(1)}%</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Collection Rate</p>
+                            <p className="font-medium">{territory.collectionRate.toFixed(1)}%</p>
                           </div>
                         </div>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Avg payment: {customer.paymentHistory.avgDaysToPay} days | On-time rate:{' '}
-                          {customer.paymentHistory.onTimePaymentRate}%
-                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Cash Flow Forecast */}
-          <TabsContent value="cash-flow" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Cash Flow Forecast</CardTitle>
-                <CardDescription>90-day projected inflows and outflows</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={cashFlowForecast}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={(date) => format(new Date(date), 'MMM dd')}
-                    />
-                    <YAxis />
-                    <Tooltip
-                      labelFormatter={(date) => format(new Date(date), 'MMM dd, yyyy')}
-                      formatter={(value) => [`$${Number(value).toLocaleString()}`, '']}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="projectedInflow"
-                      stroke="#82ca9d"
-                      name="Inflow"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="projectedOutflow"
-                      stroke="#ff7c7c"
-                      name="Outflow"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="netCashFlow"
-                      stroke="#8884d8"
-                      name="Net Cash Flow"
-                      strokeWidth={3}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Territory Analysis */}
-          <TabsContent value="territories" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Territory Financial Performance</CardTitle>
-                <CardDescription>Revenue and profitability by territory</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {territoryFinancials.map((territory, index) => (
-                    <div key={index} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-medium">{territory.territory} Territory</h4>
-                        <Badge variant="outline">{territory.customerCount} customers</Badge>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Revenue</p>
-                          <p className="font-medium text-lg">
-                            ${territory.revenue.toLocaleString()}
-                          </p>
-                          <p className={`text-xs ${getTrendColor(territory.revenueGrowth)}`}>
-                            {territory.revenueGrowth >= 0 ? '+' : ''}
-                            {territory.revenueGrowth.toFixed(1)}%
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Avg Deal Size</p>
-                          <p className="font-medium">${territory.avgDealSize.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Profitability</p>
-                          <p className="font-medium">{territory.profitability.toFixed(1)}%</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Collection Rate</p>
-                          <p className="font-medium">{territory.collectionRate.toFixed(1)}%</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </QueryStates>
       </div>
     </MainLayout>
   );

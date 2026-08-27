@@ -1,5 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { QueryStates } from '@/components/ui/query-state';
+import { DashboardSkeleton } from '@/components/ui/skeletons';
 import { apiRequest } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -90,9 +92,14 @@ export default function SalesCommandCenter() {
   }, []);
 
   // Goals
-  const { data: goalProgress = [] } = useQuery<GoalProgressRow[]>({
+  // CR-033: these three kept only `.data`, so a failed request was
+  // indistinguishable from an empty pipeline — the page rendered its full
+  // layout with zeroed KPIs and empty tables either way. The results are held
+  // whole now so QueryStates below can tell the two apart.
+  const goalProgressQuery = useQuery<GoalProgressRow[]>({
     queryKey: ['/api/crm/goal-progress', ownerScope],
   });
+  const goalProgress = goalProgressQuery.data ?? [];
 
   // Forecasts list
   // EDGE-022: was bare `fetch('/api/...')`, which is broken in prod twice over —
@@ -100,10 +107,11 @@ export default function SalesCommandCenter() {
   // /api/x -> <edge host>/x, and a raw fetch skips it, so the request hits the
   // Pages origin, falls through to the SPA shell, and .json() throws), and it
   // sends no Bearer token so it would 401 even if it arrived. apiRequest does both.
-  const { data: forecasts = [] } = useQuery<Forecast[]>({
+  const forecastsQuery = useQuery<Forecast[]>({
     queryKey: ['/api/sales-forecasts'],
     queryFn: () => apiRequest('/api/sales-forecasts'),
   });
+  const forecasts = forecastsQuery.data ?? [];
 
   // Pipeline forecast summary (deals + quotes + proposals)
   // NOTE: `owner=me` is sent but NOT implemented by either backend — the Express
@@ -111,7 +119,7 @@ export default function SalesCommandCenter() {
   // it. Left as-is rather than silently dropped from the URL: the scope toggle
   // is a real UI affordance that no backend honours, which is a bug to fix
   // deliberately (server-side owner filtering), not to hide here.
-  const { data: forecastData } = useQuery<ForecastData>({
+  const forecastDataQuery = useQuery<ForecastData>({
     queryKey: ['/api/pipeline-forecast', selectedForecast, period, ownerScope],
     queryFn: () => {
       let url = `/api/pipeline-forecast`;
@@ -122,6 +130,7 @@ export default function SalesCommandCenter() {
       return apiRequest(`${url}?${params.toString()}`);
     },
   });
+  const forecastData = forecastDataQuery.data;
 
   const goalAttainmentPct = useMemo(() => {
     if (!forecastData?.goals?.totalValue) return 0;
@@ -229,221 +238,233 @@ export default function SalesCommandCenter() {
           </div>
         </div>
 
-        {/* KPI row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {kpis.map((kpi) => {
-            const Icon = kpi.icon;
-            return (
-              <Card key={kpi.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                  <Icon className={`h-4 w-4 ${kpi.color}`} />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{kpi.value}</div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        {/* CR-033: the filters above stay usable on a failure — re-picking a
+            forecast or period is how you retry a bad request — and the Quick
+            links below are static navigation. Everything between them is the
+            data, so that is what the state wrapper covers. */}
+        <QueryStates
+          queries={[goalProgressQuery, forecastsQuery, forecastDataQuery]}
+          loading={<DashboardSkeleton />}
+          errorTitle="Could not load your sales data"
+          className="py-4"
+        >
+          {/* KPI row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {kpis.map((kpi) => {
+              const Icon = kpi.icon;
+              return (
+                <Card key={kpi.title}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
+                    <Icon className={`h-4 w-4 ${kpi.color}`} />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{kpi.value}</div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
-        {/* Goal Attainment Progress Bar */}
-        {forecastData?.goals?.totalValue ? (
-          <Card>
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">Goal Attainment</span>
+          {/* Goal Attainment Progress Bar */}
+          {forecastData?.goals?.totalValue ? (
+            <Card>
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Goal Attainment</span>
+                  </div>
+                  <span className="text-sm font-semibold">
+                    {goalAttainmentPct}% of $
+                    {Number(forecastData.goals.totalValue).toLocaleString()}
+                  </span>
                 </div>
-                <span className="text-sm font-semibold">
-                  {goalAttainmentPct}% of ${Number(forecastData.goals.totalValue).toLocaleString()}
-                </span>
-              </div>
-              <Progress
-                value={goalAttainmentPct}
-                className={`h-3 ${
-                  goalAttainmentPct >= 75
-                    ? '[&>div]:bg-green-500'
-                    : goalAttainmentPct >= 50
-                      ? '[&>div]:bg-amber-500'
-                      : '[&>div]:bg-red-500'
-                }`}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                {goalAttainmentPct >= 100
-                  ? 'Goal exceeded!'
-                  : goalAttainmentPct >= 75
-                    ? 'On track to hit goal'
-                    : goalAttainmentPct >= 50
-                      ? 'Needs attention to stay on pace'
-                      : 'Behind target \u2014 action needed'}
-              </p>
-            </CardContent>
-          </Card>
-        ) : null}
+                <Progress
+                  value={goalAttainmentPct}
+                  className={`h-3 ${
+                    goalAttainmentPct >= 75
+                      ? '[&>div]:bg-green-500'
+                      : goalAttainmentPct >= 50
+                        ? '[&>div]:bg-amber-500'
+                        : '[&>div]:bg-red-500'
+                  }`}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {goalAttainmentPct >= 100
+                    ? 'Goal exceeded!'
+                    : goalAttainmentPct >= 75
+                      ? 'On track to hit goal'
+                      : goalAttainmentPct >= 50
+                        ? 'Needs attention to stay on pace'
+                        : 'Behind target \u2014 action needed'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
 
-        {/* Two-column: goals + breakdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Goals & Progress */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" /> Sales Goals & Progress
-              </CardTitle>
-              <CardDescription>Track progress against team and individual goals</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ScrollArea className="h-72">
-                <div className="space-y-3">
-                  {goalProgress.length > 0 ? (
-                    goalProgress.map((g) => {
-                      const current = g.currentCount ?? g.currentValue ?? 0;
-                      const target = g.targetCount ?? g.targetValue ?? 1;
-                      const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
-                      return (
-                        <div key={g.id} className="p-3 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary">{g.goalType}</Badge>
-                              <span className="font-medium">
-                                {g.ownerName || g.assignedToName || 'Goal'}
+          {/* Two-column: goals + breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {/* Goals & Progress */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" /> Sales Goals & Progress
+                </CardTitle>
+                <CardDescription>Track progress against team and individual goals</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ScrollArea className="h-72">
+                  <div className="space-y-3">
+                    {goalProgress.length > 0 ? (
+                      goalProgress.map((g) => {
+                        const current = g.currentCount ?? g.currentValue ?? 0;
+                        const target = g.targetCount ?? g.targetValue ?? 1;
+                        const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+                        return (
+                          <div key={g.id} className="p-3 border rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary">{g.goalType}</Badge>
+                                <span className="font-medium">
+                                  {g.ownerName || g.assignedToName || 'Goal'}
+                                </span>
+                              </div>
+                              <span className="text-sm text-muted-foreground">
+                                {current} / {target}
                               </span>
                             </div>
-                            <span className="text-sm text-muted-foreground">
-                              {current} / {target}
-                            </span>
+                            <Progress
+                              value={pct}
+                              className={`h-2 ${
+                                pct >= 75
+                                  ? '[&>div]:bg-green-500'
+                                  : pct >= 50
+                                    ? '[&>div]:bg-amber-500'
+                                    : '[&>div]:bg-red-500'
+                              }`}
+                            />
                           </div>
-                          <Progress
-                            value={pct}
-                            className={`h-2 ${
-                              pct >= 75
-                                ? '[&>div]:bg-green-500'
-                                : pct >= 50
-                                  ? '[&>div]:bg-amber-500'
-                                  : '[&>div]:bg-red-500'
-                            }`}
-                          />
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-8">
-                      <Target className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">No goals configured yet.</p>
-                      <Button asChild variant="link" size="sm" className="mt-1">
-                        <a href="/crm-goals-dashboard">Create Goals</a>
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-              <div className="flex gap-2">
-                <Button asChild variant="outline" size="sm">
-                  <a href="/crm-goals-dashboard">Manage Goals</a>
-                </Button>
-                <Button asChild variant="ghost" size="sm">
-                  <a href="/sales-pipeline-forecasting">Open Forecasting</a>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Pipeline breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" /> Pipeline Breakdown
-              </CardTitle>
-              <CardDescription>Deals, quotes, and proposals snapshot</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {breakdownKeys.map((key) => {
-                  const data = forecastData?.pipeline?.breakdown?.[key] || {
-                    count: 0,
-                    value: 0,
-                    weightedValue: 0,
-                  };
-                  const Icon = breakdownIcons[key];
-                  return (
-                    <Card key={key} className="border-dashed">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium">{breakdownLabels[key]}</span>
-                          <Icon className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="text-sm text-muted-foreground">Count: {data.count}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Value: ${Number(data.value).toLocaleString()}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Weighted: ${Number(data.weightedValue).toLocaleString()}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button asChild variant="outline" size="sm">
-                  <a href="/deals">Manage Deals</a>
-                </Button>
-                <Button asChild variant="outline" size="sm">
-                  <a href="/quotes">Manage Quotes</a>
-                </Button>
-                <Button asChild variant="ghost" size="sm">
-                  <a href="/contracts">Contracts</a>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent pipeline list */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" /> Recent Pipeline Items
-            </CardTitle>
-            <CardDescription>Top opportunities in the selected period</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {forecastData?.pipeline?.items && forecastData.pipeline.items.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {forecastData.pipeline.items.slice(0, 9).map((item) => (
-                  <div key={item.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium truncate mr-2">{item.title}</span>
-                      <Badge variant="secondary">{item.type}</Badge>
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      Value: ${Number(item.value).toLocaleString()}
-                    </div>
-                    {item.probability !== undefined && (
-                      <div className="text-xs text-muted-foreground">
-                        Win Prob: {item.probability}%
-                      </div>
-                    )}
-                    {item.expectedCloseDate && (
-                      <div className="text-xs text-muted-foreground">
-                        Close: {new Date(item.expectedCloseDate).toLocaleDateString()}
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-8">
+                        <Target className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">No goals configured yet.</p>
+                        <Button asChild variant="link" size="sm" className="mt-1">
+                          <a href="/crm-goals-dashboard">Create Goals</a>
+                        </Button>
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Layers className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No pipeline items found.</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Create deals, quotes, or proposals to populate your pipeline.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                </ScrollArea>
+                <div className="flex gap-2">
+                  <Button asChild variant="outline" size="sm">
+                    <a href="/crm-goals-dashboard">Manage Goals</a>
+                  </Button>
+                  <Button asChild variant="ghost" size="sm">
+                    <a href="/sales-pipeline-forecasting">Open Forecasting</a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pipeline breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" /> Pipeline Breakdown
+                </CardTitle>
+                <CardDescription>Deals, quotes, and proposals snapshot</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {breakdownKeys.map((key) => {
+                    const data = forecastData?.pipeline?.breakdown?.[key] || {
+                      count: 0,
+                      value: 0,
+                      weightedValue: 0,
+                    };
+                    const Icon = breakdownIcons[key];
+                    return (
+                      <Card key={key} className="border-dashed">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium">{breakdownLabels[key]}</span>
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div className="text-sm text-muted-foreground">Count: {data.count}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Value: ${Number(data.value).toLocaleString()}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Weighted: ${Number(data.weightedValue).toLocaleString()}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild variant="outline" size="sm">
+                    <a href="/deals">Manage Deals</a>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <a href="/quotes">Manage Quotes</a>
+                  </Button>
+                  <Button asChild variant="ghost" size="sm">
+                    <a href="/contracts">Contracts</a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recent pipeline list */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" /> Recent Pipeline Items
+              </CardTitle>
+              <CardDescription>Top opportunities in the selected period</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {forecastData?.pipeline?.items && forecastData.pipeline.items.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {forecastData.pipeline.items.slice(0, 9).map((item) => (
+                    <div key={item.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium truncate mr-2">{item.title}</span>
+                        <Badge variant="secondary">{item.type}</Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        Value: ${Number(item.value).toLocaleString()}
+                      </div>
+                      {item.probability !== undefined && (
+                        <div className="text-xs text-muted-foreground">
+                          Win Prob: {item.probability}%
+                        </div>
+                      )}
+                      {item.expectedCloseDate && (
+                        <div className="text-xs text-muted-foreground">
+                          Close: {new Date(item.expectedCloseDate).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Layers className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No pipeline items found.</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Create deals, quotes, or proposals to populate your pipeline.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </QueryStates>
 
         {/* Quick links */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
