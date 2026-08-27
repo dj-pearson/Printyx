@@ -50,12 +50,16 @@ describe('PA-018 webhook signature verification (raw body)', () => {
   });
 
   describe('Stripe', () => {
-    const timestamp = '1700000000';
-    const sign = (body: string) =>
+    // Inside the 300-second replay window. A fixed literal timestamp used to
+    // work here and no longer does, which is the point of the last test in
+    // this block.
+    const now = () => String(Math.floor(Date.now() / 1000));
+    const signAt = (body: string, timestamp: string) =>
       `t=${timestamp},v1=${crypto
         .createHmac('sha256', 'whsec_test_secret')
         .update(`${timestamp}.${body}`)
         .digest('hex')}`;
+    const sign = (body: string) => signAt(body, now());
 
     it('validates a signature computed over the RAW body', () => {
       // This is the real Stripe behaviour and the case the old
@@ -75,6 +79,23 @@ describe('PA-018 webhook signature verification (raw body)', () => {
     it('rejects when the secret is not configured', () => {
       delete process.env.STRIPE_WEBHOOK_SECRET;
       expect(svc.verifyStripeSignature(RAW_BODY, sign(RAW_BODY))).toBe(false);
+    });
+
+    // A correctly signed payload captured off the wire once stayed valid
+    // against this verifier forever. Stripe's own constructEvent enforces a
+    // 300-second window; this one did not.
+    it('rejects a correctly signed payload from outside the replay window', () => {
+      const stale = String(Math.floor(Date.now() / 1000) - 3600);
+      expect(svc.verifyStripeSignature(RAW_BODY, signAt(RAW_BODY, stale))).toBe(false);
+    });
+
+    it('rejects a timestamp that is not a number', () => {
+      expect(svc.verifyStripeSignature(RAW_BODY, signAt(RAW_BODY, 'not-a-time'))).toBe(false);
+    });
+
+    it('accepts a signature just inside the window', () => {
+      const recent = String(Math.floor(Date.now() / 1000) - 299);
+      expect(svc.verifyStripeSignature(RAW_BODY, signAt(RAW_BODY, recent))).toBe(true);
     });
   });
 

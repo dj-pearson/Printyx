@@ -1,11 +1,14 @@
 /**
  * Receiver for webhooks a provider POSTs to us.
  *
- * Two jobs, and only two: verify the provider's signature over the raw request
- * bytes, and record the delivery. It used to claim a third — eleven
- * per-provider "sync" methods that returned "synchronized successfully" and
- * wrote nothing — which is why the oauth-config clients were imported here and
- * never called. See the note at the foot of the class.
+ * Three jobs: verify the provider's signature over the raw request bytes,
+ * record the delivery, then hand it to whatever knows what to do with it.
+ *
+ * The third one used to be a lie. Eleven per-provider "sync" methods returned
+ * "synchronized successfully" and wrote nothing — which is why the oauth-config
+ * clients were imported here and never called — and the 200 that produced told
+ * the provider to stop retrying. Only Stripe has a real handler today, and it
+ * was mounted somewhere else entirely; see dispatchToProviderHandler.
  */
 import { db } from '../db';
 import { inboundWebhookEvents } from '../../shared/schema';
@@ -46,6 +49,12 @@ export interface InboundDeliveryDescriptor {
   externalAccountId: string | null;
 }
 
+/**
+ * How far out of date a Stripe signature timestamp may be. Matches the default
+ * in stripe.webhooks.constructEvent.
+ */
+const STRIPE_SIGNATURE_TOLERANCE_SECONDS = 300;
+
 /** Providers whose signature this service knows how to verify. */
 export const SUPPORTED_WEBHOOK_PROVIDERS = [
   'salesforce',
@@ -82,19 +91,32 @@ export class WebhookService {
         };
       }
 
-      // Store it, then answer. The order matters: a 200 stops the provider
-      // retrying, so it must not be sent until the delivery is durable.
+      // Store it, then act on it. The order matters: a 200 stops the provider
+      // retrying, so nothing may be acknowledged until the delivery is durable.
       const { id, duplicate } = await this.recordInboundDelivery(provider, payload);
       const { eventType } = this.describeDelivery(provider, payload);
 
+      if (duplicate) {
+        return {
+          success: true,
+          message: `${provider} event already on file`,
+          processed: false,
+          eventId: id,
+          duplicate: true,
+        };
+      }
+
+      const outcome = await this.dispatchToProviderHandler(provider, payload);
+      await this.markDelivery(id, outcome);
+
       return {
         success: true,
-        message: duplicate
-          ? `${provider} event already on file`
-          : `${provider} event recorded${eventType ? ` (${eventType})` : ''}; no handler runs on it yet`,
-        processed: false,
+        message: outcome.processed
+          ? outcome.message
+          : `${provider} event recorded${eventType ? ` (${eventType})` : ''}; ${outcome.message}`,
+        processed: outcome.processed,
         eventId: id,
-        duplicate,
+        duplicate: false,
       };
     } catch (error) {
       log.error(`Webhook processing error for ${provider}:`, error);
@@ -107,6 +129,71 @@ export class WebhookService {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
+
+  /**
+   * Hand a recorded delivery to whatever actually knows what to do with it.
+   *
+   * Only Stripe has such a thing today, and finding that out is the reason this
+   * method exists. scripts/setup-stripe-products.ts tells the operator to point
+   * the Stripe dashboard at `https://your-domain.com/api/webhooks/stripe`, and
+   * CLAUDE.md records the same URL — but the billing logic
+   * (StripeService.handleWebhookEventEnhanced: checkout.session.completed,
+   * customer.subscription.*, invoice.paid, and sixteen database writes) is
+   * mounted at /api/subscriptions/webhooks/stripe. Two different paths. Every
+   * delivery to the documented URL landed here instead, where the Stripe branch
+   * was a stub, so subscription state never moved from a real Stripe event.
+   *
+   * Imported lazily so that requiring this module does not drag in the Stripe
+   * SDK, and so a deployment with no Stripe keys still records deliveries
+   * rather than failing at import.
+   */
+  private static async dispatchToProviderHandler(
+    provider: string,
+    payload: unknown,
+  ): Promise<{ processed: boolean; message: string; error?: string }> {
+    if (provider !== 'stripe') {
+      return { processed: false, message: 'no handler runs on it yet' };
+    }
+
+    try {
+      const { StripeService } = await import('../services/stripe-service');
+      if (!StripeService.isConfigured()) {
+        return { processed: false, message: 'recorded; Stripe is not configured on this instance' };
+      }
+      // The signature is already verified against the raw bytes above, so the
+      // parsed payload IS the event Stripe signed.
+      const result = await StripeService.handleWebhookEventEnhanced(
+        payload as Parameters<typeof StripeService.handleWebhookEventEnhanced>[0],
+      );
+      return result.success
+        ? { processed: true, message: result.message }
+        : { processed: false, message: result.message, error: result.message };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      log.error('Stripe webhook handler threw:', error);
+      // The delivery is already stored, so this is recoverable by replaying the
+      // row. It is not a reason to tell Stripe the event failed.
+      return { processed: false, message: `recorded; handler failed: ${message}`, error: message };
+    }
+  }
+
+  /** Record what happened to a delivery after it was stored. */
+  private static async markDelivery(
+    id: string | null,
+    outcome: { processed: boolean; error?: string },
+  ): Promise<void> {
+    if (!id) return;
+    if (!outcome.processed && !outcome.error) return; // still 'received'
+
+    await db
+      .update(inboundWebhookEvents)
+      .set({
+        status: outcome.processed ? 'processed' : 'failed',
+        processedAt: new Date(),
+        processingError: outcome.error ?? null,
+      })
+      .where(eq(inboundWebhookEvents.id, id));
   }
 
   /**
@@ -291,7 +378,13 @@ export class WebhookService {
   }
 
   /**
-   * Verify Stripe webhook signature
+   * Verify Stripe webhook signature.
+   *
+   * The timestamp tolerance is not decoration. Stripe's own
+   * `stripe.webhooks.constructEvent` enforces a 300-second window, and this
+   * hand-rolled verifier did not — so a signed payload captured off the wire
+   * once stayed valid against this endpoint indefinitely and could be replayed
+   * at any time. Same default as the SDK.
    */
   private static verifyStripeSignature(rawBody: string, signature: string): boolean {
     if (!signature) return false;
@@ -305,6 +398,12 @@ export class WebhookService {
       const timestamp = elements.find((el) => el.startsWith('t='))?.split('=')[1];
 
       if (!signatureHash || !timestamp) return false;
+
+      const age = Math.abs(Date.now() / 1000 - Number(timestamp));
+      if (!Number.isFinite(age) || age > STRIPE_SIGNATURE_TOLERANCE_SECONDS) {
+        log.warn('Stripe webhook timestamp outside the replay window - rejecting');
+        return false;
+      }
 
       // Stripe signs `${timestamp}.${rawBody}` over the RAW request bytes.
       // Re-serializing the parsed event with JSON.stringify would change the

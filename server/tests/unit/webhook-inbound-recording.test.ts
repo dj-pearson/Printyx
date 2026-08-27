@@ -10,6 +10,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const insertCalls: Array<Record<string, unknown>> = [];
+const updateCalls: Array<Record<string, unknown>> = [];
 let insertReturns: Array<{ id: string }> = [];
 let selectReturns: Array<{ id: string }> = [];
 
@@ -32,6 +33,29 @@ vi.mock('../../db', () => ({
         }),
       }),
     }),
+    update: () => ({
+      set: (row: Record<string, unknown>) => {
+        updateCalls.push(row);
+        return { where: async () => undefined };
+      },
+    }),
+  },
+}));
+
+let stripeConfigured = true;
+let stripeResult: { success: boolean; message: string } = {
+  success: true,
+  message: 'Subscription updated',
+};
+const stripeCalls: unknown[] = [];
+
+vi.mock('../../services/stripe-service', () => ({
+  StripeService: {
+    isConfigured: () => stripeConfigured,
+    handleWebhookEventEnhanced: async (event: unknown) => {
+      stripeCalls.push(event);
+      return stripeResult;
+    },
   },
 }));
 
@@ -42,7 +66,7 @@ const STRIPE_SECRET = 'whsec_test';
 /** A real Stripe signature header over the exact bytes given. */
 async function stripeSignature(rawBody: string) {
   const crypto = await import('crypto');
-  const timestamp = '1700000000';
+  const timestamp = String(Math.floor(Date.now() / 1000));
   const hash = crypto
     .createHmac('sha256', STRIPE_SECRET)
     .update(`${timestamp}.${rawBody}`)
@@ -52,6 +76,10 @@ async function stripeSignature(rawBody: string) {
 
 beforeEach(() => {
   insertCalls.length = 0;
+  updateCalls.length = 0;
+  stripeConfigured = true;
+  stripeResult = { success: true, message: 'Subscription updated' };
+  stripeCalls.length = 0;
   insertReturns = [{ id: 'row-1' }];
   selectReturns = [];
   process.env.STRIPE_WEBHOOK_SECRET = STRIPE_SECRET;
@@ -141,7 +169,7 @@ describe('describeDelivery', () => {
 });
 
 describe('processWebhook', () => {
-  it('stores a verified delivery and reports it as unprocessed', async () => {
+  it('stores a verified delivery before anything acts on it', async () => {
     const rawBody = '{"id":"evt_2", "type":"customer.created"}';
     const result = await WebhookService.processWebhook(
       'stripe',
@@ -151,7 +179,6 @@ describe('processWebhook', () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.processed).toBe(false);
     expect(result.eventId).toBe('row-1');
     expect(insertCalls).toHaveLength(1);
     expect(insertCalls[0]).toMatchObject({
@@ -162,12 +189,83 @@ describe('processWebhook', () => {
     });
   });
 
+  // The defect this whole path exists for: setup-stripe-products.ts tells the
+  // operator to configure https://your-domain.com/api/webhooks/stripe, which
+  // arrives HERE, while the billing logic lives at
+  // /api/subscriptions/webhooks/stripe. A verified Stripe event must reach it.
+  it('hands a verified Stripe event to the billing handler', async () => {
+    const rawBody = '{"id":"evt_6","type":"customer.subscription.updated"}';
+    const result = await WebhookService.processWebhook(
+      'stripe',
+      JSON.parse(rawBody),
+      { 'stripe-signature': await stripeSignature(rawBody) },
+      rawBody,
+    );
+
+    expect(stripeCalls).toHaveLength(1);
+    expect(stripeCalls[0]).toMatchObject({ id: 'evt_6' });
+    expect(result.processed).toBe(true);
+    expect(result.message).toBe('Subscription updated');
+    expect(updateCalls[0]).toMatchObject({ status: 'processed', processingError: null });
+  });
+
+  it('keeps the row and reports failure when the billing handler says no', async () => {
+    stripeResult = { success: false, message: 'No tenantId in subscription metadata' };
+    const rawBody = '{"id":"evt_7","type":"customer.subscription.updated"}';
+    const result = await WebhookService.processWebhook(
+      'stripe',
+      JSON.parse(rawBody),
+      { 'stripe-signature': await stripeSignature(rawBody) },
+      rawBody,
+    );
+
+    // Still success:true at the transport level — the delivery IS stored, so
+    // telling Stripe to retry would duplicate it. The row carries the failure.
+    expect(result.success).toBe(true);
+    expect(result.processed).toBe(false);
+    expect(updateCalls[0]).toMatchObject({
+      status: 'failed',
+      processingError: 'No tenantId in subscription metadata',
+    });
+  });
+
+  it('records without dispatching when Stripe is not configured', async () => {
+    stripeConfigured = false;
+    const rawBody = '{"id":"evt_8","type":"invoice.paid"}';
+    const result = await WebhookService.processWebhook(
+      'stripe',
+      JSON.parse(rawBody),
+      { 'stripe-signature': await stripeSignature(rawBody) },
+      rawBody,
+    );
+
+    expect(stripeCalls).toHaveLength(0);
+    expect(insertCalls).toHaveLength(1);
+    expect(result.processed).toBe(false);
+    expect(result.message).toContain('Stripe is not configured');
+  });
+
+  it('does not re-dispatch an event already on file', async () => {
+    insertReturns = [];
+    selectReturns = [{ id: 'row-existing' }];
+    const rawBody = '{"id":"evt_9","type":"invoice.paid"}';
+    await WebhookService.processWebhook(
+      'stripe',
+      JSON.parse(rawBody),
+      { 'stripe-signature': await stripeSignature(rawBody) },
+      rawBody,
+    );
+    expect(stripeCalls).toHaveLength(0);
+  });
+
   it('writes nothing when the signature does not verify', async () => {
     const rawBody = '{"id":"evt_3","type":"customer.created"}';
     const result = await WebhookService.processWebhook(
       'stripe',
       JSON.parse(rawBody),
-      { 'stripe-signature': 't=1700000000,v1=' + 'a'.repeat(64) },
+      {
+        'stripe-signature': `t=${Math.floor(Date.now() / 1000)},v1=${'a'.repeat(64)}`,
+      },
       rawBody,
     );
 
