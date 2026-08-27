@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,11 +20,13 @@ import { MainLayout } from '@/components/layout/main-layout';
 export default function SystemSecurity() {
   const [activeTab, setActiveTab] = useState('infrastructure');
 
-  const { data: systemHealth } = useQuery({
-    queryKey: ['/api/admin/system/health'],
-    refetchInterval: 10000,
-  });
-
+  // CR-033: a `useQuery(['/api/admin/system/health'])` polling every 10 seconds
+  // used to sit here. Nothing read its result, and the URL does not exist on
+  // either backend - the admin edge function serves `system-health` as one
+  // segment, and no Express route matches at all - so this was a 404 every ten
+  // seconds, discarded. Removed rather than given an error state: there is no
+  // data on this page to fail. Every value it renders is a literal (see
+  // AUDIT-019).
   return (
     <MainLayout>
       <div className="space-y-6">

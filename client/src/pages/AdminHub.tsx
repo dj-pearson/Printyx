@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
+import { ErrorState } from '@/components/ui/error-state';
+import { queryErrorMessage } from '@/components/ui/query-state';
 import MainLayout from '@/components/layout/main-layout';
 import {
   Building2,
@@ -38,10 +40,17 @@ interface AdminOverviewStats {
 
 export default function AdminHub() {
   // Fetch quick stats for the dashboard
-  const { data: stats } = useQuery<AdminOverviewStats>({
+  // CR-033: this kept only `.data` and every tile has a hardcoded fallback.
+  // The System Health tile read `stats?.systemHealth || 'healthy'` with a colour
+  // rule that paints 'healthy' green — so a failed poll, every 30 seconds,
+  // rendered "System Health: healthy" in green on the platform admin's landing
+  // page. That is not a blank state, it is a false assurance, and it is the
+  // worst instance of the pattern this story exists to remove.
+  const statsQuery = useQuery<AdminOverviewStats>({
     queryKey: ['/api/root-admin/overview'],
     refetchInterval: 30000,
   });
+  const stats = statsQuery.data;
 
   const quickStats = [
     {
@@ -143,6 +152,14 @@ export default function AdminHub() {
       description="Centralized administration and management for the Printyx platform"
     >
       <div className="container mx-auto p-6 space-y-6">
+        {statsQuery.isError && (
+          <ErrorState
+            title="Could not load platform stats"
+            message={queryErrorMessage(statsQuery.error)}
+            onRetry={() => void statsQuery.refetch()}
+          />
+        )}
+
         {/* Quick Stats Bar */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {quickStats.map((stat) => (

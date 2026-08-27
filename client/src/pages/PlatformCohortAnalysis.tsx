@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { QueryState } from '@/components/ui/query-state';
+import { DashboardSkeleton } from '@/components/ui/skeletons';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +55,10 @@ export default function PlatformCohortAnalysis() {
   const [timeframe, setTimeframe] = useState('12m');
 
   // Fetch cohort data
-  const { data: cohortData } = useQuery<{
+  // CR-033: same shape as PlatformAnalytics — every read below is
+  // `cohortData?.x || [ …invented rows ]`, so a failed request rendered a full
+  // cohort study built from sample retention curves rather than a blank page.
+  const cohortQuery = useQuery<{
     cohortTable?: any[];
     revenueCohorts?: any[];
     ltvData?: any[];
@@ -62,6 +67,8 @@ export default function PlatformCohortAnalysis() {
       `/api/platform-analytics/cohort-analysis?type=${cohortType}&metric=${metricType}&timeframe=${timeframe}`,
     ],
   });
+
+  const cohortData = cohortQuery.data;
 
   // Sample cohort retention data
   const cohortRetentionData = cohortData?.cohortTable || [
@@ -248,360 +255,396 @@ export default function PlatformCohortAnalysis() {
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Avg. 3-Month Retention</p>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="text-2xl font-bold mb-2">79.4%</div>
-            <div className="flex items-center gap-1">
-              <ArrowUpRight className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-600">3.2%</span>
-              <span className="text-sm text-muted-foreground">vs. previous cohorts</span>
-            </div>
-          </CardContent>
-        </Card>
+      {/* CR-033: the cohort/metric/timeframe selectors above stay usable —
+          re-picking one is the retry — and everything below is derived. */}
+      <QueryState
+        query={cohortQuery}
+        loading={<DashboardSkeleton />}
+        errorTitle="Could not load cohort analysis"
+        className="py-8"
+      >
+        {() => (
+          <>
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-muted-foreground">Avg. 3-Month Retention</p>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="text-2xl font-bold mb-2">79.4%</div>
+                  <div className="flex items-center gap-1">
+                    <ArrowUpRight className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-600">3.2%</span>
+                    <span className="text-sm text-muted-foreground">vs. previous cohorts</span>
+                  </div>
+                </CardContent>
+              </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Avg. 12-Month Retention</p>
-              <Target className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="text-2xl font-bold mb-2">56.2%</div>
-            <div className="flex items-center gap-1">
-              <ArrowUpRight className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-600">4.8%</span>
-              <span className="text-sm text-muted-foreground">vs. previous cohorts</span>
-            </div>
-          </CardContent>
-        </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-muted-foreground">Avg. 12-Month Retention</p>
+                    <Target className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="text-2xl font-bold mb-2">56.2%</div>
+                  <div className="flex items-center gap-1">
+                    <ArrowUpRight className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-600">4.8%</span>
+                    <span className="text-sm text-muted-foreground">vs. previous cohorts</span>
+                  </div>
+                </CardContent>
+              </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Avg. Customer LTV</p>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="text-2xl font-bold mb-2">$20,605</div>
-            <div className="flex items-center gap-1">
-              <ArrowUpRight className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-600">11.8%</span>
-              <span className="text-sm text-muted-foreground">vs. previous cohorts</span>
-            </div>
-          </CardContent>
-        </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-muted-foreground">Avg. Customer LTV</p>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="text-2xl font-bold mb-2">$20,605</div>
+                  <div className="flex items-center gap-1">
+                    <ArrowUpRight className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-600">11.8%</span>
+                    <span className="text-sm text-muted-foreground">vs. previous cohorts</span>
+                  </div>
+                </CardContent>
+              </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">LTV:CAC Ratio</p>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="text-2xl font-bold mb-2">6.92:1</div>
-            <div className="flex items-center gap-1">
-              <ArrowUpRight className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-600">15.3%</span>
-              <span className="text-sm text-muted-foreground">vs. previous cohorts</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Retention Curve */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Average Retention Curve</CardTitle>
-          <CardDescription>Combined retention rate across all cohorts by month</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={retentionCurveData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
-              <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
-              <Area
-                type="monotone"
-                dataKey="rate"
-                stroke="#3b82f6"
-                fill="#3b82f6"
-                fillOpacity={0.6}
-                name="Retention Rate"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-900">
-              <strong>Insight:</strong> Your retention curve shows strong performance in the first 6
-              months (65%+ retention) with stabilization around month 12 (56% retention). This
-              indicates good product-market fit and customer satisfaction.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Cohort Retention Table */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Cohort Retention Table</CardTitle>
-          <CardDescription>Monthly retention percentages by signup cohort</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-32">Cohort</TableHead>
-                  <TableHead className="text-right w-24">Size</TableHead>
-                  <TableHead className="text-center w-20">M0</TableHead>
-                  <TableHead className="text-center w-20">M1</TableHead>
-                  <TableHead className="text-center w-20">M2</TableHead>
-                  <TableHead className="text-center w-20">M3</TableHead>
-                  <TableHead className="text-center w-20">M4</TableHead>
-                  <TableHead className="text-center w-20">M5</TableHead>
-                  <TableHead className="text-center w-20">M6</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cohortRetentionData.map((cohort) => (
-                  <TableRow key={cohort.cohort}>
-                    <TableCell className="font-medium">{cohort.cohort}</TableCell>
-                    <TableCell className="text-right">{cohort.size}</TableCell>
-                    <TableCell className={`text-center font-medium ${getCellColor(cohort.month0)}`}>
-                      {formatPercent(cohort.month0)}
-                    </TableCell>
-                    <TableCell className={`text-center font-medium ${getCellColor(cohort.month1)}`}>
-                      {formatPercent(cohort.month1)}
-                    </TableCell>
-                    <TableCell className={`text-center font-medium ${getCellColor(cohort.month2)}`}>
-                      {formatPercent(cohort.month2)}
-                    </TableCell>
-                    <TableCell className={`text-center font-medium ${getCellColor(cohort.month3)}`}>
-                      {formatPercent(cohort.month3)}
-                    </TableCell>
-                    <TableCell className={`text-center font-medium ${getCellColor(cohort.month4)}`}>
-                      {formatPercent(cohort.month4)}
-                    </TableCell>
-                    <TableCell className={`text-center font-medium ${getCellColor(cohort.month5)}`}>
-                      {formatPercent(cohort.month5)}
-                    </TableCell>
-                    <TableCell className={`text-center font-medium ${getCellColor(cohort.month6)}`}>
-                      {formatPercent(cohort.month6)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="mt-4 flex items-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-100 rounded" />
-              <span className="text-muted-foreground">≥90%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-50 rounded" />
-              <span className="text-muted-foreground">80-89%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-yellow-50 rounded" />
-              <span className="text-muted-foreground">70-79%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-orange-50 rounded" />
-              <span className="text-muted-foreground">60-69%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-50 rounded" />
-              <span className="text-muted-foreground">&lt;60%</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Revenue Cohort Analysis */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Revenue by Cohort</CardTitle>
-          <CardDescription>Monthly recurring revenue progression by cohort</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <LineChart>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" type="category" allowDuplicatedCategory={false} />
-              <YAxis tickFormatter={(value) => formatCurrency(value)} />
-              <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-              <Legend />
-              {revenueCohortData.map((cohort, index) => (
-                <Line
-                  key={cohort.cohort}
-                  data={[
-                    { month: 'M0', value: cohort.month0 },
-                    { month: 'M1', value: cohort.month1 },
-                    { month: 'M2', value: cohort.month2 },
-                    { month: 'M3', value: cohort.month3 },
-                    { month: 'M4', value: cohort.month4 },
-                  ].filter((d) => d.value !== null)}
-                  type="monotone"
-                  dataKey="value"
-                  name={cohort.cohort}
-                  stroke={`hsl(${index * 60}, 70%, 50%)`}
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* LTV by Cohort */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Customer Lifetime Value by Cohort</CardTitle>
-            <CardDescription>LTV, CAC, and ratio comparison</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={ltvByCohort}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="cohort" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip />
-                <Legend />
-                <Bar yAxisId="left" dataKey="ltv" fill="#10b981" name="LTV" />
-                <Bar yAxisId="left" dataKey="cac" fill="#ef4444" name="CAC" />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="ratio"
-                  stroke="#f59e0b"
-                  name="LTV:CAC Ratio"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>LTV:CAC Details</CardTitle>
-            <CardDescription>Breakdown by cohort</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cohort</TableHead>
-                  <TableHead className="text-right">LTV</TableHead>
-                  <TableHead className="text-right">CAC</TableHead>
-                  <TableHead className="text-right">Ratio</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ltvByCohort.map((cohort) => (
-                  <TableRow key={cohort.cohort}>
-                    <TableCell className="font-medium">{cohort.cohort}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(cohort.ltv)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(cohort.cac)}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge
-                        variant={
-                          cohort.ratio >= 5
-                            ? 'default'
-                            : cohort.ratio >= 3
-                              ? 'secondary'
-                              : 'destructive'
-                        }
-                      >
-                        {cohort.ratio.toFixed(2)}:1
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className="mt-4 p-4 bg-green-50 rounded-lg">
-              <p className="text-sm text-green-900">
-                <strong>Benchmark:</strong> A healthy LTV:CAC ratio is 3:1 or higher. Your average
-                ratio of 6.92:1 indicates excellent unit economics and efficient customer
-                acquisition.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Insights */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Key Insights & Recommendations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg">
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              </div>
-              <div>
-                <p className="font-medium text-green-900 mb-1">Strong Retention Improvement</p>
-                <p className="text-sm text-green-800">
-                  Recent cohorts (May-Jun 2024) show 4-6% better retention rates compared to earlier
-                  cohorts. Continue focusing on the initiatives that are driving this improvement.
-                </p>
-              </div>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-muted-foreground">LTV:CAC Ratio</p>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="text-2xl font-bold mb-2">6.92:1</div>
+                  <div className="flex items-center gap-1">
+                    <ArrowUpRight className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-600">15.3%</span>
+                    <span className="text-sm text-muted-foreground">vs. previous cohorts</span>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <DollarSign className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="font-medium text-blue-900 mb-1">Revenue Expansion Opportunity</p>
-                <p className="text-sm text-blue-800">
-                  Newer cohorts show 12-15% higher revenue per customer in the first 3 months.
-                  Identify what's driving this and apply learnings to older cohorts through upsell
-                  campaigns.
-                </p>
-              </div>
+            {/* Retention Curve */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Average Retention Curve</CardTitle>
+                <CardDescription>
+                  Combined retention rate across all cohorts by month
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={retentionCurveData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+                    <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
+                    <Area
+                      type="monotone"
+                      dataKey="rate"
+                      stroke="#3b82f6"
+                      fill="#3b82f6"
+                      fillOpacity={0.6}
+                      name="Retention Rate"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-900">
+                    <strong>Insight:</strong> Your retention curve shows strong performance in the
+                    first 6 months (65%+ retention) with stabilization around month 12 (56%
+                    retention). This indicates good product-market fit and customer satisfaction.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Cohort Retention Table */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Cohort Retention Table</CardTitle>
+                <CardDescription>Monthly retention percentages by signup cohort</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-32">Cohort</TableHead>
+                        <TableHead className="text-right w-24">Size</TableHead>
+                        <TableHead className="text-center w-20">M0</TableHead>
+                        <TableHead className="text-center w-20">M1</TableHead>
+                        <TableHead className="text-center w-20">M2</TableHead>
+                        <TableHead className="text-center w-20">M3</TableHead>
+                        <TableHead className="text-center w-20">M4</TableHead>
+                        <TableHead className="text-center w-20">M5</TableHead>
+                        <TableHead className="text-center w-20">M6</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cohortRetentionData.map((cohort) => (
+                        <TableRow key={cohort.cohort}>
+                          <TableCell className="font-medium">{cohort.cohort}</TableCell>
+                          <TableCell className="text-right">{cohort.size}</TableCell>
+                          <TableCell
+                            className={`text-center font-medium ${getCellColor(cohort.month0)}`}
+                          >
+                            {formatPercent(cohort.month0)}
+                          </TableCell>
+                          <TableCell
+                            className={`text-center font-medium ${getCellColor(cohort.month1)}`}
+                          >
+                            {formatPercent(cohort.month1)}
+                          </TableCell>
+                          <TableCell
+                            className={`text-center font-medium ${getCellColor(cohort.month2)}`}
+                          >
+                            {formatPercent(cohort.month2)}
+                          </TableCell>
+                          <TableCell
+                            className={`text-center font-medium ${getCellColor(cohort.month3)}`}
+                          >
+                            {formatPercent(cohort.month3)}
+                          </TableCell>
+                          <TableCell
+                            className={`text-center font-medium ${getCellColor(cohort.month4)}`}
+                          >
+                            {formatPercent(cohort.month4)}
+                          </TableCell>
+                          <TableCell
+                            className={`text-center font-medium ${getCellColor(cohort.month5)}`}
+                          >
+                            {formatPercent(cohort.month5)}
+                          </TableCell>
+                          <TableCell
+                            className={`text-center font-medium ${getCellColor(cohort.month6)}`}
+                          >
+                            {formatPercent(cohort.month6)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="mt-4 flex items-center gap-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-100 rounded" />
+                    <span className="text-muted-foreground">≥90%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-50 rounded" />
+                    <span className="text-muted-foreground">80-89%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-yellow-50 rounded" />
+                    <span className="text-muted-foreground">70-79%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-orange-50 rounded" />
+                    <span className="text-muted-foreground">60-69%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-50 rounded" />
+                    <span className="text-muted-foreground">&lt;60%</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Revenue Cohort Analysis */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Revenue by Cohort</CardTitle>
+                <CardDescription>Monthly recurring revenue progression by cohort</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={350}>
+                  <LineChart>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" type="category" allowDuplicatedCategory={false} />
+                    <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                    <Legend />
+                    {revenueCohortData.map((cohort, index) => (
+                      <Line
+                        key={cohort.cohort}
+                        data={[
+                          { month: 'M0', value: cohort.month0 },
+                          { month: 'M1', value: cohort.month1 },
+                          { month: 'M2', value: cohort.month2 },
+                          { month: 'M3', value: cohort.month3 },
+                          { month: 'M4', value: cohort.month4 },
+                        ].filter((d) => d.value !== null)}
+                        type="monotone"
+                        dataKey="value"
+                        name={cohort.cohort}
+                        stroke={`hsl(${index * 60}, 70%, 50%)`}
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* LTV by Cohort */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Customer Lifetime Value by Cohort</CardTitle>
+                  <CardDescription>LTV, CAC, and ratio comparison</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={ltvByCohort}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="cohort" />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar yAxisId="left" dataKey="ltv" fill="#10b981" name="LTV" />
+                      <Bar yAxisId="left" dataKey="cac" fill="#ef4444" name="CAC" />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="ratio"
+                        stroke="#f59e0b"
+                        name="LTV:CAC Ratio"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>LTV:CAC Details</CardTitle>
+                  <CardDescription>Breakdown by cohort</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cohort</TableHead>
+                        <TableHead className="text-right">LTV</TableHead>
+                        <TableHead className="text-right">CAC</TableHead>
+                        <TableHead className="text-right">Ratio</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {ltvByCohort.map((cohort) => (
+                        <TableRow key={cohort.cohort}>
+                          <TableCell className="font-medium">{cohort.cohort}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(cohort.ltv)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(cohort.cac)}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge
+                              variant={
+                                cohort.ratio >= 5
+                                  ? 'default'
+                                  : cohort.ratio >= 3
+                                    ? 'secondary'
+                                    : 'destructive'
+                              }
+                            >
+                              {cohort.ratio.toFixed(2)}:1
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <div className="mt-4 p-4 bg-green-50 rounded-lg">
+                    <p className="text-sm text-green-900">
+                      <strong>Benchmark:</strong> A healthy LTV:CAC ratio is 3:1 or higher. Your
+                      average ratio of 6.92:1 indicates excellent unit economics and efficient
+                      customer acquisition.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg">
-              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
-                <Activity className="h-4 w-4 text-yellow-600" />
-              </div>
-              <div>
-                <p className="font-medium text-yellow-900 mb-1">Focus on Month 3-6 Retention</p>
-                <p className="text-sm text-yellow-800">
-                  The biggest retention drop occurs between months 3-6 (average 7-9% decline).
-                  Implement targeted engagement campaigns during this critical period to reduce
-                  churn.
-                </p>
-              </div>
-            </div>
+            {/* Insights */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Key Insights & Recommendations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-green-900 mb-1">
+                        Strong Retention Improvement
+                      </p>
+                      <p className="text-sm text-green-800">
+                        Recent cohorts (May-Jun 2024) show 4-6% better retention rates compared to
+                        earlier cohorts. Continue focusing on the initiatives that are driving this
+                        improvement.
+                      </p>
+                    </div>
+                  </div>
 
-            <div className="flex items-start gap-3 p-4 bg-purple-50 rounded-lg">
-              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                <Target className="h-4 w-4 text-purple-600" />
-              </div>
-              <div>
-                <p className="font-medium text-purple-900 mb-1">CAC Efficiency Gains</p>
-                <p className="text-sm text-purple-800">
-                  CAC has decreased by 18% in recent cohorts while LTV has increased by 23%. Your
-                  go-to-market efficiency is improving significantly - consider scaling acquisition
-                  spend.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                  <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <DollarSign className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-blue-900 mb-1">
+                        Revenue Expansion Opportunity
+                      </p>
+                      <p className="text-sm text-blue-800">
+                        Newer cohorts show 12-15% higher revenue per customer in the first 3 months.
+                        Identify what's driving this and apply learnings to older cohorts through
+                        upsell campaigns.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                      <Activity className="h-4 w-4 text-yellow-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-yellow-900 mb-1">
+                        Focus on Month 3-6 Retention
+                      </p>
+                      <p className="text-sm text-yellow-800">
+                        The biggest retention drop occurs between months 3-6 (average 7-9% decline).
+                        Implement targeted engagement campaigns during this critical period to
+                        reduce churn.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-4 bg-purple-50 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                      <Target className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-purple-900 mb-1">CAC Efficiency Gains</p>
+                      <p className="text-sm text-purple-800">
+                        CAC has decreased by 18% in recent cohorts while LTV has increased by 23%.
+                        Your go-to-market efficiency is improving significantly - consider scaling
+                        acquisition spend.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </QueryState>
     </div>
   );
 }

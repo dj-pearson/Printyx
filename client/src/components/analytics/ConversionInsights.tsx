@@ -5,6 +5,8 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, Target, AlertCircle, CheckCircle, Activity } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { ErrorState } from '@/components/ui/error-state';
+import { queryErrorMessage } from '@/components/ui/query-state';
 
 // Phase 3: Conversion Insights Component
 interface ConversionMetrics {
@@ -29,7 +31,7 @@ interface ActivityNudge {
 
 export const ConversionInsights: React.FC<{ dealId?: string }> = ({ dealId }) => {
   // Fetch conversion metrics
-  const { data: metrics } = useQuery<ConversionMetrics>({
+  const metricsQuery = useQuery<ConversionMetrics>({
     queryKey: ['/api/analytics/conversion-metrics', dealId],
     select: (data: any) =>
       data || {
@@ -55,7 +57,7 @@ export const ConversionInsights: React.FC<{ dealId?: string }> = ({ dealId }) =>
   });
 
   // Fetch activity nudges
-  const { data: nudges } = useQuery<ActivityNudge[]>({
+  const nudgesQuery = useQuery<ActivityNudge[]>({
     queryKey: ['/api/analytics/activity-nudges', dealId],
     select: (data: any) =>
       data || [
@@ -85,6 +87,32 @@ export const ConversionInsights: React.FC<{ dealId?: string }> = ({ dealId }) =>
         },
       ],
   });
+
+  // CR-033: these queries inject hardcoded fixtures through `select`
+  // (`select: (data) => data || {…invented numbers}`), and `select` only runs on
+  // SUCCESS. So the two failure modes were: an empty-but-successful response
+  // showed invented figures as if measured, and an actual error left `data`
+  // undefined, hit the `return null` below, and made the whole widget VANISH
+  // from the page with no trace. A widget that disappears is the hardest kind of
+  // wrong to notice. The fixtures themselves are a separate problem — flagged on
+  // the story, not fixed here, because removing them changes what the component
+  // renders on a good day. This only makes the failure visible.
+  // Queries: conversion-metrics, activity-nudges
+  const metrics = metricsQuery.data;
+  const nudges = nudgesQuery.data;
+
+  if (metricsQuery.isError || nudgesQuery.isError) {
+    return (
+      <ErrorState
+        title="Could not load conversion insights"
+        message={queryErrorMessage(metricsQuery.error ?? nudgesQuery.error)}
+        onRetry={() => {
+          void metricsQuery.refetch();
+          void nudgesQuery.refetch();
+        }}
+      />
+    );
+  }
 
   if (!metrics || !nudges) return null;
 
