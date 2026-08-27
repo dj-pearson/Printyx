@@ -182,7 +182,7 @@ export default function BlogKeywords() {
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Filter keywords…"
                   />
-                  <Button type="submit" variant="outline" size="icon">
+                  <Button aria-label="Search" type="submit" variant="outline" size="icon">
                     <SearchIcon className="h-4 w-4" />
                   </Button>
                 </form>

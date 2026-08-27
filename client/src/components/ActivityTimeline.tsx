@@ -402,6 +402,7 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
+                              aria-label="More options"
                               variant="ghost"
                               size="sm"
                               className="h-8 w-8 p-0 hover:bg-gray-100"

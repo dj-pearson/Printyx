@@ -393,6 +393,7 @@ export default function RoleManagement() {
                     <div className="relative">
                       <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
+                        aria-label="Search roles"
                         placeholder="Search roles..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}

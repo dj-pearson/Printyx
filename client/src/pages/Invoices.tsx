@@ -591,6 +591,7 @@ export default function Invoices() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
+                aria-label="Search invoices"
                 placeholder="Search invoices..."
                 className="pl-10 min-h-[44px] touch-manipulation"
                 value={searchQuery}

@@ -310,7 +310,11 @@ export default function UserManagement() {
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex gap-4">
-                      <Input placeholder="Search users..." className="max-w-sm" />
+                      <Input
+                        aria-label="Search users"
+                        placeholder="Search users..."
+                        className="max-w-sm"
+                      />
                       <Select value={selectedTenant} onValueChange={setSelectedTenant}>
                         <SelectTrigger className="w-48">
                           <SelectValue placeholder="Tenant" />
@@ -387,13 +391,13 @@ export default function UserManagement() {
                             </div>
                             <div className="text-sm">{user.lastLogin}</div>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="View details" size="sm" variant="outline">
                                 <Eye className="h-3 w-3" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Edit" size="sm" variant="outline">
                                 <Edit className="h-3 w-3" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Delete" size="sm" variant="outline">
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>

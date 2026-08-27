@@ -185,7 +185,7 @@ export default function CalendarView({ className }: CalendarViewProps) {
               <Plus className="h-4 w-4 mr-1" />
               New Event
             </Button>
-            <Button variant="outline" size="sm">
+            <Button aria-label="Settings" variant="outline" size="sm">
               <Settings className="h-4 w-4" />
             </Button>
           </div>

@@ -280,13 +280,25 @@ export default function BlogCalendar() {
                 />
               </div>
               <div className="flex items-end gap-1 justify-end">
-                <Button size="sm" variant="ghost" onClick={prevMonth} className="h-8 w-8 p-0">
+                <Button
+                  aria-label="Previous"
+                  size="sm"
+                  variant="ghost"
+                  onClick={prevMonth}
+                  className="h-8 w-8 p-0"
+                >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button size="sm" variant="outline" onClick={goToday} className="h-8 text-xs">
                   Today
                 </Button>
-                <Button size="sm" variant="ghost" onClick={nextMonth} className="h-8 w-8 p-0">
+                <Button
+                  aria-label="Next"
+                  size="sm"
+                  variant="ghost"
+                  onClick={nextMonth}
+                  className="h-8 w-8 p-0"
+                >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

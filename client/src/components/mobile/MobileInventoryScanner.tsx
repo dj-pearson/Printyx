@@ -267,6 +267,7 @@ export function MobileInventoryScanner() {
         <CardContent>
           <div className="flex gap-2">
             <Input
+              aria-label="Search parts"
               placeholder="Enter part number or name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

@@ -284,7 +284,13 @@ export function ContextPanel({ entityType, entityId, entityName, onClose }: Cont
             <ChevronRight className="h-4 w-4" />
           </Button>
           {onClose && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+            <Button
+              aria-label="Close"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onClose}
+            >
               <X className="h-4 w-4" />
             </Button>
           )}

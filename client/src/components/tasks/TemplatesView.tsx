@@ -190,7 +190,7 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
                     </Badge>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Button aria-label="More options" variant="ghost" size="sm" className="h-8 w-8 p-0">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </div>

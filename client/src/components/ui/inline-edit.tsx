@@ -187,6 +187,7 @@ export function InlineEdit({
         {!autoSave && (
           <div className="flex items-center gap-1">
             <Button
+              aria-label="Save"
               size="sm"
               variant="ghost"
               className="h-8 w-8 p-0"
@@ -196,6 +197,7 @@ export function InlineEdit({
               <Check className="h-4 w-4 text-green-600" />
             </Button>
             <Button
+              aria-label="Cancel"
               size="sm"
               variant="ghost"
               className="h-8 w-8 p-0"

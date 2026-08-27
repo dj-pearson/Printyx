@@ -518,6 +518,7 @@ export default function IntegrationMarketplaceDashboard() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                aria-label="Search integrations"
                 placeholder="Search integrations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -766,7 +767,7 @@ function IntegrationCard({
               <Settings className="h-4 w-4 mr-2" />
               Configure
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button aria-label="Open in a new tab" variant="ghost" size="icon">
               <ExternalLink className="h-4 w-4" />
             </Button>
           </>
@@ -776,7 +777,7 @@ function IntegrationCard({
               <Zap className="h-4 w-4 mr-2" />
               Connect
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button aria-label="Next" variant="ghost" size="icon">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </>

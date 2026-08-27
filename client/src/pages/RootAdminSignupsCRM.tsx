@@ -202,6 +202,7 @@ export default function RootAdminSignupsCRM() {
                     <div className="relative">
                       <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
                       <Input
+                        aria-label="Search by email"
                         placeholder="Search by email..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}

@@ -386,6 +386,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
           <Label>Company Name</Label>
           <div className="relative">
             <Input
+              aria-label="Search companies"
               placeholder="Start typing company name..."
               value={companySearchTerm}
               onChange={(e) => setCompanySearchTerm(e.target.value)}
@@ -448,6 +449,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
           <Label>Contact Name</Label>
           <div className="relative">
             <Input
+              aria-label="Search contacts"
               placeholder="Start typing contact name..."
               value={contactSearchTerm}
               onChange={(e) => setContactSearchTerm(e.target.value)}
@@ -639,6 +641,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
           <Label>Equipment Search</Label>
           <div className="relative">
             <Input
+              aria-label="Search by asset number, model, or serial number"
               placeholder="Search by asset number, model, or serial number..."
               value={equipmentSearchTerm}
               onChange={(e) => setEquipmentSearchTerm(e.target.value)}

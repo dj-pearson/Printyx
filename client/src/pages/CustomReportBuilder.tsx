@@ -402,7 +402,13 @@ function SortableColumn({
           </Select>
         )}
       </div>
-      <Button variant="ghost" size="icon" onClick={onRemove} className="h-8 w-8">
+      <Button
+        aria-label="Remove"
+        variant="ghost"
+        size="icon"
+        onClick={onRemove}
+        className="h-8 w-8"
+      >
         <X className="h-4 w-4" />
       </Button>
     </div>

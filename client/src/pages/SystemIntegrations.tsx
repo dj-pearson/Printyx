@@ -335,7 +335,7 @@ export default function SystemIntegrations() {
                                   {integration.status === 'pending' ? 'Configure' : 'Connect'}
                                 </Button>
                               )}
-                              <Button variant="ghost" size="sm">
+                              <Button aria-label="Open in a new tab" variant="ghost" size="sm">
                                 <ExternalLink className="h-4 w-4" />
                               </Button>
                             </div>
@@ -402,7 +402,7 @@ export default function SystemIntegrations() {
                         <Button variant="outline" size="sm">
                           Edit
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button aria-label="Open in a new tab" variant="ghost" size="sm">
                           <ExternalLink className="h-4 w-4" />
                         </Button>
                       </div>

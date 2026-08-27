@@ -204,10 +204,10 @@ export default function BusinessProcessOptimization() {
         data.workflowTemplates?.map((template: any) => ({
           ...template,
           lastUpdated: new Date(template.lastUpdated || template.last_updated),
-        // AUDIT-011a: this endpoint is a hand-built Express mock returning
-        // camelCase literals (server/routes-business-process-optimization.ts:90), so camelCase is authoritative and
-        // there is no snake_case key to fall back to. Collapsed to a single read
-        // rather than invented one.
+          // AUDIT-011a: this endpoint is a hand-built Express mock returning
+          // camelCase literals (server/routes-business-process-optimization.ts:90), so camelCase is authoritative and
+          // there is no snake_case key to fall back to. Collapsed to a single read
+          // rather than invented one.
           createdAt: template.createdAt,
         })) || [],
     }),
@@ -483,13 +483,13 @@ export default function BusinessProcessOptimization() {
                           <div className="flex items-center justify-between">
                             <Badge variant="outline">{workflow.category}</Badge>
                             <div className="flex items-center gap-2">
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="View details" size="sm" variant="outline">
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Edit" size="sm" variant="outline">
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button size="sm">
+                              <Button aria-label="Run" size="sm">
                                 <PlayCircle className="h-4 w-4" />
                               </Button>
                             </div>

@@ -854,6 +854,7 @@ export default function LineItemManager({
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                           <Button
+                                            aria-label="More options"
                                             variant="ghost"
                                             size="sm"
                                             className="h-9 w-9 p-0 shrink-0"
@@ -1136,7 +1137,11 @@ export default function LineItemManager({
                                       </div>
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="sm">
+                                          <Button
+                                            aria-label="More options"
+                                            variant="ghost"
+                                            size="sm"
+                                          >
                                             <MoreHorizontal className="h-4 w-4" />
                                           </Button>
                                         </DropdownMenuTrigger>
@@ -1231,6 +1236,7 @@ export default function LineItemManager({
                                             <DropdownMenu>
                                               <DropdownMenuTrigger asChild>
                                                 <Button
+                                                  aria-label="More options"
                                                   variant="ghost"
                                                   size="sm"
                                                   className="h-9 w-9 p-0 shrink-0"
@@ -1459,7 +1465,11 @@ export default function LineItemManager({
                                             </div>
                                             <DropdownMenu>
                                               <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm">
+                                                <Button
+                                                  aria-label="More options"
+                                                  variant="ghost"
+                                                  size="sm"
+                                                >
                                                   <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                               </DropdownMenuTrigger>

@@ -580,6 +580,7 @@ export default function QuotesManagement() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
+                    aria-label="Search quotes by title, number, or customer"
                     placeholder="Search quotes by title, number, or customer..."
                     value={searchTerm}
                     onChange={(e) => filterState.updateFilter('searchTerm', e.target.value)}
@@ -805,7 +806,7 @@ export default function QuotesManagement() {
                 actions={(quote: any) => (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
+                      <Button aria-label="More options" variant="ghost" size="sm">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

@@ -296,7 +296,11 @@ export default function TenantManagement() {
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex gap-4">
-                      <Input placeholder="Search tenants..." className="max-w-sm" />
+                      <Input
+                        aria-label="Search tenants"
+                        placeholder="Search tenants..."
+                        className="max-w-sm"
+                      />
                       <Select>
                         <SelectTrigger className="w-32">
                           <SelectValue placeholder="Status" />
@@ -351,13 +355,13 @@ export default function TenantManagement() {
                             <div>{tenant.users}</div>
                             <div>${tenant.revenue?.toLocaleString() || 0}</div>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="View details" size="sm" variant="outline">
                                 <Eye className="h-3 w-3" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Edit" size="sm" variant="outline">
                                 <Edit className="h-3 w-3" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Delete" size="sm" variant="outline">
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>

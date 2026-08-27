@@ -8,13 +8,7 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -190,8 +184,7 @@ export default function DisposableEmailDomainsAdmin() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) =>
-      apiRequest(`/api/admin/disposable-emails/${id}`, 'DELETE'),
+    mutationFn: (id: string) => apiRequest(`/api/admin/disposable-emails/${id}`, 'DELETE'),
     onSuccess: () => {
       toast({ title: 'Domain removed', description: 'Removed from the blocklist.' });
       setDeleteTarget(null);
@@ -278,7 +271,9 @@ export default function DisposableEmailDomainsAdmin() {
               onClick={() => refreshCache.mutate()}
               disabled={refreshCache.isPending}
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${refreshCache.isPending ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${refreshCache.isPending ? 'animate-spin' : ''}`}
+              />
               Refresh Cache
             </Button>
             <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
@@ -292,8 +287,8 @@ export default function DisposableEmailDomainsAdmin() {
                 <DialogHeader>
                   <DialogTitle>Bulk Import Domains</DialogTitle>
                   <DialogDescription>
-                    Paste one domain per line (or comma-separated). Duplicates will be
-                    automatically deduplicated; existing domains will be re-blocked.
+                    Paste one domain per line (or comma-separated). Duplicates will be automatically
+                    deduplicated; existing domains will be re-blocked.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -436,6 +431,7 @@ export default function DisposableEmailDomainsAdmin() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
+                  aria-label="Search domains"
                   className="pl-9"
                   placeholder="Search domains..."
                   value={search}
@@ -574,8 +570,8 @@ export default function DisposableEmailDomainsAdmin() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {deleteTarget?.domain}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes the entry from the blocklist. If you want to keep the
-              record but stop blocking signups, use the toggle in the Status column instead.
+              This permanently deletes the entry from the blocklist. If you want to keep the record
+              but stop blocking signups, use the toggle in the Status column instead.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

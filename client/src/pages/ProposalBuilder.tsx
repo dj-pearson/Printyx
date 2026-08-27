@@ -607,6 +607,7 @@ export default function ProposalBuilder() {
               <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
+                  aria-label="Search quotes, customers, or quote numbers"
                   placeholder="Search quotes, customers, or quote numbers..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}

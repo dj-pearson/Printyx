@@ -2226,6 +2226,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              aria-label="Search software products"
               placeholder="Search software products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

@@ -545,13 +545,13 @@ export default function DocumentManagement() {
                             <div className="text-sm text-gray-500">{doc.fileSize}</div>
 
                             <div className="flex gap-1 mt-2">
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="View details" size="sm" variant="outline">
                                 <Eye className="h-3 w-3" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Download" size="sm" variant="outline">
                                 <Download className="h-3 w-3" />
                               </Button>
-                              <Button size="sm" variant="outline">
+                              <Button aria-label="Share" size="sm" variant="outline">
                                 <Share className="h-3 w-3" />
                               </Button>
                             </div>
@@ -786,6 +786,7 @@ export default function DocumentManagement() {
                 <div className="flex gap-4 mb-6">
                   <div className="flex-1">
                     <Input
+                      aria-label="Search documents, content, or metadata"
                       placeholder="Search documents, content, or metadata..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}

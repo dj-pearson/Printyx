@@ -235,6 +235,7 @@ export default function CompanyContactSelector({
                   <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
+                      aria-label="Type to search companies"
                       ref={searchInputRef}
                       placeholder="Type to search companies..."
                       value={companySearchTerm}
@@ -302,6 +303,7 @@ export default function CompanyContactSelector({
             <Dialog open={showNewCompanyDialog} onOpenChange={setShowNewCompanyDialog}>
               <DialogTrigger asChild>
                 <Button
+                  aria-label="Add"
                   variant="outline"
                   size="icon"
                   className="min-h-[44px] min-w-[44px] active:scale-[0.98] transition-transform"

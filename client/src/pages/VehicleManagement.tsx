@@ -253,6 +253,7 @@ const VehicleManagement: React.FC = () => {
           <div className="relative flex-1 min-w-64">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
+              aria-label="Search vehicles"
               placeholder="Search vehicles..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -436,7 +437,7 @@ const VehicleManagement: React.FC = () => {
                     <FileText className="h-4 w-4 mr-1" />
                     Details
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button aria-label="Settings" variant="outline" size="sm">
                     <Settings className="h-4 w-4" />
                   </Button>
                 </div>

@@ -208,7 +208,7 @@ export default function ArticleEditor() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/admin/knowledge-base">
-              <Button variant="ghost" size="icon">
+              <Button aria-label="Go back" variant="ghost" size="icon">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>

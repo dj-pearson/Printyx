@@ -1278,13 +1278,13 @@ export default function MobileFieldOperations() {
                             </div>
                           </div>
                           <div className="flex space-x-1">
-                            <Button variant="outline" size="sm">
+                            <Button aria-label="View details" variant="outline" size="sm">
                               <Eye className="h-3 w-3" />
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button aria-label="Edit" variant="outline" size="sm">
                               <Edit className="h-3 w-3" />
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button aria-label="View on map" variant="outline" size="sm">
                               <MapPin className="h-3 w-3" />
                             </Button>
                           </div>
@@ -1371,13 +1371,13 @@ export default function MobileFieldOperations() {
                             </div>
                           </div>
                           <div className="flex space-x-1">
-                            <Button variant="outline" size="sm">
+                            <Button aria-label="Play" variant="outline" size="sm">
                               <Play className="h-3 w-3" />
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button aria-label="Download" variant="outline" size="sm">
                               <Download className="h-3 w-3" />
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button aria-label="Edit" variant="outline" size="sm">
                               <Edit className="h-3 w-3" />
                             </Button>
                           </div>

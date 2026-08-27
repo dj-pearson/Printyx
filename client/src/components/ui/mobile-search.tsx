@@ -43,6 +43,7 @@ export default function MobileSearch({ className }: MobileSearchProps) {
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
             <Input
+              aria-label="Search customers, tickets, equipment"
               placeholder="Search customers, tickets, equipment..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

@@ -1303,6 +1303,7 @@ export default function EnhancedOnboardingForm() {
                   <div className="space-y-2">
                     <Label>Search Quotes</Label>
                     <Input
+                      aria-label="Search by quote number or title"
                       placeholder="Search by quote number or title..."
                       value={quoteSearch}
                       onChange={(e) => setQuoteSearch(e.target.value)}

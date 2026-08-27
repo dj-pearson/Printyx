@@ -456,6 +456,7 @@ export default function OnboardingDashboard() {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <Input
+              aria-label="Search checklists"
               placeholder="Search checklists..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

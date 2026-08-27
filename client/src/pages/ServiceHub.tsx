@@ -571,6 +571,7 @@ export default function ServiceHub() {
                 <div className="flex flex-col sm:flex-row gap-4 mb-4">
                   <div className="flex-1">
                     <Input
+                      aria-label="Search phone-in tickets"
                       placeholder="Search phone-in tickets..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -653,6 +654,7 @@ export default function ServiceHub() {
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
+                        aria-label="Search tickets, customers, equipment models"
                         placeholder="Search tickets, customers, equipment models..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}

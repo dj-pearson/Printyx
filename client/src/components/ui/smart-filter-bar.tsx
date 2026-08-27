@@ -204,6 +204,7 @@ export function SmartFilterBar({
       case 'text':
         return (
           <Input
+            aria-label="Search"
             type="text"
             placeholder={config.placeholder || `Search ${config.label.toLowerCase()}...`}
             value={value || ''}

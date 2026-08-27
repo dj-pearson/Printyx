@@ -358,8 +358,12 @@ export default function MeetingTranscription() {
                   </CardDescription>
                 </div>
                 <div className="flex gap-3">
-                  <Input placeholder="Search recordings..." className="w-64" />
-                  <Button variant="outline" size="sm">
+                  <Input
+                    aria-label="Search recordings"
+                    placeholder="Search recordings..."
+                    className="w-64"
+                  />
+                  <Button aria-label="Filter" variant="outline" size="sm">
                     <Filter className="h-4 w-4" />
                   </Button>
                 </div>
@@ -408,13 +412,13 @@ export default function MeetingTranscription() {
                       </div>
                       {getStatusBadge(recording.status)}
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button aria-label="View details" variant="outline" size="sm">
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button aria-label="Download" variant="outline" size="sm">
                           <Download className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button aria-label="Share" variant="outline" size="sm">
                           <Share className="h-4 w-4" />
                         </Button>
                       </div>
@@ -446,10 +450,10 @@ export default function MeetingTranscription() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-sm text-gray-600">45:32</span>
-                    <Button variant="outline" size="sm">
+                    <Button aria-label="Pause recording" variant="outline" size="sm">
                       <Pause className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button aria-label="Stop recording" variant="outline" size="sm">
                       <Square className="h-4 w-4" />
                     </Button>
                   </div>
@@ -480,7 +484,7 @@ export default function MeetingTranscription() {
                           <span className="text-xs text-gray-500">
                             {segment.confidence}% confidence
                           </span>
-                          <Button variant="ghost" size="sm">
+                          <Button aria-label="Copy" variant="ghost" size="sm">
                             <Copy className="h-4 w-4" />
                           </Button>
                         </div>
@@ -567,10 +571,10 @@ export default function MeetingTranscription() {
                         {getPriorityBadge(item.priority)}
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button aria-label="Edit" variant="outline" size="sm">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button aria-label="Delete" variant="outline" size="sm">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

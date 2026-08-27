@@ -868,10 +868,10 @@ export default function QuoteProposalGeneration() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="sm">
+                                <Button aria-label="View details" variant="ghost" size="sm">
                                   <Eye className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm">
+                                <Button aria-label="Edit" variant="ghost" size="sm">
                                   <Edit className="h-4 w-4" />
                                 </Button>
                                 {proposal.status === 'draft' && (

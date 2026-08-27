@@ -408,6 +408,7 @@ export default function ContractProfitability() {
           <CardTitle className="text-lg">Contracts by margin</CardTitle>
           <div className="flex flex-wrap gap-2">
             <Input
+              aria-label="Search contract / customer"
               placeholder="Search contract / customer…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}

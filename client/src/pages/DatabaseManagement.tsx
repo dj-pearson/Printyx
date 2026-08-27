@@ -568,10 +568,10 @@ export default function DatabaseManagement() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
-                            <Button size="sm" variant="outline">
+                            <Button aria-label="View details" size="sm" variant="outline">
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button aria-label="Settings" size="sm" variant="outline">
                               <Settings className="w-4 h-4" />
                             </Button>
                           </div>
@@ -1102,13 +1102,13 @@ export default function DatabaseManagement() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
-                            <Button size="sm" variant="outline">
+                            <Button aria-label="Download" size="sm" variant="outline">
                               <Download className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button aria-label="Upload" size="sm" variant="outline">
                               <Upload className="w-4 h-4" />
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button aria-label="Delete" size="sm" variant="outline">
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>

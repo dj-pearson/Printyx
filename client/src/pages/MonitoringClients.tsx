@@ -594,6 +594,7 @@ export default function MonitoringClients() {
                             <div className="relative">
                               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                               <Input
+                                aria-label="Type to search customers"
                                 ref={customerSearchInputRef}
                                 placeholder="Type to search customers..."
                                 value={customerSearch}
@@ -937,7 +938,7 @@ export default function MonitoringClients() {
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button aria-label="More options" variant="ghost" size="icon">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>

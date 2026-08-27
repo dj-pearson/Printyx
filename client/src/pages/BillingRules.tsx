@@ -216,6 +216,7 @@ export default function BillingRules() {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
+                  aria-label="Search rules"
                   placeholder="Search rules..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -338,7 +339,7 @@ export default function BillingRules() {
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
+                              <Button aria-label="More options" variant="ghost" size="sm">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>

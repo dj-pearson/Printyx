@@ -53,6 +53,7 @@ export function QuoteTemplateSelector({ templates, onSelect, onSkip }: QuoteTemp
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
+            aria-label="Search templates"
             placeholder="Search templates..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}

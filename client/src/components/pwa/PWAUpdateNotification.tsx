@@ -33,6 +33,7 @@ export function PWAUpdateNotification({ onDismiss }: PWAUpdateNotificationProps)
           <span>Update Available</span>
           {onDismiss && (
             <Button
+              aria-label="Dismiss"
               onClick={onDismiss}
               size="sm"
               variant="ghost"

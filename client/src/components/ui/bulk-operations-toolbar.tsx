@@ -101,7 +101,13 @@ export function BulkOperationsToolbar({
           <div className="flex items-center justify-between gap-4">
             {/* Selection Info */}
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={onClearSelection} className="h-8 w-8 p-0">
+              <Button
+                aria-label="Clear selection"
+                variant="ghost"
+                size="sm"
+                onClick={onClearSelection}
+                className="h-8 w-8 p-0"
+              >
                 <X className="h-4 w-4" />
               </Button>
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">

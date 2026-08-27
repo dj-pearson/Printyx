@@ -165,6 +165,7 @@ export function DashboardCustomizer() {
               <div>
                 <h3 className="font-semibold mb-2">Available Widgets</h3>
                 <Input
+                  aria-label="Search widgets"
                   placeholder="Search widgets..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

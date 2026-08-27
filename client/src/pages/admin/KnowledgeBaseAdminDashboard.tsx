@@ -344,7 +344,7 @@ export default function KnowledgeBaseAdminDashboard() {
                           <p className="text-xs text-muted-foreground">{article.viewCount} views</p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm">
+                      <Button aria-label="View details" variant="ghost" size="sm">
                         <Eye className="h-4 w-4" />
                       </Button>
                     </div>
@@ -385,7 +385,7 @@ export default function KnowledgeBaseAdminDashboard() {
                         >
                           <CheckCircle className="h-4 w-4 text-green-600" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button aria-label="Edit" variant="ghost" size="sm">
                           <Edit className="h-4 w-4" />
                         </Button>
                       </div>

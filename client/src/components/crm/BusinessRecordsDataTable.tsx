@@ -504,6 +504,7 @@ export function BusinessRecordsDataTable({
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
+                  aria-label="Search"
                   placeholder={`Search ${title.toLowerCase()} by name, email, phone, industry...`}
                   className="pl-10"
                   value={searchInput}
@@ -682,7 +683,12 @@ export function BusinessRecordsDataTable({
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button
+                                aria-label="More options"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                              >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>

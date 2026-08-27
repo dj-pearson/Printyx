@@ -176,6 +176,7 @@ function SortableSection({
       {/* Section Controls */}
       <div className="absolute top-2 right-2 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex gap-1">
         <Button
+          aria-label="Settings"
           size="sm"
           variant="secondary"
           className="h-8 w-8 sm:h-10 sm:w-10 p-0 touch-manipulation active:scale-[0.98]"
@@ -183,6 +184,7 @@ function SortableSection({
           <Settings className="h-4 w-4" />
         </Button>
         <Button
+          aria-label="Copy"
           size="sm"
           variant="secondary"
           className="h-8 w-8 sm:h-10 sm:w-10 p-0 touch-manipulation active:scale-[0.98]"
@@ -190,6 +192,7 @@ function SortableSection({
           <Copy className="h-4 w-4" />
         </Button>
         <Button
+          aria-label="Delete"
           size="sm"
           variant="destructive"
           className="h-8 w-8 sm:h-10 sm:w-10 p-0 touch-manipulation active:scale-[0.98]"

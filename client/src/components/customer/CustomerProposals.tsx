@@ -262,6 +262,7 @@ export function CustomerProposals({ customerId, customerName }: CustomerProposal
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
+                  aria-label="Search proposals by number or title"
                   placeholder="Search proposals by number or title..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -385,7 +386,11 @@ export function CustomerProposals({ customerId, customerName }: CustomerProposal
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <Button
+                              aria-label="More options"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>

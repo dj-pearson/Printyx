@@ -369,7 +369,7 @@ function SortableWidget({
             <div className="flex items-center gap-1">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Button aria-label="Expand" variant="ghost" size="icon" className="h-6 w-6">
                     <Maximize2 className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -394,6 +394,7 @@ function SortableWidget({
                 {widget.visible ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
               </Button>
               <Button
+                aria-label="Remove"
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 text-destructive hover:text-destructive"

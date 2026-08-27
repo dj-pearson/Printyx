@@ -307,7 +307,12 @@ export default function PlatformDealsPipeline() {
                                       asChild
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                      <Button
+                                        aria-label="More options"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0"
+                                      >
                                         <MoreVertical className="w-4 h-4" />
                                       </Button>
                                     </DropdownMenuTrigger>
