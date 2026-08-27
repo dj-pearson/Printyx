@@ -157,7 +157,8 @@
     "purge:plan": "tsx scripts/report-tenant-purge-plan.ts",
     "check:ai-safety": "node scripts/check-ai-safety.mjs",
     "check:stage-resolution": "node scripts/check-stage-resolution.mjs",
-    "manifest:schema-of-record": "node scripts/build-schema-of-record-manifest.mjs"
+    "manifest:schema-of-record": "node scripts/build-schema-of-record-manifest.mjs",
+    "check:error-shape": "node scripts/check-error-shape.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
