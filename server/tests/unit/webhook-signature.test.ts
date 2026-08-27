@@ -10,14 +10,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import crypto from 'crypto';
 
-// Avoid DB / OAuth client side effects at import time — the signature verifiers
-// use neither.
+// Avoid DB side effects at import time — the signature verifiers do not touch
+// it. The oauth-config mock that stood here is gone with the import: the eleven
+// stub sync methods that pulled those clients in never called them either.
 vi.mock('../../db', () => ({ db: {} }));
-vi.mock('../../integrations/oauth-config', () => ({
-  createSalesforceClient: vi.fn(),
-  createStripeClient: vi.fn(),
-  createMicrosoftGraphClient: vi.fn(),
-}));
 
 import { WebhookService } from '../../integrations/webhook-service';
 

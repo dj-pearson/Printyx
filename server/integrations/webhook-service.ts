@@ -1,18 +1,18 @@
 /**
- * Webhook Service for Real-time Data Synchronization
- * Handles incoming webhooks from integrated services
+ * Receiver for webhooks a provider POSTs to us.
+ *
+ * Two jobs, and only two: verify the provider's signature over the raw request
+ * bytes, and record the delivery. It used to claim a third — eleven
+ * per-provider "sync" methods that returned "synchronized successfully" and
+ * wrote nothing — which is why the oauth-config clients were imported here and
+ * never called. See the note at the foot of the class.
  */
 import { db } from '../db';
-import { systemIntegrations } from '../../shared/schema';
+import { inboundWebhookEvents } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('webhook-service');
 
-import {
-  createSalesforceClient,
-  createStripeClient,
-  createMicrosoftGraphClient,
-} from './oauth-config';
 import crypto from 'crypto';
 
 export interface WebhookPayload {
@@ -26,9 +26,34 @@ export interface WebhookPayload {
 export interface WebhookProcessingResult {
   success: boolean;
   message: string;
+  /**
+   * Whether a handler acted on the delivery. It is false for every provider
+   * today: the delivery is stored and nothing consumes it yet. It was
+   * hardcoded true by the stubs, which is how "acknowledged and dropped"
+   * looked like success.
+   */
   processed: boolean;
+  /** Row id in inbound_webhook_events; null only if the insert failed. */
+  eventId?: string | null;
+  /** True when the provider re-delivered an event already on file. */
+  duplicate?: boolean;
   error?: string;
 }
+
+export interface InboundDeliveryDescriptor {
+  eventType: string;
+  externalEventId: string | null;
+  externalAccountId: string | null;
+}
+
+/** Providers whose signature this service knows how to verify. */
+export const SUPPORTED_WEBHOOK_PROVIDERS = [
+  'salesforce',
+  'stripe',
+  'microsoft-calendar',
+  'google-calendar',
+  'quickbooks',
+] as const;
 
 export class WebhookService {
   /**
@@ -57,27 +82,24 @@ export class WebhookService {
         };
       }
 
-      // Route to appropriate handler based on provider
-      switch (provider) {
-        case 'salesforce':
-          return await this.processSalesforceWebhook(payload);
-        case 'stripe':
-          return await this.processStripeWebhook(payload);
-        case 'microsoft-calendar':
-          return await this.processMicrosoftWebhook(payload);
-        case 'google-calendar':
-          return await this.processGoogleWebhook(payload);
-        case 'quickbooks':
-          return await this.processQuickBooksWebhook(payload);
-        default:
-          return {
-            success: false,
-            message: `Unsupported provider: ${provider}`,
-            processed: false,
-          };
-      }
+      // Store it, then answer. The order matters: a 200 stops the provider
+      // retrying, so it must not be sent until the delivery is durable.
+      const { id, duplicate } = await this.recordInboundDelivery(provider, payload);
+      const { eventType } = this.describeDelivery(provider, payload);
+
+      return {
+        success: true,
+        message: duplicate
+          ? `${provider} event already on file`
+          : `${provider} event recorded${eventType ? ` (${eventType})` : ''}; no handler runs on it yet`,
+        processed: false,
+        eventId: id,
+        duplicate,
+      };
     } catch (error) {
       log.error(`Webhook processing error for ${provider}:`, error);
+      // Deliberately a failure result, which the route turns into a non-2xx:
+      // if the delivery could not be stored, the provider should retry.
       return {
         success: false,
         message: 'Webhook processing failed',
@@ -88,124 +110,120 @@ export class WebhookService {
   }
 
   /**
-   * Process Salesforce webhook events
+   * What a delivery from each provider is ABOUT: the event type, the provider's
+   * own id for the delivery, and the account it belongs to on their side.
+   *
+   * Everything here reads the payload; nothing here writes. Attribution to a
+   * tenant runs off externalAccountId through platform_integrations, and is
+   * deliberately not attempted yet — see recordInboundDelivery.
    */
-  private static async processSalesforceWebhook(payload: any): Promise<WebhookProcessingResult> {
-    const { event, data } = payload;
-
-    switch (event) {
-      case 'account.created':
-      case 'account.updated':
-        return await this.syncSalesforceAccount(data);
-
-      case 'contact.created':
-      case 'contact.updated':
-        return await this.syncSalesforceContact(data);
-
-      case 'opportunity.created':
-      case 'opportunity.updated':
-        return await this.syncSalesforceOpportunity(data);
-
-      default:
+  static describeDelivery(provider: string, payload: any): InboundDeliveryDescriptor {
+    switch (provider) {
+      case 'salesforce':
         return {
-          success: true,
-          message: `Salesforce event ${event} received but not processed`,
-          processed: false,
+          eventType: String(payload?.event ?? ''),
+          externalEventId: payload?.replayId != null ? String(payload.replayId) : null,
+          externalAccountId: payload?.organizationId ? String(payload.organizationId) : null,
         };
-    }
-  }
 
-  /**
-   * Process Stripe webhook events
-   */
-  private static async processStripeWebhook(payload: any): Promise<WebhookProcessingResult> {
-    const { type, data } = payload;
-
-    switch (type) {
-      case 'customer.created':
-      case 'customer.updated':
-        return await this.syncStripeCustomer(data.object);
-
-      case 'invoice.payment_succeeded':
-        return await this.processStripePayment(data.object);
-
-      case 'subscription.created':
-      case 'subscription.updated':
-      case 'subscription.deleted':
-        return await this.syncStripeSubscription(data.object);
-
-      default:
+      case 'stripe':
         return {
-          success: true,
-          message: `Stripe event ${type} received but not processed`,
-          processed: false,
+          eventType: String(payload?.type ?? ''),
+          externalEventId: payload?.id ? String(payload.id) : null,
+          externalAccountId: payload?.account ? String(payload.account) : null,
         };
-    }
-  }
 
-  /**
-   * Process Microsoft Calendar webhook events
-   */
-  private static async processMicrosoftWebhook(payload: any): Promise<WebhookProcessingResult> {
-    const { changeType, resource } = payload.value[0] || {};
-
-    switch (changeType) {
-      case 'created':
-      case 'updated':
-        return await this.syncMicrosoftCalendarEvent(resource);
-
-      case 'deleted':
-        return await this.deleteMicrosoftCalendarEvent(resource);
-
-      default:
+      case 'microsoft-calendar': {
+        const first = Array.isArray(payload?.value) ? payload.value[0] : undefined;
         return {
-          success: true,
-          message: `Microsoft event ${changeType} received but not processed`,
-          processed: false,
+          eventType: String(first?.changeType ?? ''),
+          externalEventId: first?.subscriptionId ? String(first.subscriptionId) : null,
+          externalAccountId: first?.tenantId ? String(first.tenantId) : null,
         };
-    }
-  }
-
-  /**
-   * Process Google Calendar webhook events
-   */
-  private static async processGoogleWebhook(payload: any): Promise<WebhookProcessingResult> {
-    // Google Calendar webhooks are push notifications that don't contain event data
-    // We need to fetch the actual changes using the Calendar API
-    const { resourceId, channelId } = payload;
-
-    return await this.syncGoogleCalendarChanges(resourceId, channelId);
-  }
-
-  /**
-   * Process QuickBooks webhook events
-   */
-  private static async processQuickBooksWebhook(payload: any): Promise<WebhookProcessingResult> {
-    const { eventNotifications } = payload;
-
-    for (const notification of eventNotifications) {
-      const { realmId, dataChangeEvent } = notification;
-
-      for (const entity of dataChangeEvent.entities) {
-        switch (entity.name) {
-          case 'Customer':
-            await this.syncQuickBooksCustomer(entity, realmId);
-            break;
-          case 'Invoice':
-            await this.syncQuickBooksInvoice(entity, realmId);
-            break;
-          case 'Payment':
-            await this.syncQuickBooksPayment(entity, realmId);
-            break;
-        }
       }
-    }
 
-    return {
-      success: true,
-      message: 'QuickBooks webhook processed successfully',
-      processed: true,
-    };
+      case 'google-calendar':
+        // A Google push notification carries no body of its own; everything
+        // that identifies it is in the headers, which the caller folds into the
+        // payload before this runs.
+        return {
+          eventType: String(payload?.resourceState ?? 'sync'),
+          externalEventId: payload?.messageNumber ? String(payload.messageNumber) : null,
+          externalAccountId: payload?.channelId ? String(payload.channelId) : null,
+        };
+
+      case 'quickbooks': {
+        const notifications = Array.isArray(payload?.eventNotifications)
+          ? payload.eventNotifications
+          : [];
+        const entities = notifications
+          .flatMap((n: any) => n?.dataChangeEvent?.entities ?? [])
+          .map((e: any) => `${e?.name ?? '?'}.${e?.operation ?? '?'}`);
+        return {
+          eventType: entities.join(','),
+          externalEventId: null,
+          externalAccountId: notifications[0]?.realmId ? String(notifications[0].realmId) : null,
+        };
+      }
+
+      default:
+        return { eventType: '', externalEventId: null, externalAccountId: null };
+    }
+  }
+
+  /**
+   * Store a verified delivery, and return the row id.
+   *
+   * This is the whole point of the class as it stands. Signature verification
+   * below is real and tested; the processing that used to follow it was eleven
+   * methods that returned "synchronized successfully" and wrote nothing, so a
+   * verified Stripe event was answered 200 — which stops the retry — and then
+   * discarded. Recording it first is what makes the 200 honest.
+   *
+   * onConflictDoNothing against inbound_webhook_events_dedupe_idx: a provider
+   * retrying an event it already delivered lands on the existing row. Google
+   * push notifications carry no id, and Postgres treats NULLs as distinct, so
+   * each of those is kept.
+   */
+  private static async recordInboundDelivery(
+    provider: string,
+    payload: any,
+  ): Promise<{ id: string | null; duplicate: boolean }> {
+    const { eventType, externalEventId, externalAccountId } = this.describeDelivery(
+      provider,
+      payload,
+    );
+
+    const inserted = await db
+      .insert(inboundWebhookEvents)
+      .values({
+        provider,
+        eventType,
+        externalEventId,
+        externalAccountId,
+        payload: (payload ?? {}) as Record<string, unknown>,
+        status: 'received',
+      })
+      .onConflictDoNothing()
+      .returning({ id: inboundWebhookEvents.id });
+
+    if (inserted.length > 0) return { id: inserted[0].id, duplicate: false };
+
+    // Conflict: the same (provider, external_event_id) is already on file.
+    if (externalEventId) {
+      const existing = await db
+        .select({ id: inboundWebhookEvents.id })
+        .from(inboundWebhookEvents)
+        .where(
+          and(
+            eq(inboundWebhookEvents.provider, provider),
+            eq(inboundWebhookEvents.externalEventId, externalEventId),
+          ),
+        )
+        .limit(1);
+      if (existing.length > 0) return { id: existing[0].id, duplicate: true };
+    }
+    return { id: null, duplicate: true };
   }
 
   /**
@@ -351,159 +369,26 @@ export class WebhookService {
     }
   }
 
-  // Data synchronization methods
-
-  private static async syncSalesforceAccount(accountData: any): Promise<WebhookProcessingResult> {
-    try {
-      // Map Salesforce Account to internal Customer record
-      const customerData = {
-        externalSalesforceId: accountData.Id,
-        companyName: accountData.Name,
-        website: accountData.Website,
-        phone: accountData.Phone,
-        industry: accountData.Industry,
-        billingAddressLine1: accountData.BillingStreet,
-        billingCity: accountData.BillingCity,
-        billingState: accountData.BillingState,
-        billingPostalCode: accountData.BillingPostalCode,
-        billingCountry: accountData.BillingCountry,
-        // Add more field mappings as needed
-      };
-
-      // Update or create customer record
-      // Implementation would depend on your specific database operations
-
-      return {
-        success: true,
-        message: 'Salesforce account synchronized successfully',
-        processed: true,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Failed to sync Salesforce account',
-        processed: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  }
-
-  private static async syncSalesforceContact(contactData: any): Promise<WebhookProcessingResult> {
-    // Similar implementation for Salesforce contacts
-    return {
-      success: true,
-      message: 'Salesforce contact synchronized successfully',
-      processed: true,
-    };
-  }
-
-  private static async syncSalesforceOpportunity(
-    opportunityData: any,
-  ): Promise<WebhookProcessingResult> {
-    // Similar implementation for Salesforce opportunities
-    return {
-      success: true,
-      message: 'Salesforce opportunity synchronized successfully',
-      processed: true,
-    };
-  }
-
-  private static async syncStripeCustomer(customerData: any): Promise<WebhookProcessingResult> {
-    // Map Stripe Customer to internal Customer record
-    return {
-      success: true,
-      message: 'Stripe customer synchronized successfully',
-      processed: true,
-    };
-  }
-
-  private static async processStripePayment(invoiceData: any): Promise<WebhookProcessingResult> {
-    // Process successful payment and update internal records
-    return {
-      success: true,
-      message: 'Stripe payment processed successfully',
-      processed: true,
-    };
-  }
-
-  private static async syncStripeSubscription(
-    subscriptionData: any,
-  ): Promise<WebhookProcessingResult> {
-    // Sync subscription changes
-    return {
-      success: true,
-      message: 'Stripe subscription synchronized successfully',
-      processed: true,
-    };
-  }
-
-  private static async syncMicrosoftCalendarEvent(
-    resource: string,
-  ): Promise<WebhookProcessingResult> {
-    // Fetch and sync calendar event changes
-    return {
-      success: true,
-      message: 'Microsoft calendar event synchronized successfully',
-      processed: true,
-    };
-  }
-
-  private static async deleteMicrosoftCalendarEvent(
-    resource: string,
-  ): Promise<WebhookProcessingResult> {
-    // Delete calendar event from internal system
-    return {
-      success: true,
-      message: 'Microsoft calendar event deleted successfully',
-      processed: true,
-    };
-  }
-
-  private static async syncGoogleCalendarChanges(
-    resourceId: string,
-    channelId: string,
-  ): Promise<WebhookProcessingResult> {
-    // Fetch and sync Google Calendar changes
-    return {
-      success: true,
-      message: 'Google calendar changes synchronized successfully',
-      processed: true,
-    };
-  }
-
-  private static async syncQuickBooksCustomer(
-    entity: any,
-    realmId: string,
-  ): Promise<WebhookProcessingResult> {
-    // Sync QuickBooks customer changes
-    return {
-      success: true,
-      message: 'QuickBooks customer synchronized successfully',
-      processed: true,
-    };
-  }
-
-  private static async syncQuickBooksInvoice(
-    entity: any,
-    realmId: string,
-  ): Promise<WebhookProcessingResult> {
-    // Sync QuickBooks invoice changes
-    return {
-      success: true,
-      message: 'QuickBooks invoice synchronized successfully',
-      processed: true,
-    };
-  }
-
-  private static async syncQuickBooksPayment(
-    entity: any,
-    realmId: string,
-  ): Promise<WebhookProcessingResult> {
-    // Sync QuickBooks payment changes
-    return {
-      success: true,
-      message: 'QuickBooks payment synchronized successfully',
-      processed: true,
-    };
-  }
+  // THE ELEVEN "DATA SYNCHRONIZATION" METHODS THAT STOOD HERE ARE DELETED.
+  //
+  // syncSalesforceAccount, syncSalesforceContact, syncSalesforceOpportunity,
+  // syncStripeCustomer, processStripePayment, syncStripeSubscription,
+  // syncMicrosoftCalendarEvent, deleteMicrosoftCalendarEvent,
+  // syncGoogleCalendarChanges, syncQuickBooksCustomer, syncQuickBooksInvoice
+  // and syncQuickBooksPayment each returned
+  // { success: true, processed: true, message: "... synchronized successfully" }
+  // and touched no table. syncSalesforceAccount built a customerData object and
+  // then dropped it on the floor under the comment "Implementation would depend
+  // on your specific database operations". That is why `db` and
+  // `systemIntegrations` were imported and never used.
+  //
+  // Reporting processed:true made the receiver answer 200, which tells Stripe
+  // and Intuit the delivery was accepted and stops the retry — so a verified
+  // event was acknowledged and lost. The switch statements that dispatched to
+  // them are gone with them; what survives is describeDelivery, which reads the
+  // same fields those switches read, and the row it writes.
+  //
+  // Deleted rather than left as TODOs, per the repo's rule about features with
+  // no backing implementation: a stub that reports success is worse than an
+  // absent one, because nothing ever looks for it again.
 }

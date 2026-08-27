@@ -24,11 +24,13 @@ export {
   integrationSyncLogs,
   webhooks,
   webhookLogs,
+  inboundWebhookEvents,
   insertPlatformIntegrationSchema,
   insertIntegrationWebhookSchema,
   insertIntegrationSyncLogSchema,
   insertWebhookSchema,
   insertWebhookLogSchema,
+  insertInboundWebhookEventSchema,
 } from './platform-integrations-schema';
 
 export type {
@@ -42,6 +44,8 @@ export type {
   NewWebhook,
   WebhookLog,
   NewWebhookLog,
+  InboundWebhookEvent,
+  NewInboundWebhookEvent,
 } from './platform-integrations-schema';
 
 // Re-export equipment schemas
