@@ -57,6 +57,8 @@ jobs:
         run: npm run check:fabricated
       - name: Accessible-name gate for icon buttons and search inputs (CR-035)
         run: npm run check:a11y-names
+      - name: Edge-function RBAC ratchet (SEC-EDGE-001)
+        run: npm run check:edge-rbac
       - name: PRD file-reference ratchet
         run: npm run check:prd-refs
       - name: Raw-fetch ratchet (PROD-013)
