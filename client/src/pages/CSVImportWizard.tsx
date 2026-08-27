@@ -84,7 +84,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiFormRequest, apiRequest } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
 
 // Entity type definitions
@@ -238,16 +238,14 @@ export default function CSVImportWizard() {
   // Upload file mutation
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch('/api/import/upload', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Upload failed');
-      }
-      return response.json();
+      // CRMX-011a: was a raw fetch. In production that is broken twice over —
+      // getApiUrl rewrites /api/x to the functions host and a raw fetch skips it,
+      // so the request hit the Cloudflare Pages origin, fell through to the SPA
+      // shell, and .json() threw on HTML; and `credentials: 'include'` sends no
+      // Authorization header, which the edge function rejects. apiFormRequest
+      // does both, and strips Content-Type so the browser keeps the multipart
+      // boundary.
+      return apiFormRequest('/api/import/upload', 'POST', formData);
     },
     onSuccess: (data) => {
       setJobId(data.jobId);
@@ -270,16 +268,11 @@ export default function CSVImportWizard() {
   // Preview mapping mutation
   const previewMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch('/api/import/preview-mapping', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Preview failed');
-      }
-      return response.json();
+      // CRMX-011a: same transport fix as upload. NOTE the endpoint itself does
+      // not exist — supabase/functions/import/ has no preview-mapping branch and
+      // there is no Express /api/import router — so this now fails as an honest
+      // 404 instead of "Unexpected token < in JSON". See the story note.
+      return apiFormRequest('/api/import/preview-mapping', 'POST', formData);
     },
     onSuccess: (data) => {
       setPreviewData(data);
@@ -290,16 +283,9 @@ export default function CSVImportWizard() {
   // AI mapping mutation
   const aiMappingMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch('/api/import/ai/map-columns', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'AI mapping failed');
-      }
-      return response.json();
+      // CRMX-011a: same transport fix, and the same caveat — the edge function
+      // serves ai/status but has no ai/map-columns branch.
+      return apiFormRequest('/api/import/ai/map-columns', 'POST', formData);
     },
     onSuccess: (data) => {
       setMappings(data.mappings || []);
