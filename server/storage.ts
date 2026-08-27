@@ -1428,6 +1428,10 @@ export interface IStorage {
     tenantId: string,
     ticketId: string,
   ): Promise<GpsLocationHistory[]>;
+  /** Every technician's activity on one ticket. GET
+   *  /api/gps/tickets/:ticketId/activity-timeline has no technician in its path
+   *  and was calling a method of this name that did not exist. */
+  getTicketActivityTimeline(ticketId: string, tenantId: string): Promise<GpsLocationHistory[]>;
   calculateDistanceTraveled(
     technicianId: string,
     tenantId: string,
@@ -1506,6 +1510,12 @@ export interface IStorage {
   getLatestEtaForTicket(
     ticketId: string,
     technicianId: string,
+    tenantId: string,
+  ): Promise<EtaCalculation | null>;
+  /** Latest ETA for a ticket whichever technician it was calculated for. GET
+   *  /api/gps/tickets/:ticketId/eta has no technician in its path. */
+  getLatestEtaForTicketAnyTechnician(
+    ticketId: string,
     tenantId: string,
   ): Promise<EtaCalculation | null>;
   updateActualArrival(
@@ -9028,6 +9038,19 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(gpsLocationHistory.timestamp));
   }
 
+  async getTicketActivityTimeline(
+    ticketId: string,
+    tenantId: string,
+  ): Promise<GpsLocationHistory[]> {
+    return await db
+      .select()
+      .from(gpsLocationHistory)
+      .where(
+        and(eq(gpsLocationHistory.tenantId, tenantId), eq(gpsLocationHistory.ticketId, ticketId)),
+      )
+      .orderBy(asc(gpsLocationHistory.timestamp));
+  }
+
   async calculateDistanceTraveled(
     technicianId: string,
     tenantId: string,
@@ -9386,6 +9409,19 @@ export class DatabaseStorage implements IStorage {
           eq(etaCalculations.technicianId, technicianId),
         ),
       )
+      .orderBy(desc(etaCalculations.calculatedAt))
+      .limit(1);
+    return eta || null;
+  }
+
+  async getLatestEtaForTicketAnyTechnician(
+    ticketId: string,
+    tenantId: string,
+  ): Promise<EtaCalculation | null> {
+    const [eta] = await db
+      .select()
+      .from(etaCalculations)
+      .where(and(eq(etaCalculations.tenantId, tenantId), eq(etaCalculations.ticketId, ticketId)))
       .orderBy(desc(etaCalculations.calculatedAt))
       .limit(1);
     return eta || null;

@@ -52,7 +52,10 @@ router.get('/technicians/locations', async (req: Request, res: Response) => {
   }
 
   try {
-    const locations = await storage.getActiveTechnicianLocations(user.tenantId);
+    // storage has no getActiveTechnicianLocations; 'active' is one of the four
+    // values technician_locations.status takes (active, offline, idle,
+    // on_break), which is what this endpoint means by active.
+    const locations = await storage.getTechniciansByStatus(user.tenantId, 'active');
     res.json(locations);
   } catch (error) {
     log.error('Get active technician locations error:', error);
@@ -114,10 +117,7 @@ router.get('/technicians/status/:status', async (req: Request, res: Response) =>
   }
 
   try {
-    const locations = await storage.getTechnicianLocationsByStatus(
-      user.tenantId,
-      req.params.status,
-    );
+    const locations = await storage.getTechniciansByStatus(user.tenantId, req.params.status);
 
     res.json(locations);
   } catch (error) {
@@ -148,7 +148,10 @@ router.get('/technicians/nearby', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid coordinates or radius' });
     }
 
-    const allLocations = await storage.getActiveTechnicianLocations(user.tenantId);
+    // Every technician, not just the active ones: the radius filter below is
+    // what narrows this, and an idle technician inside the radius is still the
+    // nearest one.
+    const allLocations = await storage.getAllTechnicianLocations(user.tenantId);
 
     // Filter locations within radius
     const nearbyTechnicians = allLocations
@@ -478,9 +481,13 @@ router.patch('/routes/:id/progress', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Route not found' });
     }
 
+    // storage.updateRouteProgress takes ONE stop and recomputes completedStops
+    // from the waypoints itself. The body schema here described the result
+    // rather than the request, so this endpoint could never have worked.
     const progressSchema = z.object({
-      completedStops: z.number(),
-      waypoints: z.any().optional(),
+      stopId: z.string(),
+      status: z.string(),
+      completedAt: z.coerce.date(),
     });
 
     const data = progressSchema.parse(req.body);
@@ -646,7 +653,7 @@ router.post('/deviations/:id/resolve', async (req: Request, res: Response) => {
       req.params.id,
       user.tenantId,
       resolvedBy,
-      resolutionNotes,
+      resolutionNotes ?? '',
     );
 
     res.json(updated);
@@ -738,7 +745,10 @@ router.get('/tickets/:ticketId/eta', async (req: Request, res: Response) => {
   }
 
   try {
-    const eta = await storage.getLatestEtaForTicket(req.params.ticketId, user.tenantId);
+    const eta = await storage.getLatestEtaForTicketAnyTechnician(
+      req.params.ticketId,
+      user.tenantId,
+    );
 
     if (!eta) {
       return res.status(404).json({ error: 'No ETA found for this ticket' });
@@ -770,7 +780,11 @@ router.patch('/etas/:id/arrival', async (req: Request, res: Response) => {
 
     const { actualArrivalTime } = arrivalSchema.parse(req.body);
 
-    const updated = await storage.updateEtaArrival(req.params.id, user.tenantId, actualArrivalTime);
+    const updated = await storage.updateActualArrival(
+      req.params.id,
+      user.tenantId,
+      actualArrivalTime,
+    );
 
     res.json(updated);
   } catch (error) {
@@ -962,9 +976,28 @@ router.post('/geofences/check', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Geofence not found' });
     }
 
-    const isInside = await storage.checkGeofence(geofenceId, user.tenantId, latitude, longitude);
+    // storage has no checkGeofence. The geofence row is already loaded and
+    // carries centre and radius, so a circular one is answerable here.
+    // Polygons are not: polygon_coordinates is a jsonb ring and nothing in this
+    // codebase does point-in-polygon. Saying so beats returning `false`, which
+    // a caller cannot tell from "outside".
+    if (!geofence.radiusMeters) {
+      return res.status(501).json({
+        error: 'Only circular geofences can be checked',
+        geofenceId,
+        geofenceType: geofence.geofenceType,
+      });
+    }
 
-    res.json({ geofenceId, latitude, longitude, isInside });
+    const distanceMeters = calculateDistance(
+      latitude,
+      longitude,
+      Number(geofence.centerLatitude),
+      Number(geofence.centerLongitude),
+    );
+    const isInside = distanceMeters <= Number(geofence.radiusMeters);
+
+    res.json({ geofenceId, latitude, longitude, isInside, distanceMeters });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
