@@ -27,6 +27,7 @@ import {
   PERMISSIONS,
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
+import { badRequest, notFound, serverError, unauthorized } from './lib/error-response';
 
 const router = Router();
 
@@ -60,7 +61,7 @@ router.get('/widgets', async (req: Request, res: Response) => {
     res.json({ data: filtered });
   } catch (error) {
     log.error('Error fetching widgets:', error);
-    res.status(500).json({ error: 'Failed to fetch widgets' });
+    serverError(res, 'Failed to fetch widgets');
   }
 });
 
@@ -76,7 +77,7 @@ router.get('/layouts', async (req: Request, res: Response) => {
     const tenantId = getTenantId(req);
 
     if (!userId || !tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return unauthorized(res, 'Unauthorized');
     }
 
     // Get user's custom layout and role default layout
@@ -93,7 +94,7 @@ router.get('/layouts', async (req: Request, res: Response) => {
     res.json({ data: layouts });
   } catch (error) {
     log.error('Error fetching layouts:', error);
-    res.status(500).json({ error: 'Failed to fetch layouts' });
+    serverError(res, 'Failed to fetch layouts');
   }
 });
 
@@ -107,7 +108,7 @@ router.get('/layout/:layoutId', async (req: Request, res: Response) => {
     const tenantId = getTenantId(req);
 
     if (!tenantId) {
-      return res.status(400).json({ error: 'Tenant ID required' });
+      return badRequest(res, 'Tenant ID required');
     }
 
     const layout = await db
@@ -117,13 +118,13 @@ router.get('/layout/:layoutId', async (req: Request, res: Response) => {
       .limit(1);
 
     if (!layout.length) {
-      return res.status(404).json({ error: 'Layout not found' });
+      return notFound(res, 'Layout not found');
     }
 
     res.json({ data: layout[0] });
   } catch (error) {
     log.error('Error fetching layout:', error);
-    res.status(500).json({ error: 'Failed to fetch layout' });
+    serverError(res, 'Failed to fetch layout');
   }
 });
 
@@ -138,11 +139,11 @@ router.post('/layout', async (req: Request, res: Response) => {
     const { name, description, widgets, columns = 12, isDefault = false, roleId } = req.body;
 
     if (!name) {
-      return res.status(400).json({ error: 'Name is required' });
+      return badRequest(res, 'Name is required');
     }
 
     if (!userId || !tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return unauthorized(res, 'Unauthorized');
     }
 
     const layout = await db
@@ -163,7 +164,7 @@ router.post('/layout', async (req: Request, res: Response) => {
     res.status(201).json({ data: layout[0] });
   } catch (error) {
     log.error('Error creating layout:', error);
-    res.status(500).json({ error: 'Failed to create layout' });
+    serverError(res, 'Failed to create layout');
   }
 });
 
@@ -179,7 +180,7 @@ router.patch('/layout/:layoutId', async (req: Request, res: Response) => {
     const { name, description, widgets, columns } = req.body;
 
     if (!tenantId) {
-      return res.status(400).json({ error: 'Tenant ID required' });
+      return badRequest(res, 'Tenant ID required');
     }
 
     const updates: any = {};
@@ -197,7 +198,7 @@ router.patch('/layout/:layoutId', async (req: Request, res: Response) => {
       .limit(1);
 
     if (!layout.length) {
-      return res.status(404).json({ error: 'Layout not found' });
+      return notFound(res, 'Layout not found');
     }
 
     const updated = await db
@@ -209,7 +210,7 @@ router.patch('/layout/:layoutId', async (req: Request, res: Response) => {
     res.json({ data: updated[0] });
   } catch (error) {
     log.error('Error updating layout:', error);
-    res.status(500).json({ error: 'Failed to update layout' });
+    serverError(res, 'Failed to update layout');
   }
 });
 
@@ -229,7 +230,7 @@ router.delete('/layout/:layoutId', async (req: Request, res: Response) => {
     res.json({ success: true });
   } catch (error) {
     log.error('Error deleting layout:', error);
-    res.status(500).json({ error: 'Failed to delete layout' });
+    serverError(res, 'Failed to delete layout');
   }
 });
 
@@ -243,7 +244,7 @@ router.get('/preferences', async (req: Request, res: Response) => {
     const tenantId = getTenantId(req);
 
     if (!userId || !tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return unauthorized(res, 'Unauthorized');
     }
 
     let prefs = await db
@@ -272,7 +273,7 @@ router.get('/preferences', async (req: Request, res: Response) => {
     res.json({ data: prefs[0] });
   } catch (error) {
     log.error('Error fetching preferences:', error);
-    res.status(500).json({ error: 'Failed to fetch preferences' });
+    serverError(res, 'Failed to fetch preferences');
   }
 });
 
@@ -295,7 +296,7 @@ router.patch('/preferences', async (req: Request, res: Response) => {
     } = req.body;
 
     if (!userId || !tenantId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return unauthorized(res, 'Unauthorized');
     }
 
     const updates: any = {};
@@ -322,7 +323,7 @@ router.patch('/preferences', async (req: Request, res: Response) => {
     res.json({ data: updated[0] || {} });
   } catch (error) {
     log.error('Error updating preferences:', error);
-    res.status(500).json({ error: 'Failed to update preferences' });
+    serverError(res, 'Failed to update preferences');
   }
 });
 
@@ -336,11 +337,11 @@ router.post('/snapshot', async (req: Request, res: Response) => {
     const { layoutId, name, description } = req.body;
 
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return unauthorized(res, 'Unauthorized');
     }
 
     if (!layoutId || !name) {
-      return res.status(400).json({ error: 'layoutId and name are required' });
+      return badRequest(res, 'layoutId and name are required');
     }
 
     // Get current layout
@@ -351,7 +352,7 @@ router.post('/snapshot', async (req: Request, res: Response) => {
       .limit(1);
 
     if (!layout.length) {
-      return res.status(404).json({ error: 'Layout not found' });
+      return notFound(res, 'Layout not found');
     }
 
     const snapshot = await db
@@ -368,7 +369,7 @@ router.post('/snapshot', async (req: Request, res: Response) => {
     res.status(201).json({ data: snapshot[0] });
   } catch (error) {
     log.error('Error creating snapshot:', error);
-    res.status(500).json({ error: 'Failed to create snapshot' });
+    serverError(res, 'Failed to create snapshot');
   }
 });
 
@@ -382,7 +383,7 @@ router.get('/snapshots/:layoutId', async (req: Request, res: Response) => {
     const userId = getUserId(req);
 
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return unauthorized(res, 'Unauthorized');
     }
 
     const snapshots = await db
@@ -393,7 +394,7 @@ router.get('/snapshots/:layoutId', async (req: Request, res: Response) => {
     res.json({ data: snapshots });
   } catch (error) {
     log.error('Error fetching snapshots:', error);
-    res.status(500).json({ error: 'Failed to fetch snapshots' });
+    serverError(res, 'Failed to fetch snapshots');
   }
 });
 
