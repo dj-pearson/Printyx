@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { QueryState, QueryStates } from '@/components/ui/query-state';
+import { DashboardSkeleton } from '@/components/ui/skeletons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -112,6 +114,11 @@ const GOAL_TEMPLATES = [
   },
 ];
 
+// CR-033: a module-level constant, not a fresh `?? []` per render. These
+// fall back into useMemo dependency arrays, and a new array identity every
+// render defeats the memo - react-hooks/exhaustive-deps flags it by name.
+const EMPTY: never[] = [];
+
 export default function CrmGoalsDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedPeriod, setSelectedPeriod] = useState('weekly');
@@ -124,29 +131,40 @@ export default function CrmGoalsDashboard() {
   const queryClient = useQueryClient();
 
   // Dashboard stats query
-  const { data: dashboardStats } = useQuery({
+  const dashboardStatsQuery = useQuery({
     queryKey: ['/api/crm/dashboard-stats'],
   });
 
   // Goals query
-  const { data: goals = [] } = useQuery({
+  const goalsQuery = useQuery({
     queryKey: ['/api/crm/goals'],
   });
 
   // Teams query
-  const { data: teams = [] } = useQuery<any[]>({
+  const teamsQuery = useQuery<any[]>({
     queryKey: ['/api/crm/teams'],
   });
 
   // Users query for dropdowns
-  const { data: users = [] } = useQuery<any[]>({
+  const usersQuery = useQuery<any[]>({
     queryKey: ['/api/users'],
   });
 
   // Goal progress query
-  const { data: goalProgress = [] } = useQuery({
+  const goalProgressQuery = useQuery({
     queryKey: ['/api/crm/goal-progress'],
   });
+
+  // CR-033: all five kept only `.data`. A failed request rendered the whole
+  // dashboard at zero - no goals, no progress, every KPI 0 - which on a goals
+  // page reads as "nobody has sold anything", not as "the request failed".
+  // Teams and users additionally feed the Assign Goals dialog, so a silent
+  // failure there gave an empty picker with no explanation.
+  const dashboardStats = dashboardStatsQuery.data;
+  const goals = goalsQuery.data ?? EMPTY;
+  const teams = teamsQuery.data ?? EMPTY;
+  const users = usersQuery.data ?? EMPTY;
+  const goalProgress = goalProgressQuery.data ?? EMPTY;
 
   // Create goal mutation
   const createGoalMutation = useMutation({
@@ -264,158 +282,167 @@ export default function CrmGoalsDashboard() {
           </div>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* CR-033: the heading and the Assign Goals / New Goal buttons above are
+            actions, not data, so they stay usable. Everything below is derived. */}
+        <QueryStates
+          queries={[dashboardStatsQuery, goalsQuery, teamsQuery, usersQuery, goalProgressQuery]}
+          loading={<DashboardSkeleton />}
+          errorTitle="Could not load goals data"
+          className="py-6"
+        >
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Goals</CardTitle>
+                <Target className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpiStats.active}</div>
+                <p className="text-xs text-muted-foreground">{kpiStats.total} total goals</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">On Track</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpiStats.onTrack}</div>
+                <p className="text-xs text-muted-foreground">&ge;75% attainment</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">At Risk</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpiStats.atRisk}</div>
+                <p className="text-xs text-muted-foreground">50-75% attainment</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                <TrendingUp className="h-4 w-4 text-emerald-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpiStats.completed}</div>
+                <p className="text-xs text-muted-foreground">100%+ attained</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Team Performance Stats */}
+          <TeamStatsWidget variant="full" showAutoRefresh={true} />
+
+          {/* Filters */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Goals</CardTitle>
-              <Target className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{kpiStats.active}</div>
-              <p className="text-xs text-muted-foreground">{kpiStats.total} total goals</p>
+            <CardContent className="p-4 flex flex-wrap gap-3 items-center">
+              <div className="text-sm text-gray-700 font-medium">Filters:</div>
+              <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Owner" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All owners</SelectItem>
+                  <SelectItem value="teams">— Teams —</SelectItem>
+                  {teams?.map((t: any) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="users">— Users —</SelectItem>
+                  {users?.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name || `${u.firstName || ''} ${u.lastName || ''}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={goalTypeFilter} onValueChange={setGoalTypeFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Goal Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All goal types</SelectItem>
+                  {[
+                    'calls',
+                    'emails',
+                    'meetings',
+                    'reachouts',
+                    'proposals',
+                    'new_opportunities',
+                    'demos',
+                    'follow_ups',
+                  ]?.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
+
+          {/* Compact progress table */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">On Track</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-500" />
+            <CardHeader>
+              <CardTitle>Goal Progress</CardTitle>
+              <CardDescription>Combined per-rep and per-team progress</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{kpiStats.onTrack}</div>
-              <p className="text-xs text-muted-foreground">&ge;75% attainment</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">At Risk</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{kpiStats.atRisk}</div>
-              <p className="text-xs text-muted-foreground">50-75% attainment</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed</CardTitle>
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{kpiStats.completed}</div>
-              <p className="text-xs text-muted-foreground">100%+ attained</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Team Performance Stats */}
-        <TeamStatsWidget variant="full" showAutoRefresh={true} />
-
-        {/* Filters */}
-        <Card>
-          <CardContent className="p-4 flex flex-wrap gap-3 items-center">
-            <div className="text-sm text-gray-700 font-medium">Filters:</div>
-            <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Owner" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All owners</SelectItem>
-                <SelectItem value="teams">— Teams —</SelectItem>
-                {teams?.map((t: any) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-                <SelectItem value="users">— Users —</SelectItem>
-                {users?.map((u: any) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name || `${u.firstName || ''} ${u.lastName || ''}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={goalTypeFilter} onValueChange={setGoalTypeFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Goal Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All goal types</SelectItem>
-                {[
-                  'calls',
-                  'emails',
-                  'meetings',
-                  'reachouts',
-                  'proposals',
-                  'new_opportunities',
-                  'demos',
-                  'follow_ups',
-                ]?.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-
-        {/* Compact progress table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Goal Progress</CardTitle>
-            <CardDescription>Combined per-rep and per-team progress</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredProgress && filteredProgress.length > 0 ? (
-                filteredProgress.map((row: any) => {
-                  const current = row.currentCount ?? row.currentValue ?? 0;
-                  const target = row.targetCount ?? row.targetValue ?? 1;
-                  const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
-                  return (
-                    <div key={row.id} className="p-3 border rounded-lg">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="font-medium truncate">
-                          {row.ownerName || row.teamName || 'Goal'}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredProgress && filteredProgress.length > 0 ? (
+                  filteredProgress.map((row: any) => {
+                    const current = row.currentCount ?? row.currentValue ?? 0;
+                    const target = row.targetCount ?? row.targetValue ?? 1;
+                    const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+                    return (
+                      <div key={row.id} className="p-3 border rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="font-medium truncate">
+                            {row.ownerName || row.teamName || 'Goal'}
+                          </div>
+                          <Badge variant="secondary">{row.goalType}</Badge>
                         </div>
-                        <Badge variant="secondary">{row.goalType}</Badge>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                          <span>{row.period || ''}</span>
+                          <span className="font-medium">{pct}%</span>
+                        </div>
+                        <Progress
+                          value={pct}
+                          className={`h-2 ${
+                            pct >= 75
+                              ? '[&>div]:bg-green-500'
+                              : pct >= 50
+                                ? '[&>div]:bg-amber-500'
+                                : '[&>div]:bg-red-500'
+                          }`}
+                        />
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {current} / {target}
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                        <span>{row.period || ''}</span>
-                        <span className="font-medium">{pct}%</span>
-                      </div>
-                      <Progress
-                        value={pct}
-                        className={`h-2 ${
-                          pct >= 75
-                            ? '[&>div]:bg-green-500'
-                            : pct >= 50
-                              ? '[&>div]:bg-amber-500'
-                              : '[&>div]:bg-red-500'
-                        }`}
-                      />
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {current} / {target}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-8 col-span-full">
-                  <Target className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No goal progress data yet.</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Create goals and track activities to see progress here.
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 col-span-full">
+                    <Target className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No goal progress data yet.</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Create goals and track activities to see progress here.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Existing tabs and sections remain below */}
+          {/* Existing tabs and sections remain below */}
+        </QueryStates>
       </div>
 
       {/* Assign goals dialog */}
@@ -497,133 +524,147 @@ export default function CrmGoalsDashboard() {
 
 // Manager Insights Component
 function ConversionInsights() {
-  const { data: insights } = useQuery<any[]>({
+  const insightsQuery = useQuery<any[]>({
     queryKey: ['/api/crm/manager-insights'],
   });
+  const insights = insightsQuery.data;
 
-  const { data: conversionAnalysis } = useQuery<any[]>({
+  const conversionQuery = useQuery<any[]>({
     queryKey: ['/api/crm/analytics/conversion-analysis'],
   });
 
-  if (!conversionAnalysis || conversionAnalysis.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-        <p className="text-muted-foreground">No conversion data available yet</p>
-        <p className="text-sm text-muted-foreground mt-2">
-          Data will appear once sales activities are tracked
-        </p>
-      </div>
-    );
-  }
-
-  const analysis = conversionAnalysis[0];
-  const benchmarks = analysis.benchmarks || {};
-
+  // CR-033: this component is the clearest example of the bug the wrapper
+  // exists for. Its only guard was `if (!conversionAnalysis || length === 0)`,
+  // so a FAILED request rendered "No conversion data available yet — data will
+  // appear once sales activities are tracked". A manager reading that concludes
+  // their reps logged nothing. Same words, now only when the request actually
+  // succeeded and came back empty.
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4">
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Call Answer Rate</span>
-            <span className="text-sm text-muted-foreground">
-              {benchmarks.callAnswerRate?.current || 0}% / {benchmarks.callAnswerRate?.target || 30}
-              %
-            </span>
-          </div>
-          <Progress
-            value={Math.min(100, benchmarks.callAnswerRate?.current || 0)}
-            className="h-2"
-          />
-          <p className="text-xs text-muted-foreground">Industry benchmark: 25-35%</p>
+    <QueryState
+      query={conversionQuery}
+      errorTitle="Could not load conversion analysis"
+      empty={
+        <div className="text-center py-8">
+          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+          <p className="text-muted-foreground">No conversion data available yet</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Data will appear once sales activities are tracked
+          </p>
         </div>
-
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Email Response Rate</span>
-            <span className="text-sm text-muted-foreground">
-              {benchmarks.emailResponseRate?.current || 0}% /{' '}
-              {benchmarks.emailResponseRate?.target || 20}%
-            </span>
-          </div>
-          <Progress
-            value={Math.min(100, benchmarks.emailResponseRate?.current || 0)}
-            className="h-2"
-          />
-          <p className="text-xs text-muted-foreground">Industry benchmark: 15-25%</p>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Activity → Meeting %</span>
-            <span className="text-sm text-muted-foreground">
-              {benchmarks.activityToMeetingRate?.current || 0}% /{' '}
-              {benchmarks.activityToMeetingRate?.target || 12}%
-            </span>
-          </div>
-          <Progress
-            value={Math.min(100, benchmarks.activityToMeetingRate?.current || 0)}
-            className="h-2"
-          />
-          <p className="text-xs text-muted-foreground">Industry benchmark: 8-15%</p>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Meeting → Proposal %</span>
-            <span className="text-sm text-muted-foreground">
-              {benchmarks.meetingToProposalRate?.current || 0}% /{' '}
-              {benchmarks.meetingToProposalRate?.target || 40}%
-            </span>
-          </div>
-          <Progress
-            value={Math.min(100, benchmarks.meetingToProposalRate?.current || 0)}
-            className="h-2"
-          />
-          <p className="text-xs text-muted-foreground">Industry benchmark: 30-50%</p>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Proposal Closing %</span>
-            <span className="text-sm text-muted-foreground">
-              {benchmarks.proposalClosingRate?.current || 0}% /{' '}
-              {benchmarks.proposalClosingRate?.target || 25}%
-            </span>
-          </div>
-          <Progress
-            value={Math.min(100, benchmarks.proposalClosingRate?.current || 0)}
-            className="h-2"
-          />
-          <p className="text-xs text-muted-foreground">Industry benchmark: 20-30%</p>
-        </div>
-      </div>
-
-      {insights && insights.length > 0 && (
-        <div className="mt-6 space-y-3">
-          <h4 className="font-medium flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
-            Key Insights
-          </h4>
-          {insights.slice(0, 2).map((insight: any, index: number) => (
-            <div key={index} className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-              <p className="text-sm font-medium text-orange-800">{insight.insightTitle}</p>
-              <p className="text-xs text-orange-600 mt-1">{insight.insightDescription}</p>
-              {insight.recommendedActions && insight.recommendedActions.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-xs font-medium text-orange-700">Recommended Actions:</p>
-                  <ul className="text-xs text-orange-600 mt-1 space-y-1">
-                    {insight.recommendedActions.slice(0, 2).map((action: any, idx: number) => (
-                      <li key={idx}>• {action.action}</li>
-                    ))}
-                  </ul>
+      }
+    >
+      {(conversionAnalysis) => {
+        const analysis = conversionAnalysis[0];
+        const benchmarks = analysis.benchmarks || {};
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Call Answer Rate</span>
+                  <span className="text-sm text-muted-foreground">
+                    {benchmarks.callAnswerRate?.current || 0}% /{' '}
+                    {benchmarks.callAnswerRate?.target || 30}%
+                  </span>
                 </div>
-              )}
+                <Progress
+                  value={Math.min(100, benchmarks.callAnswerRate?.current || 0)}
+                  className="h-2"
+                />
+                <p className="text-xs text-muted-foreground">Industry benchmark: 25-35%</p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Email Response Rate</span>
+                  <span className="text-sm text-muted-foreground">
+                    {benchmarks.emailResponseRate?.current || 0}% /{' '}
+                    {benchmarks.emailResponseRate?.target || 20}%
+                  </span>
+                </div>
+                <Progress
+                  value={Math.min(100, benchmarks.emailResponseRate?.current || 0)}
+                  className="h-2"
+                />
+                <p className="text-xs text-muted-foreground">Industry benchmark: 15-25%</p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Activity → Meeting %</span>
+                  <span className="text-sm text-muted-foreground">
+                    {benchmarks.activityToMeetingRate?.current || 0}% /{' '}
+                    {benchmarks.activityToMeetingRate?.target || 12}%
+                  </span>
+                </div>
+                <Progress
+                  value={Math.min(100, benchmarks.activityToMeetingRate?.current || 0)}
+                  className="h-2"
+                />
+                <p className="text-xs text-muted-foreground">Industry benchmark: 8-15%</p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Meeting → Proposal %</span>
+                  <span className="text-sm text-muted-foreground">
+                    {benchmarks.meetingToProposalRate?.current || 0}% /{' '}
+                    {benchmarks.meetingToProposalRate?.target || 40}%
+                  </span>
+                </div>
+                <Progress
+                  value={Math.min(100, benchmarks.meetingToProposalRate?.current || 0)}
+                  className="h-2"
+                />
+                <p className="text-xs text-muted-foreground">Industry benchmark: 30-50%</p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Proposal Closing %</span>
+                  <span className="text-sm text-muted-foreground">
+                    {benchmarks.proposalClosingRate?.current || 0}% /{' '}
+                    {benchmarks.proposalClosingRate?.target || 25}%
+                  </span>
+                </div>
+                <Progress
+                  value={Math.min(100, benchmarks.proposalClosingRate?.current || 0)}
+                  className="h-2"
+                />
+                <p className="text-xs text-muted-foreground">Industry benchmark: 20-30%</p>
+              </div>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
+
+            {insights && insights.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <h4 className="font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  Key Insights
+                </h4>
+                {insights.slice(0, 2).map((insight: any, index: number) => (
+                  <div key={index} className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <p className="text-sm font-medium text-orange-800">{insight.insightTitle}</p>
+                    <p className="text-xs text-orange-600 mt-1">{insight.insightDescription}</p>
+                    {insight.recommendedActions && insight.recommendedActions.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs font-medium text-orange-700">Recommended Actions:</p>
+                        <ul className="text-xs text-orange-600 mt-1 space-y-1">
+                          {insight.recommendedActions
+                            .slice(0, 2)
+                            .map((action: any, idx: number) => (
+                              <li key={idx}>• {action.action}</li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }}
+    </QueryState>
   );
 }
 

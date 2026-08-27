@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { QueryState, QueryStates } from '@/components/ui/query-state';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -84,20 +85,30 @@ export default function AdminCommandCenter() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
 
   // Fetch system data
-  const { data: systemOverview, refetch: refetchOverview } = useQuery<AdminOverview>({
+  const overviewQuery = useQuery<AdminOverview>({
     queryKey: ['/api/root-admin/overview'],
     refetchInterval: 30000,
   });
+  const refetchOverview = overviewQuery.refetch;
 
-  const { data: systemResources } = useQuery<SystemMetric[]>({
+  const resourcesQuery = useQuery<SystemMetric[]>({
     queryKey: ['/api/root-admin/system-resources'],
     refetchInterval: 15000,
   });
 
-  const { data: pendingTasks } = useQuery<PendingTask[]>({
+  const tasksQuery = useQuery<PendingTask[]>({
     queryKey: ['/api/root-admin/pending-tasks'],
     refetchInterval: 30000,
   });
+
+  // CR-033: these three kept only `.data`. Only two of the four tabs consume
+  // them, so the wrappers below sit INSIDE those tabs rather than around the
+  // whole page — Quick Actions and Guided Workflows are static admin controls
+  // and must stay usable when a poll fails.
+  const systemOverview = overviewQuery.data;
+  const systemResources = resourcesQuery.data;
+  // No `pendingTasks` const: the Pending Tasks tab now reads its rows from the
+  // QueryState render prop, which is the only place they are defined.
 
   // Quick Actions Configuration
   const quickActions: QuickAction[] = [
@@ -404,134 +415,158 @@ export default function AdminCommandCenter() {
                 </CardTitle>
                 <CardDescription>Review and action items requiring admin attention</CardDescription>
               </CardHeader>
+              {/* CR-033: the only guard here was `pendingTasks && length > 0`,
+                  so a FAILED poll rendered a green check and "All caught up! No
+                  pending administrative tasks" — an active all-clear, on the
+                  page an admin opens to find out what needs attention. Same
+                  words now only when the request actually succeeded and the
+                  queue is genuinely empty. */}
               <CardContent className="space-y-3">
-                {pendingTasks && pendingTasks.length > 0 ? (
-                  pendingTasks.map((task: PendingTask) => (
-                    <div
-                      key={task.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                    >
-                      <div className="flex items-center gap-4 flex-1">
-                        <Badge className={getUrgencyColor(task.urgency)}>{task.urgency}</Badge>
-                        <div className="flex-1">
-                          <p className="font-medium">{task.type}</p>
-                          <p className="text-sm text-gray-600">{task.description}</p>
-                        </div>
-                        <Badge variant="outline">{task.count} items</Badge>
-                      </div>
-                      <Button size="sm" variant="outline">
-                        {task.action}
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
+                <QueryState
+                  query={tasksQuery}
+                  errorTitle="Could not load pending tasks"
+                  empty={
+                    <div className="text-center py-8 text-gray-500">
+                      <CheckCircle className="w-12 h-12 mx-auto mb-2 text-green-600" />
+                      <p className="font-medium">All caught up!</p>
+                      <p className="text-sm">No pending administrative tasks</p>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <CheckCircle className="w-12 h-12 mx-auto mb-2 text-green-600" />
-                    <p className="font-medium">All caught up!</p>
-                    <p className="text-sm">No pending administrative tasks</p>
-                  </div>
-                )}
+                  }
+                >
+                  {(tasks) => (
+                    <>
+                      {tasks && tasks.length > 0
+                        ? tasks.map((task: PendingTask) => (
+                            <div
+                              key={task.id}
+                              className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                            >
+                              <div className="flex items-center gap-4 flex-1">
+                                <Badge className={getUrgencyColor(task.urgency)}>
+                                  {task.urgency}
+                                </Badge>
+                                <div className="flex-1">
+                                  <p className="font-medium">{task.type}</p>
+                                  <p className="text-sm text-gray-600">{task.description}</p>
+                                </div>
+                                <Badge variant="outline">{task.count} items</Badge>
+                              </div>
+                              <Button size="sm" variant="outline">
+                                {task.action}
+                                <ArrowRight className="w-4 h-4 ml-2" />
+                              </Button>
+                            </div>
+                          ))
+                        : null}
+                    </>
+                  )}
+                </QueryState>
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* Real-Time Monitoring Tab */}
           <TabsContent value="monitoring" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {systemResources &&
-                systemResources.map((resource: SystemMetric, idx: number) => (
-                  <Card key={idx}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {getResourceIcon(resource.name)}
-                          <CardTitle className="text-base">{resource.name}</CardTitle>
-                        </div>
-                        {getStatusIcon(resource.status)}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-bold">{resource.value}</span>
-                          <span className="text-sm text-gray-500">{resource.unit}</span>
-                        </div>
-                        {resource.threshold && (
-                          <>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full ${
-                                  resource.status === 'normal'
-                                    ? 'bg-green-600'
-                                    : resource.status === 'warning'
-                                      ? 'bg-yellow-600'
-                                      : 'bg-red-600'
-                                }`}
-                                style={{
-                                  width: `${Math.min(
-                                    (Number(resource.value) / resource.threshold) * 100,
-                                    100,
-                                  )}%`,
-                                }}
-                              />
-                            </div>
-                            <p className="text-xs text-gray-500">
-                              Threshold: {resource.threshold}
-                              {resource.unit}
-                            </p>
-                          </>
-                        )}
-                        <Badge
-                          variant="outline"
-                          className={
-                            resource.status === 'normal'
-                              ? 'border-green-200 text-green-700'
-                              : resource.status === 'warning'
-                                ? 'border-yellow-200 text-yellow-700'
-                                : 'border-red-200 text-red-700'
-                          }
-                        >
-                          {resource.status}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-            </div>
-
-            {/* System Health Summary */}
-            <Card
-              className={
-                systemOverview?.systemHealth === 'healthy'
-                  ? 'border-green-200 bg-green-50'
-                  : 'border-orange-200 bg-orange-50'
-              }
+            <QueryStates
+              queries={[overviewQuery, resourcesQuery]}
+              errorTitle="Could not load system monitoring"
+              className="py-6"
             >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {systemOverview?.systemHealth === 'healthy' ? (
-                      <CheckCircle className="w-6 h-6 text-green-600" />
-                    ) : (
-                      <AlertTriangle className="w-6 h-6 text-orange-600" />
-                    )}
-                    <div>
-                      <p className="font-bold text-lg">
-                        {systemOverview?.systemHealth === 'healthy'
-                          ? 'All Systems Operational'
-                          : 'Attention Required'}
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        {systemOverview?.systemUptime}% uptime • {systemOverview?.activeUsers}{' '}
-                        active users
-                      </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {systemResources &&
+                  systemResources.map((resource: SystemMetric, idx: number) => (
+                    <Card key={idx}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {getResourceIcon(resource.name)}
+                            <CardTitle className="text-base">{resource.name}</CardTitle>
+                          </div>
+                          {getStatusIcon(resource.status)}
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-3xl font-bold">{resource.value}</span>
+                            <span className="text-sm text-gray-500">{resource.unit}</span>
+                          </div>
+                          {resource.threshold && (
+                            <>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full ${
+                                    resource.status === 'normal'
+                                      ? 'bg-green-600'
+                                      : resource.status === 'warning'
+                                        ? 'bg-yellow-600'
+                                        : 'bg-red-600'
+                                  }`}
+                                  style={{
+                                    width: `${Math.min(
+                                      (Number(resource.value) / resource.threshold) * 100,
+                                      100,
+                                    )}%`,
+                                  }}
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                Threshold: {resource.threshold}
+                                {resource.unit}
+                              </p>
+                            </>
+                          )}
+                          <Badge
+                            variant="outline"
+                            className={
+                              resource.status === 'normal'
+                                ? 'border-green-200 text-green-700'
+                                : resource.status === 'warning'
+                                  ? 'border-yellow-200 text-yellow-700'
+                                  : 'border-red-200 text-red-700'
+                            }
+                          >
+                            {resource.status}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+              </div>
+
+              {/* System Health Summary */}
+              <Card
+                className={
+                  systemOverview?.systemHealth === 'healthy'
+                    ? 'border-green-200 bg-green-50'
+                    : 'border-orange-200 bg-orange-50'
+                }
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {systemOverview?.systemHealth === 'healthy' ? (
+                        <CheckCircle className="w-6 h-6 text-green-600" />
+                      ) : (
+                        <AlertTriangle className="w-6 h-6 text-orange-600" />
+                      )}
+                      <div>
+                        <p className="font-bold text-lg">
+                          {systemOverview?.systemHealth === 'healthy'
+                            ? 'All Systems Operational'
+                            : 'Attention Required'}
+                        </p>
+                        <p className="text-sm text-gray-700">
+                          {systemOverview?.systemUptime}% uptime • {systemOverview?.activeUsers}{' '}
+                          active users
+                        </p>
+                      </div>
                     </div>
+                    <Button variant="outline">View Details</Button>
                   </div>
-                  <Button variant="outline">View Details</Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </QueryStates>
           </TabsContent>
 
           {/* Guided Workflows Tab */}
