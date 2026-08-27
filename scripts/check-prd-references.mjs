@@ -102,12 +102,36 @@ for (const story of prd.userStories ?? []) {
   }
 }
 
-// Guidance documents, scanned whole: unlike a story, every path in these is an
-// instruction to go and look at something.
-for (const doc of ['CLAUDE.md']) {
-  const abs = join(repoRoot, doc);
-  if (!existsSync(abs)) continue;
-  for (const p of pathsIn(readFileSync(abs, 'utf8'))) {
+/**
+ * Guidance documents, scanned whole: unlike a story, every path in these is an
+ * instruction to go and look at something now.
+ *
+ * The set is CLAUDE.md plus the PROSE docs it sends you to, resolved from
+ * CLAUDE.md itself rather than hardcoded, so a doc added to the guidance chain
+ * is watched without anyone remembering to list it here.
+ *
+ * Two deliberate exclusions:
+ *   - docs/*.json baselines. They are machine-managed lists, not instructions,
+ *     and their own tools regenerate them; a path leaving one is that tool's
+ *     business, not a broken reference.
+ *   - Everything else under docs/. 172 of the 946 paths across those 118 files
+ *     do not resolve, and that is mostly correct: they are historical records —
+ *     implementation plans, phase reports, and sunset-route-inventory.md, whose
+ *     whole PURPOSE is naming routes that were retired (50 unresolved of 209).
+ *     Baselining those would bury the signal under entries that are right.
+ */
+function guidanceDocs() {
+  const docs = ['CLAUDE.md'];
+  const claudeMd = join(repoRoot, 'CLAUDE.md');
+  if (!existsSync(claudeMd)) return docs;
+  for (const p of pathsIn(readFileSync(claudeMd, 'utf8'))) {
+    if (p.startsWith('docs/') && p.endsWith('.md') && existsSync(join(repoRoot, p))) docs.push(p);
+  }
+  return [...new Set(docs)];
+}
+
+for (const doc of guidanceDocs()) {
+  for (const p of pathsIn(readFileSync(join(repoRoot, doc), 'utf8'))) {
     if (!resolves(p)) findings.push(`${doc} ${p}`);
   }
 }
