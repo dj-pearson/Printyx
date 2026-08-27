@@ -21,7 +21,6 @@
     "GET /api/product-models/:id (server/routes-products-crud.ts)",
     "GET /api/product-models/categories (server/routes-product-models.ts)",
     "GET /api/product-models/dashboard (server/routes-product-models.ts)",
-    "GET /api/product-models/low-stock (server/routes-product-models.ts)",
     "GET /api/product-models/manufacturers (server/routes-product-models.ts)",
     "GET /api/purchase-orders (server/routes-products-crud.ts)",
     "GET /api/purchase-orders (server/routes-purchase-orders.ts)",
@@ -41,7 +40,6 @@
     "PATCH /api/managed-services/:id (server/routes-products-crud.ts)",
     "PATCH /api/product-accessories/:id (server/routes-products-crud.ts)",
     "PATCH /api/product-models/:id (server/routes-products-crud.ts)",
-    "PATCH /api/product-models/bulk-stock-update (server/routes-product-models.ts)",
     "PATCH /api/professional-services/:id (server/routes-products-crud.ts)",
     "PATCH /api/purchase-orders/:id/status (server/routes-purchase-orders.ts)",
     "PATCH /api/supplies/:id (server/routes-products-crud.ts)",
@@ -64,7 +62,6 @@
     "POST /api/salesforce/preview-transform (server/routes-salesforce-integration.ts)",
     "POST /api/supplies (server/routes-products-crud.ts)",
     "POST /api/technician-management/technicians (server/routes-technician-management.ts)",
-    "PUT /api/product-models/:id (server/routes-product-models.ts)",
     "PUT /api/purchase-order-items/:id (server/routes-purchase-orders.ts)",
     "PUT /api/purchase-orders/:id (server/routes-purchase-orders.ts)",
     "PUT /api/technician-management/technicians/:id (server/routes-technician-management.ts)"
