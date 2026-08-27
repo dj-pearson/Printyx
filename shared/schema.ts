@@ -8727,6 +8727,43 @@ export type {
   InsertContentCitation,
 } from './content-marketing-schema';
 
+// Re-export Lead Scoring schemas (QUALITY-002)
+//
+// These are the TENANT-scoped lead-scoring tables. They were the only feature
+// schema in shared/ that shared/schema.ts did not re-export, so they were absent
+// from the drizzle relational schema and db.query.leadScoringRules was
+// undefined — which is how auto-lead-routing-service ended up importing the
+// platform_* tables of similar names under these aliases instead.
+export {
+  leadScoringRules,
+  leadScoringFactors,
+  bantQualificationCriteria,
+  leadScoreCalculations,
+  leadQualificationHistory,
+  leadEngagementTracking,
+  insertLeadScoringRuleSchema,
+  insertLeadScoringFactorSchema,
+  insertBantQualificationSchema,
+  insertLeadScoreCalculationSchema,
+  insertLeadQualificationHistorySchema,
+  insertLeadEngagementTrackingSchema,
+} from './lead-scoring-schema';
+
+export type {
+  LeadScoringRule,
+  InsertLeadScoringRule,
+  LeadScoringFactor,
+  InsertLeadScoringFactor,
+  BantQualificationCriteria,
+  InsertBantQualification,
+  LeadScoreCalculation,
+  InsertLeadScoreCalculation,
+  LeadQualificationHistory,
+  InsertLeadQualificationHistory,
+  LeadEngagementTracking,
+  InsertLeadEngagementTracking,
+} from './lead-scoring-schema';
+
 // Re-export Lead Assignment schemas
 export {
   salesTerritories,
