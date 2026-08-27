@@ -1,18 +1,47 @@
 import { useMemo } from 'react';
 import { TrendingDown } from 'lucide-react';
 
+/**
+ * CR-034: averageDealSize and conversionRate are OPTIONAL, because the report
+ * that feeds this funnel does not return them.
+ *
+ * /reports/sales/personal/pipeline aggregates to { stage, count, totalValue,
+ * weightedValue } and nothing more, so both fields arrived as undefined and the
+ * detailed view rendered `Avg: $NaN` and a conversion badge that never showed.
+ * That was invisible while the query was untyped and the values flowed through
+ * as `any`. Both are derivable from what IS returned, so they are computed here
+ * when absent rather than demanded of the caller.
+ */
 interface PipelineStage {
   stage: string;
   count: number;
   totalValue: number;
   weightedValue: number;
-  averageDealSize: number;
-  conversionRate: number;
+  averageDealSize?: number;
+  conversionRate?: number;
 }
 
 interface PipelineFunnelProps {
   stages: PipelineStage[];
   detailed?: boolean;
+}
+
+/** Mean deal size for a stage, from the two fields the report does return. */
+function averageDealSize(stage: PipelineStage): number {
+  if (stage.averageDealSize !== undefined) return stage.averageDealSize;
+  return stage.count > 0 ? stage.totalValue / stage.count : 0;
+}
+
+/**
+ * Share of the FIRST stage's deals that reached this one. The component already
+ * computed exactly this inline for its percentage column; it is now the single
+ * definition, so the badge and the column cannot disagree.
+ */
+function conversionRateFor(stages: PipelineStage[], index: number): number {
+  const stage = stages[index];
+  if (stage.conversionRate !== undefined) return stage.conversionRate;
+  const first = stages[0]?.count ?? 0;
+  return first > 0 ? (stage.count / first) * 100 : 0;
 }
 
 export default function PipelineFunnel({ stages, detailed = false }: PipelineFunnelProps) {
@@ -65,6 +94,7 @@ export default function PipelineFunnel({ stages, detailed = false }: PipelineFun
       {stages.map((stage, index) => {
         const widthPercent = getWidthPercent(stage.totalValue);
         const isLastStage = index === stages.length - 1;
+        const conversion = conversionRateFor(stages, index);
 
         return (
           <div key={stage.stage} className="relative">
@@ -85,7 +115,7 @@ export default function PipelineFunnel({ stages, detailed = false }: PipelineFun
                   <div className="font-bold text-lg">{formatCurrency(stage.totalValue)}</div>
                   {detailed && (
                     <div className="text-xs opacity-90">
-                      Avg: {formatCurrency(stage.averageDealSize)}
+                      Avg: {formatCurrency(averageDealSize(stage))}
                     </div>
                   )}
                 </div>
@@ -93,18 +123,18 @@ export default function PipelineFunnel({ stages, detailed = false }: PipelineFun
             </div>
 
             {/* Conversion rate arrow (between stages) */}
-            {!isLastStage && stage.conversionRate > 0 && (
+            {!isLastStage && conversion > 0 && (
               <div className="absolute -bottom-2 left-4 bg-background border border-border rounded px-2 py-0.5 text-xs font-medium z-10">
                 <span
                   className={
-                    stage.conversionRate >= 50
+                    conversion >= 50
                       ? 'text-green-600'
-                      : stage.conversionRate >= 25
+                      : conversion >= 25
                         ? 'text-yellow-600'
                         : 'text-red-600'
                   }
                 >
-                  {stage.conversionRate.toFixed(0)}%
+                  {conversion.toFixed(0)}%
                 </span>
                 <span className="text-muted-foreground ml-1">→</span>
               </div>
@@ -121,21 +151,21 @@ export default function PipelineFunnel({ stages, detailed = false }: PipelineFun
                   <span className="font-medium">Conversion:</span>{' '}
                   <span
                     className={
-                      stage.conversionRate >= 50
+                      conversion >= 50
                         ? 'text-green-600'
-                        : stage.conversionRate >= 25
+                        : conversion >= 25
                           ? 'text-yellow-600'
                           : 'text-red-600'
                     }
                   >
-                    {stage.conversionRate > 0 ? `${stage.conversionRate.toFixed(1)}%` : 'N/A'}
+                    {conversion > 0 ? `${conversion.toFixed(1)}%` : 'N/A'}
                   </span>
                 </div>
                 <div>
                   <span className="font-medium">Win Rate:</span>{' '}
-                  {stage.stage === 'Closed Won'
-                    ? '100%'
-                    : `${((stage.count / stages[0].count) * 100).toFixed(1)}%`}
+                  {/* CR-034: same derivation as the badge above, and it divided
+                      by stages[0].count without guarding an empty first stage. */}
+                  {stage.stage === 'Closed Won' ? '100%' : `${conversion.toFixed(1)}%`}
                 </div>
               </div>
             )}

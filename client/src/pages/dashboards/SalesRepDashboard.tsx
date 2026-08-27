@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,10 +17,24 @@ import {
 } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
+import type {
+  PersonalActivityReport,
+  PersonalCommissionsReport,
+  PersonalPipelineReport,
+  PersonalQuotaReport,
+  SalesLeaderboardReport,
+} from '@/types/sales-reports';
 import PipelineFunnel from '@/components/reports/sales/PipelineFunnel';
 import QuotaGauge from '@/components/reports/sales/QuotaGauge';
 import ActivityChart from '@/components/reports/sales/ActivityChart';
 import LeaderboardTable from '@/components/reports/sales/LeaderboardTable';
+
+/** 'Dana Whitfield' -> 'DW'. Falls back to '?' rather than rendering an empty avatar. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+}
 
 interface DateRange {
   from: Date;
@@ -38,7 +52,7 @@ export default function SalesRepDashboard() {
     data: pipelineData,
     isLoading: pipelineLoading,
     refetch: refetchPipeline,
-  } = useQuery({
+  } = useQuery<PersonalPipelineReport>({
     queryKey: ['reports', 'sales', 'personal', 'pipeline', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -50,13 +64,13 @@ export default function SalesRepDashboard() {
   });
 
   // Fetch quota data
-  const { data: quotaData, isLoading: quotaLoading } = useQuery({
+  const { data: quotaData, isLoading: quotaLoading } = useQuery<PersonalQuotaReport>({
     queryKey: ['reports', 'sales', 'personal', 'quota', 'current'],
     queryFn: () => apiRequest('/api/reports/sales/personal/quota?period=current'),
   });
 
   // Fetch activity data
-  const { data: activityData, isLoading: activityLoading } = useQuery({
+  const { data: activityData, isLoading: activityLoading } = useQuery<PersonalActivityReport>({
     queryKey: ['reports', 'sales', 'personal', 'activity', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -69,19 +83,51 @@ export default function SalesRepDashboard() {
   });
 
   // Fetch leaderboard data
-  const { data: leaderboardData, isLoading: leaderboardLoading } = useQuery({
-    queryKey: ['reports', 'sales', 'personal', 'leaderboard', 'revenue', 'location'],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        metric: 'revenue',
-        scope: 'location',
-      });
-      return apiRequest(`/api/reports/sales/personal/leaderboard?${params}`);
+  const { data: leaderboardData, isLoading: leaderboardLoading } = useQuery<SalesLeaderboardReport>(
+    {
+      queryKey: ['reports', 'sales', 'personal', 'leaderboard', 'revenue', 'location'],
+      queryFn: async () => {
+        const params = new URLSearchParams({
+          metric: 'revenue',
+          scope: 'location',
+        });
+        return apiRequest(`/api/reports/sales/personal/leaderboard?${params}`);
+      },
     },
-  });
+  );
+
+  /**
+   * CR-034: the report and the table did not share a shape, and nothing said so
+   * while the query was untyped.
+   *
+   * /reports/sales/personal/leaderboard returns
+   * { userId, userName, revenue, deals, pipeline, activities, rank }.
+   * LeaderboardTable wants { userInitials, metricValue, metricLabel,
+   * dealsClosed, pipelineValue }. Only userId, userName and rank overlapped, so
+   * against live data every avatar showed blank initials and every metric cell
+   * showed nothing — the podium at the top of the tab reads userInitials
+   * directly. `metric` comes back on the response, so the label is the server's
+   * word for it rather than a hardcoded guess.
+   */
+  const leaderboardRows = useMemo(() => {
+    const metric = leaderboardData?.metric ?? 'revenue';
+    const metricLabel =
+      metric === 'revenue' ? 'Revenue' : metric === 'deals' ? 'Deals' : 'Pipeline';
+    return (leaderboardData?.leaderboard ?? []).map((entry) => ({
+      userId: entry.userId,
+      userName: entry.userName,
+      userInitials: initialsOf(entry.userName),
+      rank: entry.rank,
+      metricValue:
+        metric === 'deals' ? entry.deals : metric === 'pipeline' ? entry.pipeline : entry.revenue,
+      metricLabel,
+      dealsClosed: entry.deals,
+      pipelineValue: entry.pipeline,
+    }));
+  }, [leaderboardData]);
 
   // Fetch commission data
-  const { data: commissionData } = useQuery({
+  const { data: commissionData } = useQuery<PersonalCommissionsReport>({
     queryKey: ['reports', 'sales', 'personal', 'commissions', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -184,9 +230,14 @@ export default function SalesRepDashboard() {
                 ? `${quotaData.quota.attainmentPercent.toFixed(0)}%`
                 : '0%'}
             </div>
+            {/* CR-034: the optional chain used to sit INSIDE the division, so
+                with no quota data this computed undefined / 1000 = NaN and the
+                `|| 0` quietly turned that into a zero. It read as "you have
+                billed nothing" when the truth was "the report has not loaded".
+                Typing the query is what made it visible. */}
             <p className="text-xs text-muted-foreground">
-              ${(quotaData?.quota?.actualRevenue / 1000 || 0).toFixed(0)}K of $
-              {(quotaData?.quota?.quotaAmount / 1000 || 0).toFixed(0)}K
+              ${((quotaData?.quota.actualRevenue ?? 0) / 1000).toFixed(0)}K of $
+              {((quotaData?.quota.quotaAmount ?? 0) / 1000).toFixed(0)}K
             </p>
           </CardContent>
         </Card>
@@ -344,7 +395,7 @@ export default function SalesRepDashboard() {
                 </div>
               ) : (
                 <LeaderboardTable
-                  leaderboard={leaderboardData?.leaderboard || []}
+                  leaderboard={leaderboardRows}
                   currentUserId={leaderboardData?.myPosition?.userId}
                 />
               )}
