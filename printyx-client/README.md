@@ -208,17 +208,17 @@ range. To run unattended:
 
 What the installer does:
 
-| Step | Result |
-| --- | --- |
-| Ensures Node.js >= 18 | auto-installs Node LTS (winget → MSI) if missing |
-| Picks bundle mode when `printyx-client.cjs` is present | skips npm install + TypeScript build entirely |
-| Validates the endpoint over TCP/443 before writing config | catches DNS/firewall errors early |
-| Copies the agent to `C:\Program Files\Printyx\Client` | single `.cjs` in bundle mode; `dist/` + `node_modules` in source mode |
-| Writes `C:\ProgramData\Printyx\config.json` | NTFS ACL: Administrators + SYSTEM only |
-| Downloads NSSM (https://nssm.cc) and registers `PrintyxClient` service | runs as `NetworkService`, auto-start, auto-restart, 10 MB log rotation |
-| Adds outbound firewall rule | agent → TCP/443 only |
-| Starts the service and confirms it is `Running` | |
-| Runs a post-install self-test | one discovery+collect cycle; reports "N/M printers reporting" to the platform UI |
+| Step                                                                   | Result                                                                           |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Ensures Node.js >= 18                                                  | auto-installs Node LTS (winget → MSI) if missing                                 |
+| Picks bundle mode when `printyx-client.cjs` is present                 | skips npm install + TypeScript build entirely                                    |
+| Validates the endpoint over TCP/443 before writing config              | catches DNS/firewall errors early                                                |
+| Copies the agent to `C:\Program Files\Printyx\Client`                  | single `.cjs` in bundle mode; `dist/` + `node_modules` in source mode            |
+| Writes `C:\ProgramData\Printyx\config.json`                            | NTFS ACL: Administrators + SYSTEM only                                           |
+| Downloads NSSM (https://nssm.cc) and registers `PrintyxClient` service | runs as `NetworkService`, auto-start, auto-restart, 10 MB log rotation           |
+| Adds outbound firewall rule                                            | agent → TCP/443 only                                                             |
+| Starts the service and confirms it is `Running`                        |                                                                                  |
+| Runs a post-install self-test                                          | one discovery+collect cycle; reports "N/M printers reporting" to the platform UI |
 
 After install:
 

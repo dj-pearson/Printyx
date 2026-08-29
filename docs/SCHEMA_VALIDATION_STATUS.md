@@ -8,16 +8,18 @@
 ## 📊 **Summary**
 
 ### ✅ **What We Fixed**
+
 - **764 Column Name Case Mismatches** - Converted camelCase → snake_case
 - **166 Files Modified** - Automated fixes applied successfully
 - **1 Import Path Fixed** - `subscriptionPlans` import corrected in `server/update-stripe-ids.ts`
 
 ### 📉 **Progress**
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Total Issues** | 3,268 | 3,217 | -51 (1.6%) |
-| **Errors** | 2,248 | 2,248 | 0 |
-| **Warnings** | 1,020 | 969 | -51 (5%) |
+
+| Metric           | Before | After | Improvement |
+| ---------------- | ------ | ----- | ----------- |
+| **Total Issues** | 3,268  | 3,217 | -51 (1.6%)  |
+| **Errors**       | 2,248  | 2,248 | 0           |
+| **Warnings**     | 1,020  | 969   | -51 (5%)    |
 
 ---
 
@@ -43,6 +45,7 @@ The validator is incorrectly flagging valid **Drizzle table objects** as errors.
 ```
 
 #### Schema Definition (Correct):
+
 ```typescript
 // shared/schema.ts
 export const masterProductModels = pgTable('master_product_models', {
@@ -56,6 +59,7 @@ export const masterProductModels = pgTable('master_product_models', {
 ## 🔍 **Validator Limitations**
 
 The current validator:
+
 - ✅ **Correctly** detects case mismatches in column names
 - ❌ **Incorrectly** flags valid Drizzle table object variables as errors
 - ❌ **Doesn't understand** that camelCase variables map to snake_case tables
@@ -78,19 +82,19 @@ The current validator:
 
 These are **NOT errors** despite validator reporting them:
 
-| Variable Name | Schema File | DB Table | Status |
-|---------------|-------------|----------|--------|
-| `masterProductModels` | `shared/schema.ts` | `master_product_models` | ✅ Correct |
-| `masterProductAccessories` | `shared/schema.ts` | `master_product_accessories` | ✅ Correct |
-| `customerPortalAccess` | `shared/customer-portal-schema.ts` | `customer_portal_access` | ✅ Correct |
-| `deviceRegistrations` | `shared/manufacturer-integration-schema.ts` | `device_registrations` | ✅ Correct |
-| `serviceContracts` | `shared/schema.ts` | `service_contracts` | ✅ Correct |
-| `subscriptionPlans` | `shared/schema-subscriptions.ts` | `subscription_plans` | ✅ Correct |
-| `enabledProducts` | `shared/schema.ts` | `enabled_products` | ✅ Correct |
-| `businessRecords` | `shared/schema.ts` | `business_records` | ✅ Correct |
-| `companyContacts` | `shared/schema.ts` | `company_contacts` | ✅ Correct |
-| `serviceTickets` | `shared/schema.ts` | `service_tickets` | ✅ Correct |
-| `meterReadings` | `shared/schema.ts` | `meter_readings` | ✅ Correct |
+| Variable Name              | Schema File                                 | DB Table                     | Status     |
+| -------------------------- | ------------------------------------------- | ---------------------------- | ---------- |
+| `masterProductModels`      | `shared/schema.ts`                          | `master_product_models`      | ✅ Correct |
+| `masterProductAccessories` | `shared/schema.ts`                          | `master_product_accessories` | ✅ Correct |
+| `customerPortalAccess`     | `shared/customer-portal-schema.ts`          | `customer_portal_access`     | ✅ Correct |
+| `deviceRegistrations`      | `shared/manufacturer-integration-schema.ts` | `device_registrations`       | ✅ Correct |
+| `serviceContracts`         | `shared/schema.ts`                          | `service_contracts`          | ✅ Correct |
+| `subscriptionPlans`        | `shared/schema-subscriptions.ts`            | `subscription_plans`         | ✅ Correct |
+| `enabledProducts`          | `shared/schema.ts`                          | `enabled_products`           | ✅ Correct |
+| `businessRecords`          | `shared/schema.ts`                          | `business_records`           | ✅ Correct |
+| `companyContacts`          | `shared/schema.ts`                          | `company_contacts`           | ✅ Correct |
+| `serviceTickets`           | `shared/schema.ts`                          | `service_tickets`            | ✅ Correct |
+| `meterReadings`            | `shared/schema.ts`                          | `meter_readings`             | ✅ Correct |
 
 **All of these are perfectly valid Drizzle usage!**
 
@@ -101,6 +105,7 @@ These are **NOT errors** despite validator reporting them:
 ### 1. Column Name Case Corrections (764 fixes)
 
 **Before:**
+
 ```typescript
 where: eq(users.tenantId, id),           // ❌ Wrong
 orderBy: desc(items.createdAt),          // ❌ Wrong
@@ -108,9 +113,10 @@ select: { firstName: items.firstName }   // ❌ Wrong
 ```
 
 **After:**
+
 ```typescript
 where: eq(users.tenant_id, id),          // ✅ Correct
-orderBy: desc(items.created_at),         // ✅ Correct  
+orderBy: desc(items.created_at),         // ✅ Correct
 select: { firstName: items.first_name }  // ✅ Correct
 ```
 
@@ -119,13 +125,15 @@ select: { firstName: items.first_name }  // ✅ Correct
 **File:** `server/update-stripe-ids.ts`
 
 **Before:**
+
 ```typescript
-import { subscriptionPlans } from '@shared/schema';  // ❌ Wrong file
+import { subscriptionPlans } from '@shared/schema'; // ❌ Wrong file
 ```
 
 **After:**
+
 ```typescript
-import { subscriptionPlans } from '@shared/schema-subscriptions';  // ✅ Correct
+import { subscriptionPlans } from '@shared/schema-subscriptions'; // ✅ Correct
 ```
 
 ---
@@ -135,6 +143,7 @@ import { subscriptionPlans } from '@shared/schema-subscriptions';  // ✅ Correc
 ### Option A: Fix the Validator (Recommended)
 
 Update `tests/schema-validator.ts` to:
+
 1. Parse Drizzle schema exports from `shared/*.ts` files
 2. Build a map of: `camelCaseVariable` → `snake_case_table`
 3. Check if variables are valid Drizzle table objects
@@ -143,12 +152,14 @@ Update `tests/schema-validator.ts` to:
 ### Option B: Ignore False Positives
 
 Accept that the 2,248 "table not found" errors are false positives and focus only on:
+
 - ⚠️ The 969 warnings (these may be real issues)
 - ❌ Any actual import errors or typos
 
 ### Option C: Manual Verification
 
 Since most errors are false positives, verify the remaining warnings manually:
+
 ```bash
 npm run validate:schema
 # Review: tests/SCHEMA_VALIDATION_REPORT.md
@@ -179,12 +190,14 @@ npm run validate:schema
 ### Long-term Solution:
 
 Use **TypeScript type checking** instead of pattern-based validation:
+
 ```bash
 # This will catch REAL type errors
 npm run check  # or: tsc --noEmit
 ```
 
 TypeScript will:
+
 - ✅ Catch actual incorrect table/column references
 - ✅ Understand Drizzle types
 - ✅ Not give false positives
@@ -194,13 +207,13 @@ TypeScript will:
 
 ## 📈 **Success Metrics**
 
-| Achievement | Status |
-|-------------|--------|
-| Automated 764 column case fixes | ✅ Complete |
-| Created backup before changes | ✅ Done |
-| All changes tested (no breakage) | ✅ Working |
+| Achievement                      | Status        |
+| -------------------------------- | ------------- |
+| Automated 764 column case fixes  | ✅ Complete   |
+| Created backup before changes    | ✅ Done       |
+| All changes tested (no breakage) | ✅ Working    |
 | Identified validator limitations | ✅ Documented |
-| Provided clear next steps | ✅ Complete |
+| Provided clear next steps        | ✅ Complete   |
 
 ---
 
@@ -209,12 +222,14 @@ TypeScript will:
 **The schema validation exercise was SUCCESSFUL despite the high error count!**
 
 ### What We Learned:
+
 1. ✅ The codebase is actually **correctly** using Drizzle
 2. ✅ The 764 column fixes we made are **genuinely helpful**
 3. ⚠️ The validator needs improvement to understand Drizzle patterns
 4. ✅ TypeScript type checking is a better solution for validation
 
 ### Codebase Health:
+
 - **Database Schema:** ✅ Properly documented (210 tables, 4,274 columns)
 - **Drizzle Usage:** ✅ Correct pattern usage
 - **Column References:** ✅ Fixed 764 case mismatches
@@ -224,6 +239,6 @@ TypeScript will:
 
 ---
 
-*Generated after automated schema validation and fixing*  
-*Backup Location: `tests/backups/2026-01-27T03-43-16.643Z/`*  
-*Next Validation: Run `npm run validate:schema` after any schema changes*
+_Generated after automated schema validation and fixing_  
+_Backup Location: `tests/backups/2026-01-27T03-43-16.643Z/`_  
+_Next Validation: Run `npm run validate:schema` after any schema changes_

@@ -31,6 +31,7 @@ Branch: `main`
 **Solution:** New `supabase/functions/ai-employee/_workflow.ts` (210 lines). Loads workflow definition (`workflow_steps` + `employee_assignments` from `ai_employee_workflows`), iterates each step, calls the existing `performTaskExecution` exported from `_execute.ts` for AI-employee steps (real Claude calls), records system steps as no-ops, feeds prior step output forward via `task_context.previousResults`, persists per-step success/quality/errors. Updates execution row through `running → completed | failed`. Fire-and-forget dispatch from the handler — clients poll the execution row to observe progress.
 
 **Files touched:**
+
 - `supabase/functions/ai-employee/_execute.ts` — exported `performTaskExecution` + `ExecutionResult`
 - `supabase/functions/ai-employee/_workflow.ts` — new
 - `supabase/functions/ai-employee/handlers/workflows.ts` — replaced stub with `executeWorkflow(db, executionId, tenantId).catch(...)`
@@ -40,6 +41,7 @@ Branch: `main`
 **Problem:** `supabase/functions/meetings/handlers/events.ts` POST/PUT/DELETE wrote only the local `calendar_events` mirror. PRD acceptance: "Events CRUD via local API propagates to Google/Microsoft."
 
 **Solution:** Added `pushInsert`, `pushPatch`, `pushDelete` helpers that:
+
 - Load `calendar_connections` row, validate provider + tokens
 - Convert local row to provider event shape (`localToGoogle` / `localToGraph`)
 - Call provider API through `withAutoRefresh` (existing helpers from `_shared/google.ts` + `_shared/microsoft.ts`)
@@ -103,25 +105,25 @@ supabase/functions/reports/
 
 ### Concrete examples (each verified against `shared/schema.ts`)
 
-| Express expectation | Reality | Where it surfaces |
-|---|---|---|
-| `opportunities.stage` | column is `stage_name` | director, executive, sales (handled via `o.is_won === true \|\| o.stage_name === 'Closed Won'`) |
-| `opportunities.closed_at` | column is `close_date` | director, executive |
-| `opportunities.weighted_amount` | doesn't exist; `expected_revenue` is the closest substitute | director, sales (we fall back to `amount` when `expected_revenue` is null) |
-| `opportunities.deal_type = 'recurring'` | column doesn't exist | executive — ARR/MRR cannot be computed; reported as `null` |
-| `service_calls.first_time_fix` | doesn't exist | director, scoped-service performance — null |
-| `service_calls.sla_status` / `sla_deadline` | doesn't exist | director, scoped-service SLA endpoint — degraded to zeroes |
-| `service_calls.satisfaction_rating` | column is `customer_satisfaction_rating` | director (corrected on read) |
-| `service_calls.technician_id` | column is `assigned_technician_id` | director (corrected on read) |
-| `service_tickets.completed_at` | column is `resolved_at` | service handler |
-| `service_tickets.category`, `resolution_type`, `first_time_fix`, `customer_satisfaction_rating`, `sla_deadline` | none exist | service personal calls — null with `degraded: {...}` |
-| `sales_quotas` table | doesn't exist | director quotaAttainment, sales personal quota, scoped-sales quota — null/zeroes |
-| `commissions` table | doesn't exist | sales personal commissions — empty array |
-| `parts_usage` table | doesn't exist | service personal parts — empty report with `degraded.partsUsageTable: true` |
-| `time_entries` (technician hours) | exists in `shared/task-schema.ts` but is task-scoped only (`task_id` required) | service personal time — empty with `degraded.technicianTimeEntries: true` |
-| `tenants.subscription_plan` / `tenants.status` | actual columns are `plan` + `is_active` + `subscription` | executive platform-admin (corrected on read) |
-| `users.last_login` | column is `last_login_at` | executive platform-admin (corrected) |
-| `executive-reporting-service.ts` hardcoded values: `revenueGrowth: 15.3`, `grossMargin: 65.0`, `nps: 45`, `marketShare: 12.5`, `monthsToRecover: 8`, `system.uptime: 99.95`, `apiResponseTime: 145`, `errorRate: 0.02`, `requestsPerMinute: 1250`, `avgRevenuePerTenant: 2500`, `expansionRevenue: count * 250`, `contractionRevenue: count * 50`, `churnRate: 1.8`, `avgSessionDuration: 28` | the values in source are placeholders, not computed | preserved verbatim for UI compatibility, every one flagged in `degraded: {...}` |
+| Express expectation                                                                                                                                                                                                                                                                                                                                                                           | Reality                                                                        | Where it surfaces                                                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `opportunities.stage`                                                                                                                                                                                                                                                                                                                                                                         | column is `stage_name`                                                         | director, executive, sales (handled via `o.is_won === true \|\| o.stage_name === 'Closed Won'`) |
+| `opportunities.closed_at`                                                                                                                                                                                                                                                                                                                                                                     | column is `close_date`                                                         | director, executive                                                                             |
+| `opportunities.weighted_amount`                                                                                                                                                                                                                                                                                                                                                               | doesn't exist; `expected_revenue` is the closest substitute                    | director, sales (we fall back to `amount` when `expected_revenue` is null)                      |
+| `opportunities.deal_type = 'recurring'`                                                                                                                                                                                                                                                                                                                                                       | column doesn't exist                                                           | executive — ARR/MRR cannot be computed; reported as `null`                                      |
+| `service_calls.first_time_fix`                                                                                                                                                                                                                                                                                                                                                                | doesn't exist                                                                  | director, scoped-service performance — null                                                     |
+| `service_calls.sla_status` / `sla_deadline`                                                                                                                                                                                                                                                                                                                                                   | doesn't exist                                                                  | director, scoped-service SLA endpoint — degraded to zeroes                                      |
+| `service_calls.satisfaction_rating`                                                                                                                                                                                                                                                                                                                                                           | column is `customer_satisfaction_rating`                                       | director (corrected on read)                                                                    |
+| `service_calls.technician_id`                                                                                                                                                                                                                                                                                                                                                                 | column is `assigned_technician_id`                                             | director (corrected on read)                                                                    |
+| `service_tickets.completed_at`                                                                                                                                                                                                                                                                                                                                                                | column is `resolved_at`                                                        | service handler                                                                                 |
+| `service_tickets.category`, `resolution_type`, `first_time_fix`, `customer_satisfaction_rating`, `sla_deadline`                                                                                                                                                                                                                                                                               | none exist                                                                     | service personal calls — null with `degraded: {...}`                                            |
+| `sales_quotas` table                                                                                                                                                                                                                                                                                                                                                                          | doesn't exist                                                                  | director quotaAttainment, sales personal quota, scoped-sales quota — null/zeroes                |
+| `commissions` table                                                                                                                                                                                                                                                                                                                                                                           | doesn't exist                                                                  | sales personal commissions — empty array                                                        |
+| `parts_usage` table                                                                                                                                                                                                                                                                                                                                                                           | doesn't exist                                                                  | service personal parts — empty report with `degraded.partsUsageTable: true`                     |
+| `time_entries` (technician hours)                                                                                                                                                                                                                                                                                                                                                             | exists in `shared/task-schema.ts` but is task-scoped only (`task_id` required) | service personal time — empty with `degraded.technicianTimeEntries: true`                       |
+| `tenants.subscription_plan` / `tenants.status`                                                                                                                                                                                                                                                                                                                                                | actual columns are `plan` + `is_active` + `subscription`                       | executive platform-admin (corrected on read)                                                    |
+| `users.last_login`                                                                                                                                                                                                                                                                                                                                                                            | column is `last_login_at`                                                      | executive platform-admin (corrected)                                                            |
+| `executive-reporting-service.ts` hardcoded values: `revenueGrowth: 15.3`, `grossMargin: 65.0`, `nps: 45`, `marketShare: 12.5`, `monthsToRecover: 8`, `system.uptime: 99.95`, `apiResponseTime: 145`, `errorRate: 0.02`, `requestsPerMinute: 1250`, `avgRevenuePerTenant: 2500`, `expansionRevenue: count * 250`, `contractionRevenue: count * 50`, `churnRate: 1.8`, `avgSessionDuration: 28` | the values in source are placeholders, not computed                            | preserved verbatim for UI compatibility, every one flagged in `degraded: {...}`                 |
 
 ### Why this matters for future ports
 
@@ -139,16 +141,16 @@ Front-end pages depend on the JSON shape. Returning `null` where the UI expects 
 
 These frontend dashboards call `/api/reports/*` endpoints I didn't port:
 
-| Endpoint family | Frontend caller | Likely Express source |
-|---|---|---|
-| `/api/reports/breaches` | `client/src/components/dashboard/BreachDetectionTiles.tsx` + `BreachTiles.tsx` | unknown — grep `routes-*.ts` for `/breaches` |
-| `/api/reports/revenue` | `client/src/lib/role-dashboard-config.ts:104,138` | unknown |
-| `/api/reports/custom`, `/custom/preview` | `client/src/pages/CustomReportBuilder.tsx` | `server/routes-custom-reports.ts` |
-| `/api/reports/financial-summary`, `/payment-alerts`, `/ar-aging`, `/customer-profitability`, `/cash-flow-forecast`, `/territory-financials` | `client/src/pages/FinancialIntelligenceDashboard.tsx` | likely `server/routes-reports.ts` |
-| `/api/reports/sales-reps`, `/team-performance`, `/pipeline-funnel` | `client/src/pages/SalesPerformanceAnalytics.tsx` | likely `server/routes-reports.ts` |
-| `/api/reports/service-forecasts`, `/customer-health` | `client/src/pages/ServiceForecastingAnalytics.tsx` | likely `server/routes-reports.ts` |
-| `/api/kpis/*` | `client/src/lib/role-dashboard-config.ts:152` | `server/routes-reporting.ts` |
-| `/api/reporting/dashboard/summary`, `/api/reporting/exports/*` | grep client | `server/routes-reporting.ts` |
+| Endpoint family                                                                                                                             | Frontend caller                                                                | Likely Express source                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------- |
+| `/api/reports/breaches`                                                                                                                     | `client/src/components/dashboard/BreachDetectionTiles.tsx` + `BreachTiles.tsx` | unknown — grep `routes-*.ts` for `/breaches` |
+| `/api/reports/revenue`                                                                                                                      | `client/src/lib/role-dashboard-config.ts:104,138`                              | unknown                                      |
+| `/api/reports/custom`, `/custom/preview`                                                                                                    | `client/src/pages/CustomReportBuilder.tsx`                                     | `server/routes-custom-reports.ts`            |
+| `/api/reports/financial-summary`, `/payment-alerts`, `/ar-aging`, `/customer-profitability`, `/cash-flow-forecast`, `/territory-financials` | `client/src/pages/FinancialIntelligenceDashboard.tsx`                          | likely `server/routes-reports.ts`            |
+| `/api/reports/sales-reps`, `/team-performance`, `/pipeline-funnel`                                                                          | `client/src/pages/SalesPerformanceAnalytics.tsx`                               | likely `server/routes-reports.ts`            |
+| `/api/reports/service-forecasts`, `/customer-health`                                                                                        | `client/src/pages/ServiceForecastingAnalytics.tsx`                             | likely `server/routes-reports.ts`            |
+| `/api/kpis/*`                                                                                                                               | `client/src/lib/role-dashboard-config.ts:152`                                  | `server/routes-reporting.ts`                 |
+| `/api/reporting/dashboard/summary`, `/api/reporting/exports/*`                                                                              | grep client                                                                    | `server/routes-reporting.ts`                 |
 
 **Find every caller in the frontend (one shot):**
 
@@ -299,6 +301,7 @@ npm run check:deno-schemas
 ```
 
 Expected outputs:
+
 - `git status` → clean
 - 9 case lines in dispatcher: `dashboards`, `director`, `engine`, `executive`, `sales`, `sales-manager`, `sales-supervisor`, `service`, `service-manager`, `service-supervisor`, `team`, `warehouse` (12 total — counted)
 - `degraded:` grep returns ~25 instances across handlers (one per missing field family)
@@ -313,6 +316,7 @@ Expected outputs:
 2. **Reports second tier (4-6 hours)** — port the financial-intelligence + sales-perf-analytics + service-forecasting + custom-report-builder + breach detection endpoints. Schema-audit each table first; expect missing tables (e.g., `payment_alerts`, `ar_aging`, `sales_forecasts` likely don't exist by those names). Same `degraded` pattern as today.
 
 3. **Sunset reports Express files (1 hour)** — once second tier is done, delete:
+
    ```
    server/routes/director-reports-api.ts
    server/routes/executive-reports-api.ts
@@ -332,6 +336,7 @@ Expected outputs:
    server/routes-scheduled-reports.ts
    server/routes-custom-reports.ts
    ```
+
    Plus the corresponding `server/services/*-reporting-service.ts` files. Verify with `grep -r "from '.*<deleted>'" server/` returns zero.
 
 4. **Admin parity audit + structural split (Phase 6 US-024)** — see grep commands above. Likely a 2-session effort given the scale.

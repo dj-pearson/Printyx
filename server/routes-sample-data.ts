@@ -668,8 +668,6 @@ export function registerSampleDataRoutes(app: Express) {
   // customer_health_scores and friends. These three returned hand-built mock
   // objects and never ran.
 
-
-
   // ──────────────────────────────────────────────
   // Remote Monitoring & IoT Integration Routes (Mock)
   // ──────────────────────────────────────────────

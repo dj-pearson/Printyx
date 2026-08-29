@@ -15,12 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import type { CrmFieldDef } from '@/lib/crm-object-registry';
 
@@ -138,9 +133,7 @@ export function AdvancedFilterPanel({
   }, [fields]);
 
   const updateCondition = useCallback((id: string, updates: Partial<FilterCondition>) => {
-    setLocalConditions((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-    );
+    setLocalConditions((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
   }, []);
 
   const removeCondition = useCallback((id: string) => {
@@ -219,7 +212,9 @@ export function AdvancedFilterPanel({
                       {/* Operator selector */}
                       <Select
                         value={condition.operator}
-                        onValueChange={(value) => updateCondition(condition.id, { operator: value })}
+                        onValueChange={(value) =>
+                          updateCondition(condition.id, { operator: value })
+                        }
                       >
                         <SelectTrigger className="h-8 text-xs">
                           <SelectValue />
@@ -240,14 +235,18 @@ export function AdvancedFilterPanel({
                             <Input
                               type="date"
                               value={condition.value || ''}
-                              onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
+                              onChange={(e) =>
+                                updateCondition(condition.id, { value: e.target.value })
+                              }
                               className="h-8 text-xs"
                             />
                           ) : fieldDef?.type === 'number' || fieldDef?.type === 'currency' ? (
                             <Input
                               type="number"
                               value={condition.value || ''}
-                              onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
+                              onChange={(e) =>
+                                updateCondition(condition.id, { value: e.target.value })
+                              }
                               placeholder="Enter value"
                               className="h-8 text-xs"
                             />
@@ -270,7 +269,9 @@ export function AdvancedFilterPanel({
                           ) : (
                             <Input
                               value={condition.value || ''}
-                              onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
+                              onChange={(e) =>
+                                updateCondition(condition.id, { value: e.target.value })
+                              }
                               placeholder="Enter value"
                               className="h-8 text-xs"
                             />

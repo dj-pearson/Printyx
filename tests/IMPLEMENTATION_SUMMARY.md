@@ -17,6 +17,7 @@ A robust TypeScript script that scans your entire codebase and identifies:
 - **Deprecated Patterns** ⚠️ - Outdated database patterns
 
 **Features:**
+
 - Parses 210 tables and 4,274 columns from DATABASE_SCHEMA.md
 - Scans 1,108+ files across your codebase
 - Intelligently filters false positives
@@ -29,10 +30,12 @@ A robust TypeScript script that scans your entire codebase and identifies:
 An automatic fixing tool that can correct common issues:
 
 **Current Run Results:**
+
 - ✅ 0 NEON references found (database already migrated!)
 - ⚠️ 4,540 case mismatches found (324 files affected)
 
 **Features:**
+
 - Dry-run mode by default (safe preview)
 - High-confidence fixes only (unless --auto flag)
 - Automatic backups before making changes
@@ -43,13 +46,13 @@ An automatic fixing tool that can correct common issues:
 
 Created detailed guides for using the toolkit:
 
-| Document | Purpose |
-|----------|---------|
-| `SCHEMA_VALIDATION_QUICKSTART.md` | 3-step quick start guide |
-| `README_SCHEMA_VALIDATOR.md` | Complete reference documentation |
-| `SCHEMA_VALIDATION_REPORT.md` | Generated validation report |
-| `SCHEMA_FIX_REPORT.md` | Generated auto-fix report |
-| `IMPLEMENTATION_SUMMARY.md` | This document |
+| Document                          | Purpose                          |
+| --------------------------------- | -------------------------------- |
+| `SCHEMA_VALIDATION_QUICKSTART.md` | 3-step quick start guide         |
+| `README_SCHEMA_VALIDATOR.md`      | Complete reference documentation |
+| `SCHEMA_VALIDATION_REPORT.md`     | Generated validation report      |
+| `SCHEMA_FIX_REPORT.md`            | Generated auto-fix report        |
+| `IMPLEMENTATION_SUMMARY.md`       | This document                    |
 
 ### 4. npm Scripts
 
@@ -116,6 +119,7 @@ Schema Info:
 ### Phase 2: Test Auto-Fixer (Next)
 
 1. Review the dry-run fix report:
+
    ```bash
    npm run fix:schema
    cat tests/SCHEMA_FIX_REPORT.md
@@ -127,15 +131,19 @@ Schema Info:
 ### Phase 3: Apply Fixes (When Ready)
 
 #### Option A: High-Confidence Fixes Only
+
 ```bash
 npm run fix:schema:apply
 ```
+
 This applies only fixes marked as "high confidence".
 
 #### Option B: All Fixes
+
 ```bash
 npm run fix:schema:auto
 ```
+
 This applies ALL fixes automatically.
 
 **Note:** Both create automatic backups in `tests/backups/<timestamp>/`
@@ -143,6 +151,7 @@ This applies ALL fixes automatically.
 ### Phase 4: Manual Fixes (After Auto-Fix)
 
 1. Re-run validation:
+
    ```bash
    npm run validate:schema
    ```
@@ -209,11 +218,13 @@ npx tsx tests/schema-fixer.ts --apply --auto
 After applying all fixes, you should see:
 
 **Before:**
+
 - 3,511 total issues
 - 2,248 errors
 - 1,263 warnings
 
 **After (Estimated):**
+
 - ~200 total issues (manual review needed)
 - ~50 errors (complex cases)
 - ~150 warnings (ambiguous references)
@@ -223,17 +234,20 @@ After applying all fixes, you should see:
 ### Intelligent Detection
 
 ✅ **Accurate Pattern Matching**
+
 - Only flags actual database references
 - Skips import statements
 - Ignores comments
 - Filters common words/methods
 
 ✅ **Smart Suggestions**
+
 - Detects case variations (camelCase ↔ snake_case)
 - Finds similar table/column names
 - Provides actionable recommendations
 
 ✅ **Comprehensive Coverage**
+
 - Drizzle ORM queries
 - Raw SQL statements
 - Schema definitions
@@ -242,14 +256,17 @@ After applying all fixes, you should see:
 ### Safety Features
 
 ✅ **Dry-Run Default**
+
 - No changes without explicit --apply flag
 - Preview all fixes before applying
 
 ✅ **Automatic Backups**
+
 - All modified files backed up
 - Easy rollback if needed
 
 ✅ **Confidence Levels**
+
 - High: Apply automatically
 - Medium: Review first
 - Low: Manual fix recommended
@@ -259,6 +276,7 @@ After applying all fixes, you should see:
 ### False Positives
 
 Some valid code may be flagged:
+
 1. Dynamic table names (e.g., `db.query[tableName]`)
 2. Template strings with keywords
 3. Property accesses that look like table.column
@@ -268,12 +286,14 @@ Some valid code may be flagged:
 ### Schema Accuracy
 
 The validator relies on `docs/DATABASE_SCHEMA.md` being accurate:
+
 - If schema is outdated, validation will report false errors
 - Regenerate schema regularly: `npm run check:schema`
 
 ### Auto-Fixer Scope
 
 The auto-fixer handles common patterns:
+
 - ✅ NEON → Supabase migrations
 - ✅ Common case mismatches
 - ❌ Complex table references
@@ -284,21 +304,21 @@ The auto-fixer handles common patterns:
 
 ### Implementation Files
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `tests/schema-validator.ts` | ~750 | Main validation engine |
-| `tests/schema-fixer.ts` | ~350 | Auto-fix engine |
-| `tests/README_SCHEMA_VALIDATOR.md` | ~450 | Complete documentation |
-| `tests/SCHEMA_VALIDATION_QUICKSTART.md` | ~580 | Quick start guide |
+| File                                    | Lines | Purpose                |
+| --------------------------------------- | ----- | ---------------------- |
+| `tests/schema-validator.ts`             | ~750  | Main validation engine |
+| `tests/schema-fixer.ts`                 | ~350  | Auto-fix engine        |
+| `tests/README_SCHEMA_VALIDATOR.md`      | ~450  | Complete documentation |
+| `tests/SCHEMA_VALIDATION_QUICKSTART.md` | ~580  | Quick start guide      |
 
 ### Generated Reports
 
-| File | Generated By | Content |
-|------|-------------|---------|
-| `tests/schema-validation-report.json` | Validator | Machine-readable results |
-| `tests/SCHEMA_VALIDATION_REPORT.md` | Validator | Human-readable report |
-| `tests/schema-fix-report.json` | Fixer | Machine-readable fixes |
-| `tests/SCHEMA_FIX_REPORT.md` | Fixer | Human-readable fix report |
+| File                                  | Generated By | Content                   |
+| ------------------------------------- | ------------ | ------------------------- |
+| `tests/schema-validation-report.json` | Validator    | Machine-readable results  |
+| `tests/SCHEMA_VALIDATION_REPORT.md`   | Validator    | Human-readable report     |
+| `tests/schema-fix-report.json`        | Fixer        | Machine-readable fixes    |
+| `tests/SCHEMA_FIX_REPORT.md`          | Fixer        | Human-readable fix report |
 
 ## 🔄 Maintenance
 
@@ -315,6 +335,7 @@ The auto-fixer handles common patterns:
 ### Continuous Improvement
 
 The validator can be extended to detect:
+
 - Additional database patterns
 - Framework-specific queries
 - Custom validation rules
@@ -351,6 +372,7 @@ You now have a robust, production-ready schema validation toolkit that:
 ## 📞 Support
 
 For issues or improvements:
+
 - Review generated reports in `tests/` directory
 - Check documentation in `tests/README_SCHEMA_VALIDATOR.md`
 - Examine the source code with inline comments

@@ -435,7 +435,10 @@ async function handlePutQuota(admin: Admin, tenantId: string, userId: string, re
   }
   const before = await getQuotaRow(admin, tenantId);
   const d = parsed.data;
-  const patch: Record<string, unknown> = { tenant_id: tenantId, updated_at: new Date().toISOString() };
+  const patch: Record<string, unknown> = {
+    tenant_id: tenantId,
+    updated_at: new Date().toISOString(),
+  };
   if (d.monthly_limit_cents !== undefined) patch.monthly_limit_cents = d.monthly_limit_cents;
   if (d.warn_threshold_pct !== undefined) patch.warn_threshold_pct = d.warn_threshold_pct;
   if (d.hard_stop !== undefined) patch.hard_stop = d.hard_stop;

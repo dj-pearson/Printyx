@@ -10,23 +10,24 @@
 
 **Source Express files (10 report APIs + 1 generic):**
 
-| File | Lines | Endpoints | Persona |
-|---|---|---|---|
-| `director-reports-api.ts` | 132 | 4 | Director (strategic) |
-| `executive-reports-api.ts` | 131 | 4 | Executive (board-level) |
-| `sales-reports-api.ts` | 414 | 10 | Sales rep |
-| `sales-manager-reports-api.ts` | 291 | 6 | Sales manager |
-| `sales-supervisor-reports-api.ts` | 285 | 6 | Sales supervisor |
-| `service-reports-api.ts` | 341 | 8 | Service tech |
-| `service-manager-reports-api.ts` | 292 | 6 | Service manager |
-| `service-supervisor-reports-api.ts` | 289 | 6 | Service supervisor |
-| `team-reports-api.ts` | 460 | 8 | Team lead |
-| `warehouse-reports-api.ts` | 100 | 3 | Warehouse |
-| `reporting-api.ts` | 968 | 9 | Generic (definitions, execution, scheduling) |
+| File                                | Lines | Endpoints | Persona                                      |
+| ----------------------------------- | ----- | --------- | -------------------------------------------- |
+| `director-reports-api.ts`           | 132   | 4         | Director (strategic)                         |
+| `executive-reports-api.ts`          | 131   | 4         | Executive (board-level)                      |
+| `sales-reports-api.ts`              | 414   | 10        | Sales rep                                    |
+| `sales-manager-reports-api.ts`      | 291   | 6         | Sales manager                                |
+| `sales-supervisor-reports-api.ts`   | 285   | 6         | Sales supervisor                             |
+| `service-reports-api.ts`            | 341   | 8         | Service tech                                 |
+| `service-manager-reports-api.ts`    | 292   | 6         | Service manager                              |
+| `service-supervisor-reports-api.ts` | 289   | 6         | Service supervisor                           |
+| `team-reports-api.ts`               | 460   | 8         | Team lead                                    |
+| `warehouse-reports-api.ts`          | 100   | 3         | Warehouse                                    |
+| `reporting-api.ts`                  | 968   | 9         | Generic (definitions, execution, scheduling) |
 
 **Total: 70 endpoints across ~3,700 lines.**
 
 **Also in scope (discovered during audit, NOT in master PRD):**
+
 - `server/routes-reporting.ts` — likely routing wrapper
 - `server/routes-reporting-architecture.ts` — meta/architecture endpoints
 - `server/routes-reporting-definitions.ts` — report definition CRUD
@@ -35,6 +36,7 @@
 - `server/routes-scheduled-reports.ts` — scheduled exec (cron-adjacent)
 
 **Services:**
+
 - `server/services/director-reporting-service.ts`
 - `server/services/service-reporting-service.ts`
 - `server/services/service-manager-reporting-service.ts`
@@ -67,6 +69,7 @@ supabase/functions/reports/
 ```
 
 **Explicitly out of scope:**
+
 - Building a report builder UI — the backend preserves existing endpoints
 - Introducing OLAP cubes, materialized views, or data warehouse infrastructure
 - PDF/Excel export of reports — tracked as a separate follow-up if needed (lease PDF PRD sets the pattern)
@@ -77,9 +80,10 @@ supabase/functions/reports/
 
 **Master PRD spike:** "Does Drizzle-in-Deno handle complex joins across 5+ tables performantly, or do we fall back to raw SQL per report?"
 
-**Answer from code inspection:** Current reports use Drizzle query builder (no `sql\`\`` or `db.execute` in `director-reports-api.ts`). But the director file is 132 lines with only 4 endpoints — the queries are likely straightforward.
+**Answer from code inspection:** Current reports use Drizzle query builder (no `sql\`\``or`db.execute`in`director-reports-api.ts`). But the director file is 132 lines with only 4 endpoints — the queries are likely straightforward.
 
 **Strategy:**
+
 1. **Start with Drizzle for simple reports** (< 3-table joins, basic aggregations)
 2. **Fall back to tagged-template raw SQL for complex reports** — stored in `_queries/*.sql.ts` files:
    ```typescript
@@ -109,25 +113,26 @@ Full per-file matrices are out-of-scope for this PRD (70 endpoints). **Required 
 
 ### Summary table
 
-| File | Endpoints | Expected complexity |
-|---|---|---|
-| `director-reports-api.ts` | 4 | High (cross-domain) |
-| `executive-reports-api.ts` | 4 | High (board KPIs) |
-| `sales-reports-api.ts` | 10 | Medium |
-| `sales-manager-reports-api.ts` | 6 | Medium |
-| `sales-supervisor-reports-api.ts` | 6 | Medium |
-| `service-reports-api.ts` | 8 | Medium |
-| `service-manager-reports-api.ts` | 6 | Medium |
-| `service-supervisor-reports-api.ts` | 6 | Medium |
-| `team-reports-api.ts` | 8 | Medium |
-| `warehouse-reports-api.ts` | 3 | Low |
-| `reporting-api.ts` | 9 | High (definition engine) |
+| File                                | Endpoints | Expected complexity      |
+| ----------------------------------- | --------- | ------------------------ |
+| `director-reports-api.ts`           | 4         | High (cross-domain)      |
+| `executive-reports-api.ts`          | 4         | High (board KPIs)        |
+| `sales-reports-api.ts`              | 10        | Medium                   |
+| `sales-manager-reports-api.ts`      | 6         | Medium                   |
+| `sales-supervisor-reports-api.ts`   | 6         | Medium                   |
+| `service-reports-api.ts`            | 8         | Medium                   |
+| `service-manager-reports-api.ts`    | 6         | Medium                   |
+| `service-supervisor-reports-api.ts` | 6         | Medium                   |
+| `team-reports-api.ts`               | 8         | Medium                   |
+| `warehouse-reports-api.ts`          | 3         | Low                      |
+| `reporting-api.ts`                  | 9         | High (definition engine) |
 
 ---
 
 ## 4. Tables + RLS plan
 
 Reports are **read-only from business domain tables** (already RLS-scoped) + CRUD on report-specific tables:
+
 - `report_definitions`
 - `report_executions` (history)
 - `scheduled_reports`
@@ -153,7 +158,7 @@ const cache = new Map<string, { data: unknown; expiresAt: number }>();
 export function cached<T>(key: string, ttlSeconds: number, loader: () => Promise<T>): Promise<T> {
   const hit = cache.get(key);
   if (hit && hit.expiresAt > Date.now()) return Promise.resolve(hit.data as T);
-  return loader().then(data => {
+  return loader().then((data) => {
     cache.set(key, { data, expiresAt: Date.now() + ttlSeconds * 1000 });
     return data;
   });
@@ -163,6 +168,7 @@ export function cached<T>(key: string, ttlSeconds: number, loader: () => Promise
 **Cache key format:** `${tenantId}:${reportName}:${hashOfParams}`.
 
 **TTL guidance:**
+
 - Executive/director dashboards: 5 min
 - Sales/service rep daily: 1 min
 - Real-time views: don't cache; use Supabase Realtime instead
@@ -173,12 +179,12 @@ export function cached<T>(key: string, ttlSeconds: number, loader: () => Promise
 
 ## 6. External dependencies to port
 
-| Dependency | Express location | Deno port |
-|---|---|---|
-| Reporting services | `server/services/*-reporting-service.ts` | Port to `_queries/*.sql.ts` + handler logic |
-| `storage` methods | `server/storage.ts` | Drizzle direct (for report defs) |
-| Scheduled exec (cron-adjacent) | unclear today | **Moved to `pg_cron` via US-026 PRD** |
-| Email report delivery (sendgrid) | likely in service | Reuse `_shared/sendgrid.ts` from Phase 3 |
+| Dependency                       | Express location                         | Deno port                                   |
+| -------------------------------- | ---------------------------------------- | ------------------------------------------- |
+| Reporting services               | `server/services/*-reporting-service.ts` | Port to `_queries/*.sql.ts` + handler logic |
+| `storage` methods                | `server/storage.ts`                      | Drizzle direct (for report defs)            |
+| Scheduled exec (cron-adjacent)   | unclear today                            | **Moved to `pg_cron` via US-026 PRD**       |
+| Email report delivery (sendgrid) | likely in service                        | Reuse `_shared/sendgrid.ts` from Phase 3    |
 
 No new external deps. All reporting is DB-driven.
 
@@ -189,6 +195,7 @@ No new external deps. All reporting is DB-driven.
 `routes-scheduled-reports.ts` + the `reporting-api.ts` scheduling endpoints run reports on a schedule and deliver results (email/export).
 
 **Port strategy:**
+
 1. Edge function exposes `POST /reports/scheduled/run/:scheduleId` — runs once
 2. **`pg_cron` job** (from US-026 PRD) calls this endpoint via `pg_net.http_post` on the schedule
 3. Scheduled report row includes `cron_expression`, `last_run_at`, `next_run_at`
@@ -201,10 +208,12 @@ This decouples "when to run" from "how to run" — the edge function doesn't nee
 ## 8. Acceptance criteria
 
 ### Audit
+
 - [ ] `docs/reports-parity.md` published — every one of the 70 endpoints classified with target path, SQL approach (Drizzle/raw), cache policy
 - [ ] Performance baseline captured for top 10 most-expensive reports (p95 latency on production data)
 
 ### Functional parity
+
 - [ ] Every endpoint returns the same output shape as Express
 - [ ] **Numeric values match exactly** for identical inputs (run same date range through dev-server Express + edge function, diff JSON)
 - [ ] Generic report definition CRUD works
@@ -212,17 +221,20 @@ This decouples "when to run" from "how to run" — the edge function doesn't nee
 - [ ] Email delivery (if currently a feature) works via SendGrid REST
 
 ### Performance
+
 - [ ] Each of the 10 most-expensive reports p95 latency ≤ Express baseline + 10% (cache warm)
 - [ ] Cold p95 ≤ Express baseline × 1.5 (acceptable one-time cost per edge instance spin-up)
 - [ ] Cache hit rate > 70% on dashboard reload scenarios
 
 ### Security / RLS
+
 - [ ] RLS applied to `report_definitions`, `report_executions`, `scheduled_reports`, `report_subscriptions`
 - [ ] Every raw SQL query includes explicit `tenant_id = ${ctx.tenantId}` filter
 - [ ] Two-tenant test: report def in tenant A invisible to tenant B, even if raw SQL is malformed
 - [ ] Report exec cannot return data from tables where RLS doesn't cover the current JWT
 
 ### Frontend compatibility
+
 - [ ] All report-viewing pages load with non-zero data:
   - Director / Executive dashboards
   - Sales Performance, Sales Manager Dashboard
@@ -234,6 +246,7 @@ This decouples "when to run" from "how to run" — the edge function doesn't nee
 - [ ] Report builder (if exposed in UI) works
 
 ### Deletion
+
 - [ ] 11 Express report files deleted (the 10 persona + `reporting-api.ts`)
 - [ ] Related `routes-reporting*.ts` + `routes-reports.ts` + `routes-scheduled-reports.ts` + `routes-custom-reports.ts` deleted
 - [ ] 4 reporting service files deleted (logic in `_queries/`)
@@ -241,6 +254,7 @@ This decouples "when to run" from "how to run" — the edge function doesn't nee
 - [ ] `grep -r "reports-api\|reporting-service\|scheduled-reports" server/` returns zero matches
 
 ### Quality gates
+
 - [ ] `deno check` passes
 - [ ] `npm run check` passes
 - [ ] `npm run build` succeeds
@@ -250,20 +264,24 @@ This decouples "when to run" from "how to run" — the edge function doesn't nee
 ## 9. Test plan
 
 ### Unit (Deno)
+
 - Each `_queries/*.sql.ts` function — parameter injection safety (no string concat), tenant filter present
 - `_cache.test.ts` — TTL expiry, key collision
 
 ### Integration
+
 - **Parity regression**: seed a deterministic fixture dataset (100 deals, 50 service tickets, 20 customers); run every report against Express dev-server + edge function; diff JSON. Must match exactly.
 - Scheduled run triggered by fake pg_cron call
 - Cache invalidation on report definition update
 
 ### Performance
+
 - Each of top 10 most-expensive reports: 20-iteration timing run, capture p50/p95/p99
 - Cache warmed vs. cold comparison
 - Large tenant: seed 10K rows in each source table, verify reports complete within 5s
 
 ### Production smoke
+
 - Open every dashboard listed in §8 frontend compatibility; verify data matches prior expectations
 - Send a test scheduled report; verify email arrives with correct content
 
@@ -281,15 +299,15 @@ No schema changes.
 
 ## 11. Risks + mitigations
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Raw SQL regression changes report numbers in subtle ways | High | **Critical** | Exact-diff regression test against Express output on fixture data |
-| Complex report joins exceed Deno edge timeout on large tenants | Medium | High | Per-report timeout budget; if >30s, move to scheduled async with result storage |
-| Drizzle-in-Deno SQL tag syntax surprises (e.g., parameter binding with `sql.raw`) | Medium | Medium | Unit test every query; reject PR if any raw interpolation exists |
-| Cache memory leak under long-running Deno instance | Low | Low | Cap cache size to 100 entries; LRU eviction |
-| Materialized views reference tables being migrated | Medium | Medium | `\d+ <view>` to enumerate; verify views don't break; refresh after any schema change |
-| Timezone drift: Express uses server TZ, Deno defaults to UTC | High | Medium | Port every `NOW()`, `CURRENT_TIMESTAMP`, `DATE_TRUNC` with explicit `AT TIME ZONE '<tenant TZ>'` |
-| Existing reports were buggy in prod — migration inherits bugs | Medium | Low | Not a blocker for migration; file follow-ups |
+| Risk                                                                              | Likelihood | Impact       | Mitigation                                                                                       |
+| --------------------------------------------------------------------------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------------ |
+| Raw SQL regression changes report numbers in subtle ways                          | High       | **Critical** | Exact-diff regression test against Express output on fixture data                                |
+| Complex report joins exceed Deno edge timeout on large tenants                    | Medium     | High         | Per-report timeout budget; if >30s, move to scheduled async with result storage                  |
+| Drizzle-in-Deno SQL tag syntax surprises (e.g., parameter binding with `sql.raw`) | Medium     | Medium       | Unit test every query; reject PR if any raw interpolation exists                                 |
+| Cache memory leak under long-running Deno instance                                | Low        | Low          | Cap cache size to 100 entries; LRU eviction                                                      |
+| Materialized views reference tables being migrated                                | Medium     | Medium       | `\d+ <view>` to enumerate; verify views don't break; refresh after any schema change             |
+| Timezone drift: Express uses server TZ, Deno defaults to UTC                      | High       | Medium       | Port every `NOW()`, `CURRENT_TIMESTAMP`, `DATE_TRUNC` with explicit `AT TIME ZONE '<tenant TZ>'` |
+| Existing reports were buggy in prod — migration inherits bugs                     | Medium     | Low          | Not a blocker for migration; file follow-ups                                                     |
 
 ---
 
@@ -313,6 +331,6 @@ No schema changes.
 - [ ] Scheduled reports triggered by pg_cron work end-to-end
 - [ ] Cache reduces dashboard-reload latency ≥ 50%
 - [ ] All dashboards listed populate correctly in prod
-- [ ] 11 Express files + related routes-*.ts + 4 services deleted
+- [ ] 11 Express files + related routes-\*.ts + 4 services deleted
 - [ ] Type checks + build pass
 - [ ] 72 hours stable before Phase 6 proceeds to US-024

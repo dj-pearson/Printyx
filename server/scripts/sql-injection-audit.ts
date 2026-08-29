@@ -72,8 +72,7 @@ const PATTERNS: Array<{
     name: 'sql.raw() with string concatenation',
     regex: /sql\.raw\s*\(\s*[^`\s)]+\s*\+/,
     severity: 'CRITICAL',
-    suggestion:
-      'Use Drizzle sql`` tagged template instead of sql.raw() with string concatenation.',
+    suggestion: 'Use Drizzle sql`` tagged template instead of sql.raw() with string concatenation.',
   },
   {
     name: 'sql.raw() wrapping a variable (potential dynamic SQL)',
@@ -186,13 +185,17 @@ function main(): void {
     byFile.set(finding.file, existing);
   }
 
-  console.log(`\x1b[31m[FAIL]\x1b[0m Found ${allFindings.length} potential SQL injection patterns:\n`);
+  console.log(
+    `\x1b[31m[FAIL]\x1b[0m Found ${allFindings.length} potential SQL injection patterns:\n`,
+  );
 
   for (const [file, findings] of byFile) {
     const relativePath = path.relative(targetDir, file);
     console.log(`  ${relativePath}`);
     for (const finding of findings) {
-      console.log(`    Line ${finding.line}: ${formatSeverity(finding.severity)} - ${finding.pattern}`);
+      console.log(
+        `    Line ${finding.line}: ${formatSeverity(finding.severity)} - ${finding.pattern}`,
+      );
       console.log(`      Code: ${finding.code.substring(0, 120)}`);
       console.log(`      Fix:  ${finding.suggestion}`);
       console.log();

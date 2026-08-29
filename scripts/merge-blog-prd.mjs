@@ -45,12 +45,12 @@ const overrides = {
       'Typecheck passes: npm run check',
     ],
     notes:
-      'Foundation story for the blog module — replaces the original PRD\'s standalone monorepo scaffold (US-BLOG-001 in blog-system-prd.json) since we are integrating into the existing Printyx repo. Source PRD: blog-system-prd.json US-BLOG-001 (adapted).',
+      "Foundation story for the blog module — replaces the original PRD's standalone monorepo scaffold (US-BLOG-001 in blog-system-prd.json) since we are integrating into the existing Printyx repo. Source PRD: blog-system-prd.json US-BLOG-001 (adapted).",
   },
 
   'US-BLOG-002': {
     description:
-      'As a platform operator, I need a clean Drizzle schema for the blog module that integrates with the existing Printyx tenant model so the blog system inherits Printyx\'s multi-tenant isolation guarantees.',
+      "As a platform operator, I need a clean Drizzle schema for the blog module that integrates with the existing Printyx tenant model so the blog system inherits Printyx's multi-tenant isolation guarantees.",
     acceptanceCriteria: [
       'New file shared/blog-schema.ts (or split across shared/blog/*.ts files) defines Drizzle tables: blog_brand_voices, blog_style_guides, blog_keyword_clusters, blog_keywords, blog_briefs, blog_posts, blog_post_revisions, blog_assets, blog_citations, blog_distributions, blog_distribution_targets, blog_performance_metrics, blog_refresh_queue, blog_audit_log',
       'Every blog_* table has tenant_id NOT NULL with FK to tenants and an index on (tenant_id) — single Printyx blog workspace per tenant in v1, but the column is enforced for future multi-tenant work',
@@ -69,7 +69,7 @@ const overrides = {
   'US-BLOG-003': {
     title: 'Auth + RBAC: gate blog access via Printyx Supabase auth and platform roles',
     description:
-      "As a platform admin, I need every blog endpoint and UI route gated to the right Printyx role so editorial workflow respects existing permissions without inventing a parallel auth system.",
+      'As a platform admin, I need every blog endpoint and UI route gated to the right Printyx role so editorial workflow respects existing permissions without inventing a parallel auth system.',
     acceptanceCriteria: [
       'New blog permissions added to RBAC seed: blog.post.view, blog.post.edit, blog.post.publish, blog.post.delete, blog.brand_voice.edit, blog.style_guide.edit, blog.distribution.publish, blog.analytics.view, blog.refresh.manage, blog.agent.toggle',
       'Default grants — Platform Admin: all blog.* permissions; Company Admin: view + edit + publish + analytics within their tenant; all other roles: none in v1',
@@ -81,7 +81,7 @@ const overrides = {
       'Typecheck passes: npm run check',
     ],
     notes:
-      'Source PRD: blog-system-prd.json US-BLOG-003 (adapted to Printyx auth). The original PRD\'s pluggable auth + invite flow is replaced by Printyx\'s existing Supabase Auth + tenant role assignment.',
+      "Source PRD: blog-system-prd.json US-BLOG-003 (adapted to Printyx auth). The original PRD's pluggable auth + invite flow is replaced by Printyx's existing Supabase Auth + tenant role assignment.",
   },
 
   'US-BLOG-006': {
@@ -92,7 +92,7 @@ const overrides = {
       'New file supabase/functions/_shared/blog/cms-adapter.ts defines the adapter contract: createPost, updatePost, deletePost, getPost, listPosts, uploadAsset, healthCheck',
       'v1 adapters implemented: wordpress (REST API + JWT/application-password auth), ghost (Admin API + JWT)',
       'Adapter selection per tenant via cms_adapter (enum: wordpress|ghost) and cms_config (jsonb, encrypted at column level via Printyx credential vault) on a new blog_cms_targets table',
-      'Markdown-to-CMS transform layer normalizes output for each CMS\'s quirks (Gutenberg blocks for WP, mobiledoc/Lexical for Ghost)',
+      "Markdown-to-CMS transform layer normalizes output for each CMS's quirks (Gutenberg blocks for WP, mobiledoc/Lexical for Ghost)",
       'Shared contract test suite asserts every adapter satisfies the same behavioral spec',
       'Phase 2 adapters (Webflow, custom-REST, native-render) are explicitly out of scope for this story — capture in notes as follow-up',
       'Never log decrypted CMS credentials',

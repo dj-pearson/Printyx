@@ -25,9 +25,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 ## 3. User Stories
 
 ### US-001: Canonical address book schema
+
 **Description:** As a developer, I need vendor-neutral Drizzle tables so address books can be stored, scoped to customer + device, and round-tripped between vendors.
 
 **Acceptance Criteria:**
+
 - [ ] New file `shared/address-book-schema.ts` defines tables: `address_books`, `address_book_entries`, `address_book_credentials`, `address_book_imports`, `address_book_exports`.
 - [ ] `address_books` columns: id, tenant_id, customer_id, device_id (nullable — null = customer-master book), name, source_vendor, source_model, source_subbook_name, last_imported_at, created_at, updated_at, created_by_user_id.
 - [ ] `address_book_entries` columns: id, book_id, entry_type (`email`|`smb`|`group`), display_name, sort_name, short_name, email, smb_host, smb_share_path, smb_full_unc, smb_username, credential_id (FK nullable), speed_dial_index, group_member_entry_ids (jsonb array), source_uuid, source_metadata (jsonb — preserves vendor-specific fields for round-trip), is_override (boolean — true if this entry overrides a customer-master entry on a specific device), overrides_entry_id (FK self, nullable), created_at, updated_at.
@@ -40,9 +42,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-002: Credential encryption service
+
 **Description:** As a developer, I need a server-side service that encrypts/decrypts credential blobs with the Printyx master key so source-vendor passwords can be safely persisted.
 
 **Acceptance Criteria:**
+
 - [ ] `server/services/address-book/credential-vault.ts` exports `encryptCredential(plaintext)` and `decryptCredential(record)`.
 - [ ] Uses AES-256-GCM with random IV per credential, key from env `ADDRESS_BOOK_MASTER_KEY` (32-byte base64).
 - [ ] Throws clear error if env var missing or wrong length.
@@ -51,9 +55,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-003: Canonical address book TypeScript types
+
 **Description:** As a developer, I need shared types describing canonical entries so vendor adapters all conform to one shape.
 
 **Acceptance Criteria:**
+
 - [ ] `shared/address-book-types.ts` exports `CanonicalEntry`, `CanonicalAddressBook`, `ParseResult`, `SerializeResult`, `ConversionReport`, `FieldMappingIssue`.
 - [ ] `CanonicalEntry` discriminated union on `entry_type` (`email` | `smb` | `group`).
 - [ ] `ConversionReport` includes: `total_entries`, `entries_exported`, `entries_dropped`, `unmappable_fields` (array of `{ entry_id, vendor_field, reason }`), `warnings`.
@@ -61,9 +67,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-004: Canon parser
+
 **Description:** As a help desk user, I want to upload a Canon `abook.csv` and have its entries decoded into canonical form, with my source password used to decrypt SMB credentials.
 
 **Acceptance Criteria:**
+
 - [ ] `server/services/address-book/vendors/canon/parser.ts` exports `parseCanon(buffer, password?) → ParseResult`.
 - [ ] Reads header comments (`# Canon AddressBook CSV version`, `# CharSet`, `# Crypto Version`, `# Crypto Attribute`, `# SubAddressBookName`).
 - [ ] Maps `objectclass=email` rows to canonical `email` entries (display_name from `cn`, email from `mailaddress`, speed_dial_index from `indxid`).
@@ -75,9 +83,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-005: Canon serializer
+
 **Description:** As a help desk user, I want to export a canonical address book back to Canon `abook.csv` format so it can be re-imported on a Canon device.
 
 **Acceptance Criteria:**
+
 - [ ] `server/services/address-book/vendors/canon/serializer.ts` exports `serializeCanon(book, entries, options) → SerializeResult`.
 - [ ] Output begins with the same Canon header comments using configured version + sub-book name.
 - [ ] When `options.password` provided, encrypts `pwd` column via Canon Crypto v2 KDF and sets `# Crypto Attribute: pwd`.
@@ -88,9 +98,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-006: Konica Minolta parser
+
 **Description:** As a help desk user, I want to upload a Konica Minolta address book CSV and have its entries decoded into canonical form.
 
 **Acceptance Criteria:**
+
 - [ ] `server/services/address-book/vendors/konica/parser.ts` exports `parseKonica(buffer, password?) → ParseResult`.
 - [ ] Detects character encoding (KM exports often Shift-JIS; fall back to UTF-8 BOM).
 - [ ] Maps email destinations (KM `Type=E-mail`) to canonical `email` entries.
@@ -100,9 +112,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-007: Konica Minolta serializer
+
 **Description:** As a help desk user, I want to export canonical entries to Konica Minolta CSV format.
 
 **Acceptance Criteria:**
+
 - [ ] `server/services/address-book/vendors/konica/serializer.ts` exports `serializeKonica(book, entries, options) → SerializeResult`.
 - [ ] Output uses correct KM column order, encoding (UTF-8 BOM), and `Type` values.
 - [ ] Speed dial / index allocation handled (KM uses different ranges than Canon).
@@ -111,9 +125,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-008: Xerox parser
+
 **Description:** As a help desk user, I want to upload a Xerox address book CSV (AltaLink/VersaLink Embedded Web Server export) and have its entries decoded into canonical form.
 
 **Acceptance Criteria:**
+
 - [ ] `server/services/address-book/vendors/xerox/parser.ts` exports `parseXerox(buffer, password?) → ParseResult`.
 - [ ] Maps Xerox email-tab + scan-tab + fax-tab schemas (Xerox separates by destination type) into unified canonical entries.
 - [ ] Stores source columns in `source_metadata`.
@@ -121,18 +137,22 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-009: Xerox serializer
+
 **Description:** As a help desk user, I want to export canonical entries to Xerox CSV format.
 
 **Acceptance Criteria:**
+
 - [ ] `server/services/address-book/vendors/xerox/serializer.ts` exports `serializeXerox(book, entries, options) → SerializeResult`.
 - [ ] Produces output compatible with AltaLink/VersaLink EWS import.
 - [ ] Round-trip unit test.
 - [ ] Typecheck passes.
 
 ### US-010: Ricoh parser
+
 **Description:** As a help desk user, I want to upload a Ricoh address book CSV and have its entries decoded into canonical form.
 
 **Acceptance Criteria:**
+
 - [ ] `server/services/address-book/vendors/ricoh/parser.ts` exports `parseRicoh(buffer, password?) → ParseResult`.
 - [ ] Compatible with Ricoh "Address Book Import Helper" CSV schema.
 - [ ] Maps email + SMB destinations to canonical entries.
@@ -140,18 +160,22 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-011: Ricoh serializer
+
 **Description:** As a help desk user, I want to export canonical entries to Ricoh CSV format.
 
 **Acceptance Criteria:**
+
 - [ ] `server/services/address-book/vendors/ricoh/serializer.ts` exports `serializeRicoh(book, entries, options) → SerializeResult`.
 - [ ] Output ingestible by Ricoh Address Book Import Helper.
 - [ ] Round-trip unit test.
 - [ ] Typecheck passes.
 
 ### US-012: Conversion engine + mapping report
+
 **Description:** As a developer, I need an orchestration layer that takes a canonical book + target vendor and produces both the export file and a conversion report listing dropped fields.
 
 **Acceptance Criteria:**
+
 - [ ] `server/services/address-book/conversion-engine.ts` exports `convertBook(book, entries, targetVendor, options) → { file, report }`.
 - [ ] Iterates entries, calls target vendor serializer, aggregates `FieldMappingIssue` entries.
 - [ ] Persists report to `address_book_exports.conversion_report_json`.
@@ -160,9 +184,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-013: API routes — books and entries
+
 **Description:** As a frontend developer, I need REST endpoints to list, view, edit, and delete address books and entries with proper tenant scoping.
 
 **Acceptance Criteria:**
+
 - [ ] New file `server/routes-address-books.ts` registered in `server/routes.ts`.
 - [ ] `GET /api/address-books` — list books filtered by tenant; query params `customer_id`, `device_id`.
 - [ ] `GET /api/address-books/:id` — fetch single book with entries.
@@ -178,9 +204,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-014: API routes — import and export
+
 **Description:** As a frontend developer, I need endpoints to upload a vendor file (with optional password) and download a target-vendor file.
 
 **Acceptance Criteria:**
+
 - [ ] `POST /api/address-books/:id/import` — multipart upload; body fields: `vendor`, `password` (optional). Returns parse result + entry count + errors.
 - [ ] `POST /api/address-books/import` — same, but creates a new book if `id` not yet known (used by import wizard before book exists).
 - [ ] `POST /api/address-books/:id/export` — body: `target_vendor`, `target_password` (optional). Returns `{ download_url, conversion_report }`.
@@ -191,18 +219,22 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Typecheck passes.
 
 ### US-015: New RBAC permissions
+
 **Description:** As a platform admin, I need granular permissions so I can grant address book access only to the right roles.
 
 **Acceptance Criteria:**
+
 - [ ] New permissions added to seed: `service.address_book.view_team`, `service.address_book.edit_team`, `service.address_book.import`, `service.address_book.export`, `service.address_book.delete`.
 - [ ] Granted by default to: Platform Admin, Company Admin, Service, Help Desk, Sales (view + import + export); Platform Admin + Company Admin (delete).
 - [ ] Migration / seed script updates existing tenants.
 - [ ] Typecheck passes.
 
 ### US-016: Service Hub — Address Books index page
+
 **Description:** As a help desk user, I want a top-level page listing all address books in my tenant so I can quickly find one to edit or convert.
 
 **Acceptance Criteria:**
+
 - [ ] New route `/service/address-books` registered in `client/src/App.tsx`.
 - [ ] New page `client/src/pages/service/AddressBooksIndex.tsx`.
 - [ ] Sidebar entry under Service Hub in `RoleAwareCollapsibleSidebar.tsx`, gated to roles with `service.address_book.view_team`.
@@ -214,9 +246,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Verify in browser using dev-browser skill.
 
 ### US-017: Address book detail page
+
 **Description:** As a help desk user, I want to view a book's entries in a paginated table with search and per-entry actions.
 
 **Acceptance Criteria:**
+
 - [ ] New route `/service/address-books/:id`.
 - [ ] New page `client/src/pages/service/AddressBookDetail.tsx`.
 - [ ] Header shows book name, customer, device scope, source vendor, last import time, "Export" + "Import (replace/merge)" buttons.
@@ -228,9 +262,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Verify in browser using dev-browser skill.
 
 ### US-018: Per-entry create/edit form with validation
+
 **Description:** As a help desk user, I want a validated form to add or edit individual entries so I don't introduce malformed addresses.
 
 **Acceptance Criteria:**
+
 - [ ] Modal form opened from "Add Entry" + per-row "Edit" buttons.
 - [ ] Type selector switches form schema (email vs SMB vs group).
 - [ ] Email form: display name, sort name, email (RFC 5322 validation), speed dial index (numeric, optional).
@@ -243,9 +279,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Verify in browser using dev-browser skill.
 
 ### US-019: Import wizard
+
 **Description:** As a help desk user, I want a guided wizard to upload a vendor file, supply the password if needed, preview parsed entries, and commit them to a new or existing book.
 
 **Acceptance Criteria:**
+
 - [ ] Multi-step wizard component: (1) select vendor, (2) upload file, (3) password prompt — only shown if parser detects encrypted credential fields, (4) preview table with parse errors highlighted, (5) choose target — new book (with name + customer + device scope) or existing book (replace / merge), (6) commit.
 - [ ] If parser detects `# Crypto Attribute: pwd` (Canon) or vendor-equivalent flag and no password supplied yet, wizard pauses for password input.
 - [ ] Password is sent over HTTPS, never persisted, never logged.
@@ -256,9 +294,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Verify in browser using dev-browser skill.
 
 ### US-020: Export modal with conversion report
+
 **Description:** As a help desk user, I want to export a book to any supported vendor format and see a clear report of what didn't translate cleanly so I can warn the customer or adjust manually.
 
 **Acceptance Criteria:**
+
 - [ ] "Export" button on detail page opens modal.
 - [ ] Form fields: target vendor, target password (optional, only enabled for vendors that support encrypted credentials), filename (auto-suggested e.g. `abook-acme-corp-canon-2026-05-06.csv`).
 - [ ] On submit, calls `POST /api/address-books/:id/export`.
@@ -269,9 +309,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Verify in browser using dev-browser skill.
 
 ### US-021: Customer record — Address Books tab
+
 **Description:** As a help desk user, I want to start from the customer record and see all their address books so I can answer "what does Acme Corp's scan setup look like" without leaving the page.
 
 **Acceptance Criteria:**
+
 - [ ] New tab "Address Books" added to the customer record page.
 - [ ] Shows the customer-master book at top + a list of device-scoped books below (one per device with overrides).
 - [ ] Each row links to the book detail page.
@@ -281,9 +323,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Verify in browser using dev-browser skill.
 
 ### US-022: Per-device override UI
+
 **Description:** As a help desk user, I want to mark an entry as a device-specific override of the customer-master book so I can model devices that have unique destinations without forking the whole book.
 
 **Acceptance Criteria:**
+
 - [ ] Device-scoped book detail page shows entries from the customer-master book in a "Inherited" section (read-only) plus device overrides in an "Overrides" section.
 - [ ] "Override this entry" action on inherited rows creates a new entry with `is_override=true` and `overrides_entry_id` set; subsequent edits affect only the override.
 - [ ] "Revert override" removes the override entry.
@@ -294,9 +338,11 @@ It surfaces both as a top-level **Service Hub → Address Books** module and as 
 - [ ] Verify in browser using dev-browser skill.
 
 ### US-023: E2E happy path
+
 **Description:** As a developer, I want a Playwright test covering the full Canon→Konica round trip so regressions are caught before deploy.
 
 **Acceptance Criteria:**
+
 - [ ] `tests/e2e/address-books.spec.ts` covers: log in as help desk → import provided Canon `abook.csv` (password "1") → verify entries in detail page → export as Konica → download file → verify file parses back into matching canonical entries.
 - [ ] Test passes against local dev environment.
 - [ ] Typecheck passes.

@@ -86,8 +86,8 @@ Ideal UAT participants:
 - ✅ Filters work correctly
 - ✅ UI is intuitive
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -109,8 +109,8 @@ Ideal UAT participants:
 - ✅ CSV export downloads successfully
 - ✅ CSV opens correctly in Excel
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -130,8 +130,8 @@ Ideal UAT participants:
 - ✅ Direct access returns "Permission Denied" error
 - ✅ Error message is user-friendly
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -156,8 +156,8 @@ Ideal UAT participants:
 - ✅ Touch targets large enough (48px minimum)
 - ✅ Map view helpful for navigation
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -184,8 +184,8 @@ Ideal UAT participants:
 - ✅ Drill-down functionality works
 - ✅ Actionable insights provided
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -211,8 +211,8 @@ Ideal UAT participants:
 - ✅ Confirmation email sent
 - ✅ Schedule appears in list
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -236,8 +236,8 @@ Ideal UAT participants:
 - ✅ Data formatted properly
 - ✅ Data usable for presentations
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -264,8 +264,8 @@ Ideal UAT participants:
 - ✅ Comparison metrics clear
 - ✅ PDF export professional quality
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -292,8 +292,8 @@ Ideal UAT participants:
 - ✅ AI insights actionable
 - ✅ PDF suitable for board presentation
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -316,8 +316,8 @@ Ideal UAT participants:
 - ✅ No permission errors
 - ✅ Cross-functional insights evident
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -338,7 +338,7 @@ Ideal UAT participants:
 | Executive Dashboard       | < 20s         | **\_\_**s   | **\_\_**  |
 | Large Export (1000+ rows) | < 30s         | **\_\_**s   | **\_\_**  |
 
-**Overall Pass/Fail**: ******\_\_\_******
+**Overall Pass/Fail**: **\*\***\_\_\_**\*\***
 
 ---
 
@@ -364,8 +364,8 @@ Ideal UAT participants:
 - Would you use this regularly?
 - Any suggestions for improvement?
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -388,8 +388,8 @@ Ideal UAT participants:
 - ✅ Data saves correctly
 - ✅ UI/UX unchanged (unless intentionally improved)
 
-**Pass/Fail**: ******\_\_\_******
-**Notes**: ******************************\_\_\_******************************
+**Pass/Fail**: **\*\***\_\_\_**\*\***
+**Notes**: ******\*\*******\*\*******\*\*******\_\_\_******\*\*******\*\*******\*\*******
 
 ---
 
@@ -420,10 +420,10 @@ Ideal UAT participants:
 
 **Pass/Fail per Browser**:
 
-- Chrome: ******\_\_\_******
-- Firefox: ******\_\_\_******
-- Safari: ******\_\_\_******
-- Edge: ******\_\_\_******
+- Chrome: **\*\***\_\_\_**\*\***
+- Firefox: **\*\***\_\_\_**\*\***
+- Safari: **\*\***\_\_\_**\*\***
+- Edge: **\*\***\_\_\_**\*\***
 
 ---
 
@@ -452,9 +452,9 @@ Ideal UAT participants:
 
 **Pass/Fail per Device**:
 
-- iPhone: ******\_\_\_******
-- Android: ******\_\_\_******
-- iPad: ******\_\_\_******
+- iPhone: **\*\***\_\_\_**\*\***
+- Android: **\*\***\_\_\_**\*\***
+- iPad: **\*\***\_\_\_**\*\***
 
 ---
 
@@ -462,8 +462,8 @@ Ideal UAT participants:
 
 When a test fails, please report using this template:
 
-**Bug ID**: ******\_\_\_******
-**Test Scenario**: ******\_\_\_******
+**Bug ID**: **\*\***\_\_\_**\*\***
+**Test Scenario**: **\*\***\_\_\_**\*\***
 **Severity**: Critical / High / Medium / Low
 **Priority**: P0 (Blocker) / P1 (Must Fix) / P2 (Should Fix) / P3 (Nice to Fix)
 
@@ -486,9 +486,9 @@ When a test fails, please report using this template:
 
 **Environment**:
 
-- Browser: ******\_\_\_******
-- Device: ******\_\_\_******
-- User Role: ******\_\_\_******
+- Browser: **\*\***\_\_\_**\*\***
+- Device: **\*\***\_\_\_**\*\***
+- User Role: **\*\***\_\_\_**\*\***
 
 **Workaround** (if any):
 
@@ -684,10 +684,10 @@ UAT is considered successful if:
 
 **UAT Participant Feedback Form**
 
-**Participant Name**: ******\_\_\_******
-**Role**: ******\_\_\_******
-**Department**: ******\_\_\_******
-**Date**: ******\_\_\_******
+**Participant Name**: **\*\***\_\_\_**\*\***
+**Role**: **\*\***\_\_\_**\*\***
+**Department**: **\*\***\_\_\_**\*\***
+**Date**: **\*\***\_\_\_**\*\***
 
 ### Overall Experience
 

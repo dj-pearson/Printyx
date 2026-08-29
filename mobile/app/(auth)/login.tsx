@@ -23,26 +23,10 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as Haptics from 'expo-haptics';
 import { StatusBar } from 'expo-status-bar';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  Button,
-  GlassSurface,
-  GradientBackground,
-  Input,
-} from '@/components/ui';
-import {
-  borderRadius,
-  colors,
-  motion,
-  shadows,
-  spacing,
-  typography,
-} from '@/theme';
+import { Button, GlassSurface, GradientBackground, Input } from '@/components/ui';
+import { borderRadius, colors, motion, shadows, spacing, typography } from '@/theme';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -176,10 +160,7 @@ export default function LoginScreen() {
                   <Link href="/(auth)/forgot-password" asChild>
                     <Pressable
                       accessibilityRole="link"
-                      style={({ pressed }) => [
-                        styles.forgotWrap,
-                        pressed && { opacity: 0.6 },
-                      ]}
+                      style={({ pressed }) => [styles.forgotWrap, pressed && { opacity: 0.6 }]}
                     >
                       <Text style={styles.forgotPassword}>Forgot password?</Text>
                     </Pressable>

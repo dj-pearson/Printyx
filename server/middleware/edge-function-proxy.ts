@@ -722,6 +722,21 @@ export function registerEdgeFunctionProxy(app: any) {
     // customer-managed, auto-ship-off, open-order dedupe and the cost gate. See
     // the edge fn header.
     '/api/toner-replenish': 'toner-replenish',
+
+    // AUDIT-019. SystemSecurity.tsx now reads GET /api/admin/system-health,
+    // which exists ONLY in supabase/functions/admin/ - no Express router serves
+    // it, so without this entry the page would work in prod and 404 in dev,
+    // the same invisible-in-dev trap the other entries here exist to close.
+    //
+    // Scoped to the single path, not the /api/admin prefix: routes-registry
+    // mounts routes-admin-workflows at /api/admin and app.use() matches on
+    // segment boundaries, so proxying the bare prefix would take every workflow
+    // endpoint from working-in-dev to 404-in-dev. pathPrefix re-adds the
+    // segment the mount strips, so the edge fn sees /system-health and
+    // normalizePath resolves parts[0] the same way it does in prod. The proxy
+    // registers at line ~297 of routes-registry, ahead of the /api/admin mount,
+    // so this wins for this one path and nothing else changes.
+    '/api/admin/system-health': { fn: 'admin', pathPrefix: '/system-health' },
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns

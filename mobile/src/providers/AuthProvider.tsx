@@ -50,7 +50,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function init() {
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const {
+          data: { session: currentSession },
+        } = await supabase.auth.getSession();
         if (mounted) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
@@ -75,23 +77,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     init();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        if (!mounted) return;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (!mounted) return;
 
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        setError(null);
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+      setError(null);
 
-        if (newSession?.user?.app_metadata?.tenantId) {
-          await setTenantId(newSession.user.app_metadata.tenantId);
-        }
+      if (newSession?.user?.app_metadata?.tenantId) {
+        await setTenantId(newSession.user.app_metadata.tenantId);
+      }
 
-        if (event === 'SIGNED_OUT') {
-          await clearTenantId();
-        }
-      },
-    );
+      if (event === 'SIGNED_OUT') {
+        await clearTenantId();
+      }
+    });
 
     return () => {
       mounted = false;
@@ -136,11 +138,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       // Call the Edge Function for signup (same as web)
-      const res = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://api.printyx.net'}/functions/v1/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://api.printyx.net'}/functions/v1/signup`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        },
+      );
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({ message: 'Signup failed' }));

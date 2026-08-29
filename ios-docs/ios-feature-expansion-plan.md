@@ -8,33 +8,33 @@ Analysis of the current iOS app vs. available Supabase edge functions, with reco
 
 ### What's Built (5 Tabs)
 
-| Tab | Feature | Edge Functions Used |
-|-----|---------|---------------------|
-| Tasks | Full CRUD, stats, comments, time logging, bulk ops | `tasks` |
-| CRM | Unified business records (leads/prospects/customers), activities, conversion | `customers`, `leads`, `business-records` |
-| Pipeline | Opportunities with Kanban + list views, stage management | `opportunities` |
-| Quotes | Proposals & quotes with status tracking, PDF download | `proposals`, `quotes`, `proposal-templates` |
-| Settings | User info, logout, placeholder preferences | `mobile-auth` |
+| Tab      | Feature                                                                      | Edge Functions Used                         |
+| -------- | ---------------------------------------------------------------------------- | ------------------------------------------- |
+| Tasks    | Full CRUD, stats, comments, time logging, bulk ops                           | `tasks`                                     |
+| CRM      | Unified business records (leads/prospects/customers), activities, conversion | `customers`, `leads`, `business-records`    |
+| Pipeline | Opportunities with Kanban + list views, stage management                     | `opportunities`                             |
+| Quotes   | Proposals & quotes with status tracking, PDF download                        | `proposals`, `quotes`, `proposal-templates` |
+| Settings | User info, logout, placeholder preferences                                   | `mobile-auth`                               |
 
 ### What's Available but Unused (Key Edge Functions)
 
 The backend has **184 edge functions**. The iOS app uses roughly **10** of them. Below are the most impactful unused functions grouped by domain:
 
-| Domain | Edge Functions Available | iOS Impact |
-|--------|------------------------|------------|
-| **Dashboard/Analytics** | `today-dashboard`, `dashboards`, `analytics`, `reports`, `sales-reports`, `team-reports` | No home screen or daily summary |
-| **Service Operations** | `service-tickets`, `work-orders`, `scheduling`, `appointments`, `technician-management` | Missing entire service vertical |
-| **Field Service (Mobile)** | `mobile-field`, `mobile` (sessions, photos, sync) | Purpose-built for mobile, completely unused |
-| **Financial** | `invoices`, `billing`, `account-receivable`, `payment-processing` | No invoice or billing visibility |
-| **Contracts** | `contracts`, `contract-renewal`, `service-contracts` | No contract management |
-| **Inventory** | `inventory`, `supplies`, `parts-inventory`, `parts-orders` | No inventory visibility |
-| **Equipment/Devices** | `equipment`, `devices`, `remote-monitoring`, `meter-readings` | No equipment tracking |
-| **Contacts** | `contacts`, `company-contacts` | Contacts buried inside CRM records only |
-| **Notifications** | `notifications` | No push/in-app notifications |
-| **Knowledge Base** | `knowledge-base` | No self-service reference |
-| **User/Profile** | `user`, `auth-me`, `settings` | Minimal profile management |
-| **Search** | `search` | No global search |
-| **Activities** | `activities`, `activity-log` | No activity feed |
+| Domain                     | Edge Functions Available                                                                 | iOS Impact                                  |
+| -------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------- |
+| **Dashboard/Analytics**    | `today-dashboard`, `dashboards`, `analytics`, `reports`, `sales-reports`, `team-reports` | No home screen or daily summary             |
+| **Service Operations**     | `service-tickets`, `work-orders`, `scheduling`, `appointments`, `technician-management`  | Missing entire service vertical             |
+| **Field Service (Mobile)** | `mobile-field`, `mobile` (sessions, photos, sync)                                        | Purpose-built for mobile, completely unused |
+| **Financial**              | `invoices`, `billing`, `account-receivable`, `payment-processing`                        | No invoice or billing visibility            |
+| **Contracts**              | `contracts`, `contract-renewal`, `service-contracts`                                     | No contract management                      |
+| **Inventory**              | `inventory`, `supplies`, `parts-inventory`, `parts-orders`                               | No inventory visibility                     |
+| **Equipment/Devices**      | `equipment`, `devices`, `remote-monitoring`, `meter-readings`                            | No equipment tracking                       |
+| **Contacts**               | `contacts`, `company-contacts`                                                           | Contacts buried inside CRM records only     |
+| **Notifications**          | `notifications`                                                                          | No push/in-app notifications                |
+| **Knowledge Base**         | `knowledge-base`                                                                         | No self-service reference                   |
+| **User/Profile**           | `user`, `auth-me`, `settings`                                                            | Minimal profile management                  |
+| **Search**                 | `search`                                                                                 | No global search                            |
+| **Activities**             | `activities`, `activity-log`                                                             | No activity feed                            |
 
 ---
 
@@ -51,13 +51,13 @@ iOS Human Interface Guidelines recommend a maximum of 5 tabs. The current app us
 └──────────┴──────────┴──────────┴──────────┴──────────┘
 ```
 
-| Tab | Contents | Why |
-|-----|----------|-----|
-| **Home** | Today dashboard, activity feed, quick actions, notifications | Every mobile app needs a landing page. Currently users launch into a task list with no context. |
-| **CRM** | Business records, contacts, lead activities (existing, enhanced) | Keep the existing CRM tab — it works well. Add standalone contacts access. |
-| **Service** | Service tickets, work orders, scheduling, equipment | This is the biggest gap. Printyx is a print/copier service business — field service is core. |
-| **Sales** | Pipeline, quotes/proposals, contracts (consolidated) | Merge the current Pipeline + Quotes tabs into one sales hub. They're part of the same workflow. |
-| **More** | Tasks, invoices, inventory, reports, knowledge base, settings | Group less-frequently-accessed features here. Still important but not daily-driver tabs. |
+| Tab         | Contents                                                         | Why                                                                                             |
+| ----------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Home**    | Today dashboard, activity feed, quick actions, notifications     | Every mobile app needs a landing page. Currently users launch into a task list with no context. |
+| **CRM**     | Business records, contacts, lead activities (existing, enhanced) | Keep the existing CRM tab — it works well. Add standalone contacts access.                      |
+| **Service** | Service tickets, work orders, scheduling, equipment              | This is the biggest gap. Printyx is a print/copier service business — field service is core.    |
+| **Sales**   | Pipeline, quotes/proposals, contracts (consolidated)             | Merge the current Pipeline + Quotes tabs into one sales hub. They're part of the same workflow. |
+| **More**    | Tasks, invoices, inventory, reports, knowledge base, settings    | Group less-frequently-accessed features here. Still important but not daily-driver tabs.        |
 
 ---
 
@@ -98,6 +98,7 @@ iOS Human Interface Guidelines recommend a maximum of 5 tabs. The current app us
 ```
 
 **Implementation components:**
+
 - `HomeView.swift` — main container
 - `TodaySnapshotView.swift` — KPI cards from `today-dashboard`
 - `QuickActionsBar.swift` — shortcuts to create common items
@@ -106,6 +107,7 @@ iOS Human Interface Guidelines recommend a maximum of 5 tabs. The current app us
 - `GlobalSearchView.swift` — from `search` (modal overlay)
 
 **Models & Services:**
+
 - `DashboardModels.swift` — `TodaySnapshot`, `DashboardMetric`, `ActivityItem`
 - `NotificationModels.swift` — `AppNotification`, `NotificationType`
 - `DashboardService.swift` — fetches today dashboard + activity feed
@@ -121,11 +123,13 @@ iOS Human Interface Guidelines recommend a maximum of 5 tabs. The current app us
 Keep the existing CRM tab structure but add:
 
 1. **Standalone Contacts section** — Currently contacts are only visible within a business record. Add a segmented control option or a sub-navigation:
+
    ```
    [All Records] [Leads] [Prospects] [Customers] [Contacts]
    ```
 
 2. **CRM Goals tracking** — Show sales goals and progress from `crm-goals`:
+
    ```
    ┌─────────────────────────────────┐
    │  MY GOALS THIS MONTH           │
@@ -139,6 +143,7 @@ Keep the existing CRM tab structure but add:
 3. **Contact detail view** — Tap a contact to see their details, associated records, and communication history.
 
 **New files:**
+
 - `Features/Contacts/` — full MVVM stack (Models, Services, ViewModels, Views)
 - `ContactListView.swift`, `ContactDetailView.swift`, `ContactFormView.swift`
 - `CRMGoalsView.swift` — goals progress widget
@@ -203,6 +208,7 @@ This is the most impactful addition. Printyx manages printers/copiers — servic
    - Take photos (from `mobile` sessions/photos)
 
 **New files:**
+
 - `Features/ServiceTickets/` — full MVVM stack
   - `ServiceTicketModels.swift` — `ServiceTicket`, `TicketStatus`, `TicketPriority`, `TicketUpdate`
   - `ServiceTicketService.swift` — CRUD + status updates
@@ -243,12 +249,14 @@ Merge the current Pipeline and Quotes tabs into a single Sales hub with sub-navi
 ```
 
 **New sub-section — Contracts:**
+
 - List active contracts with renewal dates
 - Contract detail with terms, tiered rates, equipment covered
 - Renewal alerts (due in 30/60/90 days)
 - Renew / mark churned actions
 
 **New files:**
+
 - `Features/Contracts/` — full MVVM stack
   - `ContractModels.swift` — `Contract`, `ContractStatus`, `TieredRate`, `ContractRenewal`
   - `ContractService.swift` — CRUD + renewal operations
@@ -289,7 +297,9 @@ A `List`-based menu providing access to secondary features:
 **New feature modules:**
 
 #### Invoices
+
 **Edge functions**: `invoices`
+
 - Invoice list with status filters (draft, sent, paid, overdue)
 - Invoice detail with line items, payment history
 - Mark as paid, send reminder actions
@@ -297,7 +307,9 @@ A `List`-based menu providing access to secondary features:
 **Files:** `Features/Invoices/` — `InvoiceModels.swift`, `InvoiceService.swift`, `InvoiceListView.swift`, `InvoiceDetailView.swift`
 
 #### Inventory
+
 **Edge functions**: `inventory`, `supplies`, `parts-inventory`
+
 - Current stock levels with low-stock alerts
 - Parts search
 - Adjust quantities, reserve parts for work orders
@@ -305,7 +317,9 @@ A `List`-based menu providing access to secondary features:
 **Files:** `Features/Inventory/` — `InventoryModels.swift`, `InventoryService.swift`, `InventoryListView.swift`, `InventoryDetailView.swift`
 
 #### Reports
+
 **Edge functions**: `reports`, `sales-reports`, `team-reports`, `analytics`
+
 - Pre-built report cards (executive summary, pipeline health, service metrics)
 - Tap to expand with charts/details
 - Date range selector
@@ -313,7 +327,9 @@ A `List`-based menu providing access to secondary features:
 **Files:** `Features/Reports/` — `ReportModels.swift`, `ReportService.swift`, `ReportsView.swift`, `ReportDetailView.swift`
 
 #### Knowledge Base
+
 **Edge functions**: `knowledge-base`
+
 - Searchable article list by category
 - Article detail view with markdown rendering
 - Useful for field techs referencing troubleshooting guides
@@ -321,14 +337,18 @@ A `List`-based menu providing access to secondary features:
 **Files:** `Features/KnowledgeBase/` — `KBModels.swift`, `KBService.swift`, `KBListView.swift`, `KBArticleView.swift`
 
 #### Team
+
 **Edge functions**: `teams`, `users-team`
+
 - Team member list with roles and contact info
 - Tap to call/email a team member
 
 **Files:** `Features/Team/` — `TeamModels.swift`, `TeamService.swift`, `TeamListView.swift`
 
 #### Enhanced Settings & Profile
+
 **Edge functions**: `user`, `settings`, `auth-me`
+
 - Full profile editing (name, phone, avatar)
 - Notification preferences (push notification toggles)
 - Appearance settings (dark mode, compact mode)
@@ -344,35 +364,35 @@ A `List`-based menu providing access to secondary features:
 
 These create the most value with the least structural change:
 
-| # | Feature | Why First | Edge Functions |
-|---|---------|-----------|----------------|
-| 1 | **Home/Dashboard tab** | Every app needs a landing page; provides daily context | `today-dashboard`, `activities`, `notifications` |
-| 2 | **Service Tickets** | Core business function for a copier/printer company | `service-tickets` |
-| 3 | **Restructure tabs** | Reorganize from 5 sales tabs → Home/CRM/Service/Sales/More | — |
-| 4 | **Global Search** | Users need to find things fast on mobile | `search` |
+| #   | Feature                | Why First                                                  | Edge Functions                                   |
+| --- | ---------------------- | ---------------------------------------------------------- | ------------------------------------------------ |
+| 1   | **Home/Dashboard tab** | Every app needs a landing page; provides daily context     | `today-dashboard`, `activities`, `notifications` |
+| 2   | **Service Tickets**    | Core business function for a copier/printer company        | `service-tickets`                                |
+| 3   | **Restructure tabs**   | Reorganize from 5 sales tabs → Home/CRM/Service/Sales/More | —                                                |
+| 4   | **Global Search**      | Users need to find things fast on mobile                   | `search`                                         |
 
 ### Phase 2 — Depth
 
-| # | Feature | Why | Edge Functions |
-|---|---------|-----|----------------|
-| 5 | **Contracts** | High-value business data, renewal tracking | `contracts`, `contract-renewal` |
-| 6 | **Invoices** | Financial visibility on the go | `invoices` |
-| 7 | **Equipment tracking** | Core to service operations | `equipment`, `devices`, `meter-readings` |
-| 8 | **Contacts (standalone)** | Users need quick contact lookup | `contacts`, `company-contacts` |
-| 9 | **Notifications** | Keep users informed in real-time | `notifications` |
+| #   | Feature                   | Why                                        | Edge Functions                           |
+| --- | ------------------------- | ------------------------------------------ | ---------------------------------------- |
+| 5   | **Contracts**             | High-value business data, renewal tracking | `contracts`, `contract-renewal`          |
+| 6   | **Invoices**              | Financial visibility on the go             | `invoices`                               |
+| 7   | **Equipment tracking**    | Core to service operations                 | `equipment`, `devices`, `meter-readings` |
+| 8   | **Contacts (standalone)** | Users need quick contact lookup            | `contacts`, `company-contacts`           |
+| 9   | **Notifications**         | Keep users informed in real-time           | `notifications`                          |
 
 ### Phase 3 — Polish
 
-| # | Feature | Why | Edge Functions |
-|---|---------|-----|----------------|
-| 10 | **Work Orders** | Extends service operations | `work-orders` |
-| 11 | **Field Service Mode** | Mobile-specific check-in/out, photos, notes | `mobile-field`, `mobile` |
-| 12 | **Reports** | On-the-go business intelligence | `reports`, `analytics`, `sales-reports` |
-| 13 | **Inventory** | Parts availability for field techs | `inventory`, `parts-inventory` |
-| 14 | **Knowledge Base** | Field tech reference material | `knowledge-base` |
-| 15 | **Enhanced Settings** | Profile editing, notification prefs | `user`, `settings` |
-| 16 | **Scheduling/Calendar** | Appointment management | `scheduling`, `appointments` |
-| 17 | **Team Directory** | Quick team contact lookup | `teams`, `users-team` |
+| #   | Feature                 | Why                                         | Edge Functions                          |
+| --- | ----------------------- | ------------------------------------------- | --------------------------------------- |
+| 10  | **Work Orders**         | Extends service operations                  | `work-orders`                           |
+| 11  | **Field Service Mode**  | Mobile-specific check-in/out, photos, notes | `mobile-field`, `mobile`                |
+| 12  | **Reports**             | On-the-go business intelligence             | `reports`, `analytics`, `sales-reports` |
+| 13  | **Inventory**           | Parts availability for field techs          | `inventory`, `parts-inventory`          |
+| 14  | **Knowledge Base**      | Field tech reference material               | `knowledge-base`                        |
+| 15  | **Enhanced Settings**   | Profile editing, notification prefs         | `user`, `settings`                      |
+| 16  | **Scheduling/Calendar** | Appointment management                      | `scheduling`, `appointments`            |
+| 17  | **Team Directory**      | Quick team contact lookup                   | `teams`, `users-team`                   |
 
 ---
 
@@ -523,15 +543,16 @@ TabView(selection: $selectedTab) {
 
 ## Summary
 
-| Metric | Current | After Expansion |
-|--------|---------|-----------------|
-| Tabs | 5 (all sales-focused) | 5 (balanced across sales, service, operations) |
-| Features | 4 (Tasks, CRM, Pipeline, Quotes) | 15+ (Dashboard, CRM, Contacts, Service Tickets, Work Orders, Equipment, Pipeline, Quotes, Contracts, Invoices, Inventory, Reports, KB, Team, Field Service) |
-| Edge functions used | ~10 of 184 (5%) | ~40 of 184 (22%) |
-| User personas served | Sales reps only | Sales reps, field technicians, managers, admins |
-| Settings depth | User info + logout | Profile editing, notification prefs, appearance, cache |
+| Metric               | Current                          | After Expansion                                                                                                                                             |
+| -------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tabs                 | 5 (all sales-focused)            | 5 (balanced across sales, service, operations)                                                                                                              |
+| Features             | 4 (Tasks, CRM, Pipeline, Quotes) | 15+ (Dashboard, CRM, Contacts, Service Tickets, Work Orders, Equipment, Pipeline, Quotes, Contracts, Invoices, Inventory, Reports, KB, Team, Field Service) |
+| Edge functions used  | ~10 of 184 (5%)                  | ~40 of 184 (22%)                                                                                                                                            |
+| User personas served | Sales reps only                  | Sales reps, field technicians, managers, admins                                                                                                             |
+| Settings depth       | User info + logout               | Profile editing, notification prefs, appearance, cache                                                                                                      |
 
 The biggest wins for making the app "well-rounded" are:
+
 1. **Home dashboard** — gives users a reason to open the app every morning
 2. **Service operations** — covers the other half of the business (not just sales)
 3. **Tab consolidation** — Pipeline + Quotes merge into Sales, freeing room for Service and More

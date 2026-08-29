@@ -13,6 +13,7 @@ npm run check:schema:docker
 ### Requirements
 
 **.env Configuration:**
+
 ```env
 # Database
 DB_USER=postgres
@@ -59,6 +60,7 @@ npm run check:schema
 ```
 
 **Status**: ❌ Fails with connection reset
+
 - Tries 3 SSL configurations automatically
 - Supabase pooler (port 5433) not accessible from external network
 
@@ -69,11 +71,13 @@ npm run check:schema:ssh
 ```
 
 **Status**: ⚠️ Requires explicit SSH_USER setting
+
 - SSH tunnel works correctly
 - Database connection through tunnel fails due to pooler configuration
 - Use: `$env:SSH_USER='root'; npm run check:schema:ssh` for testing
 
 **Known Issues**:
+
 - Pooler port (5433) requires specific configuration
 - Connection terminated unexpectedly even with correct SSL settings
 - Docker exec approach is more reliable
@@ -82,13 +86,14 @@ npm run check:schema:ssh
 
 ## 🎯 **Why Docker Exec Works Best**
 
-| Method | SSH | Network | Pooler | SSL | Status |
-|--------|-----|---------|--------|-----|--------|
-| **Docker Exec** | ✅ | ✅ | N/A | N/A | ✅ **Works** |
-| Direct Connection | ❌ | ❌ | ❌ | ❌ | ❌ Fails |
-| SSH Tunnel | ✅ | ✅ | ❌ | ⚠️ | ⚠️ Partial |
+| Method            | SSH | Network | Pooler | SSL | Status       |
+| ----------------- | --- | ------- | ------ | --- | ------------ |
+| **Docker Exec**   | ✅  | ✅      | N/A    | N/A | ✅ **Works** |
+| Direct Connection | ❌  | ❌      | ❌     | ❌  | ❌ Fails     |
+| SSH Tunnel        | ✅  | ✅      | ❌     | ⚠️  | ⚠️ Partial   |
 
 **Benefits**:
+
 - ✅ No pooler configuration needed
 - ✅ No SSL/TLS troubleshooting
 - ✅ Direct PostgreSQL access
@@ -102,6 +107,7 @@ npm run check:schema:ssh
 ### JSON Report (`database-schema-report.json`)
 
 Complete schema data structure:
+
 ```json
 {
   "public.users": {
@@ -116,6 +122,7 @@ Complete schema data structure:
 ### Markdown Report (`docs/DATABASE_SCHEMA.md`)
 
 Human-readable documentation with:
+
 - Table listings
 - Column definitions
 - Data types and constraints
@@ -128,6 +135,7 @@ Human-readable documentation with:
 ### Container Not Found
 
 If you get `No such container: Supabase-DB-*`:
+
 1. Script auto-corrects case (Docker names are lowercase)
 2. Check container name in `.env` matches: `docker ps | grep supabase-db`
 
@@ -145,6 +153,7 @@ SSH_PASSWORD=your_ssh_password
 ### Permission Denied
 
 Ensure SSH user has Docker access:
+
 ```bash
 # On server
 usermod -aG docker root
@@ -155,21 +164,25 @@ usermod -aG docker root
 ## 🔍 **Script Details**
 
 ### Location
+
 - `scripts/database-schema-via-docker.ts` - Docker exec approach (✅ recommended)
 - `scripts/database-schema-reporter.ts` - Direct/SSH tunnel approach
 
 ### Dependencies
+
 - `ssh2` - SSH client library
 - `pg` - PostgreSQL client (for direct/tunnel modes)
 
 ### Configuration Precedence
 
 For SSH user:
+
 ```
 SSH_USER > SERVER_USER > DB_USER > 'root'
 ```
 
 For SSH password:
+
 ```
 SSH_PASSWORD > DB_PASSWORD
 ```
@@ -181,6 +194,7 @@ SSH_PASSWORD > DB_PASSWORD
 **✅ Use `npm run check:schema:docker`** for reliable schema reporting.
 
 This approach:
+
 - Successfully retrieves all 210 tables and 4,274 columns
 - Bypasses network, SSL, and pooler configuration issues
 - Auto-discovers the correct container name

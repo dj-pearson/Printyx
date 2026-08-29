@@ -29,10 +29,7 @@
         "NSUserTrackingUsageDescription": "Printyx may use device information to measure advertising effectiveness and improve your experience.",
         "UIBackgroundModes": ["location", "fetch", "remote-notification"]
       },
-      "associatedDomains": [
-        "applinks:app.printyx.net",
-        "applinks:printyx.net"
-      ],
+      "associatedDomains": ["applinks:app.printyx.net", "applinks:printyx.net"],
       "privacyManifests": {
         "NSPrivacyTracking": false,
         "NSPrivacyTrackingDomains": [],
@@ -97,9 +94,7 @@
             "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeDeviceID",
             "NSPrivacyCollectedDataTypeLinked": false,
             "NSPrivacyCollectedDataTypeTracking": false,
-            "NSPrivacyCollectedDataTypePurposes": [
-              "NSPrivacyCollectedDataTypePurposeAnalytics"
-            ]
+            "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAnalytics"]
           }
         ],
         "NSPrivacyAccessedAPITypes": [

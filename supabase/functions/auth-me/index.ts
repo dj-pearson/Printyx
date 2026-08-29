@@ -113,7 +113,10 @@ export default async function handler(req: Request) {
         metadataPatch.jobTitle = body.jobTitle ?? body.job_title;
       if (body.department !== undefined) metadataPatch.department = body.department;
       if (Object.keys(metadataPatch).length > 0) {
-        updates.metadata = { ...((current?.metadata as Record<string, unknown>) ?? {}), ...metadataPatch };
+        updates.metadata = {
+          ...((current?.metadata as Record<string, unknown>) ?? {}),
+          ...metadataPatch,
+        };
       }
 
       const { data: profile, error } = await admin

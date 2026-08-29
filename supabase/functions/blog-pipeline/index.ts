@@ -203,7 +203,9 @@ async function putConfig(admin: Admin, tenantId: string, userId: string, req: Re
     );
   }
   // Ensure a settings row exists, then patch the config column.
-  await admin.from('blog_agent_settings').upsert({ tenant_id: tenantId }, { onConflict: 'tenant_id' });
+  await admin
+    .from('blog_agent_settings')
+    .upsert({ tenant_id: tenantId }, { onConflict: 'tenant_id' });
   const { error } = await admin
     .from('blog_agent_settings')
     .update({ pipeline_stages_config: parsed.data.stages, updated_at: new Date().toISOString() })
@@ -294,12 +296,7 @@ async function startRun(
   return await executePipeline(admin, tenantId, user.id, run.id, req);
 }
 
-async function resumeRun(
-  admin: Admin,
-  tenantId: string,
-  user: { id: string },
-  req: Request,
-) {
+async function resumeRun(admin: Admin, tenantId: string, user: { id: string }, req: Request) {
   let body: unknown;
   try {
     body = await req.json();
@@ -356,11 +353,7 @@ async function executePipeline(
   runId: string,
   req: Request,
 ) {
-  const { data: run } = await admin
-    .from('blog_pipeline_runs')
-    .select('*')
-    .eq('id', runId)
-    .single();
+  const { data: run } = await admin.from('blog_pipeline_runs').select('*').eq('id', runId).single();
   if (!run) return createCorsResponse({ error: 'Run vanished' }, 500, req);
 
   const brandVoice = run.brand_voice_id
@@ -403,7 +396,13 @@ async function executePipeline(
       .eq('id', runId);
 
     const t0 = Date.now();
-    let result: { output: Record<string, unknown>; costCents: number; promptTokens: number; completionTokens: number; model: string };
+    let result: {
+      output: Record<string, unknown>;
+      costCents: number;
+      promptTokens: number;
+      completionTokens: number;
+      model: string;
+    };
     try {
       result = await runStage(sr.stage, ctx, brandVoice);
     } catch (err) {
@@ -772,7 +771,9 @@ async function listRuns(admin: Admin, tenantId: string, url: URL, req: Request) 
   const limit = Math.min(Number(url.searchParams.get('limit') ?? 50), 200);
   let q = admin
     .from('blog_pipeline_runs')
-    .select('id, topic, target_keyword, status, current_stage, total_cost_cents, total_latency_ms, post_id, created_at, completed_at')
+    .select(
+      'id, topic, target_keyword, status, current_stage, total_cost_cents, total_latency_ms, post_id, created_at, completed_at',
+    )
     .eq('tenant_id', tenantId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })

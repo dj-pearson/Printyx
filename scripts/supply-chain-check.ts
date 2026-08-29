@@ -172,7 +172,13 @@ function checkLifecycleScripts(lockfilePath: string): SupplyChainIssue[] {
     return issues;
   }
 
-  const dangerousScripts = ['preinstall', 'postinstall', 'install', 'preuninstall', 'postuninstall'];
+  const dangerousScripts = [
+    'preinstall',
+    'postinstall',
+    'install',
+    'preuninstall',
+    'postuninstall',
+  ];
 
   // Check packages in lockfile v2/v3 format
   if (lockfile.packages) {
@@ -276,7 +282,9 @@ function runSupplyChainCheck(): SupplyChainResult {
   if (allIssues.length === 0) {
     console.log('  Status: SAFE - No supply chain issues detected\n');
   } else {
-    console.log(`  Status: ${hasCritical ? 'UNSAFE' : 'WARNINGS'} - ${allIssues.length} issue(s) found\n`);
+    console.log(
+      `  Status: ${hasCritical ? 'UNSAFE' : 'WARNINGS'} - ${allIssues.length} issue(s) found\n`,
+    );
 
     // Group by type
     if (typosquattingIssues.length > 0) {

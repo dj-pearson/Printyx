@@ -242,44 +242,16 @@ export default function TenantManagement() {
                     <CardTitle>Tenant Distribution</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span>Enterprise Plan</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{ width: '65%' }}
-                            ></div>
-                          </div>
-                          <span className="text-sm">65%</span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Professional Plan</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-green-600 h-2 rounded-full"
-                              style={{ width: '25%' }}
-                            ></div>
-                          </div>
-                          <span className="text-sm">25%</span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Starter Plan</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-orange-600 h-2 rounded-full"
-                              style={{ width: '10%' }}
-                            ></div>
-                          </div>
-                          <span className="text-sm">10%</span>
-                        </div>
-                      </div>
-                    </div>
+                    {/* AUDIT-019: the plan mix was drawn as three bars at a
+                        fixed 65 / 25 / 10 percent, with the widths written into
+                        the style attribute. No tenant was ever counted. The
+                        page already loads the real tenant list, but nothing on
+                        it carries a plan, so there is nothing to derive this
+                        from yet. */}
+                    <p className="text-sm text-muted-foreground">
+                      Plan mix is not computed. The tenant records loaded by this page do not carry
+                      a subscription plan, so the split by plan cannot be derived here.
+                    </p>
                   </CardContent>
                 </Card>
               </div>
@@ -385,34 +357,19 @@ export default function TenantManagement() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">$284,750</div>
-                        <p className="text-sm text-gray-600">Monthly Recurring Revenue</p>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">$3,417,000</div>
-                        <p className="text-sm text-gray-600">Annual Recurring Revenue</p>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-orange-600">$45,200</div>
-                        <p className="text-sm text-gray-600">Outstanding Invoices</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Button className="w-full" variant="outline">
-                        Generate Revenue Report
-                      </Button>
-                      <Button className="w-full" variant="outline">
-                        Export Billing Data
-                      </Button>
-                      <Button className="w-full" variant="outline">
-                        Manage Payment Methods
-                      </Button>
-                    </div>
-                  </div>
+                  {/* AUDIT-019: $284,750 MRR, $3,417,000 ARR and $45,200
+                      outstanding, all three typed in, on the platform's own
+                      billing screen. These are the numbers an operator would
+                      quote to an investor or reconcile against Stripe. The
+                      three buttons under them - Generate Revenue Report, Export
+                      Billing Data, Manage Payment Methods - had no handler
+                      either. Platform revenue is not aggregated anywhere in
+                      this codebase, so nothing here can be derived. */}
+                  <p className="text-sm text-muted-foreground">
+                    Platform revenue is not aggregated here. Subscription and invoice figures live
+                    in Stripe and in the per-tenant billing tables; read them there rather than from
+                    this screen.
+                  </p>
                 </CardContent>
               </Card>
             </TabsContent>

@@ -141,9 +141,9 @@ test.describe('Email Verification Page', () => {
     await page.goto('/verify-email');
 
     // Should show some status messaging (check email, verification pending, etc.)
-    await expect(
-      page.getByText(/check|verify|email|sent|confirm|pending/i).first(),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/check|verify|email|sent|confirm|pending/i).first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 });
 
@@ -161,9 +161,9 @@ test.describe('Tenant Setup Flow', () => {
     await page.waitForLoadState('networkidle');
 
     // Page should render with tenant/organization setup content
-    await expect(
-      page.getByText(/setup|organization|company|tenant|business/i).first(),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/setup|organization|company|tenant|business/i).first()).toBeVisible(
+      { timeout: 10000 },
+    );
 
     // Filter out non-critical errors (API 401s are expected in demo mode)
     const criticalErrors = errors.filter(
@@ -234,9 +234,9 @@ test.describe('Onboarding Dashboard', () => {
     await page.waitForTimeout(2000);
 
     // Onboarding should display steps, progress, or checklist items
-    await expect(
-      page.getByText(/step|progress|complete|task|checklist/i).first(),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/step|progress|complete|task|checklist/i).first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('navigation to onboarding details works', async ({ page }) => {
@@ -270,7 +270,10 @@ test.describe('Full Registration → Dashboard Flow', () => {
     // Fill out the signup form
     await page.getByLabel(/name/i).first().fill('Test User');
     await page.getByLabel(/email/i).fill(TEST_EMAIL);
-    await page.getByLabel(/password/i).first().fill(TEST_PASSWORD);
+    await page
+      .getByLabel(/password/i)
+      .first()
+      .fill(TEST_PASSWORD);
     await page.getByLabel(/company/i).fill('Test Company Inc');
 
     // Submit the form
@@ -281,9 +284,7 @@ test.describe('Full Registration → Dashboard Flow', () => {
 
     // Should show a response: success message, redirect, or error (if user exists)
     await expect(
-      page
-        .getByText(/success|created|verify|check your email|already exists|error/i)
-        .first(),
+      page.getByText(/success|created|verify|check your email|already exists|error/i).first(),
     ).toBeVisible({ timeout: 10000 });
   });
 

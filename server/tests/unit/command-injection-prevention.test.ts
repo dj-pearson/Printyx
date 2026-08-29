@@ -63,14 +63,14 @@ describe('SEC-005: Command Injection Prevention', () => {
 
     it('should reject semicolon in args', () => {
       expect(() => validateArguments(['--host', 'localhost; rm -rf /'])).toThrow(
-        DangerousArgumentError
+        DangerousArgumentError,
       );
       expect(() => validateArguments([';ls'])).toThrow(DangerousArgumentError);
     });
 
     it('should reject pipe injection', () => {
       expect(() => validateArguments(['--output', 'file | cat /etc/passwd'])).toThrow(
-        DangerousArgumentError
+        DangerousArgumentError,
       );
       expect(() => validateArguments(['|whoami'])).toThrow(DangerousArgumentError);
     });
@@ -83,19 +83,19 @@ describe('SEC-005: Command Injection Prevention', () => {
     it('should reject $() subshell injection', () => {
       expect(() => validateArguments(['$(whoami)'])).toThrow(DangerousArgumentError);
       expect(() => validateArguments(['--db', 'test$(cat /etc/passwd)'])).toThrow(
-        DangerousArgumentError
+        DangerousArgumentError,
       );
     });
 
     it('should reject && chaining', () => {
       expect(() => validateArguments(['--name', 'test && rm -rf /'])).toThrow(
-        DangerousArgumentError
+        DangerousArgumentError,
       );
     });
 
     it('should reject || chaining', () => {
       expect(() => validateArguments(['--name', 'test || malicious'])).toThrow(
-        DangerousArgumentError
+        DangerousArgumentError,
       );
     });
   });
@@ -116,7 +116,7 @@ describe('SEC-005: Command Injection Prevention', () => {
 
     it('should reject dangerous arguments', async () => {
       await expect(safeExecFile('node', ['--eval', 'code; rm -rf /'])).rejects.toThrow(
-        DangerousArgumentError
+        DangerousArgumentError,
       );
     });
 
@@ -134,11 +134,11 @@ describe('SEC-005: Command Injection Prevention', () => {
           });
           (cb as Function)(error, '', 'timed out');
           return {} as ReturnType<typeof execFile>;
-        }
+        },
       );
 
       await expect(safeExecFile('node', ['--version'], { timeout: 100 })).rejects.toThrow(
-        'Command timed out after 100ms'
+        'Command timed out after 100ms',
       );
     });
 
@@ -155,7 +155,7 @@ describe('SEC-005: Command Injection Prevention', () => {
           });
           (cb as Function)(error, '', 'error output');
           return {} as ReturnType<typeof execFile>;
-        }
+        },
       );
 
       const result = await safeExecFile('node', ['--version']);

@@ -7,6 +7,7 @@
 ## Why this is deferred
 
 SAML XML signature verification requires:
+
 1. Canonical XML (C14N) transformation — pick-a-subtree semantics
 2. Reference digest validation (SHA-256 typical)
 3. Signature validation using the IdP's X.509 public key
@@ -14,6 +15,7 @@ SAML XML signature verification requires:
 5. Protection against XML-ext-entity (XXE) and signature-wrapping attacks
 
 Node has `xml-crypto` + `xmldom`, both Node-only today. In Deno:
+
 - `https://esm.sh/xml-crypto@3.2.0` — imports but has runtime quirks around Buffer usage
 - `https://esm.sh/@xmldom/xmldom` — mostly works but needs careful parser config
 - Pure `crypto.subtle` implementation is possible but ~500 lines of security-critical code
@@ -25,6 +27,7 @@ Node has `xml-crypto` + `xmldom`, both Node-only today. In Deno:
 ## What's in place today
 
 Edge function: `supabase/functions/sso/index.ts`
+
 - **Works**: provider CRUD, OIDC callback (full token exchange), metadata XML, test probe, initiate URL, session store
 - **Stubbed (501)**: `POST /callback/saml/:providerId`, `POST /logout/saml/:providerId`, `POST /providers/import`
 
@@ -37,16 +40,19 @@ Credential redaction: `sso/_credentials.ts` masks `oidc_client_secret`, `saml_ce
 ## Options to unblock
 
 ### Option A — port `xml-crypto` via esm.sh, harden, review
+
 - Spike `xml-crypto@3.2.0` + `@xmldom/xmldom` in a Deno edge function
 - Validate against known-good + known-bad (signature-wrapping) SAML fixtures
 - Effort: ~1-2 days focused. Security review mandatory before merge.
 
 ### Option B — self-hosted Supabase Enterprise SSO
+
 - Verify whether this tier supports SSO on the self-hosted Supabase install
 - If yes: migrate providers table → Supabase's SSO API, delete the custom code entirely
 - Effort: low if supported; possibly blocked by self-hosted licensing
 
 ### Option C — keep Express running just for SAML
+
 - Special-case: Express container stays alive for `/sso/callback/saml/*` only
 - Everything else goes through the edge function
 - Effort: near-zero, but leaves an Express footprint indefinitely

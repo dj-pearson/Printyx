@@ -9,6 +9,7 @@ In self-hosted Supabase (especially with Coolify), `GOTRUE_SITE_URL` is locked t
 ## The Solution
 
 Create a custom OAuth proxy edge function that:
+
 1. Handles the OAuth flow directly with Google/Apple
 2. Creates a Supabase user session via Admin API
 3. Redirects to your frontend with a magic link token
@@ -80,11 +81,13 @@ export default async function handler(req: Request): Promise<Response> {
     if (action === 'authorize') {
       const codeVerifier = generateCodeVerifier();
       const codeChallenge = await generateCodeChallenge(codeVerifier);
-      const stateData = btoa(JSON.stringify({
-        verifier: codeVerifier,
-        redirectTo: redirectTo,
-        provider: provider,
-      }));
+      const stateData = btoa(
+        JSON.stringify({
+          verifier: codeVerifier,
+          redirectTo: redirectTo,
+          provider: provider,
+        }),
+      );
 
       let authUrl: URL;
 
@@ -116,7 +119,7 @@ export default async function handler(req: Request): Promise<Response> {
 
       return new Response(null, {
         status: 302,
-        headers: { ...corsHeaders, 'Location': authUrl.toString() },
+        headers: { ...corsHeaders, Location: authUrl.toString() },
       });
     }
 
@@ -128,8 +131,11 @@ export default async function handler(req: Request): Promise<Response> {
       if (error) {
         const errorUrl = new URL(`${FRONTEND_URL}/auth`);
         errorUrl.searchParams.set('error', error);
-        errorUrl.searchParams.set('error_description', url.searchParams.get('error_description') || '');
-        return new Response(null, { status: 302, headers: { 'Location': errorUrl.toString() } });
+        errorUrl.searchParams.set(
+          'error_description',
+          url.searchParams.get('error_description') || '',
+        );
+        return new Response(null, { status: 302, headers: { Location: errorUrl.toString() } });
       }
 
       if (!code || !state) {
@@ -186,7 +192,7 @@ export default async function handler(req: Request): Promise<Response> {
         console.error('Token error:', tokenData);
         const errorUrl = new URL(`${FRONTEND_URL}/auth`);
         errorUrl.searchParams.set('error', tokenData.error);
-        return new Response(null, { status: 302, headers: { 'Location': errorUrl.toString() } });
+        return new Response(null, { status: 302, headers: { Location: errorUrl.toString() } });
       }
 
       // Decode ID token to get user info
@@ -199,7 +205,7 @@ export default async function handler(req: Request): Promise<Response> {
 
       // Check if user exists
       const { data: existingUsers } = await supabase.auth.admin.listUsers();
-      const existingUser = existingUsers?.users?.find(u => u.email === payload.email);
+      const existingUser = existingUsers?.users?.find((u) => u.email === payload.email);
 
       if (!existingUser) {
         // Create new user
@@ -220,7 +226,7 @@ export default async function handler(req: Request): Promise<Response> {
           console.error('Create user error:', createError);
           const errorUrl = new URL(`${FRONTEND_URL}/auth`);
           errorUrl.searchParams.set('error', 'create_user_failed');
-          return new Response(null, { status: 302, headers: { 'Location': errorUrl.toString() } });
+          return new Response(null, { status: 302, headers: { Location: errorUrl.toString() } });
         }
       }
 
@@ -235,7 +241,7 @@ export default async function handler(req: Request): Promise<Response> {
         console.error('Generate link error:', linkError);
         const errorUrl = new URL(`${FRONTEND_URL}/auth`);
         errorUrl.searchParams.set('error', 'generate_link_failed');
-        return new Response(null, { status: 302, headers: { 'Location': errorUrl.toString() } });
+        return new Response(null, { status: 302, headers: { Location: errorUrl.toString() } });
       }
 
       // Extract token and redirect to frontend
@@ -249,17 +255,19 @@ export default async function handler(req: Request): Promise<Response> {
       successUrl.searchParams.set('redirect_to', finalRedirect);
       if (!existingUser) successUrl.searchParams.set('new_user', 'true');
 
-      return new Response(null, { status: 302, headers: { 'Location': successUrl.toString() } });
+      return new Response(null, { status: 302, headers: { Location: successUrl.toString() } });
     }
 
     // Default response
-    return new Response(JSON.stringify({
-      usage: 'Call with ?action=authorize&provider=google to start OAuth flow',
-      providers: ['google', 'apple'],
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
+    return new Response(
+      JSON.stringify({
+        usage: 'Call with ?action=authorize&provider=google to start OAuth flow',
+        providers: ['google', 'apple'],
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   } catch (error) {
     console.error('OAuth proxy error:', error);
     return new Response(JSON.stringify({ error: (error as Error).message }), {
@@ -274,14 +282,18 @@ function generateCodeVerifier(): string {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
   return btoa(String.fromCharCode(...array))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
 
 async function generateCodeChallenge(verifier: string): Promise<string> {
   const data = new TextEncoder().encode(verifier);
   const digest = await crypto.subtle.digest('SHA-256', data);
   return btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
 ```
 
@@ -294,7 +306,7 @@ In your `edge-functions-server.ts`, add to the `FUNCTIONS_MAP`:
 ```typescript
 const FUNCTIONS_MAP: { [key: string]: string } = {
   // ... other functions
-  "oauth-proxy": "./functions/oauth-proxy/index.ts",
+  'oauth-proxy': './functions/oauth-proxy/index.ts',
   // ... other functions
 };
 ```
@@ -511,7 +523,9 @@ CMD ["deno", "run", "--allow-net", "--allow-env", "--allow-read", "server.ts"]
 ## Troubleshooting
 
 ### "Address already in use" error
+
 The function is using `Deno.serve()` instead of exporting a handler. Change:
+
 ```typescript
 // Wrong
 Deno.serve(async (req) => { ... });
@@ -521,18 +535,22 @@ export default async function handler(req: Request): Promise<Response> { ... }
 ```
 
 ### "redirect_uri_mismatch" error
+
 1. Check the URL in Google's auth page - look for `redirect_uri` parameter
 2. Add that exact URL to Google Cloud Console
 3. Ensure HTTPS (not HTTP)
 4. Include query parameters (`?action=callback`)
 
 ### Redirects to Supabase Dashboard
+
 The oauth-proxy isn't being used. Check:
+
 1. Frontend is calling `functions.yourdomain.com/oauth-proxy`
 2. Function is in `FUNCTIONS_MAP`
 3. Docker container was rebuilt
 
 ### "Function not found" error
+
 1. Check `FUNCTIONS_MAP` includes `oauth-proxy`
 2. Rebuild Docker with `--no-cache`
 3. Verify function file exists in `supabase/functions/oauth-proxy/`

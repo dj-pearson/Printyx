@@ -138,9 +138,7 @@ describe('SEC-010: CORS Hardening and Origin Validation', () => {
     });
 
     it('allows replit.dev subdomains in development', () => {
-      expect(
-        isAllowedOrigin('https://my-project-abc123.replit.dev', 'development'),
-      ).toBe(true);
+      expect(isAllowedOrigin('https://my-project-abc123.replit.dev', 'development')).toBe(true);
     });
 
     // --- localhost NOT allowed in production ---
@@ -156,9 +154,7 @@ describe('SEC-010: CORS Hardening and Origin Validation', () => {
     });
 
     it('blocks replit.dev in production', () => {
-      expect(
-        isAllowedOrigin('https://my-project.replit.dev', 'production'),
-      ).toBe(false);
+      expect(isAllowedOrigin('https://my-project.replit.dev', 'production')).toBe(false);
     });
 
     // --- Origin reflection attack blocked ---
@@ -171,9 +167,7 @@ describe('SEC-010: CORS Hardening and Origin Validation', () => {
     });
 
     it('blocks origin reflection attack with path manipulation', () => {
-      expect(
-        isAllowedOrigin('https://printyx.net.evil.com', 'production'),
-      ).toBe(false);
+      expect(isAllowedOrigin('https://printyx.net.evil.com', 'production')).toBe(false);
     });
 
     it('blocks HTTP protocol for production domains', () => {
@@ -196,9 +190,7 @@ describe('SEC-010: CORS Hardening and Origin Validation', () => {
 
   describe('getValidatedOrigin', () => {
     it('returns the origin string for allowed origins', () => {
-      expect(getValidatedOrigin('https://printyx.net', 'production')).toBe(
-        'https://printyx.net',
-      );
+      expect(getValidatedOrigin('https://printyx.net', 'production')).toBe('https://printyx.net');
     });
 
     it('returns false for disallowed origins', () => {

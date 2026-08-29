@@ -13,13 +13,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import {
   Select,
   SelectContent,
@@ -92,15 +86,21 @@ export function BoardOptionsMenu({
               <RadioGroup value={cardStyle} onValueChange={(v) => onCardStyleChange(v as any)}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="compact" id="compact" />
-                  <Label htmlFor="compact" className="text-sm">Compact (title + 1 field)</Label>
+                  <Label htmlFor="compact" className="text-sm">
+                    Compact (title + 1 field)
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="standard" id="standard" />
-                  <Label htmlFor="standard" className="text-sm">Standard (title + 3 fields + tags)</Label>
+                  <Label htmlFor="standard" className="text-sm">
+                    Standard (title + 3 fields + tags)
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="detailed" id="detailed" />
-                  <Label htmlFor="detailed" className="text-sm">Detailed (title + 5 fields + tags + associations)</Label>
+                  <Label htmlFor="detailed" className="text-sm">
+                    Detailed (title + 5 fields + tags + associations)
+                  </Label>
                 </div>
               </RadioGroup>
             </div>
@@ -118,14 +118,26 @@ export function BoardOptionsMenu({
             </div>
           </div>
           <SheetFooter className="mt-6">
-            <Button variant="outline" onClick={() => setActivePanel(null)}>Cancel</Button>
-            <Button onClick={() => { onSave(applyForEveryone); setActivePanel(null); }}>Save</Button>
+            <Button variant="outline" onClick={() => setActivePanel(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                onSave(applyForEveryone);
+                setActivePanel(null);
+              }}
+            >
+              Save
+            </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
 
       {/* Edit Columns Panel */}
-      <Sheet open={activePanel === 'columns'} onOpenChange={(open) => !open && setActivePanel(null)}>
+      <Sheet
+        open={activePanel === 'columns'}
+        onOpenChange={(open) => !open && setActivePanel(null)}
+      >
         <SheetContent side="right" className="w-[380px]">
           <SheetHeader>
             <SheetTitle>Edit Column Display</SheetTitle>
@@ -148,14 +160,26 @@ export function BoardOptionsMenu({
             </div>
           </div>
           <SheetFooter className="mt-6">
-            <Button variant="outline" onClick={() => setActivePanel(null)}>Cancel</Button>
-            <Button onClick={() => { onSave(applyForEveryone); setActivePanel(null); }}>Save</Button>
+            <Button variant="outline" onClick={() => setActivePanel(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                onSave(applyForEveryone);
+                setActivePanel(null);
+              }}
+            >
+              Save
+            </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
 
       {/* Board Settings Panel */}
-      <Sheet open={activePanel === 'settings'} onOpenChange={(open) => !open && setActivePanel(null)}>
+      <Sheet
+        open={activePanel === 'settings'}
+        onOpenChange={(open) => !open && setActivePanel(null)}
+      >
         <SheetContent side="right" className="w-[380px]">
           <SheetHeader>
             <SheetTitle>Board Settings</SheetTitle>
@@ -177,8 +201,17 @@ export function BoardOptionsMenu({
             </div>
           </div>
           <SheetFooter className="mt-6">
-            <Button variant="outline" onClick={() => setActivePanel(null)}>Cancel</Button>
-            <Button onClick={() => { onSave(applyForEveryone); setActivePanel(null); }}>Save</Button>
+            <Button variant="outline" onClick={() => setActivePanel(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                onSave(applyForEveryone);
+                setActivePanel(null);
+              }}
+            >
+              Save
+            </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>

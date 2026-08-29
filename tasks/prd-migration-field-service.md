@@ -9,6 +9,7 @@
 ## 1. Scope
 
 **Source Express files:**
+
 - `server/routes/field-service-routes.ts` (421 lines, **16 endpoints**) — installations, service-signatures, installation-checklists
 - `server/routes/geofence-alerts-routes.ts` (743 lines, **20 endpoints**) — rules, alerts, dwell-sessions, subscriptions, statistics, process-event
 - `server/routes/gps-tracking-routes.ts` (1,078 lines, **39 endpoints**) — technician locations, routes, deviations, ETAs, geofences, geofence-events
@@ -16,9 +17,11 @@
 - `server/routes/route-optimization-routes.ts` (223 lines, **5 endpoints**) — optimize, create, reoptimize, analytics, multi-technician
 
 **Services:**
+
 - `server/services/route-optimization-service.ts` — **no external routing API found** (no Mapbox/Google Maps/OSRM imports). Likely pure TSP-style algorithm. Port as-is.
 
 **Existing adjacent edge functions (may partially overlap):**
+
 - `supabase/functions/mobile-field/` (314 lines) — mobile app bundle endpoints
 - `supabase/functions/technicians/` (338 lines) — technician CRUD
 - `supabase/functions/technician-management/` (294 lines) — management layer
@@ -59,6 +62,7 @@ supabase/functions/
 **Rationale:** the high-frequency path (location updates every 30-60s per tech) benefits from a dedicated function with a tuned DB pool. The office-side CRUD can tolerate cold starts. Alerts are a separate read model that dashboards watch via Realtime.
 
 **Explicitly out of scope:**
+
 - Mobile app bundling — `mobile-field/` stays as-is (no merge in this PRD).
 - New route optimization algorithms — port whatever's there today. If it's insufficient, that's a product decision post-migration.
 
@@ -67,11 +71,13 @@ supabase/functions/
 ## 2. Endpoint parity matrix (condensed)
 
 ### `field-service-routes.ts` — 16 endpoints
+
 Installations (5): GET /installations, GET /installations/:id, POST /installations, PATCH /installations/:id, DELETE /installations/:id
 Service-signatures (5): GET /service-signatures, GET /service-signatures/:id, POST /service-signatures, PATCH /service-signatures/:id, DELETE /service-signatures/:id
 Installation-checklists (6): GET /installations/:installationId/checklists, GET /installation-checklists/:id, POST /installation-checklists, POST /installation-checklists/bulk, PATCH /installation-checklists/:id, DELETE /installation-checklists/:id
 
 ### `geofence-alerts-routes.ts` — 20 endpoints
+
 Rules (5): GET/POST/PUT/DELETE /rules, GET /rules/:id
 Alerts (6): GET /alerts, GET /alerts/unacknowledged, GET /alerts/:id, POST /alerts/:id/(acknowledge|resolve|escalate)
 Event processing (2): POST /process-event, POST /check-dwell
@@ -80,6 +86,7 @@ Subscriptions (3): GET /subscriptions, POST /subscriptions, DELETE /subscription
 Statistics (1): GET /statistics
 
 ### `gps-tracking-routes.ts` — 39 endpoints
+
 Technicians + locations (8): list locations, get/put/status-filter/nearby/history/distance, POST location-history
 Ticket timeline (1): GET /tickets/:ticketId/activity-timeline
 Routes (8): GET list, GET :id, POST, PUT, DELETE, POST start, POST complete, PATCH progress
@@ -89,6 +96,7 @@ Geofences (6): GET/POST/PUT/DELETE, GET :id, POST check
 Geofence-events (4): GET list, POST, GET technicians/:id/events, GET tickets/:id/events
 
 ### `mileage-routes.ts` — 17 endpoints
+
 Records (3): GET /records, POST /records, POST /auto-generate
 Summary (1): GET /summary
 Reports (5): GET /reports, POST /reports, GET /reports/:id, POST /reports/:id/submit/approve/reject
@@ -97,6 +105,7 @@ IRS log (3): GET /irs-log, GET /irs-log/export, POST /irs-log
 Vehicles (2): GET /vehicles, POST /vehicles
 
 ### `route-optimization-routes.ts` — 5 endpoints
+
 POST /optimize, POST /create, POST /routes/:id/reoptimize, GET /technicians/:id/analytics, POST /multi-technician
 
 ---
@@ -104,6 +113,7 @@ POST /optimize, POST /create, POST /routes/:id/reoptimize, GET /technicians/:id/
 ## 3. Tables + RLS plan
 
 From schemas:
+
 - `shared/gps-tracking-schema.ts` → `technician_locations`, `location_history`, `technician_routes`, `route_stops`, `route_deviations`, `technician_etas`, `geofences`, `geofence_events`
 - `shared/geofence-alerts-schema.ts` → `geofence_alert_rules`, `geofence_alerts`, `geofence_dwell_sessions`, `geofence_alert_subscriptions`
 - `shared/mileage-tracking-schema.ts` → `mileage_records`, `mileage_reports`, `mileage_rates`, `irs_mileage_log`, `mileage_vehicles`
@@ -140,9 +150,11 @@ useEffect(() => {
 ```
 
 **Prerequisite:** Realtime must be enabled on `technician_locations`:
+
 ```sql
 ALTER PUBLICATION supabase_realtime ADD TABLE public.technician_locations;
 ```
+
 (included in `drizzle/rls/field-service.sql`).
 
 **Row-level filtering via RLS:** the Realtime subscription reuses the authenticated JWT, so RLS filters payloads automatically. Cross-tenant updates are never delivered.
@@ -153,12 +165,12 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.technician_locations;
 
 ## 5. External dependencies to port
 
-| Dependency | Express location | Deno port |
-|---|---|---|
-| `IStorage` methods for installations, checklists, service signatures | `server/storage.ts` | Direct Drizzle calls |
-| Route optimization algorithm | `server/services/route-optimization-service.ts` | Copy to `field-service/_optimize.ts` — verify no Node-only imports first |
-| Mileage rate lookup (IRS) | likely hardcoded or DB-backed | Port as-is |
-| WebSocket location push | `server/websocket-service.ts` | **Delete.** Replace with Realtime subscription (see §4) |
+| Dependency                                                           | Express location                                | Deno port                                                                |
+| -------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------ |
+| `IStorage` methods for installations, checklists, service signatures | `server/storage.ts`                             | Direct Drizzle calls                                                     |
+| Route optimization algorithm                                         | `server/services/route-optimization-service.ts` | Copy to `field-service/_optimize.ts` — verify no Node-only imports first |
+| Mileage rate lookup (IRS)                                            | likely hardcoded or DB-backed                   | Port as-is                                                               |
+| WebSocket location push                                              | `server/websocket-service.ts`                   | **Delete.** Replace with Realtime subscription (see §4)                  |
 
 **No external routing APIs (Mapbox, Google, OSRM)** currently. If route optimization is trivial (nearest-neighbor TSP), that's fine — post-migration we can consider a routing API if accuracy matters.
 
@@ -167,6 +179,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.technician_locations;
 ## 6. Acceptance criteria
 
 ### Functional parity
+
 - [ ] All 97 endpoints ported across the 3 edge functions (or whatever split is chosen)
 - [ ] Technician location PUT writes to `technician_locations` successfully
 - [ ] Realtime subscription delivers location updates to the dashboard in < 2s p95
@@ -176,12 +189,14 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.technician_locations;
 - [ ] Installation checklist bulk insert handles 50+ items atomically (transaction)
 
 ### Security / RLS
+
 - [ ] RLS on all ~17 tables in `drizzle/rls/field-service.sql`
 - [ ] `technician_locations` added to `supabase_realtime` publication
 - [ ] Cross-tenant Realtime payload test: subscribe with tenant-A JWT, verify tenant-B inserts don't arrive
 - [ ] Mileage IRS log cannot be cross-tenant queried even with forged `/irs-log?tenantId=X` query param
 
 ### Frontend compatibility
+
 - [ ] Field service dispatch dashboard loads (whichever page shows live tech locations)
 - [ ] Tech mobile web view can submit location updates
 - [ ] Geofence-alert dashboard displays unacknowledged alerts + allows acknowledge/resolve/escalate
@@ -190,17 +205,20 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.technician_locations;
 - [ ] Playwright MCP pass on dispatch dashboard; **manual device test** for mobile tech flow
 
 ### WebSocket sunset
+
 - [ ] `useWebSocket` hook usage for location tracking removed from frontend
 - [ ] `/ws/technician-locations` (or equivalent) no longer referenced in frontend
 - [ ] `server/websocket-service.ts` usages for location removed (file may stay if other domains still use it — deleted wholly in Phase 6 US-027)
 
 ### Deletion
+
 - [ ] All 5 Express route files deleted
 - [ ] `server/services/route-optimization-service.ts` deleted (ported to `_optimize.ts`)
 - [ ] Route registry entries removed
 - [ ] `grep -r "field-service-routes\|geofence-alerts-routes\|gps-tracking-routes\|mileage-routes\|route-optimization-routes" server/ client/` returns zero matches
 
 ### Quality gates
+
 - [ ] `deno check` passes on all 3 edge functions
 - [ ] `npm run check` passes
 - [ ] `npm run build` succeeds
@@ -210,21 +228,26 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.technician_locations;
 ## 7. Test plan
 
 ### Unit (Deno)
+
 - `_optimize.test.ts` — route optimization on fixture (5 stops, verify output order)
 - `_matcher.test.ts` — point-in-polygon for geofence hit-testing (include edge cases: exact boundary, near-boundary, polygon with hole if supported)
 
 ### Integration
+
 - Local: seed 3 technicians, 5 geofences; simulate 50 location pings; verify geofence events fire correctly
 - Dwell session: tech enters geofence, holds 10 min, exits — verify session start + end + duration
 - Realtime smoke: open 2 browser tabs with different tenants; confirm tenant A only sees tenant A's tech movements
 
 ### Performance
+
 - **Measure cold start** on `field-service-tracking/` — target < 700ms (higher tolerance than office-side function due to complexity)
 - **Measure Realtime p95 latency** — target < 2s from DB write to browser callback
 - **Load test**: 100 simultaneous location PUTs from simulated techs; verify no DB connection pool exhaustion
 
 ### Mobile smoke (critical)
+
 Must be tested on an actual mobile device, not just desktop browser:
+
 - Open mobile tech app on iOS + Android
 - Start a route, confirm location pings succeed
 - Verify checklist items can be completed offline-then-synced (if that's a thing today — check)
@@ -245,14 +268,14 @@ No schema changes in this PRD (RLS only).
 
 ## 9. Risks + mitigations
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Realtime p95 latency worse than WebSocket | Medium | Medium | Measure before sunset of WS code; if > 3s, keep WS in place until Phase 6 US-027 |
-| `technician_locations` write rate overwhelms WAL (Supabase Realtime) | Low | High | Rate-limit mobile client to 1 update / 30s; document as product decision |
-| Mobile offline sync assumptions broken by switch to direct edge function calls | Medium | High | Test offline flow before sunsetting Express; if client relied on WS reconnect semantics, build equivalent retry in mobile client |
-| Route optimization algorithm depends on a Node-specific lib not caught by grep | Low | Medium | Read `route-optimization-service.ts` end-to-end before porting |
-| Geofence point-in-polygon has floating-point drift bugs in Deno vs. Node | Low | Medium | Unit tests with boundary fixtures; if PostGIS is available, prefer `ST_Contains` server-side |
-| 97 endpoints across 3 functions is a big review surface | High | Low | Split into 5 sub-PRs (one per Express file being ported), merge to shared branch, final merge to main |
+| Risk                                                                           | Likelihood | Impact | Mitigation                                                                                                                       |
+| ------------------------------------------------------------------------------ | ---------- | ------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Realtime p95 latency worse than WebSocket                                      | Medium     | Medium | Measure before sunset of WS code; if > 3s, keep WS in place until Phase 6 US-027                                                 |
+| `technician_locations` write rate overwhelms WAL (Supabase Realtime)           | Low        | High   | Rate-limit mobile client to 1 update / 30s; document as product decision                                                         |
+| Mobile offline sync assumptions broken by switch to direct edge function calls | Medium     | High   | Test offline flow before sunsetting Express; if client relied on WS reconnect semantics, build equivalent retry in mobile client |
+| Route optimization algorithm depends on a Node-specific lib not caught by grep | Low        | Medium | Read `route-optimization-service.ts` end-to-end before porting                                                                   |
+| Geofence point-in-polygon has floating-point drift bugs in Deno vs. Node       | Low        | Medium | Unit tests with boundary fixtures; if PostGIS is available, prefer `ST_Contains` server-side                                     |
+| 97 endpoints across 3 functions is a big review surface                        | High       | Low    | Split into 5 sub-PRs (one per Express file being ported), merge to shared branch, final merge to main                            |
 
 ---
 

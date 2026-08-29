@@ -27,11 +27,11 @@ docker pull grafana/k6
 
 ## Test Scripts
 
-| Script       | Purpose                    | VUs      | Duration | Use Case                                      |
-| ------------ | -------------------------- | -------- | -------- | --------------------------------------------- |
-| `smoke.js`   | Basic sanity check         | 1        | 30s      | Verify endpoints work under minimal load       |
-| `load.js`    | Normal load simulation     | up to 50 | 5 min    | Validate performance under expected traffic    |
-| `stress.js`  | Stress / breaking point    | 10-200   | 10 min   | Find system limits and observe failure modes   |
+| Script      | Purpose                 | VUs      | Duration | Use Case                                     |
+| ----------- | ----------------------- | -------- | -------- | -------------------------------------------- |
+| `smoke.js`  | Basic sanity check      | 1        | 30s      | Verify endpoints work under minimal load     |
+| `load.js`   | Normal load simulation  | up to 50 | 5 min    | Validate performance under expected traffic  |
+| `stress.js` | Stress / breaking point | 10-200   | 10 min   | Find system limits and observe failure modes |
 
 ## Running Tests
 
@@ -85,13 +85,13 @@ k6 run --out json=results.json tests/load/load.js
 
 ## Environment Variables
 
-| Variable         | Default                  | Description                     |
-| ---------------- | ------------------------ | ------------------------------- |
-| `BASE_URL`       | `http://localhost:5000`  | Target server URL               |
-| `AUTH_TOKEN`     | (empty)                  | JWT bearer token for auth       |
-| `TENANT_ID`     | `test-tenant`            | Tenant ID for multi-tenant auth |
-| `TEST_EMAIL`     | `test@example.com`       | Email for login endpoint test   |
-| `TEST_PASSWORD`  | `testpassword`           | Password for login endpoint     |
+| Variable        | Default                 | Description                     |
+| --------------- | ----------------------- | ------------------------------- |
+| `BASE_URL`      | `http://localhost:5000` | Target server URL               |
+| `AUTH_TOKEN`    | (empty)                 | JWT bearer token for auth       |
+| `TENANT_ID`     | `test-tenant`           | Tenant ID for multi-tenant auth |
+| `TEST_EMAIL`    | `test@example.com`      | Email for login endpoint test   |
+| `TEST_PASSWORD` | `testpassword`          | Password for login endpoint     |
 
 ## Interpreting Results
 
@@ -99,22 +99,22 @@ After a test run, k6 outputs a summary with key metrics:
 
 ### Key Metrics
 
-| Metric               | Description                                       | Healthy Target          |
-| -------------------- | ------------------------------------------------- | ----------------------- |
-| `http_req_duration`  | Total request time (send + wait + receive)         | p(95) < 500ms (smoke)   |
-| `http_req_failed`    | Percentage of failed HTTP requests (status >= 400) | < 1% (smoke), < 5% (load) |
-| `http_reqs`          | Total number of HTTP requests made                 | Higher is better         |
-| `vus`                | Current number of active virtual users             | Should match config      |
-| `iterations`         | Total completed test iterations                    | Higher is better         |
+| Metric              | Description                                        | Healthy Target            |
+| ------------------- | -------------------------------------------------- | ------------------------- |
+| `http_req_duration` | Total request time (send + wait + receive)         | p(95) < 500ms (smoke)     |
+| `http_req_failed`   | Percentage of failed HTTP requests (status >= 400) | < 1% (smoke), < 5% (load) |
+| `http_reqs`         | Total number of HTTP requests made                 | Higher is better          |
+| `vus`               | Current number of active virtual users             | Should match config       |
+| `iterations`        | Total completed test iterations                    | Higher is better          |
 
 ### Custom Metrics (load.js and stress.js)
 
-| Metric                 | Description                                      |
-| ---------------------- | ------------------------------------------------ |
-| `errors`               | Rate of failed check assertions                  |
-| `dashboard_duration`   | Response time trend for `/api/dashboard/metrics`  |
-| `leads_duration`       | Response time trend for `/api/leads`              |
-| `total_requests`       | Total request count (stress.js only)             |
+| Metric               | Description                                      |
+| -------------------- | ------------------------------------------------ |
+| `errors`             | Rate of failed check assertions                  |
+| `dashboard_duration` | Response time trend for `/api/dashboard/metrics` |
+| `leads_duration`     | Response time trend for `/api/leads`             |
+| `total_requests`     | Total request count (stress.js only)             |
 
 ### Thresholds
 

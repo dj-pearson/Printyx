@@ -11,20 +11,20 @@ This runbook documents the procedures for backing up and restoring the Printyx d
 
 ## Infrastructure
 
-| Component | Details |
-|-----------|---------|
-| **Database** | PostgreSQL via Supabase (209.145.59.219:5433) |
-| **Backup Storage** | Google Cloud Storage (GCS) |
-| **Backup Tool** | pg_dump + gzip |
-| **Automation** | K8s CronJob (`k8s/base/cronjob-backup.yaml`) |
-| **Schedule** | Daily at 2:00 AM UTC |
+| Component          | Details                                       |
+| ------------------ | --------------------------------------------- |
+| **Database**       | PostgreSQL via Supabase (209.145.59.219:5433) |
+| **Backup Storage** | Google Cloud Storage (GCS)                    |
+| **Backup Tool**    | pg_dump + gzip                                |
+| **Automation**     | K8s CronJob (`k8s/base/cronjob-backup.yaml`)  |
+| **Schedule**       | Daily at 2:00 AM UTC                          |
 
 ## Retention Policy
 
-| Tier | Retention | Description |
-|------|-----------|-------------|
-| Daily | 7 days | Every daily backup |
-| Weekly | 4 weeks | Sunday backups |
+| Tier    | Retention | Description          |
+| ------- | --------- | -------------------- |
+| Daily   | 7 days    | Every daily backup   |
+| Weekly  | 4 weeks   | Sunday backups       |
 | Monthly | 12 months | 1st of month backups |
 
 ---
@@ -172,12 +172,12 @@ RESTORE_TARGET_DB=postgresql://postgres:PASSWORD@localhost:5433/restore_test \
 
 ## 4. Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BACKUP_GCS_BUCKET` | `printyx-backups` | GCS bucket for backups |
-| `GOOGLE_APPLICATION_CREDENTIALS` | — | Path to GCS service account key |
-| `DATABASE_URL` | — | PostgreSQL connection string |
-| `RESTORE_TARGET_DB` | — | Override DB for restore target |
+| Variable                         | Default           | Description                     |
+| -------------------------------- | ----------------- | ------------------------------- |
+| `BACKUP_GCS_BUCKET`              | `printyx-backups` | GCS bucket for backups          |
+| `GOOGLE_APPLICATION_CREDENTIALS` | —                 | Path to GCS service account key |
+| `DATABASE_URL`                   | —                 | PostgreSQL connection string    |
+| `RESTORE_TARGET_DB`              | —                 | Override DB for restore target  |
 
 ---
 
@@ -191,12 +191,12 @@ RESTORE_TARGET_DB=postgresql://postgres:PASSWORD@localhost:5433/restore_test \
 
 ### Common Issues
 
-| Issue | Cause | Resolution |
-|-------|-------|------------|
-| Backup job timeout | Large database / slow network | Increase `activeDeadlineSeconds` |
-| GCS upload failure | Credentials expired | Refresh `gcs-backup-credentials` secret |
-| pg_dump connection refused | Database unreachable | Check VPN/firewall, verify DB_HOST |
-| Restore fails midway | Disk space / permissions | Check available disk, verify DB user permissions |
+| Issue                      | Cause                         | Resolution                                       |
+| -------------------------- | ----------------------------- | ------------------------------------------------ |
+| Backup job timeout         | Large database / slow network | Increase `activeDeadlineSeconds`                 |
+| GCS upload failure         | Credentials expired           | Refresh `gcs-backup-credentials` secret          |
+| pg_dump connection refused | Database unreachable          | Check VPN/firewall, verify DB_HOST               |
+| Restore fails midway       | Disk space / permissions      | Check available disk, verify DB user permissions |
 
 ---
 

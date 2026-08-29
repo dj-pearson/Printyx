@@ -16,7 +16,8 @@ export default function ConfigErrorScreen({ errors }: { errors: string[] }) {
     pingSupabaseHealth().then((r) => {
       if (!active) return;
       if (r.hint) setHealth(r.hint);
-      else if (r.ok) setHealth('GoTrue is reachable — the anon key just needs to be provided at build time.');
+      else if (r.ok)
+        setHealth('GoTrue is reachable — the anon key just needs to be provided at build time.');
       else setHealth(`GoTrue health check returned status ${r.status}.`);
     });
     return () => {

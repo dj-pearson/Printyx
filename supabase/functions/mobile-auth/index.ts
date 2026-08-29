@@ -311,14 +311,18 @@ export default async function handler(req: Request) {
  * GoTrue's app_metadata may be empty if the user wasn't created through the
  * admin API with metadata. This ensures the iOS app always gets tenant context.
  */
-async function enrichUserWithDbProfile(gotrueUser: Record<string, any>): Promise<Record<string, any>> {
+async function enrichUserWithDbProfile(
+  gotrueUser: Record<string, any>,
+): Promise<Record<string, any>> {
   try {
     const admin = createSupabaseServiceClient();
 
     // Look up user in public.users by email (IDs may differ between GoTrue and public.users)
     const { data: dbUser, error } = await admin
       .from('users')
-      .select('id, tenant_id, role_id, team_id, first_name, last_name, is_platform_user, access_scope')
+      .select(
+        'id, tenant_id, role_id, team_id, first_name, last_name, is_platform_user, access_scope',
+      )
       .ilike('email', gotrueUser.email)
       .limit(1)
       .maybeSingle();
@@ -351,17 +355,29 @@ async function enrichUserWithDbProfile(gotrueUser: Record<string, any>): Promise
       ...gotrueUser,
       app_metadata: {
         ...gotrueUser.app_metadata,
-        tenantId: dbUser.tenant_id ?? gotrueUser.app_metadata?.tenantId ?? gotrueUser.app_metadata?.tenant_id,
-        roleId: dbUser.role_id ?? gotrueUser.app_metadata?.roleId ?? gotrueUser.app_metadata?.role_id,
-        roleLevel: roleLevel ?? gotrueUser.app_metadata?.roleLevel ?? gotrueUser.app_metadata?.role_level,
-        teamId: dbUser.team_id ?? gotrueUser.app_metadata?.teamId ?? gotrueUser.app_metadata?.team_id,
+        tenantId:
+          dbUser.tenant_id ??
+          gotrueUser.app_metadata?.tenantId ??
+          gotrueUser.app_metadata?.tenant_id,
+        roleId:
+          dbUser.role_id ?? gotrueUser.app_metadata?.roleId ?? gotrueUser.app_metadata?.role_id,
+        roleLevel:
+          roleLevel ?? gotrueUser.app_metadata?.roleLevel ?? gotrueUser.app_metadata?.role_level,
+        teamId:
+          dbUser.team_id ?? gotrueUser.app_metadata?.teamId ?? gotrueUser.app_metadata?.team_id,
         isPlatformUser: dbUser.is_platform_user ?? gotrueUser.app_metadata?.isPlatformUser ?? false,
         accessScope: dbUser.access_scope ?? gotrueUser.app_metadata?.accessScope ?? 'own',
       },
       user_metadata: {
         ...gotrueUser.user_metadata,
-        firstName: dbUser.first_name ?? gotrueUser.user_metadata?.firstName ?? gotrueUser.user_metadata?.first_name,
-        lastName: dbUser.last_name ?? gotrueUser.user_metadata?.lastName ?? gotrueUser.user_metadata?.last_name,
+        firstName:
+          dbUser.first_name ??
+          gotrueUser.user_metadata?.firstName ??
+          gotrueUser.user_metadata?.first_name,
+        lastName:
+          dbUser.last_name ??
+          gotrueUser.user_metadata?.lastName ??
+          gotrueUser.user_metadata?.last_name,
       },
     };
   } catch (err) {

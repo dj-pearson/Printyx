@@ -29,24 +29,24 @@ Every file is idempotent: each `cron.schedule(...)` call is preceded by a condit
 
 ## Job inventory
 
-| Job name | File | Cron | Type | Description |
-|---|---|---|---|---|
-| `audit-log-retention` | retention.sql | `0 2 * * *` | SQL | Delete `audit_logs` rows older than 2 years |
-| `reading-history-retention` | retention.sql | `15 2 * * *` | SQL | Delete `reading_history` rows older than 90 days |
-| `meeting-recordings-retention` | retention.sql | `30 2 * * *` | SQL | Delete `meeting_recordings` metadata older than 90 days |
-| `mfa-otp-retention` | retention.sql | `0 * * * *` | SQL | Hourly purge of expired + consumed MFA OTPs older than 30 days |
-| `calendar-sync-logs-retention` | retention.sql | `45 2 * * *` | SQL | Delete `calendar_sync_logs` older than 30 days |
-| `health-score-recalc-nightly` | customer-success.sql | `0 1 * * *` | HTTP | POST `/customer-success/health-scores/recalc` |
-| `customer-at-risk-alerts-hourly` | customer-success.sql | `15 * * * *` | HTTP | POST `/customer-success/at-risk/check` |
-| `email-campaigns-dispatch` | email-marketing.sql | `*/5 * * * *` | HTTP | POST `/email-marketing/campaigns/dispatch-due` |
-| `subscription-trial-expiry-check` | subscriptions.sql | `30 * * * *` | HTTP | POST `/billing/subscriptions/check-trials` |
-| `subscription-renewal-charges` | subscriptions.sql | `0 3 * * *` | HTTP | POST `/billing/subscriptions/process-renewals` |
-| `billing-invoice-monthly` | billing.sql | `0 3 1 * *` | HTTP | POST `/billing/invoices/run-monthly` (first of each month) |
-| `billing-meter-aggregate-daily` | billing.sql | `0 4 * * *` | HTTP | POST `/billing/meters/aggregate-daily` |
-| `contract-renewal-notifications` | contract-renewals.sql | `0 6 * * *` | HTTP | POST `/contracts/renewals/send-notices` |
-| `lease-payment-due-notices` | leases.sql | `0 7 * * *` | HTTP | POST `/leases/payments/send-due-notices` |
-| `mileage-auto-generate-nightly` | mileage.sql | `0 5 * * *` | HTTP | POST `/field-service/mileage/auto-generate` |
-| `scheduled-reports-dispatch` | reports.sql | `*/15 * * * *` | HTTP | POST `/reports/schedule/dispatch-due` (reports edge function pending US-023) |
+| Job name                          | File                  | Cron           | Type | Description                                                                  |
+| --------------------------------- | --------------------- | -------------- | ---- | ---------------------------------------------------------------------------- |
+| `audit-log-retention`             | retention.sql         | `0 2 * * *`    | SQL  | Delete `audit_logs` rows older than 2 years                                  |
+| `reading-history-retention`       | retention.sql         | `15 2 * * *`   | SQL  | Delete `reading_history` rows older than 90 days                             |
+| `meeting-recordings-retention`    | retention.sql         | `30 2 * * *`   | SQL  | Delete `meeting_recordings` metadata older than 90 days                      |
+| `mfa-otp-retention`               | retention.sql         | `0 * * * *`    | SQL  | Hourly purge of expired + consumed MFA OTPs older than 30 days               |
+| `calendar-sync-logs-retention`    | retention.sql         | `45 2 * * *`   | SQL  | Delete `calendar_sync_logs` older than 30 days                               |
+| `health-score-recalc-nightly`     | customer-success.sql  | `0 1 * * *`    | HTTP | POST `/customer-success/health-scores/recalc`                                |
+| `customer-at-risk-alerts-hourly`  | customer-success.sql  | `15 * * * *`   | HTTP | POST `/customer-success/at-risk/check`                                       |
+| `email-campaigns-dispatch`        | email-marketing.sql   | `*/5 * * * *`  | HTTP | POST `/email-marketing/campaigns/dispatch-due`                               |
+| `subscription-trial-expiry-check` | subscriptions.sql     | `30 * * * *`   | HTTP | POST `/billing/subscriptions/check-trials`                                   |
+| `subscription-renewal-charges`    | subscriptions.sql     | `0 3 * * *`    | HTTP | POST `/billing/subscriptions/process-renewals`                               |
+| `billing-invoice-monthly`         | billing.sql           | `0 3 1 * *`    | HTTP | POST `/billing/invoices/run-monthly` (first of each month)                   |
+| `billing-meter-aggregate-daily`   | billing.sql           | `0 4 * * *`    | HTTP | POST `/billing/meters/aggregate-daily`                                       |
+| `contract-renewal-notifications`  | contract-renewals.sql | `0 6 * * *`    | HTTP | POST `/contracts/renewals/send-notices`                                      |
+| `lease-payment-due-notices`       | leases.sql            | `0 7 * * *`    | HTTP | POST `/leases/payments/send-due-notices`                                     |
+| `mileage-auto-generate-nightly`   | mileage.sql           | `0 5 * * *`    | HTTP | POST `/field-service/mileage/auto-generate`                                  |
+| `scheduled-reports-dispatch`      | reports.sql           | `*/15 * * * *` | HTTP | POST `/reports/schedule/dispatch-due` (reports edge function pending US-023) |
 
 **Total: 16 jobs.**
 

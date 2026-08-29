@@ -4,7 +4,7 @@
 
 To clone HubSpot’s CRM UX for deals, design a kanban‑style pipeline board with configurable cards, powerful filtering + saved views, and bulk/inline editing that minimizes how often users open full records. Layer this on top of a clear object model (deals, contacts, companies, custom objects) and a record page that is heavily configurable per team and per user.[^1][^2]
 
-***
+---
 
 ## Core UX principles to mirror
 
@@ -16,7 +16,7 @@ HubSpot’s CRM UX is built around a few key ideas you’ll want to reproduce:
 
 Design your clone so every “default” screen is configurable via metadata, and most actions happen in‑place on the board or list.
 
-***
+---
 
 ## High‑level navigation and IA
 
@@ -28,11 +28,11 @@ In your clone:
 
 - Top‑level nav = CRM > Deals.
 - Inside Deals:
-    - View‑mode toggle (Table | Board).
-    - Horizontal strip of view tabs (each = saved filter + layout profile).
-    - Pipeline selector + “Board options” near top right of the board view.
+  - View‑mode toggle (Table | Board).
+  - Horizontal strip of view tabs (each = saved filter + layout profile).
+  - Pipeline selector + “Board options” near top right of the board view.
 
-***
+---
 
 ## Deals pipeline board layout
 
@@ -46,7 +46,7 @@ For your clone’s board:
 - Columns: stage header, aggregate metrics, scrollable card stack.
 - Each board is the composition of: selected pipeline + view definition + board/card config.
 
-***
+---
 
 ## Deal card design and customization
 
@@ -58,11 +58,11 @@ Blueprint for your cards:
 
 - Card content layout (top to bottom): title, key numbers (amount, close date), pill tags, owner/avatar, icons for associations (company/contact).
 - Card configuration model:
-    - Global defaults per pipeline.
-    - Per‑view overrides (for that view’s cards).
-    - Per‑user tweaks (reorder, add 1‑2 extra fields) with a “for me” vs “for everyone” toggle.
+  - Global defaults per pipeline.
+  - Per‑view overrides (for that view’s cards).
+  - Per‑user tweaks (reorder, add 1‑2 extra fields) with a “for me” vs “for everyone” toggle.
 
-***
+---
 
 ## Filtering and saved views
 
@@ -73,14 +73,14 @@ Once filters are applied, “Save view” offers options: save (update existing)
 To mirror this:
 
 - Filter bar:
-    - A few common property dropdowns inline.
-    - “More filters” button → right‑side panel for advanced conditions builder.
+  - A few common property dropdowns inline.
+  - “More filters” button → right‑side panel for advanced conditions builder.
 - View model:
-    - `View = {name, object, filterDefinition, sort, columns/boardConfig, visibility, defaultFor: [teams/users?]}`.
-    - Tabs across top for open views; “+ Add view” for view picker/manager.
-    - “Save view” with (Save, Save as new, Visibility, Default) semantics.
+  - `View = {name, object, filterDefinition, sort, columns/boardConfig, visibility, defaultFor: [teams/users?]}`.
+  - Tabs across top for open views; “+ Add view” for view picker/manager.
+  - “Save view” with (Save, Save as new, Visibility, Default) semantics.
 
-***
+---
 
 ## Inline and bulk editing patterns
 
@@ -97,7 +97,7 @@ Patterns to implement:
 - **Inline cell editing:** click a cell → popover/dropdown to change that property for that record.
 - **Drag between columns:** stage changes on drop, with optional confirmation or workflow triggers.
 
-***
+---
 
 ## Deal record page layout
 
@@ -112,7 +112,7 @@ For your clone, mirror this 3‑column mental model:
 - Center: timeline with filters and compose inputs.
 - Right: pluggable “cards” region for associated entities and custom extensions.
 
-***
+---
 
 ## Custom objects and extensible UI
 
@@ -126,7 +126,7 @@ To parallel this:
 - Let each object define: whether it has pipelines, which properties can show on cards, which record layout template to use.
 - Define a plugin/extension surface on record pages / sidebars where custom micro‑apps can live.
 
-***
+---
 
 ## Desktop vs mobile behavior
 
@@ -135,59 +135,57 @@ HubSpot’s docs and public materials focus more on desktop, but the patterns ad
 For your implementation:
 
 - Mobile deals index:
-    - Primary view = list of deals with key properties.
-    - Secondary affordance = stage filter (or pipeline + stage), plus a simplified “board” that scrolls horizontally between stages if needed.
+  - Primary view = list of deals with key properties.
+  - Secondary affordance = stage filter (or pipeline + stage), plus a simplified “board” that scrolls horizontally between stages if needed.
 - Bulk actions: allow multi‑select via long‑press or “Select” mode.
 - Record page: stack columns vertically (header, properties, timeline, side cards) with collapsible sections.
 
 These are design choices for your clone rather than HubSpot‑specific guarantees, so they can be adapted to your audience.
 
-***
+---
 
 ## Key UX components and implementation notes
 
 Here is a compact mapping of the UX building blocks you should implement:
 
+| UX piece                 | What HubSpot does                                         | What to build in your clone                                                            |
+| :----------------------- | :-------------------------------------------------------- | :------------------------------------------------------------------------------------- |
+| Deals index views        | Tabs for saved views with filters + layout per view.[^7]  | `View` model, tab strip, view manager (create, clone, share, default, export).         |
+| Board vs table           | Board for pipeline, table for grid editing.[^2][^5]       | Common query + filter layer feeding two renderers (kanban, table).                     |
+| Pipeline \& stages       | Separate pipeline settings, per‑pipeline stages.[^8]      | Pipeline admin UI with stage CRUD, order, access, board/card defaults.                 |
+| Board card config        | Configure card properties per pipeline/view/user.[^2]     | Card schema editor; allow global + per‑view + per‑user overrides.                      |
+| Aggregates on columns    | Show simplified stage totals on columns.[^2]              | Column header metrics config (sum, count, weighted, etc.).                             |
+| Filtering + More filters | Quick filters + advanced filter panel.[^10][^7]           | Filter bar + right‑side filter builder; persists as part of view definition.           |
+| Saved views              | Save/clone/rename/share views; tabs for open views.[^7]   | Full lifecycle for views (CRUD + visibility + ordering + default flags).               |
+| Bulk editing             | Select rows/cards, bulk edit properties.[^5][^6]          | Selection model + bulk action toolbar + multi‑property bulk edit dialogs.              |
+| Inline editing           | Direct property edits and drag‑to‑change‑stage.[^4][^5]   | Click‑to‑edit cells; drag‑and‑drop stage changes hooking into data + automation layer. |
+| Record layout config     | Customizable sections on record; stage picker on top.[^4] | Layout editor that orders property groups and widgets; top‑fixed stage control.        |
+| UI extensions            | Embedded React cards hitting internal/external data.[^1]  | Extension SDK for custom cards on record pages and possibly index sidebars.            |
 
-| UX piece | What HubSpot does | What to build in your clone |
-| :-- | :-- | :-- |
-| Deals index views | Tabs for saved views with filters + layout per view.[^7] | `View` model, tab strip, view manager (create, clone, share, default, export). |
-| Board vs table | Board for pipeline, table for grid editing.[^2][^5] | Common query + filter layer feeding two renderers (kanban, table). |
-| Pipeline \& stages | Separate pipeline settings, per‑pipeline stages.[^8] | Pipeline admin UI with stage CRUD, order, access, board/card defaults. |
-| Board card config | Configure card properties per pipeline/view/user.[^2] | Card schema editor; allow global + per‑view + per‑user overrides. |
-| Aggregates on columns | Show simplified stage totals on columns.[^2] | Column header metrics config (sum, count, weighted, etc.). |
-| Filtering + More filters | Quick filters + advanced filter panel.[^10][^7] | Filter bar + right‑side filter builder; persists as part of view definition. |
-| Saved views | Save/clone/rename/share views; tabs for open views.[^7] | Full lifecycle for views (CRUD + visibility + ordering + default flags). |
-| Bulk editing | Select rows/cards, bulk edit properties.[^5][^6] | Selection model + bulk action toolbar + multi‑property bulk edit dialogs. |
-| Inline editing | Direct property edits and drag‑to‑change‑stage.[^4][^5] | Click‑to‑edit cells; drag‑and‑drop stage changes hooking into data + automation layer. |
-| Record layout config | Customizable sections on record; stage picker on top.[^4] | Layout editor that orders property groups and widgets; top‑fixed stage control. |
-| UI extensions | Embedded React cards hitting internal/external data.[^1] | Extension SDK for custom cards on record pages and possibly index sidebars. |
-
-
-***
+---
 
 ## Practical build strategy
 
 Given you’re targeting production and both desktop + mobile:
 
 1. **Define a generic object schema and view system**
-    - Objects: deals, contacts, companies, tickets, custom.
-    - Views: store filters, sort, columns/boardConfig, visibility, default flags.
-    - Pipelines: per‑object pipelines with stages, tags, access rules.[^8]
+   - Objects: deals, contacts, companies, tickets, custom.
+   - Views: store filters, sort, columns/boardConfig, visibility, default flags.
+   - Pipelines: per‑object pipelines with stages, tags, access rules.[^8]
 2. **Implement the index shell once, then plug in board/table renderers**
-    - Shared top bar: object selector (implicit), view tabs, filter bar, Save view, “+ Add view”.[^7][^2]
-    - Renderer area: switch between board and table.
+   - Shared top bar: object selector (implicit), view tabs, filter bar, Save view, “+ Add view”.[^7][^2]
+   - Renderer area: switch between board and table.
 3. **Build the kanban board with strong selection + DnD**
-    - Columns from stages; cards from query; DnD to move stages.
-    - Checkbox‑based multi‑selection with a floating bulk‑action bar.[^5][^6]
+   - Columns from stages; cards from query; DnD to move stages.
+   - Checkbox‑based multi‑selection with a floating bulk‑action bar.[^5][^6]
 4. **Design the record page as a layout engine, not a fixed form**
-    - Layout metadata that defines sections, property groups, and embedded widgets.[^4][^1]
-    - Support team‑based templates so different roles see different layouts.
+   - Layout metadata that defines sections, property groups, and embedded widgets.[^4][^1]
+   - Support team‑based templates so different roles see different layouts.
 5. **Add configuration UIs mirroring HubSpot’s two levels**
-    - Global admin setup (Objects > Deals > Pipelines, properties, layouts).[^8]
-    - In‑context configuration (Edit board, Card setup, Customize record) for power users.[^2]
+   - Global admin setup (Objects > Deals > Pipelines, properties, layouts).[^8]
+   - In‑context configuration (Edit board, Card setup, Customize record) for power users.[^2]
 6. **Reserve a plugin surface for future extensibility**
-    - Even if you do not ship full UI extensions on day one, stub a “custom card” slot on record pages and boards; later you can let power users mount micro‑apps similar to HubSpot’s React extensions.[^1]
+   - Even if you do not ship full UI extensions on day one, stub a “custom card” slot on record pages and boards; later you can let power users mount micro‑apps similar to HubSpot’s React extensions.[^1]
 
 Follow this blueprint and you will get extremely close to HubSpot’s functional layout and UX patterns for the deals CRM, while still using your own branding and front‑end stack.
 <span style="display:none">[^11][^12][^13][^14][^15]</span>
@@ -223,4 +221,3 @@ Follow this blueprint and you will get extremely close to HubSpot’s functional
 [^14]: https://community.hubspot.com/t5/HubSpot-Ideas/EASY-EDIT-of-property-values-inside-Hubspot-LIST-View-kinda-like/idi-p/961552
 
 [^15]: https://knowledge.hubspot.com/design-manager/structure-and-customize-template-layouts
-

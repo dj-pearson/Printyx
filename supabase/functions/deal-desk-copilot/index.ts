@@ -483,12 +483,10 @@ async function handleObjections(admin: SB, tenantId: string, quoteId: string, re
       ) {
         return createCorsResponse(
           {
-            objections: parsed
-              .slice(0, 5)
-              .map((x: Record<string, unknown>) => ({
-                objection: x.objection,
-                response: x.response,
-              })),
+            objections: parsed.slice(0, 5).map((x: Record<string, unknown>) => ({
+              objection: x.objection,
+              response: x.response,
+            })),
             source: 'ai',
           },
           200,

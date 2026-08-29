@@ -197,7 +197,9 @@ async function dashboard(admin: Admin, tenantId: string, url: URL, req: Request)
 
   const [curRows, priorRows] = await Promise.all([
     fetchMetrics(admin, tenantId, curFrom, today),
-    compare ? fetchMetrics(admin, tenantId, priorFrom, curFrom) : Promise.resolve([] as MetricRow[]),
+    compare
+      ? fetchMetrics(admin, tenantId, priorFrom, curFrom)
+      : Promise.resolve([] as MetricRow[]),
   ]);
 
   // Reference data.
@@ -239,7 +241,10 @@ async function dashboard(admin: Admin, tenantId: string, url: URL, req: Request)
         avg_position: avgPosition(a),
         prior_clicks: priorClicks,
         delta_clicks: a.clicks - priorClicks,
-        delta_pct: priorClicks > 0 ? Number((((a.clicks - priorClicks) / priorClicks) * 100).toFixed(1)) : null,
+        delta_pct:
+          priorClicks > 0
+            ? Number((((a.clicks - priorClicks) / priorClicks) * 100).toFixed(1))
+            : null,
       };
     })
     .filter((r) => r.clicks > 0 || r.impressions > 0 || r.prior_clicks > 0);
@@ -263,8 +268,8 @@ async function dashboard(admin: Admin, tenantId: string, url: URL, req: Request)
   const clusterRows = Array.from(clusterAgg.entries())
     .map(([cid, a]) => ({
       cluster_id: cid === NO_CLUSTER ? null : cid,
-      name: cid === NO_CLUSTER ? '(unclustered)' : clusters.get(cid)?.name ?? '(unknown)',
-      authority_score: cid === NO_CLUSTER ? null : clusters.get(cid)?.authority ?? null,
+      name: cid === NO_CLUSTER ? '(unclustered)' : (clusters.get(cid)?.name ?? '(unknown)'),
+      authority_score: cid === NO_CLUSTER ? null : (clusters.get(cid)?.authority ?? null),
       clicks: a.clicks,
       impressions: a.impressions,
       conversions: a.conversions,
@@ -405,9 +410,19 @@ async function exportCsv(admin: Admin, tenantId: string, url: URL, req: Request)
   let header: string;
   let rows: string[];
   if (view === 'clusters') {
-    header = 'cluster_id,name,authority_score,clicks,impressions,conversions,avg_position,post_count';
+    header =
+      'cluster_id,name,authority_score,clicks,impressions,conversions,avg_position,post_count';
     rows = payload.clusters.map((c) =>
-      [c.cluster_id, c.name, c.authority_score, c.clicks, c.impressions, c.conversions, c.avg_position, c.post_count]
+      [
+        c.cluster_id,
+        c.name,
+        c.authority_score,
+        c.clicks,
+        c.impressions,
+        c.conversions,
+        c.avg_position,
+        c.post_count,
+      ]
         .map(csvCell)
         .join(','),
     );
@@ -417,9 +432,20 @@ async function exportCsv(admin: Admin, tenantId: string, url: URL, req: Request)
       [c.channel, c.clicks, c.sessions, c.conversions].map(csvCell).join(','),
     );
   } else {
-    header = 'post_id,title,slug,clicks,impressions,conversions,avg_position,delta_clicks,delta_pct';
+    header =
+      'post_id,title,slug,clicks,impressions,conversions,avg_position,delta_clicks,delta_pct';
     rows = payload.posts.map((p) =>
-      [p.post_id, p.title, p.slug, p.clicks, p.impressions, p.conversions, p.avg_position, p.delta_clicks, p.delta_pct]
+      [
+        p.post_id,
+        p.title,
+        p.slug,
+        p.clicks,
+        p.impressions,
+        p.conversions,
+        p.avg_position,
+        p.delta_clicks,
+        p.delta_pct,
+      ]
         .map(csvCell)
         .join(','),
     );

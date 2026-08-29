@@ -141,11 +141,11 @@ export function registerEnhancedTaskRoutes(app: Express) {
   });
 
   // Get team members for task assignment
-// GET /api/users/team was removed here (PROD-008b). No caller. Worth recording
-// what the surviving implementation does with the path: supabase/functions/users/
-// does not route on it at all, so /api/users/team returns the FULL tenant user
-// list rather than a team-scoped one. A guard was added there so an unhandled
-// sub-path 404s instead of answering with the wrong set.
+  // GET /api/users/team was removed here (PROD-008b). No caller. Worth recording
+  // what the surviving implementation does with the path: supabase/functions/users/
+  // does not route on it at all, so /api/users/team returns the FULL tenant user
+  // list rather than a team-scoped one. A guard was added there so an unhandled
+  // sub-path 404s instead of answering with the wrong set.
 
   // Create task with enhanced data
 }

@@ -75,7 +75,9 @@ export function CrmFilterBar({
           <Select
             key={filter.field}
             value={activeFilters[filter.field] ?? ''}
-            onValueChange={(value) => onFilterChange(filter.field, value === '__all__' ? undefined : value)}
+            onValueChange={(value) =>
+              onFilterChange(filter.field, value === '__all__' ? undefined : value)
+            }
           >
             <SelectTrigger className="h-7 w-auto min-w-[100px] text-xs">
               <SelectValue placeholder={filter.label} />
@@ -101,7 +103,10 @@ export function CrmFilterBar({
           <SlidersHorizontal className="h-3 w-3" />
           More Filters
           {advancedConditions.length > 0 && (
-            <Badge variant="secondary" className="text-[9px] h-4 min-w-[16px] ml-0.5 p-0 justify-center">
+            <Badge
+              variant="secondary"
+              className="text-[9px] h-4 min-w-[16px] ml-0.5 p-0 justify-center"
+            >
               {advancedConditions.length}
             </Badge>
           )}

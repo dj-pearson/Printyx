@@ -47,10 +47,12 @@ npm run validate:schema
 ```
 
 This generates two reports:
+
 - `tests/schema-validation-report.json` - Machine-readable
 - `tests/SCHEMA_VALIDATION_REPORT.md` - Human-readable
 
 **Example Output:**
+
 ```
 ============================================================
 📋 VALIDATION SUMMARY
@@ -72,28 +74,33 @@ Schema Info:
 Open `tests/SCHEMA_VALIDATION_REPORT.md` to see:
 
 **Example Issue:**
-```markdown
+
+````markdown
 ❌ Line 74: Table 'subscriptionPlans' not found in schema
 
 ```typescript
 const existingPlan = await db.query.subscriptionPlans.findFirst({
 ```
+````
 
 💡 Suggestion: Did you mean 'subscription_plans'?
-```
+
+````
 
 ### Step 3: Preview Fixes
 
 ```bash
 npm run fix:schema
-```
+````
 
 This runs in **dry-run mode** (no changes made) and shows:
+
 - What would be fixed
 - Which files would be modified
 - Confidence level of each fix
 
 **Example Output:**
+
 ```
 ✅ Found 4,540 case mismatches
    Files affected: 324
@@ -108,18 +115,23 @@ This runs in **dry-run mode** (no changes made) and shows:
 Choose your approach:
 
 #### Option A: High-Confidence Only (Recommended)
+
 ```bash
 npm run fix:schema:apply
 ```
+
 Applies only fixes marked as "high confidence" (e.g., `tenantId` → `tenant_id`)
 
 #### Option B: All Fixes
+
 ```bash
 npm run fix:schema:auto
 ```
+
 Applies ALL fixes automatically (use with caution)
 
 **Safety Features:**
+
 - ✅ Automatic backup created before any changes
 - ✅ Backup location shown in output
 - ✅ Easy rollback if needed
@@ -139,18 +151,19 @@ npm run test
 
 ## 📚 Documentation
 
-| Document | Purpose | When to Read |
-|----------|---------|--------------|
-| **[This README](README.md)** | Quick start & overview | Start here |
-| **[SCHEMA_VALIDATION_QUICKSTART.md](SCHEMA_VALIDATION_QUICKSTART.md)** | Detailed 3-step guide | For detailed workflow |
-| **[README_SCHEMA_VALIDATOR.md](README_SCHEMA_VALIDATOR.md)** | Complete reference | For advanced usage |
-| **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** | Technical details | For understanding internals |
+| Document                                                               | Purpose                | When to Read                |
+| ---------------------------------------------------------------------- | ---------------------- | --------------------------- |
+| **[This README](README.md)**                                           | Quick start & overview | Start here                  |
+| **[SCHEMA_VALIDATION_QUICKSTART.md](SCHEMA_VALIDATION_QUICKSTART.md)** | Detailed 3-step guide  | For detailed workflow       |
+| **[README_SCHEMA_VALIDATOR.md](README_SCHEMA_VALIDATOR.md)**           | Complete reference     | For advanced usage          |
+| **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)**             | Technical details      | For understanding internals |
 
 ## 🎨 Features
 
 ### Validator (`schema-validator.ts`)
 
 ✅ **Comprehensive Detection**
+
 - Parses DATABASE_SCHEMA.md (210 tables, 4,274 columns)
 - Scans TypeScript, JavaScript, SQL files
 - Detects Drizzle ORM queries
@@ -158,12 +171,14 @@ npm run test
 - Identifies schema definition issues
 
 ✅ **Smart Filtering**
+
 - Skips import statements
 - Ignores comments
 - Filters common words/methods
 - Reduces false positives
 
 ✅ **Actionable Reports**
+
 - Line-by-line issue breakdown
 - Suggestions for fixes
 - Similar table/column recommendations
@@ -172,12 +187,14 @@ npm run test
 ### Auto-Fixer (`schema-fixer.ts`)
 
 ✅ **Safe Fixes**
+
 - Dry-run mode by default
 - Automatic backups before changes
 - Confidence levels (high/medium/low)
 - Rollback capability
 
 ✅ **Intelligent Patterns**
+
 - NEON → Supabase migrations
 - Case mismatch corrections
 - Common typo fixes
@@ -185,14 +202,15 @@ npm run test
 
 ## 🔧 Commands Reference
 
-| Command | Description | Safety |
-|---------|-------------|--------|
-| `npm run validate:schema` | Run full validation | ✅ Read-only |
-| `npm run fix:schema` | Preview fixes (dry-run) | ✅ No changes |
-| `npm run fix:schema:apply` | Apply high-confidence fixes | ⚠️ Makes changes |
-| `npm run fix:schema:auto` | Apply all fixes | ⚠️ Makes many changes |
+| Command                    | Description                 | Safety                |
+| -------------------------- | --------------------------- | --------------------- |
+| `npm run validate:schema`  | Run full validation         | ✅ Read-only          |
+| `npm run fix:schema`       | Preview fixes (dry-run)     | ✅ No changes         |
+| `npm run fix:schema:apply` | Apply high-confidence fixes | ⚠️ Makes changes      |
+| `npm run fix:schema:auto`  | Apply all fixes             | ⚠️ Makes many changes |
 
 **Direct execution:**
+
 ```bash
 npx tsx tests/schema-validator.ts
 npx tsx tests/schema-fixer.ts
@@ -205,12 +223,14 @@ npx tsx tests/schema-fixer.ts --apply --auto
 ### Issue 1: Case Mismatches (Most Common)
 
 **Problem:**
+
 ```typescript
 // ❌ Wrong: camelCase
 const plan = await db.query.subscriptionPlans.findFirst();
 ```
 
 **Fix:**
+
 ```typescript
 // ✅ Correct: snake_case
 const plan = await db.query.subscription_plans.findFirst();
@@ -221,16 +241,18 @@ const plan = await db.query.subscription_plans.findFirst();
 ### Issue 2: Invalid Table Names
 
 **Problem:**
+
 ```typescript
 // ❌ Wrong: Table doesn't exist
 const data = await db.query.old_customers.findMany();
 ```
 
 **Fix:**
+
 ```typescript
 // ✅ Correct: Use current table
 const data = await db.query.business_records.findMany({
-  where: eq(business_records.type, 'customer')
+  where: eq(business_records.type, 'customer'),
 });
 ```
 
@@ -239,15 +261,17 @@ const data = await db.query.business_records.findMany({
 ### Issue 3: Invalid Column Names
 
 **Problem:**
+
 ```typescript
 // ❌ Wrong: Column doesn't exist
-where: eq(users.tenant_id, tenantId)
+where: eq(users.tenant_id, tenantId);
 ```
 
 **Fix:**
+
 ```typescript
 // ✅ Correct: Use actual column
-where: eq(users.tenantId, tenantId)
+where: eq(users.tenantId, tenantId);
 ```
 
 **Auto-fixable:** ⚠️ Sometimes (medium confidence)
@@ -267,6 +291,7 @@ npm run validate:schema && npm run build
 ### 2. Review Reports
 
 Always check `SCHEMA_VALIDATION_REPORT.md` before applying fixes:
+
 - Understand what's wrong
 - Verify suggestions are correct
 - Identify patterns in issues
@@ -307,6 +332,7 @@ npm run validate:schema
 ### Problem: Too many false positives
 
 **Solution:** The validator may need tuning for your specific code patterns. Common false positives:
+
 - Dynamic table names
 - Template strings with keywords
 - Property accesses that look like table.column
@@ -316,6 +342,7 @@ Review and manually filter these from the report.
 ### Problem: Auto-fixer broke something
 
 **Solution:** Restore from backup:
+
 ```bash
 # Backups are in tests/backups/<timestamp>/
 # Copy files back from backup directory
@@ -326,6 +353,7 @@ Then review the fix report to understand what changed.
 ### Problem: Schema is outdated
 
 **Solution:**
+
 ```bash
 # Regenerate the schema
 npm run check:schema
@@ -407,6 +435,7 @@ tests/
 ## 🎉 Summary
 
 You now have:
+
 - ✅ Comprehensive schema validation
 - ✅ Automatic fixing for common issues
 - ✅ Detailed reports and documentation
@@ -414,6 +443,7 @@ You now have:
 - ✅ npm integration for easy use
 
 **Current findings:**
+
 - 0 NEON references (database already migrated!)
 - 3,511 total issues (mostly case mismatches)
 - 4,540 auto-fixable issues

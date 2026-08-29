@@ -43,9 +43,7 @@ function listCandidates() {
   // ripgrep is faster but we can't rely on it being installed; use Node's
   // built-in `glob` via execSync against `git ls-files`. Already-tracked
   // .ts files only — keeps node_modules out of the picture for free.
-  const stdout = execSync('git ls-files "*.ts" "*.tsx"', { cwd: ROOT })
-    .toString()
-    .trim();
+  const stdout = execSync('git ls-files "*.ts" "*.tsx"', { cwd: ROOT }).toString().trim();
   return stdout.split(/\r?\n/).map((p) => path.join(ROOT, p));
 }
 

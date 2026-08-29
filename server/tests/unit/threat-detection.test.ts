@@ -240,9 +240,7 @@ describe('SEC-008: Threat Detection Service', () => {
   describe('Threat detection middleware', () => {
     it('should block with 429 when score >= 90', async () => {
       // We test the middleware logic by importing it and passing mock req/res
-      const { threatDetectionMiddleware } = await import(
-        '../../middleware/threat-detection'
-      );
+      const { threatDetectionMiddleware } = await import('../../middleware/threat-detection');
 
       _setWindowMs(1000);
 

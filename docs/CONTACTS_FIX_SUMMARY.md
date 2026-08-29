@@ -1,13 +1,16 @@
 # ✅ Contacts Page 403 Error - FIXED!
 
 ## 🎯 **Problem**
+
 The Contacts page was showing:
+
 - ❌ **403 Forbidden** errors when trying to load contacts
 - ❌ **404 Not Found** errors for `/enrichment/contacts` endpoint
 - ❌ **"No role found"** auth warnings
 - ❌ Blank contact list with error message
 
 ## 🔧 **Root Cause**
+
 The page was making **direct Supabase REST API calls** to the `company_contacts` table, bypassing Edge Functions. These calls were blocked by Row Level Security (RLS) policies.
 
 ```typescript
@@ -21,9 +24,11 @@ const { data, error } = await supabase
 ## ✅ **Solution Applied**
 
 ### 1. Enhanced Contacts Edge Function
+
 **File:** `supabase/functions/contacts/index.ts`
 
 Added support for `/api/contacts` to list ALL contacts with:
+
 - ✅ Pagination support (`page` & `limit`)
 - ✅ Search filtering (`search`)
 - ✅ Status filtering (`status`)
@@ -31,9 +36,11 @@ Added support for `/api/contacts` to list ALL contacts with:
 - ✅ Sorting (`sortBy` & `sortOrder`)
 
 ### 2. Updated Contacts Page
+
 **File:** `client/src/pages/Contacts.tsx`
 
 Changed from direct Supabase calls to API endpoint:
+
 ```typescript
 // ✅ AFTER - Uses Edge Function API
 const response = await fetch(`/api/contacts?${params.toString()}`, {
@@ -44,7 +51,9 @@ const response = await fetch(`/api/contacts?${params.toString()}`, {
 ```
 
 ### 3. Added Data Transformation
+
 Proper snake_case → camelCase transformation in `queryFn`:
+
 ```typescript
 contacts: (data.contacts || []).map((c: any) => ({
   id: c.id,
@@ -53,10 +62,11 @@ contacts: (data.contacts || []).map((c: any) => ({
   companyName: c.business_records?.company_name || '',
   leadStatus: c.lead_status || 'new',
   // ... all other fields transformed
-}))
+}));
 ```
 
 ### 4. Fixed Delete Mutation
+
 Updated to use `/api/company-contacts/:id` endpoint instead of direct Supabase.
 
 ---
@@ -70,16 +80,18 @@ Updated to use `/api/company-contacts/:id` endpoint instead of direct Supabase.
 ✅ Create contact works  
 ✅ Delete contact works  
 ✅ Proper data transformation (no more `??` displays)  
-✅ All data routed through Edge Functions (proper security)  
+✅ All data routed through Edge Functions (proper security)
 
 ---
 
 ## 🛠️ **New Tools Available**
 
 ### 1. Comprehensive System Check
+
 **Command:** `npm run check:system`
 
 **What it does:**
+
 - Scans entire codebase for API issues
 - Detects non-existent Edge Function calls
 - Finds direct Supabase REST API calls (potential RLS blocks)
@@ -87,13 +99,16 @@ Updated to use `/api/company-contacts/:id` endpoint instead of direct Supabase.
 - Reports all issues with file/line numbers
 
 **When to use:**
+
 - After adding new API endpoints
 - Before deploying major changes
 - When debugging 403/404 errors
 - To audit system consistency
 
 ### 2. Data Transformation Tools
+
 **Already available:**
+
 - `npm run lint:transformations` - Find transformation issues
 - `npm run fix:transformations` - Auto-fix transformation issues
 - `npm run fix:transformations:dry-run` - Preview fixes
@@ -122,15 +137,14 @@ Updated to use `/api/company-contacts/:id` endpoint instead of direct Supabase.
 ## 🎓 **Key Lessons**
 
 ### ❌ **DON'T DO THIS:**
+
 ```typescript
 // Direct Supabase calls from frontend
-const { data } = await supabase
-  .from('some_table')
-  .select('*')
-  .eq('tenant_id', tenantId); // Blocked by RLS!
+const { data } = await supabase.from('some_table').select('*').eq('tenant_id', tenantId); // Blocked by RLS!
 ```
 
 ### ✅ **DO THIS INSTEAD:**
+
 ```typescript
 // Use Edge Functions
 const response = await fetch('/api/endpoint', {
@@ -140,13 +154,14 @@ const response = await fetch('/api/endpoint', {
 
 // With proper transformation
 const data = await response.json();
-return data.map(item => ({
+return data.map((item) => ({
   firstName: item.first_name, // Transform to camelCase
   // ... etc
 }));
 ```
 
 ### Why?
+
 1. **Edge Functions have service_role access** - bypass RLS
 2. **Centralized authorization** - consistent security
 3. **Better error handling** - easier debugging
@@ -175,18 +190,20 @@ return data.map(item => ({
 ✅ **Committed:** All fixes committed to `main`  
 ✅ **Pushed:** Changes pushed to GitHub  
 ✅ **Cloudflare Pages:** Will rebuild automatically  
-✅ **Production:** Live in ~2-3 minutes  
+✅ **Production:** Live in ~2-3 minutes
 
 ---
 
 ## 📊 **Impact**
 
 **Before:**
+
 - Contacts page: ❌ Broken
 - User experience: ❌ Poor
 - Error rate: ❌ High
 
 **After:**
+
 - Contacts page: ✅ Working
 - User experience: ✅ Excellent
 - Error rate: ✅ Zero
@@ -196,11 +213,13 @@ return data.map(item => ({
 ## 🎯 **Next Steps**
 
 ### Immediate
+
 1. ✅ Wait for Cloudflare Pages rebuild (~2-3 min)
 2. ✅ Clear browser cache and test
 3. ✅ Verify contacts load correctly
 
 ### Optional (If Other Pages Have Similar Issues)
+
 1. Run `npm run check:system` to find similar problems
 2. Check the generated `system-check-report.json`
 3. Fix any other pages using direct Supabase calls
@@ -221,6 +240,7 @@ return data.map(item => ({
 ## 📞 **Support**
 
 If you encounter issues:
+
 1. Check browser console for errors
 2. Run `npm run check:system` for diagnostics
 3. Check `docs/CONTACTS_PAGE_FIX.md` for detailed info
@@ -228,6 +248,6 @@ If you encounter issues:
 
 ---
 
-*Fixed: January 24, 2026*
-*Status: ✅ RESOLVED*
-*Deployed: Production*
+_Fixed: January 24, 2026_
+_Status: ✅ RESOLVED_
+_Deployed: Production_

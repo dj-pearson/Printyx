@@ -16,21 +16,21 @@ The blog module is content-marketing tooling, so it holds **minimal personal
 data** — mostly internal-user identifiers (authors, editors, actors), not
 end-customer PII. End-reader analytics are stored in aggregate only.
 
-| Table | PII fields | Category | Retention | Notes |
-|---|---|---|---|---|
-| `blog_posts` | `created_by_user_id` | Internal user id | Life of post + audit | Anonymized to `anonymized` on erasure. |
-| `blog_briefs` | `created_by_user_id`, `assigned_to_user_id` | Internal user id | Life of brief | Anonymized on erasure. |
-| `blog_brand_voices` | `created_by_user_id`, `sample_corpus` | Internal user id; free text may embed PII | Life of config | Author corpus is operator-supplied; treat as sensitive. |
-| `blog_assets` | `created_by_user_id` | Internal user id | Life of asset | File refs only; binary lives in object storage. |
-| `blog_authors` | author display name / bio | Public author profile | Life of profile | Intentionally public byline data. |
-| `blog_audit_log` | `actor_user_id`, `request_ip`, `user_agent` | Internal user id; network identifiers | **Append-only** (US-BLOG-011) | Actor id anonymized on erasure; rows never deleted. |
-| `blog_api_keys` | `created_by_user_id`, `key_hash` | Internal user id; secret **hash** | Life of key | Plaintext key never stored (SHA-256 hash only). |
-| `blog_webhooks` | `created_by_user_id`, `encrypted_secret` | Internal user id; secret (encrypted) | Life of webhook | HMAC secret AES-256-GCM encrypted. |
-| `blog_webhook_deliveries` | `payload` (may embed post/author data) | Derived content | Bounded by retention sweep | Carries no new PII beyond the source object. |
-| `blog_widget_config` | `encrypted_sso_secret` | Shared secret (encrypted) | Life of config | AES-256-GCM encrypted. |
-| `blog_backup_config` | `encrypted_storage_creds` | Storage creds (encrypted) | Life of config | AES-256-GCM encrypted. |
-| `blog_dsar_requests` | `subject_user_id` | Internal user id | DSAR audit horizon | Records the request itself, for accountability. |
-| `blog_performance_metrics` | none (aggregate counts) | Aggregate | Per analytics policy | No reader-level PII retained. |
+| Table                      | PII fields                                  | Category                                  | Retention                     | Notes                                                   |
+| -------------------------- | ------------------------------------------- | ----------------------------------------- | ----------------------------- | ------------------------------------------------------- |
+| `blog_posts`               | `created_by_user_id`                        | Internal user id                          | Life of post + audit          | Anonymized to `anonymized` on erasure.                  |
+| `blog_briefs`              | `created_by_user_id`, `assigned_to_user_id` | Internal user id                          | Life of brief                 | Anonymized on erasure.                                  |
+| `blog_brand_voices`        | `created_by_user_id`, `sample_corpus`       | Internal user id; free text may embed PII | Life of config                | Author corpus is operator-supplied; treat as sensitive. |
+| `blog_assets`              | `created_by_user_id`                        | Internal user id                          | Life of asset                 | File refs only; binary lives in object storage.         |
+| `blog_authors`             | author display name / bio                   | Public author profile                     | Life of profile               | Intentionally public byline data.                       |
+| `blog_audit_log`           | `actor_user_id`, `request_ip`, `user_agent` | Internal user id; network identifiers     | **Append-only** (US-BLOG-011) | Actor id anonymized on erasure; rows never deleted.     |
+| `blog_api_keys`            | `created_by_user_id`, `key_hash`            | Internal user id; secret **hash**         | Life of key                   | Plaintext key never stored (SHA-256 hash only).         |
+| `blog_webhooks`            | `created_by_user_id`, `encrypted_secret`    | Internal user id; secret (encrypted)      | Life of webhook               | HMAC secret AES-256-GCM encrypted.                      |
+| `blog_webhook_deliveries`  | `payload` (may embed post/author data)      | Derived content                           | Bounded by retention sweep    | Carries no new PII beyond the source object.            |
+| `blog_widget_config`       | `encrypted_sso_secret`                      | Shared secret (encrypted)                 | Life of config                | AES-256-GCM encrypted.                                  |
+| `blog_backup_config`       | `encrypted_storage_creds`                   | Storage creds (encrypted)                 | Life of config                | AES-256-GCM encrypted.                                  |
+| `blog_dsar_requests`       | `subject_user_id`                           | Internal user id                          | DSAR audit horizon            | Records the request itself, for accountability.         |
+| `blog_performance_metrics` | none (aggregate counts)                     | Aggregate                                 | Per analytics policy          | No reader-level PII retained.                           |
 
 **Aggregate-only principle:** reader-level analytics are never persisted at the
 individual level. `blog_performance_metrics` holds counts (pageviews, clicks,
@@ -64,7 +64,7 @@ Endpoint: `POST /blog-platform-api/compliance/dsar` with
 - **Aggregate metrics preserved:** `blog_performance_metrics` is untouched — it
   holds no per-subject identifiers.
 - **Audit log preserved with anonymized actor:** per US-BLOG-011 the audit log
-  is append-only; erasure replaces the `actor_user_id` *pointer* with
+  is append-only; erasure replaces the `actor_user_id` _pointer_ with
   `anonymized` rather than deleting events, so the integrity/accountability
   trail survives while the personal identifier is removed.
 - The erasure run is itself audited (`blog_dsar.erasure`) with anonymization
@@ -92,12 +92,12 @@ GDPR/CCPA compliance; it does not remove or alter event rows.
 
 ## 5. Encryption at Rest
 
-| Secret | Where | Mechanism |
-|---|---|---|
-| Webhook HMAC signing secret | `blog_webhooks.encrypted_secret` | AES-256-GCM (`encryptCredential`, `_shared/credential-vault.ts`) |
-| SSO shared secret | `blog_widget_config.encrypted_sso_secret` | AES-256-GCM |
-| Backup storage credentials | `blog_backup_config.encrypted_storage_creds` | AES-256-GCM |
-| Public API key | `blog_api_keys.key_hash` | SHA-256 hash (one-way; key shown once at creation) |
+| Secret                      | Where                                        | Mechanism                                                        |
+| --------------------------- | -------------------------------------------- | ---------------------------------------------------------------- |
+| Webhook HMAC signing secret | `blog_webhooks.encrypted_secret`             | AES-256-GCM (`encryptCredential`, `_shared/credential-vault.ts`) |
+| SSO shared secret           | `blog_widget_config.encrypted_sso_secret`    | AES-256-GCM                                                      |
+| Backup storage credentials  | `blog_backup_config.encrypted_storage_creds` | AES-256-GCM                                                      |
+| Public API key              | `blog_api_keys.key_hash`                     | SHA-256 hash (one-way; key shown once at creation)               |
 
 The vault key comes from `PRINTYX_CREDENTIAL_VAULT_KEY` (32-byte base64;
 legacy alias `ADDRESS_BOOK_MASTER_KEY`). Plaintext secrets are never logged and
@@ -122,7 +122,7 @@ trusts it for a bounded session:
 
 1. Operator stores a per-workspace shared secret (`sso_secret`, encrypted).
 2. Parent app builds `token = base64url(JSON.stringify({ sub, exp })) + "." +
-   HMAC-SHA256(secret, base64url(payload))`.
+HMAC-SHA256(secret, base64url(payload))`.
 3. Host calls `POST /blog-platform-api/widget/sso/verify` with `{ token }`.
 4. The blog system verifies the HMAC (constant-time) and `exp`, then returns a
    short-lived `session_token` + `expires_at` (TTL = `sso_session_ttl_seconds`,

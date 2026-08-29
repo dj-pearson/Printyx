@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Printyx has invested heavily in compliance scaffolding, and much of it is genuinely well-built: a real consent-records schema, a working data-export (portability) backend, an audit-logging layer, a DPA/subprocessor management service, and a legitimately strong *opt-in* accessibility feature set (accessibility widget, preference engine, live regions, focus traps, colour-blindness filters). **However, the platform cannot currently claim to be "fully compliant" with GDPR, CCPA/CPRA, or WCAG 2.1 AA.** The recurring failure pattern is the same across all three domains: **capabilities are built but not connected** — good backends with no reachable UI, good CSS with no class applied, good schemas the app never writes to — combined with **public statements that overclaim** relative to what the code delivers.
+Printyx has invested heavily in compliance scaffolding, and much of it is genuinely well-built: a real consent-records schema, a working data-export (portability) backend, an audit-logging layer, a DPA/subprocessor management service, and a legitimately strong _opt-in_ accessibility feature set (accessibility widget, preference engine, live regions, focus traps, colour-blindness filters). **However, the platform cannot currently claim to be "fully compliant" with GDPR, CCPA/CPRA, or WCAG 2.1 AA.** The recurring failure pattern is the same across all three domains: **capabilities are built but not connected** — good backends with no reachable UI, good CSS with no class applied, good schemas the app never writes to — combined with **public statements that overclaim** relative to what the code delivers.
 
 The three highest-risk issues:
 
@@ -22,12 +22,12 @@ A prioritized remediation roadmap is at the end of this document.
 
 ## Overall Compliance Posture
 
-| Domain | Documents / Prose | Technical Implementation | Public Claim Accuracy | Verdict |
-|---|---|---|---|---|
-| Legal documents | Present, above-average drafting | — | Overclaims (SLA, non-existent DPA) | **Partial** |
-| GDPR (EU/UK) | Privacy Policy covers many topics | Export real; erasure/consent/retention broken or unreachable | Promises rights the app can't deliver | **Not compliant** |
-| CCPA / CPRA (US) | Basic CCPA section present | No "Do Not Sell/Share", no GPC signal | Overclaims | **Not compliant** |
-| ADA / WCAG 2.1 AA | Strong Accessibility Statement | Opt-in features strong; baseline keyboard access fails | "Substantial conformance" not supportable | **Not compliant** |
+| Domain            | Documents / Prose                 | Technical Implementation                                     | Public Claim Accuracy                     | Verdict           |
+| ----------------- | --------------------------------- | ------------------------------------------------------------ | ----------------------------------------- | ----------------- |
+| Legal documents   | Present, above-average drafting   | —                                                            | Overclaims (SLA, non-existent DPA)        | **Partial**       |
+| GDPR (EU/UK)      | Privacy Policy covers many topics | Export real; erasure/consent/retention broken or unreachable | Promises rights the app can't deliver     | **Not compliant** |
+| CCPA / CPRA (US)  | Basic CCPA section present        | No "Do Not Sell/Share", no GPC signal                        | Overclaims                                | **Not compliant** |
+| ADA / WCAG 2.1 AA | Strong Accessibility Statement    | Opt-in features strong; baseline keyboard access fails       | "Substantial conformance" not supportable | **Not compliant** |
 
 ---
 
@@ -35,22 +35,23 @@ A prioritized remediation roadmap is at the end of this document.
 
 ### 1.1 Document inventory
 
-| Document | Exists | Routed | Linked (reachable) |
-|---|---|---|---|
-| Privacy Policy | ✅ `client/src/pages/legal/PrivacyPolicy.tsx` | ✅ `/privacy` | ✅ footer, homepage, cookie banner |
-| Terms & Conditions | ✅ `TermsAndConditions.tsx` | ✅ `/terms` | ✅ footer, homepage |
-| EULA | ✅ `EndUserLicenseAgreement.tsx` | ✅ `/eula` | ✅ footer, homepage |
-| Accessibility Statement | ✅ `AccessibilityStatement.tsx` | ✅ `/accessibility` | ❌ **orphaned — no link anywhere** |
-| Cookie Policy (standalone) | ❌ | ❌ | Only Privacy Policy §8 + banner |
-| Data Processing Agreement (DPA) | ❌ (no legal doc) | ❌ | — |
-| Subprocessor list | ❌ | ❌ | — |
-| SLA | ❌ (referenced, absent) | ❌ | — |
-| "Do Not Sell/Share" page | ❌ | ❌ | — |
-| GDPR self-service dashboard | ✅ `GdprComplianceDashboard.tsx` | ❌ **not routed (dead code)** | ❌ |
+| Document                        | Exists                                        | Routed                        | Linked (reachable)                 |
+| ------------------------------- | --------------------------------------------- | ----------------------------- | ---------------------------------- |
+| Privacy Policy                  | ✅ `client/src/pages/legal/PrivacyPolicy.tsx` | ✅ `/privacy`                 | ✅ footer, homepage, cookie banner |
+| Terms & Conditions              | ✅ `TermsAndConditions.tsx`                   | ✅ `/terms`                   | ✅ footer, homepage                |
+| EULA                            | ✅ `EndUserLicenseAgreement.tsx`              | ✅ `/eula`                    | ✅ footer, homepage                |
+| Accessibility Statement         | ✅ `AccessibilityStatement.tsx`               | ✅ `/accessibility`           | ❌ **orphaned — no link anywhere** |
+| Cookie Policy (standalone)      | ❌                                            | ❌                            | Only Privacy Policy §8 + banner    |
+| Data Processing Agreement (DPA) | ❌ (no legal doc)                             | ❌                            | —                                  |
+| Subprocessor list               | ❌                                            | ❌                            | —                                  |
+| SLA                             | ❌ (referenced, absent)                       | ❌                            | —                                  |
+| "Do Not Sell/Share" page        | ❌                                            | ❌                            | —                                  |
+| GDPR self-service dashboard     | ✅ `GdprComplianceDashboard.tsx`              | ❌ **not routed (dead code)** | ❌                                 |
 
 ### 1.2 Content gaps by document
 
 **Privacy Policy — weakest document vs. GDPR Art. 13/14 + CCPA/CPRA.** Missing or materially deficient:
+
 - **No legal basis for processing** (GDPR Art. 6 — consent/contract/legitimate interest). Entirely absent.
 - **No defined retention periods** — only "as long as necessary" (§5.2). GDPR/CCPA require periods or criteria.
 - **No enumerated recipient categories** (hosting, analytics, sub-processors) with purposes.
@@ -71,7 +72,7 @@ A prioritized remediation roadmap is at the end of this document.
 
 ### 1.3 Missing documents (entirely absent)
 
-1. **Data Processing Agreement (DPA)** — *highest-severity legal gap.* Printyx self-identifies as a GDPR processor of customer business data (Privacy Policy §12.1) but offers no DPA (Art. 28 requirement; blocks EU/UK B2B sales).
+1. **Data Processing Agreement (DPA)** — _highest-severity legal gap._ Printyx self-identifies as a GDPR processor of customer business data (Privacy Policy §12.1) but offers no DPA (Art. 28 requirement; blocks EU/UK B2B sales).
 2. **Subprocessor list** — required companion to a DPA.
 3. **Standalone Cookie Policy** with a cookie inventory.
 4. **SLA** — referenced in Terms but does not exist.
@@ -91,7 +92,8 @@ A prioritized remediation roadmap is at the end of this document.
 
 ### 2.1 What is genuinely implemented and works
 
-The *opt-in* accessibility layer is real, not vaporware:
+The _opt-in_ accessibility layer is real, not vaporware:
+
 - `lang="en"` on `<html>` (`client/index.html:3`) — WCAG 3.1.1. ✅
 - **AccessibilityProvider** (`hooks/useAccessibility.tsx`) persists prefs and applies real DOM effects (`applyPreferencesToDocument`, L68-109): high-contrast, reduced-motion, colour-blind filters, focus indicators, link underlines, cursor size, font scaling — all backed by `styles/accessibility.css`. All six settings are real.
 - **Colour-blindness filters** render via live SVG `feColorMatrix` (`ColorBlindnessFilters.tsx`). ✅
@@ -104,7 +106,7 @@ The *opt-in* accessibility layer is real, not vaporware:
 ### 2.2 Systemic violations (block the "WCAG 2.1 AA" claim)
 
 - **WCAG 2.1.1 (Keyboard) / 4.1.2 — clickable non-interactive elements, systemic.** `role="button"` appears **0 times** in `client/src`; **~2,260 `onClick`** vs **~28 keyboard handlers**; clickable `<div>/<Card>/<li>/<tr>/<TableRow>` across **57+ files** with no `role`/`tabIndex`/`onKeyDown`. Canonical case: shared `components/crm/CrmDataTable.tsx:370-373` (clickable rows) and sortable headers (`:314-316`) — fixing the shared components has broad reach. Keyboard-only and screen-reader users cannot operate these controls.
-- **WCAG 1.3.1 / 4.1.1 — nested `<main>` + duplicate `id="main-content"`.** `App.tsx:607` wraps authenticated routes in `<main id="main-content">`, and every `MainLayout` page renders a *second* `<main id="main-content">` (`main-layout.tsx:52`). Two `<main>` landmarks + duplicate ID per page.
+- **WCAG 1.3.1 / 4.1.1 — nested `<main>` + duplicate `id="main-content"`.** `App.tsx:607` wraps authenticated routes in `<main id="main-content">`, and every `MainLayout` page renders a _second_ `<main id="main-content">` (`main-layout.tsx:52`). Two `<main>` landmarks + duplicate ID per page.
 - **WCAG 2.4.1 — broken skip links.** `SkipNavigation.tsx` defaults target `#main-content`, `#navigation`, `#search`; only `#main-content` exists. Authenticated override targets `#search-input`, which exists nowhere. Two SkipNavigation blocks render simultaneously with conflicting targets.
 - **WCAG 3.3.2 / 4.1.2 — unlabeled controls.** Global header search is placeholder-only (`header.tsx:56`). Of 84 `size="icon"` buttons, ~81 have no inline `aria-label` (needs per-file confirmation for `sr-only` children).
 - **WCAG 2.4.7 — focus indicators.** `components/ui/navigation-menu.tsx:38` and `HostedFormPage.tsx:147,156,193` use `focus:outline-none` without a visible replacement.
@@ -127,6 +129,7 @@ The *opt-in* accessibility layer is real, not vaporware:
 ## Part 3 — GDPR & CCPA/CPRA Technical Controls
 
 ### 3.1 Implemented and working
+
 - **DSAR / access & portability (backend):** `GET /api/gdpr/export/:userId` (`server/routes-gdpr.ts:35`) → `gdpr-data-export-service.ts` collects personal data across tables, strips credentials, and serializes to machine-readable JSON/CSV/XML (Art. 20). **Caveat: no reachable UI.**
 - **Consent ledger (schema & service):** `shared/gdpr-core-schema.ts` `consent_records` stores timestamp, version, scope, legal basis, source, IP, proof; `consent_audit_trail` records changes. Well-designed. **Caveat: the app never writes to it from the cookie banner.**
 - **Audit logging of personal-data access:** `server/security-compliance.ts` (`logDataAccess` → `dataAccessLogs`); viewer at `/admin/audit-logs`. ✅
@@ -134,11 +137,13 @@ The *opt-in* accessibility layer is real, not vaporware:
 - **Email-marketing opt-out (edge):** `supabase/functions/email-marketing/handlers/unsubscribes.ts`. ✅
 
 ### 3.2 Partial / mock / dead code
+
 - **GDPR dashboard orphaned:** `GdprComplianceDashboard.tsx` calls real endpoints but is **not routed**; its sub-page targets (`/gdpr/data-export`, `/gdpr/consent`, `/gdpr/dpa`, `/gdpr/deduplication`) don't exist. Compliance score hardcoded 85%.
 - **Right to erasure is a stub:** `DELETE /api/gdpr/execute-deletion/:requestId` (`routes-gdpr.ts:196`) enforces admin-only + confirm + 30-day grace, but **performs no deletion** — flips status to `completed` and logs (code comment admits it, ~L270). Backups (K8s `pg_dump`) would resurrect any real deletion anyway.
 - **Retention automation is dead code:** `data-retention-service.ts` is a complete engine (policies, batched purge, legal hold, `runScheduledRetention`, default policies) with **no callers** — not routed, no cron invokes it; `archiveRecords` is itself a stub. Retention exists in prose only at runtime.
 
 ### 3.3 Missing controls (required or promised, absent)
+
 1. **Cookie consent is cosmetic and non-granular** (`components/CookieConsent.tsx`): Accept/Decline → `localStorage` only; no per-category choice; gates no scripts; never writes to `consent_records`; no way to change the choice later.
 2. **No "Do Not Sell or Share My Personal Information"** control (CCPA/CPRA) — prose only.
 3. **No Global Privacy Control (GPC) honoring** — no `Sec-GPC` handling; CPRA requires treating GPC as a valid opt-out.
@@ -148,15 +153,16 @@ The *opt-in* accessibility layer is real, not vaporware:
 7. **Erasure ↔ backup interaction** — unaddressed.
 
 ### 3.4 Privacy Policy promises vs. code reality
-| Promise (`PrivacyPolicy.tsx`) | Reality |
-|---|---|
-| "Delete or deactivate your account" (:241) | No self-service deletion; erasure is a no-op stub. |
-| "Export your business data" (:242) | Backend works; **no reachable UI**. |
-| "Right to withdraw consent" (:250) | API exists; banner records nothing; no consent center routed. |
-| "Restrict or object to processing" (:243) | Not implemented. |
-| CCPA opt-out / delete (:259-260) | No Do-Not-Sell control, no GPC, deletion stub. |
-| "Respond within 30 days" (:409) | Grace window tracked; fulfillment never occurs. |
-| Cookie control via browser (:302) | Banner doesn't gate analytics; "declining" changes nothing. |
+
+| Promise (`PrivacyPolicy.tsx`)              | Reality                                                       |
+| ------------------------------------------ | ------------------------------------------------------------- |
+| "Delete or deactivate your account" (:241) | No self-service deletion; erasure is a no-op stub.            |
+| "Export your business data" (:242)         | Backend works; **no reachable UI**.                           |
+| "Right to withdraw consent" (:250)         | API exists; banner records nothing; no consent center routed. |
+| "Restrict or object to processing" (:243)  | Not implemented.                                              |
+| CCPA opt-out / delete (:259-260)           | No Do-Not-Sell control, no GPC, deletion stub.                |
+| "Respond within 30 days" (:409)            | Grace window tracked; fulfillment never occurs.               |
+| Cookie control via browser (:302)          | Banner doesn't gate analytics; "declining" changes nothing.   |
 
 ---
 
@@ -165,22 +171,25 @@ The *opt-in* accessibility layer is real, not vaporware:
 Severity: **P0** = active legal exposure / false compliance signal; **P1** = promised capability not deliverable; **P2** = completeness; **P3** = hardening.
 
 ### P0 — Do first
-1. **Make erasure actually erase** — implement per-table purge/anonymization in `routes-gdpr.ts`, with a documented backup-exclusion/anonymization strategy. Until then, do not represent erasure as available. *(GDPR Art. 17)*
-2. **Replace the cookie banner with a real CMP** — per-category toggles, default-deny for non-essential, conditionally load analytics/tracking on consent, persist to `consent_records`, add a persistent "Cookie settings" re-entry link. *(GDPR/ePrivacy, CPRA)*
-3. **Fix baseline keyboard accessibility** — convert clickable `<div>/<tr>/<Card>` to real `<button>`/`<a>` or add `role`+`tabIndex`+`onKeyDown`; start with shared components (`CrmDataTable`, dashboard widgets, responsive tables) for maximum reach. *(WCAG 2.1.1, 4.1.2)*
-4. **Add "Do Not Sell or Share" + honor `Sec-GPC`** header as an opt-out. *(CCPA/CPRA)*
-5. **Correct overclaiming statements** — fix the Accessibility Statement's keyboard-shortcut table and downgrade "substantially conforms" until baseline issues are resolved; fix the Privacy Policy's stale "Replit" disclosure. *(misrepresentation risk)*
+
+1. **Make erasure actually erase** — implement per-table purge/anonymization in `routes-gdpr.ts`, with a documented backup-exclusion/anonymization strategy. Until then, do not represent erasure as available. _(GDPR Art. 17)_
+2. **Replace the cookie banner with a real CMP** — per-category toggles, default-deny for non-essential, conditionally load analytics/tracking on consent, persist to `consent_records`, add a persistent "Cookie settings" re-entry link. _(GDPR/ePrivacy, CPRA)_
+3. **Fix baseline keyboard accessibility** — convert clickable `<div>/<tr>/<Card>` to real `<button>`/`<a>` or add `role`+`tabIndex`+`onKeyDown`; start with shared components (`CrmDataTable`, dashboard widgets, responsive tables) for maximum reach. _(WCAG 2.1.1, 4.1.2)_
+4. **Add "Do Not Sell or Share" + honor `Sec-GPC`** header as an opt-out. _(CCPA/CPRA)_
+5. **Correct overclaiming statements** — fix the Accessibility Statement's keyboard-shortcut table and downgrade "substantially conforms" until baseline issues are resolved; fix the Privacy Policy's stale "Replit" disclosure. _(misrepresentation risk)_
 6. **Fix contact channels** — correct `@printyx.com` → `@printyx.net` (or register/route the .com) and replace placeholder phone numbers, so rights requests are actually deliverable.
 
 ### P1 — Make promised rights reachable
+
 7. **Route (or remove) the GDPR self-service UI** — register `/gdpr` and sub-pages, and expose "Export my data" + "Delete my account" in user settings; or delete the dead dashboard.
-8. **Remove duplicate/nested `<main id="main-content">`** — exactly one landmark per page. *(WCAG 1.3.1/4.1.1)*
-9. **Fix skip links** — add `id="search-input"` to header search, drop dead `#navigation`/`#search` defaults, render only one SkipNavigation. *(WCAG 2.4.1)*
-10. **Label controls** — header search + audit the ~81 unlabeled icon buttons. *(WCAG 3.3.2/4.1.2)*
+8. **Remove duplicate/nested `<main id="main-content">`** — exactly one landmark per page. _(WCAG 1.3.1/4.1.1)_
+9. **Fix skip links** — add `id="search-input"` to header search, drop dead `#navigation`/`#search` defaults, render only one SkipNavigation. _(WCAG 2.4.1)_
+10. **Label controls** — header search + audit the ~81 unlabeled icon buttons. _(WCAG 3.3.2/4.1.2)_
 11. **Wire the retention engine** — schedule `runScheduledRetention()` via the existing cron pattern and finish `archiveRecords` before enabling destructive purge.
 12. **Author the DPA + subprocessor list**, add a standalone Cookie Policy, and either create the SLA or drop the Terms reference.
 
 ### P2 — Completeness
+
 13. Implement restriction/objection endpoints + a processing-restriction flag.
 14. Add a RoPA (Art. 30) register (table + admin UI).
 15. Connect cookie/marketing/unsubscribe consent into the unified `consent_records` ledger.
@@ -188,6 +197,7 @@ Severity: **P0** = active legal exposure / false compliance signal; **P1** = pro
 17. Apply `.touch-accessible` / bake 44px minimums into `Button`; add `focus-visible:ring` to the offenders.
 
 ### P3 — Guardrails (prevent regression)
+
 18. Add **`eslint-plugin-jsx-a11y`** (recommended ruleset) to `eslint.config.js`.
 19. Add **`@axe-core/playwright`** smoke tests over top routes in `tests/`.
 20. Wire `getContrastRatio()` into a CI/Storybook contrast check.

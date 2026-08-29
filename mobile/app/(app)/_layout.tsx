@@ -19,11 +19,7 @@ function iconFor(
   unfocused: IconName,
 ): (opts: { focused: boolean; color: string; size: number }) => React.ReactNode {
   return ({ focused: isFocused, color, size }) => (
-    <MaterialCommunityIcons
-      name={isFocused ? focused : unfocused}
-      color={color}
-      size={size}
-    />
+    <MaterialCommunityIcons name={isFocused ? focused : unfocused} color={color} size={size} />
   );
 }
 

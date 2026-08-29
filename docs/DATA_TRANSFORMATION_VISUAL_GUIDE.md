@@ -154,6 +154,7 @@
 ## Key Differences
 
 ### Before Fix
+
 ```typescript
 // ❌ No transformation
 const { data: contacts } = useQuery({
@@ -171,6 +172,7 @@ const { data: contacts } = useQuery({
 ```
 
 ### After Fix
+
 ```typescript
 // ✅ With transformation
 const { data: contacts } = useQuery({
@@ -179,12 +181,12 @@ const { data: contacts } = useQuery({
     const response = await apiRequest(`/api/companies/${id}/contacts`, 'GET');
     return (response || []).map((c: any) => ({
       id: c.id,
-      firstName: c.first_name || '',      // snake → camel
-      lastName: c.last_name || '',        // snake → camel
+      firstName: c.first_name || '', // snake → camel
+      lastName: c.last_name || '', // snake → camel
       email: c.email || '',
       phone: c.phone || '',
       isPrimaryContact: c.is_primary_contact || false, // snake → camel
-      companyId: c.company_id,            // snake → camel
+      companyId: c.company_id, // snake → camel
     }));
   },
 });
@@ -201,6 +203,7 @@ const { data: contacts } = useQuery({
 ## Data Flow Comparison
 
 ### ❌ Without Transformation
+
 ```
 Database     Edge Function    React Query       Component
 (snake)   →   (snake)      →   (snake)       →   expects camel
@@ -210,6 +213,7 @@ Database     Edge Function    React Query       Component
 ```
 
 ### ✅ With Transformation
+
 ```
 Database     Edge Function    React Query       Component
 (snake)   →   (snake)      →   TRANSFORM     →   expects camel
@@ -223,11 +227,13 @@ Database     Edge Function    React Query       Component
 ### Convention Mismatch
 
 **PostgreSQL Convention**: `snake_case`
+
 - `first_name`, `last_name`, `is_primary_contact`
 - Follows SQL naming standards
 - Used in all database schemas
 
 **JavaScript Convention**: `camelCase`
+
 - `firstName`, `lastName`, `isPrimaryContact`
 - Standard in JS/TS codebases
 - Used in React components
@@ -242,6 +248,7 @@ Database     Edge Function    React Query       Component
 ## Real Example from Codebase
 
 ### Before (CustomerDetail.tsx)
+
 ```typescript
 const { data: companyContacts = [] } = useQuery({
   queryKey: ['/api/companies', customer?.id, 'contacts'],
@@ -262,6 +269,7 @@ const primaryContact = useMemo(() => {
 ```
 
 ### After (CustomerDetail.tsx)
+
 ```typescript
 const { data: companyContacts = [] } = useQuery({
   queryKey: ['/api/companies', customer?.id, 'contacts'],
@@ -296,19 +304,24 @@ const primaryContact = useMemo(() => {
 ## Tools to Prevent This
 
 ### 1. Linter (Detection)
+
 ```bash
 npm run lint:transformations
 ```
+
 Scans entire codebase, reports all missing transformations.
 
 ### 2. Auto-Fixer (Correction)
+
 ```bash
 npm run fix:transformations:dry-run  # Preview
 npm run fix:transformations          # Apply
 ```
+
 Automatically adds queryFn transformations.
 
 ### 3. TypeScript Types (Prevention)
+
 ```typescript
 // Define API response type (snake_case)
 interface ContactAPIResponse {
@@ -347,13 +360,13 @@ function transformContact(api: ContactAPIResponse): Contact {
 ## Quick Reference
 
 | Database (snake_case) | Frontend (camelCase) |
-|-----------------------|----------------------|
-| `first_name` | `firstName` |
-| `last_name` | `lastName` |
-| `company_id` | `companyId` |
-| `is_primary_contact` | `isPrimaryContact` |
-| `created_at` | `createdAt` |
-| `updated_at` | `updatedAt` |
-| `business_name` | `businessName` |
+| --------------------- | -------------------- |
+| `first_name`          | `firstName`          |
+| `last_name`           | `lastName`           |
+| `company_id`          | `companyId`          |
+| `is_primary_contact`  | `isPrimaryContact`   |
+| `created_at`          | `createdAt`          |
+| `updated_at`          | `updatedAt`          |
+| `business_name`       | `businessName`       |
 
 See full mapping: `docs/DATA_TRANSFORMATION_STRATEGY.md`

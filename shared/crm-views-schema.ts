@@ -20,11 +20,7 @@ import { z } from 'zod';
 
 // ==================== Enums ====================
 
-export const viewVisibilityEnum = pgEnum('view_visibility', [
-  'private',
-  'team',
-  'everyone',
-]);
+export const viewVisibilityEnum = pgEnum('view_visibility', ['private', 'team', 'everyone']);
 
 export const crmObjectTypeEnum = pgEnum('crm_object_type', [
   'deals',
@@ -88,10 +84,7 @@ export const savedViews = pgTable(
   },
   (table) => ({
     tenantIdx: index('saved_views_tenant_idx').on(table.tenantId),
-    tenantObjectIdx: index('saved_views_tenant_object_idx').on(
-      table.tenantId,
-      table.objectType,
-    ),
+    tenantObjectIdx: index('saved_views_tenant_object_idx').on(table.tenantId, table.objectType),
     userIdx: index('saved_views_user_idx').on(table.userId),
     tenantUserObjectIdx: index('saved_views_tenant_user_object_idx').on(
       table.tenantId,
@@ -117,10 +110,7 @@ export const savedViewPins = pgTable(
   (table) => ({
     userIdx: index('saved_view_pins_user_idx').on(table.userId),
     viewIdx: index('saved_view_pins_view_idx').on(table.viewId),
-    userViewIdx: index('saved_view_pins_user_view_idx').on(
-      table.userId,
-      table.viewId,
-    ),
+    userViewIdx: index('saved_view_pins_user_view_idx').on(table.userId, table.viewId),
   }),
 );
 
@@ -199,10 +189,7 @@ export const dealTagAssignments = pgTable(
   (table) => ({
     dealIdx: index('deal_tag_assignments_deal_idx').on(table.dealId),
     tagIdx: index('deal_tag_assignments_tag_idx').on(table.tagId),
-    dealTagIdx: index('deal_tag_assignments_deal_tag_idx').on(
-      table.dealId,
-      table.tagId,
-    ),
+    dealTagIdx: index('deal_tag_assignments_deal_tag_idx').on(table.dealId, table.tagId),
   }),
 );
 
@@ -270,26 +257,32 @@ const columnConfigSchema = z.object({
 });
 
 const boardConfigSchema = z.object({
-  cardFields: z.array(z.object({
-    field: z.string(),
-    label: z.string(),
-    position: z.number(),
-    format: z.string().optional(),
-  })).optional(),
+  cardFields: z
+    .array(
+      z.object({
+        field: z.string(),
+        label: z.string(),
+        position: z.number(),
+        format: z.string().optional(),
+      }),
+    )
+    .optional(),
   columnTotals: z.enum(['sum', 'count', 'weighted', 'average', 'none']).optional(),
   groupBy: z.string().optional(),
 });
 
-export const insertSavedViewSchema = createInsertSchema(savedViews).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  filterDefinition: z.array(filterConditionSchema).optional().nullable(),
-  sortConfig: sortConfigSchema.optional().nullable(),
-  columnConfig: z.array(columnConfigSchema).optional().nullable(),
-  boardConfig: boardConfigSchema.optional().nullable(),
-});
+export const insertSavedViewSchema = createInsertSchema(savedViews)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    filterDefinition: z.array(filterConditionSchema).optional().nullable(),
+    sortConfig: sortConfigSchema.optional().nullable(),
+    columnConfig: z.array(columnConfigSchema).optional().nullable(),
+    boardConfig: boardConfigSchema.optional().nullable(),
+  });
 
 export const updateSavedViewSchema = insertSavedViewSchema.partial().omit({
   tenantId: true,

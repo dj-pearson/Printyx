@@ -9,12 +9,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import {
-  GlassCard,
-  ListItem,
-  SectionHeader,
-  StatCard,
-} from '@/components/ui';
+import { GlassCard, ListItem, SectionHeader, StatCard } from '@/components/ui';
 import { colors, spacing, typography } from '@/theme';
 
 export default function CRMHubScreen() {
@@ -26,14 +21,9 @@ export default function CRMHubScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>CRM</Text>
-        <Text style={styles.subtitle}>
-          Track prospects, accounts, and deals — end to end.
-        </Text>
+        <Text style={styles.subtitle}>Track prospects, accounts, and deals — end to end.</Text>
 
         <View style={styles.statsRow}>
           <StatCard

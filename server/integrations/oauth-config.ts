@@ -204,10 +204,7 @@ export function createMicrosoftGraphClient(accessToken: string): Client {
 /**
  * Create Salesforce client
  */
-export function createSalesforceClient(
-  accessToken: string,
-  instanceUrl?: string,
-): any {
+export function createSalesforceClient(accessToken: string, instanceUrl?: string): any {
   const conn = new jsforce.Connection({
     oauth2: {
       clientId: salesforceConfig.config.clientId,

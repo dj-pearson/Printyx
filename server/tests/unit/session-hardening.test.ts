@@ -55,7 +55,7 @@ function createMockRequest(overrides: Record<string, unknown> = {}): SessionHard
     headers: {
       'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       'accept-language': 'en-US,en;q=0.9',
-      ...(overrides.headers as Record<string, string> || {}),
+      ...((overrides.headers as Record<string, string>) || {}),
     },
     ...overrides,
   } as unknown as SessionHardeningRequest;

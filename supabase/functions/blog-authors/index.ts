@@ -24,7 +24,13 @@ import { writeAuditLog, withRequestContext } from '../_shared/blog/audit-log.ts'
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
-const RESEARCH_SIGNALS = ['survey', 'internal_data', 'expert_interview', 'case_study', 'none'] as const;
+const RESEARCH_SIGNALS = [
+  'survey',
+  'internal_data',
+  'expert_interview',
+  'case_study',
+  'none',
+] as const;
 
 const authorSchema = z.object({
   name: z.string().min(1).max(200),
@@ -109,7 +115,8 @@ export default async function handler(req: Request) {
       if (req.method === 'PATCH' || req.method === 'PUT') {
         return await updateAuthor(admin, tenantId, user.id, parts[0], req);
       }
-      if (req.method === 'DELETE') return await deleteAuthor(admin, tenantId, user.id, parts[0], req);
+      if (req.method === 'DELETE')
+        return await deleteAuthor(admin, tenantId, user.id, parts[0], req);
     }
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
   } catch (err) {
@@ -166,7 +173,8 @@ async function createAuthor(admin: Admin, tenantId: string, userId: string, req:
     );
   }
   const d = parsed.data;
-  const slug = (d.slug && slugify(d.slug)) || slugify(d.name) || `author-${Date.now().toString(36)}`;
+  const slug =
+    (d.slug && slugify(d.slug)) || slugify(d.name) || `author-${Date.now().toString(36)}`;
 
   // Slug uniqueness within tenant.
   const { data: clash } = await admin
@@ -217,7 +225,13 @@ async function createAuthor(admin: Admin, tenantId: string, userId: string, req:
   return createCorsResponse({ author: created }, 201, req);
 }
 
-async function updateAuthor(admin: Admin, tenantId: string, userId: string, id: string, req: Request) {
+async function updateAuthor(
+  admin: Admin,
+  tenantId: string,
+  userId: string,
+  id: string,
+  req: Request,
+) {
   let body: unknown;
   try {
     body = await req.json();
@@ -235,8 +249,17 @@ async function updateAuthor(admin: Admin, tenantId: string, userId: string, id: 
   const d = parsed.data;
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   for (const key of [
-    'name', 'bio', 'headshot_asset_id', 'headshot_url', 'credentials', 'job_title',
-    'expertise_tags', 'social_links', 'schema_person', 'user_id', 'is_active',
+    'name',
+    'bio',
+    'headshot_asset_id',
+    'headshot_url',
+    'credentials',
+    'job_title',
+    'expertise_tags',
+    'social_links',
+    'schema_person',
+    'user_id',
+    'is_active',
   ] as const) {
     if (d[key] !== undefined) patch[key] = d[key];
   }
@@ -281,7 +304,13 @@ async function updateAuthor(admin: Admin, tenantId: string, userId: string, id: 
   return createCorsResponse({ author: updated }, 200, req);
 }
 
-async function deleteAuthor(admin: Admin, tenantId: string, userId: string, id: string, req: Request) {
+async function deleteAuthor(
+  admin: Admin,
+  tenantId: string,
+  userId: string,
+  id: string,
+  req: Request,
+) {
   const { data: updated, error } = await admin
     .from('blog_authors')
     .update({ deleted_at: new Date().toISOString(), is_active: false })
@@ -334,7 +363,9 @@ async function authorPage(admin: Admin, tenantId: string, slug: string, req: Req
 async function authorPosts(admin: Admin, tenantId: string, authorId: string) {
   const { data } = await admin
     .from('blog_posts')
-    .select('id, title, slug, excerpt, published_at, cms_post_url, status, original_research_signal')
+    .select(
+      'id, title, slug, excerpt, published_at, cms_post_url, status, original_research_signal',
+    )
     .eq('tenant_id', tenantId)
     .eq('author_id', authorId)
     .is('deleted_at', null)

@@ -321,14 +321,12 @@ describe('forwardToEdgeFunction (integration)', () => {
   });
 
   it('non-write methods skip body building even with body set', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify([]), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
-      );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
     globalThis.fetch = fetchMock as any;
 
     await forwardToEdgeFunction(

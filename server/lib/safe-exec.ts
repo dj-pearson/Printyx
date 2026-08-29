@@ -16,14 +16,7 @@ import { createModuleLogger } from './logger';
 const log = createModuleLogger('safe-exec');
 
 /** Allowlist of permitted binary names */
-const ALLOWED_BINARIES = new Set([
-  'node',
-  'npm',
-  'pg_dump',
-  'psql',
-  'gzip',
-  'gunzip',
-]);
+const ALLOWED_BINARIES = new Set(['node', 'npm', 'pg_dump', 'psql', 'gzip', 'gunzip']);
 
 /** Default timeout in milliseconds */
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -104,7 +97,7 @@ function validateArguments(args: string[]): void {
 export async function safeExecFile(
   command: string,
   args: string[],
-  options?: ExecFileOptions
+  options?: ExecFileOptions,
 ): Promise<SafeExecResult> {
   // Validate command against allowlist
   validateCommand(command);
@@ -133,17 +126,15 @@ export async function safeExecFile(
         if (error) {
           // Check if this was a timeout
           if (error.killed && error.signal === 'SIGTERM') {
-            log.warn(
-              { command: getBaseName(command), timeout },
-              'Command killed due to timeout'
-            );
+            log.warn({ command: getBaseName(command), timeout }, 'Command killed due to timeout');
           }
 
-          const exitCode = error.code != null ? (typeof error.code === 'number' ? error.code : 1) : 1;
+          const exitCode =
+            error.code != null ? (typeof error.code === 'number' ? error.code : 1) : 1;
 
           log.error(
             { command: getBaseName(command), exitCode, stderr: stderrStr.substring(0, 500) },
-            'Command execution failed'
+            'Command execution failed',
           );
 
           // Still resolve with the output and exit code rather than rejecting,
@@ -161,17 +152,14 @@ export async function safeExecFile(
           return;
         }
 
-        log.info(
-          { command: getBaseName(command), exitCode: 0 },
-          'Command executed successfully'
-        );
+        log.info({ command: getBaseName(command), exitCode: 0 }, 'Command executed successfully');
 
         resolve({
           stdout: stdoutStr,
           stderr: stderrStr,
           exitCode: 0,
         });
-      }
+      },
     );
 
     // Safety: ensure the child process reference exists

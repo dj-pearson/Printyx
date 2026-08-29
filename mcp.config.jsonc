@@ -11,8 +11,8 @@
       "command": "npx",
       "args": ["-y", "@playwright/mcp@latest"],
       "pin": "1.4.2",
-      "tags": ["code"]
-    }
+      "tags": ["code"],
+    },
 
     // A remote server with a secret REFERENCE (never a hardcoded token):
     // "github": {
@@ -25,6 +25,6 @@
 
   "profiles": {
     // Fold only servers whose tags intersect `include` into each client.
-    "cursor": { "client": "cursor", "scope": "user", "include": ["code"] }
-  }
+    "cursor": { "client": "cursor", "scope": "user", "include": ["code"] },
+  },
 }

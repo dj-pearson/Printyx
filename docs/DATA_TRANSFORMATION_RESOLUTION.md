@@ -19,6 +19,7 @@
 ## Immediate Fixes Applied
 
 ### 1. CustomerDetail.tsx
+
 **File**: `client/src/pages/CustomerDetail.tsx`
 
 **Change**: Added `queryFn` with transformation for contacts query.
@@ -49,23 +50,25 @@ const { data: companyContacts = [] } = useQuery({
 ```
 
 ### 2. Import Function Enhancement
+
 **File**: `supabase/functions/import/index.ts`
 
 **Change**: Auto-update placeholder contacts with real data during import.
 
 **Before**:
+
 - Imported data would skip updating existing contacts
 - Placeholder contacts (`Primary`/`Contact`) stayed as placeholders
 
 **After**:
+
 - Detects placeholder contacts during import
 - Automatically updates with real name data if available
 - Logs update activity for transparency
 
 ```typescript
-const isPlaceholder = 
-  existingContact.first_name === 'Primary' && 
-  existingContact.last_name === 'Contact';
+const isPlaceholder =
+  existingContact.first_name === 'Primary' && existingContact.last_name === 'Contact';
 
 if (isPlaceholder && hasRealContactData) {
   // Update with real data from import
@@ -80,16 +83,19 @@ if (isPlaceholder && hasRealContactData) {
 ## Tools Created
 
 ### 1. Data Transformation Linter
+
 **File**: `tools/data-transformation-linter.ts`
 
 **Purpose**: Scan codebase for missing transformations.
 
 **Usage**:
+
 ```bash
 npm run lint:transformations
 ```
 
 **Detects**:
+
 - `useQuery` without `queryFn` transformation
 - Direct snake_case property access
 - Missing camelCase transformations
@@ -97,11 +103,13 @@ npm run lint:transformations
 **Output**: JSON report with file locations and fix suggestions.
 
 ### 2. Data Transformation Auto-Fixer
+
 **File**: `tools/data-transformation-fixer.ts`
 
 **Purpose**: Automatically add missing transformations.
 
 **Usage**:
+
 ```bash
 # Preview changes
 npm run fix:transformations:dry-run
@@ -111,6 +119,7 @@ npm run fix:transformations
 ```
 
 **Features**:
+
 - Detects missing `queryFn` in useQuery
 - Generates appropriate transformation code
 - Preserves code formatting
@@ -119,9 +128,11 @@ npm run fix:transformations
 ## Documentation Created
 
 ### 1. Contact Import Guide
+
 **File**: `docs/CONTACT_IMPORT_GUIDE.md`
 
 **Contents**:
+
 - How placeholder detection works
 - CSV column mapping reference
 - Salesforce export compatibility
@@ -129,9 +140,11 @@ npm run fix:transformations
 - API endpoints reference
 
 ### 2. Data Transformation Strategy
+
 **File**: `docs/DATA_TRANSFORMATION_STRATEGY.md`
 
 **Contents**:
+
 - Problem explanation with examples
 - Automated detection tools usage
 - Manual testing checklist
@@ -144,11 +157,13 @@ npm run fix:transformations
 ## Impact
 
 ### Immediate (Deployed)
+
 ✅ Contact names now display correctly in CustomerDetail
 ✅ Import function updates placeholders automatically
 ✅ Cache invalidation fixed for contact updates
 
 ### Future (Tools Available)
+
 🔧 Automated detection of similar issues across codebase
 🔧 Automated fixing capability (with human review)
 📚 Comprehensive documentation for team
@@ -159,9 +174,11 @@ npm run fix:transformations
 ### For Developers
 
 1. **Before committing new code**:
+
    ```bash
    npm run lint:transformations
    ```
+
    Ensure no new transformation issues introduced.
 
 2. **When adding new useQuery**:
@@ -183,11 +200,13 @@ npm run fix:transformations
 ### For Platform-Wide Fix
 
 1. Run linter to identify all issues:
+
    ```bash
    npm run lint:transformations
    ```
 
 2. Review report:
+
    ```bash
    cat tools/data-transformation-report.json
    ```
@@ -213,17 +232,20 @@ npm run fix:transformations
 ## Next Steps
 
 ### Short Term (This Week)
+
 - [ ] Run linter on full codebase
 - [ ] Prioritize high-traffic pages (Companies, Customers)
 - [ ] Fix and test incrementally
 
 ### Medium Term (This Month)
+
 - [ ] Add ESLint rule to prevent missing transformations
 - [ ] Create TypeScript types for all API responses
 - [ ] Add E2E tests for data display
 - [ ] Train team on new tools
 
 ### Long Term (Ongoing)
+
 - [ ] Add CI check for transformation issues
 - [ ] Maintain field mapping documentation
 - [ ] Review new PRs for transformation correctness

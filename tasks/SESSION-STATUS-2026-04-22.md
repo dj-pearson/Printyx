@@ -54,26 +54,26 @@ Per `tasks/prd-migration-outreach.md`. Ports the 22 Express endpoints to `supaba
 
 ### Done
 
-| File | Status |
-|---|---|
-| `supabase/functions/_shared/anthropic.ts` | ✅ Written |
-| `supabase/functions/outreach/specialty-knowledge-packs.ts` | ✅ Ported (with `OutreachSpecialty` type inlined — no shared/ import in Deno) |
-| `supabase/functions/outreach/_ai.ts` | ✅ Ported — `generateSequence`, `generateDraft`, `lintForSpam`, prompt builders |
-| `supabase/functions/outreach/_types.ts` | ✅ `HandlerContext` type |
+| File                                                       | Status                                                                            |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `supabase/functions/_shared/anthropic.ts`                  | ✅ Written                                                                        |
+| `supabase/functions/outreach/specialty-knowledge-packs.ts` | ✅ Ported (with `OutreachSpecialty` type inlined — no shared/ import in Deno)     |
+| `supabase/functions/outreach/_ai.ts`                       | ✅ Ported — `generateSequence`, `generateDraft`, `lintForSpam`, prompt builders   |
+| `supabase/functions/outreach/_types.ts`                    | ✅ `HandlerContext` type                                                          |
 | `supabase/functions/outreach/handlers/business-context.ts` | ✅ Written — GET effective, GET /all, PUT (with Zod validation + case conversion) |
-| `supabase/functions/outreach/handlers/specializations.ts` | ✅ Written — GET /specialties, GET, PUT bulk replace |
+| `supabase/functions/outreach/handlers/specializations.ts`  | ✅ Written — GET /specialties, GET, PUT bulk replace                              |
 
 ### Remaining
 
 In the task list (task IDs 29–32):
 
-| Task | Scope |
-|---|---|
-| **Sequences handlers** | GET list, GET /:id (with steps), POST /generate (AI), PATCH /:id, DELETE /:id, PATCH /sequence-steps/:id |
-| **Prospects handlers** | GET list, POST, PATCH /:id, DELETE /:id |
-| **Drafts handlers** | POST /generate (AI), GET list with prospect hydration, PATCH /:id, POST /:id/mark-sent, POST /:id/mark-replied, DELETE /:id |
-| **Dispatcher** | `outreach/index.ts` — URL routing, feature flag gate, error handling |
-| **Delete Express outreach** | Remove `server/routes/outreach-routes.ts`, `server/services/outreach/*`, route registration |
+| Task                        | Scope                                                                                                                       |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Sequences handlers**      | GET list, GET /:id (with steps), POST /generate (AI), PATCH /:id, DELETE /:id, PATCH /sequence-steps/:id                    |
+| **Prospects handlers**      | GET list, POST, PATCH /:id, DELETE /:id                                                                                     |
+| **Drafts handlers**         | POST /generate (AI), GET list with prospect hydration, PATCH /:id, POST /:id/mark-sent, POST /:id/mark-replied, DELETE /:id |
+| **Dispatcher**              | `outreach/index.ts` — URL routing, feature flag gate, error handling                                                        |
+| **Delete Express outreach** | Remove `server/routes/outreach-routes.ts`, `server/services/outreach/*`, route registration                                 |
 
 Once those ship, `functions.printyx.net/outreach/*` will replace the currently-unreachable `/api/outreach/*` Express paths — no frontend changes required because the path shape is preserved.
 

@@ -53,31 +53,31 @@ Counting handlers on disk, not PRD line counts:
 
 ### Phase 3 — 4 domains + 1 admin tool (~190 endpoints)
 
-| Domain | Edge function | Handlers | Notes |
-|---|---|---:|---|
-| Lead scoring | `supabase/functions/lead-scoring/` | 6 (rules, calculate, bant, engagement, analytics, intelligence) | Claude-assisted BANT extraction; scoring cache |
-| Lead assignment | `supabase/functions/lead-assignment/` | 7 (assign, capacity, history, queue, routing, rules, territories) | Consolidates 9 aux edge fns + 3 Express files; `_engine.ts` owns the scoring math |
-| Customer success | `supabase/functions/customer-success/` | 5 (health-scores, churn-predictions, interventions, journeys, renewals) | Health score = weighted sum; churn uses rule-based tiers, not ML |
-| Email marketing | `supabase/functions/email-marketing/` | 8 (campaigns, events, lists, list-members, sends, templates, unsubscribes, webhooks-sendgrid) | `_sendgrid.ts` is a REST wrapper (no Node SDK); webhook handler handles SendGrid event batch |
-| Content gap analysis | `supabase/functions/content-gap-analysis/` | 5 admin-only endpoints | `_engine.ts` consumes lead/deal/activity data; platform-admin gated |
+| Domain               | Edge function                              |                                                                                      Handlers | Notes                                                                                        |
+| -------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------: | -------------------------------------------------------------------------------------------- |
+| Lead scoring         | `supabase/functions/lead-scoring/`         |                               6 (rules, calculate, bant, engagement, analytics, intelligence) | Claude-assisted BANT extraction; scoring cache                                               |
+| Lead assignment      | `supabase/functions/lead-assignment/`      |                             7 (assign, capacity, history, queue, routing, rules, territories) | Consolidates 9 aux edge fns + 3 Express files; `_engine.ts` owns the scoring math            |
+| Customer success     | `supabase/functions/customer-success/`     |                       5 (health-scores, churn-predictions, interventions, journeys, renewals) | Health score = weighted sum; churn uses rule-based tiers, not ML                             |
+| Email marketing      | `supabase/functions/email-marketing/`      | 8 (campaigns, events, lists, list-members, sends, templates, unsubscribes, webhooks-sendgrid) | `_sendgrid.ts` is a REST wrapper (no Node SDK); webhook handler handles SendGrid event batch |
+| Content gap analysis | `supabase/functions/content-gap-analysis/` |                                                                        5 admin-only endpoints | `_engine.ts` consumes lead/deal/activity data; platform-admin gated                          |
 
 ### Phase 4 — 5 domains (~240 endpoints)
 
-| Domain | Edge function | Handlers | Notes |
-|---|---|---:|---|
-| Leases | `supabase/functions/leases/` | 4 (leases, payments, renewals, dispositions) | `_pdf.ts` uses `pdf-lib` via esm.sh for signature blocks — first real PDF port |
-| Signatures | `supabase/functions/signatures/` | 6 (requests, signers, documents, credentials, audit, webhooks) | Credential redaction via `_shared/credentials.ts`; real CRUD, webhook stubs return 501 |
-| Tasks + teams | `supabase/functions/tasks/` + `supabase/functions/teams/` | tasks: 6, teams: 4 | Consolidates 22 Express files + 6 aux edge fns. Projects/team templates/analytics live under `teams/` |
-| Manufacturer orders | `supabase/functions/manufacturer-orders/` | 7 (orders, line-items, confirmations, shipments, exceptions, connections, analytics) | `_credentials.ts` redacts `api_secret`, `client_secret`, `webhook_secret` on every SELECT |
-| Field service | `supabase/functions/field-service/` | 9 (routes, locations, geofences, geofence-alerts, mileage, installations, checklists, signatures, stubs) | PRD called for 3 functions; pragmatic scope reduction to one. `pointInGeofence` uses haversine + ray-casting, no PostGIS |
+| Domain              | Edge function                                             |                                                                                                 Handlers | Notes                                                                                                                    |
+| ------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------: | ------------------------------------------------------------------------------------------------------------------------ |
+| Leases              | `supabase/functions/leases/`                              |                                                             4 (leases, payments, renewals, dispositions) | `_pdf.ts` uses `pdf-lib` via esm.sh for signature blocks — first real PDF port                                           |
+| Signatures          | `supabase/functions/signatures/`                          |                                           6 (requests, signers, documents, credentials, audit, webhooks) | Credential redaction via `_shared/credentials.ts`; real CRUD, webhook stubs return 501                                   |
+| Tasks + teams       | `supabase/functions/tasks/` + `supabase/functions/teams/` |                                                                                       tasks: 6, teams: 4 | Consolidates 22 Express files + 6 aux edge fns. Projects/team templates/analytics live under `teams/`                    |
+| Manufacturer orders | `supabase/functions/manufacturer-orders/`                 |                     7 (orders, line-items, confirmations, shipments, exceptions, connections, analytics) | `_credentials.ts` redacts `api_secret`, `client_secret`, `webhook_secret` on every SELECT                                |
+| Field service       | `supabase/functions/field-service/`                       | 9 (routes, locations, geofences, geofence-alerts, mileage, installations, checklists, signatures, stubs) | PRD called for 3 functions; pragmatic scope reduction to one. `pointInGeofence` uses haversine + ray-casting, no PostGIS |
 
 ### Phase 5 — 1 of 3 domains done (US-021 auth-security)
 
-| Domain | Edge function | Endpoints | Notes |
-|---|---|---:|---|
-| API keys | `supabase/functions/api-keys/` | 9 | Plaintext returned **once** on create; storage is `key_hash` + `salt`; compare is constant-time. RLS denies `authenticated` role entirely — only service-role (edge functions) can touch the table |
-| MFA | `supabase/functions/mfa/` | 17 | TOTP via `otpauth@9.2.2` (esm.sh); email OTP + SMS OTP + backup codes; admin reset. `_twilio.ts` REST wrapper has a simulation mode when `TWILIO_*` env unset |
-| SSO | `supabase/functions/sso/` | 14 | OIDC fully ported (token exchange works). SAML callback returns 501 — signature verification deferred, see `tasks/followup-sso-saml-signing.md`. Credentials redacted via `_credentials.ts` |
+| Domain   | Edge function                  | Endpoints | Notes                                                                                                                                                                                              |
+| -------- | ------------------------------ | --------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API keys | `supabase/functions/api-keys/` |         9 | Plaintext returned **once** on create; storage is `key_hash` + `salt`; compare is constant-time. RLS denies `authenticated` role entirely — only service-role (edge functions) can touch the table |
+| MFA      | `supabase/functions/mfa/`      |        17 | TOTP via `otpauth@9.2.2` (esm.sh); email OTP + SMS OTP + backup codes; admin reset. `_twilio.ts` REST wrapper has a simulation mode when `TWILIO_*` env unset                                      |
+| SSO      | `supabase/functions/sso/`      |        14 | OIDC fully ported (token exchange works). SAML callback returns 501 — signature verification deferred, see `tasks/followup-sso-saml-signing.md`. Credentials redacted via `_credentials.ts`        |
 
 **Phase 5 remaining:** `ai-features`, `scheduling`.
 
@@ -102,13 +102,13 @@ Counting handlers on disk, not PRD line counts:
 
 Filed so you don't re-solve these the hard way:
 
-| Error | Domain | Root cause | Fix |
-|---|---|---|---|
-| `%ROWTYPE` compile-time failure | pipeline-config | PL/pgSQL compiles ROWTYPE at CREATE time; referenced table didn't exist yet | Explicit column SELECT INTO variables instead of ROWTYPE |
-| `relation 'pipeline_templates' does not exist` | pipeline-config | Missing `public.` qualification | Schema-qualify all table refs |
-| `relation 'sales_territories' does not exist` | lead-assignment | Missing `*-tables.sql` file | Split every domain into `<domain>-tables.sql` (creates missing tables) + `<domain>.sql` (applies RLS), with `DO $ … IF EXISTS` guards |
-| `column 'project_manager' does not exist` | tasks-collab | Simpler `projects` variant was applied | `ALTER TABLE ADD COLUMN IF NOT EXISTS` for all richer columns |
-| `operator does not exist: uuid = text` | auth-security | `sso_provider_configs.tenant_id` is uuid; JWT value is text | Upgraded `apply_tenant_rls()` to introspect column type and cast |
+| Error                                          | Domain          | Root cause                                                                  | Fix                                                                                                                                   |
+| ---------------------------------------------- | --------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `%ROWTYPE` compile-time failure                | pipeline-config | PL/pgSQL compiles ROWTYPE at CREATE time; referenced table didn't exist yet | Explicit column SELECT INTO variables instead of ROWTYPE                                                                              |
+| `relation 'pipeline_templates' does not exist` | pipeline-config | Missing `public.` qualification                                             | Schema-qualify all table refs                                                                                                         |
+| `relation 'sales_territories' does not exist`  | lead-assignment | Missing `*-tables.sql` file                                                 | Split every domain into `<domain>-tables.sql` (creates missing tables) + `<domain>.sql` (applies RLS), with `DO $ … IF EXISTS` guards |
+| `column 'project_manager' does not exist`      | tasks-collab    | Simpler `projects` variant was applied                                      | `ALTER TABLE ADD COLUMN IF NOT EXISTS` for all richer columns                                                                         |
+| `operator does not exist: uuid = text`         | auth-security   | `sso_provider_configs.tenant_id` is uuid; JWT value is text                 | Upgraded `apply_tenant_rls()` to introspect column type and cast                                                                      |
 
 ---
 
@@ -117,6 +117,7 @@ Filed so you don't re-solve these the hard way:
 Carrying forward from part A, plus new entries from this session:
 
 **From part A (still applicable):**
+
 1. Approval rule evaluation engine (`/deal-desk/check-approval`)
 2. SLA escalation → pg_cron (`/deal-desk/check-sla`)
 3. Pipeline-config transaction wrapping (multi-step writes)
@@ -125,19 +126,18 @@ Carrying forward from part A, plus new entries from this session:
 6. Proposal PDF export (`/proposals/:id/export/pdf`) — now unblocked by the leases `_pdf.ts` pattern; easy port
 7. Credentials encryption at rest — see `tasks/followup-credentials-encryption.md` (scoped, deferred; pgcrypto baseline + KMS for MFA secrets)
 
-**New this session:**
-8. **SAML signature verification** — `tasks/followup-sso-saml-signing.md`. Options A (xml-crypto via esm.sh), B (self-hosted Supabase Enterprise SSO), C (keep Express for `/sso/callback/saml/*`). Recommendation: start with B.
-9. **PR 2 cleanups (Express deletion)** — every Phase 3/4 domain still has its Express counterpart. Soak period + verification pass then delete. Rough inventory:
-   - `server/routes-lead-scoring.ts`, `server/services/lead-scoring-service.ts`
-   - `server/routes-lead-assignment*.ts` (3 files) + 9 aux edge fns (`lead-assignment-history/`, `lead-assignment-queue/`, `lead-assignment-rules/`, `assign-lead/`, `auto-lead-routing/`, `rep-capacity/`, `sales-territories/`, `territories/`, `geocode-leads/`)
-   - `server/routes-customer-success*.ts`, `server/services/customer-success-service.ts`
-   - `server/routes-email-marketing*.ts`, `server/services/email-marketing/*`
-   - `server/routes-leases*.ts`, `server/services/lease-*.ts`
-   - `server/routes-signatures*.ts`, `server/services/signature-service.ts`
-   - `server/routes-tasks*.ts` (4 files) + 6 aux edge fns (`task-comments/`, `tasks-bulk/`, `tasks-enhanced/`, `tasks-stats/`, `projects/`, `projects-enhanced/`)
-   - `server/routes-manufacturer-*.ts`, `server/services/manufacturer-*.ts`
-   - `server/routes-field-service*.ts` (~5 files), `server/services/field-service/*`
-   - `server/routes-api-keys.ts`, `server/routes-mfa.ts`, `server/routes-sso.ts`, `server/services/sso-service.ts`, `server/services/mfa-service.ts`
+**New this session:** 8. **SAML signature verification** — `tasks/followup-sso-saml-signing.md`. Options A (xml-crypto via esm.sh), B (self-hosted Supabase Enterprise SSO), C (keep Express for `/sso/callback/saml/*`). Recommendation: start with B. 9. **PR 2 cleanups (Express deletion)** — every Phase 3/4 domain still has its Express counterpart. Soak period + verification pass then delete. Rough inventory:
+
+- `server/routes-lead-scoring.ts`, `server/services/lead-scoring-service.ts`
+- `server/routes-lead-assignment*.ts` (3 files) + 9 aux edge fns (`lead-assignment-history/`, `lead-assignment-queue/`, `lead-assignment-rules/`, `assign-lead/`, `auto-lead-routing/`, `rep-capacity/`, `sales-territories/`, `territories/`, `geocode-leads/`)
+- `server/routes-customer-success*.ts`, `server/services/customer-success-service.ts`
+- `server/routes-email-marketing*.ts`, `server/services/email-marketing/*`
+- `server/routes-leases*.ts`, `server/services/lease-*.ts`
+- `server/routes-signatures*.ts`, `server/services/signature-service.ts`
+- `server/routes-tasks*.ts` (4 files) + 6 aux edge fns (`task-comments/`, `tasks-bulk/`, `tasks-enhanced/`, `tasks-stats/`, `projects/`, `projects-enhanced/`)
+- `server/routes-manufacturer-*.ts`, `server/services/manufacturer-*.ts`
+- `server/routes-field-service*.ts` (~5 files), `server/services/field-service/*`
+- `server/routes-api-keys.ts`, `server/routes-mfa.ts`, `server/routes-sso.ts`, `server/services/sso-service.ts`, `server/services/mfa-service.ts`
 
 ---
 
@@ -156,6 +156,7 @@ As of the end of this session, these are on disk but not committed:
 ```
 
 Commit message suggestion for next session:
+
 ```
 feat(auth): port api-keys, mfa, sso to edge functions (Phase 5 US-021)
 
@@ -189,6 +190,7 @@ feat(auth): port api-keys, mfa, sso to edge functions (Phase 5 US-021)
 ## Env vars required (unchanged from part A, plus)
 
 Inherited:
+
 ```
 PORT=8000
 SUPABASE_URL=https://api.printyx.net
@@ -202,6 +204,7 @@ CLAUDE_API_KEY=sk-ant-...
 ```
 
 Added by this session's ports (all optional — handlers fall back to simulation mode / stubs if unset):
+
 ```
 SENDGRID_API_KEY=SG....                 # email-marketing sends + webhook verification
 SENDGRID_WEBHOOK_PUBLIC_KEY=...         # email-marketing webhook signature check
@@ -211,6 +214,7 @@ TWILIO_FROM_NUMBER=+1...                # mfa SMS OTP
 ```
 
 Will be added by upcoming work:
+
 - `OPENAI_API_KEY` — Phase 5 ai-features (if embeddings land)
 - `INTERNAL_CRON_TOKEN` — Phase 6 cron-realtime
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` — Phase 5 scheduling

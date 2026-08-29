@@ -197,7 +197,12 @@ async function create(admin: Admin, tenantId: string, userId: string, req: Reque
   return createCorsResponse({ variant: created }, 201, req);
 }
 
-async function clearDefault(admin: Admin, tenantId: string, postId: string, exceptId: string | null) {
+async function clearDefault(
+  admin: Admin,
+  tenantId: string,
+  postId: string,
+  exceptId: string | null,
+) {
   let q = admin
     .from('blog_post_variants')
     .update({ is_default: false, updated_at: new Date().toISOString() })
@@ -236,7 +241,15 @@ async function update(admin: Admin, tenantId: string, userId: string, id: string
   if (!existing) return createCorsResponse({ error: 'Variant not found' }, 404, req);
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  for (const k of ['audience_label', 'intro', 'examples', 'cta', 'match_rules', 'status', 'audience_key'] as const) {
+  for (const k of [
+    'audience_label',
+    'intro',
+    'examples',
+    'cta',
+    'match_rules',
+    'status',
+    'audience_key',
+  ] as const) {
     if (d[k] !== undefined) patch[k] = d[k];
   }
   if (d.is_default === true) {
@@ -376,7 +389,9 @@ function pickVariant(
   // 2. Cookie segment.
   if (ctx.cookie_segment) {
     const byCookie = variants.find(
-      (v) => v.audience_key === ctx.cookie_segment || v.match_rules?.cookie_segment === ctx.cookie_segment,
+      (v) =>
+        v.audience_key === ctx.cookie_segment ||
+        v.match_rules?.cookie_segment === ctx.cookie_segment,
     );
     if (byCookie) return { ...byCookie, _matched_by: 'cookie_segment' };
   }
@@ -440,7 +455,8 @@ async function track(admin: Admin, tenantId: string, id: string, req: Request) {
     return createCorsResponse({ error: 'Invalid JSON body' }, 400, req);
   }
   const parsed = z.object({ event: z.enum(['served', 'conversion']) }).safeParse(body);
-  if (!parsed.success) return createCorsResponse({ error: 'event must be served|conversion' }, 400, req);
+  if (!parsed.success)
+    return createCorsResponse({ error: 'event must be served|conversion' }, 400, req);
 
   const { data: variant } = await admin
     .from('blog_post_variants')

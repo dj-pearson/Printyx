@@ -17,13 +17,13 @@ anonymous GET return"**. `npm run storage:audit` answers it.
 
 ## Intended state
 
-| Bucket | Visibility | Holds | Served via |
-| --- | --- | --- | --- |
-| `files` | private | Arbitrary customer uploads | Authenticated edge function |
-| `meeting-recordings` | private | Recorded conversations | Server-side `download()` |
-| `qbr-artifacts` | private | Quarterly business reviews: fleet, usage, spend | Short-lived signed URLs (15 min) |
-| `branding-assets` | **public** | Tenant logos | Public URL, by design |
-| `blog-assets` | **public** | Images in published blog posts | Public URL, by design |
+| Bucket               | Visibility | Holds                                           | Served via                       |
+| -------------------- | ---------- | ----------------------------------------------- | -------------------------------- |
+| `files`              | private    | Arbitrary customer uploads                      | Authenticated edge function      |
+| `meeting-recordings` | private    | Recorded conversations                          | Server-side `download()`         |
+| `qbr-artifacts`      | private    | Quarterly business reviews: fleet, usage, spend | Short-lived signed URLs (15 min) |
+| `branding-assets`    | **public** | Tenant logos                                    | Public URL, by design            |
+| `blog-assets`        | **public** | Images in published blog posts                  | Public URL, by design            |
 
 The two public buckets are deliberate. A logo is rendered in quotes, proposals
 and customer portals, and a blog image is referenced from a published page;

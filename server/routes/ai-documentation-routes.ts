@@ -27,7 +27,6 @@ const router = express.Router();
 // UNPROXIED prefixes and still register. They are mock too, with no callers;
 // removing them is a separate story.
 
-
 /**
  * GET /api/documents
  * Get documents with filtering and pagination

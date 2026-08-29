@@ -86,45 +86,45 @@ export function registerDisposableEmailRoutes(app: Express): void {
    * Public, rate-limited endpoint the Signup form can call to give the user
    * fast feedback before submitting the whole form. Never leaks the full list.
    */
-  app.post('/api/auth/check-disposable-email', checkLimiter, async (req: Request, res: Response) => {
-    try {
-      const { email } = checkSchema.parse(req.body);
-      const result = await isDisposableEmail(email);
-      return res.json({
-        blocked: result.blocked,
-        domain: result.domain,
-      });
-    } catch (err) {
-      if (err instanceof ZodError) return zodError(res, err);
-      log.error({ err }, 'Failed to check disposable email');
-      return res.status(500).json({ message: 'Failed to check email' });
-    }
-  });
-
-  // ─── ADMIN: list ──────────────────────────────────────────────────────
-  app.get(
-    '/api/admin/disposable-emails',
-    requireAuth,
+  app.post(
+    '/api/auth/check-disposable-email',
+    checkLimiter,
     async (req: Request, res: Response) => {
-      if (!requirePlatformAdmin(req, res)) return;
       try {
-        const query = listQuerySchema.parse(req.query);
-        const result = await listDomains(query);
-        res.json({
-          rows: result.rows,
-          total: result.total,
-          blockedCount: result.blockedCount,
-          allowedCount: result.allowedCount,
-          limit: query.limit ?? 50,
-          offset: query.offset ?? 0,
+        const { email } = checkSchema.parse(req.body);
+        const result = await isDisposableEmail(email);
+        return res.json({
+          blocked: result.blocked,
+          domain: result.domain,
         });
       } catch (err) {
         if (err instanceof ZodError) return zodError(res, err);
-        log.error({ err }, 'Failed to list disposable email domains');
-        res.status(500).json({ message: 'Failed to list domains' });
+        log.error({ err }, 'Failed to check disposable email');
+        return res.status(500).json({ message: 'Failed to check email' });
       }
     },
   );
+
+  // ─── ADMIN: list ──────────────────────────────────────────────────────
+  app.get('/api/admin/disposable-emails', requireAuth, async (req: Request, res: Response) => {
+    if (!requirePlatformAdmin(req, res)) return;
+    try {
+      const query = listQuerySchema.parse(req.query);
+      const result = await listDomains(query);
+      res.json({
+        rows: result.rows,
+        total: result.total,
+        blockedCount: result.blockedCount,
+        allowedCount: result.allowedCount,
+        limit: query.limit ?? 50,
+        offset: query.offset ?? 0,
+      });
+    } catch (err) {
+      if (err instanceof ZodError) return zodError(res, err);
+      log.error({ err }, 'Failed to list disposable email domains');
+      res.status(500).json({ message: 'Failed to list domains' });
+    }
+  });
 
   // ─── ADMIN: add single ────────────────────────────────────────────────
   app.post('/api/admin/disposable-emails', requireAuth, async (req: Request, res: Response) => {

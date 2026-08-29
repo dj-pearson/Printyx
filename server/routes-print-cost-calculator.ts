@@ -29,7 +29,6 @@ const router = express.Router();
 // The authenticated /api/calculator/* handlers below are NOT proxied and are
 // live. They stay.
 
-
 // ==================== AUTHENTICATED ROUTES (Admin/Internal Use) ====================
 
 // Get all calculator leads (admin)

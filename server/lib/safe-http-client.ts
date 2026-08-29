@@ -65,9 +65,7 @@ async function validateDnsResolution(hostname: string): Promise<void> {
   for (const ip of resolvedIPs) {
     if (isPrivateIP(ip)) {
       log.warn({ hostname, ip }, 'DNS resolution returned private IP — SSRF blocked');
-      throw new SSRFError(
-        `Hostname ${hostname} resolves to private/reserved IP: ${ip}`
-      );
+      throw new SSRFError(`Hostname ${hostname} resolves to private/reserved IP: ${ip}`);
     }
   }
 
@@ -92,10 +90,7 @@ export interface SafeFetchOptions extends RequestInit {
  * @throws {SSRFError} if the URL fails SSRF validation
  * @throws {Error} if the request times out or fails
  */
-export async function safeFetch(
-  url: string,
-  options?: SafeFetchOptions
-): Promise<Response> {
+export async function safeFetch(url: string, options?: SafeFetchOptions): Promise<Response> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxRedirects = options?.maxRedirects ?? MAX_REDIRECTS;
 
@@ -155,10 +150,10 @@ export async function safeFetch(
       if (!redirectValidation.valid) {
         log.warn(
           { originalUrl: url, redirectUrl, reason: redirectValidation.reason },
-          'SSRF validation blocked redirect target'
+          'SSRF validation blocked redirect target',
         );
         throw new SSRFError(
-          `SSRF protection blocked redirect to ${redirectUrl}: ${redirectValidation.reason}`
+          `SSRF protection blocked redirect to ${redirectUrl}: ${redirectValidation.reason}`,
         );
       }
 

@@ -5,12 +5,15 @@
 Running `npm run check:system` uncovered **463 errors** and **79 warnings** in your codebase.
 
 ### **The Good News:**
+
 - ✅ **The tool works perfectly now!** - No more crashes, accurate detection
 - ✅ **Contacts page is fixed** - That's 1 down, many more to go
 - ✅ **We now have visibility** - You know exactly what's broken
 
 ### **The Reality:**
+
 Your platform has many features with **frontend UI built but no backend API**. This means:
+
 - Users see these features in the UI
 - When they try to use them, they get 404 errors
 - The features appear broken/non-functional
@@ -20,9 +23,11 @@ Your platform has many features with **frontend UI built but no backend API**. T
 ## 🔴 **CRITICAL: Broken Features (Fix ASAP)**
 
 ### 1. **Billing System** - 50+ API calls to `/api/billing/*`
+
 **Status:** ❌ Completely non-functional
 
 **What's broken:**
+
 - Creating/editing invoices
 - Billing rules management
 - Payment processing
@@ -31,6 +36,7 @@ Your platform has many features with **frontend UI built but no backend API**. T
 - Email invoices
 
 **Files affected:**
+
 - `client/src/pages/Billing.tsx`
 - `client/src/pages/BillingRules.tsx`
 - `client/src/pages/BillingAnalytics.tsx`
@@ -41,9 +47,11 @@ Your platform has many features with **frontend UI built but no backend API**. T
 ---
 
 ### 2. **Customer Portal** - 40+ API calls to `/api/customer-portal/*`
+
 **Status:** ❌ Completely non-functional
 
 **What's broken:**
+
 - Customer dashboard
 - Service request submission
 - Satisfaction surveys
@@ -52,6 +60,7 @@ Your platform has many features with **frontend UI built but no backend API**. T
 - Service request tracking
 
 **Files affected:**
+
 - `client/src/components/customer-portal/*.tsx` (10+ components)
 
 **Fix:** Create `supabase/functions/customer-portal/index.ts`
@@ -61,21 +70,25 @@ Your platform has many features with **frontend UI built but no backend API**. T
 ## 🟡 **HIGH PRIORITY: Business Features (Fix This Week)**
 
 ### 3. **Commission Management** - 30+ API calls
+
 - Sales commission calculations
 - Commission reports
 - Plan management
 
 ### 4. **Financial Reporting** - 25+ API calls
+
 - Financial forecasting
 - Cash flow analysis
 - Profitability metrics
 
 ### 5. **Workflow Automation** - 20+ API calls
+
 - Workflow creation
 - Automation rules
 - Process optimization
 
 ### 6. **Accounts Payable/Receivable** - 15+ API calls each
+
 - AP invoice management
 - AR tracking
 - Payment processing
@@ -86,26 +99,26 @@ Your platform has many features with **frontend UI built but no backend API**. T
 
 Here's every missing Edge Function the tool found:
 
-| Endpoint | Calls | Priority | Estimated Time |
-|----------|-------|----------|----------------|
-| `/api/billing` | 50+ | 🔴 Critical | 4-6 hours |
-| `/api/customer-portal` | 40+ | 🔴 Critical | 4-6 hours |
-| `/api/commission` | 30+ | 🟡 High | 3-4 hours |
-| `/api/financial` | 25+ | 🟡 High | 3-4 hours |
-| `/api/workflows` | 20+ | 🟡 High | 2-3 hours |
-| `/api/accounts-receivable` | 15+ | 🟡 High | 2-3 hours |
-| `/api/accounts-payable` | 15+ | 🟡 High | 2-3 hours |
-| `/api/journal-entries` | 12+ | 🟢 Medium | 2-3 hours |
-| `/api/chart-of-accounts` | 10+ | 🟢 Medium | 2-3 hours |
-| `/api/document-management` | 10+ | 🟢 Medium | 2-3 hours |
-| `/api/phone-in-tickets` | 8+ | 🟢 Medium | 1-2 hours |
-| `/api/supplies` | 8+ | 🟢 Medium | 1-2 hours |
-| `/api/business-process` | 8+ | 🟢 Medium | 1-2 hours |
-| `/api/knowledge-base` | 6+ | 🟢 Low | 1-2 hours |
-| `/api/integrations` | 6+ | 🟢 Low | 1-2 hours |
-| `/api/pricing` | 5+ | 🟢 Low | 1-2 hours |
-| `/api/subscriptions` | 5+ | 🟢 Low | 1-2 hours |
-| `/api/public` | 4+ | 🟢 Low | 1 hour |
+| Endpoint                   | Calls | Priority    | Estimated Time |
+| -------------------------- | ----- | ----------- | -------------- |
+| `/api/billing`             | 50+   | 🔴 Critical | 4-6 hours      |
+| `/api/customer-portal`     | 40+   | 🔴 Critical | 4-6 hours      |
+| `/api/commission`          | 30+   | 🟡 High     | 3-4 hours      |
+| `/api/financial`           | 25+   | 🟡 High     | 3-4 hours      |
+| `/api/workflows`           | 20+   | 🟡 High     | 2-3 hours      |
+| `/api/accounts-receivable` | 15+   | 🟡 High     | 2-3 hours      |
+| `/api/accounts-payable`    | 15+   | 🟡 High     | 2-3 hours      |
+| `/api/journal-entries`     | 12+   | 🟢 Medium   | 2-3 hours      |
+| `/api/chart-of-accounts`   | 10+   | 🟢 Medium   | 2-3 hours      |
+| `/api/document-management` | 10+   | 🟢 Medium   | 2-3 hours      |
+| `/api/phone-in-tickets`    | 8+    | 🟢 Medium   | 1-2 hours      |
+| `/api/supplies`            | 8+    | 🟢 Medium   | 1-2 hours      |
+| `/api/business-process`    | 8+    | 🟢 Medium   | 1-2 hours      |
+| `/api/knowledge-base`      | 6+    | 🟢 Low      | 1-2 hours      |
+| `/api/integrations`        | 6+    | 🟢 Low      | 1-2 hours      |
+| `/api/pricing`             | 5+    | 🟢 Low      | 1-2 hours      |
+| `/api/subscriptions`       | 5+    | 🟢 Low      | 1-2 hours      |
+| `/api/public`              | 4+    | 🟢 Low      | 1 hour         |
 
 **Total Estimated Work:** ~50-70 hours to create all Edge Functions
 
@@ -114,11 +127,13 @@ Here's every missing Edge Function the tool found:
 ## ⚠️ **Data Transformation Issues (79 Warnings)**
 
 These won't break functionality but will cause **display issues** like:
+
 - `??` showing instead of names (like the bug we just fixed)
 - `undefined` in fields
 - Incorrect data display
 
 **Affected components:**
+
 - Service request dashboard
 - Task views
 - Knowledge base
@@ -135,21 +150,16 @@ These won't break functionality but will cause **display issues** like:
 ### **Option A: Fix Everything Gradually (Recommended)**
 
 **Week 1:**
+
 1. ✅ Contacts (DONE)
 2. 🔴 Billing system
 3. 🔴 Customer portal
 
-**Week 2:**
-4. 🟡 Commission management
-5. 🟡 Financial reporting
-6. 🟡 Workflow automation
+**Week 2:** 4. 🟡 Commission management 5. 🟡 Financial reporting 6. 🟡 Workflow automation
 
-**Week 3-4:**
-7. 🟡 Accounts payable/receivable
-8. 🟢 Remaining 10 endpoints
+**Week 3-4:** 7. 🟡 Accounts payable/receivable 8. 🟢 Remaining 10 endpoints
 
-**Week 5:**
-9. 🟢 Fix all 79 data transformation warnings
+**Week 5:** 9. 🟢 Fix all 79 data transformation warnings
 
 ### **Option B: Disable Broken Features (Quick Fix)**
 
@@ -193,7 +203,7 @@ export default async function handler(req: Request) {
     const authHeader = req.headers.get('Authorization');
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
     const supabase = createSupabaseClient(req);
-    
+
     const {
       data: { user },
       error: userError,
@@ -211,7 +221,7 @@ export default async function handler(req: Request) {
 
     // Use service_role client for database operations
     const admin = createSupabaseServiceClient();
-    
+
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
 
@@ -235,6 +245,7 @@ export default async function handler(req: Request) {
 ```
 
 ### **Deploy:**
+
 ```bash
 supabase functions deploy [endpoint-name]
 ```
@@ -252,11 +263,13 @@ supabase functions deploy [endpoint-name]
 ## 🎓 **Key Takeaways**
 
 ### **What Went Wrong:**
+
 - Frontend UI was built optimistically before backend APIs
 - No validation process to ensure APIs exist before deploying UI
 - Features appear to work but fail when users try to use them
 
 ### **How to Prevent This:**
+
 1. ✅ Always create Edge Function **before** UI component
 2. ✅ Run `npm run check:system` before every deploy
 3. ✅ Add CI/CD check to block deploys with missing endpoints
@@ -268,17 +281,20 @@ supabase functions deploy [endpoint-name]
 ## 💡 **Next Steps**
 
 ### **Immediate (Today):**
+
 1. ✅ Review this document thoroughly
 2. ✅ Check `system-check-report.json` for detailed file/line numbers
 3. ✅ Decide: Fix all? Or disable broken features temporarily?
 4. ✅ Prioritize which endpoints to create first
 
 ### **This Week:**
+
 1. 🔴 Create `/api/billing` Edge Function (if billing is critical)
 2. 🔴 Create `/api/customer-portal` Edge Function (if customer portal is critical)
 3. 🔴 Test and deploy
 
 ### **Ongoing:**
+
 1. 🔧 Create remaining Edge Functions (1-2 per day)
 2. 🔧 Fix data transformation warnings
 3. 🔧 Add `npm run check:system` to CI/CD
@@ -290,6 +306,6 @@ supabase functions deploy [endpoint-name]
 
 ---
 
-*Generated: January 24, 2026*  
-*Tool: `npm run check:system`*  
-*Status: 🔴 463 Critical Issues Found*
+_Generated: January 24, 2026_  
+_Tool: `npm run check:system`_  
+_Status: 🔴 463 Critical Issues Found_

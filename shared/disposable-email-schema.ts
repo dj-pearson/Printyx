@@ -10,15 +10,7 @@
  */
 
 import { sql } from 'drizzle-orm';
-import {
-  pgTable,
-  varchar,
-  text,
-  boolean,
-  timestamp,
-  index,
-  unique,
-} from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, boolean, timestamp, index, unique } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
@@ -75,15 +67,7 @@ export const updateDisposableEmailDomainSchema = z.object({
 
 export const bulkInsertDisposableEmailDomainsSchema = z.object({
   domains: z
-    .array(
-      z
-        .string()
-        .trim()
-        .toLowerCase()
-        .min(3)
-        .max(255)
-        .regex(domainRegex, 'Invalid domain'),
-    )
+    .array(z.string().trim().toLowerCase().min(3).max(255).regex(domainRegex, 'Invalid domain'))
     .min(1)
     .max(5000),
   source: z.enum(['seed', 'manual', 'import']).default('import'),

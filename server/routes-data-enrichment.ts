@@ -350,7 +350,9 @@ export function registerDataEnrichmentRoutes(app: Express) {
       const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
       // Apply sorting
-      const sortCol = enrichedCompanies[searchParams.sortBy as keyof typeof enrichedCompanies] as any;
+      const sortCol = enrichedCompanies[
+        searchParams.sortBy as keyof typeof enrichedCompanies
+      ] as any;
       const orderBy = searchParams.sortOrder === 'asc' ? asc(sortCol) : desc(sortCol);
 
       const companies = await db

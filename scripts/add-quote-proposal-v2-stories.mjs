@@ -8,7 +8,8 @@ const stories = [
   // ─────────────────────────── QUOTE FLOW (product search → discounting → structure → flow) ───────────────────────────
   {
     id: 'QUOTE-011',
-    title: 'Server-side search + pagination on every product catalog endpoint used by the quote picker',
+    title:
+      'Server-side search + pagination on every product catalog endpoint used by the quote picker',
     description:
       'As a sales rep with a large catalog, I need product lookups to be fast and server-filtered so the quote builder does not download the entire catalog into the browser. Today only /api/product-models and /api/software-products support ?search=; none of the picker endpoints paginate, so ProductTypeSelector fetches everything and filters client-side.',
     acceptanceCriteria: [
@@ -26,7 +27,8 @@ const stories = [
   },
   {
     id: 'QUOTE-012',
-    title: 'ProductTypeSelector: debounced server-side search with load-more (stop fetching whole catalog)',
+    title:
+      'ProductTypeSelector: debounced server-side search with load-more (stop fetching whole catalog)',
     description:
       'As a sales rep, I want the product picker to search the server as I type so finding a product is instant even with thousands of SKUs. Today ProductTypeSelector.tsx:253-299 loads ALL products for the selected type then filters in memory on every keystroke with no debounce.',
     acceptanceCriteria: [
@@ -40,7 +42,8 @@ const stories = [
     ],
     priority: 1,
     passes: false,
-    notes: 'Depends on QUOTE-011. Friction source: ProductTypeSelector.tsx:253-270 (full fetch), 284-299 (client filter).',
+    notes:
+      'Depends on QUOTE-011. Friction source: ProductTypeSelector.tsx:253-270 (full fetch), 284-299 (client filter).',
     category: 'quote-module-v2',
   },
   {
@@ -59,7 +62,8 @@ const stories = [
     ],
     priority: 1,
     passes: false,
-    notes: 'Pure frontend. Touches ProductTypeSelector.tsx + LineItemManager.tsx handleProductSelect.',
+    notes:
+      'Pure frontend. Touches ProductTypeSelector.tsx + LineItemManager.tsx handleProductSelect.',
     category: 'quote-module-v2',
   },
   {
@@ -78,7 +82,8 @@ const stories = [
     ],
     priority: 2,
     passes: false,
-    notes: 'Builds on QUOTE-013 (picker stays open). Keep the subline grouping rendering at LineItemManager.tsx:664-893 untouched.',
+    notes:
+      'Builds on QUOTE-013 (picker stays open). Keep the subline grouping rendering at LineItemManager.tsx:664-893 untouched.',
     category: 'quote-module-v2',
   },
   {
@@ -109,7 +114,7 @@ const stories = [
       'Line item editor (LineItemManager edit dialog + inline row) exposes a per-line discount as percent or amount; discounted unit price drives totalPrice and the line margin display',
       'Per-line discount persists to proposal_line_items.discount on save and loads back on edit; normalizeLineItem in supabase/functions/proposals/index.ts computes line totals and margin net of the line discount',
       'recalculateProposalTotals rolls up subtotal from discounted line totals; quote-level discount still applies after line discounts; shared/quote-math.ts gains the discounted-line helpers and server/tests/unit/quote-math.test.ts covers them',
-      "A discount reason select (competitive_match, volume, promotion, manager_approved, other + free text) is required whenever any discount is set; stored on proposals (add discount_reason varchar + discount_reason_note text via migration, ALTER TABLE ADD COLUMN IF NOT EXISTS)",
+      'A discount reason select (competitive_match, volume, promotion, manager_approved, other + free text) is required whenever any discount is set; stored on proposals (add discount_reason varchar + discount_reason_note text via migration, ALTER TABLE ADD COLUMN IF NOT EXISTS)',
       'QUOTE-006 guardrails (min margin, max discount) evaluate the EFFECTIVE discount including per-line discounts in both PricingCalculator warnings and the status=sent 409 gate',
       'Manager PDF shows per-line discount and reason; customer PDF shows discounted prices only',
       'npm run check && npm run build pass',
@@ -135,7 +140,8 @@ const stories = [
     ],
     priority: 2,
     passes: false,
-    notes: 'Schema fields ready: quote-proposal-schema.ts:244-251. Touches QuoteBuilder save payload, proposals edge fn recalc, _pdf.ts.',
+    notes:
+      'Schema fields ready: quote-proposal-schema.ts:244-251. Touches QuoteBuilder save payload, proposals edge fn recalc, _pdf.ts.',
     category: 'quote-module-v2',
   },
   {
@@ -154,17 +160,19 @@ const stories = [
     ],
     priority: 1,
     passes: false,
-    notes: 'Highest-impact UX fix in the quote flow per exploration. Reuse saveQuoteMutation payload shape; watch the unitCost mapping fixed in QUOTE-002.',
+    notes:
+      'Highest-impact UX fix in the quote flow per exploration. Reuse saveQuoteMutation payload shape; watch the unitCost mapping fixed in QUOTE-002.',
     category: 'quote-module-v2',
   },
   {
     id: 'QUOTE-019',
-    title: 'Wizard navigation polish: jump-forward, Review edit links, persistent pricing summary bar',
+    title:
+      'Wizard navigation polish: jump-forward, Review edit links, persistent pricing summary bar',
     description:
       'As a sales rep, I want to move freely through the quote wizard and always see where pricing stands. Today forward jumps are blocked (QuoteBuilder.tsx:582-595), Review has no per-section edit links, and margin/guardrail status is invisible until late steps.',
     acceptanceCriteria: [
       'Step headers allow jumping forward when prerequisites are met (customer chosen unlocks all steps; Products no longer blocks reaching Pricing/Review when at least one line exists); invalid jumps show which prerequisite is missing',
-      "Review step sections (Customer, Products, Pricing) each get an Edit control that jumps directly to that step",
+      'Review step sections (Customer, Products, Pricing) each get an Edit control that jumps directly to that step',
       'A sticky summary bar renders on the Products and Pricing steps showing subtotal, discount, total, and quote margin % with guardrail coloring (amber/red below policy), respecting usePricingVisibility role gating for cost-derived numbers',
       'Guardrail violations (min margin / max discount) surface as the banner at draft-save time, not only at send (extend the existing PricingCalculator warning to the summary bar)',
       'npm run check && npm run build pass',
@@ -172,7 +180,8 @@ const stories = [
     ],
     priority: 2,
     passes: false,
-    notes: 'Depends on QUOTE-018 (autosave makes free navigation safe). Wizard steps: QuoteWizardProgress.tsx:85-90.',
+    notes:
+      'Depends on QUOTE-018 (autosave makes free navigation safe). Wizard steps: QuoteWizardProgress.tsx:85-90.',
     category: 'quote-module-v2',
   },
   {
@@ -200,9 +209,9 @@ const stories = [
     description:
       'As a dealer admin, I need proposal templates to be real persisted objects I can manage, so one well-built template per product type is reused on every proposal. proposal_templates exists but only supports GET/POST/PUT of metadata; section content is not editable, there is no delete/clone, and isDefault is not scoped per templateType.',
     acceptanceCriteria: [
-      "Migration adds template_content jsonb to proposal_templates storing the visual-builder section array ({ id, type, title, content, styling, order, isVisible }) plus global styling — keep legacy per-section text columns readable for back-compat (use ALTER TABLE ADD COLUMN IF NOT EXISTS)",
+      'Migration adds template_content jsonb to proposal_templates storing the visual-builder section array ({ id, type, title, content, styling, order, isVisible }) plus global styling — keep legacy per-section text columns readable for back-compat (use ALTER TABLE ADD COLUMN IF NOT EXISTS)',
       'supabase/functions/proposals template routes gain DELETE /proposal-templates/:id (soft delete via is_active=false) and POST /proposal-templates/:id/clone (copies content, appends “Copy” to name, isDefault=false)',
-      "Setting isDefault=true atomically clears isDefault on other templates of the SAME templateType within the tenant (same pattern as blog default-row uniqueness); GET /proposal-templates supports ?templateType= filter",
+      'Setting isDefault=true atomically clears isDefault on other templates of the SAME templateType within the tenant (same pattern as blog default-row uniqueness); GET /proposal-templates supports ?templateType= filter',
       'All template routes Zod-validate input, filter by tenant_id, and reject cross-tenant ids',
       'npm run check passes',
     ],
@@ -226,7 +235,8 @@ const stories = [
     ],
     priority: 1,
     passes: false,
-    notes: 'Backend-only; PROP-003 wires the UI. Check for an existing file-upload/storage helper before adding a new one.',
+    notes:
+      'Backend-only; PROP-003 wires the UI. Check for an existing file-upload/storage helper before adding a new one.',
     category: 'proposal-templates',
   },
   {
@@ -244,26 +254,29 @@ const stories = [
     ],
     priority: 1,
     passes: false,
-    notes: 'Depends on PROP-002. Component: client/src/components/proposal-builder/BrandManager.tsx (logo upload at 238-254, onSave at 789).',
+    notes:
+      'Depends on PROP-002. Component: client/src/components/proposal-builder/BrandManager.tsx (logo upload at 238-254, onSave at 789).',
     category: 'proposal-templates',
   },
   {
     id: 'PROP-004',
-    title: 'Template editor: visual builder persists templates with a section library and merge tokens',
+    title:
+      'Template editor: visual builder persists templates with a section library and merge tokens',
     description:
       'As a dealer admin, I want to build a proposal template once — sections, copy, layout — and reuse it on every quote of that product type. ProposalVisualBuilder already does drag-drop sections and rich text but never saves (no backend call) and hardcodes its styling instead of using brand profiles.',
     acceptanceCriteria: [
       'New route /proposal-templates and /proposal-templates/:id/edit (lazy page in App.tsx) lists templates (from PROP-001 endpoints) with create/clone/delete/set-default actions, and opens ProposalVisualBuilder as the editor',
       'The editor loads template_content from the backend and saves it back (explicit Save button + dirty indicator); section add/delete/reorder/styling all round-trip',
-      "A section library offers insertable starter sections: cover page, executive summary, solution overview, investment summary (pricing table), terms & conditions, next steps, signature block — seeded with the HTML currently hardcoded in QuoteTransformer.tsx:249-427 as starting copy",
-      "A merge-token menu in the rich text toolbar inserts tokens rendered as chips: {{customer.name}}, {{customer.companyName}}, {{contact.name}}, {{quote.number}}, {{quote.title}}, {{quote.validUntil}}, {{quote.lineItemsTable}}, {{quote.oneTimeTotal}}, {{quote.recurringTotal}}, {{quote.totalAmount}}, {{branding.logo}}, {{branding.companyName}}, {{branding.address}}, {{branding.phone}}, {{branding.email}} — token list exported from a new shared/proposal-merge-fields.ts",
+      'A section library offers insertable starter sections: cover page, executive summary, solution overview, investment summary (pricing table), terms & conditions, next steps, signature block — seeded with the HTML currently hardcoded in QuoteTransformer.tsx:249-427 as starting copy',
+      'A merge-token menu in the rich text toolbar inserts tokens rendered as chips: {{customer.name}}, {{customer.companyName}}, {{contact.name}}, {{quote.number}}, {{quote.title}}, {{quote.validUntil}}, {{quote.lineItemsTable}}, {{quote.oneTimeTotal}}, {{quote.recurringTotal}}, {{quote.totalAmount}}, {{branding.logo}}, {{branding.companyName}}, {{branding.address}}, {{branding.phone}}, {{branding.email}} — token list exported from a new shared/proposal-merge-fields.ts',
       "Editor styling defaults come from the tenant's default branding profile (colors, fonts) instead of the hardcoded globalStyling at ProposalVisualBuilder.tsx:595-602; a preview mode renders tokens with sample data",
       'npm run check && npm run build pass',
       'Verify in browser using dev-browser skill',
     ],
     priority: 1,
     passes: false,
-    notes: 'Depends on PROP-001 + PROP-002. The big UI story of this track — if it overruns one iteration, split the section library into a follow-up.',
+    notes:
+      'Depends on PROP-001 + PROP-002. The big UI story of this track — if it overruns one iteration, split the section library into a follow-up.',
     category: 'proposal-templates',
   },
   {
@@ -281,7 +294,8 @@ const stories = [
     ],
     priority: 1,
     passes: false,
-    notes: 'Depends on PROP-001/002 shapes; pure logic + tests, no UI. PROP-006 and PROP-007 consume it.',
+    notes:
+      'Depends on PROP-001/002 shapes; pure logic + tests, no UI. PROP-006 and PROP-007 consume it.',
     category: 'proposal-templates',
   },
   {
@@ -294,20 +308,21 @@ const stories = [
       'POST /proposals/:id/generate-from-template (proposals edge function) runs the PROP-005 merge engine server-side and writes the rendered sections to proposal_sections rows (sectionType, displayOrder, htmlContent) linked to the proposal; template_id is stored on the proposal',
       'Re-generating after the quote changes refreshes the sections, with a confirm dialog warning that manual section edits will be overwritten',
       'Generated content is customer-facing only (no dealer cost or margin anywhere in rendered HTML)',
-      'QuoteTransformer\'s hardcoded generateContentFromQuote path is replaced by this flow (component deleted or reduced to the review/toggle UI over generated sections)',
+      "QuoteTransformer's hardcoded generateContentFromQuote path is replaced by this flow (component deleted or reduced to the review/toggle UI over generated sections)",
       'npm run check && npm run build pass',
       'Verify in browser using dev-browser skill',
     ],
     priority: 1,
     passes: false,
-    notes: 'Depends on PROP-004 + PROP-005. Old flow: QuoteTransformer.tsx:202-777 and ProposalBuilder.tsx steps 1-3.',
+    notes:
+      'Depends on PROP-004 + PROP-005. Old flow: QuoteTransformer.tsx:202-777 and ProposalBuilder.tsx steps 1-3.',
     category: 'proposal-templates',
   },
   {
     id: 'PROP-007',
     title: 'Branded PDF export that actually works everywhere',
     description:
-      "As a sales rep, every Export PDF button must produce a real, branded document. Today /proposals/:id/export/pdf exists for the quote document, but the proposal-side buttons are dead (ProposalVisualBuilder.tsx:812, QuoteTransformer.tsx:729, ProposalBuilder.tsx:1273, MeetingToProposalDashboard.tsx:379) and the PDF ignores templates and branding.",
+      'As a sales rep, every Export PDF button must produce a real, branded document. Today /proposals/:id/export/pdf exists for the quote document, but the proposal-side buttons are dead (ProposalVisualBuilder.tsx:812, QuoteTransformer.tsx:729, ProposalBuilder.tsx:1273, MeetingToProposalDashboard.tsx:379) and the PDF ignores templates and branding.',
     acceptanceCriteria: [
       'supabase/functions/proposals/_pdf.ts renders generated proposal_sections (PROP-006) with the branding profile applied — logo in header, brand colors for headings/accents, brand fonts where the PDF lib allows, footer with company contact info; falls back to the current line-item layout when no sections exist',
       'Section-aware page breaks: each top-level section starts cleanly (no headings orphaned at page bottom); long pricing tables repeat their header row across pages',
@@ -319,7 +334,8 @@ const stories = [
     ],
     priority: 1,
     passes: false,
-    notes: 'Depends on PROP-005/006 for sections; branding-only improvements to the existing PDF can land even when a proposal has no template sections.',
+    notes:
+      'Depends on PROP-005/006 for sections; branding-only improvements to the existing PDF can land even when a proposal has no template sections.',
     category: 'proposal-templates',
   },
   {
@@ -357,7 +373,8 @@ const stories = [
     ],
     priority: 3,
     passes: false,
-    notes: 'Do after PROP-004/006 settle so the editor swap does not churn. TipTap is the shadcn-ecosystem default choice.',
+    notes:
+      'Do after PROP-004/006 settle so the editor swap does not churn. TipTap is the shadcn-ecosystem default choice.',
     category: 'proposal-templates',
   },
   {
@@ -374,7 +391,8 @@ const stories = [
     ],
     priority: 3,
     passes: false,
-    notes: 'Final story of the track — depends on everything above. Mirror the conventions in tests/quote-flow.spec.ts.',
+    notes:
+      'Final story of the track — depends on everything above. Mirror the conventions in tests/quote-flow.spec.ts.',
     category: 'proposal-templates',
   },
 ];

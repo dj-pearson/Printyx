@@ -2,10 +2,10 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| Latest  | Yes                |
-| < 1.0   | No                 |
+| Version | Supported |
+| ------- | --------- |
+| Latest  | Yes       |
+| < 1.0   | No        |
 
 ## Reporting a Vulnerability
 
@@ -35,12 +35,12 @@ When reporting a vulnerability, please include:
 
 ## Responsible Disclosure Timeline
 
-| Milestone                  | Target              |
-| -------------------------- | ------------------- |
-| Acknowledgment of report   | 3 business days     |
-| Initial assessment         | 10 business days    |
-| Vulnerability resolution   | 90 days             |
-| Public disclosure (if any) | After resolution    |
+| Milestone                  | Target           |
+| -------------------------- | ---------------- |
+| Acknowledgment of report   | 3 business days  |
+| Initial assessment         | 10 business days |
+| Vulnerability resolution   | 90 days          |
+| Public disclosure (if any) | After resolution |
 
 ## Scope
 

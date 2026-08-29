@@ -9,11 +9,13 @@
 ## 1. Scope
 
 **Express side:**
+
 - `server/routes/advanced-billing-routes.ts`
 - `server/routes/automated-billing-routes.ts`
 - `server/services/*billing*` (contract-renewal-service.ts, commission-service.ts, billing-engine-service.ts — scope TBD in audit)
 
 **Edge side:**
+
 - `supabase/functions/billing/index.ts`
 
 **Target:** `supabase/functions/billing/` canonical. Complex business logic (meter aggregation, invoice generation, commission calculation, contract renewals) ported over.
@@ -24,13 +26,14 @@
 
 Produce `docs/billing-parity.md` — all 94+ endpoints listed with current implementation.
 
-| Method | Path | Express impl | Edge impl | Business logic complexity | Action |
-|---|---|---|---|---|---|
-| POST | `/billing/meter-reading` | ✓ | ? | High (aggregation) | port-to-edge |
-| POST | `/billing/invoice/generate` | ✓ | ? | High (PDF + lines) | port-to-edge |
-| ... | ... | ... | ... | ... | ... |
+| Method | Path                        | Express impl | Edge impl | Business logic complexity | Action       |
+| ------ | --------------------------- | ------------ | --------- | ------------------------- | ------------ |
+| POST   | `/billing/meter-reading`    | ✓            | ?         | High (aggregation)        | port-to-edge |
+| POST   | `/billing/invoice/generate` | ✓            | ?         | High (PDF + lines)        | port-to-edge |
+| ...    | ...                         | ...          | ...       | ...                       | ...          |
 
 Pay special attention to:
+
 - **Meter reading aggregation** — monthly billing run logic
 - **Invoice generation** — line item assembly, tax calc, PDF (this may block on Puppeteer decision in Phase 6)
 - **Commission calculations** — multi-rep splits, tiered rates
@@ -50,16 +53,21 @@ RLS file: `drizzle/rls/billing.sql` — will apply to 10+ tables.
 ## 4. Special considerations
 
 ### PDF generation blocker
+
 Invoice PDFs currently use `pdfkit` (Node-only) or a similar. Options:
+
 - Port to `pdf-lib` via esm.sh (pure JS, works in Deno). Limited styling but handles invoice layouts fine.
 - External Browserless.io for HTML→PDF (more flexible, $).
 - Decision lands in this PRD, not deferred.
 
 ### Automated billing cron
+
 Monthly / daily billing jobs use `node-cron` in Express. These move to `pg_cron` per Phase 6 (US-026) — document the schedule in `drizzle/cron/billing.sql` but the migration itself waits for Phase 6.
 
 ### QuickBooks sync
+
 `quickbooks-schema.ts` + `quickbooks-service.ts`. QuickBooks uses `node-quickbooks` npm which is Node-only. Options:
+
 - Port to direct REST calls against QuickBooks Online API via fetch.
 - Move QuickBooks sync to a dedicated scheduled job (runs once daily).
 
@@ -89,6 +97,7 @@ Monthly / daily billing jobs use `node-cron` in Express. These move to `pg_cron`
 ## 6. Rollback
 
 Billing is mission-critical. Rollback plan:
+
 1. Keep an off switch — feature flag `BILLING_USE_EDGE_FUNCTION` that routes frontend calls. Default true after migration.
 2. If edge function regresses, flip flag, frontend falls back to… nothing (since Express is deleted). So really: **keep Express alive for billing until 2 billing cycles prove the edge function works**.
 3. Exception to the master PRD's "no Express fallback" rule — billing is the one place where we keep Express temporarily alive via Coolify. Redeploy Express container specifically for `/api/billing/*` routes until the edge function has 2 clean monthly billing runs behind it.

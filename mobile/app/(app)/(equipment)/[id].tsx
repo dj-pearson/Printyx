@@ -61,7 +61,12 @@ export default function EquipmentDetailScreen() {
           <DetailRow label="Serial Number" value={equipment.serialNumber || '--'} />
           <DetailRow label="Customer" value={equipment.customerName || '--'} />
           <DetailRow label="Location" value={equipment.location || '--'} />
-          <DetailRow label="Install Date" value={equipment.installDate ? new Date(equipment.installDate).toLocaleDateString() : '--'} />
+          <DetailRow
+            label="Install Date"
+            value={
+              equipment.installDate ? new Date(equipment.installDate).toLocaleDateString() : '--'
+            }
+          />
           <DetailRow label="Contract" value={equipment.contractNumber || '--'} />
           <DetailRow label="IP Address" value={equipment.ipAddress || '--'} />
         </Card>
@@ -105,7 +110,9 @@ export default function EquipmentDetailScreen() {
                   </Text>
                   <Text style={styles.historyType}>{entry.type || 'Service'}</Text>
                 </View>
-                <Text style={styles.historyDesc} numberOfLines={2}>{entry.description || '--'}</Text>
+                <Text style={styles.historyDesc} numberOfLines={2}>
+                  {entry.description || '--'}
+                </Text>
               </View>
             ))
           ) : (
@@ -121,7 +128,9 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.detailRow}>
       <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue} selectable>{value}</Text>
+      <Text style={styles.detailValue} selectable>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -132,14 +141,33 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notFound: { ...typography.body, color: colors.text.secondary },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
-  iconBox: { width: 64, height: 64, borderRadius: 16, backgroundColor: colors.primary[50], alignItems: 'center', justifyContent: 'center' },
+  iconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: colors.primary[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerInfo: { flex: 1, gap: spacing.xs },
   equipmentName: { ...typography.h3, color: colors.text.primary },
   serialNumber: { ...typography.bodySmall, color: colors.text.secondary },
   sectionTitle: { ...typography.h4, color: colors.text.primary, marginBottom: spacing.md },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.gray[50] },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[50],
+  },
   detailLabel: { ...typography.bodySmall, color: colors.text.secondary, flex: 1 },
-  detailValue: { ...typography.bodySmall, color: colors.text.primary, fontWeight: '500', flex: 2, textAlign: 'right' },
+  detailValue: {
+    ...typography.bodySmall,
+    color: colors.text.primary,
+    fontWeight: '500',
+    flex: 2,
+    textAlign: 'right',
+  },
   meterGrid: { flexDirection: 'row', justifyContent: 'space-around' },
   meterItem: { alignItems: 'center' },
   meterValue: { ...typography.h3, color: colors.text.primary },
@@ -150,5 +178,10 @@ const styles = StyleSheet.create({
   historyDate: { ...typography.caption, color: colors.text.tertiary },
   historyType: { ...typography.caption, color: colors.primary[600], fontWeight: '500' },
   historyDesc: { ...typography.bodySmall, color: colors.text.secondary },
-  emptyText: { ...typography.body, color: colors.text.tertiary, textAlign: 'center', paddingVertical: spacing.lg },
+  emptyText: {
+    ...typography.body,
+    color: colors.text.tertiary,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+  },
 });

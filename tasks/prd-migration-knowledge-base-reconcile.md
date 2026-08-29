@@ -9,11 +9,13 @@
 ## 1. Scope
 
 **Express side:**
+
 - `server/routes/knowledge-base-routes.ts` (~12 endpoints — public reads, article interactions)
 - `server/routes/knowledge-base-admin-routes.ts` (~12 endpoints — author/editor/publisher workflows)
 - Related: `server/routes/article-bookmarks-routes.ts`, `server/routes/article-ratings-routes.ts`, `server/routes/reading-history-routes.ts`, `server/routes/content-gap-analysis-routes.ts`
 
 **Edge side:**
+
 - `supabase/functions/knowledge-base/index.ts`
 
 **Target:** `supabase/functions/knowledge-base/` canonical. Admin endpoints merged into same function (path-routed) or split into `supabase/functions/knowledge-base-admin/` — decision in audit step.
@@ -24,14 +26,14 @@
 
 Produce `docs/kb-parity.md`. Categorize endpoints:
 
-| Category | Endpoints |
-|---|---|
-| Public read | list articles, get article, search, categories, tags |
+| Category         | Endpoints                                              |
+| ---------------- | ------------------------------------------------------ |
+| Public read      | list articles, get article, search, categories, tags   |
 | User interaction | bookmark, unbookmark, rate, mark-read, reading history |
-| Author | create draft, save, request review |
-| Editor | list pending, approve, request revisions |
-| Publisher | publish, schedule, unpublish |
-| Analytics | article views, most-read, gap analysis |
+| Author           | create draft, save, request review                     |
+| Editor           | list pending, approve, request revisions               |
+| Publisher        | publish, schedule, unpublish                           |
+| Analytics        | article views, most-read, gap analysis                 |
 
 ---
 
@@ -72,10 +74,7 @@ KB admin routes use `requirePermission(['content.article.author'])` style in Exp
 
 ```typescript
 // _shared/rbac.ts
-export async function requirePermission(
-  ctx: AuthContext,
-  permissions: string[],
-): Promise<void> {
+export async function requirePermission(ctx: AuthContext, permissions: string[]): Promise<void> {
   // Lookup user's permissions from DB (role_permissions join)
   // Throw AuthError(403) if none match
 }

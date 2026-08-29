@@ -9,12 +9,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import {
-  GlassCard,
-  ListItem,
-  SectionHeader,
-  StatCard,
-} from '@/components/ui';
+import { GlassCard, ListItem, SectionHeader, StatCard } from '@/components/ui';
 import { colors, spacing, typography } from '@/theme';
 
 export default function ServiceHubScreen() {
@@ -26,14 +21,9 @@ export default function ServiceHubScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Service</Text>
-        <Text style={styles.subtitle}>
-          Tickets, dispatching, and field operations at a glance.
-        </Text>
+        <Text style={styles.subtitle}>Tickets, dispatching, and field operations at a glance.</Text>
 
         <View style={styles.statsRow}>
           <StatCard

@@ -40,6 +40,7 @@ Result:
 The system automatically recognizes these column headers (case-insensitive):
 
 #### Company Fields
+
 - `Business Name`, `Company Name` → Company
 - `Phone` → Company phone
 - `Address`, `Mailing Street`, `Billing Street` → Address
@@ -48,6 +49,7 @@ The system automatically recognizes these column headers (case-insensitive):
 - `Zip Code`, `Postal Code`, `Mailing Zip/Postal Code` → Zip
 
 #### Contact Fields
+
 - `First Name`, `Primary Contact First Name`, `Contact First Name` → Primary contact first name
 - `Last Name`, `Primary Contact Last Name`, `Contact Last Name` → Primary contact last name
 - `Email`, `Primary Contact Email` → Primary contact email
@@ -105,6 +107,7 @@ Acme Corp,John,Smith,john@acme.com,Jane,Doe,jane@acme.com
 ```
 
 The system will:
+
 1. Create/update the primary contact (Contact 1)
 2. Create additional contacts (Contact 2, Contact 3, etc.) as secondary contacts
 
@@ -115,6 +118,7 @@ The system will:
 **Cause**: Frontend caching issue.
 
 **Solution**:
+
 1. Hard refresh browser (Ctrl+Shift+R or Cmd+Shift+R)
 2. Clear browser cache
 3. Re-import contacts with proper column mapping
@@ -122,6 +126,7 @@ The system will:
 ### "Import skipped my row"
 
 **Causes**:
+
 - Missing required fields (Company Name)
 - Validation error (invalid email, phone)
 - Duplicate detected with "Skip" strategy
@@ -137,6 +142,7 @@ The system will:
 ## API Endpoints
 
 ### Upload CSV
+
 ```http
 POST /api/import/upload
 Content-Type: multipart/form-data
@@ -146,11 +152,13 @@ entityType: "business_records"
 ```
 
 ### Get Import Status
+
 ```http
 GET /api/import/jobs/:jobId
 ```
 
 ### Execute Import
+
 ```http
 POST /api/import/jobs/:jobId/execute
 ```
@@ -175,10 +183,12 @@ Authorization: Bearer {JWT}
 ## Data Requirements
 
 ### Minimum Required Fields
+
 - Company Name (required)
 - Record Type (optional, defaults to "Customer")
 
 ### Recommended Fields
+
 - Primary Contact First Name
 - Primary Contact Last Name
 - Email

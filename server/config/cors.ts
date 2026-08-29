@@ -41,25 +41,16 @@ const developmentOrigins: string[] = [
 ];
 
 /** Development CORS patterns */
-const developmentPatterns: RegExp[] = [
-  /^https:\/\/.*\.replit\.dev$/,
-];
+const developmentPatterns: RegExp[] = [/^https:\/\/.*\.replit\.dev$/];
 
 /** Staging CORS origins */
-const stagingOrigins: string[] = [
-  'https://staging.printyx.net',
-];
+const stagingOrigins: string[] = ['https://staging.printyx.net'];
 
 /** Production CORS origins */
-const productionOrigins: string[] = [
-  'https://printyx.net',
-  'https://api.printyx.net',
-];
+const productionOrigins: string[] = ['https://printyx.net', 'https://api.printyx.net'];
 
 /** Production CORS patterns - matches *.printyx.net subdomains */
-const productionPatterns: RegExp[] = [
-  /^https:\/\/([a-z0-9-]+\.)?printyx\.net$/,
-];
+const productionPatterns: RegExp[] = [/^https:\/\/([a-z0-9-]+\.)?printyx\.net$/];
 
 /** Shared header configuration */
 const sharedHeaders = {
@@ -156,7 +147,10 @@ export function isAllowedOrigin(origin: string, env: string): boolean {
   // Also check CORS_ADDITIONAL_ORIGINS from environment
   const additionalOrigins = process.env.CORS_ADDITIONAL_ORIGINS;
   if (additionalOrigins) {
-    const extras = additionalOrigins.split(',').map((s) => s.trim()).filter(Boolean);
+    const extras = additionalOrigins
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (extras.includes(origin)) {
       return true;
     }

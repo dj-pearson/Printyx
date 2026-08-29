@@ -8,26 +8,27 @@
 
 ## 1. Affected columns (confirmed by grep in `shared/*-schema.ts`)
 
-| Table | Column(s) | Type | Sensitivity |
-|---|---|---|---|
-| `platform_integrations` | `credentials` | `jsonb` (whole object sensitive) | **high** — OAuth refresh tokens, API keys for external vendors |
-| `integration_webhooks` | `secret` | `text` (HMAC signing key) | **high** |
-| `webhooks` | `secret` | `text` | **high** |
-| `manufacturer_connections` | `api_secret`, `client_secret`, `webhook_secret` | `text` | **high** — manufacturer API access |
-| `manufacturer_integration_accounts` | `credentials` | `jsonb` | **high** — same, legacy schema |
-| `sso_providers` | `oidc_client_secret` | `text` (comment says "Encrypted" but column is plain text) | **high** — SSO client secret |
-| `mfa_enrollments` | `secret` | `text` (TOTP seed) | **critical** — one-time password generator seed |
-| `printyx_clients` | `snmp_auth_password`, `snmp_priv_password`, `http_password` | `text` | **medium** — device credentials, often shared across fleet |
-| `gsc_oauth_credentials` | OAuth payload columns | — | **medium** — Google Search Console tokens |
-| `customer_portal_users` | `password_hash` | `varchar(255)` | **N/A** — already hashed (bcrypt/argon2), not a target |
-| `password_resets` | `token` | `varchar` | **N/A** — short-lived + single-use, not a target |
-| `api_keys` | `key_hash` | — | **N/A** — already hashed |
+| Table                               | Column(s)                                                   | Type                                                       | Sensitivity                                                    |
+| ----------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------- |
+| `platform_integrations`             | `credentials`                                               | `jsonb` (whole object sensitive)                           | **high** — OAuth refresh tokens, API keys for external vendors |
+| `integration_webhooks`              | `secret`                                                    | `text` (HMAC signing key)                                  | **high**                                                       |
+| `webhooks`                          | `secret`                                                    | `text`                                                     | **high**                                                       |
+| `manufacturer_connections`          | `api_secret`, `client_secret`, `webhook_secret`             | `text`                                                     | **high** — manufacturer API access                             |
+| `manufacturer_integration_accounts` | `credentials`                                               | `jsonb`                                                    | **high** — same, legacy schema                                 |
+| `sso_providers`                     | `oidc_client_secret`                                        | `text` (comment says "Encrypted" but column is plain text) | **high** — SSO client secret                                   |
+| `mfa_enrollments`                   | `secret`                                                    | `text` (TOTP seed)                                         | **critical** — one-time password generator seed                |
+| `printyx_clients`                   | `snmp_auth_password`, `snmp_priv_password`, `http_password` | `text`                                                     | **medium** — device credentials, often shared across fleet     |
+| `gsc_oauth_credentials`             | OAuth payload columns                                       | —                                                          | **medium** — Google Search Console tokens                      |
+| `customer_portal_users`             | `password_hash`                                             | `varchar(255)`                                             | **N/A** — already hashed (bcrypt/argon2), not a target         |
+| `password_resets`                   | `token`                                                     | `varchar`                                                  | **N/A** — short-lived + single-use, not a target               |
+| `api_keys`                          | `key_hash`                                                  | —                                                          | **N/A** — already hashed                                       |
 
 **The columns labeled "Encrypted" in code comments are NOT actually encrypted.** The comment reflects the design intent; implementation never landed. This is the gap.
 
 ## 2. Options
 
 ### Option A — `pgcrypto` column-level symmetric encryption
+
 - Postgres extension, already available on Supabase.
 - `pgp_sym_encrypt(plaintext, key)` / `pgp_sym_decrypt(ciphertext::bytea, key)`.
 - Key comes from `current_setting('app.encryption_key')` or env-injected `SET LOCAL`.
@@ -37,6 +38,7 @@
 - **Con:** encrypted `text` / `bytea` is larger than plaintext; indexes on these columns don't work (no hash lookup on ciphertext).
 
 ### Option B — KMS envelope encryption (GCP KMS / AWS KMS / HashiCorp Vault)
+
 - Per-tenant or per-column DEK (data encryption key), wrapped by a KEK held in KMS.
 - Read path: decrypt DEK via KMS → decrypt column.
 - **Pro:** key rotation is cheap (rotate KEK; re-wrap DEKs only, don't re-encrypt data).
@@ -46,6 +48,7 @@
 - **Con:** extra AWS/GCP cost (low but non-zero).
 
 ### Option C — Application-layer encryption with a single symmetric key in Coolify env
+
 - Node-style: `node-forge` / `crypto.subtle` on the edge, key from env var.
 - **Pro:** minimal infra, no DB extension.
 - **Con:** every read/write needs the same code path; easy to miss one. Duplicates `pgcrypto` without the in-SQL convenience.
@@ -55,6 +58,7 @@
 **Adopt Option A (`pgcrypto`) as the baseline, with a migration path to Option B for the MFA secrets specifically.**
 
 Rationale:
+
 - 5 of 7 domains (integrations, webhooks, manufacturer, SSO client secret, printer SNMP/HTTP creds) are credentials that:
   - Are **read rarely** (once per integration sync, not per user request).
   - Don't need KMS-grade breach resistance because the downstream service can revoke the credential if leaked.

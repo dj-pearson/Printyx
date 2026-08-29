@@ -162,9 +162,7 @@ export default async function handler(req: Request): Promise<Response> {
 
       // Check if user already exists
       const { data: existingUsers } = await supabase.auth.admin.listUsers();
-      const existingUser = existingUsers?.users?.find(
-        (u: any) => u.email === payload.email,
-      );
+      const existingUser = existingUsers?.users?.find((u: any) => u.email === payload.email);
 
       if (!existingUser) {
         // Create new user with confirmed email
@@ -172,7 +170,8 @@ export default async function handler(req: Request): Promise<Response> {
           email: payload.email,
           email_confirm: true,
           user_metadata: {
-            full_name: payload.name || `${payload.given_name || ''} ${payload.family_name || ''}`.trim(),
+            full_name:
+              payload.name || `${payload.given_name || ''} ${payload.family_name || ''}`.trim(),
             avatar_url: payload.picture,
             provider: stateProvider,
           },

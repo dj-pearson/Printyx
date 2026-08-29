@@ -461,13 +461,11 @@ export function registerProductsCrudRoutes(app: Express) {
 
   // ============= ACCESSORY-MODEL COMPATIBILITY =============
 
-
   // Accessory/model compatibility (GET, POST, DELETE) removed here (PROD-008b).
   // /api/accessories is proxied to supabase/functions/accessories/, which was
   // built as the production counterpart to exactly these three — the
   // compatibility dialog in EnhancedProductAccessories.tsx 404'd in prod before
   // it existed.
-
 
   app.get('/api/models/:modelId/compatibility', async (req: any, res) => {
     try {
@@ -612,7 +610,6 @@ export function registerProductsCrudRoutes(app: Express) {
   );
 
   // ============= SERVICE PRODUCTS =============
-
 
   // GET and POST /api/service-products removed here (PROD-008b).
   // supabase/functions/service-products/ serves both. Its rows now go out
@@ -1219,7 +1216,6 @@ export function registerProductsCrudRoutes(app: Express) {
   );
 
   // ============= CONTRACT TIERED RATES =============
-
 
   // GET and POST /api/contract-tiered-rates removed here (PROD-008b).
   // supabase/functions/contract-tiered-rates/ serves both and returns camelRow,

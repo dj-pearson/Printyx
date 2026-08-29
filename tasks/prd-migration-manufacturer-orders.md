@@ -11,15 +11,19 @@
 ## 1. Scope
 
 **Express source:**
+
 - `server/routes/manufacturer-order-routes.ts` (1,184 lines, **43 endpoints**)
 
 **Services:**
+
 - `server/services/manufacturer-integration-service.ts` — verify content; likely auth + API client wrapper
 
 **Edge side:**
+
 - `supabase/functions/manufacturer-integrations/` — exists, scope TBD; audit in step 1
 
 **Target:**
+
 ```
 supabase/functions/manufacturer-orders/       # NEW
 ├── index.ts                                  # dispatcher
@@ -38,6 +42,7 @@ supabase/functions/manufacturer-orders/       # NEW
 **Audit decision on `manufacturer-integrations/`:** during parity step, confirm whether to merge into `manufacturer-orders/` or keep separate. Leaning toward keeping separate if it handles only OAuth flows; merge if it handles order submission.
 
 **Explicitly out of scope:**
+
 - Actual manufacturer API clients (Canon, Xerox, HP, etc.) — assumed already abstracted in `manufacturer-integration-service.ts`; port as-is
 - Webhook receivers for real-time order status from manufacturers — if present, port; if TODO, document as follow-up
 
@@ -46,75 +51,82 @@ supabase/functions/manufacturer-orders/       # NEW
 ## 2. Endpoint parity matrix (condensed)
 
 ### Connections (7)
-| Method | Path | Line | Notes |
-|---|---|---|---|
-| GET    | `/manufacturer-orders/connections` | 50 | returns redacted |
-| GET    | `/manufacturer-orders/connections/:id` | 77 | redacted |
-| POST   | `/manufacturer-orders/connections` | 103 | **sensitive input** |
-| PUT    | `/manufacturer-orders/connections/:id` | 134 | **sensitive input** |
-| DELETE | `/manufacturer-orders/connections/:id` | 167 | |
-| POST   | `/manufacturer-orders/connections/:id/test` | 195 | probes live API |
-| PATCH  | `/manufacturer-orders/connections/:id/health` | 216 | |
+
+| Method | Path                                          | Line | Notes               |
+| ------ | --------------------------------------------- | ---- | ------------------- |
+| GET    | `/manufacturer-orders/connections`            | 50   | returns redacted    |
+| GET    | `/manufacturer-orders/connections/:id`        | 77   | redacted            |
+| POST   | `/manufacturer-orders/connections`            | 103  | **sensitive input** |
+| PUT    | `/manufacturer-orders/connections/:id`        | 134  | **sensitive input** |
+| DELETE | `/manufacturer-orders/connections/:id`        | 167  |                     |
+| POST   | `/manufacturer-orders/connections/:id/test`   | 195  | probes live API     |
+| PATCH  | `/manufacturer-orders/connections/:id/health` | 216  |                     |
 
 ### Orders (8)
-| Method | Path | Line | Notes |
-|---|---|---|---|
-| GET    | `/manufacturer-orders/` | 251 | list |
-| GET    | `/manufacturer-orders/:id` | 275 | |
-| POST   | `/manufacturer-orders/` | 296 | create draft |
-| PUT    | `/manufacturer-orders/:id` | 320 | |
-| DELETE | `/manufacturer-orders/:id` | 346 | |
-| POST   | `/manufacturer-orders/:id/submit` | 367 | **calls manufacturer API** |
-| POST   | `/manufacturer-orders/:id/acknowledge` | 388 | |
-| PATCH  | `/manufacturer-orders/:id/fulfillment` | 422 | |
+
+| Method | Path                                   | Line | Notes                      |
+| ------ | -------------------------------------- | ---- | -------------------------- |
+| GET    | `/manufacturer-orders/`                | 251  | list                       |
+| GET    | `/manufacturer-orders/:id`             | 275  |                            |
+| POST   | `/manufacturer-orders/`                | 296  | create draft               |
+| PUT    | `/manufacturer-orders/:id`             | 320  |                            |
+| DELETE | `/manufacturer-orders/:id`             | 346  |                            |
+| POST   | `/manufacturer-orders/:id/submit`      | 367  | **calls manufacturer API** |
+| POST   | `/manufacturer-orders/:id/acknowledge` | 388  |                            |
+| PATCH  | `/manufacturer-orders/:id/fulfillment` | 422  |                            |
 
 ### Line Items (7)
-| Method | Path | Line |
-|---|---|---|
-| GET    | `/manufacturer-orders/:orderId/line-items` | 456 |
-| GET    | `/manufacturer-orders/line-items/:id` | 478 |
-| POST   | `/manufacturer-orders/:orderId/line-items` | 499 |
-| POST   | `/manufacturer-orders/:orderId/line-items/bulk` | 530 |
-| PUT    | `/manufacturer-orders/line-items/:id` | 567 |
-| DELETE | `/manufacturer-orders/line-items/:id` | 593 |
-| PATCH  | `/manufacturer-orders/line-items/:id/shipment` | 614 |
+
+| Method | Path                                            | Line |
+| ------ | ----------------------------------------------- | ---- |
+| GET    | `/manufacturer-orders/:orderId/line-items`      | 456  |
+| GET    | `/manufacturer-orders/line-items/:id`           | 478  |
+| POST   | `/manufacturer-orders/:orderId/line-items`      | 499  |
+| POST   | `/manufacturer-orders/:orderId/line-items/bulk` | 530  |
+| PUT    | `/manufacturer-orders/line-items/:id`           | 567  |
+| DELETE | `/manufacturer-orders/line-items/:id`           | 593  |
+| PATCH  | `/manufacturer-orders/line-items/:id/shipment`  | 614  |
 
 ### Confirmations (5)
-| Method | Path | Line |
-|---|---|---|
-| GET    | `/manufacturer-orders/:orderId/confirmations` | 648 |
-| GET    | `/manufacturer-orders/confirmations/:id` | 670 |
-| POST   | `/manufacturer-orders/:orderId/confirmations` | 691 |
-| PUT    | `/manufacturer-orders/confirmations/:id` | 722 |
-| POST   | `/manufacturer-orders/confirmations/:id/process` | 748 |
+
+| Method | Path                                             | Line |
+| ------ | ------------------------------------------------ | ---- |
+| GET    | `/manufacturer-orders/:orderId/confirmations`    | 648  |
+| GET    | `/manufacturer-orders/confirmations/:id`         | 670  |
+| POST   | `/manufacturer-orders/:orderId/confirmations`    | 691  |
+| PUT    | `/manufacturer-orders/confirmations/:id`         | 722  |
+| POST   | `/manufacturer-orders/confirmations/:id/process` | 748  |
 
 ### Shipments (8)
-| Method | Path | Line |
-|---|---|---|
-| GET    | `/manufacturer-orders/:orderId/shipments` | 771 |
-| GET    | `/manufacturer-orders/shipments/:id` | 793 |
-| GET    | `/manufacturer-orders/shipments/tracking/:trackingNumber` | 814 |
-| POST   | `/manufacturer-orders/:orderId/shipments` | 838 |
-| PUT    | `/manufacturer-orders/shipments/:id` | 869 |
-| DELETE | `/manufacturer-orders/shipments/:id` | 895 |
-| PATCH  | `/manufacturer-orders/shipments/:id/tracking` | 916 |
-| POST   | `/manufacturer-orders/shipments/:id/deliver` | 948 |
+
+| Method | Path                                                      | Line |
+| ------ | --------------------------------------------------------- | ---- |
+| GET    | `/manufacturer-orders/:orderId/shipments`                 | 771  |
+| GET    | `/manufacturer-orders/shipments/:id`                      | 793  |
+| GET    | `/manufacturer-orders/shipments/tracking/:trackingNumber` | 814  |
+| POST   | `/manufacturer-orders/:orderId/shipments`                 | 838  |
+| PUT    | `/manufacturer-orders/shipments/:id`                      | 869  |
+| DELETE | `/manufacturer-orders/shipments/:id`                      | 895  |
+| PATCH  | `/manufacturer-orders/shipments/:id/tracking`             | 916  |
+| POST   | `/manufacturer-orders/shipments/:id/deliver`              | 948  |
 
 ### Exceptions (7)
-| Method | Path | Line |
-|---|---|---|
-| GET    | `/manufacturer-orders/:orderId/exceptions` | 982 |
-| GET    | `/manufacturer-orders/exceptions/unresolved` | 1004 |
-| GET    | `/manufacturer-orders/exceptions/:id` | 1026 |
-| POST   | `/manufacturer-orders/exceptions` | 1047 |
-| PUT    | `/manufacturer-orders/exceptions/:id` | 1071 |
+
+| Method | Path                                          | Line |
+| ------ | --------------------------------------------- | ---- |
+| GET    | `/manufacturer-orders/:orderId/exceptions`    | 982  |
+| GET    | `/manufacturer-orders/exceptions/unresolved`  | 1004 |
+| GET    | `/manufacturer-orders/exceptions/:id`         | 1026 |
+| POST   | `/manufacturer-orders/exceptions`             | 1047 |
+| PUT    | `/manufacturer-orders/exceptions/:id`         | 1071 |
 | POST   | `/manufacturer-orders/exceptions/:id/resolve` | 1097 |
-| POST   | `/manufacturer-orders/exceptions/:id/retry` | 1132 |
+| POST   | `/manufacturer-orders/exceptions/:id/retry`   | 1132 |
 
 ### Analytics (1)
-| Method | Path | Line |
-|---|---|---|
-| GET | `/manufacturer-orders/analytics/dashboard` | 1155 |
+
+| Method | Path                                       | Line |
+| ------ | ------------------------------------------ | ---- |
+| GET    | `/manufacturer-orders/analytics/dashboard` | 1155 |
 
 **Total: 43 endpoints.**
 
@@ -123,6 +135,7 @@ supabase/functions/manufacturer-orders/       # NEW
 ## 3. Tables + RLS plan
 
 From `shared/manufacturer-order-schema.ts` + `shared/manufacturer-integration-schema.ts`:
+
 - `manufacturer_connections` — **includes credential columns**
 - `manufacturer_orders`
 - `manufacturer_order_line_items`
@@ -139,6 +152,7 @@ RLS file: `drizzle/rls/manufacturer-orders.sql` applies standard 4-policy templa
 ## 4. Credential handling (security-critical)
 
 ### Current redaction list (from route L33-42):
+
 `apiKey`, `apiSecret`, `clientId`, `clientSecret`, `accessToken`, `refreshToken`, `webhookSecret`, `ediPassword`, `portalUsername`, `portalPassword`
 
 **Rule:** every SELECT response that includes connection data MUST pass through `redactConnectionCredentials()` before serialization. Port to `_credentials.ts`:
@@ -146,7 +160,18 @@ RLS file: `drizzle/rls/manufacturer-orders.sql` applies standard 4-policy templa
 ```typescript
 export function redactConnectionCredentials<T extends Record<string, unknown>>(conn: T): T {
   const redacted = { ...conn };
-  const SENSITIVE = ['apiKey', 'apiSecret', 'clientId', 'clientSecret', 'accessToken', 'refreshToken', 'webhookSecret', 'ediPassword', 'portalUsername', 'portalPassword'];
+  const SENSITIVE = [
+    'apiKey',
+    'apiSecret',
+    'clientId',
+    'clientSecret',
+    'accessToken',
+    'refreshToken',
+    'webhookSecret',
+    'ediPassword',
+    'portalUsername',
+    'portalPassword',
+  ];
   for (const key of SENSITIVE) {
     if (redacted[key]) redacted[key] = '••••••••';
   }
@@ -155,14 +180,18 @@ export function redactConnectionCredentials<T extends Record<string, unknown>>(c
 ```
 
 **POST/PUT paths:** credentials flow INTO the handler from the frontend form. They should never come back OUT. Test this end-to-end:
+
 1. POST with full creds → persisted to DB raw
 2. GET afterwards → all sensitive fields redacted
 
 ### Encryption at rest
+
 Credentials are stored plaintext in the DB today (verified by grepping for encrypt calls — none found). **This is a pre-existing security issue** but not introduced by this migration. Flag as a follow-up in §10. Don't block migration on fixing it.
 
 ### Test endpoint
+
 `POST /connections/:id/test` uses the real credentials to probe the manufacturer API. In Deno:
+
 - Read credentials via service-role (bypass RLS)
 - Call out via fetch
 - Return success/failure, never echo credentials in response
@@ -171,12 +200,12 @@ Credentials are stored plaintext in the DB today (verified by grepping for encry
 
 ## 5. External dependencies to port
 
-| Dependency | Express location | Deno port |
-|---|---|---|
-| `manufacturer-integration-service.ts` | `server/services/` | Port to `_integrations.ts` — read the service before porting; handle any Node-only HTTP libs (likely just `axios` → `fetch`) |
-| Zod schemas | `@shared/manufacturer-order-schema` | Direct import (shared/ is Deno-portable per Phase 1) |
-| `IStorage` methods | `server/storage.ts` | Reimplement as Drizzle calls |
-| Tracking number lookup (carrier APIs?) | TBD | Port any fetch-based calls; document any SDK-based calls as risk |
+| Dependency                             | Express location                    | Deno port                                                                                                                    |
+| -------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `manufacturer-integration-service.ts`  | `server/services/`                  | Port to `_integrations.ts` — read the service before porting; handle any Node-only HTTP libs (likely just `axios` → `fetch`) |
+| Zod schemas                            | `@shared/manufacturer-order-schema` | Direct import (shared/ is Deno-portable per Phase 1)                                                                         |
+| `IStorage` methods                     | `server/storage.ts`                 | Reimplement as Drizzle calls                                                                                                 |
+| Tracking number lookup (carrier APIs?) | TBD                                 | Port any fetch-based calls; document any SDK-based calls as risk                                                             |
 
 No cron, no websockets, no PDF generation.
 
@@ -185,6 +214,7 @@ No cron, no websockets, no PDF generation.
 ## 6. Acceptance criteria
 
 ### Functional parity
+
 - [ ] All 43 endpoints return the same shape as Express for equivalent inputs
 - [ ] `POST /connections` stores credentials correctly; `GET /connections/:id` returns redacted values
 - [ ] `POST /connections/:id/test` successfully probes a manufacturer API (fixture or live)
@@ -194,12 +224,14 @@ No cron, no websockets, no PDF generation.
 - [ ] Analytics dashboard returns order volume, exception rate, fulfillment SLA
 
 ### Security / RLS + credentials
+
 - [ ] RLS on all 6 manufacturer tables
 - [ ] Credential redaction test: POST connection with real creds; GET response shows redacted; confirm no sensitive field leaks through any endpoint
 - [ ] Two-tenant test: connection in tenant A invisible to tenant B
 - [ ] Logs: no credential value appears in any log line during creation, update, or test flows
 
 ### Frontend compatibility
+
 - [ ] `ManufacturerIntegration.tsx` loads, connection list renders with redacted creds
 - [ ] Create/edit connection flow submits and persists
 - [ ] Test connection button returns success/failure
@@ -208,12 +240,14 @@ No cron, no websockets, no PDF generation.
 - [ ] Playwright MCP pass on connection CRUD + order submission
 
 ### Deletion
+
 - [ ] `server/routes/manufacturer-order-routes.ts` deleted
 - [ ] `server/services/manufacturer-integration-service.ts` deleted (logic in `_integrations.ts`)
 - [ ] Route registry entry removed
 - [ ] `grep -r "manufacturer-order-routes\|manufacturer-integration-service" server/ client/` returns zero matches
 
 ### Quality gates
+
 - [ ] `deno check` passes
 - [ ] `npm run check` passes
 - [ ] `npm run build` succeeds
@@ -223,20 +257,24 @@ No cron, no websockets, no PDF generation.
 ## 7. Test plan
 
 ### Unit (Deno)
+
 - `_credentials.test.ts` — redaction: assert every sensitive field masked, non-sensitive fields preserved
 - Handler-level tests for submit, retry, resolve (state transitions)
 
 ### Integration
+
 - Local: seed a dev manufacturer connection (use a stub endpoint like `https://httpbin.org`) → test probe → create order → submit → verify API call happens + response stored
 - Bulk line items: POST 100 items, verify atomic (rollback if one fails)
 - Exception retry: force an exception, retry, verify resolved state
 
 ### Security regression
+
 - Attempt to GET a connection with a valid auth token → verify redaction
 - Attempt to SELECT directly via service-role from a non-credentialed context → should fail tenant isolation
 - Log scan: run full integration suite; grep logs for known credential substrings → must return zero
 
 ### Production smoke
+
 - Create a test manufacturer connection in prod
 - Submit a test order through the full flow
 - Verify no prod credentials appear in logs
@@ -253,14 +291,14 @@ Standard: revert PR. Express file is already non-functional in prod. No schema c
 
 ## 9. Risks + mitigations
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Credential leak via missed redaction path | Medium | **Critical** | Unit test + integration test every SELECT endpoint; add automated log scan in CI |
-| Manufacturer API client uses Node-only `axios` config (interceptors, agents) | High | Medium | Read service end-to-end before porting; `fetch` is sufficient for standard HTTPS |
-| `axios` retry logic (e.g., exponential backoff) not trivially ported | Medium | Medium | Port using `for (let i = 0; i < retries; i++)` with explicit backoff; test |
-| Bulk insert (100 line items) exceeds Deno memory on large item payloads | Low | Medium | Cap bulk at 100; chunk client-side if more needed |
-| Order submit latency blown out by manufacturer API slowness → edge timeout | Medium | High | Explicit 30s fetch timeout on outbound calls; surface clear 504 to frontend |
-| Audit log data volume (frontend page `ManufacturerIntegrationAudit`) requires pagination we don't have today | Low | Low | Add pagination during port if current endpoint returns unbounded results |
+| Risk                                                                                                         | Likelihood | Impact       | Mitigation                                                                       |
+| ------------------------------------------------------------------------------------------------------------ | ---------- | ------------ | -------------------------------------------------------------------------------- |
+| Credential leak via missed redaction path                                                                    | Medium     | **Critical** | Unit test + integration test every SELECT endpoint; add automated log scan in CI |
+| Manufacturer API client uses Node-only `axios` config (interceptors, agents)                                 | High       | Medium       | Read service end-to-end before porting; `fetch` is sufficient for standard HTTPS |
+| `axios` retry logic (e.g., exponential backoff) not trivially ported                                         | Medium     | Medium       | Port using `for (let i = 0; i < retries; i++)` with explicit backoff; test       |
+| Bulk insert (100 line items) exceeds Deno memory on large item payloads                                      | Low        | Medium       | Cap bulk at 100; chunk client-side if more needed                                |
+| Order submit latency blown out by manufacturer API slowness → edge timeout                                   | Medium     | High         | Explicit 30s fetch timeout on outbound calls; surface clear 504 to frontend      |
+| Audit log data volume (frontend page `ManufacturerIntegrationAudit`) requires pagination we don't have today | Low        | Low          | Add pagination during port if current endpoint returns unbounded results         |
 
 ---
 

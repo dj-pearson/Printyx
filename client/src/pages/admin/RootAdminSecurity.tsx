@@ -227,34 +227,20 @@ export default function RootAdminSecurity() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">99.2%</div>
-                        <p className="text-sm text-gray-600">Successful Logins</p>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">847</div>
-                        <p className="text-sm text-gray-600">Active Sessions</p>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-orange-600">12</div>
-                        <p className="text-sm text-gray-600">Blocked IPs</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Button className="w-full" variant="outline">
-                        Force Logout All Sessions
-                      </Button>
-                      <Button className="w-full" variant="outline">
-                        Reset Failed Login Counters
-                      </Button>
-                      <Button className="w-full" variant="outline">
-                        Update Password Policies
-                      </Button>
-                    </div>
-                  </div>
+                  {/* AUDIT-019: this tab showed "99.2% Successful Logins",
+                      "847 Active Sessions" and "12 Blocked IPs", none of which
+                      came from a query, above three buttons - Force Logout All
+                      Sessions, Reset Failed Login Counters, Update Password
+                      Policies - with no handler behind any of them. A root
+                      admin could read the numbers as the platform's real login
+                      health and press a control that did nothing. Nothing
+                      aggregates authentication across tenants today, so the
+                      page says so instead. */}
+                  <p className="text-sm text-muted-foreground">
+                    Platform-wide authentication counters are not collected. Per-tenant session and
+                    failed-login figures are on the tenant System Security page, which reads them
+                    from the audit and session tables.
+                  </p>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -276,43 +262,17 @@ export default function RootAdminSecurity() {
                       </AlertDescription>
                     </Alert>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <h4 className="font-semibold">Platform Roles</h4>
-                        <div className="space-y-1">
-                          <div className="flex justify-between">
-                            <span>Root Administrator</span>
-                            <Badge>1</Badge>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Platform Admin</span>
-                            <Badge>5</Badge>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>System Admin</span>
-                            <Badge>12</Badge>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <h4 className="font-semibold">Tenant Roles</h4>
-                        <div className="space-y-1">
-                          <div className="flex justify-between">
-                            <span>Company Admin</span>
-                            <Badge>156</Badge>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Regional Manager</span>
-                            <Badge>423</Badge>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Location Manager</span>
-                            <Badge>789</Badge>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    {/* AUDIT-019: a role census - 1 Root Administrator, 5
+                        Platform Admins, 12 System Admins, 156 Company Admins,
+                        423 Regional Managers, 789 Location Managers - written
+                        as literals. Nothing counted anything. Read as real it
+                        tells a root admin exactly how many privileged accounts
+                        exist on the platform, which is the one number on this
+                        page worth getting right. */}
+                    <p className="text-sm text-muted-foreground">
+                      Role assignment counts are not aggregated across tenants. Use the tenant user
+                      administration screens for the accounts held under each role.
+                    </p>
                   </div>
                 </CardContent>
               </Card>

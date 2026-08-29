@@ -9,12 +9,14 @@
 ## 1. Scope
 
 **Express side:**
+
 - `server/routes/apollo-routes.ts` (~12 endpoints)
 - `server/apollo-client.ts` (API wrapper — direct HTTPS calls, NOT Apollo GraphQL client, despite the name)
 - `server/apollo-storage.ts` (search cache + tenant lead storage)
 - `server/data-enrichment-mapping.ts` (imported by apollo flow)
 
 **Edge side:**
+
 - `supabase/functions/apollo/index.ts` (existing — endpoint count TBD in audit step)
 
 **Target:** `supabase/functions/apollo/` is canonical. Everything in Express is either ported over or deleted.
@@ -25,12 +27,12 @@
 
 Before writing any code, produce `docs/apollo-parity.md`:
 
-| Method | Path | Express impl | Edge impl | Status | Action |
-|---|---|---|---|---|---|
-| POST | `/apollo/search` | ✓ | ? | | |
-| POST | `/apollo/enrich` | ? | ? | | |
-| GET  | `/apollo/contacts` | ? | ? | | |
-| ... | ... | ... | ... | ... | ... |
+| Method | Path               | Express impl | Edge impl | Status | Action |
+| ------ | ------------------ | ------------ | --------- | ------ | ------ |
+| POST   | `/apollo/search`   | ✓            | ?         |        |        |
+| POST   | `/apollo/enrich`   | ?            | ?         |        |        |
+| GET    | `/apollo/contacts` | ?            | ?         |        |        |
+| ...    | ...                | ...          | ...       | ...    | ...    |
 
 **Status values:** `only-express`, `only-edge`, `both-match`, `both-diverged`.
 
@@ -50,7 +52,7 @@ From audit: apollo_contacts_cache (centralized), apollo_tenant_leads, apollo_sea
 - [ ] Every Express-only endpoint ported to the edge function
 - [ ] Both-match endpoints: pick one, delete Express
 - [ ] Both-diverged endpoints: reconcile (usually edge wins; document exceptions)
-- [ ] `drizzle/rls/apollo.sql` applies RLS to all apollo_* tables
+- [ ] `drizzle/rls/apollo.sql` applies RLS to all apollo\_\* tables
 - [ ] Frontend pages using Apollo still work:
   - `/data-enrichment` (DataEnrichment.tsx)
   - `/apollo-lead-enrichment` (ApolloLeadEnrichment.tsx)

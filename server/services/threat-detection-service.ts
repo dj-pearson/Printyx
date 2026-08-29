@@ -200,9 +200,7 @@ function computeSignals(tracker: IpTracker, now: number): ThreatSignals {
   const errorRate = errors / total;
 
   // Auth failure rate (401 + 403)
-  const authFailures = records.filter(
-    (r) => r.statusCode === 401 || r.statusCode === 403,
-  ).length;
+  const authFailures = records.filter((r) => r.statusCode === 401 || r.statusCode === 403).length;
   const authFailureRate = authFailures / total;
 
   // Param mutation rate: for endpoints hit more than once, what fraction
@@ -217,8 +215,7 @@ function computeSignals(tracker: IpTracker, now: number): ThreatSignals {
       multiHitEndpoints++;
     }
   }
-  const paramMutationRate =
-    multiHitEndpoints > 0 ? mutatingEndpoints / multiHitEndpoints : 0;
+  const paramMutationRate = multiHitEndpoints > 0 ? mutatingEndpoints / multiHitEndpoints : 0;
 
   // Sequential ID access
   const sequentialIdAccess = detectSequentialIds(tracker.numericIds);

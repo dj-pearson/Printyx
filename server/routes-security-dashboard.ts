@@ -113,10 +113,7 @@ router.get('/events', async (req, res) => {
       .limit(limit)
       .offset(offset);
 
-    const [totalResult] = await db
-      .select({ count: count() })
-      .from(auditLogs)
-      .where(whereClause);
+    const [totalResult] = await db.select({ count: count() }).from(auditLogs).where(whereClause);
 
     res.json({
       data: events,
@@ -157,9 +154,7 @@ router.get('/failed-logins', async (req, res) => {
 
     const enriched = attempts.map((a) => ({
       ...a,
-      isLocked: a.lockedUntil
-        ? a.lockedUntil.getTime() === 0 || a.lockedUntil > new Date()
-        : false,
+      isLocked: a.lockedUntil ? a.lockedUntil.getTime() === 0 || a.lockedUntil > new Date() : false,
       lockType: a.lockedUntil
         ? a.lockedUntil.getTime() === 0
           ? 'permanent'
@@ -201,20 +196,21 @@ router.get('/threats/active', async (_req, res) => {
 
 export function registerSecurityDashboardRoutes(app: Express) {
   // All security dashboard routes require platform admin access
-  app.use('/api/security', (req, res, next) => {
-    // Check for platform admin via auth helpers
-    const user = (req as any).supabaseUser || (req as any).user;
-    const roleLevel = user?.roleLevel || user?.role?.level || 0;
-    const isPlatformAdmin =
-      user?.isPlatformUser ||
-      roleLevel >= 8 ||
-      user?.hasAllPermissions;
+  app.use(
+    '/api/security',
+    (req, res, next) => {
+      // Check for platform admin via auth helpers
+      const user = (req as any).supabaseUser || (req as any).user;
+      const roleLevel = user?.roleLevel || user?.role?.level || 0;
+      const isPlatformAdmin = user?.isPlatformUser || roleLevel >= 8 || user?.hasAllPermissions;
 
-    if (!isPlatformAdmin) {
-      return res.status(403).json({ message: 'Platform admin access required' });
-    }
-    next();
-  }, router);
+      if (!isPlatformAdmin) {
+        return res.status(403).json({ message: 'Platform admin access required' });
+      }
+      next();
+    },
+    router,
+  );
 
   log.info('Security dashboard routes registered');
 }

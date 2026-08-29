@@ -1,16 +1,15 @@
 appId: com.printyx.app
-name: "02 - Signup Screen"
+name: '02 - Signup Screen'
 ---
-
 - waitForAnimationToEnd
 
 # Navigate to signup
-- tapOn: "Sign Up"
+- tapOn: 'Sign Up'
 - waitForAnimationToEnd
 
 # Screenshot: Signup screen
-- takeScreenshot: "02-signup"
+- takeScreenshot: '02-signup'
 
 # Go back to login
-- tapOn: "Sign In"
+- tapOn: 'Sign In'
 - waitForAnimationToEnd

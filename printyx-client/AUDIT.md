@@ -32,11 +32,11 @@ vulnerability scanning on it.
 
 ## Authentication contract
 
-| Header | Value |
-| --- | --- |
-| `Authorization` | `Bearer <plain api key>` |
-| `X-Tenant-ID`   | tenant id from registration |
-| `Content-Type`  | `application/json` |
+| Header          | Value                                   |
+| --------------- | --------------------------------------- |
+| `Authorization` | `Bearer <plain api key>`                |
+| `X-Tenant-ID`   | tenant id from registration             |
+| `Content-Type`  | `application/json`                      |
 | `User-Agent`    | `Printyx-Client/<package.json version>` |
 
 The plain API key is shown **once** during registration in the Printyx UI
@@ -48,20 +48,20 @@ hash. Loss of the plain key = rotate.
 After the consolidation pass everything routes through a single source of
 truth: the `monitoring_clients` table with SHA-256 hashed API keys.
 
-| Endpoint                                              | File                          | Auth                  |
-| ----------------------------------------------------- | ----------------------------- | --------------------- |
-| `POST /api/client-metrics/submit`                     | `routes-client-monitoring.ts` | per-client API key (Bearer + SHA-256) |
-| `POST /api/client-metrics/heartbeat`                  | `routes-client-monitoring.ts` | per-client API key    |
-| `GET  /api/client-metrics/config`                     | `routes-client-monitoring.ts` | per-client API key    |
-| `POST /api/client-metrics/clients` (admin)            | `routes-client-metrics.ts`    | user session + tenant |
-| `GET  /api/client-metrics/clients` (admin)            | `routes-client-metrics.ts`    | user session + tenant |
-| `POST /api/client-metrics/clients/:id/regenerate-key` | `routes-client-metrics.ts`    | user session + tenant |
-| `POST /api/client-metrics/clients/:id/enrollment-token` | `routes-client-metrics.ts`  | user session + tenant |
-| `GET  /api/client-metrics/clients/:id/installer.zip`  | `routes-client-metrics.ts`    | user session + tenant |
-| `POST /api/client-metrics/enroll`                     | `routes-client-metrics.ts`    | one-time token        |
-| `GET  /install/printyx-client.ps1`                    | `routes-registry.ts`          | none (bootstrap)      |
-| `GET  /install/install-windows.ps1`                   | `routes-registry.ts`          | none (script only)    |
-| `GET  /install/printyx-client.cjs`                    | `routes-registry.ts`          | none (agent, no secrets) |
+| Endpoint                                                | File                          | Auth                                  |
+| ------------------------------------------------------- | ----------------------------- | ------------------------------------- |
+| `POST /api/client-metrics/submit`                       | `routes-client-monitoring.ts` | per-client API key (Bearer + SHA-256) |
+| `POST /api/client-metrics/heartbeat`                    | `routes-client-monitoring.ts` | per-client API key                    |
+| `GET  /api/client-metrics/config`                       | `routes-client-monitoring.ts` | per-client API key                    |
+| `POST /api/client-metrics/clients` (admin)              | `routes-client-metrics.ts`    | user session + tenant                 |
+| `GET  /api/client-metrics/clients` (admin)              | `routes-client-metrics.ts`    | user session + tenant                 |
+| `POST /api/client-metrics/clients/:id/regenerate-key`   | `routes-client-metrics.ts`    | user session + tenant                 |
+| `POST /api/client-metrics/clients/:id/enrollment-token` | `routes-client-metrics.ts`    | user session + tenant                 |
+| `GET  /api/client-metrics/clients/:id/installer.zip`    | `routes-client-metrics.ts`    | user session + tenant                 |
+| `POST /api/client-metrics/enroll`                       | `routes-client-metrics.ts`    | one-time token                        |
+| `GET  /install/printyx-client.ps1`                      | `routes-registry.ts`          | none (bootstrap)                      |
+| `GET  /install/install-windows.ps1`                     | `routes-registry.ts`          | none (script only)                    |
+| `GET  /install/printyx-client.cjs`                      | `routes-registry.ts`          | none (agent, no secrets)              |
 
 The previously-divergent `client_registrations` table is no longer written
 to. The Supabase edge function in
@@ -275,10 +275,10 @@ via `httpRejectUnauthorized: false` for self-signed embedded admin UIs.
 
 `src/collectors/vendor-scrapers.ts` is the dispatch table. Implemented:
 
-| Vendor | Path family | What we read |
-| ------ | ----------- | ------------ |
-| HP | `/DevMgmt/{ProductConfig,ConsumableConfig,PrinterUsage,ProductStatus}Dyn.xml` | serial, model, toner per CMYK, total/BW/color impressions, status |
-| Konica Minolta | `/wcd/{system_device,info_counter,info_supply}.xml` | serial, model, toner per CMYK, total/BW/color/large counters |
+| Vendor         | Path family                                                                   | What we read                                                      |
+| -------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| HP             | `/DevMgmt/{ProductConfig,ConsumableConfig,PrinterUsage,ProductStatus}Dyn.xml` | serial, model, toner per CMYK, total/BW/color impressions, status |
+| Konica Minolta | `/wcd/{system_device,info_counter,info_supply}.xml`                           | serial, model, toner per CMYK, total/BW/color/large counters      |
 
 Other vendors (Canon, Xerox, Ricoh, Brother, Lexmark, Sharp, Toshiba,
 Epson, Kyocera, OKI, Samsung) are recognised by `detectVendor()` but
@@ -418,13 +418,13 @@ off to `install-windows.ps1`.
 
 ## Ports summary (firewall planning)
 
-| Port  | Direction | Required? | Note |
-| ----- | --------- | --------- | ---- |
-| 443/TCP   | outbound        | yes | Printyx API. The only port that crosses a public boundary. |
-| 161/UDP   | outbound (intra-LAN) | for SNMP printers | Not exposed to internet. |
-| 80/TCP, 443/TCP | outbound (intra-LAN) | for HTTP scrape | Not exposed to internet. |
-| 5353/UDP  | in + out (intra-LAN) | for mDNS discovery (opt-in) | Multicast `224.0.0.251`. Domain/Private profiles only. |
-| 3702/UDP  | in + out (intra-LAN) | for WSD discovery (opt-in) | Multicast `239.255.255.250`. Domain/Private profiles only. |
+| Port            | Direction            | Required?                   | Note                                                       |
+| --------------- | -------------------- | --------------------------- | ---------------------------------------------------------- |
+| 443/TCP         | outbound             | yes                         | Printyx API. The only port that crosses a public boundary. |
+| 161/UDP         | outbound (intra-LAN) | for SNMP printers           | Not exposed to internet.                                   |
+| 80/TCP, 443/TCP | outbound (intra-LAN) | for HTTP scrape             | Not exposed to internet.                                   |
+| 5353/UDP        | in + out (intra-LAN) | for mDNS discovery (opt-in) | Multicast `224.0.0.251`. Domain/Private profiles only.     |
+| 3702/UDP        | in + out (intra-LAN) | for WSD discovery (opt-in)  | Multicast `239.255.255.250`. Domain/Private profiles only. |
 
 The discovery ports are off by default. Pass `-EnableDiscoveryFirewall`
 to `install-windows.ps1`, or add them by hand later. The agent itself
@@ -440,11 +440,11 @@ continue to pass.
 `NetworkScanner.discoverDevices(ranges, methods)` accepts any
 combination of three methods, run in parallel and merged by IP:
 
-| Method | What it does | When it shines |
-| ------ | ------------ | -------------- |
+| Method | What it does                                                                                                                       | When it shines                                                                            |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `mdns` | Listens for printer service types (`_ipp._tcp`, `_pdl-datastream._tcp`, `_printer._tcp`, `_uscan._tcp`, `_ipps._tcp`) on UDP 5353. | HP / Brother / Canon / Xerox / Konica / Kyocera fleets. Near-instant (default 5s window). |
-| `wsd`  | Sends a single WS-Discovery `Probe` SOAP message to UDP `239.255.255.250:3702` and parses `ProbeMatches` responses. | Any printer with a Windows-class WSD driver — typical office MFPs. |
-| `cidr` | Sequentially SNMP-probes every host in the supplied CIDR range. The legacy method. | Networks where mDNS/WSD are firewalled off, or as a gap-filler. |
+| `wsd`  | Sends a single WS-Discovery `Probe` SOAP message to UDP `239.255.255.250:3702` and parses `ProbeMatches` responses.                | Any printer with a Windows-class WSD driver — typical office MFPs.                        |
+| `cidr` | Sequentially SNMP-probes every host in the supplied CIDR range. The legacy method.                                                 | Networks where mDNS/WSD are firewalled off, or as a gap-filler.                           |
 
 Default for the running agent: `['mdns', 'wsd']` — cheap, intra-LAN
 multicast, near-instant, no CPU burn on a /24 sweep. Only operators

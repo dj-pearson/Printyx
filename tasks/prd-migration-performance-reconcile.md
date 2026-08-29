@@ -9,9 +9,11 @@
 ## 1. Scope
 
 **Express side:**
+
 - `server/routes/performance-routes.ts` (~10 endpoints — sales performance, team metrics, KPI tracking)
 
 **Edge side:**
+
 - `supabase/functions/performance/index.ts`
 
 **Target:** `supabase/functions/performance/` canonical.
@@ -23,6 +25,7 @@
 Produce `docs/performance-parity.md`.
 
 Focus areas:
+
 - Per-rep sales metrics (revenue, deals closed, pipeline)
 - Team rollups
 - KPI dashboards
@@ -58,7 +61,9 @@ RLS file: `drizzle/rls/performance.sql` — simpler since most endpoints are rea
 ## 5. Considerations
 
 ### Caching
+
 Reports may benefit from caching (dashboards hit the same query repeatedly). Options:
+
 - No caching in edge function — relies on Postgres query planner + any materialized views.
 - In-memory cache in module scope (per Deno instance, TTL N seconds).
 - Supabase built-in HTTP caching via `Cache-Control` headers.
@@ -66,6 +71,7 @@ Reports may benefit from caching (dashboards hit the same query repeatedly). Opt
 **Recommendation:** start with no cache, measure, add caching if latency is an issue. Dashboards re-fetch on navigate which isn't that frequent.
 
 ### Raw SQL escape hatch
+
 For queries like "top 10 reps by revenue last 30 days with MoM delta", Drizzle query builder may get unwieldy. Use `getRawClient()` from `_shared/db.ts` for these:
 
 ```typescript

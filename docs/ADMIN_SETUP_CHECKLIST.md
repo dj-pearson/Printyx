@@ -797,13 +797,13 @@ POST /api/tenants
 
 ### Sign-off
 
-- [ ] DevOps Lead: ******\_\_\_\_****** Date: **\_\_\_\_**
-- [ ] Security Lead: ******\_\_\_\_****** Date: **\_\_\_\_**
-- [ ] Platform Admin: ******\_\_\_\_****** Date: **\_\_\_\_**
+- [ ] DevOps Lead: **\*\***\_\_\_\_**\*\*** Date: **\_\_\_\_**
+- [ ] Security Lead: **\*\***\_\_\_\_**\*\*** Date: **\_\_\_\_**
+- [ ] Platform Admin: **\*\***\_\_\_\_**\*\*** Date: **\_\_\_\_**
 
 ---
 
-**Next Review Date:** ******\_******
+**Next Review Date:** **\*\***\_**\*\***
 
 **Notes:**
 

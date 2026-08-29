@@ -14,7 +14,7 @@
 
 - **Total Tables:** 207.5
 - **Total Columns:** 8483
-- **Schemas:** _realtime, realtime, public, auth, storage
+- **Schemas:** \_realtime, realtime, public, auth, storage
 
 ## ❌ Invalid Table References
 
@@ -33181,4 +33181,3 @@ COMMENT ON COLUMN deals.ai_deal_health_score IS 'AI-calculated deal health score
 3. Remove all NEON database references
 4. Re-run validation: `npx tsx tests/schema-validator.ts`
 5. Update DATABASE_SCHEMA.md if schema changes are needed
-

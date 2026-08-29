@@ -9,19 +9,8 @@ import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
-import {
-  borderRadius,
-  colors,
-  motion,
-  spacing,
-  touchTargets,
-  typography,
-} from '@/theme';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { borderRadius, colors, motion, spacing, touchTargets, typography } from '@/theme';
 
 interface ListItemProps {
   title: string;
@@ -70,28 +59,15 @@ export function ListItem({
     onPress();
   }, [onPress]);
 
-  const effectiveIconColor = destructive
-    ? colors.error.main
-    : iconColor ?? colors.primary[600];
-  const effectiveIconBg = destructive
-    ? colors.error.light
-    : iconBackground ?? colors.primary[50];
+  const effectiveIconColor = destructive ? colors.error.main : (iconColor ?? colors.primary[600]);
+  const effectiveIconBg = destructive ? colors.error.light : (iconBackground ?? colors.primary[50]);
   const titleColor = destructive ? colors.error.dark : colors.text.primary;
 
   const content = (
     <View style={styles.container}>
       {icon ? (
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: effectiveIconBg },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name={icon}
-            size={20}
-            color={effectiveIconColor}
-          />
+        <View style={[styles.iconContainer, { backgroundColor: effectiveIconBg }]}>
+          <MaterialCommunityIcons name={icon} size={20} color={effectiveIconColor} />
         </View>
       ) : null}
       <View style={styles.textContainer}>
@@ -109,15 +85,9 @@ export function ListItem({
           </Text>
         ) : null}
       </View>
-      {rightContent ? (
-        <View style={styles.rightContent}>{rightContent}</View>
-      ) : null}
+      {rightContent ? <View style={styles.rightContent}>{rightContent}</View> : null}
       {onPress && showChevron ? (
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={20}
-          color={colors.gray[400]}
-        />
+        <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[400]} />
       ) : null}
     </View>
   );

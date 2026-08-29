@@ -26,15 +26,19 @@ export default function LeadsScreen() {
     queryKey: [`/api/companies?recordType=Lead&search=${search}&limit=50`],
   });
   // Handle both auto-unwrapped arrays and { records } / { data } response formats
-  const leads: any[] = Array.isArray(rawData) ? rawData : (rawData?.records || rawData?.data || []);
+  const leads: any[] = Array.isArray(rawData) ? rawData : rawData?.records || rawData?.data || [];
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
       // Handle both camelCase and snake_case field names from DB
       const name = item.companyName || item.business_name || item.name || 'Unnamed Lead';
       const status = item.status || item.activity || 'New';
-      const contactName = item.contactName || item.primary_contact_name ||
-        (item.company_contacts?.[0] ? `${item.company_contacts[0].first_name || ''} ${item.company_contacts[0].last_name || ''}`.trim() : '');
+      const contactName =
+        item.contactName ||
+        item.primary_contact_name ||
+        (item.company_contacts?.[0]
+          ? `${item.company_contacts[0].first_name || ''} ${item.company_contacts[0].last_name || ''}`.trim()
+          : '');
       const email = item.email;
       const source = item.source || item.lead_source || 'Direct';
       const estimatedValue = item.estimatedValue || item.estimated_value || item.estimated_amount;

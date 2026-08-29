@@ -112,7 +112,9 @@ function getMatchedToolName(userAgent: string): string | null {
  * Calculates a bot score for each request and logs suspicious activity.
  * Does not block requests by default (log-only mode).
  */
-export function botDetection(options: BotDetectionOptions = {}): (req: Request, res: Response, next: NextFunction) => void {
+export function botDetection(
+  options: BotDetectionOptions = {},
+): (req: Request, res: Response, next: NextFunction) => void {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -122,20 +124,23 @@ export function botDetection(options: BotDetectionOptions = {}): (req: Request, 
       const userAgent = req.headers['user-agent'] || '';
       const toolName = getMatchedToolName(userAgent);
 
-      log.warn({
-        event: 'bot_detected',
-        score,
-        tool: toolName,
-        userAgent,
-        ip: req.ip,
-        method: req.method,
-        path: req.path,
-        missingHeaders: {
-          acceptLanguage: !req.headers['accept-language'],
-          accept: !req.headers['accept'],
-          acceptEncoding: !req.headers['accept-encoding'],
+      log.warn(
+        {
+          event: 'bot_detected',
+          score,
+          tool: toolName,
+          userAgent,
+          ip: req.ip,
+          method: req.method,
+          path: req.path,
+          missingHeaders: {
+            acceptLanguage: !req.headers['accept-language'],
+            accept: !req.headers['accept'],
+            acceptEncoding: !req.headers['accept-encoding'],
+          },
         },
-      }, `Bot detection: score ${score}${toolName ? ` (${toolName})` : ''}`);
+        `Bot detection: score ${score}${toolName ? ` (${toolName})` : ''}`,
+      );
     }
 
     next();

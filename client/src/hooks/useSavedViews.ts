@@ -12,9 +12,20 @@ export interface SavedViewData {
   userId: string;
   objectType: string;
   name: string;
-  filterDefinition: Array<{ field: string; operator: string; value: any; conjunction?: 'AND' | 'OR' }> | null;
+  filterDefinition: Array<{
+    field: string;
+    operator: string;
+    value: any;
+    conjunction?: 'AND' | 'OR';
+  }> | null;
   sortConfig: { field: string; direction: 'asc' | 'desc' } | null;
-  columnConfig: Array<{ field: string; label: string; visible: boolean; width?: number; order: number }> | null;
+  columnConfig: Array<{
+    field: string;
+    label: string;
+    visible: boolean;
+    width?: number;
+    order: number;
+  }> | null;
   boardConfig: {
     cardFields?: Array<{ field: string; label: string; position: number; format?: string }>;
     columnTotals?: 'sum' | 'count' | 'weighted' | 'average' | 'none';

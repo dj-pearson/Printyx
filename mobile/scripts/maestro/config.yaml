@@ -12,6 +12,6 @@
 
 # Test credentials (use a dedicated screenshot account)
 - env:
-    TEST_EMAIL: "screenshots@printyx.net"
-    TEST_PASSWORD: "Screenshots2024!"
-    APP_ID: "com.printyx.app"
+    TEST_EMAIL: 'screenshots@printyx.net'
+    TEST_PASSWORD: 'Screenshots2024!'
+    APP_ID: 'com.printyx.app'

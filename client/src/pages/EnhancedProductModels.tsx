@@ -390,7 +390,10 @@ export default function EnhancedProductModels() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Category</FormLabel>
-                              <Select value={field.value ?? undefined} onValueChange={field.onChange}>
+                              <Select
+                                value={field.value ?? undefined}
+                                onValueChange={field.onChange}
+                              >
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue />

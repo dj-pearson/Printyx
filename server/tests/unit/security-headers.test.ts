@@ -58,10 +58,7 @@ function createProductionApp() {
 
   // Permissions-Policy header
   app.use((_req, res, next) => {
-    res.setHeader(
-      'Permissions-Policy',
-      'camera=(), microphone=(), geolocation=(), payment=(self)',
-    );
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
     next();
   });
 
@@ -131,7 +128,9 @@ describe('Security Headers (SEC-003)', () => {
     it('should restrict connect-src to specific domains', async () => {
       const res = await request(app).get('/test');
       const csp = res.headers['content-security-policy'];
-      expect(csp).toContain("connect-src 'self' wss: https://api.printyx.net https://functions.printyx.net");
+      expect(csp).toContain(
+        "connect-src 'self' wss: https://api.printyx.net https://functions.printyx.net",
+      );
     });
 
     it('should block all frame ancestors (X-Frame-Options: DENY)', async () => {
