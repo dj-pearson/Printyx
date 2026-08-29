@@ -117,6 +117,13 @@ export default async function handler(req: Request) {
         .limit(1)
         .maybeSingle();
 
+      // AUDIT-028: the three fields below come from supply_replenishment_analytics,
+      // and NOTHING WRITES THAT TABLE - no insert exists anywhere in the tree.
+      // So `analytics` is always null here, and the Express default this ported
+      // (`|| 3.0`) meant the dashboard reported a 3.0-day average lead time it
+      // had never measured, permanently. Null says "not measured"; the page
+      // renders that as a dash rather than a confident zero.
+      const hasAnalytics = Boolean(analytics);
       return createCorsResponse(
         {
           devicesMonitored,
@@ -124,10 +131,16 @@ export default async function handler(req: Request) {
           lowSupplies,
           urgentOrders,
           ordersThisMonth,
-          projectedSavings: toNumber(analytics?.emergency_cost_savings) || 0,
-          emergenciesPrevented: analytics?.emergency_orders_prevented ?? 0,
-          // Express defaults this to 3.0 days when there is no analytics row.
-          averageLeadTime: toNumber(analytics?.average_lead_time) || 3.0,
+          projectedSavings: hasAnalytics ? toNumber(analytics?.emergency_cost_savings) : null,
+          emergenciesPrevented: hasAnalytics
+            ? (analytics?.emergency_orders_prevented ?? null)
+            : null,
+          averageLeadTime: hasAnalytics ? toNumber(analytics?.average_lead_time) : null,
+          unbacked: hasAnalytics
+            ? []
+            : [
+                'projectedSavings, emergenciesPrevented, averageLeadTime: supply_replenishment_analytics has no producer, so no period has ever been summarised',
+              ],
         },
         200,
         req,
