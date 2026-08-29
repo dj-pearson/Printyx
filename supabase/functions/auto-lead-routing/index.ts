@@ -1,8 +1,36 @@
 // Auto Lead Routing Edge Function
 // Handles automatic lead assignment based on rules
+//
+// `lead_routing_rules` is named by this file and by nothing else in the
+// repository: no Drizzle schema, no migration under drizzle/, no server code,
+// no seeder. If it is not present as untracked drift then every read here is a
+// 42P01, and PostgREST reports that by leaving `.data` null rather than
+// throwing. This file used to answer that with two hardcoded "sample rules"
+// from GET /rules and with `{ routed: false, error: 'No matching routing rule
+// found' }` from POST /route — a missing relation presented as an empty
+// configuration. Both now say which relation is missing (503
+// ROUTING_RULES_UNAVAILABLE) so the failure is visible instead of looking like
+// a tenant that has not set any rules up yet.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { isMissingTableError } from '../_shared/postgrest-errors.ts';
+
+// 503 rather than 500: the request is well formed and retrying it will work
+// once the relation exists. The table name is in the body because "no rules
+// configured" and "no such table" are indistinguishable to a caller otherwise.
+function routingRulesUnavailable(req: Request, error: unknown): Response {
+  console.error('lead_routing_rules is unavailable:', error);
+  return createCorsResponse(
+    {
+      error: 'Lead routing rules are unavailable: relation lead_routing_rules does not exist',
+      code: 'ROUTING_RULES_UNAVAILABLE',
+      table: 'lead_routing_rules',
+    },
+    503,
+    req,
+  );
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -53,29 +81,9 @@ export default async function handler(req: Request) {
         .order('priority', { ascending: true });
 
       if (error) {
-        // Return sample rules if table doesn't exist
-        return createCorsResponse(
-          [
-            {
-              id: 'rule-1',
-              name: 'Enterprise Leads',
-              conditions: { employeeCount: { min: 500 } },
-              assignTo: 'enterprise-team',
-              priority: 1,
-              isActive: true,
-            },
-            {
-              id: 'rule-2',
-              name: 'SMB Leads',
-              conditions: { employeeCount: { max: 100 } },
-              assignTo: 'smb-team',
-              priority: 2,
-              isActive: true,
-            },
-          ],
-          200,
-          req,
-        );
+        if (isMissingTableError(error)) return routingRulesUnavailable(req, error);
+        console.error('Error listing routing rules:', error);
+        return createCorsResponse({ error: 'Failed to list rules' }, 500, req);
       }
 
       return createCorsResponse(rules || [], 200, req);
@@ -343,24 +351,29 @@ export default async function handler(req: Request) {
       }
 
       // Get active rules
-      const { data: rules } = await admin
+      const { data: rules, error: rulesError } = await admin
         .from('lead_routing_rules')
         .select('*')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
         .order('priority', { ascending: true });
 
-      // Find matching rule (simplified matching)
-      let matchedRule = null;
-      for (const rule of rules || []) {
-        // In production, implement proper condition matching
-        matchedRule = rule;
-        break;
+      if (rulesError) {
+        if (isMissingTableError(rulesError)) return routingRulesUnavailable(req, rulesError);
+        console.error('Error loading routing rules:', rulesError);
+        return createCorsResponse({ error: 'Failed to load routing rules' }, 500, req);
       }
+
+      // Lowest `priority` wins. `rule.conditions` is NOT evaluated — the loop
+      // that used to stand here broke on its first iteration, so it was already
+      // first-wins; writing it as an index makes that legible and stops it
+      // reading like matching that works. The response says so rather than
+      // implying the winning rule's conditions were checked.
+      const matchedRule = (rules ?? [])[0] ?? null;
 
       if (!matchedRule) {
         return createCorsResponse(
-          { error: 'No matching routing rule found', routed: false },
+          { error: 'No active routing rule configured', routed: false },
           200,
           req,
         );
@@ -401,6 +414,10 @@ export default async function handler(req: Request) {
           routed: Boolean(leadId && assignedUserId),
           rule: matchedRule,
           assignedTo: assigneeId,
+          // The rule was chosen by priority alone; nothing compared the lead
+          // against rule.conditions. Callers that need condition matching must
+          // not read this as "the lead qualified".
+          conditionsEvaluated: false,
           unpersisted,
         },
         200,

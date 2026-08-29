@@ -67,52 +67,14 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
+      // A hardcoded "Sales Rep Standard" plan used to be returned here on any
+      // error, tiers and rates and all — 5%/6.5%/8% presented to a rep as their
+      // own commission structure, with a 200 so nothing downstream could tell
+      // it apart from a real plan. The rest of this file (EDGE-002h) already
+      // refused to port Express's mocks; this branch predates that.
       if (error) {
-        // Return sample data if table doesn't exist
-        return createCorsResponse(
-          [
-            {
-              id: 'plan-1',
-              planName: 'Sales Rep Standard',
-              planType: 'sales_rep',
-              description: 'Standard commission plan for sales representatives',
-              isActive: true,
-              effectiveDate: new Date('2024-01-01').toISOString(),
-              tiers: [
-                {
-                  tierLevel: 1,
-                  tierName: 'Starter',
-                  minimumSales: 0,
-                  maximumSales: 50000,
-                  commissionRate: 5.0,
-                },
-                {
-                  tierLevel: 2,
-                  tierName: 'Achiever',
-                  minimumSales: 50001,
-                  maximumSales: 100000,
-                  commissionRate: 6.5,
-                },
-                {
-                  tierLevel: 3,
-                  tierName: 'Top Performer',
-                  minimumSales: 100001,
-                  maximumSales: null,
-                  commissionRate: 8.0,
-                },
-              ],
-              rules: {
-                paymentFrequency: 'monthly',
-                paymentDelay: 30,
-                splitCommissionAllowed: true,
-                chargebackEnabled: true,
-                chargebackPeriod: 90,
-              },
-            },
-          ],
-          200,
-          req,
-        );
+        console.error('Error fetching commission plans:', error);
+        return createCorsResponse({ error: 'Failed to fetch commission plans' }, 500, req);
       }
 
       return createCorsResponse(plans || [], 200, req);

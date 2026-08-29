@@ -28,25 +28,9 @@ export interface BillingCtx {
   parts: string[];
 }
 
-// True when a PostgREST/Postgres error means the relation does not exist —
-// expected for the drift tables above when the live DB predates them.
-export function isMissingTableError(error: unknown): boolean {
-  const e = error as { code?: string; message?: string } | null;
-  if (!e) return false;
-  if (e.code === '42P01' || e.code === 'PGRST205') return true;
-  const msg = (e.message || '').toLowerCase();
-  return msg.includes('could not find the table') || msg.includes('does not exist');
-}
-
-// True when PostgREST rejected a write because a column is missing (PGRST204) —
-// the self-healing retry trigger used across this codebase (see proposals fn).
-export function isMissingColumnError(error: unknown): boolean {
-  const e = error as { code?: string; message?: string } | null;
-  if (!e) return false;
-  if (e.code === 'PGRST204' || e.code === '42703') return true;
-  const msg = (e.message || '').toLowerCase();
-  return msg.includes('could not find the') && msg.includes('column');
-}
+// Both predicates now have a single definition in _shared/postgrest-errors.ts.
+// Re-exported here so the handlers' existing imports keep working.
+export { isMissingTableError, isMissingColumnError } from '../../_shared/postgrest-errors.ts';
 
 const num = (v: unknown): number => {
   const n = parseFloat(String(v ?? '0'));
