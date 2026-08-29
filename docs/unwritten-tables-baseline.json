@@ -1,7 +1,7 @@
 {
   "note": "Declared tables (not views) that an edge function reads and that nothing anywhere inserts into. Each is a question - who fills this in? - not a defect: the answer is usually a UI that was never built, an importer never wired, or an external feed that should be named in a comment. See scripts/check-unwritten-tables.mjs. Do not grow it.",
   "generated": "2026-08-29",
-  "ofTablesRead": 519,
+  "ofTablesRead": 521,
   "tables": [
     "ai_employee_workflows",
     "alert_configurations",
