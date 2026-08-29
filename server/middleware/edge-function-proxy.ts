@@ -744,6 +744,12 @@ export function registerEdgeFunctionProxy(app: any) {
     // consent) and had ZERO callers, so nothing had ever exercised it from
     // either host. Dir name == prefix segment, so a plain entry is enough.
     '/api/meeting-transcription': 'meeting-transcription',
+
+    // PROD-014. /api/erp-integration had no edge function, so ERPIntegration.tsx
+    // 404'd in prod. The Express handler it would have been ported from was a
+    // 670-line fixture and has been deleted; the new fn reads
+    // system_integrations + integration_metrics. Dir name == prefix segment.
+    '/api/erp-integration': 'erp-integration',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns

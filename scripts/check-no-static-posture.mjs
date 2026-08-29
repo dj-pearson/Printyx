@@ -31,7 +31,7 @@ const FILES = [
   'client/src/pages/MeetingTranscription.tsx',
   'client/src/pages/ServicePredictions.tsx',
   'client/src/pages/ContractProfitability.tsx',
-  'client/src/pages/SecurityComplianceManagement.tsx',
+  'client/src/pages/ERPIntegration.tsx',
 ];
 
 /**
