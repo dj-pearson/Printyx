@@ -293,6 +293,20 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerAuthCoreRoutes(app);
   app.use('/api/trial', trialRoutes);
 
+  // ─── Inbound provider webhooks (must be BEFORE the proxy) ──────────
+  // INTEG-WEBHOOK-001. /api/webhooks is proxied, and the webhooks edge function
+  // authenticates with auth.getUser() before it routes. A provider sends no
+  // JWT, so every inbound delivery - Stripe, Google Calendar, QuickBooks -
+  // got 401, and the proxy falls through only on a NETWORK error, never a 401.
+  // The receiver below therefore never ran, on either host.
+  //
+  // Only POST /api/webhooks/:provider is mounted early. The edge function has
+  // POST / , POST /:id/test and POST /:id/regenerate-secret but no POST /:id,
+  // so that shape belongs to the receiver alone and nothing it owns is taken
+  // from it. The health probe and the outbound list stay proxied.
+  const { inboundWebhookReceiver } = await import('./integrations/webhook-routes');
+  app.use(inboundWebhookReceiver);
+
   // ─── Edge Function Proxy (must be before CRM routes) ───────────────
   registerEdgeFunctionProxy(app);
 

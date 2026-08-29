@@ -10,6 +10,30 @@ const log = createModuleLogger('webhook-routes');
 
 const router = express.Router();
 
+/**
+ * The inbound receiver, on its own router so it can be mounted BEFORE the edge
+ * function proxy (INTEG-WEBHOOK-001, last AC: "the proxy entry is narrowed").
+ *
+ * /api/webhooks is in crmProxies, the proxy registers at routes-registry:297
+ * and this file's router mounted at :401, so the proxy won and every inbound
+ * delivery went to supabase/functions/webhooks/ - which calls auth.getUser()
+ * before it routes anything. A provider sends no JWT, so Stripe, Google
+ * Calendar and the rest got 401. The proxy falls through only on a NETWORK
+ * error, never on a 401, so nothing reached the code below.
+ *
+ * Removing the crmProxies entry would be the wrong fix: the edge function
+ * legitimately owns the OUTBOUND webhook management surface (list, create,
+ * test, regenerate-secret, logs). The two surfaces do not actually collide -
+ * the edge function has POST / (create), POST /:id/test and
+ * POST /:id/regenerate-secret, and NO POST /:id branch - so
+ * `POST /api/webhooks/<provider>` is unambiguously this receiver's shape and is
+ * the only thing mounted early.
+ *
+ * The health probe and the outbound list further down stay shadowed on purpose;
+ * the edge function serves both.
+ */
+export const inboundWebhookReceiver = express.Router();
+
 // Raw body parser middleware for webhook signature verification
 const rawBodyParser = express.raw({ type: 'application/json' });
 
@@ -25,7 +49,7 @@ const rawBodyParser = express.raw({ type: 'application/json' });
 /**
  * Generic webhook endpoint that routes to provider-specific handlers
  */
-router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
+inboundWebhookReceiver.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
   try {
     const { provider } = req.params;
     const rawBody = req.body?.toString() ?? '';
@@ -107,10 +131,13 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
 //   failures.
 //
 // What remains on this prefix is the generic receiver, the health probe and the
-// outbound list - and all three are still shadowed by the crmProxies entry for
-// /api/webhooks. See INTEG-WEBHOOK-001: the receiver cannot simply be
-// un-shadowed, because the edge function that owns the prefix authenticates
-// before it routes.
+// outbound list. The receiver is NO LONGER SHADOWED: it lives on
+// inboundWebhookReceiver above, which routes-registry mounts before the proxy.
+// The earlier note here said it "cannot simply be un-shadowed, because the edge
+// function that owns the prefix authenticates before it routes" - that is the
+// reason the whole prefix could not be un-proxied, not a reason the one POST
+// could not be mounted ahead of it. The health probe and the outbound list are
+// still shadowed, correctly: the edge function serves both.
 
 /**
  * Webhook health check endpoint
@@ -171,5 +198,7 @@ router.get('/api/webhooks', (req, res) => {
     ],
   });
 });
+
+router.use(inboundWebhookReceiver);
 
 export default router;
