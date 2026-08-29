@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { QueryState, QueryStates } from '@/components/ui/query-state';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
@@ -23,17 +22,12 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle,
-  Clock,
   TrendingUp,
   RefreshCw,
   Play,
-  Zap,
-  UserPlus,
   Lock,
-  Download,
   Upload,
   FileText,
-  Search,
   Settings,
   Bell,
   ArrowRight,
@@ -79,7 +73,6 @@ interface AdminOverview {
 
 export default function AdminCommandCenter() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [activeCategory, setActiveCategory] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
@@ -220,33 +213,16 @@ export default function AdminCommandCenter() {
     setIsDialogOpen(true);
   };
 
-  const executeAction = useMutation({
-    mutationFn: async (actionId: string) => {
-      const response = await fetch(`/api/admin/execute-action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ actionId }),
-      });
-      if (!response.ok) throw new Error('Failed to execute action');
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Action Executed',
-        description: 'The action has been completed successfully.',
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/root-admin/overview'] });
-      setIsDialogOpen(false);
-    },
-    onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to execute action. Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
+  // QUALITY-002: an executeAction mutation used to POST /api/admin/execute-action
+  // here and, on any 2xx, toast "The action has been completed successfully."
+  // That endpoint executed NOTHING - every branch of its switch returned a
+  // canned success ("Tenant provisioning workflow initiated", "Application
+  // cache cleared successfully", "Database backup initiated", a security scan
+  // with invented findings) - and the action ids it switched on did not even
+  // match the ids sent from here, so every click fell through to its default
+  // "executed successfully". Its Express router has been deleted; the dialog
+  // below now says what it already admitted in its own note instead of
+  // reporting a success that never happened.
 
   const filteredActions =
     activeCategory === 'all'
@@ -726,19 +702,16 @@ export default function AdminCommandCenter() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-900">
-                  <strong>Note:</strong> This workflow is under development. In production, this
-                  would guide you through a multi-step process with validation and confirmation at
-                  each stage.
+              <div className="rounded-lg border border-dashed p-4">
+                <p className="text-sm text-muted-foreground">
+                  This workflow is not implemented. Nothing on the platform performs it yet, so
+                  there is no action to confirm here. Use the tenant, user and backup screens
+                  directly for the operations they really support.
                 </p>
               </div>
               <div className="flex items-center justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => selectedWorkflow && executeAction.mutate(selectedWorkflow)}>
-                  Proceed
+                  Close
                 </Button>
               </div>
             </div>

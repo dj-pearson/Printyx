@@ -483,7 +483,18 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     // supabase/functions/documents/. Its generateDocumentHTML moved to
     // server/lib/document-html.ts, which the parity test now imports.
     ['/api/root-admin', './routes-root-admin'],
-    ['/api/admin', './routes-admin-workflows'],
+    // ['/api/admin', './routes-admin-workflows'] — DELETED (QUALITY-002).
+    // Seven routes, six with no caller anywhere in the client, all stubs whose
+    // own comments read "In a real implementation, this would...".
+    // /workflows/:id/status reported status 'completed', progress 100 for ANY
+    // id. Every query in it filtered `activity_reports` on type/severity/
+    // resolved, none of which are columns on that table - it is a sales
+    // activity rollup (total_calls, total_emails) - so those handlers threw,
+    // and its two audit inserts dropped every key and violated NOT NULL on
+    // tenant_id/report_date/period. The one route with a caller,
+    // /execute-action, reported success for work it never did; that caller is
+    // now gone too. The real /root-admin/pending-tasks lives in
+    // supabase/functions/root-admin/.
     ['/api/dashboard', './routes-dashboard-customization'],
   ];
   for (const [mountPath, modulePath] of asyncMounts) {
