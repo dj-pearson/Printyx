@@ -17,10 +17,18 @@ import {
   deviceAlerts,
   deviceSupplyOrders,
 } from '@shared/schema';
-import { eq, and, desc, sql, gte, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
 import { enhanceUserContext } from './middleware/rbac-route-helper';
 import { createModuleLogger } from './lib/logger';
+// One definition of these shapes, shared with supabase/functions/device-monitoring/.
+// The pages read flat keys neither table stores, so the shaping IS the contract;
+// two copies of it would drift the way this repo's other duplicated projections have.
+import {
+  shapeMetricForUi,
+  decorateAlert,
+  forecastSupplies,
+} from '../supabase/functions/_shared/device-monitoring-shape';
 
 const log = createModuleLogger('routes-device-monitoring');
 const router = express.Router();
@@ -29,83 +37,6 @@ router.use(enhanceUserContext);
 // =====================================================
 // HELPERS
 // =====================================================
-
-const TONER_WARN = 20;
-const TONER_CRIT = 10;
-
-/**
- * Flattens the tonerLevels / paperLevels jsonb objects to the flat
- * column shape the existing UI expects (`tonerBlack`, `tonerCyan`, …).
- * Keeps the original `tonerLevels` object too so newer surfaces can
- * iterate over it dynamically.
- */
-function shapeMetricForUi(m: any, registration: any) {
-  const t = (m.tonerLevels || {}) as Record<string, number>;
-  const p = (m.paperLevels || {}) as Record<string, number>;
-  return {
-    id: m.id,
-    serialNumber: registration?.serialNumber ?? null,
-    deviceId: m.deviceId,
-    ipAddress: registration?.ipAddress ?? null,
-    deviceName: registration?.deviceName ?? null,
-    manufacturer: registration?.manufacturer ?? null,
-    model: registration?.model ?? null,
-    deviceStatus: m.deviceStatus ?? 'unknown',
-    tonerLevels: t,
-    paperLevels: p,
-    tonerBlack: t.black,
-    tonerCyan: t.cyan,
-    tonerMagenta: t.magenta,
-    tonerYellow: t.yellow,
-    paperTray1: p.tray1,
-    paperTray2: p.tray2,
-    paperTray3: p.tray3,
-    paperTray4: p.tray4,
-    totalImpressions: m.totalImpressions,
-    bwImpressions: m.bwImpressions,
-    colorImpressions: m.colorImpressions,
-    largeImpressions: m.largeImpressions,
-    errorCodes: m.errorCodes,
-    collectionTimestamp: m.collectionTimestamp,
-  };
-}
-
-/**
- * Decorate an alert row with device-level fields for the dashboard.
- * The materialised table doesn't store deviceName/serialNumber to keep
- * write-amplification down — we join here at read time.
- */
-function decorateAlert(alert: any, reg: any) {
-  // A snoozed alert whose snooze has elapsed should appear as 'active'
-  // even before the next /submit cycle re-runs the materializer.
-  let status = alert.status;
-  if (status === 'snoozed' && alert.snoozedUntil && new Date(alert.snoozedUntil) <= new Date()) {
-    status = 'active';
-  }
-  return {
-    id: alert.id,
-    tenantId: alert.tenantId,
-    deviceId: alert.deviceId,
-    serialNumber: reg?.serialNumber ?? null,
-    deviceName: reg?.deviceName ?? null,
-    supplyType: alert.supplyType,
-    alertType: alert.alertType,
-    severity: alert.severity,
-    currentLevel: alert.currentValue,
-    currentValue: alert.currentValue,
-    threshold: alert.threshold,
-    status,
-    message: alert.message,
-    acknowledgedAt: alert.acknowledgedAt,
-    acknowledgedBy: alert.acknowledgedBy,
-    snoozedUntil: alert.snoozedUntil,
-    resolvedAt: alert.resolvedAt,
-    triggeredOrderId: alert.triggeredOrderId,
-    firstSeenAt: alert.firstSeenAt,
-    lastSeenAt: alert.lastSeenAt,
-    createdAt: alert.createdAt,
-  };
-}
 
 /** Fetch the latest metric per device for a tenant. Single round-trip via DISTINCT ON. */
 async function loadLatestPerDevice(tenantId: string) {
@@ -408,22 +339,6 @@ router.post(
 // daysRemaining, an ISO date for "expected empty," and a confidence
 // signal based on sample count + consistency.
 
-interface SupplyForecast {
-  deviceId: string;
-  serialNumber: string | null;
-  deviceName: string | null;
-  manufacturer: string | null;
-  model: string | null;
-  supply: string; // 'black' | 'cyan' | 'magenta' | 'yellow' | …
-  currentLevel: number;
-  consumptionPerDay: number; // percentage points / day (positive)
-  daysRemaining: number; // null when not forecastable
-  expectedEmptyAt: string | null; // ISO timestamp
-  sampleCount: number;
-  windowDays: number;
-  confidence: 'high' | 'medium' | 'low';
-}
-
 /**
  * GET /api/device-monitoring/supply-forecast
  *  ?windowDays=14   — how far back to look (default 14, max 90)
@@ -455,100 +370,23 @@ router.get('/supply-forecast', resolveTenant, requireTenant, async (req: TenantR
       `)) as any
       ).rows ?? [];
 
-    // Group samples by device, then by supply.
-    type Sample = { ts: number; level: number };
-    const perDevice = new Map<
-      string,
-      {
-        meta: any;
-        bySupply: Map<string, Sample[]>;
-      }
-    >();
+    // The arithmetic lives in _shared/device-monitoring-shape.ts so the edge
+    // function runs the identical rules rather than a second implementation of
+    // them, and so swap detection and the confidence bands can be tested
+    // without a database.
+    const forecasts = forecastSupplies(
+      rows.map((r: any) => ({
+        deviceId: r.device_id,
+        collectionTimestamp: r.collection_timestamp,
+        tonerLevels: r.toner_levels,
+        serialNumber: r.serial_number,
+        deviceName: r.device_name,
+        manufacturer: r.manufacturer,
+        model: r.model,
+      })),
+      { windowDays, lowOnly },
+    );
 
-    for (const r of rows) {
-      const deviceId = r.device_id as string;
-      if (!perDevice.has(deviceId)) {
-        perDevice.set(deviceId, {
-          meta: {
-            deviceId,
-            serialNumber: r.serial_number,
-            deviceName: r.device_name,
-            manufacturer: r.manufacturer,
-            model: r.model,
-          },
-          bySupply: new Map(),
-        });
-      }
-      const t = (r.toner_levels || {}) as Record<string, unknown>;
-      for (const [supply, raw] of Object.entries(t)) {
-        const level = Number(raw);
-        if (!Number.isFinite(level) || level < 0 || level > 100) continue;
-        const ts = new Date(r.collection_timestamp).getTime();
-        const arr = perDevice.get(deviceId)!.bySupply.get(supply) || [];
-        arr.push({ ts, level });
-        perDevice.get(deviceId)!.bySupply.set(supply, arr);
-      }
-    }
-
-    const forecasts: SupplyForecast[] = [];
-    for (const { meta, bySupply } of perDevice.values()) {
-      for (const [supply, samples] of bySupply.entries()) {
-        if (samples.length < 2) continue;
-
-        // Drop upward jumps — those are cartridge swaps, not consumption.
-        // Specifically, when level[i] > level[i-1] + 5 we treat it as a
-        // reset and only use the segment from the swap onward.
-        let segment: Sample[] = [];
-        for (let i = 0; i < samples.length; i++) {
-          if (i > 0 && samples[i].level > samples[i - 1].level + 5) {
-            segment = []; // reset
-          }
-          segment.push(samples[i]);
-        }
-        if (segment.length < 2) continue;
-
-        const first = segment[0];
-        const last = segment[segment.length - 1];
-        const dropPct = first.level - last.level;
-        const dtDays = (last.ts - first.ts) / (1000 * 60 * 60 * 24);
-        if (dtDays < 0.5) continue; // need at least half a day of data
-        const consumptionPerDay = dropPct / dtDays;
-
-        // Only forecast when there is real consumption (>0.05 %pt/day).
-        if (consumptionPerDay <= 0.05) continue;
-
-        const daysRemaining = last.level / consumptionPerDay;
-        const expectedEmptyAt = new Date(
-          last.ts + daysRemaining * 24 * 60 * 60 * 1000,
-        ).toISOString();
-
-        // Confidence = how many samples we used, weighted by window coverage.
-        const coverageRatio = dtDays / windowDays;
-        const confidence: SupplyForecast['confidence'] =
-          segment.length >= 8 && coverageRatio > 0.6
-            ? 'high'
-            : segment.length >= 4 && coverageRatio > 0.3
-              ? 'medium'
-              : 'low';
-
-        if (lowOnly && daysRemaining >= 14) continue;
-
-        forecasts.push({
-          ...meta,
-          supply,
-          currentLevel: Math.round(last.level),
-          consumptionPerDay: Math.round(consumptionPerDay * 100) / 100,
-          daysRemaining: Math.round(daysRemaining * 10) / 10,
-          expectedEmptyAt,
-          sampleCount: segment.length,
-          windowDays,
-          confidence,
-        });
-      }
-    }
-
-    // Most urgent first.
-    forecasts.sort((a, b) => a.daysRemaining - b.daysRemaining);
     res.json({ windowDays, forecasts });
   } catch (error) {
     log.error('Error computing supply forecast:', error);
