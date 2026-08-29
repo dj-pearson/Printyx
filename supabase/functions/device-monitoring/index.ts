@@ -1,11 +1,12 @@
 /**
  * Device monitoring read/action API (AUDIT-029).
  *
- * Three routed pages call this prefix - DeviceMonitoring (/device-monitoring),
- * SupplyRunway (/supply-runway) and SupplyOrders (/supply-orders) - and until
- * this function existed there was no edge function of that name, no proxy entry
- * and no server.ts alias, so every one of their nine calls 404'd in production.
- * server/routes-device-monitoring.ts is the same surface for dev.
+ * Four routed pages call this prefix - DeviceMonitoring (/device-monitoring),
+ * SupplyRunway (/supply-runway), SupplyOrders (/supply-orders) and
+ * FleetMonitoringDashboard (/fleet-monitoring) - and until this function existed
+ * there was no edge function of that name, no proxy entry and no server.ts
+ * alias, so every one of their nine calls 404'd in production. Dev reaches it
+ * through the crmProxies entry, so there is no Express copy to diverge from.
  *
  * THE PROJECTION IS SHARED, NOT REIMPLEMENTED. The pages read flat keys that no
  * table stores under those names - tonerBlack, serialNumber, currentLevel - so
@@ -40,6 +41,8 @@ import {
   decorateAlert,
   latestPerDevice,
   forecastSupplies,
+  buildFleetDashboard,
+  enrichDeviceWithMetrics,
   OPEN_ALERT_STATUSES,
 } from '../_shared/device-monitoring-shape.ts';
 
@@ -348,6 +351,183 @@ export default async function handler(req: Request) {
         200,
         req,
       );
+    }
+
+    // ─── GET /fleet-dashboard ───────────────────────────────────────────────
+    //
+    // FleetMonitoringDashboard used to call /api/fleet/dashboard. That prefix
+    // belongs to supabase/functions/fleet/, which is about VEHICLES - so in
+    // production the page got a 200 of vehicle counts under keys it does not
+    // read, and /api/fleet/devices 404'd because that function has no such
+    // branch. Two domains sharing one prefix word is worse than a missing route:
+    // nothing errors, the page just renders zeroes. It lives here because this
+    // is the function that already owns device_registrations, device_metrics
+    // and device_alerts.
+    if (method === 'GET' && resource === 'fleet-dashboard') {
+      const [regRes, metricRes, alertRes] = await Promise.all([
+        admin
+          .from('device_registrations')
+          .select('id, device_name, serial_number, status')
+          .eq('tenant_id', tenantId)
+          .limit(5000),
+        admin
+          .from('device_metrics')
+          .select('device_id, bw_impressions, color_impressions, collection_timestamp')
+          .eq('tenant_id', tenantId)
+          .order('device_id', { ascending: true })
+          .order('collection_timestamp', { ascending: false })
+          .limit(5000),
+        admin
+          .from('device_alerts')
+          .select('device_id, supply_type, severity, current_value, message, status')
+          .eq('tenant_id', tenantId)
+          .in('status', [...OPEN_ALERT_STATUSES])
+          .limit(1000),
+      ]);
+
+      if (regRes.error) return dbError(req, 'Failed to fetch fleet devices', regRes.error);
+      if (metricRes.error) return dbError(req, 'Failed to fetch fleet metrics', metricRes.error);
+      if (alertRes.error) return dbError(req, 'Failed to fetch fleet alerts', alertRes.error);
+
+      return createCorsResponse(
+        buildFleetDashboard(
+          regRes.data ?? [],
+          latestPerDevice(metricRes.data ?? []),
+          alertRes.data ?? [],
+        ),
+        200,
+        req,
+      );
+    }
+
+    // ─── GET /fleet-devices, GET /fleet-devices/:id/metrics ─────────────────
+    if (method === 'GET' && resource === 'fleet-devices') {
+      const deviceRowId = parts[1];
+
+      if (deviceRowId && parts[2] === 'metrics') {
+        const limit = Math.min(Number(url.searchParams.get('limit')) || 100, 1000);
+        const { data: registration } = await admin
+          .from('device_registrations')
+          .select(`id, ${REGISTRATION_FIELDS}, status, location, last_seen`)
+          .eq('tenant_id', tenantId)
+          .eq('id', deviceRowId)
+          .maybeSingle();
+        if (!registration) {
+          return createCorsResponse({ message: 'Device not found' }, 404, req);
+        }
+        const { data, error } = await admin
+          .from('device_metrics')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('device_id', deviceRowId)
+          .order('collection_timestamp', { ascending: false })
+          .limit(limit);
+        if (error) return dbError(req, 'Failed to fetch device metrics', error);
+        const metrics = (data ?? []).map((row: any) => shapeMetricForUi(row, registration));
+        return createCorsResponse(
+          { device: registration, metrics, totalReadings: metrics.length },
+          200,
+          req,
+        );
+      }
+
+      if (deviceRowId) return createCorsResponse({ message: 'Endpoint not found' }, 404, req);
+
+      // No search or status parameter. The page filters the list it already has,
+      // and its query key is joined into the URL by the default queryFn - so a
+      // search term passed as a key element would arrive as a path SEGMENT and
+      // hit the branch above as a device id. Accepting a parameter nothing sends
+      // is how a filter comes to look supported.
+      const [regRes, metricRes] = await Promise.all([
+        admin
+          .from('device_registrations')
+          .select(`id, ${REGISTRATION_FIELDS}, status, location, last_seen`)
+          .eq('tenant_id', tenantId)
+          .order('last_seen', { ascending: false, nullsFirst: false })
+          .limit(5000),
+        admin
+          .from('device_metrics')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('device_id', { ascending: true })
+          .order('collection_timestamp', { ascending: false })
+          .limit(5000),
+      ]);
+      if (regRes.error) return dbError(req, 'Failed to fetch fleet devices', regRes.error);
+      if (metricRes.error) return dbError(req, 'Failed to fetch fleet metrics', metricRes.error);
+
+      const byDevice = new Map<string, any>();
+      for (const row of latestPerDevice(metricRes.data ?? []) as any[]) {
+        byDevice.set(String(row.device_id), row);
+      }
+      const devices = (regRes.data ?? []).map((reg: any) =>
+        enrichDeviceWithMetrics(reg, byDevice.get(String(reg.id)) ?? null),
+      );
+
+      return createCorsResponse(devices, 200, req);
+    }
+
+    // ─── POST /fleet-devices/:id/order-toner ────────────────────────────────
+    //
+    // The page used to post this to /api/devices/:id/order-toner, whose handler
+    // inserted device_id / order_type / items / requested_by into supply_orders.
+    // supply_orders has none of those columns (it is machine_id / color /
+    // part_number / quantity / created_by_user_id, with machine_id NOT NULL), so
+    // every order was a PGRST204 the handler reported as "Failed to create toner
+    // order". Ordering toner from this screen has never worked. Rows go to
+    // device_supply_orders, the table the rest of this surface approves and
+    // cancels, one per colour so each can be fulfilled or cancelled on its own.
+    if (
+      method === 'POST' &&
+      resource === 'fleet-devices' &&
+      parts[1] &&
+      parts[2] === 'order-toner'
+    ) {
+      const deviceRowId = parts[1];
+      const body = await req.json().catch(() => ({}));
+      const colors: string[] = Array.isArray(body?.colors)
+        ? body.colors.filter((c: unknown) => typeof c === 'string' && c.trim() !== '')
+        : [];
+      if (colors.length === 0) {
+        return createCorsResponse({ message: 'At least one toner colour is required' }, 400, req);
+      }
+
+      const { data: registration } = await admin
+        .from('device_registrations')
+        .select('id, customer_id')
+        .eq('tenant_id', tenantId)
+        .eq('id', deviceRowId)
+        .maybeSingle();
+      if (!registration) {
+        return createCorsResponse({ message: 'Device not found' }, 404, req);
+      }
+
+      const notes = [
+        typeof body?.notes === 'string' ? body.notes : '',
+        body?.urgent ? 'Marked urgent by requester' : '',
+      ]
+        .filter(Boolean)
+        .join(' - ');
+
+      const { data, error } = await admin
+        .from('device_supply_orders')
+        .insert(
+          colors.map((color) => ({
+            tenant_id: tenantId,
+            device_id: deviceRowId,
+            customer_id: registration.customer_id ?? null,
+            supply_type: color,
+            quantity: 1,
+            status: 'pending',
+            triggered_by: 'manual',
+            triggered_by_user_id: user.id,
+            notes: notes || null,
+          })),
+        )
+        .select();
+
+      if (error) return dbError(req, 'Failed to create toner order', error);
+      return createCorsResponse({ orders: data ?? [] }, 201, req);
     }
 
     // ─── POST /alerts/:id/{acknowledge,snooze,resolve} ──────────────────────

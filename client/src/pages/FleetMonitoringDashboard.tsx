@@ -50,21 +50,25 @@ import {
   Cell,
 } from 'recharts';
 
+/**
+ * What /api/device-monitoring/fleet-dashboard returns.
+ *
+ * Narrower than the shape this page used to type. The handler it replaced also
+ * sent devicesWithAlerts, averageUptime, statusDistribution and
+ * topDevicesNeedingAttention, none of which this page has ever rendered, and
+ * averageUptime was the online/total share under a name that promises uptime.
+ * Fields nobody reads are how a wrong number survives.
+ */
 interface FleetDashboard {
   summary: {
     totalDevices: number;
     onlineDevices: number;
     offlineDevices: number;
-    devicesWithAlerts: number;
     criticalAlerts: number;
-    averageUptime: number;
-    fleetUtilization: number;
-  };
-  statusDistribution: {
-    online: number;
-    offline: number;
-    warning: number;
-    critical: number;
+    /** Share of registered devices that reported inside reportingWindowHours. */
+    reportingRate: number;
+    reportingDevices: number;
+    reportingWindowHours: number;
   };
   impressions: {
     totalBW: number;
@@ -72,19 +76,12 @@ interface FleetDashboard {
   };
   tonerAlerts: Array<{
     deviceId: string;
-    deviceName: string;
-    serialNumber: string;
+    deviceName: string | null;
+    serialNumber: string | null;
     color: string;
-    level: number;
-    severity: 'critical' | 'warning';
-    message: string;
-  }>;
-  topDevicesNeedingAttention: Array<{
-    deviceId: string;
-    deviceName: string;
-    serialNumber: string;
-    issues: string[];
-    priority: string;
+    level: number | null;
+    severity: string;
+    message: string | null;
   }>;
 }
 
@@ -177,8 +174,8 @@ export default function FleetMonitoringDashboard() {
     if (!autoRefresh) return;
 
     const interval = setInterval(() => {
-      queryClient.invalidateQueries({ queryKey: ['/api/fleet/dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/fleet/devices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/device-monitoring/fleet-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/device-monitoring/fleet-devices'] });
     }, refreshInterval);
 
     return () => clearInterval(interval);
@@ -190,7 +187,7 @@ export default function FleetMonitoringDashboard() {
     isLoading: dashboardLoading,
     refetch: refetchDashboard,
   } = useQuery<FleetDashboard>({
-    queryKey: ['/api/fleet/dashboard'],
+    queryKey: ['/api/device-monitoring/fleet-dashboard'],
   });
 
   // Fetch fleet devices
@@ -199,7 +196,10 @@ export default function FleetMonitoringDashboard() {
     isLoading: devicesLoading,
     refetch: refetchDevices,
   } = useQuery<DeviceWithMetrics[]>({
-    queryKey: ['/api/fleet/devices', searchQuery],
+    // searchQuery is NOT in the key: the default queryFn joins key elements into
+    // the URL with '/', so a term here would arrive as a path segment and be read
+    // as a device id. The list is filtered below, on the client.
+    queryKey: ['/api/device-monitoring/fleet-devices'],
     select: (data: any[]) =>
       data.map((device) => ({
         ...device,
@@ -215,20 +215,20 @@ export default function FleetMonitoringDashboard() {
 
   // Fetch device metrics history
   const { data: deviceMetrics } = useQuery({
-    queryKey: ['/api/fleet/devices', selectedDevice, 'metrics'],
+    queryKey: ['/api/device-monitoring/fleet-devices', selectedDevice, 'metrics'],
     enabled: !!selectedDevice,
   });
 
   // Order toner mutation
   const orderTonerMutation = useMutation({
     mutationFn: (data: { deviceId: string; colors: string[]; urgent: boolean; notes?: string }) =>
-      apiRequest(`/api/devices/${data.deviceId}/order-toner`, {
+      apiRequest(`/api/device-monitoring/fleet-devices/${data.deviceId}/order-toner`, {
         method: 'POST',
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/fleet/dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/fleet/devices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/device-monitoring/fleet-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/device-monitoring/fleet-devices'] });
       toast({
         title: 'Toner Order Placed',
         description: 'Toner order has been triggered successfully.',
@@ -363,14 +363,19 @@ export default function FleetMonitoringDashboard() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Fleet Utilization</CardTitle>
+              <CardTitle className="text-sm font-medium">Devices Reporting</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {fleetDashboard?.summary.fleetUtilization?.toFixed(1) || 0}%
+                {fleetDashboard?.summary.reportingRate?.toFixed(1) ?? 0}%
               </div>
-              <Progress value={fleetDashboard?.summary.fleetUtilization || 0} className="mt-2" />
+              <Progress value={fleetDashboard?.summary.reportingRate || 0} className="mt-2" />
+              <p className="text-xs text-muted-foreground mt-2">
+                {fleetDashboard?.summary.reportingDevices ?? 0} of{' '}
+                {fleetDashboard?.summary.totalDevices ?? 0} sent a reading in the last{' '}
+                {fleetDashboard?.summary.reportingWindowHours ?? 24}h
+              </p>
             </CardContent>
           </Card>
         </div>

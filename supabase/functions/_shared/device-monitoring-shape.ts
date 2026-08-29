@@ -2,13 +2,13 @@
  * Response shapes for the device-monitoring surface, in one place.
  *
  * WHY THIS IS SHARED. /api/device-monitoring is served by
- * server/routes-device-monitoring.ts and by supabase/functions/device-monitoring/.
- * Three routed pages read it - DeviceMonitoring, SupplyRunway and SupplyOrders -
- * and they read flat keys (tonerBlack, serialNumber, currentLevel) that neither
- * table stores under those names. So the shaping IS the contract, and two
- * implementations of it would drift the way this repo's other duplicated
- * projections have. Both hosts import these functions; there is no second copy
- * to keep in sync.
+ * supabase/functions/device-monitoring/, which dev reaches through the crmProxies
+ * entry of the same name. Four routed pages read it - DeviceMonitoring,
+ * SupplyRunway, SupplyOrders and FleetMonitoringDashboard - and they read flat
+ * keys (tonerBlack, serialNumber, currentLevel) that no table stores under those
+ * names. So the shaping IS the contract, and a second implementation of it would
+ * drift the way this repo's other duplicated projections have. The Express
+ * router that used to be the other host is gone; keep it that way.
  *
  * ROWS ARRIVE IN EITHER CASE. Drizzle hands back camelCase, PostgREST and raw
  * SQL hand back snake_case, and the same shaper is called with both. `pick`
@@ -307,4 +307,169 @@ export function forecastSupplies(
   // Most urgent first.
   forecasts.sort((a, b) => a.daysRemaining - b.daysRemaining);
   return forecasts;
+}
+
+// ─── Fleet dashboard ────────────────────────────────────────────────────────
+
+export interface FleetTonerAlert {
+  deviceId: string;
+  deviceName: string | null;
+  serialNumber: string | null;
+  color: string;
+  level: number | null;
+  severity: string;
+  message: string | null;
+}
+
+export interface FleetDashboard {
+  summary: {
+    totalDevices: number;
+    onlineDevices: number;
+    offlineDevices: number;
+    criticalAlerts: number;
+    /** Share of registered devices that reported inside `reportingWindowHours`. */
+    reportingRate: number;
+    reportingDevices: number;
+    reportingWindowHours: number;
+  };
+  impressions: { totalBW: number; totalColor: number };
+  tonerAlerts: FleetTonerAlert[];
+}
+
+/**
+ * The fleet roll-up FleetMonitoringDashboard renders.
+ *
+ * Pure, so the arithmetic is testable without a database and there is one
+ * definition of each number.
+ *
+ * THE DENOMINATOR IS THE REGISTRATION LIST, not the metrics list. A device that
+ * has never reported is still part of the fleet, and counting only devices with
+ * a metric row would make a monitoring outage look like a smaller fleet rather
+ * than a problem.
+ *
+ * online + offline can be less than total, deliberately. device_registrations
+ * .status is an enum that also carries 'unknown' and 'error'; folding those into
+ * offline would assert something the agent never said.
+ *
+ * WHAT reportingRate IS. The share of registered devices whose latest metric is
+ * inside the window - freshness of monitoring coverage, nothing more. The
+ * handler it replaced called the same quotient `fleetUtilization` and the page
+ * printed it under a "Fleet Utilization" card, which is a measurement of print
+ * volume that nothing here takes. The window is returned with the number so the
+ * page can say what it counted.
+ *
+ * ALERTS COME FROM device_alerts, not from re-thresholding toner levels. The
+ * materializer already decides what an alert is on every ingest; deciding it a
+ * second time here is how two screens come to disagree about the same printer.
+ */
+export function buildFleetDashboard(
+  registrations: Row[],
+  latestMetrics: Row[],
+  openAlerts: Row[],
+  opts: { now?: number; reportingWindowHours?: number } = {},
+): FleetDashboard {
+  const now = opts.now ?? Date.now();
+  const reportingWindowHours = opts.reportingWindowHours ?? 24;
+  const windowStart = now - reportingWindowHours * 60 * 60 * 1000;
+
+  const byId = new Map<string, Record<string, any>>();
+  for (const reg of registrations) {
+    const id = String(pick(reg, 'id') ?? '');
+    if (id) byId.set(id, reg as Record<string, any>);
+  }
+
+  let onlineDevices = 0;
+  let offlineDevices = 0;
+  for (const reg of byId.values()) {
+    const status = pick(reg, 'status');
+    if (status === 'online') onlineDevices += 1;
+    else if (status === 'offline') offlineDevices += 1;
+  }
+
+  let totalBW = 0;
+  let totalColor = 0;
+  let reportingDevices = 0;
+  for (const metric of latestMetrics) {
+    const deviceId = String(pick(metric, 'deviceId') ?? '');
+    // A metric whose device is no longer registered is history, not fleet.
+    if (!byId.has(deviceId)) continue;
+    const bw = Number(pick(metric, 'bwImpressions'));
+    const color = Number(pick(metric, 'colorImpressions'));
+    if (Number.isFinite(bw)) totalBW += bw;
+    if (Number.isFinite(color)) totalColor += color;
+    const ts = new Date(pick(metric, 'collectionTimestamp')).getTime();
+    if (Number.isFinite(ts) && ts >= windowStart) reportingDevices += 1;
+  }
+
+  const tonerAlerts: FleetTonerAlert[] = [];
+  let criticalAlerts = 0;
+  for (const alert of openAlerts) {
+    const deviceId = String(pick(alert, 'deviceId') ?? '');
+    const reg = byId.get(deviceId) ?? null;
+    const severity = String(pick(alert, 'severity') ?? 'info');
+    if (severity === 'critical') criticalAlerts += 1;
+    tonerAlerts.push({
+      deviceId,
+      deviceName: pick(reg, 'deviceName') ?? null,
+      serialNumber: pick(reg, 'serialNumber') ?? null,
+      color: String(pick(alert, 'supplyType') ?? ''),
+      level: pick(alert, 'currentValue') ?? null,
+      severity,
+      message: pick(alert, 'message') ?? null,
+    });
+  }
+  // Critical first, then by how empty the supply is.
+  tonerAlerts.sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === 'critical' ? -1 : 1;
+    return (a.level ?? 101) - (b.level ?? 101);
+  });
+
+  const totalDevices = byId.size;
+  return {
+    summary: {
+      totalDevices,
+      onlineDevices,
+      offlineDevices,
+      criticalAlerts,
+      reportingRate:
+        totalDevices > 0 ? Math.round((reportingDevices / totalDevices) * 1000) / 10 : 0,
+      reportingDevices,
+      reportingWindowHours,
+    },
+    impressions: { totalBW, totalColor },
+    tonerAlerts,
+  };
+}
+
+/**
+ * A registration plus its freshest reading, in the shape the device list reads.
+ *
+ * currentMetrics is null rather than an object of undefineds when a device has
+ * never reported: the page branches on it to show "No data", and an object with
+ * empty fields would render zeroes that look like real readings of zero.
+ */
+export function enrichDeviceWithMetrics(registration: Row, metric: Row) {
+  const toner = (pick(metric, 'tonerLevels') || {}) as Record<string, number>;
+  const paper = (pick(metric, 'paperLevels') || {}) as Record<string, number>;
+  return {
+    id: pick(registration, 'id'),
+    deviceName: pick(registration, 'deviceName') ?? null,
+    serialNumber: pick(registration, 'serialNumber') ?? null,
+    model: pick(registration, 'model') ?? null,
+    ipAddress: pick(registration, 'ipAddress') ?? null,
+    location: pick(registration, 'location') ?? null,
+    status: pick(registration, 'status') ?? 'unknown',
+    lastSeen: pick(registration, 'lastSeen') ?? null,
+    currentMetrics: metric
+      ? {
+          tonerLevels: toner,
+          paperLevels: paper,
+          totalImpressions: pick(metric, 'totalImpressions') ?? null,
+          bwImpressions: pick(metric, 'bwImpressions') ?? null,
+          colorImpressions: pick(metric, 'colorImpressions') ?? null,
+          deviceStatus: pick(metric, 'deviceStatus') ?? 'unknown',
+          collectionTimestamp: pick(metric, 'collectionTimestamp') ?? null,
+        }
+      : null,
+  };
 }
