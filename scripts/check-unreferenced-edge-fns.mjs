@@ -203,10 +203,18 @@ if (added.length > 0) {
   process.exit(1);
 }
 
+// A baselined entry leaves the list two ways, and they are not the same result:
+// something now calls it, or the directory is gone. Reporting a deletion as
+// "now reachable" misstates the work that was done.
 const fixed = [...baseline].filter((fn) => !unreferenced.includes(fn));
 if (fixed.length > 0) {
-  console.log(`✓ No new unreferenced edge functions. ${fixed.length} baselined now reachable:`);
-  for (const fn of fixed) console.log(`    ${fn}`);
+  const gone = fixed.filter((fn) => !functions.includes(fn));
+  const wired = fixed.filter((fn) => functions.includes(fn));
+  console.log(
+    `✓ No new unreferenced edge functions. ${fixed.length} baselined entr(ies) resolved:`,
+  );
+  for (const fn of wired) console.log(`    ${fn} (now called)`);
+  for (const fn of gone) console.log(`    ${fn} (deleted)`);
   console.log('  Tighten with: node scripts/check-unreferenced-edge-fns.mjs --update-baseline');
 } else {
   console.log(

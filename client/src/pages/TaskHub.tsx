@@ -27,7 +27,7 @@ import { CreateTaskDialog, CreateProjectDialog } from '@/components/tasks/TaskDi
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 import PageAlerts from '@/components/contextual/PageAlerts';
 import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 
 export default function TaskHub() {
   const [activeTab, setActiveTab] = useState<string>('my-tasks');
@@ -36,15 +36,23 @@ export default function TaskHub() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch unified data
+  // Fetch unified data.
+  //
+  // extractRecords, not the raw response: the tasks edge function answers
+  // GET / with { data, total, page, limit }, and `tasks` was handed straight to
+  // MyTasksView, which opens with tasks.filter(...). An object has no .filter,
+  // so the default tab of this page threw on load - and six routes land here
+  // (/tasks, /task-hub, /task-management, /basic-tasks, /my-tasks,
+  // /ai-task-scheduling). extractRecords accepts a bare array too, so it is
+  // correct against either backend shape.
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ['/api/tasks'],
-    queryFn: async () => apiRequest('/api/tasks'),
+    queryFn: async () => extractRecords(await apiRequest('/api/tasks')),
   });
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ['/api/projects'],
-    queryFn: async () => apiRequest('/api/projects'),
+    queryFn: async () => extractRecords(await apiRequest('/api/projects')),
   });
 
   const { data: taskStats } = useQuery({
@@ -54,7 +62,7 @@ export default function TaskHub() {
 
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['/api/users'],
-    queryFn: async () => apiRequest('/api/users'),
+    queryFn: async () => extractRecords(await apiRequest('/api/users')),
   });
 
   // Create task mutation

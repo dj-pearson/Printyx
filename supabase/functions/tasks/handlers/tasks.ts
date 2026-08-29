@@ -7,8 +7,16 @@
 //   PUT    /:id
 //   PATCH  /:id
 //   DELETE /:id
+//
+// Reads go out camelCase. mapTask has always ACCEPTED camelCase on writes, but
+// every read returned the raw PostgREST row, so the components on the other end
+// - which read task.dueDate, task.completionPercentage, task.timeTracked,
+// task.assignedTo - got undefined for all of them and rendered blank cells
+// beside a title that worked. handlers/time-entries.ts already converts; this
+// makes the pair symmetric.
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
+import { toCamel } from '../../_shared/case.ts';
 import type { HandlerCtx } from '../_context.ts';
 
 export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Response | null> {
@@ -36,7 +44,12 @@ export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Respon
 
     const { data, error, count } = await q;
     if (error) return dbErr(req, requestId, 'Failed to fetch tasks', error);
-    return jsonResponse({ data: data ?? [], total: count ?? 0, page, limit }, 200, req, requestId);
+    return jsonResponse(
+      { data: toCamel(data ?? []), total: count ?? 0, page, limit },
+      200,
+      req,
+      requestId,
+    );
   }
 
   if (method === 'GET' && id) {
@@ -48,7 +61,7 @@ export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Respon
       .maybeSingle();
     if (error) return dbErr(req, requestId, 'Failed to fetch task', error);
     if (!data) return errorResponse(404, 'Task not found', req, { code: 'NOT_FOUND', requestId });
-    return jsonResponse(data, 200, req, requestId);
+    return jsonResponse(toCamel(data), 200, req, requestId);
   }
 
   if (method === 'POST' && !id) {
@@ -65,7 +78,7 @@ export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Respon
     }
     const { data, error } = await db.from('tasks').insert(row).select().maybeSingle();
     if (error) return dbErr(req, requestId, 'Failed to create task', error);
-    return jsonResponse(data, 201, req, requestId);
+    return jsonResponse(toCamel(data), 201, req, requestId);
   }
 
   if ((method === 'PATCH' || method === 'PUT') && id) {
@@ -86,7 +99,7 @@ export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Respon
       .maybeSingle();
     if (error) return dbErr(req, requestId, 'Failed to update task', error);
     if (!data) return errorResponse(404, 'Task not found', req, { code: 'NOT_FOUND', requestId });
-    return jsonResponse(data, 200, req, requestId);
+    return jsonResponse(toCamel(data), 200, req, requestId);
   }
 
   if (method === 'DELETE' && id) {
