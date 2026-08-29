@@ -92,6 +92,36 @@ export async function handleRecordings(req: Request, ctx: HandlerCtx): Promise<R
     return jsonResponse(data ?? [], 200, req, requestId);
   }
 
+  // GET /recordings — every recording for the tenant, newest first.
+  //
+  // The rest of this function is meeting-scoped, which is right for a meeting
+  // detail view and useless for the page that actually calls this API:
+  // MeetingTranscription.tsx is a tenant-wide console and has no meeting id to
+  // start from. Without this branch it had nowhere to get a list, which is part
+  // of why it shipped with three hardcoded recordings instead (AUDIT-019).
+  if (method === 'GET' && first === 'recordings' && !second) {
+    const limitParam = Number(ctx.url.searchParams.get('limit') ?? '50');
+    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 200) : 50;
+
+    const { data, error } = await db
+      .from('meeting_recordings')
+      .select(
+        'id, meeting_id, recording_name, recording_format, file_size_bytes, duration_seconds, recording_source, processing_status, transcription_status, ai_analysis_status, ai_confidence_score, ai_speaker_count, uploaded_at, uploaded_by, is_public',
+      )
+      .eq('tenant_id', auth.tenantId)
+      .order('uploaded_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      return errorResponse(500, 'Failed to fetch recordings', req, {
+        code: 'DB_ERROR',
+        details: error.message,
+        requestId,
+      });
+    }
+    return jsonResponse(data ?? [], 200, req, requestId);
+  }
+
   // POST /recordings/:recordingId/process
   if (method === 'POST' && first === 'recordings' && second && third === 'process') {
     return await processRecording(req, ctx, second);

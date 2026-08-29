@@ -114,10 +114,17 @@ export default async function handler(req: Request) {
         }
         break;
       case 'recordings':
-        // /recordings/:id/transcription OR /recordings/:id/process
-        if (pathParts[2] === 'transcription') {
+        // /recordings (tenant-wide list) OR /recordings/:id/transcription
+        // OR /recordings/:id/process OR /recordings/:id/consent
+        if (!pathParts[1]) {
+          result = await handleRecordings(req, ctx);
+        } else if (pathParts[2] === 'transcription') {
           result = await handleTranscription(req, ctx);
-        } else if (pathParts[2] === 'process') {
+        } else if (pathParts[2] === 'process' || pathParts[2] === 'consent') {
+          // 'consent' was implemented in handlers/recordings.ts for LEGAL-009
+          // and never listed here, so the switch left `result` null and the
+          // dispatcher 404'd it. The one endpoint that answers "did this person
+          // agree to be recorded" was unreachable.
           result = await handleRecordings(req, ctx);
         }
         break;

@@ -737,6 +737,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // registers at line ~297 of routes-registry, ahead of the /api/admin mount,
     // so this wins for this one path and nothing else changes.
     '/api/admin/system-health': { fn: 'admin', pathPrefix: '/system-health' },
+
+    // AUDIT-019. MeetingTranscription.tsx now calls this instead of rendering
+    // three hardcoded recordings. The meeting-transcription edge fn was fully
+    // built (upload, transcription, notes, highlights, search, analytics,
+    // consent) and had ZERO callers, so nothing had ever exercised it from
+    // either host. Dir name == prefix segment, so a plain entry is enough.
+    '/api/meeting-transcription': 'meeting-transcription',
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
