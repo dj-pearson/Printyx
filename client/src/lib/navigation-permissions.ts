@@ -817,11 +817,26 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/ai-hub': { alwaysVisible: true },
   '/gpt5-dashboard': { alwaysVisible: true },
   '/social-media-generator': { alwaysVisible: true },
+  // AUDIT-019: /predictive-contract-profitability now redirects to
+  // /contracts/profitability. Both entries stay and carry the same gate, so the
+  // old path cannot be more permissive than the page it lands on.
   '/predictive-contract-profitability': {
     requiredPermissions: ['finance.reports.view', 'reporting.finance.view'],
     minLevel: 4,
   },
+  '/contracts/profitability': {
+    requiredPermissions: ['finance.reports.view', 'reporting.finance.view'],
+    minLevel: 4,
+  },
+  // AUDIT-019: /ai-service-intelligence now redirects to /service/predictions,
+  // so the gate moves with it. Both entries stay: the old path is still linked
+  // from an email campaign and must not become more permissive than the page it
+  // lands on.
   '/ai-service-intelligence': {
+    requiredPermissions: ['service.ticket.view_team', 'reporting.service.view'],
+    minLevel: 3,
+  },
+  '/service/predictions': {
     requiredPermissions: ['service.ticket.view_team', 'reporting.service.view'],
     minLevel: 3,
   },

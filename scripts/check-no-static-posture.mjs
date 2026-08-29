@@ -28,9 +28,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIRS = ['client/src/pages/admin'];
 
 const FILES = [
-  'client/src/pages/AIServiceIntelligence.tsx',
-  'client/src/pages/PredictiveContractProfitability.tsx',
   'client/src/pages/MeetingTranscription.tsx',
+  'client/src/pages/ServicePredictions.tsx',
+  'client/src/pages/ContractProfitability.tsx',
   'client/src/pages/SecurityComplianceManagement.tsx',
 ];
 

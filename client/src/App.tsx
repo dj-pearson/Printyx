@@ -118,10 +118,6 @@ const AutoSupplyReplenishmentDashboard = React.lazy(
 );
 
 // Feature implementations - AI/ML powered features
-const PredictiveContractProfitability = React.lazy(
-  () => import('@/pages/PredictiveContractProfitability'),
-);
-const AIServiceIntelligence = React.lazy(() => import('@/pages/AIServiceIntelligence'));
 const SalesRepAssignments = React.lazy(() => import('@/pages/SalesRepAssignments'));
 const LeadMapViewer = React.lazy(() => import('@/pages/LeadMapViewer'));
 
@@ -987,11 +983,38 @@ function Router() {
                     />
                   )}
                 </Route>
-                <Route
-                  path="/predictive-contract-profitability"
-                  component={PredictiveContractProfitability}
-                />
-                <Route path="/ai-service-intelligence" component={AIServiceIntelligence} />
+                {/* AUDIT-019: /predictive-contract-profitability was 516 lines
+                    over a `const contractData = [...]` literal carrying
+                    per-contract margins, predicted margins, risk levels and a
+                    "Reprice at renewal (+12%)" recommendation. That is pricing
+                    advice with nothing behind it.
+
+                    Its actual-margin half is what /contracts/profitability
+                    already computes from the contract-pnl engine (real CPC
+                    revenue minus parts, labour, supplies and financing). Its
+                    predictive half - predictedCost, predictedMargin, the
+                    reprice recommendation - has no model anywhere in the
+                    codebase, so there was nothing to wire it to. Deleted, with
+                    the URL redirected so the email campaign still lands. */}
+                <Route path="/predictive-contract-profitability">
+                  {() => <LegacyRedirect to="/contracts/profitability" />}
+                </Route>
+                {/* AUDIT-019: /ai-service-intelligence was 373 lines over a
+                    `const predictions = [...]` literal - Acme Corporation, a
+                    Canon imageRUNNER, a fuser failure at 87% probability in
+                    15-20 days, part FM4-8400-000, $170 saved - with no network
+                    call in the file. A technician reading it would book a
+                    preventive visit against an invented prediction.
+
+                    It is the same domain /service/predictions already serves
+                    from the real predictive-failure engine (scoring, approve,
+                    snooze, dismiss, accuracy). Rather than build a second
+                    consumer of one endpoint, the fixture twin is deleted and
+                    its URL redirects, so the marketing campaign in
+                    data/emailCampaigns.ts still lands somewhere real. */}
+                <Route path="/ai-service-intelligence">
+                  {() => <LegacyRedirect to="/service/predictions" />}
+                </Route>
                 <Route path="/integration-hub" component={IntegrationHub} />
                 <Route path="/integrations" component={IntegrationHub} />
                 <Route path="/social-media-generator" component={SocialMediaGenerator} />
