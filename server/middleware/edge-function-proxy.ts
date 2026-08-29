@@ -750,6 +750,24 @@ export function registerEdgeFunctionProxy(app: any) {
     // 670-line fixture and has been deleted; the new fn reads
     // system_integrations + integration_metrics. Dir name == prefix segment.
     '/api/erp-integration': 'erp-integration',
+
+    // COP-E02. supabase/functions/sales-pipeline/ serves SalesPipelineWorkflow,
+    // and routes-registry retired its Express router when it was migrated - but
+    // no proxy entry replaced it, so every read the page makes 404'd in dev
+    // while working in prod. The usual divergence, inverted.
+    //
+    // Scoped to the three paths the edge fn owns, NOT the /api/sales-pipeline
+    // prefix: routes-sales-forecasting.ts still owns PUT /api/sales-pipeline/:id
+    // over forecast_pipeline_items - a different table behind the same prefix -
+    // and proxying the whole prefix would take that write from working-in-dev to
+    // 404-in-dev. pathPrefix re-adds the segment app.use() strips.
+    '/api/sales-pipeline/opportunities': {
+      fn: 'sales-pipeline',
+      pathPrefix: '/opportunities',
+    },
+    '/api/sales-pipeline/rep-metrics': { fn: 'sales-pipeline', pathPrefix: '/rep-metrics' },
+    '/api/sales-pipeline/summary': { fn: 'sales-pipeline', pathPrefix: '/summary' },
+    '/api/sales-pipeline/stages': { fn: 'sales-pipeline', pathPrefix: '/stages' },
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns

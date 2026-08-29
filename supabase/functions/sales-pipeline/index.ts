@@ -9,6 +9,22 @@
  *   POST   /sales-pipeline/opportunities/:id/activity        — log activity
  *   GET    /sales-pipeline/rep-metrics                       — per-rep rollups (rpc)
  *   GET    /sales-pipeline/summary                           — tenant-wide KPIs (rpc)
+ *   GET    /sales-pipeline/stages                            — the stage vocabulary
+ *
+ * THIS BOARDS ACCOUNTS, NOT DEALS, and the distinction is load-bearing. Every
+ * endpoint reads `business_records` filtered to record_type='lead', and a
+ * "stage" here is `business_records.status` - a lifecycle string. It is NOT a
+ * `pipeline_stages` row, whose id is a gen_random_uuid() varchar and which
+ * belongs to the DEALS board (CrmDealsPage / pipeline-config).
+ *
+ * SalesPipelineWorkflow.tsx used to draw its columns from
+ * /api/pipeline-config/templates while its records carried lifecycle statuses,
+ * so `stages.findIndex(s => s.id === opportunity.stage)` compared a UUID to
+ * 'lead' and returned -1 every time. "Move to next stage" therefore resolved to
+ * index 0 on every click and PATCHed a UUID into business_records.status, which
+ * `stage: z.string()` accepted without complaint. That is why /stages exists and
+ * why the schema below is an enum: the column has a vocabulary and the server
+ * is the one place that can hold callers to it.
  *
  * Complex CTE queries live in drizzle/functions/sales-pipeline.sql as
  * `sales_pipeline_rep_metrics` and `sales_pipeline_summary`. This dispatcher
@@ -43,6 +59,9 @@ const PIPELINE_STAGES = [
   { id: 'closed_lost', name: 'Closed Lost', order: 9 },
 ];
 
+/** Tuple form so z.enum can consume it; the ids are business_records.status values. */
+const PIPELINE_STAGE_IDS = PIPELINE_STAGES.map((s) => s.id) as unknown as [string, ...string[]];
+
 const createOpportunitySchema = z.object({
   company_name: z.string().min(1),
   contact_name: z.string().min(1),
@@ -56,8 +75,14 @@ const createOpportunitySchema = z.object({
   notes: z.string().optional(),
 });
 
+/**
+ * An enum, not z.string(). This value is written verbatim into
+ * business_records.status, which every other lead surface reads. A free string
+ * let the board store a pipeline_stages UUID there; anything outside the
+ * vocabulary is now a 400 rather than a corrupted row.
+ */
 const stageUpdateSchema = z.object({
-  stage: z.string(),
+  stage: z.enum(PIPELINE_STAGE_IDS),
   notes: z.string().optional(),
 });
 
@@ -85,6 +110,15 @@ export default async function handler(req: Request) {
   try {
     const ctx = await requireAuth(req);
     const db = getDb();
+
+    // ─── GET /stages ───────────────────────────────────────────────────────
+    // One source of truth for the vocabulary. The page used to build its
+    // columns from the DEALS pipeline template, which is a different object
+    // model with UUID ids; serving the list the write path validates against
+    // is what keeps the two halves from disagreeing.
+    if (path === '/stages' && method === 'GET') {
+      return jsonResponse({ data: PIPELINE_STAGES }, 200, req, requestId);
+    }
 
     // ─── GET /opportunities ────────────────────────────────────────────────
     if (path === '/opportunities' && method === 'GET') {

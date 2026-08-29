@@ -8,7 +8,6 @@
       "execute-action",
       "mobile-logs",
       "security",
-      "system",
       "tenant-stats",
       "user-stats"
     ],
@@ -27,14 +26,10 @@
       "trends"
     ],
     "apollo": ["credentials", "leads", "stats"],
-    "auto-lead-routing": ["config", "dashboard"],
-    "auto-supply-replenishment": ["analyze-all", "dashboard", "low-supplies", "orders"],
     "blog-post-revisions": ["single"],
     "blog-serp": ["single"],
     "catalog": ["import-enhanced"],
-    "commission": ["analytics", "calculate", "disputes"],
     "companies": ["stats"],
-    "contract-renewal": ["analyze-all", "at-risk", "dashboard", "proposals"],
     "crm": ["analytics", "manager-insights"],
     "dashboard": [
       "activity",
@@ -52,8 +47,6 @@
     "equipment-lifecycle": ["assets", "deliveries", "installations", "metrics", "purchase-orders"],
     "financial": ["kpis", "profitability"],
     "fleet": ["devices"],
-    "gdpr": ["deduplication", "dpa"],
-    "import": ["preview-mapping"],
     "integrations": [
       "bulk-sync",
       "calendar",
@@ -63,12 +56,10 @@
       "quickbooks",
       "salesforce"
     ],
-    "leads": ["geocode", "import-eda", "map-data"],
+    "leads": ["import-eda"],
     "maintenance": ["analytics", "auto-generate", "predictions", "templates"],
-    "manufacturer-integrations": ["audit-logs", "stats"],
     "mobile": ["dashboard", "jobs", "route-optimization", "service-report"],
     "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"],
-    "oid-mappings": ["export", "import", "test"],
     "onboarding": ["export", "getting-started", "wizard-state"],
     "outreach": [
       "business-context",
@@ -79,7 +70,6 @@
       "specializations",
       "specialties"
     ],
-    "performance": ["health"],
     "pipeline-config": ["board", "stages", "templates"],
     "platform-crm": [
       "assignment-rules",
@@ -88,30 +78,8 @@
       "scoring-rules",
       "territories"
     ],
-    "predictive-dispatch": [
-      "analyze",
-      "analyze-all",
-      "dashboard",
-      "devices-at-risk",
-      "technician-performance"
-    ],
-    "products": ["all"],
     "proposals": ["equipment-packages", "proposal-templates"],
-    "purchase-orders": ["generate-from-suggestions", "stats", "suggestions"],
-    "quickbooks": ["connect", "entities"],
-    "rbac": ["organizational-units", "seed", "status"],
-    "remote-monitoring": ["acknowledge-alert", "equipment-status", "fleet-overview", "sensor-data"],
-    "root-admin": [
-      "database-tables",
-      "execute-query",
-      "high-value-signups",
-      "pending-tasks",
-      "signups",
-      "signups-analytics",
-      "system-resources",
-      "trial-funnel"
-    ],
-    "sales-pipeline": ["opportunities", "rep-metrics", "summary"],
+    "sales-pipeline": ["opportunities", "rep-metrics", "stages", "summary"],
     "seo": [
       "content",
       "images",
@@ -126,7 +94,6 @@
     ],
     "subscriptions": ["checkout", "portal", "preview-upgrade", "setup-intent", "stripe"],
     "tasks": ["ai-schedule"],
-    "technician-management": ["dashboard"],
-    "warehouse-operations": ["stats"]
+    "technician-management": ["dashboard"]
   }
 }
