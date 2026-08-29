@@ -75,6 +75,8 @@ jobs:
         run: npm run check:raw-fetch
       - name: Session-only auth ratchet (handlers gated on a field nothing sets)
         run: npm run check:session-auth
+      - name: Unwritten-table ratchet (features reading a table nothing fills)
+        run: npm run check:unwritten-tables
       - name: Duplicate route-registration ratchet
         run: npm run check:dup-routes
       - name: Runtime-throwing type errors (hard gate)
