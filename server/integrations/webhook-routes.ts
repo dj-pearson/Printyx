@@ -130,74 +130,22 @@ inboundWebhookReceiver.post('/api/webhooks/:provider', rawBodyParser, async (req
 //   the "obvious" fix, would have turned calendar webhooks into signature
 //   failures.
 //
-// What remains on this prefix is the generic receiver, the health probe and the
+// What remained on this prefix was the generic receiver, a health probe and an
 // outbound list. The receiver is NO LONGER SHADOWED: it lives on
 // inboundWebhookReceiver above, which routes-registry mounts before the proxy.
 // The earlier note here said it "cannot simply be un-shadowed, because the edge
 // function that owns the prefix authenticates before it routes" - that is the
 // reason the whole prefix could not be un-proxied, not a reason the one POST
-// could not be mounted ahead of it. The health probe and the outbound list are
-// still shadowed, correctly: the edge function serves both.
-
-/**
- * Webhook health check endpoint
- */
-router.get('/api/webhooks/health', (req, res) => {
-  res.status(200).json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    webhooks: {
-      salesforce: '/api/webhooks/salesforce',
-      stripe: '/api/webhooks/stripe',
-      'microsoft-calendar': '/api/webhooks/microsoft-calendar',
-      'google-calendar': '/api/webhooks/google-calendar',
-      quickbooks: '/api/webhooks/quickbooks',
-    },
-  });
-});
-
-/**
- * List webhook endpoints for debugging
- */
-router.get('/api/webhooks', (req, res) => {
-  res.status(200).json({
-    endpoints: [
-      {
-        provider: 'salesforce',
-        url: '/api/webhooks/salesforce',
-        method: 'POST',
-        contentType: 'application/json',
-      },
-      {
-        provider: 'stripe',
-        url: '/api/webhooks/stripe',
-        method: 'POST',
-        contentType: 'application/json',
-        notes: 'Requires stripe-signature header',
-      },
-      {
-        provider: 'microsoft-calendar',
-        url: '/api/webhooks/microsoft-calendar',
-        method: 'POST',
-        contentType: 'application/json',
-        notes: 'Supports validation token parameter',
-      },
-      {
-        provider: 'google-calendar',
-        url: '/api/webhooks/google-calendar',
-        method: 'POST',
-        contentType: 'application/json',
-      },
-      {
-        provider: 'quickbooks',
-        url: '/api/webhooks/quickbooks',
-        method: 'POST',
-        contentType: 'application/json',
-        notes: 'Requires intuit-signature header',
-      },
-    ],
-  });
-});
+// could not be mounted ahead of it.
+//
+// The other two are GONE. The outbound list was a straight duplicate of the
+// edge function's GET / branch. The health probe was NOT, despite an earlier
+// version of this comment claiming the edge function served both: that function
+// has no health route, so GET /api/webhooks/health fell into its
+// `GET /:id` branch and looked up a webhook whose id is the string "health",
+// returning 404. It had no caller anywhere in the repo either - client, server
+// or k8s - so it had been a probe that could only fail, answering an outage it
+// did not have.
 
 router.use(inboundWebhookReceiver);
 

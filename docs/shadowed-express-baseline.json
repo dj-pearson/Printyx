@@ -60,8 +60,5 @@
     "GET /api/universal-search (server/routes-universal-search.ts)": "Deliberate network-error fallback, not a duplicate. edge-function-proxy.ts:307-311 records the decision: the universal-search edge function is the production implementation and this Express handler stays because createProxyHandler falls through to Express on a NETWORK error (never on a 404). Removing it would remove the fallback the proxy entry was written to rely on. PROD-008b.",
     "POST /api/business-records/bulk-update (server/routes-crm-bulk.ts)": "Real tenant-scoped bulk update over deals and business_records with no edge counterpart and no caller. Deleting it removes capability rather than a duplicate. PROD-008b, finding 10."
   },
-  "allowed": [
-    "GET /api/webhooks (server/integrations/webhook-routes.ts)",
-    "GET /api/webhooks/health (server/integrations/webhook-routes.ts)"
-  ]
+  "allowed": []
 }
