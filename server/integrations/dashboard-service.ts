@@ -180,7 +180,10 @@ export class DashboardService {
       const successRate =
         totalCalls > 0
           ? (successfulCalls / totalCalls) * 100
-          : integration.status === 'connected'
+          : // 'active' is the status the column actually stores; 'connected' was
+            // never a value it held, so this branch scored every zero-traffic
+            // integration 0% instead of 100%.
+            integration.status === 'active'
             ? 100
             : 0;
 
@@ -382,7 +385,9 @@ export class DashboardService {
    */
   private static async getIntegrationAnalytics(tenantId: string) {
     const integrations = await IntegrationService.getIntegrations(tenantId);
-    const activeCount = integrations.filter((i) => i.status === 'connected').length;
+    // Was 'connected', which the column never stores, so the active count was
+    // always zero.
+    const activeCount = integrations.filter((i) => i.status === 'active').length;
 
     return {
       usageStatistics: {
@@ -409,7 +414,7 @@ export class DashboardService {
         uptimeByIntegration: integrations.reduce(
           (acc, integration) => {
             acc[integration.name] =
-              integration.status === 'connected'
+              integration.status === 'active'
                 ? 98.5 + Math.random() * 1.5
                 : 85 + Math.random() * 10;
             return acc;

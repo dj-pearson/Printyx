@@ -8,7 +8,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
 import { db } from '../db';
-import { users } from '../../shared/schema';
+import { users, userSettings } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { getComplianceSettings } from '../storage/security-storage';
 import { createModuleLogger } from '../lib/logger';
@@ -180,9 +180,14 @@ export function requireMfaForAdmins(options: MfaEnforcementOptions = {}) {
         return next();
       }
 
-      // Check if role requires MFA
-      const userRole = userWithRole.role;
-      const userLevel = parseRoleLevel(userRole);
+      // QUALITY-002: storage.getUserWithRole returns `role` as a Role ROW, not
+      // a string, so this passed an object into parseRoleLevel, which calls
+      // .toLowerCase() on it. Every request through this middleware threw a
+      // TypeError into the catch below and answered 500. The row carries a
+      // numeric `level` of its own, which is better than parsing a name;
+      // parseRoleLevel stays as the fallback for a role with no level.
+      const userRole = userWithRole.role?.code;
+      const userLevel = userWithRole.role?.level ?? parseRoleLevel(userRole);
 
       const needsMfa =
         roleRequiresMfa(
@@ -345,27 +350,40 @@ export async function getUsersNeedingMfa(tenantId: string): Promise<
 
   const allUsers = await db.select().from(users).where(eq(users.tenantId, tenantId));
 
+  const enrolled = await db
+    .select({ userId: userSettings.userId, twoFactorEnabled: userSettings.twoFactorEnabled })
+    .from(userSettings)
+    .where(eq(userSettings.tenantId, tenantId));
+  const enrolledUserIds = new Set(
+    enrolled.filter((row) => row.twoFactorEnabled).map((row) => row.userId),
+  );
+
   const usersNeedingMfa = [];
 
   for (const user of allUsers) {
     const userWithRole = await storage.getUserWithRole(user.id);
     if (!userWithRole) continue;
 
-    const userLevel = parseRoleLevel(userWithRole.role);
+    const userRole = userWithRole.role?.code;
+    const userLevel = userWithRole.role?.level ?? parseRoleLevel(userRole);
     const needsMfa = roleRequiresMfa(
-      userWithRole.role,
+      userRole,
       userLevel,
       tenantSettings.mfaRequiredRoles,
       tenantSettings.mfaRequiredLevel,
     );
 
-    if (needsMfa && !user.twoFactorEnabled) {
+    // twoFactorEnabled lives on user_settings, NOT users. Reading it off the
+    // users row gave undefined, so `!user.twoFactorEnabled` was true for
+    // everyone and this report named every user in the tenant as missing MFA,
+    // including the ones who had enrolled.
+    if (needsMfa && !enrolledUserIds.has(user.id)) {
       usersNeedingMfa.push({
         id: user.id,
         email: user.email || '',
         firstName: user.firstName || '',
         lastName: user.lastName || '',
-        role: userWithRole.role || '',
+        role: userRole || '',
       });
     }
   }

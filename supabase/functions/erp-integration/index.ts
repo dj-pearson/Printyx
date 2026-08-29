@@ -42,6 +42,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { getRoleLevel } from '../_shared/rbac.ts';
 import {
   WINDOW_DAYS,
   buildErpDashboard,
@@ -76,6 +77,29 @@ export default async function handler(req: Request) {
 
     if (!tenantId) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
+    }
+
+    // SEC: this reports every connected system's credentials status, traffic and
+    // error counts, so it is not a surface every tenant member should read.
+    // Level 5 mirrors the gate the frontend already applies to /erp-integration
+    // in navigation-permissions.ts, so this locks nobody out who could reach the
+    // page - it closes the gap where the edge function trusted authentication
+    // alone. A LEVEL check, not a permission code: per SEC-EDGE-002 the codes
+    // the Express gates name are not the codes any seeder creates, so a copied
+    // permission gate would deny everyone below platform admin.
+    const roleLevel = getRoleLevel({
+      userId: user.id,
+      tenantId,
+      email: user.email,
+      jwt: jwt ?? '',
+      supabaseUser: user,
+    });
+    if (roleLevel < 5) {
+      return createCorsResponse(
+        { message: 'Requires role level 5 or higher', code: 'INSUFFICIENT_ROLE' },
+        403,
+        req,
+      );
     }
 
     const admin = createSupabaseServiceClient();

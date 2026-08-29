@@ -1,6 +1,6 @@
 import { config } from './config';
 import { db } from './db';
-import { sql, and, or, gte, lte, eq, inArray, desc } from 'drizzle-orm';
+import { sql, and, or, gte, lte, eq, isNull, inArray, desc } from 'drizzle-orm';
 import {
   organizationalUnits,
   enhancedRoles,
@@ -186,7 +186,11 @@ export class EnhancedRBACService {
           eq(userRoleAssignments.isActive, true),
           lte(userRoleAssignments.effectiveFrom, now),
           or(
-            eq(userRoleAssignments.effectiveUntil, null),
+            // QUALITY-002: isNull, not eq(col, null). Drizzle renders the
+            // latter as `effective_until = NULL`, which is never true, so the
+            // OR collapsed to its second half and an assignment with NO expiry
+            // - the normal shape for a permanent grant - matched nothing.
+            isNull(userRoleAssignments.effectiveUntil),
             gte(userRoleAssignments.effectiveUntil, now),
           ),
           orgContext.unitId
@@ -255,7 +259,9 @@ export class EnhancedRBACService {
           eq(permissionOverrides.isActive, true),
           lte(permissionOverrides.effectiveFrom, now),
           or(
-            eq(permissionOverrides.effectiveUntil, null),
+            // Same defect: a permanent override has a NULL effective_until and
+            // was therefore never loaded.
+            isNull(permissionOverrides.effectiveUntil),
             gte(permissionOverrides.effectiveUntil, now),
           ),
         ),
@@ -270,8 +276,8 @@ export class EnhancedRBACService {
       name: string;
       code: string;
       description?: string;
-      hierarchyLevel: string;
-      organizationalTier: string;
+      hierarchyLevel: (typeof enhancedRoles.$inferInsert)['hierarchyLevel'];
+      organizationalTier: (typeof enhancedRoles.$inferInsert)['organizationalTier'];
       department: string;
       tenantId: string;
       organizationalUnitId?: string;
