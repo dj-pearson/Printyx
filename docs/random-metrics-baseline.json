@@ -1,6 +1,6 @@
 {
   "note": "Object properties whose value comes from Math.random(), i.e. a measurement someone made up. Keyed by file and property name so line moves do not churn it. Do not grow this list; see scripts/check-no-random-metrics.mjs and AUDIT-020.",
-  "total": 34,
+  "total": 26,
   "offenders": {
     "server/routes-sample-data.ts": [
       "averageDealSize",
@@ -9,16 +9,6 @@
       "pipelineValue",
       "revenue",
       "units"
-    ],
-    "server/routes-service-dispatch.ts": [
-      "averageCallTime",
-      "completionRate",
-      "customerRating",
-      "customerSatisfaction",
-      "lat",
-      "lng",
-      "onTimeArrival",
-      "utilizationRate"
     ],
     "server/routes/performance-routes.ts": [
       "activeUsers",
