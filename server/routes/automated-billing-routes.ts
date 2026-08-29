@@ -1,3 +1,27 @@
+/**
+ * Automated billing: schedules, invoice generation, meter processing and
+ * generation logs. 13 handlers over /api/automated-billing.
+ *
+ * CANNOT AUTHENTICATE ANYONE - see SEC-SESSION-001 before changing this file.
+ *
+ * Every handler below reads `req.session.user` as its only source of identity.
+ * Nothing in this codebase assigns it: session login sets the flat
+ * req.session.userId / req.session.tenantId and the JWT path sets req.user, so
+ * each of these answers 401 in dev exactly as it does in production. It has
+ * never run. server/types/express-session.d.ts records the same finding and
+ * declares the type that lets it compile, which is why tsc sees nothing wrong.
+ *
+ * No client tree calls /api/automated-billing and there is no edge function.
+ * Distinct from advanced-billing-routes.ts (PROD-008c) and from
+ * supabase/functions/billing/, which is what the billing UI actually uses -
+ * three billing back ends, one of them reachable.
+ *
+ * The fix is one of three, and it is a product call rather than cleanup:
+ * migrate the handlers to getUserId/getTenantId from utils/auth-helpers and
+ * build the caller, retire the file in favour of an edge function that covers
+ * it, or delete it. Populating req.session.user in the login path would revive
+ * all twelve files at once and touches security-sensitive code.
+ */
 import express, { Request, Response } from 'express';
 import { z } from 'zod';
 import { automatedBillingService } from '../services/automated-billing-service';

@@ -3,6 +3,23 @@
  *
  * Enforces Multi-Factor Authentication requirements for admin and sensitive roles.
  * Implements configurable role-level MFA requirements.
+ *
+ * NOT MOUNTED, AND NOT MOUNTABLE AS WRITTEN. Three separate things stop it:
+ *
+ *   1. Nothing imports enforceMfaForAdmins - it is exported and never used, so
+ *      no route in this application requires MFA today. requirePermissionWithMFA
+ *      in enhanced-rbac-middleware.ts is in the same position (SEC-MFA-001).
+ *   2. It reads req.session.user, which nothing in this codebase assigns
+ *      (SEC-SESSION-001), so mounting it would deny every request rather than
+ *      check anything.
+ *   3. QUALITY-002 found it passing storage.getUserWithRole's `role` - a Role
+ *      ROW, not a string - to parseRoleLevel, which calls .toLowerCase(); read
+ *      role?.code for the name and role?.level for the level.
+ *
+ * It also reads two-factor state from user_settings.two_factor_enabled, which
+ * supabase/functions/mfa/ does not write - that function's enrolments live in
+ * mfa_enrollments. Whichever of those becomes authoritative, this file has to
+ * follow it, so fix the storage question before the auth one.
  */
 
 import { Request, Response, NextFunction } from 'express';

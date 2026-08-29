@@ -20,6 +20,12 @@
  * That is why it is still here rather than deleted with the other shadowed
  * routers: those were mocks or duplicates of live edge functions, and this is
  * real work with no replacement. Porting it is PROD-008c.
+ *
+ * SECOND REASON IT CANNOT RUN, found later (SEC-SESSION-001): all 39 handlers
+ * read req.session.user as their only identity, and nothing assigns it. So even
+ * with the proxy out of the way every one of them would answer 401. Porting
+ * this to an edge function is therefore the whole job - there is no shortcut
+ * where un-proxying the prefix makes it work in dev.
  */
 import express, { Request, Response } from 'express';
 import { storage } from '../storage';
