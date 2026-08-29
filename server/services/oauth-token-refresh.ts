@@ -302,25 +302,28 @@ export async function updateIntegrationTokens(
       return false;
     }
 
-    // Update tokens in config
-    const updatedConfig = {
-      ...integration.config,
-      tokens: {
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token || integration.config?.tokens?.refresh_token,
-        expires_at: tokens.expiresAt,
-        expires_in: tokens.expires_in,
-        token_type: tokens.token_type,
-        scope: tokens.scope,
-      },
-    };
+    // QUALITY-002: this wrote `config`, which is not a column - it is
+    // `credentials` for tokens and `configuration` for everything else. Drizzle
+    // drops unknown keys on .set(), so the update reduced to last_sync + status
+    // and the REFRESHED TOKEN WAS NEVER PERSISTED, while the function logged
+    // success and returned true. It also wrote status 'connected', which is
+    // outside the column's vocabulary (active | inactive | error | pending).
+    const existingCredentials = (integration.credentials ?? {}) as Record<string, unknown>;
 
     await db
       .update(systemIntegrations)
       .set({
-        config: updatedConfig,
+        credentials: {
+          ...existingCredentials,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token || existingCredentials.refresh_token,
+          expires_at: tokens.expires_at,
+          expires_in: tokens.expires_in,
+          token_type: tokens.token_type,
+          scope: tokens.scope,
+        },
         lastSync: new Date(),
-        status: 'connected',
+        status: 'active',
       })
       .where(eq(systemIntegrations.id, integrationId));
 
@@ -339,9 +342,14 @@ async function markIntegrationForReauth(integrationId: string, error: string): P
   try {
     await db
       .update(systemIntegrations)
+      // `db.sql` does not exist on the Drizzle client, so this threw on every
+      // call and the catch below swallowed it - marking an integration for
+      // reauthorization never worked. The table has an errorMessage column,
+      // which is where this belongs.
       .set({
         status: 'error',
-        config: db.sql`jsonb_set(config, '{error}', ${JSON.stringify({ message: error, at: new Date().toISOString() })})`,
+        errorMessage: error,
+        updatedAt: new Date(),
       })
       .where(eq(systemIntegrations.id, integrationId));
 
@@ -368,7 +376,7 @@ export async function refreshIntegrationTokens(
       return { success: false, error: 'Integration not found' };
     }
 
-    const tokens = integration.config?.tokens;
+    const tokens = (integration.credentials ?? undefined) as TokenData | undefined;
     if (!tokens?.refresh_token) {
       return { success: false, error: 'No refresh token available' };
     }
@@ -419,10 +427,10 @@ export async function refreshExpiringTokens(): Promise<{
     const integrations = await db
       .select()
       .from(systemIntegrations)
-      .where(eq(systemIntegrations.status, 'connected'));
+      .where(eq(systemIntegrations.status, 'active'));
 
     for (const integration of integrations) {
-      const tokens = integration.config?.tokens;
+      const tokens = (integration.credentials ?? undefined) as TokenData | undefined;
       if (!tokens?.refresh_token) continue;
 
       result.total++;
@@ -469,7 +477,7 @@ export async function getValidAccessToken(
       return { token: null, error: 'Integration not found' };
     }
 
-    const tokens = integration.config?.tokens;
+    const tokens = (integration.credentials ?? undefined) as TokenData | undefined;
     if (!tokens?.access_token) {
       return { token: null, error: 'No access token available' };
     }
@@ -492,7 +500,9 @@ export async function getValidAccessToken(
         .where(eq(systemIntegrations.id, integrationId))
         .limit(1);
 
-      return { token: updatedIntegration?.config?.tokens?.access_token || null };
+      return {
+        token: ((updatedIntegration?.credentials ?? {}) as TokenData).access_token || null,
+      };
     }
 
     return { token: tokens.access_token };
@@ -505,7 +515,7 @@ export async function getValidAccessToken(
 /**
  * Start periodic token refresh job
  */
-let refreshJobInterval: NodeJS.Timer | null = null;
+let refreshJobInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startTokenRefreshJob(): void {
   if (refreshJobInterval) {
