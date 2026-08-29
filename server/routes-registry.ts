@@ -384,25 +384,13 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── User Profile & Settings ───────────────────────────────────────
   const { registerUserProfileRoutes } = await import('./routes-user-profile');
   registerUserProfileRoutes(app);
-  const {
-    getUserSettings,
-    updateUserProfile,
-    updateUserPassword,
-    updateUserPreferences,
-    updateAccessibilitySettings,
-    uploadAvatar,
-    exportUserData,
-    deleteUserAccount,
-    upload: avatarUpload,
-  } = await import('./routes-settings');
-  app.get('/api/user/settings', getUserSettings);
-  app.put('/api/user/profile', updateUserProfile);
-  app.put('/api/user/password', updateUserPassword);
-  app.put('/api/user/preferences', updateUserPreferences);
-  app.put('/api/user/accessibility', updateAccessibilitySettings);
-  app.post('/api/user/avatar', avatarUpload.single('avatar'), uploadAvatar);
-  app.get('/api/user/export', exportUserData);
-  app.delete('/api/user/delete', deleteUserAccount);
+  // routes-settings.ts retired (AUDIT-027). /api/user is proxied now, so these
+  // eight handlers were dev-only, and supabase/functions/user/ - which has
+  // always served production - covers seven of them against the columns that
+  // actually exist. The eighth was POST /api/user/avatar, a multer upload no
+  // client tree calls; replacing it means Supabase Storage plus a PUT /profile
+  // with the URL. Deleting them is what makes dev and prod agree about where a
+  // phone number is stored and what changing a password does.
 
   // ─── API Key Management ──────────────────────────────────────────
   // routes/api-key-routes.ts retired (PROD-008b). All nine handlers were shadowed

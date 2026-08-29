@@ -52,7 +52,6 @@
     "remote-monitoring",
     "root-admin",
     "sales-forecasts",
-    "sales-pipeline",
     "seo",
     "service-analysis",
     "service-analytics",
@@ -64,7 +63,6 @@
     "task-workflows",
     "technician-management",
     "templates",
-    "user",
     "warehouse-operations"
   ],
   "missingEdge": ["business-process", "incident-response"]

@@ -5,7 +5,6 @@
     "admin": [
       "audit-logs",
       "disposable-emails",
-      "execute-action",
       "mobile-logs",
       "security",
       "tenant-stats",
@@ -93,7 +92,6 @@
       "structured-data"
     ],
     "subscriptions": ["checkout", "portal", "preview-upgrade", "setup-intent", "stripe"],
-    "tasks": ["ai-schedule"],
     "technician-management": ["dashboard"]
   }
 }

@@ -338,6 +338,19 @@ export function registerEdgeFunctionProxy(app: any) {
     // dashboard 404'd in production. Dir name matches the URL segment.
     '/api/renewal-autoquote': 'renewal-autoquote',
 
+    // AUDIT-027: /api/user/* - the Settings page and the notification dialog.
+    // The `user` directory has always existed, so production has always been
+    // served by supabase/functions/user/; what was missing is this entry, so
+    // DEV ran server/routes-settings.ts instead and the two disagreed about
+    // where the data goes. Express wrote phone/jobTitle/department to
+    // user_settings and changed passwords by rehashing users.password_hash; the
+    // edge function writes those three to users.metadata (they have no column -
+    // see _shared/user-profile.ts) and changes passwords through GoTrue,
+    // verifying the current one with signInWithPassword first. Same page, same
+    // fields, different rows and a different credential store, so testing this
+    // surface in dev proved nothing about production.
+    '/api/user': 'user',
+
     // PROD-012: voice-agent had no edge function, so the after-hours intake
     // surface 404'd in production. Dir name matches the URL segment.
     '/api/voice-agent': 'voice-agent',
