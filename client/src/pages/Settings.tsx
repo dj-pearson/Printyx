@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { apiRequest } from '@/lib/queryClient';
+import { TwoFactorCard } from '@/components/auth/TwoFactorCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -677,23 +678,7 @@ export default function Settings() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Two-Factor Authentication</CardTitle>
-                <CardDescription>Add an extra layer of security to your account.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Two-factor authentication</p>
-                    <p className="text-sm text-muted-foreground">
-                      {userSettings?.twoFactorEnabled ? 'Enabled' : 'Disabled'}
-                    </p>
-                  </div>
-                  <Switch checked={userSettings?.twoFactorEnabled || false} />
-                </div>
-              </CardContent>
-            </Card>
+            <TwoFactorCard />
 
             <Card>
               <CardHeader>

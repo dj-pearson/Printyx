@@ -567,7 +567,15 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     ['/api/calendar', './routes/calendar-routes'],
     ['/api/performance', './routes/performance-routes'],
     ['/api/advanced-scheduling', './routes/advanced-scheduling-routes'],
-    ['/api/mfa', './routes/mfa-routes'],
+    // ['/api/mfa', './routes/mfa-routes'] - retired (SEC-MFA-001). All 16
+    // handlers gated on `req.session.user`, which nothing in this codebase ever
+    // assigns (server/types/express-session.d.ts records the same finding), so
+    // every one of them answered 401 in dev as well as prod - the router has
+    // never run. It also kept a SECOND storage model, the secret on
+    // user_settings.two_factor_secret, while supabase/functions/mfa/ uses
+    // mfa_enrollments; that is why the Settings card's twoFactorEnabled flag was
+    // permanently false. /api/mfa is proxied to the edge function now, which
+    // covers all 16 endpoints.
     ['/api/lead-scoring', './routes/lead-scoring-routes'],
     ['/api/lead-intelligence', './routes/lead-intelligence-routes'],
     ['/api/manufacturer-orders', './routes/manufacturer-order-routes'],

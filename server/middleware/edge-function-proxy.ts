@@ -351,6 +351,14 @@ export function registerEdgeFunctionProxy(app: any) {
     // surface in dev proved nothing about production.
     '/api/user': 'user',
 
+    // SEC-MFA-001: /api/mfa. Both backends implement MFA in full and neither was
+    // reachable - no client tree named the prefix until the Settings card
+    // landed. They also disagreed on the control that matters: Express verified
+    // a TOTP token before disabling, the edge function did not, so production
+    // was the weaker of the two. The edge function requires a code now, and
+    // proxying makes dev exercise the same handler.
+    '/api/mfa': 'mfa',
+
     // PROD-012: voice-agent had no edge function, so the after-hours intake
     // surface 404'd in production. Dir name matches the URL segment.
     '/api/voice-agent': 'voice-agent',
