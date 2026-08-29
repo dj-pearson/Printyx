@@ -44,8 +44,15 @@
  * files only - a path named in a SECURITY.md is documentation, not a caller, and
  * counting it put a phantom reference on `client-metrics`.
  *
+ * pg_cron COUNTS AS A CALLER. drizzle/cron/*.sql posts to edge functions through
+ * pg_net.http_post, which is a real invocation path with no client involved -
+ * email-marketing and field-service are reached only that way and were false
+ * positives until this was added. _shared/cron-auth.ts is the helper such a
+ * handler is meant to use to verify the call; nothing imports it today, which is
+ * worth knowing but does not change reachability.
+ *
  * WHAT IT CANNOT SEE, stated so a pass is never read as proof:
- *   - Server-to-server callers, and anything invoked by a provider webhook.
+ *   - Other server-to-server callers, and anything invoked by a provider webhook.
  *   - A path assembled at runtime from a variable.
  *   - supabase.functions.invoke('name'), which bypasses /api entirely. There is
  *     no such call in client/src today - verified - but it would be a blind spot
@@ -132,11 +139,27 @@ function aliasedFunctions() {
   return aliased;
 }
 
+/** Edge functions invoked by pg_cron through drizzle/cron/*.sql. */
+function cronInvoked() {
+  const invoked = new Set();
+  const dir = join(ROOT, 'drizzle', 'cron');
+  if (!existsSync(dir)) return invoked;
+  for (const entry of readdirSync(dir)) {
+    if (!entry.endsWith('.sql')) continue;
+    const sql = readFileSync(join(dir, entry), 'utf8');
+    for (const m of sql.matchAll(/functions[a-z.]*\/([a-z0-9-]+)/g)) invoked.add(m[1]);
+  }
+  return invoked;
+}
+
 const functions = edgeFunctions();
 const called = clientSegments();
 const aliased = aliasedFunctions();
+const scheduled = cronInvoked();
 
-const unreferenced = functions.filter((fn) => !called.has(fn) && !aliased.has(fn));
+const unreferenced = functions.filter(
+  (fn) => !called.has(fn) && !aliased.has(fn) && !scheduled.has(fn),
+);
 
 if (UPDATE) {
   writeFileSync(
@@ -144,11 +167,11 @@ if (UPDATE) {
     JSON.stringify(
       {
         note:
-          'Edge functions no file under client/src reaches: the directory name appears in no ' +
-          '/api/<segment> path, and no crmProxies alias or server.ts override maps a segment ' +
-          'onto it. Each is a back end with no browser caller - wire it, delete it, or record ' +
-          'that it is reached from somewhere this script cannot see (mobile, extension, ' +
-          'server-to-server). A TODO list, not settled debt. See scripts/check-unreferenced-edge-fns.mjs.',
+          'Edge functions nothing reaches: no client tree names /api/<its-directory-name>, no ' +
+          'crmProxies alias or server.ts override maps a segment onto it, and no pg_cron job in ' +
+          'drizzle/cron/*.sql posts to it. Each is a back end with no caller - wire it, delete ' +
+          'it, or record that it is reached server-to-server. A TODO list, not settled debt. ' +
+          'See scripts/check-unreferenced-edge-fns.mjs.',
         total: unreferenced.length,
         ofFunctions: functions.length,
         unreferenced,
