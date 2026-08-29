@@ -369,6 +369,15 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/email-campaigns': 'email-campaigns',
     '/api/lead-scoring': 'lead-scoring',
 
+    // AUDIT-021: /api/performance. supabase/functions/performance/ answers
+    // /metrics, /alerts and /health from performance_metrics and system_alerts,
+    // with an `unbacked` array for what those tables cannot say. Express served
+    // dev from routes/performance-routes.ts, which INVENTED all of it - uptime
+    // 99 + random*0.99, throughput random*500 + 800, an error rate, disk usage
+    // and an active-user count, each changing on every refresh. Proxying makes
+    // dev show what production shows.
+    '/api/performance': 'performance',
+
     // PROD-012: voice-agent had no edge function, so the after-hours intake
     // surface 404'd in production. Dir name matches the URL segment.
     '/api/voice-agent': 'voice-agent',

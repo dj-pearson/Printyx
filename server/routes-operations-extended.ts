@@ -5,13 +5,11 @@
  */
 import type { Express } from 'express';
 import { db } from './db';
-import { storage } from './storage';
-import { and, eq, sql, desc, or, asc, inArray, lte, gte } from 'drizzle-orm';
+import { and, eq, sql, or } from 'drizzle-orm';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-operations-extended');
 
-import { businessRecords, inventoryItems, serviceTickets, invoices } from '@shared/schema';
-import { serviceContracts } from '@shared/schema';
+import { businessRecords } from '@shared/schema';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { requireAuth } from './replitAuth';
 import { badRequest, notFound, serverError } from './lib/error-response';
@@ -174,215 +172,16 @@ export function registerOperationsExtendedRoutes(app: Express) {
   // be built on those; it must not restate a certification the company does not
   // hold (see LEGAL-010).
 
-  // ============= PERFORMANCE MONITORING ROUTES =============
-
-  // Get performance metrics
-  app.get(
-    '/api/performance/metrics',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.session?.tenantId;
-        const metrics = await storage.getPerformanceMetrics(tenantId);
-        res.json(metrics);
-      } catch (error) {
-        log.error('Error fetching performance metrics:', error);
-        serverError(res, 'Failed to fetch performance metrics');
-      }
-    },
-  );
-
-  // Get performance alerts
-  app.get('/api/performance/alerts', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const alerts: any[] = [];
-
-      try {
-        // 1) Low stock alerts
-        const lowStockItems = await db
-          .select({
-            id: inventoryItems.id,
-            name: inventoryItems.name,
-            category: inventoryItems.category,
-            currentStock: inventoryItems.quantityOnHand,
-            minThreshold: inventoryItems.reorderPoint,
-            reorderQuantity: inventoryItems.reorderQuantity,
-            primaryVendor: inventoryItems.primaryVendor,
-          })
-          .from(inventoryItems)
-          .where(and(eq(inventoryItems.tenantId, tenantId), sql`quantity_on_hand <= reorder_point`))
-          .orderBy(asc(inventoryItems.quantityOnHand))
-          .limit(20);
-
-        alerts.push(
-          ...lowStockItems.map((item) => ({
-            id: `low_stock_${item.id}`,
-            type: 'low_stock',
-            severity: 'medium',
-            title: `Low Stock: ${item.name}`,
-            message: `${item.name} is running low (${item.currentStock} remaining, reorder at ${item.minThreshold})`,
-            category: 'business',
-            timestamp: new Date().toISOString(),
-          })),
-        );
-      } catch (error) {
-        log.warn('Failed to fetch low stock alerts:', error);
-      }
-
-      try {
-        // 2) Dispatch delay alerts
-        const delayedTickets = await db
-          .select({
-            id: serviceTickets.id,
-            ticketNumber: serviceTickets.ticketNumber,
-            title: serviceTickets.title,
-            scheduledDate: serviceTickets.scheduledDate,
-            status: serviceTickets.status,
-          })
-          .from(serviceTickets)
-          .where(
-            and(
-              eq(serviceTickets.tenantId, tenantId),
-              sql`scheduled_date < NOW()`,
-              sql`status NOT IN ('completed', 'cancelled')`,
-            ),
-          )
-          .orderBy(asc(serviceTickets.scheduledDate))
-          .limit(10);
-
-        alerts.push(
-          ...delayedTickets.map((ticket) => ({
-            id: `dispatch_delay_${ticket.id}`,
-            type: 'dispatch_delay',
-            severity: 'high',
-            title: `Dispatch Delay: Ticket ${ticket.ticketNumber}`,
-            message: `Service ticket ${ticket.ticketNumber} (${ticket.title}) was scheduled for ${new Date(ticket.scheduledDate!).toLocaleString()} but is still ${ticket.status}.`,
-            category: 'performance',
-            timestamp: new Date().toISOString(),
-          })),
-        );
-      } catch (error) {
-        log.warn('Failed to fetch dispatch delay alerts:', error);
-      }
-
-      try {
-        // 3) Billing anomaly alerts
-        const billingAnomalies = await db
-          .select({
-            id: invoices.id,
-            invoiceNumber: invoices.invoiceNumber,
-            createdAt: invoices.createdAt,
-            dueDate: invoices.dueDate,
-            status: invoices.status,
-            totalAmount: invoices.totalAmount,
-          })
-          .from(invoices)
-          .where(
-            and(
-              eq(invoices.tenantId, tenantId),
-              sql`(status = 'overdue') OR (due_date < NOW() AND status = 'pending')`,
-            ),
-          )
-          .orderBy(desc(invoices.createdAt))
-          .limit(10);
-
-        alerts.push(
-          ...billingAnomalies.map((invoice) => ({
-            id: `billing_anomaly_${invoice.id}`,
-            type: 'billing_anomaly',
-            severity: invoice.status === 'overdue' ? 'critical' : 'medium',
-            title: `Billing Issue: Invoice ${invoice.invoiceNumber}`,
-            message:
-              invoice.status === 'overdue'
-                ? `Invoice ${invoice.invoiceNumber} is overdue since ${new Date(invoice.dueDate!).toLocaleDateString()}.`
-                : `Invoice ${invoice.invoiceNumber} is past due (Due: ${new Date(invoice.dueDate!).toLocaleDateString()}).`,
-            category: 'business',
-            timestamp: new Date().toISOString(),
-          })),
-        );
-      } catch (error) {
-        log.warn('Failed to fetch billing anomaly alerts:', error);
-      }
-
-      try {
-        // 4) Contract expiration alerts
-        const expiringContracts = await db
-          .select({
-            id: serviceContracts.id,
-            contractNumber: serviceContracts.contractNumber,
-            customerId: serviceContracts.customerId,
-            customerName: businessRecords.companyName,
-            endDate: serviceContracts.endDate,
-            daysUntilExpiration:
-              sql`DATE_PART('day', ${serviceContracts.endDate}::timestamp - NOW())`.as('days'),
-            monthlyValue: serviceContracts.monthlyBaseRate,
-            annualValue: sql`COALESCE(${serviceContracts.monthlyBaseRate}, 0) * 12`.as(
-              'annualValue',
-            ),
-          })
-          .from(serviceContracts)
-          .leftJoin(businessRecords, eq(serviceContracts.customerId, businessRecords.id))
-          .where(
-            and(
-              eq(serviceContracts.tenantId, tenantId),
-              eq(serviceContracts.contractStatus, 'active'),
-              lte(serviceContracts.endDate, sql`NOW() + INTERVAL '90 days'`), // Next 90 days
-              gte(serviceContracts.endDate, sql`NOW()`),
-            ),
-          )
-          .orderBy(asc(serviceContracts.endDate))
-          .limit(15);
-
-        alerts.push(
-          ...expiringContracts.map((contract) => {
-            const days = parseInt(String(contract.daysUntilExpiration)) || 0;
-            let severity: 'low' | 'medium' | 'high' | 'critical' = 'medium';
-            let type = 'contract_renewal';
-
-            if (days <= 30) {
-              severity = 'critical';
-              type = 'contract_urgent';
-            } else if (days <= 60) {
-              severity = 'high';
-            }
-
-            const annualValue = parseFloat(String(contract.annualValue)) || 0;
-            const valueMsg =
-              annualValue > 0 ? ` ($${annualValue.toLocaleString()}/year at risk)` : '';
-
-            return {
-              id: `contract_expiration_${contract.id}`,
-              type,
-              severity,
-              title: `Contract Expiring: ${contract.customerName}`,
-              message: `Contract ${contract.contractNumber} expires in ${days} days (${new Date(contract.endDate).toLocaleDateString()})${valueMsg}`,
-              category: 'business',
-              timestamp: new Date().toISOString(),
-              metadata: {
-                contractId: contract.id,
-                customerId: contract.customerId,
-                daysRemaining: days,
-                annualValue: annualValue,
-              },
-            };
-          }),
-        );
-      } catch (error) {
-        log.warn('Failed to fetch contract expiration alerts:', error);
-      }
-
-      res.json(alerts);
-    } catch (error) {
-      log.error('Error fetching alerts:', error);
-      res.status(500).json({ message: 'Failed to fetch alerts' });
-    }
-  });
+  // AUDIT-021: the two /api/performance handlers that stood here are ported to
+  // supabase/functions/performance/ and the prefix is proxied, so dev and prod
+  // now answer the same thing. They mattered more than a duplicate usually
+  // does: the four alert families derived here - low stock, dispatch delay,
+  // billing anomaly, contract expiration - were served in DEV ONLY, while
+  // production read system_alerts, a real table that NOTHING WRITES TO. The
+  // only insert in the tree is storage.createSystemAlert and no caller names
+  // it, so the alert bell has been permanently silent in production while dev
+  // showed real problems. The derivations now live in that function, alongside
+  // the system_alerts read rather than instead of it.
 
   // ============= COMMISSION MANAGEMENT ROUTES (Block 1) =============
 

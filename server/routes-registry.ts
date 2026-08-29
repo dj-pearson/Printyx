@@ -565,7 +565,15 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   const asyncApiMounts: [string, string][] = [
     ['/api/ai', './routes/ai-routes-simple'],
     ['/api/calendar', './routes/calendar-routes'],
-    ['/api/performance', './routes/performance-routes'],
+    // ['/api/performance', './routes/performance-routes'] - retired
+    // (AUDIT-021). The three endpoints anything calls - /metrics, /alerts,
+    // /health - are served by supabase/functions/performance/ from
+    // performance_metrics and system_alerts, and the prefix is proxied now. The
+    // Express versions invented every number they returned: 99 + random*0.99
+    // uptime, random*500 + 800 throughput, a random error rate, disk usage and
+    // active-user count. Of the nine remaining handlers no client tree called
+    // one, and /run-tests and /optimize were self-declared mocks returning
+    // invented test results with a random duration.
     ['/api/advanced-scheduling', './routes/advanced-scheduling-routes'],
     // ['/api/mfa', './routes/mfa-routes'] - retired (SEC-MFA-001). All 16
     // handlers gated on `req.session.user`, which nothing in this codebase ever
