@@ -1,3 +1,35 @@
+/**
+ * Renewal management: contract renewals, renewal activities, renewal playbooks
+ * and expansion opportunities. 18 endpoints over four real tables in
+ * shared/renewal-management-schema.ts.
+ *
+ * NOTHING CALLS ANY OF IT - DO NOT "FIX" THIS FILE WITHOUT READING AUDIT-026.
+ *
+ * It is registered (routes-registry.ts) and none of its prefixes is proxied, so
+ * unlike the shadowed routers these handlers really do run in dev. They just
+ * have no caller: no client tree references /api/contract-renewals,
+ * /api/renewal-activities, /api/renewal-playbooks or /api/expansion-
+ * opportunities. The four edge functions that mirror them for production -
+ * contract-renewals/, renewal-activities/, renewal-playbooks/ and
+ * expansion-opportunities/, 883 lines between them - have no caller either and
+ * are all in docs/unreferenced-edge-fns-baseline.json.
+ *
+ * THERE IS A SECOND RENEWAL MODEL, AND IT IS THE ONE THE UI USES. The two
+ * routed pages are ContractRenewalDashboard (/contract-renewal-autopilot) and
+ * RenewalAutoQuote (/renewals). Between them they read contract_renewal_tracking,
+ * renewal_auto_quotes, renewal_proposals, renewal_analytics,
+ * renewal_automation_rules, renewal_autoquote_settings and renewal_suppressions,
+ * through supabase/functions/contract-renewal/ and renewal-autoquote/. They
+ * never touch contract_renewals, renewal_activities, renewal_playbooks or
+ * expansion_opportunities.
+ *
+ * So this is not debt to sweep: it is a complete renewal-management feature
+ * with its own schema that was never wired to a screen, sitting beside a
+ * different renewal feature that was. Connecting it means building a UI and
+ * deciding which of the two models survives; retiring it means dropping four
+ * tables. Either is a product call, which is why the file is annotated rather
+ * than deleted.
+ */
 import type { Express } from 'express';
 import { db } from './db';
 import { createModuleLogger } from './lib/logger';
