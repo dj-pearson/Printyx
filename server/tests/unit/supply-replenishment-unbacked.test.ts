@@ -42,7 +42,11 @@ describe('supply dashboard metrics', () => {
 
   it('returns null for all three analytics fields when no period is summarised', () => {
     for (const field of ['projectedSavings', 'emergenciesPrevented', 'averageLeadTime']) {
-      expect(edge).toMatch(new RegExp(`${field}: hasAnalytics \\?`));
+      // \s* between the field and the ternary: prettier wraps the longer ones
+      // onto the next line, and an assertion that only matched the one-line
+      // form passed until the formatter ran and then failed for a reason that
+      // had nothing to do with the code.
+      expect(edge).toMatch(new RegExp(`${field}:\\s*hasAnalytics\\s*\\?`));
     }
     expect(edge).toMatch(/unbacked: hasAnalytics/);
   });
