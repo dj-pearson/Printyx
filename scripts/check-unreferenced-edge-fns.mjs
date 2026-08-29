@@ -35,10 +35,17 @@
  * spot-checking and reported 34 phantom callers for `pipeline`, because `-` is
  * itself a word boundary.
  *
+ * EVERY CLIENT TREE IS SCANNED, not just the web app. This repo ships six more:
+ * printyx-client, printyx-desktop, mobile-app, mobile, browser-extensions,
+ * printyx-extension and the iOS project. The first version of this script read
+ * client/src alone and called that a blind spot; it was worse than that, because
+ * `today-dashboard` was reported unreferenced and then written up as a dead
+ * duplicate, when ios/Printyx/Core/Network/APIEndpoint.swift calls it. Source
+ * files only - a path named in a SECURITY.md is documentation, not a caller, and
+ * counting it put a phantom reference on `client-metrics`.
+ *
  * WHAT IT CANNOT SEE, stated so a pass is never read as proof:
- *   - Callers outside client/src. The mobile apps, the Chrome extension and any
- *     server-to-server caller are invisible here, which is why several such
- *     functions sit in the baseline rather than being reported as defects.
+ *   - Server-to-server callers, and anything invoked by a provider webhook.
  *   - A path assembled at runtime from a variable.
  *   - supabase.functions.invoke('name'), which bypasses /api entirely. There is
  *     no such call in client/src today - verified - but it would be a blind spot
@@ -72,22 +79,38 @@ function edgeFunctions() {
     .sort();
 }
 
-/** Every /api/<segment> a file under client/src names, matched exactly. */
+/** Directories holding a client that can call an edge function. */
+const CLIENT_TREES = [
+  join('client', 'src'),
+  'printyx-client',
+  'printyx-desktop',
+  'mobile-app',
+  'mobile',
+  'browser-extensions',
+  'printyx-extension',
+  'ios',
+];
+
+const SOURCE = /\.(ts|tsx|js|jsx|mjs|cjs|swift|kt|java|dart)$/;
+
+/** Every /api/<segment> any client source names, matched exactly. */
 function clientSegments() {
   const segments = new Set();
   const walk = (dir) => {
+    if (!existsSync(dir)) return;
     for (const entry of readdirSync(dir)) {
+      if (entry === 'node_modules' || entry === 'dist' || entry.startsWith('.')) continue;
       const full = join(dir, entry);
       if (statSync(full).isDirectory()) {
         walk(full);
-      } else if (/\.(ts|tsx)$/.test(entry)) {
+      } else if (SOURCE.test(entry)) {
         for (const m of readFileSync(full, 'utf8').matchAll(/\/api\/([a-z0-9-]+)/g)) {
           segments.add(m[1]);
         }
       }
     }
   };
-  walk(join(ROOT, 'client', 'src'));
+  for (const tree of CLIENT_TREES) walk(join(ROOT, tree));
   return segments;
 }
 
@@ -147,11 +170,11 @@ const baseline = existsSync(BASELINE)
 const added = unreferenced.filter((fn) => !baseline.has(fn));
 
 if (added.length > 0) {
-  console.error(`✗ ${added.length} NEW edge function(s) that nothing in client/src calls:\n`);
+  console.error(`✗ ${added.length} NEW edge function(s) that no client tree calls:\n`);
   for (const fn of added) console.error(`    supabase/functions/${fn}/`);
   console.error(
     '\nA back end with no caller is half a feature. Give it a caller, or if it is reached\n' +
-      'from outside client/src (mobile, extension, a provider webhook), record it with:\n' +
+      'server-to-server or by a provider webhook, record it with:\n' +
       '    node scripts/check-unreferenced-edge-fns.mjs --update-baseline',
   );
   process.exit(1);
