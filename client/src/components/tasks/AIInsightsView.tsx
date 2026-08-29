@@ -81,7 +81,7 @@ export function AIInsightsView({ tasks, stats, isLoading }: AIInsightsViewProps)
   const [isScheduling, setIsScheduling] = useState(false);
   const { toast } = useToast();
 
-  const { data: suggestionData } = useQuery<SuggestionsResponse>({
+  const { data: suggestionData, isError: suggestionsFailed } = useQuery<SuggestionsResponse>({
     queryKey: ['/api/tasks/suggestions'],
     queryFn: async () => apiRequest('/api/tasks/suggestions'),
   });
@@ -242,7 +242,13 @@ export function AIInsightsView({ tasks, stats, isLoading }: AIInsightsViewProps)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {suggestions.length === 0 ? (
+              {suggestionsFailed ? (
+                // "No recommendations" and "we could not ask" are different
+                // facts, and this panel used to render them identically.
+                <p className="text-sm text-muted-foreground">
+                  Could not load recommendations. This says nothing about whether there are any.
+                </p>
+              ) : suggestions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   {suggestionData?.message ??
                     'No recommendations available for this tenant right now.'}

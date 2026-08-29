@@ -56,7 +56,14 @@ export function TwoFactorCard() {
   const [code, setCode] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
-  const { data: status, isLoading } = useQuery<MfaStatus>({
+  // isError matters more here than on most cards: if the status request fails,
+  // rendering the "Off / Set up" state would tell someone with MFA enabled that
+  // they have none, and invite them to enrol a second time.
+  const {
+    data: status,
+    isLoading,
+    isError,
+  } = useQuery<MfaStatus>({
     queryKey: ['/api/mfa/status'],
     queryFn: () => apiRequest('/api/mfa/status'),
   });
@@ -150,7 +157,13 @@ export function TwoFactorCard() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {enrolled ? (
+          {isError ? (
+            <Alert variant="destructive">
+              <AlertDescription>
+                Could not read your two-factor status. Nothing has changed; reload to try again.
+              </AlertDescription>
+            </Alert>
+          ) : enrolled ? (
             <>
               <p className="text-sm text-muted-foreground">
                 {status?.primary === 'totp' ? 'Authenticator app' : (status?.primary ?? 'Enabled')}

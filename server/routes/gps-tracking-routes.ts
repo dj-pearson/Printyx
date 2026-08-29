@@ -26,6 +26,7 @@ import { storage } from '../storage';
 import { z } from 'zod';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('gps-tracking-routes');
+import { sendError } from '../lib/error-response';
 
 import {
   insertTechnicianLocationSchema,
@@ -1005,10 +1006,14 @@ router.post('/geofences/check', async (req: Request, res: Response) => {
     // codebase does point-in-polygon. Saying so beats returning `false`, which
     // a caller cannot tell from "outside".
     if (!geofence.radiusMeters) {
-      return res.status(501).json({
-        error: 'Only circular geofences can be checked',
-        geofenceId,
-        geofenceType: geofence.geofenceType,
+      // The API error contract is { message, code, details, requestId }; a bare
+      // `error` key gives a client nothing to branch on. This one arrived with
+      // 0427f17 and drifted the check:error-shape baseline (117 -> 118), which
+      // nobody noticed because that commit's own point was that /api/gps has no
+      // caller. Bringing it into contract restores the count.
+      return sendError(res, 501, 'Only circular geofences can be checked', {
+        code: 'UNSUPPORTED_GEOFENCE_TYPE',
+        details: { geofenceId, geofenceType: geofence.geofenceType },
       });
     }
 
