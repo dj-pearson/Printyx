@@ -1,3 +1,26 @@
+/**
+ * Advanced billing: meter anomalies, disputes, credit memos, billing schedules
+ * and invoice-generation logs. 39 endpoints over real tables.
+ *
+ * UNREACHABLE TODAY - DO NOT "FIX" THIS FILE WITHOUT READING PROD-008c.
+ *
+ * routes-registry mounts it at /api/billing, but /api/billing is in crmProxies,
+ * and the proxy registers long before this mount. Every request under that
+ * prefix goes to supabase/functions/billing/, which has handlers for invoices,
+ * cycles, adjustments, configurations, payment-methods, service-entries and
+ * analytics - and NONE for the five domains below. So these handlers never run,
+ * on either host.
+ *
+ * Nothing calls them either: no page or component in client/src references a
+ * dispute, credit memo, meter anomaly or billing schedule. This is a complete
+ * back end - schema in shared/advanced-billing-schema.ts, storage methods in
+ * server/storage.ts, Zod-validated handlers here - that was never connected to
+ * anything.
+ *
+ * That is why it is still here rather than deleted with the other shadowed
+ * routers: those were mocks or duplicates of live edge functions, and this is
+ * real work with no replacement. Porting it is PROD-008c.
+ */
 import express, { Request, Response } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';
