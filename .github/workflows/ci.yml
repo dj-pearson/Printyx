@@ -57,6 +57,8 @@ jobs:
         run: npm run check:fabricated
       - name: Static-posture gate for admin surfaces (AUDIT-019)
         run: npm run check:no-static-posture
+      - name: Fabricated-measurement ratchet (AUDIT-020)
+        run: npm run check:no-random-metrics
       - name: Accessible-name gate for icon buttons and search inputs (CR-035)
         run: npm run check:a11y-names
       - name: Edge-function RBAC ratchet (SEC-EDGE-001)

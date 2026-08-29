@@ -1,0 +1,49 @@
+{
+  "note": "Object properties whose value comes from Math.random(), i.e. a measurement someone made up. Keyed by file and property name so line moves do not churn it. Do not grow this list; see scripts/check-no-random-metrics.mjs and AUDIT-020.",
+  "total": 38,
+  "offenders": {
+    "server/routes-sample-data.ts": [
+      "averageDealSize",
+      "conversionRate",
+      "deals",
+      "pipelineValue",
+      "revenue",
+      "units"
+    ],
+    "server/routes-service-dispatch.ts": [
+      "averageCallTime",
+      "completionRate",
+      "customerRating",
+      "customerSatisfaction",
+      "lat",
+      "lng",
+      "onTimeArrival",
+      "utilizationRate"
+    ],
+    "server/routes/performance-routes.ts": [
+      "activeUsers",
+      "diskUsage",
+      "duration",
+      "errorRate",
+      "throughput"
+    ],
+    "server/run-comprehensive-tests.ts": ["coverage", "cpuUsage", "memoryUsage"],
+    "server/services/customer-portal-service.ts": [
+      "colorRatio",
+      "costPerPage",
+      "efficiencyScore",
+      "trendDirection"
+    ],
+    "server/services/meeting-scheduling-service.ts": ["flexibility", "meetingFatigueRisk"],
+    "server/services/performance-monitor.ts": ["activeConnections"],
+    "server/services/team-collaboration-service.ts": [
+      "aiEfficiencyScore",
+      "aiPredictedWorkload",
+      "overdueTasksCount",
+      "projectsCount",
+      "tasksCount"
+    ],
+    "server/websocket-service.ts": ["direction", "percentage", "value"],
+    "supabase/functions/meetings/handlers/meetings.ts": ["count"]
+  }
+}
