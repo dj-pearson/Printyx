@@ -147,6 +147,23 @@ function prefixMountedFindings() {
     }
   }
 
+  // DYNAMIC imports mount routers too, and only static ones were collected
+  // above: `const r = await import('./routes-x'); app.use('/api/x', r.foo)`.
+  // routes-customer-numbers.ts was mounted exactly that way on a proxied prefix,
+  // so its whole shadowed router was invisible to this gate.
+  for (const m of registry.matchAll(
+    /const\s+(?:\{([^}]+)\}|(\w+))\s*=\s*await\s+import\(\s*'([^']+)'\s*\)/g,
+  )) {
+    const spec = m[3];
+    if (m[2]) importedFrom[m[2]] = spec;
+    else
+      for (const part of m[1].split(',')) {
+        const aliased = part.trim().match(/(\w+)\s*:\s*(\w+)/);
+        const name = aliased ? aliased[2] : part.trim();
+        if (name) importedFrom[name] = spec;
+      }
+  }
+
   const mounts = [];
   // app.use('/api/x', router) and app.use('/api/x', middleware, router)
   for (const m of registry.matchAll(/app\.use\(\s*'(\/api[^']*)'\s*,\s*([^)]+)\)/g)) {
@@ -238,7 +255,53 @@ function prefixMountedFindings() {
   return out;
 }
 
+/**
+ * Modules that mount THEMSELVES on a proxied prefix.
+ *
+ * prefixMountedFindings above only sees mounts written in routes-registry.ts as
+ * `app.use('/api/x', ident)` where `ident` came from a STATIC import. Two shapes
+ * escaped it, and both hid a whole router:
+ *
+ *   - `const r = await import('./routes-x'); app.use('/api/x', r.something)` -
+ *     a dynamic import, so the spec lookup found nothing (routes-customer-numbers).
+ *   - `export function registerXRoutes(app) { app.use('/api/x', ...) }`, called
+ *     from the registry - the app.use is not in the registry at all
+ *     (routes-security-dashboard, 218 lines whose four handlers all queried
+ *     columns that do not exist on audit_logs, unnoticed because none ever ran).
+ *
+ * So: scan every server file for `app.use('<proxied prefix>'` and treat that
+ * file's own relative router routes as shadowed, wherever the call sits.
+ */
+function selfMountedFindings() {
+  const out = [];
+  const seen = new Set();
+  for (const file of walk(join(repo, 'server'))) {
+    const src = stripComments(readFileSync(file, 'utf8'));
+    for (const mount of src.matchAll(/app\.use\(\s*'(\/api\/[^']+)'/g)) {
+      const prefix = prefixes.find((p) => mount[1] === p || mount[1].startsWith(p + '/'));
+      if (!prefix) continue;
+      for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*'([^']*)'/g)) {
+        const rel = m[2];
+        if (rel.startsWith('/api/')) continue; // first pass owns absolute paths
+        const full = (mount[1] + (rel === '/' ? '' : rel)).replace(/\/{2,}/g, '/');
+        const rec = {
+          file: relative(repo, file).replace(/\\/g, '/'),
+          line: src.slice(0, m.index).split('\n').length,
+          route: `${m[1].toUpperCase()} ${full}`,
+          prefix,
+        };
+        const id = `${rec.route} (${rec.file})`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        out.push(rec);
+      }
+    }
+  }
+  return out;
+}
+
 findings.push(...prefixMountedFindings());
+findings.push(...selfMountedFindings());
 
 findings.sort((a, b) => a.route.localeCompare(b.route) || a.file.localeCompare(b.file));
 

@@ -523,11 +523,15 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Incident Response ──────────────────────────────────────────
   app.use(incidentResponseRoutes);
 
-  const customerNumberRoutes = await import('./routes-customer-numbers');
-  app.use('/api/customer-numbers', customerNumberRoutes.customerNumberRoutes);
+  // routes-customer-numbers.ts DELETED (QUALITY-002). /api/customer-numbers is
+  // proxied, so this mount was shadowed and never ran. supabase/functions/
+  // customer-numbers/ covers all eight of its routes - its header records that
+  // it replaces this file - and the frontend only calls four of them.
 
-  const companyIdRoutes = await import('./routes-company-ids');
-  app.use('/api/company-ids', companyIdRoutes.default);
+  // routes-company-ids.ts DELETED (QUALITY-002). /api/company-ids is proxied,
+  // so this mount was shadowed. supabase/functions/company-ids/ serves all four
+  // of its routes and handles the named-route-before-:id precedence the Express
+  // copy did not.
 
   // ─── Feature Flags ────────────────────────────────────────��─────────
 
@@ -845,8 +849,14 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerDataRetentionRoutes(app);
 
   // ─── Security Dashboard ────────────────────────────────────────
-  const { registerSecurityDashboardRoutes } = await import('./routes-security-dashboard');
-  registerSecurityDashboardRoutes(app);
+  // routes-security-dashboard.ts DELETED (QUALITY-002). /api/security is in
+  // crmProxies, and the proxy registers far earlier than this, so the router was
+  // shadowed and never ran - which is why nobody noticed that every one of its
+  // four handlers filtered audit_logs on `createdAt`, `resourceType` and
+  // `details`, none of which are columns on it (the real ones are `timestamp`,
+  // `resource` and `additional_context`). supabase/functions/security/ has
+  // served all four endpoints since EDGE-005d and its own header records the
+  // same column bugs as the reason it exists.
   const validateRoutes = await import('./routes-validate');
   app.use('/api', validateRoutes.default);
 
