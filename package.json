@@ -46,6 +46,7 @@
     "check:no-mocks": "node scripts/check-no-mock-fallbacks.mjs",
     "check:no-static-posture": "node scripts/check-no-static-posture.mjs",
     "check:no-random-metrics": "node scripts/check-no-random-metrics.mjs",
+    "check:unreferenced-edge-fns": "node scripts/check-unreferenced-edge-fns.mjs",
     "check:a11y-names": "node scripts/check-accessible-names.mjs",
     "check:edge-rbac": "node scripts/check-edge-rbac.mjs",
     "check:db-query-registration": "node scripts/check-db-query-registration.mjs",
