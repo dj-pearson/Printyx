@@ -564,7 +564,13 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   const asyncApiMounts: [string, string][] = [
     ['/api/ai', './routes/ai-routes-simple'],
-    ['/api/calendar', './routes/calendar-routes'],
+    // ['/api/calendar', './routes/calendar-routes'] - retired (PROD-011's rule:
+    // porting a mock handler is not a fix). All nine handlers were mocks and
+    // said so - "Mock response for now", "Mock event creation", "Mock event
+    // deletion" - and no client tree called /api/calendar. The only reference
+    // anywhere was a test NAME inside an archived .backup file. The real
+    // calendar surface is CalendarProvider, which uses a different prefix
+    // entirely (/api/integrations/calendar/*) that neither backend serves.
     // ['/api/performance', './routes/performance-routes'] - retired
     // (AUDIT-021). The three endpoints anything calls - /metrics, /alerts,
     // /health - are served by supabase/functions/performance/ from
