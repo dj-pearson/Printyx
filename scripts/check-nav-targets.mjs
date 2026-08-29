@@ -126,6 +126,21 @@ function registeredRoutes() {
   while ((m = re.exec(src)) !== null) {
     routes.add(m[1] ?? m[2] ?? m[3]);
   }
+
+  // Public no-shell pages are NOT <Route> elements. They are early returns
+  // guarded by `pathname.startsWith('/x/')` above the auth gate - /p/ for a
+  // shared proposal, /f/ for a hosted form, /book/ and /book/manage/ for the
+  // CRMX-016 booking pages - because they must render without the app shell.
+  //
+  // Reading those guards as registered prefixes is what stops this script
+  // reporting a route DEFINITION as a broken link. Before this, each one had to
+  // be baselined as "known broken", which is the baseline asserting the opposite
+  // of the truth about code that works.
+  const guard = /pathname\.startsWith\(\s*'([^']+)'\s*\)/g;
+  while ((m = guard.exec(src)) !== null) {
+    if (m[1].startsWith('/')) routes.add(`${m[1].replace(/\/$/, '')}/*`);
+  }
+
   return [...routes];
 }
 

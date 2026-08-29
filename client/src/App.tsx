@@ -480,6 +480,33 @@ function Router() {
     }
   }
 
+  // CRMX-016: public booking pages — no auth, no app shell, same shape as /p/
+  // and /f/ above. Both components were lazily imported here and never routed,
+  // so the whole booking surface shipped unreachable: two edge functions
+  // (public-booking, booking-pages), both proxied, and 41KB of pages behind
+  // three missing Route lines. AUDIT-014 carried /book/__DYN__ in its baseline
+  // for exactly this reason.
+  //
+  // /book/manage/:token is checked FIRST. Both pages read their own parameter
+  // out of window.location rather than taking a wouter param, and
+  // PublicBooking's getSlug() takes the segment after 'book' - which for a
+  // manage URL is the literal 'manage'. Segment counts differ, but the order is
+  // still the honest way to express that manage is not a slug.
+  if (pathname.startsWith('/book/manage/')) {
+    return (
+      <React.Suspense fallback={null}>
+        <BookingManage />
+      </React.Suspense>
+    );
+  }
+  if (pathname.startsWith('/book/')) {
+    return (
+      <React.Suspense fallback={null}>
+        <PublicBooking />
+      </React.Suspense>
+    );
+  }
+
   // CRMX-011: public hosted/embeddable web form (/f/:token) — no auth, no shell.
   if (pathname.startsWith('/f/')) {
     return (
@@ -1237,6 +1264,10 @@ function Router() {
                 <Route path="/ai-employees" component={AIEmployeeDashboard} />
                 <Route path="/calendar" component={CalendarPage} />
                 <Route path="/meeting-transcription" component={MeetingTranscription} />
+                {/* CRMX-016: the authenticated side of booking - where a rep
+                    creates and edits the pages /book/:slug serves. Lazily
+                    imported since the feature was built and never routed. */}
+                <Route path="/booking-pages" component={BookingPages} />
                 <Route path="/ai-task-scheduling" component={TaskHub} />
                 <Route path="/ai-search" component={AISearchKnowledgeDashboard} />
                 <Route path="/conversational-ai-dashboard" component={ConversationalAIDashboard} />

@@ -518,6 +518,9 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/ai-employees': { alwaysVisible: true },
   '/calendar': { alwaysVisible: true },
   '/meeting-transcription': { alwaysVisible: true },
+  // CRMX-016: managing the public booking pages a rep publishes. Same
+  // visibility as the meetings surface it belongs with.
+  '/booking-pages': { alwaysVisible: true },
   '/ai-search': { alwaysVisible: true },
   '/ai-task-scheduling': { alwaysVisible: true },
   '/conversational-ai-dashboard': { alwaysVisible: true },
