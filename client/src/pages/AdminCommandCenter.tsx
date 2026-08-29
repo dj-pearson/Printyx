@@ -1,32 +1,21 @@
 import { useState } from 'react';
+import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { QueryState, QueryStates } from '@/components/ui/query-state';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import {
   Building2,
   Users,
   Shield,
-  Database,
   Activity,
   AlertTriangle,
   CheckCircle,
-  TrendingUp,
   RefreshCw,
-  Play,
-  Lock,
-  Upload,
   FileText,
   Settings,
   Bell,
@@ -43,8 +32,9 @@ interface QuickAction {
   description: string;
   icon: React.ElementType;
   category: string;
-  onClick: () => void;
-  variant?: 'default' | 'destructive' | 'outline';
+  /** The screen that performs it. Every card here has one; see NOT_AVAILABLE. */
+  href: string;
+  cta: string;
 }
 
 interface PendingTask {
@@ -74,8 +64,6 @@ interface AdminOverview {
 export default function AdminCommandCenter() {
   const { toast } = useToast();
   const [activeCategory, setActiveCategory] = useState('all');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
 
   // Fetch system data
   const overviewQuery = useQuery<AdminOverview>({
@@ -96,7 +84,7 @@ export default function AdminCommandCenter() {
 
   // CR-033: these three kept only `.data`. Only two of the four tabs consume
   // them, so the wrappers below sit INSIDE those tabs rather than around the
-  // whole page — Quick Actions and Guided Workflows are static admin controls
+  // whole page — Quick Actions are static admin links
   // and must stay usable when a poll fails.
   const systemOverview = overviewQuery.data;
   const systemResources = resourcesQuery.data;
@@ -104,114 +92,96 @@ export default function AdminCommandCenter() {
   // QueryState render prop, which is the only place they are defined.
 
   // Quick Actions Configuration
+  // AUDIT-022: this array held twelve cards, every one of which opened a dialog
+  // that did nothing. Before that it POSTed /api/admin/execute-action, whose
+  // every branch returned a canned success - "Database backup initiated",
+  // "Application cache cleared successfully", a security scan with invented
+  // findings - while performing none of it.
+  //
+  // Each of the twelve was resolved individually. Three had a screen that
+  // really does the work and are links to it now. The other nine are listed
+  // under NOT_AVAILABLE below with what is actually true of each, because a
+  // control that cannot act should not be clickable, and quietly deleting nine
+  // cards would erase the fact that somebody expected the platform to do these
+  // things.
   const quickActions: QuickAction[] = [
-    // Tenant Management
     {
       id: 'create-tenant',
       title: 'Create New Tenant',
-      description: 'Guided setup for new organization',
+      description: 'Name, plan and admin contact for a new organization',
       icon: Building2,
       category: 'tenant',
-      onClick: () => handleWorkflow('tenant-provisioning'),
+      href: '/admin/tenant-management',
+      cta: 'Open tenant management',
     },
-    {
-      id: 'suspend-tenant',
-      title: 'Suspend Tenant',
-      description: 'Temporarily disable tenant access',
-      icon: Lock,
-      category: 'tenant',
-      onClick: () => handleWorkflow('tenant-suspension'),
-      variant: 'destructive',
-    },
-    {
-      id: 'upgrade-subscription',
-      title: 'Upgrade Subscriptions',
-      description: 'Bulk upgrade tenant plans',
-      icon: TrendingUp,
-      category: 'tenant',
-      onClick: () => handleWorkflow('subscription-upgrade'),
-    },
-    // User Operations
-    {
-      id: 'bulk-import',
-      title: 'Bulk User Import',
-      description: 'Import users from CSV file',
-      icon: Upload,
-      category: 'users',
-      onClick: () => handleWorkflow('user-import'),
-    },
-    {
-      id: 'reset-passwords',
-      title: 'Reset Passwords',
-      description: 'Bulk password reset',
-      icon: Lock,
-      category: 'users',
-      onClick: () => handleWorkflow('password-reset'),
-    },
-    {
-      id: 'assign-roles',
-      title: 'Assign Roles',
-      description: 'Bulk role assignment',
-      icon: Shield,
-      category: 'users',
-      onClick: () => handleWorkflow('role-assignment'),
-    },
-    // System Maintenance
     {
       id: 'health-check',
-      title: 'Run Health Check',
-      description: 'Comprehensive system diagnostics',
+      title: 'System Health',
+      description: 'Live database, storage and service checks',
       icon: Activity,
       category: 'system',
-      onClick: () => handleWorkflow('health-check'),
-    },
-    {
-      id: 'clear-cache',
-      title: 'Clear Cache',
-      description: 'Clear application cache',
-      icon: RefreshCw,
-      category: 'system',
-      onClick: () => handleWorkflow('cache-clear'),
-    },
-    {
-      id: 'generate-backup',
-      title: 'Generate Backup',
-      description: 'Create database backup',
-      icon: Database,
-      category: 'system',
-      onClick: () => handleWorkflow('backup-generation'),
-    },
-    // Security Audits
-    {
-      id: 'security-scan',
-      title: 'Security Scan',
-      description: 'Run vulnerability assessment',
-      icon: Shield,
-      category: 'security',
-      onClick: () => handleWorkflow('security-scan'),
+      href: '/admin/system-security',
+      cta: 'Open system security',
     },
     {
       id: 'audit-logs',
       title: 'Review Access Logs',
-      description: 'Analyze authentication logs',
+      description: 'Who did what, across tenants',
       icon: FileText,
       category: 'security',
-      onClick: () => handleWorkflow('audit-review'),
-    },
-    {
-      id: 'mfa-enforcement',
-      title: 'MFA Enforcement',
-      description: 'Enable MFA for all users',
-      icon: Lock,
-      category: 'security',
-      onClick: () => handleWorkflow('mfa-rollout'),
+      href: '/admin/audit-logs',
+      cta: 'Open audit log',
     },
   ];
 
-  const handleWorkflow = (workflowId: string) => {
-    setSelectedWorkflow(workflowId);
-    setIsDialogOpen(true);
-  };
+  /**
+   * The nine that were removed, and what is true of each instead. Rendered as
+   * text, not as buttons.
+   */
+  const NOT_AVAILABLE: Array<{ title: string; reason: string }> = [
+    {
+      title: 'Suspend tenant',
+      reason:
+        'No screen or endpoint suspends a tenant. Tenant management can filter by a suspended status but cannot set one.',
+    },
+    {
+      title: 'Upgrade subscriptions',
+      reason: 'There is no platform-admin subscription screen; plans are changed in Stripe.',
+    },
+    {
+      title: 'Bulk user import',
+      reason:
+        'The CSV import wizard at /import handles business records, contacts, products, service products, inventory, equipment and opportunities. Users are not among them.',
+    },
+    {
+      title: 'Reset passwords',
+      reason:
+        'Nothing performs an administrative password reset. A user changes their own from Settings, through Supabase Auth.',
+    },
+    {
+      title: 'Assign roles',
+      reason:
+        'Role definitions are edited at /role-management, but no screen assigns a role to a user, though the admin API can (PATCH /api/admin/users/:id).',
+    },
+    {
+      title: 'Clear cache',
+      reason: 'There is no application cache to clear from here.',
+    },
+    {
+      title: 'Generate backup',
+      reason:
+        'Backups are real and are not launched from the web: the k8s CronJob in k8s/base/cronjob-backup.yaml runs daily at 02:00 UTC, and npm run db:backup runs one by hand. Restores require interactive confirmation on purpose.',
+    },
+    {
+      title: 'Security scan',
+      reason: 'Nothing on the platform performs a security scan.',
+    },
+    {
+      title: 'MFA enforcement',
+      reason:
+        'Users can enrol in two-factor from Settings, but no route requires it - enforceMfaForAdmins is written and never mounted (SEC-MFA-001).',
+    },
+  ];
 
   // QUALITY-002: an executeAction mutation used to POST /api/admin/execute-action
   // here and, on any 2xx, toast "The action has been completed successfully."
@@ -294,11 +264,10 @@ export default function AdminCommandCenter() {
         </div>
 
         <Tabs defaultValue="quick-actions" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="quick-actions">Quick Actions</TabsTrigger>
             <TabsTrigger value="pending-tasks">Pending Tasks</TabsTrigger>
             <TabsTrigger value="monitoring">Real-Time Monitoring</TabsTrigger>
-            <TabsTrigger value="workflows">Guided Workflows</TabsTrigger>
           </TabsList>
 
           {/* Quick Actions Tab */}
@@ -366,19 +335,31 @@ export default function AdminCommandCenter() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <Button
-                      onClick={action.onClick}
-                      variant={action.variant || 'default'}
-                      className="w-full"
-                      size="sm"
-                    >
-                      <Play className="w-4 h-4 mr-2" />
-                      Execute
+                    <Button asChild className="w-full" size="sm">
+                      <Link href={action.href}>{action.cta}</Link>
                     </Button>
                   </CardContent>
                 </Card>
               ))}
             </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Not available from here</CardTitle>
+                <CardDescription>
+                  Nine controls used to sit above this line and report success without doing
+                  anything. What is actually true of each:
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {NOT_AVAILABLE.map((item) => (
+                  <div key={item.title}>
+                    <p className="text-sm font-medium">{item.title}</p>
+                    <p className="text-sm text-muted-foreground">{item.reason}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Pending Tasks Tab */}
@@ -546,177 +527,16 @@ export default function AdminCommandCenter() {
           </TabsContent>
 
           {/* Guided Workflows Tab */}
-          <TabsContent value="workflows" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="w-5 h-5" />
-                    Tenant Provisioning
-                  </CardTitle>
-                  <CardDescription>Complete guided setup for new organizations</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Step 1: Basic information & contact details</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Step 2: Subscription plan selection</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Step 3: Admin user creation</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Step 4: Branding & integrations</span>
-                    </div>
-                    <Button
-                      className="w-full mt-4"
-                      onClick={() => handleWorkflow('tenant-provisioning')}
-                    >
-                      Start Workflow
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Bulk User Operations
-                  </CardTitle>
-                  <CardDescription>Import, update, or manage users in bulk</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Upload CSV file with user data</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Map fields and validate data</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Assign roles and permissions</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Review and execute import</span>
-                    </div>
-                    <Button className="w-full mt-4" onClick={() => handleWorkflow('user-import')}>
-                      Start Workflow
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    System Diagnostics
-                  </CardTitle>
-                  <CardDescription>Comprehensive health check and diagnostics</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Database performance analysis</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>API endpoint health checks</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Integration connectivity tests</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Generate diagnostic report</span>
-                    </div>
-                    <Button className="w-full mt-4" onClick={() => handleWorkflow('health-check')}>
-                      Start Workflow
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="w-5 h-5" />
-                    Security Audit
-                  </CardTitle>
-                  <CardDescription>Platform-wide security assessment</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Scan for vulnerabilities</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Review access logs</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Check permission configurations</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>Generate security report</span>
-                    </div>
-                    <Button className="w-full mt-4" onClick={() => handleWorkflow('security-scan')}>
-                      Start Workflow
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+          {/* AUDIT-022: a "Guided Workflows" tab stood here with four cards -
+              tenant provisioning, bulk user operations, system diagnostics and a
+              security audit - each listing four green-ticked steps as though the
+              platform performed them, above a Start Workflow button that opened
+              a dialog and did nothing. None of the four exists. The ticks were
+              the worst of it: they asserted, item by item, that steps like
+              "scan for vulnerabilities" and "map fields and validate data" were
+              available. Removed rather than rewritten; what IS available is on
+              the Quick Actions tab, and what is not is named there. */}
         </Tabs>
-
-        {/* Workflow Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Execute Workflow</DialogTitle>
-              <DialogDescription>
-                {selectedWorkflow
-                  ? `Starting workflow: ${selectedWorkflow}`
-                  : 'Select a workflow to begin'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="rounded-lg border border-dashed p-4">
-                <p className="text-sm text-muted-foreground">
-                  This workflow is not implemented. Nothing on the platform performs it yet, so
-                  there is no action to confirm here. Use the tenant, user and backup screens
-                  directly for the operations they really support.
-                </p>
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Close
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </MainLayout>
   );
