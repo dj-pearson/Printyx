@@ -458,7 +458,7 @@ export class DocumentProcessingService {
   /**
    * Process uploaded document: OCR + AI extraction
    */
-  static async processDocument(uploadId: number, tenantId: number): Promise<void> {
+  static async processDocument(uploadId: number, tenantId: string): Promise<void> {
     try {
       // Get document upload record
       const upload = await db.query.documentUploads.findFirst({

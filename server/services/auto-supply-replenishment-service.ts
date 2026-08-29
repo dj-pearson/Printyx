@@ -178,7 +178,7 @@ export function heuristicSupplyAnalysis(
 }
 
 export async function analyzeSupplyLevel(
-  tenantId: number,
+  tenantId: string,
   supplyMonitoringId: number,
 ): Promise<SupplyAnalysisResult> {
   // Get supply monitoring record
@@ -377,7 +377,7 @@ export function calculateAverageUsage(history: any[]): number {
  * Create automatic supply order
  */
 export async function createAutoSupplyOrder(
-  tenantId: number,
+  tenantId: string,
   supplyMonitoringId: number,
   analysis: SupplyAnalysisResult,
 ): Promise<any> {
@@ -454,7 +454,7 @@ export async function createAutoSupplyOrder(
 /**
  * Batch analyze all supplies for a tenant
  */
-export async function analyzeTenantSupplies(tenantId: number): Promise<{
+export async function analyzeTenantSupplies(tenantId: string): Promise<{
   analyzed: number;
   ordersCreated: number;
   results: any[];
@@ -519,7 +519,7 @@ export async function analyzeTenantSupplies(tenantId: number): Promise<{
 /**
  * Get dashboard metrics
  */
-export async function getDashboardMetrics(tenantId: number): Promise<DashboardMetrics> {
+export async function getDashboardMetrics(tenantId: string): Promise<DashboardMetrics> {
   // Count devices and supplies
   const [devicesCount, suppliesCount] = await Promise.all([
     db
@@ -601,7 +601,7 @@ export async function getDashboardMetrics(tenantId: number): Promise<DashboardMe
 /**
  * Get low supply alerts
  */
-export async function getLowSupplyAlerts(tenantId: number) {
+export async function getLowSupplyAlerts(tenantId: string) {
   return db.query.supplyMonitoring.findMany({
     where: and(eq(supplyMonitoring.tenantId, tenantId), lt(supplyMonitoring.currentLevel, 20)),
     orderBy: [supplyMonitoring.currentLevel],
@@ -612,7 +612,7 @@ export async function getLowSupplyAlerts(tenantId: number) {
 /**
  * Get recent orders
  */
-export async function getRecentOrders(tenantId: number, limit: number = 20) {
+export async function getRecentOrders(tenantId: string, limit: number = 20) {
   return db.query.autoSupplyOrders.findMany({
     where: eq(autoSupplyOrders.tenantId, tenantId),
     orderBy: [desc(autoSupplyOrders.orderDate)],
@@ -623,7 +623,7 @@ export async function getRecentOrders(tenantId: number, limit: number = 20) {
 /**
  * Get or create replenishment rules for tenant
  */
-export async function getReplenishmentRules(tenantId: number) {
+export async function getReplenishmentRules(tenantId: string) {
   let rules = await db.query.supplyReplenishmentRules.findFirst({
     where: eq(supplyReplenishmentRules.tenantId, tenantId),
   });
@@ -646,7 +646,7 @@ export async function getReplenishmentRules(tenantId: number) {
  * Update replenishment rules
  */
 export async function updateReplenishmentRules(
-  tenantId: number,
+  tenantId: string,
   updates: Partial<typeof supplyReplenishmentRules.$inferInsert>,
 ) {
   const existing = await getReplenishmentRules(tenantId);

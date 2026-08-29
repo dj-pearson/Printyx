@@ -47,6 +47,8 @@ jobs:
         run: npm run check:routes
       - name: Migration-journal guard (SUPA-005)
         run: npm run check:migrations
+      - name: tenant_id column-type guard (AUDIT-032)
+        run: npm run check:tenant-id-types
       - name: Nav-target ratchet (AUDIT-014)
         run: npm run check:nav
       - name: Orphaned-file ratchet (AUDIT-018)

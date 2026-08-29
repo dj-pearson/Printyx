@@ -7,6 +7,7 @@ import {
   jsonb,
   decimal,
   pgEnum,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -66,7 +67,7 @@ export const renewalActionEnum = pgEnum('renewal_action', [
  */
 export const contractRenewalTracking = pgTable('contract_renewal_tracking', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Contract Details
   contractId: integer('contract_id').notNull(),
@@ -163,7 +164,7 @@ export const contractRenewalTracking = pgTable('contract_renewal_tracking', {
  */
 export const renewalProposals = pgTable('renewal_proposals', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Reference
   contractRenewalTrackingId: integer('contract_renewal_tracking_id').notNull(),
@@ -250,7 +251,7 @@ export const renewalProposals = pgTable('renewal_proposals', {
  */
 export const renewalAutomationRules = pgTable('renewal_automation_rules', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull().unique(),
+  tenantId: varchar('tenant_id').notNull().unique(),
 
   // Renewal Window Configuration
   renewalWindowDays: integer('renewal_window_days').default(90), // Start renewal process 90 days before expiration
@@ -330,7 +331,7 @@ export const renewalAutomationRules = pgTable('renewal_automation_rules', {
  */
 export const renewalAnalytics = pgTable('renewal_analytics', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Time Period
   periodStart: timestamp('period_start').notNull(),
@@ -384,7 +385,7 @@ export const renewalAnalytics = pgTable('renewal_analytics', {
  */
 export const renewalCommunicationLog = pgTable('renewal_communication_log', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Reference
   contractRenewalTrackingId: integer('contract_renewal_tracking_id').notNull(),

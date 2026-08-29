@@ -7,6 +7,7 @@ import {
   jsonb,
   index,
   boolean,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -18,7 +19,7 @@ export const clientRegistrations = pgTable(
   'client_registrations',
   {
     id: serial('id').primaryKey(),
-    tenantId: integer('tenant_id').notNull(),
+    tenantId: varchar('tenant_id').notNull(),
     clientId: text('client_id').notNull().unique(), // e.g., "client-001"
     clientName: text('client_name').notNull(), // e.g., "Main Office"
     location: text('location'), // Optional physical location
@@ -45,7 +46,7 @@ export const clientCollectedMetrics = pgTable(
   'client_collected_metrics',
   {
     id: serial('id').primaryKey(),
-    tenantId: integer('tenant_id').notNull(),
+    tenantId: varchar('tenant_id').notNull(),
     clientId: text('client_id').notNull(),
 
     // Device identification
@@ -110,7 +111,7 @@ export const monitoredDevices = pgTable(
   'monitored_devices',
   {
     id: serial('id').primaryKey(),
-    tenantId: integer('tenant_id').notNull(),
+    tenantId: varchar('tenant_id').notNull(),
     clientId: text('client_id').notNull(),
 
     // Device identification
@@ -193,7 +194,7 @@ export const tonerAlerts = pgTable(
   'toner_alerts',
   {
     id: serial('id').primaryKey(),
-    tenantId: integer('tenant_id').notNull(),
+    tenantId: varchar('tenant_id').notNull(),
     clientId: text('client_id').notNull(),
     deviceId: integer('device_id'), // Reference to monitored_devices
     serialNumber: text('serial_number').notNull(),
@@ -263,7 +264,7 @@ export const deviceMeterHistory = pgTable(
   'device_meter_history',
   {
     id: serial('id').primaryKey(),
-    tenantId: integer('tenant_id').notNull(),
+    tenantId: varchar('tenant_id').notNull(),
     serialNumber: text('serial_number').notNull(),
 
     // Meter readings at specific point in time

@@ -133,7 +133,7 @@ export class TemplateRenderingService {
       serviceCallId?: number;
       invoiceId?: number;
     },
-    tenantId: number,
+    tenantId: string,
   ): Promise<Record<string, any>> {
     const dataContext: Record<string, any> = {};
 
@@ -353,7 +353,7 @@ export class DocumentGenerationService {
       taskId?: number;
     },
     userId: number,
-    tenantId: number,
+    tenantId: string,
     options?: {
       name?: string;
       format?: 'pdf' | 'docx' | 'html';
@@ -486,7 +486,7 @@ export class DocumentGenerationService {
       taskId?: number;
     }>,
     userId: number,
-    tenantId: number,
+    tenantId: string,
     options?: {
       format?: 'pdf' | 'docx' | 'html';
     },
@@ -512,7 +512,7 @@ export class DocumentGenerationService {
   static async previewTemplate(
     templateId: number,
     sampleData: Record<string, any>,
-    tenantId: number,
+    tenantId: string,
   ): Promise<string> {
     const template = await db.query.documentTemplates.findFirst({
       where: (templates, { eq, and }) =>

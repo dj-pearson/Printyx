@@ -227,7 +227,7 @@ export function heuristicRenewalAnalysis(contract: RenewalAnalysisInput): Renewa
  * Analyze contract renewal likelihood using AI
  */
 export async function analyzeContractRenewal(
-  tenantId: number,
+  tenantId: string,
   contractTrackingId: number,
 ): Promise<RenewalAnalysisResult> {
   const contract = await db.query.contractRenewalTracking.findFirst({
@@ -570,7 +570,7 @@ export function buildRenewalProposalRow(
 }
 
 export async function generateRenewalProposal(
-  tenantId: number,
+  tenantId: string,
   contractTrackingId: number,
   analysis: RenewalAnalysisResult,
 ): Promise<ProposalRecommendations> {
@@ -712,7 +712,7 @@ Format as JSON:
  * Create renewal proposal
  */
 export async function createRenewalProposal(
-  tenantId: number,
+  tenantId: string,
   contractTrackingId: number,
   analysis: RenewalAnalysisResult,
   recommendations: ProposalRecommendations,
@@ -815,7 +815,7 @@ export async function createRenewalProposal(
 /**
  * Batch analyze all expiring contracts
  */
-export async function analyzeExpiringContracts(tenantId: number): Promise<{
+export async function analyzeExpiringContracts(tenantId: string): Promise<{
   analyzed: number;
   proposalsCreated: number;
   results: any[];
@@ -897,7 +897,7 @@ export async function analyzeExpiringContracts(tenantId: number): Promise<{
 /**
  * Get dashboard metrics
  */
-export async function getDashboardMetrics(tenantId: number) {
+export async function getDashboardMetrics(tenantId: string) {
   const rules = await getRenewalAutomationRules(tenantId);
 
   // Count contracts in various states
@@ -977,7 +977,7 @@ export async function getDashboardMetrics(tenantId: number) {
 /**
  * Get contracts at risk
  */
-export async function getContractsAtRisk(tenantId: number) {
+export async function getContractsAtRisk(tenantId: string) {
   return db.query.contractRenewalTracking.findMany({
     where: and(
       eq(contractRenewalTracking.tenantId, tenantId),
@@ -991,7 +991,7 @@ export async function getContractsAtRisk(tenantId: number) {
 /**
  * Get expiring contracts
  */
-export async function getExpiringContracts(tenantId: number, days: number = 90) {
+export async function getExpiringContracts(tenantId: string, days: number = 90) {
   return db.query.contractRenewalTracking.findMany({
     where: and(
       eq(contractRenewalTracking.tenantId, tenantId),
@@ -1006,7 +1006,7 @@ export async function getExpiringContracts(tenantId: number, days: number = 90) 
 /**
  * Get or create renewal automation rules
  */
-export async function getRenewalAutomationRules(tenantId: number) {
+export async function getRenewalAutomationRules(tenantId: string) {
   let rules = await db.query.renewalAutomationRules.findFirst({
     where: eq(renewalAutomationRules.tenantId, tenantId),
   });
@@ -1028,7 +1028,7 @@ export async function getRenewalAutomationRules(tenantId: number) {
  * Update renewal automation rules
  */
 export async function updateRenewalAutomationRules(
-  tenantId: number,
+  tenantId: string,
   updates: Partial<typeof renewalAutomationRules.$inferInsert>,
 ) {
   const existing = await getRenewalAutomationRules(tenantId);
