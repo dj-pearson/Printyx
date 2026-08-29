@@ -378,6 +378,14 @@ export function registerEdgeFunctionProxy(app: any) {
     // dev show what production shows.
     '/api/performance': 'performance',
 
+    // AUDIT-029: /api/device-monitoring. Three routed pages call this prefix -
+    // DeviceMonitoring, SupplyRunway and SupplyOrders - and nothing served it in
+    // production until supabase/functions/device-monitoring/ existed. Both hosts
+    // now share the projection and the forecast from
+    // _shared/device-monitoring-shape.ts, so proxying makes dev exercise the
+    // handler production uses rather than a second implementation of it.
+    '/api/device-monitoring': 'device-monitoring',
+
     // PROD-012: voice-agent had no edge function, so the after-hours intake
     // surface 404'd in production. Dir name matches the URL segment.
     '/api/voice-agent': 'voice-agent',

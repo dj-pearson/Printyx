@@ -156,11 +156,7 @@ import {
 
 import { emailParserRoutes } from './domains/notifications';
 
-import {
-  registerClientMonitoringRoutes,
-  clientMetricsRoutes,
-  deviceMonitoringRoutes,
-} from './domains/portal';
+import { registerClientMonitoringRoutes, clientMetricsRoutes } from './domains/portal';
 
 // ─── Non-domain imports ──────────────────────────────────���──────────────
 import { registerHealthRoutes } from './routes/health-routes';
@@ -691,7 +687,13 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // whose id is the word "recent" - the shadowing class check:route-shadowing
   // gates on the Express side.
   app.use('/api/client-metrics', clientMetricsRoutes);
-  app.use('/api/device-monitoring', deviceMonitoringRoutes);
+  // routes-device-monitoring.ts retired (AUDIT-029). /api/device-monitoring is
+  // proxied to supabase/functions/device-monitoring/, which serves all twelve
+  // endpoints and shares the projection and the forecast with what this router
+  // used - _shared/device-monitoring-shape.ts - so there is no second copy of
+  // the contract three routed pages depend on. Three of these handlers also
+  // selected r.manufacturer, a column device_registrations does not have, so
+  // they answered 500 in dev on top of 404 in production.
 
   const contractAlertsRoutes = (await import('./routes-contract-alerts')).default;
   app.use(contractAlertsRoutes);
