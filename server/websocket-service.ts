@@ -607,28 +607,38 @@ export class WebSocketService {
       return cached.data;
     }
 
-    // If not cached, return placeholder data
-    // In production, you'd execute the actual report query
+    // AUDIT-020: a cache miss used to return three invented rows - Active
+    // Users, Revenue and a Conversion Rate - regenerated on every push. This is
+    // a WEBSOCKET, so unlike the Express handlers it is not confined to dev:
+    // ENABLE_WEBSOCKET is implied by NODE_ENV === 'production'. Nothing
+    // subscribes to a report channel today (useRealtimeReport is exported from
+    // useWebSocket.ts and has no callers), so this never fired - but the next
+    // person to wire it up would have got numbers that look live and are not.
+    //
+    // Nothing here executes report queries, so say so rather than invent.
     return {
       timestamp: Date.now(),
-      rows: [
-        { metric: 'Active Users', value: Math.floor(Math.random() * 1000) + 500 },
-        { metric: 'Revenue', value: Math.floor(Math.random() * 50000) + 25000 },
-        { metric: 'Conversion Rate', value: (Math.random() * 10 + 5).toFixed(2) + '%' },
-      ],
+      rows: [],
+      unavailable: true,
+      reason:
+        'No cached result for this report, and the realtime channel cannot run report queries. ' +
+        'Fetch the report over HTTP first; this channel only replays what the reporting cache holds.',
     };
   }
 
   private async getCurrentKPIData(tenantId: string, kpiId: string): Promise<any> {
-    // Generate mock real-time KPI data
+    // AUDIT-020: this returned a random value, a fixed target of 1000, and a
+    // coin-flipped up/down trend, pushed on the data-update interval. A
+    // subscriber would have watched a KPI move every few seconds and had every
+    // reason to believe it. There is no KPI evaluation on this path, so it
+    // reports that instead of a number.
     return {
       id: kpiId,
-      value: Math.floor(Math.random() * 1000) + 100,
-      target: 1000,
-      trend: {
-        direction: Math.random() > 0.5 ? 'up' : 'down',
-        percentage: (Math.random() * 10).toFixed(1),
-      },
+      value: null,
+      target: null,
+      trend: null,
+      unavailable: true,
+      reason: 'Realtime KPI evaluation is not implemented; this channel has no value to push.',
       last_updated: new Date().toISOString(),
     };
   }

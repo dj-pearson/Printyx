@@ -1,6 +1,6 @@
 {
   "note": "Object properties whose value comes from Math.random(), i.e. a measurement someone made up. Keyed by file and property name so line moves do not churn it. Do not grow this list; see scripts/check-no-random-metrics.mjs and AUDIT-020.",
-  "total": 38,
+  "total": 34,
   "offenders": {
     "server/routes-sample-data.ts": [
       "averageDealSize",
@@ -42,8 +42,6 @@
       "overdueTasksCount",
       "projectsCount",
       "tasksCount"
-    ],
-    "server/websocket-service.ts": ["direction", "percentage", "value"],
-    "supabase/functions/meetings/handlers/meetings.ts": ["count"]
+    ]
   }
 }

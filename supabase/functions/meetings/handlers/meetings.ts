@@ -247,99 +247,85 @@ export async function handleRooms(req: Request, ctx: HandlerCtx): Promise<Respon
 }
 
 export async function handleAnalytics(req: Request, ctx: HandlerCtx): Promise<Response | null> {
-  const { method, requestId, pathParts } = ctx;
+  const { method, requestId, pathParts, auth, db } = ctx;
   if (method !== 'GET' || pathParts[0] !== 'analytics') return null;
+
+  // AUDIT-020: this returned 127 total meetings, 98 scheduled, 89 completed, a
+  // 42-minute average and a meetingFatigueIndex of 0.65 - every one a literal,
+  // with the per-type counts randomised on each request so they moved like real
+  // data. Unlike the Express fabrications this is an EDGE function, which is
+  // what production actually runs.
+  //
+  // calendar_events carries start_time, end_time, status and event_type, so
+  // everything below is counted. meetingFatigueIndex is not derivable - nothing
+  // in the repo defines it - so it is named in `unbacked` rather than invented.
+  const windowDays = 90;
+  const since = new Date(Date.now() - windowDays * 86_400_000).toISOString();
+
+  const { data, error } = await db
+    .from('calendar_events')
+    .select('start_time, end_time, status, event_type')
+    .eq('tenant_id', auth.tenantId)
+    .gte('start_time', since);
+
+  if (error) {
+    return errorResponse(500, 'Failed to load meeting analytics', req, {
+      code: 'DB_ERROR',
+      details: error.message,
+      requestId,
+    });
+  }
+
+  const rows = data ?? [];
+  const now = Date.now();
+
+  let durationSumMinutes = 0;
+  let durationCount = 0;
+  let upcoming = 0;
+  let past = 0;
+  let cancelled = 0;
+  const byType = new Map<string, number>();
+
+  for (const row of rows) {
+    const start = row.start_time ? new Date(row.start_time as string).getTime() : NaN;
+    const end = row.end_time ? new Date(row.end_time as string).getTime() : NaN;
+
+    if (row.status === 'cancelled') {
+      cancelled++;
+    } else if (Number.isFinite(start)) {
+      if (start > now) upcoming++;
+      else past++;
+    }
+
+    // An all-day or malformed row would drag the mean, so only well-formed
+    // positive durations count toward it.
+    if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+      durationSumMinutes += (end - start) / 60_000;
+      durationCount++;
+    }
+
+    const type = String(row.event_type ?? 'meeting');
+    byType.set(type, (byType.get(type) ?? 0) + 1);
+  }
 
   return jsonResponse(
     {
-      totalMeetings: 127,
-      scheduledMeetings: 98,
-      completedMeetings: 89,
-      cancelledMeetings: 12,
-      averageDurationMinutes: 42,
-      meetingFatigueIndex: 0.65,
-      topMeetingTypes: MOCK_MEETING_TYPES.slice(0, 3).map((t) => ({
-        type: t.name,
-        count: Math.floor(Math.random() * 50) + 10,
-      })),
+      windowDays,
+      totalMeetings: rows.length,
+      upcomingMeetings: upcoming,
+      pastMeetings: past,
+      cancelledMeetings: cancelled,
+      // null, not 0: no timed events is not a zero-minute average.
+      averageDurationMinutes:
+        durationCount > 0 ? Math.round(durationSumMinutes / durationCount) : null,
+      topMeetingTypes: Array.from(byType.entries())
+        .map(([type, count]) => ({ type, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3),
+      unbacked: ['meetingFatigueIndex'],
     },
     200,
     req,
     requestId,
   );
-}
-
-/**
- * POST /optimize-schedule — take a set of pending meetings and return
- * an optimized ordering. Uses Claude for heuristic; falls back to
- * earliest-first if the AI fails.
- */
-export async function handleOptimizeSchedule(
-  req: Request,
-  ctx: HandlerCtx,
-): Promise<Response | null> {
-  const { method, requestId, pathParts } = ctx;
-  if (method !== 'POST' || pathParts[0] !== 'optimize-schedule') return null;
-
-  let body: { meetings?: Array<Record<string, unknown>>; strategy?: string } = {};
-  try {
-    body = await req.json();
-  } catch {
-    return errorResponse(400, 'Invalid JSON body', req, {
-      code: 'INVALID_JSON',
-      requestId,
-    });
-  }
-
-  const meetings = body.meetings ?? [];
-  const strategy = body.strategy ?? 'balanced';
-
-  if (meetings.length === 0) {
-    return jsonResponse(
-      { optimizedSchedule: [], strategy, reasoning: 'No meetings provided' },
-      200,
-      req,
-      requestId,
-    );
-  }
-
-  const prompt =
-    `Optimize this list of ${meetings.length} meetings using the "${strategy}" strategy. ` +
-    `Return JSON: { "optimizedSchedule": [{ id, recommendedStart, rationale }], "reasoning": "..." }\n\n` +
-    `Meetings: ${JSON.stringify(meetings).slice(0, 3000)}`;
-
-  try {
-    const raw = await generateCompletion({
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.2,
-      max_tokens: 1500,
-    });
-    const parsed = JSON.parse(raw);
-    return jsonResponse(
-      {
-        optimizedSchedule: parsed.optimizedSchedule ?? [],
-        strategy,
-        reasoning: parsed.reasoning ?? 'AI optimization complete',
-      },
-      200,
-      req,
-      requestId,
-    );
-  } catch (err) {
-    log.warn({ err: String(err) }, 'optimize_schedule_ai_failed');
-    return jsonResponse(
-      {
-        optimizedSchedule: meetings.map((m) => ({
-          id: m.id,
-          recommendedStart: m.startTime ?? null,
-          rationale: 'Passthrough — AI unavailable',
-        })),
-        strategy,
-        reasoning: 'Fallback ordering — AI optimization unavailable',
-      },
-      200,
-      req,
-      requestId,
-    );
-  }
 }
