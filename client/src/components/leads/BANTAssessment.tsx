@@ -10,6 +10,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Card,
   CardContent,
@@ -145,11 +146,17 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
     refetch,
   } = useQuery({
     queryKey: ['bant-assessment', leadId],
+    // apiRequest, not fetch: a relative /api/... never passes through getApiUrl,
+    // so in production it went to the static-bundle origin instead of the
+    // functions host and carried no Bearer token either (PROD-013). A lead with
+    // no assessment yet is a 404 from the endpoint, which is not an error here.
     queryFn: async () => {
-      const res = await fetch(`/api/lead-scoring/bant/${leadId}`);
-      if (res.status === 404) return null;
-      if (!res.ok) throw new Error('Failed to fetch BANT data');
-      return res.json();
+      try {
+        return await apiRequest(`/api/lead-scoring/bant/${leadId}`);
+      } catch (err) {
+        if (err instanceof Error && err.message.startsWith('404')) return null;
+        throw err;
+      }
     },
   });
 
@@ -167,15 +174,7 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
 
   // Save mutation
   const saveMutation = useMutation({
-    mutationFn: async (data: BANTData) => {
-      const res = await fetch(`/api/lead-scoring/bant/${leadId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Failed to save BANT assessment');
-      return res.json();
-    },
+    mutationFn: (data: BANTData) => apiRequest(`/api/lead-scoring/bant/${leadId}`, 'POST', data),
     onSuccess: (data) => {
       toast({
         title: 'Assessment Saved',

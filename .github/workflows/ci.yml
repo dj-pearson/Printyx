@@ -73,6 +73,8 @@ jobs:
         run: npm run check:prd-refs
       - name: Raw-fetch ratchet (PROD-013)
         run: npm run check:raw-fetch
+      - name: Session-only auth ratchet (handlers gated on a field nothing sets)
+        run: npm run check:session-auth
       - name: Duplicate route-registration ratchet
         run: npm run check:dup-routes
       - name: Runtime-throwing type errors (hard gate)

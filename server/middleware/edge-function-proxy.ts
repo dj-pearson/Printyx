@@ -359,6 +359,16 @@ export function registerEdgeFunctionProxy(app: any) {
     // proxying makes dev exercise the same handler.
     '/api/mfa': 'mfa',
 
+    // SEC-SESSION-001: both of these were served in dev by routers that
+    // authenticate against req.session.user, which nothing assigns - so every
+    // request got a 401 while the edge functions behind the same prefixes
+    // worked fine in production. Proxying is the fix rather than repairing the
+    // routers, because the edge functions already cover what the frontend
+    // calls: /api/email-campaigns (useEmailSequences) and
+    // /api/lead-scoring/bant/:id (BANTAssessment).
+    '/api/email-campaigns': 'email-campaigns',
+    '/api/lead-scoring': 'lead-scoring',
+
     // PROD-012: voice-agent had no edge function, so the after-hours intake
     // surface 404'd in production. Dir name matches the URL segment.
     '/api/voice-agent': 'voice-agent',

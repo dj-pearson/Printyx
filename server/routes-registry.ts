@@ -576,7 +576,14 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     // mfa_enrollments; that is why the Settings card's twoFactorEnabled flag was
     // permanently false. /api/mfa is proxied to the edge function now, which
     // covers all 16 endpoints.
-    ['/api/lead-scoring', './routes/lead-scoring-routes'],
+    // ['/api/lead-scoring', './routes/lead-scoring-routes'] - retired
+    // (SEC-SESSION-001). Every handler authenticated against req.session.user,
+    // which nothing assigns, so all 18 answered 401 in dev as well as prod -
+    // BANTAssessment.tsx has been unable to load or save an assessment for as
+    // long as the router has existed. supabase/functions/lead-scoring/ covers
+    // rules, calculate, score, leaderboard, grade, bant, bant-analytics,
+    // qualified, qualification-history, engagement and analytics, and the
+    // prefix is proxied now.
     ['/api/lead-intelligence', './routes/lead-intelligence-routes'],
     ['/api/manufacturer-orders', './routes/manufacturer-order-routes'],
     ['/api/gps', './routes/gps-tracking-routes'],

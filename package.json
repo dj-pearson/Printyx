@@ -25,6 +25,7 @@
     "check:fabricated": "node scripts/check-fabricated-fallbacks.mjs",
     "check:prd-refs": "node scripts/check-prd-references.mjs",
     "check:raw-fetch": "node scripts/check-raw-api-fetch.mjs",
+    "check:session-auth": "node scripts/check-session-user-auth.mjs",
     "check:dup-routes": "node scripts/check-duplicate-routes.mjs",
     "check:throwing-types": "node scripts/check-throwing-types.mjs",
     "check:dup-tables": "node scripts/check-duplicate-tables.mjs",
