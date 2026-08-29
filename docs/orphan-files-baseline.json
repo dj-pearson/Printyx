@@ -1,6 +1,6 @@
 {
   "note": "AUDIT-018 orphaned-file ratchet. scripts/check-orphan-files.mjs fails CI when a .ts/.tsx file under client/src becomes unreachable from the Vite entry (client/src/main.tsx). Entries here are files no user can reach, each awaiting a delete-or-wire decision. Shrink this list, never grow it: node scripts/check-orphan-files.mjs --update-baseline. Reachable is a FLOOR, not proof a page is routed — that is check:nav. client/src/components/ui/ (vendored shadcn primitives) is out of scope.",
-  "count": 122,
+  "count": 111,
   "allowed": [
     "client/src/components/accessibility/index.ts",
     "client/src/components/auth/PermissionGate.tsx",
@@ -109,18 +109,7 @@
     "client/src/lib/useRequiredAccessories.ts",
     "client/src/lib/validation.ts",
     "client/src/pages/admin/KnowledgeBaseAdminDashboard.tsx",
-    "client/src/pages/EquipmentLifecycle.tsx",
-    "client/src/pages/EquipmentLifecycleManagement.tsx",
-    "client/src/pages/Integrations.tsx",
-    "client/src/pages/IntegrationsManagement.tsx",
-    "client/src/pages/landing.tsx",
     "client/src/pages/PrintCostCalculator.tsx",
-    "client/src/pages/ProductAccessories.tsx",
-    "client/src/pages/ProductCatalog.tsx",
-    "client/src/pages/ProductHub.tsx",
-    "client/src/pages/ProductManagementHub.tsx",
-    "client/src/pages/Reports.tsx",
-    "client/src/pages/ReportsHub.tsx",
     "client/src/types/sales-reports.ts",
     "client/src/types/scoped-sales-reports.ts",
     "client/src/types/scoped-service-reports.ts"
