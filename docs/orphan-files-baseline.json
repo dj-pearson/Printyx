@@ -1,6 +1,6 @@
 {
   "note": "AUDIT-018 orphaned-file ratchet. scripts/check-orphan-files.mjs fails CI when a .ts/.tsx file under client/src becomes unreachable from the Vite entry (client/src/main.tsx). Entries here are files no user can reach, each awaiting a delete-or-wire decision. Shrink this list, never grow it: node scripts/check-orphan-files.mjs --update-baseline. Reachable is a FLOOR, not proof a page is routed — that is check:nav. client/src/components/ui/ (vendored shadcn primitives) is out of scope.",
-  "count": 137,
+  "count": 136,
   "allowed": [
     "client/src/components/accessibility/index.ts",
     "client/src/components/auth/PermissionGate.tsx",
@@ -47,7 +47,6 @@
     "client/src/components/layout/SystemAlertBell.tsx",
     "client/src/components/leads/BANTAssessment.tsx",
     "client/src/components/leads/LeadScoreBadge.tsx",
-    "client/src/components/leads/LeadsImport.tsx",
     "client/src/components/mobile/MobileCustomerEntry.tsx",
     "client/src/components/mobile/MobileInventoryScanner.tsx",
     "client/src/components/ModularDashboard.tsx",
