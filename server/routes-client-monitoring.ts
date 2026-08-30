@@ -968,124 +968,20 @@ export function registerClientMonitoringRoutes(app: Express) {
   // production answered the dashboard call with vehicle counts at 200 and 404'd
   // the device list. Do not re-add a printer endpoint under /api/fleet.
 
-  // Get customer-specific devices
-  app.get('/api/customers/:customerId/devices', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || req.tenantId;
-      const { customerId } = req.params;
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Get all devices for this tenant
-      const devices = await db
-        .select()
-        .from(deviceRegistrations)
-        .where(eq(deviceRegistrations.tenantId, tenantId))
-        .orderBy(desc(deviceRegistrations.lastSeen));
-
-      // Get latest metrics for each device
-      const latestMetrics = await db
-        .select()
-        .from(deviceMetrics)
-        .where(eq(deviceMetrics.tenantId, tenantId))
-        .orderBy(desc(deviceMetrics.collectionTimestamp));
-
-      // Build metrics map
-      const metricsMap = new Map();
-      for (const metric of latestMetrics) {
-        if (!metricsMap.has(metric.deviceId)) {
-          metricsMap.set(metric.deviceId, metric);
-        }
-      }
-
-      // Enrich devices with latest metrics
-      const enrichedDevices = devices.map((device) => {
-        const metrics = metricsMap.get(device.id);
-        return {
-          ...device,
-          currentMetrics: metrics
-            ? {
-                tonerLevels: metrics.tonerLevels,
-                paperLevels: metrics.paperLevels,
-                totalImpressions: metrics.totalImpressions,
-                bwImpressions: metrics.bwImpressions,
-                colorImpressions: metrics.colorImpressions,
-                deviceStatus: metrics.deviceStatus,
-                collectionTimestamp: metrics.collectionTimestamp,
-              }
-            : null,
-        };
-      });
-
-      res.json({
-        customerId,
-        devices: enrichedDevices,
-        totalDevices: enrichedDevices.length,
-      });
-    } catch (error) {
-      log.error('Error fetching customer devices:', error);
-      res.status(500).json({ message: 'Failed to fetch customer devices' });
-    }
-  });
-
-  // Get customer meter reading history
-  app.get('/api/customers/:customerId/metrics/history', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || req.tenantId;
-      const { customerId } = req.params;
-      const { startDate, endDate, limit = 1000 } = req.query;
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Get all devices for this customer
-      const devices = await db
-        .select()
-        .from(deviceRegistrations)
-        .where(eq(deviceRegistrations.tenantId, tenantId));
-
-      const deviceIds = devices.map((d) => d.id);
-
-      // Get all metrics for these devices
-      const metrics = await db
-        .select()
-        .from(deviceMetrics)
-        .where(eq(deviceMetrics.tenantId, tenantId))
-        .orderBy(desc(deviceMetrics.collectionTimestamp))
-        .limit(Number(limit));
-
-      // Group metrics by device
-      const metricsByDevice = new Map();
-      for (const metric of metrics) {
-        if (!metricsByDevice.has(metric.deviceId)) {
-          metricsByDevice.set(metric.deviceId, []);
-        }
-        metricsByDevice.get(metric.deviceId).push(metric);
-      }
-
-      // Build timeline
-      const timeline = devices.map((device) => ({
-        deviceId: device.id,
-        deviceName: device.deviceName,
-        serialNumber: device.serialNumber,
-        model: device.model,
-        readings: metricsByDevice.get(device.id) || [],
-      }));
-
-      res.json({
-        customerId,
-        timeline,
-        totalDevices: devices.length,
-        totalReadings: metrics.length,
-      });
-    } catch (error) {
-      log.error('Error fetching customer metrics history:', error);
-      res.status(500).json({ message: 'Failed to fetch customer metrics history' });
-    }
-  });
+  // PA-021 removed GET /api/customers/:customerId/devices and
+  // GET /api/customers/:customerId/metrics/history from here.
+  //
+  // Both were shadowed the moment /api/customers went into crmProxies, and
+  // both had the same defect: they filtered device_registrations by tenant_id
+  // ONLY, so every customer's meter-readings tab showed the whole tenant's
+  // fleet under whichever customer was open - despite the column
+  // device_registrations.customer_id existing, and despite each handler's own
+  // comment claiming to fetch "all devices for this customer". Nothing errored
+  // and the numbers were real numbers, just about the wrong customers.
+  //
+  // metrics/history is now a customer-scoped sub-resource of
+  // supabase/functions/customers/. The devices endpoint was not ported: its
+  // only caller discarded the result (see CustomerMeterReadings.tsx).
 
   // Manual toner order trigger
   app.post('/api/devices/:id/order-toner', async (req: any, res) => {

@@ -85,10 +85,15 @@ describe('every query is scoped to both tenant and customer', () => {
   });
 
   it('filters on the customer as well', () => {
-    const customerScoped =
-      block.match(/\.eq\('(customer_id|business_record_id|id)', customerId\)/g) ?? [];
+    // One query scopes TRANSITIVELY rather than directly: device_metrics has
+    // no customer_id, so the metrics/history branch added by PA-021 restricts
+    // it to the ids of that customer's device_registrations. Counting only
+    // .eq(customerId) would report it as unscoped; counting .from() against
+    // both forms keeps the "every select is customer-scoped" invariant exact.
+    const direct = block.match(/\.eq\('(customer_id|business_record_id|id)', customerId\)/g) ?? [];
+    const transitive = block.match(/\.in\(\s*'device_id',/g) ?? [];
     const froms = block.match(/\.from\(/g) ?? [];
-    expect(customerScoped.length).toBe(froms.length);
+    expect(direct.length + transitive.length).toBe(froms.length);
   });
 });
 
@@ -121,15 +126,25 @@ describe('what is derived, and what is admitted', () => {
 });
 
 describe('dev and production run the same handler', () => {
-  it('forwards the sub-resource paths to the edge function', () => {
-    expect(proxy).toContain("'/api/customers/:id/:sub'");
-    expect(proxy).toMatch(/EDGE_FUNCTIONS_URL\}\/customers\//);
+  // CORRECTED (PA-021). This block used to assert the two special cases
+  // PA-020 left in place: an explicit /api/customers/:id/:sub forward, and a
+  // bare list still redirected to the `companies` function. Both are gone.
+  //
+  // The redirect was the weaker half of PA-020's reasoning. It said adding
+  // /api/customers to crmProxies "would have sent the list to a function that
+  // answers a different shape" - true, and the reason that mattered is that
+  // PRODUCTION ALREADY SENT IT THERE and could not do otherwise, so what the
+  // special case preserved was a dev-only shape no deployed client ever saw.
+  // The :id/:sub forward had its own defect: three segments exactly, so
+  // /metrics/history fell through to Express while /devices did not.
+  it('proxies the whole prefix, which is what production does', () => {
+    expect(proxy).toMatch(/'\/api\/customers':\s*'customers'/);
   });
 
-  it('leaves the bare list on its companies special case', () => {
-    // Adding /api/customers to crmProxies would have sent the list to a
-    // function that answers a different shape.
-    expect(proxy).toMatch(/\$\{EDGE_FUNCTIONS_URL\}\/companies\$\{qs\}/);
+  it('keeps no special case of its own', () => {
+    expect(proxy).not.toContain("'/api/customers/:id/:sub'");
+    expect(proxy).not.toMatch(/\$\{EDGE_FUNCTIONS_URL\}\/companies/);
+    expect(proxy).not.toMatch(/recordType=Customer/);
   });
 });
 

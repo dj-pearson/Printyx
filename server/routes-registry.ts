@@ -42,7 +42,6 @@ import {
 import {
   registerCrmCoreRoutes,
   registerCompaniesRoutes,
-  registerCustomerRoutes,
   registerBusinessRecordRoutes,
   registerCrmGoalRoutes,
   registerCrmNotesRoutes,
@@ -793,7 +792,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // working alternative either: it reads the same two non-existent tables and is
   // already recorded in docs/phantom-tables-baseline.json. The prefix is dead on
   // both hosts. Reviving it means creating the tables first.
-  registerCustomerRoutes(app);
+  // routes-customers.ts DELETED (PA-021). Its single handler, POST
+  // /api/customers, was shadowed the moment /api/customers went into
+  // crmProxies - and production, which never reaches Express, had always
+  // created customers through supabase/functions/customers/ instead.
   app.use(businessRecordsRoutes);
   // routes-web-forms.ts retired (PROD-008b); supabase/functions/web-forms/ has
   // all six handlers and already returns camelCase rows.

@@ -20,7 +20,6 @@ import { db } from './db';
 import { storage } from './storage';
 import { format } from 'date-fns';
 import { getUserId, getTenantId } from './utils/auth-helpers';
-import { requireTenant, TenantRequest } from './middleware/tenancy';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-workflow-mobile');
 
@@ -662,98 +661,15 @@ export function registerWorkflowMobileRoutes(app: Express) {
 
   // Create deal activity
 
-  // ============= CUSTOMER DETAIL ROUTES =============
-
-  // Customer detail routes - for comprehensive customer information
-  app.get(
-    '/api/customers/:id/equipment',
-
-    requireTenant,
-    async (req: TenantRequest, res) => {
-      try {
-        const equipment = await storage.getCustomerEquipment(
-          req.params.id as string,
-          req.tenantId as string,
-        );
-        res.json(equipment);
-      } catch (error) {
-        log.error('Error fetching customer equipment:', error);
-        res.status(500).json({ message: 'Failed to fetch customer equipment' });
-      }
-    },
-  );
-
-  app.get(
-    '/api/customers/:id/meter-readings',
-
-    requireTenant,
-    async (req: TenantRequest, res) => {
-      try {
-        const meterReadingsResult = await storage.getCustomerMeterReadings(
-          req.params.id as string,
-          req.tenantId as string,
-        );
-        res.json(meterReadingsResult);
-      } catch (error) {
-        log.error('Error fetching customer meter readings:', error);
-        res.status(500).json({ message: 'Failed to fetch customer meter readings' });
-      }
-    },
-  );
-
-  app.get(
-    '/api/customers/:id/invoices',
-
-    requireTenant,
-    async (req: TenantRequest, res) => {
-      try {
-        const invoices = await storage.getCustomerInvoices(
-          req.params.id as string,
-          req.tenantId as string,
-        );
-        res.json(invoices);
-      } catch (error) {
-        log.error('Error fetching customer invoices:', error);
-        res.status(500).json({ message: 'Failed to fetch customer invoices' });
-      }
-    },
-  );
-
-  app.get(
-    '/api/customers/:id/service-tickets',
-
-    requireTenant,
-    async (req: TenantRequest, res) => {
-      try {
-        const serviceTickets = await storage.getCustomerServiceTickets(
-          req.params.id as string,
-          req.tenantId as string,
-        );
-        res.json(serviceTickets);
-      } catch (error) {
-        log.error('Error fetching customer service tickets:', error);
-        res.status(500).json({ message: 'Failed to fetch customer service tickets' });
-      }
-    },
-  );
-
-  app.get(
-    '/api/customers/:id/contracts',
-
-    requireTenant,
-    async (req: TenantRequest, res) => {
-      try {
-        const contracts = await storage.getCustomerContracts(
-          req.params.id as string,
-          req.tenantId as string,
-        );
-        res.json(contracts);
-      } catch (error) {
-        log.error('Error fetching customer contracts:', error);
-        res.status(500).json({ message: 'Failed to fetch customer contracts' });
-      }
-    },
-  );
+  // ============= CUSTOMER DETAIL ROUTES - RETIRED (PA-021) =============
+  //
+  // Five aliases lived here - /api/customers/:id/{equipment,meter-readings,
+  // invoices,service-tickets,contracts} - forwarding to storage.getCustomerX.
+  // /api/customers is a crmProxies prefix now, and PA-020 had already routed
+  // the sub-segment explicitly before that, so none of them had run since.
+  // supabase/functions/customers/ serves four of the five; meter-readings had
+  // no caller in any client tree (the Customer Detail tab of that name calls
+  // /metrics/history, which is device telemetry, not equipment meters).
 
   // ============= CONTRACT ROUTES - RETIRED (PROD-008) =============
   //

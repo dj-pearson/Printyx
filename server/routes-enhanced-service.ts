@@ -11,7 +11,7 @@ import {
   insertTechnicianTicketSessionSchema,
   insertTicketPartsRequestSchema,
 } from '@shared/enhanced-service-schema';
-import { serviceTickets, customers, businessRecords } from '@shared/schema';
+import { serviceTickets, businessRecords } from '@shared/schema';
 import { requireServiceAccess } from './rbac-middleware';
 import { CustomerPortalService } from './services/customer-portal-service';
 import { billingEngine } from './services/billing-engine-service';
@@ -139,52 +139,12 @@ router.get('/service-requests', requireServiceAccess(2), async (req: any, res) =
 });
 
 // Get customers for phone-in ticket form
-router.get('/customers', async (req, res) => {
-  try {
-    const tenantId = req.headers['x-tenant-id'] as string;
-    const { search } = req.query;
-
-    // QUALITY-002: drizzle's where() ASSIGNS rather than ANDs, so applying the
-    // search predicate second discarded BOTH the tenant scope and the
-    // record_type = 'customer' filter. Every search returned every tenant's
-    // leads and former customers alongside its own.
-    const conditions = [
-      eq(businessRecords.tenantId, tenantId),
-      eq(businessRecords.recordType, 'customer'),
-    ];
-
-    if (search) {
-      conditions.push(
-        sql`(${businessRecords.companyName} ILIKE ${'%' + search + '%'} OR 
-             ${businessRecords.primaryContactName} ILIKE ${'%' + search + '%'} OR
-             ${businessRecords.primaryContactPhone} ILIKE ${'%' + search + '%'})`,
-      );
-    }
-
-    const customers = await db
-      .select({
-        id: businessRecords.id,
-        companyName: businessRecords.companyName,
-        primaryContactName: businessRecords.primaryContactName,
-        primaryContactEmail: businessRecords.primaryContactEmail,
-        primaryContactPhone: businessRecords.primaryContactPhone,
-        // `address` is not a column (dropped — addressLine1 beside it is the real
-        // one), and `type` is not either: the real discriminator is `record_type`
-        // (lead | customer | former_customer).
-        addressLine1: businessRecords.addressLine1,
-        city: businessRecords.city,
-        state: businessRecords.state,
-        type: businessRecords.recordType,
-      })
-      .from(businessRecords)
-      .where(and(...conditions))
-      .limit(50);
-    res.json(customers);
-  } catch (error) {
-    log.error('Error fetching customers for phone-in tickets:', error);
-    res.status(500).json({ error: 'Failed to fetch customers' });
-  }
-});
+// PA-021 removed GET /customers and GET /customers/search from here. This
+// router mounts at the /api root, so they were /api/customers and
+// /api/customers/search - shadowed once that prefix went into crmProxies, and
+// unreachable in production either way. supabase/functions/customers/ serves
+// the list with the same search behaviour; /search had no caller in any client
+// tree.
 
 // Technician check-in to service ticket
 router.post('/service-tickets/:ticketId/check-in', async (req, res) => {
@@ -395,50 +355,6 @@ router.post('/service-tickets/:ticketId/complete', async (req, res) => {
 });
 
 // Customer search endpoint
-router.get('/customers/search', async (req, res) => {
-  try {
-    const { q: searchTerm } = req.query;
-    const tenantId = req.headers['x-tenant-id'] as string;
-
-    if (!searchTerm || (searchTerm as string).length < 2) {
-      return res.json([]);
-    }
-
-    // `customers` is an alias of businessRecords (shared/schema.ts:1470). None of
-    // name/phone/email/address are columns on business_records — the real ones are
-    // companyName, primaryContactPhone, primaryContactEmail and addressLine1 — so
-    // this query referenced four columns that do not exist and threw at runtime.
-    // The PRIMARY contact is the right mapping for a general customer search;
-    // billingContact* is the finance-specific pair and would be wrong here.
-    // The response keys are kept as name/phone/email/address so the API contract
-    // this endpoint already advertises to its callers does not change.
-    const searchResults = await db
-      .select({
-        id: customers.id,
-        name: customers.companyName,
-        phone: customers.primaryContactPhone,
-        email: customers.primaryContactEmail,
-        address: customers.addressLine1,
-      })
-      .from(customers)
-      .where(
-        and(
-          eq(customers.tenantId, tenantId),
-          sql`(
-            LOWER(${customers.companyName}) LIKE LOWER(${'%' + searchTerm + '%'}) OR
-            LOWER(${customers.primaryContactPhone}) LIKE LOWER(${'%' + searchTerm + '%'}) OR
-            LOWER(${customers.primaryContactEmail}) LIKE LOWER(${'%' + searchTerm + '%'})
-          )`,
-        ),
-      )
-      .limit(10);
-
-    res.json(searchResults);
-  } catch (error) {
-    log.error('Error searching customers:', error);
-    res.status(500).json({ error: 'Failed to search customers' });
-  }
-});
 
 // Approve parts request
 router.post('/parts-requests/:requestId/approve', async (req, res) => {

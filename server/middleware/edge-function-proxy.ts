@@ -263,6 +263,18 @@ export function registerEdgeFunctionProxy(app: any) {
     // Core CRM (EDGE-001 baseline)
     '/api/business-records': 'business-records',
     '/api/companies': 'companies',
+    // PA-021. /api/customers used to be special-cased below to the `companies`
+    // function for the bare list, with only /:id/:sub forwarded to `customers`.
+    // That made dev and prod answer the SAME url from DIFFERENT functions:
+    // production has no way to reach `companies` under this prefix, because
+    // getApiUrl rewrites /api/customers straight to functions.printyx.net/
+    // customers. The two disagreed on shape as well - `companies` returns
+    // { data, total, page, limit } and `customers` returns a bare array, which
+    // iOS decodes as [BusinessRecord]. Both read the same `companies` table, so
+    // the redirect bought nothing and cost a divergence. Dev now runs what
+    // production runs, for the list, the single record, POST/PATCH/DELETE and
+    // every sub-resource.
+    '/api/customers': 'customers',
     '/api/deals': 'deals',
     '/api/contacts': 'contacts',
     '/api/opportunities': 'opportunities',
@@ -646,9 +658,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // entry, which check:routes flags as ambiguous ownership. Prod already
     // bypasses Express and hits the edge fn, so this only makes dev match prod.
     // PROD-008b retired routes-custom-fields.ts entirely; its shared
-    // validateCustomFieldValues moved to lib/custom-field-validation.ts, which
-    // is where routes-business-records.ts imports it from now. Dir name ==
-    // prefix segment, no override needed.
+    // validateCustomFieldValues moved to lib/custom-field-validation.ts, whose
+    // last caller (the /api/customers write path in routes-business-records.ts)
+    // PA-021 removed - so nothing validates custom-field VALUES on a write now,
+    // and nothing did in production before either. See that file's header. Dir
+    // name == prefix segment, no override needed.
     '/api/custom-fields': 'custom-fields',
 
     // New edge fns for three domains that 404'd in PROD — the frontend calls
@@ -845,43 +859,15 @@ export function registerEdgeFunctionProxy(app: any) {
     PROXIED_PREFIXES.add(prefix.replace(/^\/api\//, ''));
     app.use(prefix, createProxyHandler(functionName));
   }
-  // Special-cased forwards below that aren't in crmProxies but are still
-  // edge-served in dev (keep PROXIED_PREFIXES in sync for the divergence check).
-  PROXIED_PREFIXES.add('customers');
-
-  // Special case: GET /api/customers → companies edge function with recordType=Customer
+  // PA-021 removed two special-cased forwards that used to live here: a bare
+  // GET /api/customers redirect to the `companies` function, and an explicit
+  // GET /api/customers/:id/:sub forward. Both are covered by the plain
+  // '/api/customers' proxy entry above, which is also what production does.
   //
-  // CORRECTED (PA-020): the note here used to say there is no "customers" edge
-  // function. There is - supabase/functions/customers/ - and production has
-  // always resolved /api/customers/* to it. Only the BARE list is redirected to
-  // `companies`, which is the single source of truth for the record itself; the
-  // sub-resource routes below go to the customers function, which now serves
-  // the Customer Detail tabs.
-  //
-  // Sub-resources are forwarded explicitly rather than by adding /api/customers
-  // to crmProxies, because that would take the bare list off this special case
-  // and send it to a function that answers a different shape.
-  app.get('/api/customers', (req: Request, res: ExpressResponse, next: NextFunction) => {
-    const search = (req.query as any)?.search || '';
-    const limit = (req.query as any)?.limit || '50';
-    const offset = (req.query as any)?.offset || '0';
-    const qs = `?recordType=Customer&search=${encodeURIComponent(search)}&limit=${limit}&offset=${offset}`;
-    const edgeUrl = `${EDGE_FUNCTIONS_URL}/companies${qs}`;
-
-    void forwardToEdgeFunction(req, res, next, edgeUrl);
-  });
-
-  // Customer Detail tabs: /api/customers/:id/<sub-resource> → customers edge fn.
-  // Dev used to fall through to Express, which covered five of these and had no
-  // route at all for financial-summary, payments, aging, supply-orders or
-  // activities. Production has always gone to the edge function, where the
-  // sub-segment was dropped and every tab got the customer object back.
-  app.get('/api/customers/:id/:sub', (req: Request, res: ExpressResponse, next: NextFunction) => {
-    const { id, sub } = req.params as { id: string; sub: string };
-    const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
-    const edgeUrl = `${EDGE_FUNCTIONS_URL}/customers/${encodeURIComponent(id)}/${encodeURIComponent(sub)}${query}`;
-    void forwardToEdgeFunction(req, res, next, edgeUrl);
-  });
+  // The sub-resource forward had a second problem the entry fixes: it matched
+  // exactly three segments, so /api/customers/:id/metrics/history fell through
+  // to Express while /api/customers/:id/devices did not. One tab of the
+  // Customer Detail page was served by a different backend from its neighbour.
 
   log.info('✅ Edge function proxy registered for CRM routes');
 }

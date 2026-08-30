@@ -86,10 +86,15 @@ describe('the handlers that could never work are gone', () => {
 
   it('keeps the handlers that read real tables', () => {
     // /api/mobile/dashboard and /route-optimization are fixtures rather than
-    // phantom-table queries, and belong to AUDIT-033; the four /api/tenants and
-    // five /api/customers/:id/* handlers are real and called.
+    // phantom-table queries, and belong to AUDIT-033.
+    //
+    // CORRECTED (PA-021): this also named the five /api/customers/:id/*
+    // handlers as "real and called". They read real tables, but they were not
+    // called - PA-020 had already routed that sub-segment to the customers
+    // edge function before this test was written, so all five were shadowed.
+    // PA-021 put /api/customers into crmProxies and deleted them.
     expect(workflowMobile).toContain("'/api/mobile/dashboard'");
-    expect(workflowMobile).toContain("'/api/customers/:id/equipment'");
+    expect(workflowMobile).not.toContain("'/api/customers/");
   });
 });
 

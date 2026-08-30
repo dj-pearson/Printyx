@@ -18,57 +18,17 @@ import type { Express } from 'express';
 import { storage } from './storage';
 import { insertLeadSchema, insertLeadContactSchema } from '@shared/schema';
 import { BusinessRecordsTransformer } from './data-field-mapping';
-import { cacheControl, etag } from './middleware/cache-middleware';
 import { enforceUsageLimits } from './middleware/subscription';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 
 // Multer for CSV import
 
 export function registerCrmCoreRoutes(app: Express) {
-  // ─── Customer List & Detail ──────────────────────────────────────
-
-  app.get('/api/customers', cacheControl(180), etag(), async (req: any, res, next) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      const customers = await storage.getBusinessRecords(tenantId, 'customer');
-      const transformedCustomers = customers.map((customer) =>
-        BusinessRecordsTransformer.toFrontend(customer),
-      );
-      res.json(transformedCustomers);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  app.get('/api/customers/:id', cacheControl(300), etag(), async (req: any, res, next) => {
-    try {
-      const { id } = req.params;
-      const tenantId = getTenantId(req);
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      let customer;
-      const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
-
-      if (isSlug) {
-        customer = await storage.getBusinessRecordBySlug(id, tenantId);
-      } else {
-        customer = await storage.getBusinessRecord(id, tenantId);
-      }
-
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
-
-      const transformedCustomer = BusinessRecordsTransformer.toFrontend(customer);
-      res.json(transformedCustomer);
-    } catch (error) {
-      next(error);
-    }
-  });
+  // GET /api/customers and GET /api/customers/:id were removed here (PA-021).
+  // /api/customers is a crmProxies prefix now, so both were shadowed, and
+  // production had never reached them: supabase/functions/customers/ serves
+  // both, reading `companies` rather than `business_records`. Which of those
+  // two is canonical for the record is COP-B00's question, not this file's.
 
   // ─── Lead List & Detail ──────────────────────────────────────────
 

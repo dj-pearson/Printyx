@@ -4,7 +4,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
-import { toCamel } from '../_shared/case.ts';
+import { toCamel, toCamelShallow } from '../_shared/case.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -85,8 +85,14 @@ export default async function handler(req: Request) {
     // over an object renders nothing and reports no error.
     const subResource = parts[1];
 
-    if (req.method === 'GET' && customerId && subResource) {
-      return await handleSubResource(req, admin, tenantId, customerId, subResource, url);
+    // Every method, not just GET (PA-021). This used to be GET-only, so a
+    // POST to /customers/:id/supply-orders fell through to the create-customer
+    // branch below and wrote a junk `companies` row from the order payload,
+    // answering 201 - and the UI reported "Supply order created successfully".
+    // Nothing in Express served that path either, so production was the only
+    // host where the button did anything, and what it did was wrong.
+    if (customerId && subResource) {
+      return await handleSubResource(req, admin, tenantId, customerId, parts.slice(1), url);
     }
 
     // GET /customers - List all companies from companies table
@@ -454,10 +460,34 @@ async function handleSubResource(
   admin: Admin,
   tenantId: string,
   customerId: string,
-  subResource: string,
+  // The whole tail, because one sub-resource is two segments: the Customer
+  // Detail meter-readings tab calls /metrics/history.
+  segments: string[],
   url: URL,
 ): Promise<Response> {
+  const subResource = segments[0];
+
   if (req.method !== 'GET') {
+    // Creating a supply order is not merely unimplemented here - it is not
+    // expressible against the schema as the form stands. customer_supply_orders
+    // is an order HEADER (order_number NOT NULL UNIQUE, delivery_address jsonb
+    // NOT NULL, customer_portal_user_id NOT NULL referencing a portal login)
+    // with its line items in customer_supply_order_items, while the dialog
+    // posts a single {supplyId, quantity, unitPrice, totalPrice, orderType,
+    // notes} - not one of which is a column - and a status of 'pending', which
+    // is not in the supply_order_status enum. A staff-side order also has no
+    // portal user to satisfy the NOT NULL FK. So this answers 501 rather than
+    // dropping the unknown keys and writing a header nobody can fulfil.
+    if (req.method === 'POST' && subResource === 'supply-orders') {
+      return createCorsResponse(
+        {
+          error: 'Creating a supply order from the customer record is not implemented',
+          code: 'NOT_IMPLEMENTED',
+        },
+        501,
+        req,
+      );
+    }
     return createCorsResponse({ error: 'Method not allowed' }, 405, req);
   }
 
@@ -617,5 +647,82 @@ async function handleSubResource(
     );
   }
 
-  return createCorsResponse({ error: `Unknown customer sub-resource: ${subResource}` }, 404, req);
+  // GET /customers/:id/metrics/history - the meter-readings tab (PA-021).
+  //
+  // The Express handler this replaces filtered device_registrations by
+  // tenant_id ONLY, despite the column device_registrations.customer_id
+  // existing and its own comment saying "get all devices for this customer".
+  // So every customer's meter-readings tab showed the WHOLE TENANT's fleet,
+  // labelled with whichever customer was open. Nothing errored and the numbers
+  // looked real, which is why it survived. This filters on customer_id.
+  if (subResource === 'metrics' && segments[1] === 'history') {
+    const { data: devices, error: deviceError } = await admin
+      .from('device_registrations')
+      .select('id, device_name, serial_number, model')
+      .eq('tenant_id', tenantId)
+      .eq('customer_id', customerId)
+      .order('last_seen', { ascending: false });
+    if (deviceError) {
+      console.error('Error fetching customer devices:', deviceError);
+      return createCorsResponse({ error: 'Failed to fetch customer devices' }, 500, req);
+    }
+
+    const deviceRows = devices ?? [];
+    // No devices means no readings; asking PostgREST for `in.()` is a syntax
+    // error, so return the empty timeline rather than issuing the query.
+    if (deviceRows.length === 0) {
+      return createCorsResponse(
+        { customerId, timeline: [], totalDevices: 0, totalReadings: 0 },
+        200,
+        req,
+      );
+    }
+
+    const { data: metrics, error: metricError } = await admin
+      .from('device_metrics')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .in(
+        'device_id',
+        deviceRows.map((d: any) => d.id),
+      )
+      .order('collection_timestamp', { ascending: false })
+      .limit(limit);
+    if (metricError) {
+      console.error('Error fetching customer metrics history:', metricError);
+      return createCorsResponse({ error: 'Failed to fetch customer metrics history' }, 500, req);
+    }
+
+    const byDevice = new Map<string, unknown[]>();
+    for (const metric of metrics ?? []) {
+      const key = String((metric as any).device_id);
+      if (!byDevice.has(key)) byDevice.set(key, []);
+      // toner_levels, paper_levels and raw_data are jsonb of arbitrary shape;
+      // a deep converter would rewrite keys inside them.
+      byDevice.get(key)!.push(toCamelShallow(metric as Record<string, unknown>));
+    }
+
+    return createCorsResponse(
+      {
+        customerId,
+        timeline: deviceRows.map((device: any) => ({
+          deviceId: device.id,
+          deviceName: device.device_name,
+          serialNumber: device.serial_number,
+          model: device.model,
+          readings: byDevice.get(String(device.id)) ?? [],
+        })),
+        totalDevices: deviceRows.length,
+        totalReadings: (metrics ?? []).length,
+      },
+      200,
+      req,
+    );
+  }
+
+  return createCorsResponse(
+    { error: `Unknown customer sub-resource: ${segments.join('/')}` },
+    404,
+    req,
+  );
 }
