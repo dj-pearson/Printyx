@@ -25,7 +25,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Surfaces where a fabricated value is read as a statement about the system. */
-const DIRS = ['client/src/pages/admin'];
+// Widened from client/src/pages/admin to the whole page tree (PA-040). The
+// original scope was set to the surface AUDIT-019 was cleaning; PA-040 named
+// nine more pages elsewhere that render mock constants and make no API call at
+// all, and picking them off by name is how the next one gets missed. Components
+// are deliberately NOT included: a presentational component receiving values
+// through props legitimately holds none of its own, and scanning them buries
+// the finding in noise.
+const DIRS = ['client/src/pages'];
 
 const FILES = [
   'client/src/pages/MeetingTranscription.tsx',
@@ -93,8 +100,20 @@ function collect(target) {
     );
 }
 
+/**
+ * Marketing pages are prose, not instrumentation.
+ *
+ * client/src/pages/marketing/* is public copy - "52 integrations", "24/7" -
+ * written by a person to be read as a claim about the product, not rendered as
+ * a measurement of this tenant's data. Excluded by RULE rather than baselined:
+ * a baseline holding known non-defects is where a real one hides, and every
+ * future marketing page would need adding to it by hand.
+ */
+const EXCLUDED = /^client\/src\/pages\/marketing\//;
+
 const problems = [];
 for (const rel of [...DIRS, ...FILES].flatMap(collect)) {
+  if (EXCLUDED.test(rel.replace(/\\/g, '/'))) continue;
   const code = stripComments(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
   code.split('\n').forEach((line, i) => {
@@ -108,9 +127,42 @@ for (const rel of [...DIRS, ...FILES].flatMap(collect)) {
   });
 }
 
-if (problems.length > 0) {
-  console.error(`check:no-static-posture: ${problems.length} fabricated value(s)\n`);
-  for (const p of problems) {
+// Keyed by file + the offending text, not by line, so moving code does not
+// churn the list. The scope widened from client/src/pages/admin to the whole
+// page tree (PA-040) and inherited what was already there; the baseline is that
+// inheritance and nothing else. It must only ever shrink.
+const BASELINE = path.join(ROOT, 'docs', 'static-posture-baseline.json');
+const key = (p) => `${p.rel}  ${p.text}`;
+const found = problems.map(key);
+
+if (process.argv.includes('--update-baseline')) {
+  fs.writeFileSync(
+    BASELINE,
+    JSON.stringify(
+      {
+        note:
+          'Values typed into a page instead of read from data, inherited when this check widened ' +
+          'from client/src/pages/admin to the whole page tree (PA-040). Each is a claim to delete ' +
+          'or derive. Shrink this list, never grow it. See scripts/check-no-static-posture.mjs.',
+        total: found.length,
+        offenders: [...new Set(found)].sort(),
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+  console.log(`Baseline updated: ${found.length} static value(s).`);
+  process.exit(0);
+}
+
+const baseline = new Set(
+  fs.existsSync(BASELINE) ? (JSON.parse(fs.readFileSync(BASELINE, 'utf8')).offenders ?? []) : [],
+);
+const added = problems.filter((p) => !baseline.has(key(p)));
+
+if (added.length > 0) {
+  console.error(`check:no-static-posture: ${added.length} NEW fabricated value(s)\n`);
+  for (const p of added) {
     console.error(`  ${p.rel}:${p.line}  ${p.why}`);
     console.error(`    ${p.text}`);
   }
@@ -121,4 +173,12 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-console.log('check:no-static-posture: 0 offenders');
+const fixed = [...baseline].filter((b) => !found.includes(b));
+if (fixed.length > 0) {
+  console.log(
+    `check:no-static-posture: no new fabricated values. ${fixed.length} baselined entr(ies) gone.\n` +
+      '  Tighten with: node scripts/check-no-static-posture.mjs --update-baseline',
+  );
+} else {
+  console.log(`check:no-static-posture: no new fabricated values (${found.length} baselined).`);
+}

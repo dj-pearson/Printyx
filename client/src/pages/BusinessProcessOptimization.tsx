@@ -46,7 +46,6 @@ import {
   Users,
   DollarSign,
   Timer,
-  Award,
   Shield,
   Activity,
   RefreshCw,
@@ -789,63 +788,16 @@ export default function BusinessProcessOptimization() {
                     </CardContent>
                   </Card>
 
-                  {/* Quality Metrics */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Award className="h-5 w-5" />
-                        Quality Metrics
-                      </CardTitle>
-                      <CardDescription>
-                        Process documentation and quality indicators
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="space-y-3">
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm text-gray-600">Process Documentation</span>
-                              <span className="text-sm font-medium">94.7%</span>
-                            </div>
-                            <Progress value={94.7} className="h-2" />
-                          </div>
-
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm text-gray-600">Standard Adherence</span>
-                              <span className="text-sm font-medium">91.3%</span>
-                            </div>
-                            <Progress value={91.3} className="h-2" />
-                          </div>
-
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm text-gray-600">Employee Training</span>
-                              <span className="text-sm font-medium">88.9%</span>
-                            </div>
-                            <Progress value={88.9} className="h-2" />
-                          </div>
-
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm text-gray-600">Audit Readiness</span>
-                              <span className="text-sm font-medium">96.1%</span>
-                            </div>
-                            <Progress value={96.1} className="h-2" />
-                          </div>
-                        </div>
-
-                        <div className="p-3 bg-blue-50 rounded">
-                          <div className="text-sm font-medium text-blue-800 mb-1">
-                            Continuous Improvement
-                          </div>
-                          <div className="text-lg font-bold text-blue-900">14 initiatives</div>
-                          <div className="text-xs text-blue-600">Active this quarter</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  {/*
+                    The "Quality Metrics" card that stood here is removed (PA-040).
+                    Four typed percentages - Process Documentation 94.7%, Standard
+                    Adherence 91.3%, Employee Training 88.9%, Audit Readiness 96.1% -
+                    with a progress bar each, plus "14 initiatives". Nothing in this
+                    platform measures documentation coverage, adherence, training
+                    completion or audit readiness, and this page's own endpoint is a
+                    fixture that 404s in production. An audit-readiness figure with
+                    nothing behind it is the LEGAL-010 case: delete the claim.
+                  */}
                 </div>
 
                 {/* Risk Assessment */}
