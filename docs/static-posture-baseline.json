@@ -1,6 +1,6 @@
 {
   "note": "Values typed into a page instead of read from data, inherited when this check widened from client/src/pages/admin to the whole page tree (PA-040). Each is a claim to delete or derive. Shrink this list, never grow it. See scripts/check-no-static-posture.mjs.",
-  "total": 49,
+  "total": 42,
   "offenders": [
     "client/src/pages/AIHub.tsx  <Progress value={85} className=\"h-2\" />",
     "client/src/pages/AIHub.tsx  <Progress value={93} className=\"h-2\" />",
@@ -41,13 +41,6 @@
     "client/src/pages/ExecutiveDashboard.tsx  <span className=\"font-bold\">78%</span>",
     "client/src/pages/ExecutiveDashboard.tsx  <span className=\"font-bold\">85%</span>",
     "client/src/pages/MobileFieldOperations.tsx  <div className=\"text-2xl font-bold\">98.5%</div>",
-    "client/src/pages/PlatformCohortAnalysis.tsx  <div className=\"text-2xl font-bold mb-2\">$20,605</div>",
-    "client/src/pages/PlatformCohortAnalysis.tsx  <div className=\"text-2xl font-bold mb-2\">56.2%</div>",
-    "client/src/pages/PlatformCohortAnalysis.tsx  <div className=\"text-2xl font-bold mb-2\">79.4%</div>",
-    "client/src/pages/PlatformCohortAnalysis.tsx  <span className=\"text-sm font-medium text-green-600\">11.8%</span>",
-    "client/src/pages/PlatformCohortAnalysis.tsx  <span className=\"text-sm font-medium text-green-600\">15.3%</span>",
-    "client/src/pages/PlatformCohortAnalysis.tsx  <span className=\"text-sm font-medium text-green-600\">3.2%</span>",
-    "client/src/pages/PlatformCohortAnalysis.tsx  <span className=\"text-sm font-medium text-green-600\">4.8%</span>",
     "client/src/pages/SystemIntegrations.tsx  <p className=\"text-2xl sm:text-3xl font-bold text-gray-900\">99.2%</p>"
   ]
 }

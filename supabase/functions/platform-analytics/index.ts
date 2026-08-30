@@ -1041,7 +1041,20 @@ export default async function handler(req: Request) {
     }
 
     // ---------------------------------------------------------------- cohort-analysis
-    // Adapted to the real platform_cohort_analysis columns.
+    //
+    // PlatformCohortAnalysis reads cohortTable, ltvData and summary. It used to
+    // read cohortTable / revenueCohorts / ltvData against a response of
+    // { cohorts, summary }, so all three resolved to undefined and the page
+    // rendered its `|| [...]` fallbacks every single time - a complete cohort
+    // study, retention curves and all, built from numbers someone typed
+    // (PA-040). The keys match now.
+    //
+    // WHAT THIS TABLE CANNOT ANSWER, and why the month-by-month matrices are
+    // gone rather than filled: platform_cohort_analysis holds ONE ROW PER
+    // COHORT - initial_size, current_size, retention_rate, initial_mrr,
+    // current_mrr - and no per-period history. A month0..month6 retention curve
+    // needs a row per cohort PER PERIOD, which nothing records, so no
+    // arithmetic over this data produces one. Named in `unbacked`.
     if (req.method === 'GET' && endpoint === 'cohort-analysis') {
       const startDate = sp.get('startDate');
       const endDate = sp.get('endDate');
@@ -1054,21 +1067,60 @@ export default async function handler(req: Request) {
       const { data: cohorts = [] } = await q;
       const list = cohorts || [];
 
-      const totalCustomers = list.reduce((s, c) => s + (c.initial_size || 0), 0);
-      const totalRevenue = list.reduce((s, c) => s + num(c.initial_mrr), 0);
-      const avgRetention =
-        list.length > 0 ? list.reduce((s, c) => s + num(c.retention_rate), 0) / list.length : 0;
+      // deno-lint-ignore no-explicit-any
+      const cohortTable = list.map((c: any) => ({
+        id: c.id,
+        cohort: c.cohort_name,
+        cohortDate: c.cohort_date,
+        period: c.cohort_period,
+        size: c.initial_size ?? 0,
+        currentSize: c.current_size ?? 0,
+        retentionRate: c.retention_rate == null ? null : num(c.retention_rate),
+        churnRate: c.churn_rate == null ? null : num(c.churn_rate),
+        initialMRR: c.initial_mrr == null ? null : num(c.initial_mrr),
+        currentMRR: c.current_mrr == null ? null : num(c.current_mrr),
+        cumulativeRevenue: c.cumulative_revenue == null ? null : num(c.cumulative_revenue),
+        netRevenueRetention: c.net_revenue_retention == null ? null : num(c.net_revenue_retention),
+        averageTenureMonths: c.average_tenure_months == null ? null : num(c.average_tenure_months),
+        periodsCovered: c.periods_covered ?? null,
+      }));
+
+      // deno-lint-ignore no-explicit-any
+      const ltvData = list.map((c: any) => ({
+        cohort: c.cohort_name,
+        ltv: c.average_ltv == null ? null : num(c.average_ltv),
+        cac: c.average_cac == null ? null : num(c.average_cac),
+        ratio: c.ltv_to_cac_ratio == null ? null : num(c.ltv_to_cac_ratio),
+      }));
+
+      // Averages over the rows that actually carry the value. Null when none
+      // does: a 0% retention rate reads as every customer having left.
+      const mean = (values: (number | null)[]) => {
+        const present = values.filter((v): v is number => v != null);
+        return present.length > 0 ? present.reduce((s, v) => s + v, 0) / present.length : null;
+      };
 
       return createCorsResponse(
         {
-          cohorts: list,
+          cohortTable,
+          ltvData,
           summary: {
             totalCohorts: list.length,
-            totalCustomers,
-            totalRevenue,
-            averageRetentionRate: avgRetention.toFixed(2),
+            // deno-lint-ignore no-explicit-any
+            totalCustomers: list.reduce((s: number, c: any) => s + (c.initial_size || 0), 0),
+            // deno-lint-ignore no-explicit-any
+            currentCustomers: list.reduce((s: number, c: any) => s + (c.current_size || 0), 0),
+            averageRetentionRate: mean(cohortTable.map((c) => c.retentionRate)),
+            averageChurnRate: mean(cohortTable.map((c) => c.churnRate)),
+            averageLTV: mean(ltvData.map((c) => c.ltv)),
+            averageCAC: mean(ltvData.map((c) => c.cac)),
+            ltvToCacRatio: mean(ltvData.map((c) => c.ratio)),
             dateRange: { start: startDate || 'all', end: endDate || 'all' },
           },
+          unbacked: [
+            'per-period retention and revenue curves: platform_cohort_analysis stores one row per cohort with a single retention_rate and MRR pair, not a row per period, so a month-by-month series cannot be derived from it',
+            'period-over-period deltas: nothing records a previous calculation of a cohort to compare against',
+          ],
         },
         200,
         req,
