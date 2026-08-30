@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import type { LucideIcon } from 'lucide-react';
 import { QueryStates } from '@/components/ui/query-state';
 import { DashboardSkeleton } from '@/components/ui/skeletons';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -14,26 +14,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  BarChart3,
   TrendingUp,
-  TrendingDown,
   DollarSign,
   Users,
   Target,
   Activity,
-  Calendar,
   Download,
   Filter,
-  ArrowUpRight,
-  ArrowDownRight,
   Percent,
   Clock,
   Briefcase,
-  Heart,
-  AlertTriangle,
 } from 'lucide-react';
 import {
-  LineChart,
   Line,
   BarChart,
   Bar,
@@ -81,39 +73,76 @@ interface SourceDatum {
 // resolve to undefined and the page falls back to mock data (a known data-contract
 // gap tracked as a separate story). These interfaces capture the keys the page
 // reads so the file typechecks without changing its runtime behavior.
+/**
+ * A measured value, or a dash.
+ *
+ * Every metric on this page used to be `value || <literal>`, so a missing
+ * number rendered a plausible one (PA-040). A dash says the platform does not
+ * know; $89,000 says it does.
+ */
+function metricOrDash<T>(value: T | null | undefined, format: (v: T) => string): string {
+  return value == null ? '—' : format(value);
+}
+
 interface RevenueMetrics {
+  // Measured.
   mrr?: number;
-  mrrGrowth?: number;
   arr?: number;
-  arrGrowth?: number;
-  activeTenants?: number;
-  tenantGrowth?: number;
-  nrr?: number;
-  nrrChange?: number;
-  grr?: number;
   arpa?: number;
-  ltv?: number;
-  cac?: number;
-  ltvCacRatio?: number;
-  churnRate?: number;
-  netChurnRate?: number;
+  activeTenants?: number;
   churnedCustomers?: number;
-  churnMrr?: number;
+  newCustomers?: number;
+  churnRate?: number;
+  grr?: number;
+  // Null when nothing has churned in the window: average lifetime is 1/churn,
+  // and there is none to observe.
+  ltv?: number | null;
+  // Always null. Named in `unbacked` with the reason - CAC is recorded nowhere,
+  // and expansion MRR cannot be observed without a last_mrr_change column.
+  cac?: number | null;
+  ltvCacRatio?: number | null;
+  paybackPeriod?: number | null;
+  expansionRate?: number | null;
+  nrr?: number | null;
+  unbacked?: string[];
 }
 interface ConversionMetrics {
   funnelData?: FunnelDatum[];
   leadConversionRate?: number;
+  summary?: {
+    totalProspects: number;
+    totalTenants: number;
+    totalConverted: number;
+    closedWon: number;
+    closedLost: number;
+    totalDeals: number;
+  };
 }
 interface PipelineMetrics {
-  distributionData?: DistributionDatum[];
-  avgSalesCycle?: number;
-  winRate?: number;
   totalValue?: number;
   weightedValue?: number;
+  winRate?: number;
+  avgSalesCycle?: number;
   coverage?: number;
+  distributionData?: DistributionDatum[];
+  summary?: {
+    totalDeals: number;
+    openDeals: number;
+    closedWon: number;
+    closedLost: number;
+  };
+}
+interface ActivityCounts {
+  calls: number;
+  emails: number;
+  meetings: number;
+  demos: number;
+  proposals: number;
 }
 interface PerformanceMetrics {
   sourceData?: SourceDatum[];
+  activityTotals?: ActivityCounts;
+  activityAvgPerDay?: ActivityCounts;
 }
 interface GrowthTrends {
   revenueData?: RevenueDatum[];
@@ -123,13 +152,16 @@ export default function PlatformAnalytics() {
   const [timeframe, setTimeframe] = useState('30d');
   const [activeTab, setActiveTab] = useState('overview');
 
-  // CR-033: this page is the sharpest case for a query-state wrapper in the
-  // repo. Every read below is written `revenueMetrics?.mrr || 89000` — a
-  // hardcoded fallback per field — so a failed request did not render blank, it
-  // rendered a confident fake dashboard: $89,000 MRR, 14.1% growth, a full
-  // twelve months of invented chart data. Nothing on screen said the request had
-  // failed, and nothing distinguished that from a real platform doing those
-  // numbers. Holding the query results whole lets the wrapper below say so.
+  // CR-033 wrapped these queries so a failed request says so instead of
+  // rendering a confident fake dashboard. PA-040 finished the job: the
+  // per-field fallbacks it describes - `revenueMetrics?.mrr || 89000`, 14.1%
+  // growth, twelve months of invented chart data - are gone.
+  //
+  // They were never a failure path anyway, which is the part worth remembering.
+  // revenue-metrics answered { metrics, counts } while this page read the keys
+  // at the top level, so all seventeen reads resolved to undefined and the
+  // literals rendered on EVERY request, successful ones included. A fallback is
+  // only a fallback if the primary path can win.
   const revenueQuery = useQuery<RevenueMetrics>({
     queryKey: [`/api/platform-analytics/revenue-metrics?timeframe=${timeframe}`],
   });
@@ -155,45 +187,15 @@ export default function PlatformAnalytics() {
   });
   const growthTrends = growthQuery.data;
 
-  // Sample data for charts (replace with actual data from API)
-  const revenueData = growthTrends?.revenueData || [
-    { month: 'Jan', mrr: 45000, arr: 540000, new: 12000, expansion: 5000, churn: 2000 },
-    { month: 'Feb', mrr: 52000, arr: 624000, new: 15000, expansion: 6000, churn: 1000 },
-    { month: 'Mar', mrr: 61000, arr: 732000, new: 18000, expansion: 7000, churn: 1500 },
-    { month: 'Apr', mrr: 68000, arr: 816000, new: 20000, expansion: 8000, churn: 2000 },
-    { month: 'May', mrr: 78000, arr: 936000, new: 22000, expansion: 9000, churn: 1000 },
-    { month: 'Jun', mrr: 89000, arr: 1068000, new: 25000, expansion: 10000, churn: 1500 },
-  ];
-
-  const conversionFunnelData = conversionMetrics?.funnelData || [
-    { stage: 'Prospects', count: 1250, percentage: 100 },
-    { stage: 'Contacted', count: 875, percentage: 70 },
-    { stage: 'Qualified', count: 500, percentage: 40 },
-    { stage: 'Proposal Sent', count: 300, percentage: 24 },
-    { stage: 'Negotiation', count: 175, percentage: 14 },
-    { stage: 'Won', count: 125, percentage: 10 },
-  ];
-
-  const pipelineDistributionData = pipelineMetrics?.distributionData || [
-    { name: 'Prospecting', value: 125, color: '#3b82f6' },
-    { name: 'Qualification', value: 89, color: '#8b5cf6' },
-    { name: 'Proposal', value: 64, color: '#ec4899' },
-    { name: 'Negotiation', value: 42, color: '#f59e0b' },
-    { name: 'Closing', value: 28, color: '#10b981' },
-  ];
-
-  const leadSourceData = performanceMetrics?.sourceData || [
-    { source: 'Website', leads: 450, conversions: 68, rate: 15.1 },
-    { source: 'Referrals', leads: 320, conversions: 89, rate: 27.8 },
-    { source: 'Events', leads: 210, conversions: 42, rate: 20.0 },
-    { source: 'Paid Ads', leads: 180, conversions: 27, rate: 15.0 },
-    { source: 'Partners', leads: 90, conversions: 23, rate: 25.6 },
-  ];
-
-  const getPercentageChange = (current: number, previous: number) => {
-    if (!previous) return 0;
-    return (((current - previous) / previous) * 100).toFixed(1);
-  };
+  // Chart data. No fallbacks: QueryStates below already handles loading and
+  // error, so an empty array here means the platform has no data for the
+  // window - which is what the charts should show. These four used to fall back
+  // to six months of invented revenue, a 1250-prospect funnel and a lead-source
+  // split (PA-040).
+  const revenueData = growthTrends?.revenueData ?? [];
+  const conversionFunnelData = conversionMetrics?.funnelData ?? [];
+  const pipelineDistributionData = pipelineMetrics?.distributionData ?? [];
+  const leadSourceData = performanceMetrics?.sourceData ?? [];
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -255,36 +257,51 @@ export default function PlatformAnalytics() {
         className="py-8"
       >
         {/* Key Metrics Overview */}
+        {/*
+          PA-040: every value here was `revenueMetrics?.x || <literal>` - MRR
+          $89,000, ARR $1,068,000, 347 tenants, 112% NRR, each with a typed
+          growth figure beside it. The endpoint answered { metrics, counts }
+          while this page read the keys at the top level, so not one of those
+          reads ever resolved and the literals rendered on every request. The
+          response is flat now and the fallbacks are gone.
+
+          Net Revenue Retention is replaced by Gross Revenue Retention: NRR needs
+          expansion MRR, which business_records cannot supply, so it comes back
+          null. GRR is measured.
+        */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <MetricCard
             title="Monthly Recurring Revenue"
-            value={formatCurrency(revenueMetrics?.mrr || 89000)}
-            change={revenueMetrics?.mrrGrowth || 14.1}
+            value={metricOrDash(revenueMetrics?.mrr, formatCurrency)}
             icon={DollarSign}
-            trend="up"
           />
           <MetricCard
             title="Annual Recurring Revenue"
-            value={formatCurrency(revenueMetrics?.arr || 1068000)}
-            change={revenueMetrics?.arrGrowth || 16.4}
+            value={metricOrDash(revenueMetrics?.arr, formatCurrency)}
             icon={TrendingUp}
-            trend="up"
           />
           <MetricCard
             title="Active Tenants"
-            value={String(revenueMetrics?.activeTenants || 347)}
-            change={revenueMetrics?.tenantGrowth || 8.7}
+            value={metricOrDash(revenueMetrics?.activeTenants, (v) => String(v))}
             icon={Users}
-            trend="up"
           />
           <MetricCard
-            title="Net Revenue Retention"
-            value={formatPercent(revenueMetrics?.nrr || 112)}
-            change={revenueMetrics?.nrrChange || 2.3}
+            title="Gross Revenue Retention"
+            value={metricOrDash(revenueMetrics?.grr, formatPercent)}
             icon={Percent}
-            trend="up"
           />
         </div>
+
+        {revenueMetrics?.unbacked && revenueMetrics.unbacked.length > 0 && (
+          <div className="mb-6 p-3 rounded-lg bg-muted text-sm text-muted-foreground">
+            <p className="font-medium mb-1">Not shown, because it is not measured:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              {revenueMetrics.unbacked.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -372,14 +389,30 @@ export default function PlatformAnalytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold mb-2">
-                    {formatPercent(conversionMetrics?.leadConversionRate || 10.2)}
+                    {metricOrDash(conversionMetrics?.leadConversionRate, formatPercent)}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    125 of 1,250 prospects converted
-                  </p>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: '10.2%' }} />
-                  </div>
+                  {/*
+                    The caption said "125 of 1,250 prospects converted" and the
+                    bar was drawn at a literal width: '10.2%' (PA-040). The
+                    endpoint already sends both counts in its summary.
+                  */}
+                  {conversionMetrics?.summary && (
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {conversionMetrics.summary.totalConverted.toLocaleString()} of{' '}
+                      {conversionMetrics.summary.totalProspects.toLocaleString()} prospects
+                      converted
+                    </p>
+                  )}
+                  {conversionMetrics?.leadConversionRate != null && (
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full"
+                        style={{
+                          width: `${Math.min(conversionMetrics.leadConversionRate, 100)}%`,
+                        }}
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -392,16 +425,12 @@ export default function PlatformAnalytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold mb-2">
-                    {pipelineMetrics?.avgSalesCycle || 32} days
+                    {metricOrDash(pipelineMetrics?.avgSalesCycle, (v) => `${v} days`)}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    <span className="text-green-600 font-medium">-8% </span>
-                    vs. last period
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <TrendingDown className="h-4 w-4 text-green-600" />
-                    <span className="text-sm text-green-600">Improving</span>
-                  </div>
+                  {/*
+                    "-8% vs. last period" and an "Improving" badge stood here,
+                    both typed in. This endpoint reads one window (PA-040).
+                  */}
                 </CardContent>
               </Card>
 
@@ -414,13 +443,15 @@ export default function PlatformAnalytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold mb-2">
-                    {formatPercent(pipelineMetrics?.winRate || 35.7)}
+                    {metricOrDash(pipelineMetrics?.winRate, formatPercent)}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">125 won of 350 closed deals</p>
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                    <span className="text-sm text-green-600">+4.2% vs. last period</span>
-                  </div>
+                  {pipelineMetrics?.summary && (
+                    <p className="text-sm text-muted-foreground">
+                      {pipelineMetrics.summary.closedWon} won of{' '}
+                      {pipelineMetrics.summary.closedWon + pipelineMetrics.summary.closedLost}{' '}
+                      closed deals
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -456,42 +487,33 @@ export default function PlatformAnalytics() {
                   <CardDescription>Key financial indicators</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/*
+                    Each row carried a typed `change` too - +1.2, +2.8, +5.4,
+                    +8.1, -3.2, +11.3 - none of which came from anywhere. This
+                    endpoint reads one window and has nothing to compare it
+                    against, so the deltas are gone rather than kept (PA-040).
+                  */}
                   <RevenueMetricRow
                     label="Gross Revenue Retention"
-                    value={formatPercent(revenueMetrics?.grr || 95.3)}
-                    change={1.2}
-                    trend="up"
-                  />
-                  <RevenueMetricRow
-                    label="Net Revenue Retention"
-                    value={formatPercent(revenueMetrics?.nrr || 112.4)}
-                    change={2.8}
-                    trend="up"
+                    value={metricOrDash(revenueMetrics?.grr, formatPercent)}
                   />
                   <RevenueMetricRow
                     label="Average Revenue Per Account"
-                    value={formatCurrency(revenueMetrics?.arpa || 256)}
-                    change={5.4}
-                    trend="up"
+                    value={metricOrDash(revenueMetrics?.arpa, formatCurrency)}
                   />
                   <RevenueMetricRow
                     label="Customer Lifetime Value"
-                    value={formatCurrency(revenueMetrics?.ltv || 18432)}
-                    change={8.1}
-                    trend="up"
+                    value={metricOrDash(revenueMetrics?.ltv, formatCurrency)}
                   />
-                  <RevenueMetricRow
-                    label="Customer Acquisition Cost"
-                    value={formatCurrency(revenueMetrics?.cac || 3250)}
-                    change={-3.2}
-                    trend="down"
-                  />
-                  <RevenueMetricRow
-                    label="LTV:CAC Ratio"
-                    value={`${(revenueMetrics?.ltvCacRatio || 5.67).toFixed(2)}:1`}
-                    change={11.3}
-                    trend="up"
-                  />
+                  {/*
+                    Net Revenue Retention, Customer Acquisition Cost and the
+                    LTV:CAC ratio are removed. NRR needs expansion MRR, which
+                    business_records cannot supply. CAC is recorded nowhere - it
+                    was computed as `ltv / 3`, which made the ratio exactly
+                    3.00:1 for every tenant on every request, and the page then
+                    showed 5.67:1 anyway because the read never resolved. All
+                    three are listed in the response's `unbacked` array below.
+                  */}
                 </CardContent>
               </Card>
             </div>
@@ -503,30 +525,31 @@ export default function PlatformAnalytics() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className="p-4 bg-red-50 rounded-lg">
+                  <div className="p-4 rounded-lg bg-muted">
                     <p className="text-sm text-muted-foreground mb-1">Gross Churn Rate</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {formatPercent(revenueMetrics?.churnRate || 4.7)}
+                    <p className="text-2xl font-bold">
+                      {metricOrDash(revenueMetrics?.churnRate, formatPercent)}
                     </p>
                   </div>
-                  <div className="p-4 bg-orange-50 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">Net Churn Rate</p>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {formatPercent(revenueMetrics?.netChurnRate || -2.4)}
-                    </p>
-                  </div>
-                  <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="p-4 rounded-lg bg-muted">
                     <p className="text-sm text-muted-foreground mb-1">Churned Customers</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {revenueMetrics?.churnedCustomers || 16}
+                    <p className="text-2xl font-bold">
+                      {metricOrDash(revenueMetrics?.churnedCustomers, (v) => String(v))}
                     </p>
                   </div>
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">Churn MRR</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {formatCurrency(revenueMetrics?.churnMrr || 4200)}
+                  <div className="p-4 rounded-lg bg-muted">
+                    <p className="text-sm text-muted-foreground mb-1">New Tenants</p>
+                    <p className="text-2xl font-bold">
+                      {metricOrDash(revenueMetrics?.newCustomers, (v) => String(v))}
                     </p>
                   </div>
+                  {/*
+                    "Net Churn Rate" (-2.4%) and "Churn MRR" ($4,200) are removed.
+                    Net churn needs expansion MRR; churn MRR needs the revenue a
+                    tenant carried BEFORE it moved to status=churned, and that
+                    value is not retained. New Tenants is measured and takes the
+                    fourth slot.
+                  */}
                 </div>
               </CardContent>
             </Card>
@@ -541,7 +564,7 @@ export default function PlatformAnalytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold mb-2">
-                    {formatCurrency(pipelineMetrics?.totalValue || 2450000)}
+                    {metricOrDash(pipelineMetrics?.totalValue, formatCurrency)}
                   </div>
                   <p className="text-sm text-muted-foreground">Total value of active deals</p>
                 </CardContent>
@@ -553,7 +576,7 @@ export default function PlatformAnalytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold mb-2">
-                    {formatCurrency(pipelineMetrics?.weightedValue || 875000)}
+                    {metricOrDash(pipelineMetrics?.weightedValue, formatCurrency)}
                   </div>
                   <p className="text-sm text-muted-foreground">Probability-adjusted value</p>
                 </CardContent>
@@ -728,11 +751,35 @@ export default function PlatformAnalytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <ActivityMetricRow type="Calls" count={1450} avgPerDay={48} icon="phone" />
-                    <ActivityMetricRow type="Emails" count={2340} avgPerDay={78} icon="mail" />
-                    <ActivityMetricRow type="Meetings" count={687} avgPerDay={23} icon="users" />
-                    <ActivityMetricRow type="Demos" count={234} avgPerDay={8} icon="video" />
-                    <ActivityMetricRow type="Proposals" count={156} avgPerDay={5} icon="file" />
+                    {/*
+                      1450 calls, 2340 emails, 687 meetings, 234 demos, 156
+                      proposals, with per-day averages beside each - all typed in
+                      (PA-040). performance-metrics already returned real
+                      activityTotals and activityAvgPerDay off
+                      platform_activity_reports; nothing read them.
+                    */}
+                    {performanceMetrics?.activityTotals ? (
+                      (
+                        [
+                          ['Calls', 'calls'],
+                          ['Emails', 'emails'],
+                          ['Meetings', 'meetings'],
+                          ['Demos', 'demos'],
+                          ['Proposals', 'proposals'],
+                        ] as const
+                      ).map(([label, key]) => (
+                        <ActivityMetricRow
+                          key={key}
+                          type={label}
+                          count={performanceMetrics.activityTotals![key]}
+                          avgPerDay={performanceMetrics.activityAvgPerDay?.[key] ?? 0}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No activity has been reported for this period.
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -745,21 +792,20 @@ export default function PlatformAnalytics() {
 }
 
 // Metric Card Component
+/**
+ * A headline metric. No delta: nothing on this page records a previous period
+ * to compare against, so the "+14.1% vs. last period" every card used to carry
+ * was typed in (PA-040).
+ */
 function MetricCard({
   title,
   value,
-  change,
   icon: Icon,
-  trend,
 }: {
   title: string;
   value: string;
-  change: number;
-  icon: any;
-  trend: 'up' | 'down';
+  icon: LucideIcon;
 }) {
-  const isPositive = trend === 'up' ? change > 0 : change < 0;
-
   return (
     <Card>
       <CardContent className="pt-6">
@@ -767,53 +813,18 @@ function MetricCard({
           <p className="text-sm text-muted-foreground">{title}</p>
           <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
-        <div className="text-2xl font-bold mb-2">{value}</div>
-        <div className="flex items-center gap-1">
-          {isPositive ? (
-            <ArrowUpRight className="h-4 w-4 text-green-600" />
-          ) : (
-            <ArrowDownRight className="h-4 w-4 text-red-600" />
-          )}
-          <span className={`text-sm font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-            {Math.abs(change)}%
-          </span>
-          <span className="text-sm text-muted-foreground">vs. last period</span>
-        </div>
+        <div className="text-2xl font-bold">{value}</div>
       </CardContent>
     </Card>
   );
 }
 
 // Revenue Metric Row Component
-function RevenueMetricRow({
-  label,
-  value,
-  change,
-  trend,
-}: {
-  label: string;
-  value: string;
-  change: number;
-  trend: 'up' | 'down';
-}) {
-  const isPositive = trend === 'up' ? change > 0 : change < 0;
-
+function RevenueMetricRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-2 border-b last:border-0">
       <span className="text-sm font-medium">{label}</span>
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-bold">{value}</span>
-        <div className="flex items-center gap-1">
-          {isPositive ? (
-            <TrendingUp className="h-3 w-3 text-green-600" />
-          ) : (
-            <TrendingDown className="h-3 w-3 text-red-600" />
-          )}
-          <span className={`text-xs ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-            {Math.abs(change)}%
-          </span>
-        </div>
-      </div>
+      <span className="text-sm font-bold">{value}</span>
     </div>
   );
 }
@@ -890,12 +901,10 @@ function ActivityMetricRow({
   type,
   count,
   avgPerDay,
-  icon,
 }: {
   type: string;
   count: number;
   avgPerDay: number;
-  icon: string;
 }) {
   return (
     <div className="flex items-center justify-between py-2 border-b last:border-0">

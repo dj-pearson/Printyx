@@ -54,7 +54,10 @@ function getAuthClient() {
 /**
  * Submit a single URL to the Google Indexing API.
  */
-async function submitUrl(url: string, type: IndexingAction = 'URL_UPDATED'): Promise<IndexingResult> {
+async function submitUrl(
+  url: string,
+  type: IndexingAction = 'URL_UPDATED',
+): Promise<IndexingResult> {
   try {
     const auth = getAuthClient();
     const indexing = google.indexing({ version: 'v3', auth });
@@ -90,7 +93,10 @@ async function submitUrl(url: string, type: IndexingAction = 'URL_UPDATED'): Pro
  * Submit multiple URLs to the Google Indexing API.
  * Google recommends batching but the API has a quota of ~200 requests/day.
  */
-async function submitUrls(urls: string[], type: IndexingAction = 'URL_UPDATED'): Promise<BatchIndexingResult> {
+async function submitUrls(
+  urls: string[],
+  type: IndexingAction = 'URL_UPDATED',
+): Promise<BatchIndexingResult> {
   const results: IndexingResult[] = [];
 
   // Process sequentially to respect rate limits
@@ -102,7 +108,9 @@ async function submitUrls(urls: string[], type: IndexingAction = 'URL_UPDATED'):
   const successful = results.filter((r) => r.success).length;
   const failed = results.filter((r) => !r.success).length;
 
-  log.info(`Batch indexing complete: ${successful} succeeded, ${failed} failed out of ${urls.length} URLs`);
+  log.info(
+    `Batch indexing complete: ${successful} succeeded, ${failed} failed out of ${urls.length} URLs`,
+  );
 
   return {
     total: urls.length,

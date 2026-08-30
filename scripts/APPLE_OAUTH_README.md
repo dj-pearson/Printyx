@@ -12,11 +12,13 @@ This script generates the `client_secret` JWT token required for Sign in with Ap
 ## How to Get Your Credentials
 
 ### 1. Team ID
+
 1. Go to [Apple Developer Account](https://developer.apple.com/account)
 2. Click on "Membership" in the sidebar
 3. Your Team ID is displayed there (format: `ABC1234567`)
 
 ### 2. Create a Services ID (Client ID)
+
 1. Go to [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources)
 2. Click "Identifiers" → "+"
 3. Select "Services IDs" → Continue
@@ -29,6 +31,7 @@ This script generates the `client_secret` JWT token required for Sign in with Ap
    - Return URLs: `https://yourdomain.com/auth/callback`
 
 ### 3. Create a Key (.p8 file)
+
 1. Go to "Keys" → "+"
 2. Enter Key Name: `Printyx Sign in with Apple Key`
 3. Enable "Sign in with Apple"
@@ -116,15 +119,18 @@ APPLE_CLIENT_SECRET=eyJhbGciOiJFUzI1NiIsImtpZCI6IkFCQzEyM0RFRkcifQ...
 ## Troubleshooting
 
 ### "Key file not found"
+
 - Make sure the path to your .p8 file is correct
 - Use relative paths from the project root (e.g., `./AuthKey.p8`)
 
 ### "PEM format error"
+
 - Verify your .p8 file is valid
 - It should start with: `-----BEGIN PRIVATE KEY-----`
 - Make sure it's not corrupted or modified
 
 ### "Invalid signature"
+
 - Double-check your Team ID matches your Apple Developer account
 - Verify the Key ID matches the key you downloaded
 - Ensure your Services ID (Client ID) is correct
@@ -142,6 +148,7 @@ You can automate this by running the script in your CI/CD pipeline or setting up
 ⚠️ **Never commit your .p8 file or generated client_secret to version control!**
 
 Add to `.gitignore`:
+
 ```
 *.p8
 AuthKey*.p8

@@ -34,15 +34,9 @@ export interface PortalCtx {
   parts: string[];
 }
 
-// True when a PostgREST/Postgres error means the relation does not exist —
-// expected when the live DB predates the customer-portal migrations.
-export function isMissingTableError(error: unknown): boolean {
-  const e = error as { code?: string; message?: string } | null;
-  if (!e) return false;
-  if (e.code === '42P01' || e.code === 'PGRST205') return true;
-  const msg = (e.message || '').toLowerCase();
-  return msg.includes('could not find the table') || msg.includes('does not exist');
-}
+// Single definition in _shared/postgrest-errors.ts; re-exported so the
+// handlers' existing imports keep working.
+export { isMissingTableError } from '../../_shared/postgrest-errors.ts';
 
 // Resolve the acting customer ID: query param (dealer-staff view) → JWT metadata.
 export function resolveCustomerId(ctx: Pick<PortalCtx, 'url' | 'customerId'>): string | null {

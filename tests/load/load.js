@@ -117,10 +117,7 @@ export default function () {
   errorRate.add(!customersOk);
 
   // Search (read)
-  const searchRes = http.get(
-    `${BASE_URL}/api/search?q=test&limit=10`,
-    authHeaders,
-  );
+  const searchRes = http.get(`${BASE_URL}/api/search?q=test&limit=10`, authHeaders);
   searchDuration.add(searchRes.timings.duration);
   readDuration.add(searchRes.timings.duration);
   const searchOk = check(searchRes, {

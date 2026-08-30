@@ -84,6 +84,24 @@ const IGNORE_PREFIXES = [
 const ASSET_EXT =
   /\.(png|jpe?g|svg|gif|webp|ico|css|js|mjs|ts|tsx|json|xml|txt|woff2?|ttf|pdf|csv|xlsx?)$/i;
 
+/**
+ * A navigation target's PATH, without its query string or fragment.
+ *
+ * `/customers?action=new` is a link to /customers. Before this, the `?` put the
+ * whole literal into isNoise's regex-fragment branch and it was never checked
+ * at all - so nine breadcrumb quick actions carrying ?action= were invisible to
+ * this guard, including two pointing at /equipment, which is not a registered
+ * route (AUDIT-014). A false NEGATIVE is the failure this check exists to
+ * avoid, and skipping every target with a query string is one.
+ *
+ * Only applied to something already shaped like a path: a regex fragment that
+ * happens to contain '?' still reaches isNoise intact.
+ */
+function pathOf(target) {
+  if (!/^\/[A-Za-z0-9$_/-]/.test(target)) return target;
+  return target.split('#')[0].split('?')[0];
+}
+
 function isNoise(path) {
   if (path === '/') return true; // "/" is always a registered route
   if (path.startsWith('//')) return true; // protocol-relative / comment residue
@@ -126,6 +144,21 @@ function registeredRoutes() {
   while ((m = re.exec(src)) !== null) {
     routes.add(m[1] ?? m[2] ?? m[3]);
   }
+
+  // Public no-shell pages are NOT <Route> elements. They are early returns
+  // guarded by `pathname.startsWith('/x/')` above the auth gate - /p/ for a
+  // shared proposal, /f/ for a hosted form, /book/ and /book/manage/ for the
+  // CRMX-016 booking pages - because they must render without the app shell.
+  //
+  // Reading those guards as registered prefixes is what stops this script
+  // reporting a route DEFINITION as a broken link. Before this, each one had to
+  // be baselined as "known broken", which is the baseline asserting the opposite
+  // of the truth about code that works.
+  const guard = /pathname\.startsWith\(\s*'([^']+)'\s*\)/g;
+  while ((m = guard.exec(src)) !== null) {
+    if (m[1].startsWith('/')) routes.add(`${m[1].replace(/\/$/, '')}/*`);
+  }
+
   return [...routes];
 }
 
@@ -316,7 +349,8 @@ const propertyRoutes = buildPropertyRoutes(files);
 
 const all = [];
 for (const file of files) {
-  for (const { raw, line, via, base } of candidates(file, propertyRoutes)) {
+  for (const { raw: literal, line, via, base } of candidates(file, propertyRoutes)) {
+    const raw = pathOf(literal);
     if (isNoise(raw)) continue;
     if (resolves(raw)) continue;
     // A base is legitimate when something is routed one segment under it -

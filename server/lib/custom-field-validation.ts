@@ -7,9 +7,22 @@
  *
  * This lived in server/routes-custom-fields.ts until PROD-008b retired that
  * module: /api/custom-fields is proxied to supabase/functions/custom-fields/,
- * so every handler in it was shadowed. The validator was NOT — it is called
- * in-process by routes-business-records.ts and would have died silently with
- * the routes around it. It belongs in lib/ regardless.
+ * so every handler in it was shadowed. The validator moved here because it was
+ * called in-process by routes-business-records.ts rather than served.
+ *
+ * NOTHING CALLS IT NOW (PA-021). Its last caller was the /api/customers write
+ * path in routes-business-records.ts, removed when /api/customers became a
+ * proxied prefix - and that path had never run in production either, since
+ * production does not reach Express. So custom-field VALUES have never been
+ * validated on a write anywhere. supabase/functions/custom-fields/ validates
+ * field DEFINITIONS, which is a different thing: nothing checks that a
+ * required custom field is present, or that a value matches its declared type,
+ * before a record is persisted.
+ *
+ * Kept rather than deleted, and listed in docs/server-orphans-baseline.json,
+ * because deleting it would drop the gap off the roadmap along with the code.
+ * Wiring it means porting it into the object write paths in the edge tree
+ * (deals, business-records, contacts, companies), which is CRMX-004's scope.
  */
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';

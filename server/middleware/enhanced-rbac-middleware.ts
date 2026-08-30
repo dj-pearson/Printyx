@@ -9,6 +9,7 @@ import { createModuleLogger } from '../lib/logger';
 import { config } from '../config';
 const log = createModuleLogger('enhanced-rbac-middleware');
 
+import { users } from '@shared/schema';
 import {
   permissions,
   enhancedRoles,
@@ -22,7 +23,7 @@ import {
   type EnhancedRole,
   type UserRoleAssignment,
 } from '../enhanced-rbac-schema';
-import { eq, and, or, sql, inArray } from 'drizzle-orm';
+import { eq, and, or, sql, inArray, isNull } from 'drizzle-orm';
 import crypto from 'crypto';
 
 // =====================================================================
@@ -278,7 +279,11 @@ class PermissionComputationService {
           eq(userRoleAssignments.tenantId, tenantId),
           eq(userRoleAssignments.isActive, true),
           or(
-            eq(userRoleAssignments.effectiveUntil, null),
+            // isNull, not eq(col, null): drizzle renders the latter as
+            // `effective_until = NULL`, which is never true in SQL, so the OR
+            // collapsed to the `> NOW()` half and a grant with NO expiry - the
+            // normal shape for a permanent assignment - matched nothing.
+            isNull(userRoleAssignments.effectiveUntil),
             sql`${userRoleAssignments.effectiveUntil} > NOW()`,
           ),
         ),
@@ -287,11 +292,12 @@ class PermissionComputationService {
 
     // If no role assignment found in the new RBAC tables, check if user has a role string in users table
     if (roleAssignment.length === 0) {
-      const [userWithRole] = await db
-        .select()
-        .from((await import('../db')).users)
-        .where(eq((await import('../db')).users.id, userId))
-        .limit(1);
+      // `users` lives in the shared schema; server/db exports the client and a
+      // few helpers, and never had a `users` member. This dynamic import
+      // resolved to undefined, so `.from(undefined)` threw and took the whole
+      // fallback path - the one that runs whenever System B has no assignment
+      // for the user, which is the common case - down with it.
+      const [userWithRole] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
       if (userWithRole && (userWithRole as any).role) {
         // User has a string role - grant permissions based on role string
@@ -403,7 +409,9 @@ class PermissionComputationService {
           eq(permissionOverrides.userId, userId),
           eq(permissionOverrides.isActive, true),
           or(
-            eq(permissionOverrides.effectiveUntil, null),
+            // Same defect as the assignment query above: a permanent override
+            // has a NULL effective_until and was therefore never loaded.
+            isNull(permissionOverrides.effectiveUntil),
             sql`${permissionOverrides.effectiveUntil} > NOW()`,
           ),
         ),
@@ -986,11 +994,15 @@ export const checkApprovalRequired = async (
     .limit(1);
 
   if (override) {
-    if (override.approvalStatus === 'APPROVED') {
+    // permission_overrides has no approvalStatus column: approval is recorded
+    // by approved_by + approval_date being set. Reading a property that does
+    // not exist made both branches false, so an APPROVED override was ignored
+    // and the operation denied. It failed closed, which is the safe direction,
+    // but the override feature has never granted anything.
+    if (override.approvedBy && override.approvalDate) {
       return { required: true, approved: true };
-    } else if (override.approvalStatus === 'PENDING') {
-      return { required: true, approved: false, pendingApprovalId: override.id };
     }
+    return { required: true, approved: false, pendingApprovalId: override.id };
   }
 
   return { required: true, approved: false };

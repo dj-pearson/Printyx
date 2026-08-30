@@ -23,6 +23,7 @@ npm run validate:schema
 ```
 
 This will:
+
 - ✅ Parse `docs/DATABASE_SCHEMA.md` (210 tables, 4274 columns)
 - ✅ Scan your entire codebase
 - ✅ Generate two reports:
@@ -30,6 +31,7 @@ This will:
   - `tests/SCHEMA_VALIDATION_REPORT.md` (human-readable)
 
 **Output:**
+
 ```
 🚀 Starting Schema Validation...
 
@@ -75,31 +77,42 @@ cat tests/SCHEMA_VALIDATION_REPORT.md
 The report organizes issues by type:
 
 #### 🔴 NEON Database References (Critical)
-```
+
+````
 ❌ Line 15: Reference to NEON database found
 ```typescript
 import { neon } from '@neondatabase/serverless';
-```
+````
+
 💡 Suggestion: Update to use Supabase PostgreSQL (209.145.59.219:5433)
+
 ```
 
 #### ❌ Invalid Table References (Critical)
 ```
+
 ❌ Line 42: Table 'old_customers' not found in schema
+
 ```typescript
 const data = await db.query.old_customers.findMany();
 ```
+
 💡 Suggestion: Did you mean 'business_records'?
+
 ```
 
 #### ⚠️ Invalid Column References (Warning)
 ```
+
 ⚠️ Line 68: Column 'tenant_id' not found in table 'users'
+
 ```typescript
-where: eq(users.tenant_id, tenantId)
+where: eq(users.tenant_id, tenantId);
 ```
+
 💡 Suggestion: Did you mean 'users.tenantId'?
-```
+
+````
 
 ### Step 3: Fix the Issues
 
@@ -111,7 +124,7 @@ Preview fixes without applying them:
 
 ```bash
 npm run fix:schema
-```
+````
 
 Apply high-confidence fixes only:
 
@@ -126,6 +139,7 @@ npm run fix:schema:auto
 ```
 
 **What gets auto-fixed:**
+
 - ✅ NEON import statements → Supabase/Drizzle
 - ✅ NEON environment variables → DATABASE_URL
 - ✅ Common case mismatches (tenantId → tenant_id)
@@ -140,45 +154,56 @@ For complex issues or low-confidence fixes, manually update the code based on su
 ### Validation Report (`SCHEMA_VALIDATION_REPORT.md`)
 
 **Structure:**
+
 ```markdown
 # Schema Validation Report
 
 ## Summary
+
 - Files Scanned: 500
 - Total Issues: 42
-  - Errors: 5 ❌    ← Fix these first!
-  - Warnings: 35 ⚠️  ← Fix these next
-  - Info: 2 ℹ️       ← Review these
+  - Errors: 5 ❌ ← Fix these first!
+  - Warnings: 35 ⚠️ ← Fix these next
+  - Info: 2 ℹ️ ← Review these
 
 ## 🔴 NEON Database References
+
 [List of NEON references with line numbers and suggestions]
 
 ## ❌ Invalid Table References
+
 [List of invalid tables with suggestions]
 
 ## ⚠️ Invalid Column References
+
 [List of invalid columns with suggestions]
 
 ## 🎯 Recommendations
+
 [Specific action items based on your issues]
 
 ## Next Steps
+
 [Step-by-step guide to fix issues]
 ```
 
 ### Fix Report (`SCHEMA_FIX_REPORT.md`)
 
 **Structure:**
+
 ```markdown
 # Schema Auto-Fix Report
 
 ## Summary
+
 - Files Modified: 12
 - Total Fixes: 28
 - Backup Location: tests/backups/2026-01-26T12-30-00/
 
 ## NEON REFERENCE
+
 ### server/db.ts
+
 ✅ Line 5 (high confidence)
 **Before:**
 import { neon } from '@neondatabase/serverless';
@@ -189,14 +214,15 @@ import postgres from 'drizzle-orm/postgres-js';
 
 ## 🔧 Available Commands
 
-| Command | Description |
-|---------|-------------|
-| `npm run validate:schema` | Run validation and generate reports |
-| `npm run fix:schema` | Preview fixes (dry run) |
-| `npm run fix:schema:apply` | Apply high-confidence fixes |
-| `npm run fix:schema:auto` | Apply all fixes automatically |
+| Command                    | Description                         |
+| -------------------------- | ----------------------------------- |
+| `npm run validate:schema`  | Run validation and generate reports |
+| `npm run fix:schema`       | Preview fixes (dry run)             |
+| `npm run fix:schema:apply` | Apply high-confidence fixes         |
+| `npm run fix:schema:auto`  | Apply all fixes automatically       |
 
 **Direct execution:**
+
 ```bash
 # Validator
 npx tsx tests/schema-validator.ts
@@ -216,12 +242,14 @@ npx tsx tests/schema-fixer.ts --apply --auto
 ### Pattern 1: NEON References
 
 **Issue:**
+
 ```typescript
 import { neon } from '@neondatabase/serverless';
 const sql = neon(process.env.NEON_DATABASE_URL);
 ```
 
 **Fix:**
+
 ```typescript
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
@@ -232,42 +260,48 @@ const db = drizzle(client);
 ### Pattern 2: Invalid Table Names
 
 **Issue:**
+
 ```typescript
 // ❌ Wrong: Table doesn't exist
 const customers = await db.query.customers.findMany();
 ```
 
 **Fix:**
+
 ```typescript
 // ✅ Correct: Use actual table name
 const customers = await db.query.business_records.findMany({
-  where: eq(business_records.type, 'customer')
+  where: eq(business_records.type, 'customer'),
 });
 ```
 
 ### Pattern 3: Case Mismatches
 
 **Issue:**
+
 ```typescript
 // ❌ Wrong: camelCase (doesn't exist in DB)
-where: eq(users.tenantId, id)
+where: eq(users.tenantId, id);
 ```
 
 **Fix:**
+
 ```typescript
 // ✅ Correct: snake_case (matches DB schema)
-where: eq(users.tenant_id, id)
+where: eq(users.tenant_id, id);
 ```
 
 ### Pattern 4: Non-Existent Columns
 
 **Issue:**
+
 ```typescript
 // ❌ Wrong: Column doesn't exist
 select: { id: true, full_name: true }
 ```
 
 **Fix:**
+
 ```typescript
 // ✅ Correct: Use actual column names
 select: { id: true, firstName: true, lastName: true }
@@ -278,6 +312,7 @@ select: { id: true, firstName: true, lastName: true }
 ### First Time Setup
 
 1. **Run Validation**
+
    ```bash
    npm run validate:schema
    ```
@@ -288,15 +323,17 @@ select: { id: true, firstName: true, lastName: true }
    - Understand the types of issues
 
 3. **Apply Auto-Fixes**
+
    ```bash
    # Preview first
    npm run fix:schema
-   
+
    # Apply if looks good
    npm run fix:schema:apply
    ```
 
 4. **Validate Again**
+
    ```bash
    npm run validate:schema
    ```
@@ -307,18 +344,20 @@ select: { id: true, firstName: true, lastName: true }
    - Refer to DATABASE_SCHEMA.md for correct names
 
 6. **Final Validation**
+
    ```bash
    npm run validate:schema
    ```
 
 7. **Test & Commit**
+
    ```bash
    # Test your app
    npm run dev
-   
+
    # Run tests
    npm run test
-   
+
    # Commit if everything works
    git add .
    git commit -m "fix: resolve database schema validation issues"
@@ -343,6 +382,7 @@ npm run validate:schema && npm run build
 **Problem:** Validator reports valid code as an issue.
 
 **Solutions:**
+
 1. Check if table/column exists in `docs/DATABASE_SCHEMA.md`
 2. Verify exact case matches (camelCase vs snake_case)
 3. Check for schema prefix (e.g., `public.users` vs `users`)
@@ -356,6 +396,7 @@ npm run validate:schema && npm run build
 **Problem:** Code doesn't work after applying auto-fixes.
 
 **Solutions:**
+
 1. Restore from backup:
    ```bash
    # Backup is in tests/backups/<timestamp>/
@@ -370,6 +411,7 @@ npm run validate:schema && npm run build
 **Problem:** Validator reports tables that actually exist.
 
 **Solutions:**
+
 1. Regenerate the schema document:
    ```bash
    npm run check:schema
@@ -385,6 +427,7 @@ npm run validate:schema && npm run build
 **Problem:** Thousands of issues reported, overwhelming to fix.
 
 **Solutions:**
+
 1. Start with critical errors only (NEON references)
 2. Use auto-fix for high-confidence fixes:
    ```bash
@@ -443,11 +486,11 @@ npm run validate:schema || {
 import report from './tests/schema-validation-report.json';
 
 // Get NEON issues only
-const neonIssues = report.issues.filter(i => i.type === 'neon_reference');
+const neonIssues = report.issues.filter((i) => i.type === 'neon_reference');
 
 // Get errors in specific directory
-const serverErrors = report.issues.filter(i => 
-  i.severity === 'error' && i.file.startsWith('server/')
+const serverErrors = report.issues.filter(
+  (i) => i.severity === 'error' && i.file.startsWith('server/'),
 );
 
 // Generate custom report
@@ -462,7 +505,7 @@ Extend the validator by modifying `tests/schema-validator.ts`:
 // Add new pattern detection
 checkCustomPattern(content: string, filePath: string): void {
   const lines = content.split('\n');
-  
+
   lines.forEach((line, index) => {
     if (/your-pattern-here/.test(line)) {
       this.issues.push({
@@ -481,6 +524,7 @@ checkCustomPattern(content: string, filePath: string): void {
 ## 📝 Summary
 
 **Key Benefits:**
+
 - ✅ Catch database reference errors early
 - ✅ Ensure consistency with schema documentation
 - ✅ Automate common fixes
@@ -488,6 +532,7 @@ checkCustomPattern(content: string, filePath: string): void {
 - ✅ Maintain code quality
 
 **Best Practices:**
+
 1. Run validation before every commit
 2. Keep DATABASE_SCHEMA.md up to date
 3. Use auto-fix for simple issues
@@ -495,6 +540,7 @@ checkCustomPattern(content: string, filePath: string): void {
 5. Add validation to CI/CD pipeline
 
 **Support:**
+
 - Documentation: `tests/README_SCHEMA_VALIDATOR.md`
 - Reports: `tests/SCHEMA_VALIDATION_REPORT.md`
 - Source: `tests/schema-validator.ts`, `tests/schema-fixer.ts`

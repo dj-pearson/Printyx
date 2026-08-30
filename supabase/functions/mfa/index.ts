@@ -12,8 +12,8 @@
  *   GET  /status                 — user's MFA status
  *   GET  /methods                — which methods enrolled
  *   POST /challenge              — issue a challenge (stub — returns methods)
- *   POST /disable                — disable all MFA for current user
- *   POST /backup-codes/regenerate
+ *   POST /disable                — disable all MFA (requires a current code)
+ *   POST /backup-codes/regenerate  (requires a current code)
  *   GET  /backup-codes/count
  *   POST /otp/email/send         — email one-time code (uses SendGrid via email-marketing)
  *   POST /otp/sms/send           — SMS one-time code (Twilio REST; simulation if env unset)
@@ -226,7 +226,18 @@ export default async function handler(req: Request) {
 
     // ─── Disable ────────────────────────────────────────────────────────────
 
+    // SEC-MFA-001: this used to delete every enrollment on nothing but a valid
+    // session. A stolen token was therefore enough to switch the second factor
+    // off, which is the one operation a second factor has to protect. The
+    // Express implementation this function replaced DID verify a TOTP token
+    // first (server/routes/mfa-routes.ts), so production was strictly weaker
+    // than dev on exactly the control that matters.
     if (method === 'POST' && p0 === 'disable' && !p1) {
+      const gate = await requireSecondFactor(req, db, auth);
+      if (!gate.ok) {
+        await writeAudit(db, auth, 'disable_denied', false, gate.reason);
+        return errorResponse(gate.status, gate.message, req, { code: gate.code, requestId });
+      }
       await db.from('mfa_enrollments').delete().eq('user_id', auth.userId);
       await db.from('mfa_backup_codes').delete().eq('user_id', auth.userId);
       await db.from('mfa_otp_tokens').delete().eq('user_id', auth.userId);
@@ -236,7 +247,15 @@ export default async function handler(req: Request) {
 
     // ─── Backup codes ───────────────────────────────────────────────────────
 
+    // Same gate, same reason: regenerating invalidates the codes the real owner
+    // holds and hands a fresh set to whoever asked. Express required a token
+    // here too.
     if (method === 'POST' && p0 === 'backup-codes' && p1 === 'regenerate') {
+      const gate = await requireSecondFactor(req, db, auth);
+      if (!gate.ok) {
+        await writeAudit(db, auth, 'backup_codes_regenerate_denied', false, gate.reason);
+        return errorResponse(gate.status, gate.message, req, { code: gate.code, requestId });
+      }
       const codes = await regenerateBackupCodes(db, auth);
       await writeAudit(db, auth, 'backup_codes_regenerated', true);
       return jsonResponse({ codes }, 200, req, requestId);
@@ -400,6 +419,68 @@ async function regenerateBackupCodes(db: any, auth: any): Promise<string[]> {
   }
   await db.from('mfa_backup_codes').insert(rows);
   return codes;
+}
+
+/**
+ * A second factor, proved again, before an operation that removes the second
+ * factor. Accepts a TOTP code from a verified enrollment or an unused backup
+ * code; a backup code is consumed on use, exactly as it is at login.
+ *
+ * A user with no verified enrollment passes: there is nothing to prove and
+ * nothing to protect, and refusing would leave a half-finished enrollment
+ * impossible to clear.
+ *
+ * Deliberately NOT accepting the account password. This deployment has two
+ * credential stores (GoTrue and users.password_hash, see AUDIT-027) that can
+ * disagree after a password change, so "the password" is not a single fact
+ * here. A TOTP code is.
+ */
+// deno-lint-ignore no-explicit-any
+async function requireSecondFactor(
+  req: Request,
+  db: any,
+  // deno-lint-ignore no-explicit-any
+  auth: any,
+): Promise<
+  { ok: true } | { ok: false; status: number; message: string; code: string; reason: string }
+> {
+  const { data: enrollments } = await db
+    .from('mfa_enrollments')
+    .select('id, secret, method')
+    .eq('user_id', auth.userId)
+    .eq('is_verified', true);
+
+  const verified = (enrollments ?? []) as Array<Record<string, unknown>>;
+  if (verified.length === 0) return { ok: true };
+
+  const body = (await req.json().catch(() => ({}))) as { code?: string };
+  const code = String(body.code ?? '').trim();
+  if (!code) {
+    return {
+      ok: false,
+      status: 400,
+      message: 'A current authentication code is required',
+      code: 'MFA_CODE_REQUIRED',
+      reason: 'no_code',
+    };
+  }
+
+  for (const e of verified) {
+    if (e.method === 'totp' && verifyCode(e.secret as string, code)) {
+      await bumpEnrollmentUsage(db, e.id as string);
+      return { ok: true };
+    }
+  }
+
+  if (await consumeBackupCode(db, auth.userId, code)) return { ok: true };
+
+  return {
+    ok: false,
+    status: 401,
+    message: 'Invalid authentication code',
+    code: 'BAD_CODE',
+    reason: 'bad_code',
+  };
 }
 
 // deno-lint-ignore no-explicit-any

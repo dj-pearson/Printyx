@@ -92,11 +92,7 @@ export function GlassHeader({
 
       <View style={styles.row}>
         {onBack ? (
-          <HeaderButton
-            icon="chevron-left"
-            accessibilityLabel="Back"
-            onPress={onBack}
-          />
+          <HeaderButton icon="chevron-left" accessibilityLabel="Back" onPress={onBack} />
         ) : (
           <View style={styles.spacer} />
         )}

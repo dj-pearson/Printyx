@@ -11,11 +11,7 @@ import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassSurface } from './GlassSurface';
 import { borderRadius, colors, motion, spacing, typography } from '@/theme';
@@ -27,10 +23,7 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
   return (
     <View
       pointerEvents="box-none"
-      style={[
-        styles.wrapper,
-        { paddingBottom: bottomPadding, paddingHorizontal: spacing.lg },
-      ]}
+      style={[styles.wrapper, { paddingBottom: bottomPadding, paddingHorizontal: spacing.lg }]}
     >
       <GlassSurface
         tone="chrome"
@@ -47,7 +40,7 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
           const label =
             typeof options.tabBarLabel === 'string'
               ? options.tabBarLabel
-              : options.title ?? route.name;
+              : (options.title ?? route.name);
 
           const onPress = () => {
             if (!isFocused) {
@@ -85,11 +78,7 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
   );
 }
 
-type TabIconRenderer = (opts: {
-  focused: boolean;
-  color: string;
-  size: number;
-}) => React.ReactNode;
+type TabIconRenderer = (opts: { focused: boolean; color: string; size: number }) => React.ReactNode;
 
 interface TabButtonProps {
   label: string;
@@ -148,10 +137,7 @@ function TabButton({
       </Animated.View>
       <Text
         numberOfLines={1}
-        style={[
-          styles.label,
-          { color: isFocused ? activeColor : inactiveColor },
-        ]}
+        style={[styles.label, { color: isFocused ? activeColor : inactiveColor }]}
       >
         {label}
       </Text>

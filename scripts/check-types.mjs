@@ -58,7 +58,9 @@ function countErrors(out) {
 //      reached the program — impossible to reconcile with a non-zero baseline
 function assertTscActuallyRan(out, limit) {
   if (!existsSync(join(repo, 'node_modules', 'typescript', 'package.json'))) {
-    console.error('\n✗ typescript is not installed — tsc did not run, so this count is meaningless.');
+    console.error(
+      '\n✗ typescript is not installed — tsc did not run, so this count is meaningless.',
+    );
     console.error('  This is a toolchain failure, not a type-debt change.');
     console.error('  Check your Node version, then reinstall:');
     console.error('    node scripts/check-node-version.mjs && npm install');

@@ -22,8 +22,8 @@ const log = createModuleLogger('exfiltration-guard');
 
 const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
-const SIZE_WARN_BYTES = 10 * 1024 * 1024;  // 10 MB
-const SIZE_BLOCK_BYTES = 50 * 1024 * 1024;  // 50 MB
+const SIZE_WARN_BYTES = 10 * 1024 * 1024; // 10 MB
+const SIZE_BLOCK_BYTES = 50 * 1024 * 1024; // 50 MB
 
 const RECORD_WARN_COUNT = 1_000;
 const RECORD_BLOCK_COUNT = 5_000;
@@ -151,7 +151,8 @@ export function exfiltrationGuard(req: Request, res: Response, next: NextFunctio
     let responseSize = 0;
     const contentLength = res.getHeader('content-length');
     if (contentLength) {
-      responseSize = typeof contentLength === 'string' ? parseInt(contentLength, 10) : (contentLength as number);
+      responseSize =
+        typeof contentLength === 'string' ? parseInt(contentLength, 10) : (contentLength as number);
     } else if (body !== undefined && body !== null) {
       if (typeof body === 'string') {
         responseSize = Buffer.byteLength(body, 'utf8');

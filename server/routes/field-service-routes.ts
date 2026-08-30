@@ -1,3 +1,27 @@
+/**
+ * Field service: installations, installation checklists and service
+ * signatures. 16 handlers mounted at the /api root.
+ *
+ * CANNOT AUTHENTICATE ANYONE - see SEC-SESSION-001 before changing this file.
+ *
+ * Every handler below reads `req.session.user` as its only source of identity.
+ * Nothing in this codebase assigns it: session login sets the flat
+ * req.session.userId / req.session.tenantId and the JWT path sets req.user, so
+ * each of these answers 401 in dev exactly as it does in production. It has
+ * never run. server/types/express-session.d.ts records the same finding and
+ * declares the type that lets it compile, which is why tsc sees nothing wrong.
+ *
+ * No client tree calls /api/installations, /api/installation-checklists or
+ * /api/service-signatures, and none of the three has an edge function.
+ * supabase/functions/field-service/ exists and serves a different surface -
+ * it is reached only by a pg_cron job (drizzle/cron/), not by these paths.
+ *
+ * The fix is one of three, and it is a product call rather than cleanup:
+ * migrate the handlers to getUserId/getTenantId from utils/auth-helpers and
+ * build the caller, retire the file in favour of an edge function that covers
+ * it, or delete it. Populating req.session.user in the login path would revive
+ * all twelve files at once and touches security-sensitive code.
+ */
 import { Router } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';
@@ -65,7 +89,7 @@ router.post('/installations', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertInstallationSchema      .safeParse(req.body);
+    const validationResult = insertInstallationSchema.safeParse(req.body);
 
     if (!validationResult.success) {
       return res.status(400).json({
@@ -99,8 +123,7 @@ router.patch('/installations/:id', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertInstallationSchema      .partial()
-      .safeParse(req.body);
+    const validationResult = insertInstallationSchema.partial().safeParse(req.body);
 
     if (!validationResult.success) {
       return res.status(400).json({
@@ -191,7 +214,7 @@ router.post('/service-signatures', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertServiceSignatureSchema      .safeParse(req.body);
+    const validationResult = insertServiceSignatureSchema.safeParse(req.body);
 
     if (!validationResult.success) {
       return res.status(400).json({
@@ -219,8 +242,7 @@ router.patch('/service-signatures/:id', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertServiceSignatureSchema      .partial()
-      .safeParse(req.body);
+    const validationResult = insertServiceSignatureSchema.partial().safeParse(req.body);
 
     if (!validationResult.success) {
       return res.status(400).json({
@@ -305,7 +327,7 @@ router.post('/installation-checklists', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertInstallationChecklistSchema      .safeParse(req.body);
+    const validationResult = insertInstallationChecklistSchema.safeParse(req.body);
 
     if (!validationResult.success) {
       return res.status(400).json({
@@ -361,8 +383,7 @@ router.patch('/installation-checklists/:id', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertInstallationChecklistSchema      .partial()
-      .safeParse(req.body);
+    const validationResult = insertInstallationChecklistSchema.partial().safeParse(req.body);
 
     if (!validationResult.success) {
       return res.status(400).json({

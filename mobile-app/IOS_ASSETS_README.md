@@ -5,6 +5,7 @@
 All required iOS app assets have been successfully copied to `mobile-app/assets/`:
 
 ### Icon Files
+
 - **icon.png** (447.45 KB) - Main app icon for iOS
   - Source: `Icon-1024x1024.png`
   - Used by: `expo.icon` in app.json
@@ -19,6 +20,7 @@ All required iOS app assets have been successfully copied to `mobile-app/assets/
   - Used by: `expo.web.favicon`
 
 ### Splash Screen
+
 - **splash.png** (648.50 KB) - Splash/launch screen
   - Source: `logo-large-Black.png`
   - Used by: `expo.splash.image` in app.json
@@ -49,13 +51,16 @@ The `app.json` is configured with:
 ## iOS Build Requirements
 
 ### Current Setup
+
 ✅ App icon configured (1024x1024)
 ✅ Splash screen configured
 ✅ Bundle identifier set: `com.printyx.technician`
 ✅ iOS permissions configured (Camera, Location)
 
 ### For Deployment
+
 The following secrets are already documented in `/ios/SECRETS.md`:
+
 - `IOS_CERTIFICATE_P12` - Your signing certificate
 - `IOS_CERTIFICATE_P12_PASSWORD` - Certificate password
 - `IOS_PROVISIONING_PROFILE` - App Store provisioning profile
@@ -65,19 +70,23 @@ The following secrets are already documented in `/ios/SECRETS.md`:
 ## Next Steps
 
 ### 1. Build iOS App
+
 ```bash
 cd mobile-app
 expo build:ios
 ```
 
 ### 2. Or Use EAS Build (Recommended)
+
 ```bash
 npm install -g eas-cli
 eas build --platform ios
 ```
 
 ### 3. Update EAS Project ID
+
 In `app.json`, update:
+
 ```json
 "extra": {
   "eas": {
@@ -93,6 +102,7 @@ In `app.json`, update:
 - Both assets use Printyx branding with the blue-purple gradient logo
 
 ## Files Created
+
 - ✅ `mobile-app/assets/icon.png`
 - ✅ `mobile-app/assets/splash.png`
 - ✅ `mobile-app/assets/adaptive-icon.png`

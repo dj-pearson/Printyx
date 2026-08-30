@@ -9,6 +9,7 @@
 ## 1. Scope
 
 **Express source files:**
+
 - `server/routes-lead-assignment.ts` (683 lines, **21 endpoints**) — territories, assignment rules, rep-capacity, history, user-assignments, queue, direct assign
 - `server/routes-auto-lead-routing.ts` (343 lines, **6 endpoints**) — routing engine + config
 - `server/routes-territory-management.ts` (508 lines, **~19 endpoints**) — territory types, boundaries, assignment, rules
@@ -29,6 +30,7 @@
 | `user-assignments/` | unknown | per-user lookup | merge in |
 
 **Target canonical edge function:**
+
 ```
 supabase/functions/lead-assignment/
 ├── index.ts                       # dispatcher — all URL prefixes routed here
@@ -45,6 +47,7 @@ supabase/functions/lead-assignment/
 ```
 
 **Explicitly out of scope:**
+
 - Frontend changes — `TerritoryManagement.tsx` and `AutoLeadRoutingDashboard.tsx` already hit `/api/...`; paths preserved.
 - Lead scoring inputs to routing decisions (tracked in US-012).
 
@@ -54,10 +57,10 @@ supabase/functions/lead-assignment/
 
 Produce `docs/lead-assignment-parity.md` in the PR body before writing any handler code. Table:
 
-| Method | Path | Express location | Edge location today | Canonical location | Status | Action |
-|---|---|---|---|---|---|---|
-| GET    | `/sales-territories` | routes-lead-assignment.ts:24 | sales-territories/index.ts | handlers/territories.ts | | verify-parity |
-| ... | ... | ... | ... | ... | ... | ... |
+| Method | Path                 | Express location             | Edge location today        | Canonical location      | Status | Action        |
+| ------ | -------------------- | ---------------------------- | -------------------------- | ----------------------- | ------ | ------------- |
+| GET    | `/sales-territories` | routes-lead-assignment.ts:24 | sales-territories/index.ts | handlers/territories.ts |        | verify-parity |
+| ...    | ...                  | ...                          | ...                        | ...                     | ...    | ...           |
 
 **Status values:** `only-express`, `only-edge`, `both-match`, `both-diverged`, `duplicate-edge` (same endpoint in 2+ edge functions).
 
@@ -69,40 +72,40 @@ Produce `docs/lead-assignment-parity.md` in the PR body before writing any handl
 
 ### From `routes-lead-assignment.ts`
 
-| Method | Path | Line | Notes |
-|---|---|---|---|
-| GET    | `/api/sales-territories` | 24 | |
-| GET    | `/api/sales-territories/:id` | 44 | |
-| POST   | `/api/sales-territories` | 65 | |
-| PUT    | `/api/sales-territories/:id` | 87 | |
-| DELETE | `/api/sales-territories/:id` | 110 | |
-| GET    | `/api/lead-assignment-rules` | 134 | |
-| GET    | `/api/lead-assignment-rules/:id` | 154 | |
-| POST   | `/api/lead-assignment-rules` | 175 | |
-| PUT    | `/api/lead-assignment-rules/:id` | 197 | |
-| DELETE | `/api/lead-assignment-rules/:id` | 220 | |
-| GET    | `/api/rep-capacity/:userId` | 244 | |
-| GET    | `/api/rep-capacity` | 265 | list all |
-| POST   | `/api/rep-capacity` | 285 | |
-| PATCH  | `/api/rep-capacity/:userId/availability` | 322 | |
-| GET    | `/api/lead-assignment-history/:leadId` | 353 | |
-| GET    | `/api/user-assignments/:userId` | 374 | |
-| POST   | `/api/lead-assignment-history` | 396 | |
-| GET    | `/api/lead-assignment-queue` | 423 | |
-| POST   | `/api/lead-assignment-queue` | 452 | |
-| POST   | `/api/lead-assignment-queue/:id/process` | 474 | runs assignment |
-| POST   | `/api/assign-lead` | 505 | direct assign |
+| Method | Path                                     | Line | Notes           |
+| ------ | ---------------------------------------- | ---- | --------------- |
+| GET    | `/api/sales-territories`                 | 24   |                 |
+| GET    | `/api/sales-territories/:id`             | 44   |                 |
+| POST   | `/api/sales-territories`                 | 65   |                 |
+| PUT    | `/api/sales-territories/:id`             | 87   |                 |
+| DELETE | `/api/sales-territories/:id`             | 110  |                 |
+| GET    | `/api/lead-assignment-rules`             | 134  |                 |
+| GET    | `/api/lead-assignment-rules/:id`         | 154  |                 |
+| POST   | `/api/lead-assignment-rules`             | 175  |                 |
+| PUT    | `/api/lead-assignment-rules/:id`         | 197  |                 |
+| DELETE | `/api/lead-assignment-rules/:id`         | 220  |                 |
+| GET    | `/api/rep-capacity/:userId`              | 244  |                 |
+| GET    | `/api/rep-capacity`                      | 265  | list all        |
+| POST   | `/api/rep-capacity`                      | 285  |                 |
+| PATCH  | `/api/rep-capacity/:userId/availability` | 322  |                 |
+| GET    | `/api/lead-assignment-history/:leadId`   | 353  |                 |
+| GET    | `/api/user-assignments/:userId`          | 374  |                 |
+| POST   | `/api/lead-assignment-history`           | 396  |                 |
+| GET    | `/api/lead-assignment-queue`             | 423  |                 |
+| POST   | `/api/lead-assignment-queue`             | 452  |                 |
+| POST   | `/api/lead-assignment-queue/:id/process` | 474  | runs assignment |
+| POST   | `/api/assign-lead`                       | 505  | direct assign   |
 
 ### From `routes-auto-lead-routing.ts`
 
-| Method | Path | Line | Notes |
-|---|---|---|---|
-| POST | `/api/auto-lead-routing/route/:leadId` | 31 | |
-| POST | `/api/auto-lead-routing/route-batch` | 63 | |
-| GET  | `/api/auto-lead-routing/dashboard` | 109 | |
-| GET  | `/api/auto-lead-routing/config` | 243 | |
-| PUT  | `/api/auto-lead-routing/config` | 277 | |
-| GET  | `/api/auto-lead-routing/preview/:leadId` | 306 | dry-run |
+| Method | Path                                     | Line | Notes   |
+| ------ | ---------------------------------------- | ---- | ------- |
+| POST   | `/api/auto-lead-routing/route/:leadId`   | 31   |         |
+| POST   | `/api/auto-lead-routing/route-batch`     | 63   |         |
+| GET    | `/api/auto-lead-routing/dashboard`       | 109  |         |
+| GET    | `/api/auto-lead-routing/config`          | 243  |         |
+| PUT    | `/api/auto-lead-routing/config`          | 277  |         |
+| GET    | `/api/auto-lead-routing/preview/:leadId` | 306  | dry-run |
 
 ### From `routes-territory-management.ts`
 
@@ -129,6 +132,7 @@ RLS file: `drizzle/rls/lead-assignment.sql` — standard 4-policy template on ea
 ## 5. Routing algorithm port
 
 `server/services/auto-lead-routing-service.ts` implements:
+
 - Round-robin across reps in a territory
 - Weighted by rep capacity (open deals / max concurrent)
 - Skill-based (lead industry → rep specialty match)
@@ -143,10 +147,12 @@ Port to `supabase/functions/lead-assignment/_engine.ts` as pure TS (no side effe
 ## 6. Acceptance criteria
 
 ### Audit
+
 - [ ] `docs/lead-assignment-parity.md` published — every endpoint classified
 - [ ] Duplicate endpoints between edge functions identified and resolved (one canonical each)
 
 ### Functional
+
 - [ ] All ~46 Express endpoints ported or reconciled
 - [ ] `POST /assign-lead` successfully assigns a lead and writes to `lead_assignment_history`
 - [ ] `POST /auto-lead-routing/route/:leadId` respects rep capacity and skill match
@@ -155,17 +161,20 @@ Port to `supabase/functions/lead-assignment/_engine.ts` as pure TS (no side effe
 - [ ] Territory CRUD happy path works including geographic boundaries (if used)
 
 ### Security / RLS
+
 - [ ] RLS on all 7 assignment tables
 - [ ] Two-tenant test: assignment rule created by tenant A not visible to tenant B
 - [ ] Rep capacity values cannot be modified cross-tenant
 
 ### Frontend compatibility
+
 - [ ] `TerritoryManagement.tsx` loads, list renders, create/edit/delete works
 - [ ] `AutoLeadRoutingDashboard.tsx` renders charts, config save persists
 - [ ] "Assign" action from lead list invokes `/api/assign-lead` successfully
 - [ ] Playwright MCP smoke pass on all 3 pages
 
 ### Deletion
+
 - [ ] `server/routes-lead-assignment.ts` deleted
 - [ ] `server/routes-auto-lead-routing.ts` deleted
 - [ ] `server/routes-territory-management.ts` deleted
@@ -178,6 +187,7 @@ Port to `supabase/functions/lead-assignment/_engine.ts` as pure TS (no side effe
 - [ ] Zero `grep -r` hits for the deleted filenames
 
 ### Quality gates
+
 - [ ] `deno check` passes
 - [ ] `npm run check` passes
 - [ ] `npm run build` succeeds
@@ -187,14 +197,17 @@ Port to `supabase/functions/lead-assignment/_engine.ts` as pure TS (no side effe
 ## 7. Test plan
 
 ### Unit (Deno)
+
 - `_engine.test.ts` — routing algorithm with fixture reps + leads. Cover: round-robin wrap-around, capacity exhaustion, skill match precedence.
 - `_territory.test.ts` — zip/region matching logic.
 
 ### Integration
+
 - Local: assign 10 fixture leads, verify deterministic distribution matches Express output.
 - Route-batch: 100-lead batch, measure p95 latency (< 2s target).
 
 ### Production smoke
+
 - `TerritoryManagement` — create a territory, attach reps, save, refresh, verify.
 - `AutoLeadRoutingDashboard` — read metrics, flip config, confirm persisted.
 - Lead list `/leads` → click "Auto-assign" on a lead → confirm user assigned in DB.
@@ -210,6 +223,7 @@ Complex. Three levels:
 3. **Schema / RLS changes** — none in this PRD; rollback is code-only.
 
 **Deploy order:**
+
 - PR 1: land canonical `lead-assignment/` covering all 46 endpoints. Traffic still flows to the old duplicate edge functions (they remain).
 - PR 2 (after 48h stable): delete the duplicate edge functions + Express files.
 
@@ -227,13 +241,13 @@ Complex. Three levels:
 
 ## 10. Risks + mitigations
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Dedup misses a subtle divergence between edge + express versions | High | Medium | Require a line-by-line diff in audit doc; explicitly call out every `both-diverged` row |
-| Round-robin concurrency race under load | Low | High | Use `UPDATE routing_config SET last_assigned_user_id = ... WHERE tenant_id = ... RETURNING ...` (atomic) |
-| PostGIS not enabled in Supabase | Unknown | Medium | Check `SELECT * FROM pg_extension` during audit; if absent, either enable or fall back to zip-based matching |
-| Frontend calls an edge function path that moves mid-migration | Medium | Medium | Keep deprecated edge functions alive during Phase 1 of the rollout; delete only after canonical is stable |
-| Routing batch hits Deno memory ceiling on large tenants | Low | Medium | Hard cap at 200 leads per batch; document in handler |
+| Risk                                                             | Likelihood | Impact | Mitigation                                                                                                   |
+| ---------------------------------------------------------------- | ---------- | ------ | ------------------------------------------------------------------------------------------------------------ |
+| Dedup misses a subtle divergence between edge + express versions | High       | Medium | Require a line-by-line diff in audit doc; explicitly call out every `both-diverged` row                      |
+| Round-robin concurrency race under load                          | Low        | High   | Use `UPDATE routing_config SET last_assigned_user_id = ... WHERE tenant_id = ... RETURNING ...` (atomic)     |
+| PostGIS not enabled in Supabase                                  | Unknown    | Medium | Check `SELECT * FROM pg_extension` during audit; if absent, either enable or fall back to zip-based matching |
+| Frontend calls an edge function path that moves mid-migration    | Medium     | Medium | Keep deprecated edge functions alive during Phase 1 of the rollout; delete only after canonical is stable    |
+| Routing batch hits Deno memory ceiling on large tenants          | Low        | Medium | Hard cap at 200 leads per batch; document in handler                                                         |
 
 ---
 

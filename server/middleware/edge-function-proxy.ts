@@ -263,6 +263,18 @@ export function registerEdgeFunctionProxy(app: any) {
     // Core CRM (EDGE-001 baseline)
     '/api/business-records': 'business-records',
     '/api/companies': 'companies',
+    // PA-021. /api/customers used to be special-cased below to the `companies`
+    // function for the bare list, with only /:id/:sub forwarded to `customers`.
+    // That made dev and prod answer the SAME url from DIFFERENT functions:
+    // production has no way to reach `companies` under this prefix, because
+    // getApiUrl rewrites /api/customers straight to functions.printyx.net/
+    // customers. The two disagreed on shape as well - `companies` returns
+    // { data, total, page, limit } and `customers` returns a bare array, which
+    // iOS decodes as [BusinessRecord]. Both read the same `companies` table, so
+    // the redirect bought nothing and cost a divergence. Dev now runs what
+    // production runs, for the list, the single record, POST/PATCH/DELETE and
+    // every sub-resource.
+    '/api/customers': 'customers',
     '/api/deals': 'deals',
     '/api/contacts': 'contacts',
     '/api/opportunities': 'opportunities',
@@ -337,6 +349,65 @@ export function registerEdgeFunctionProxy(app: any) {
     // PROD-011: renewal-autoquote had no edge function, so the whole renewal
     // dashboard 404'd in production. Dir name matches the URL segment.
     '/api/renewal-autoquote': 'renewal-autoquote',
+
+    // AUDIT-027: /api/user/* - the Settings page and the notification dialog.
+    // The `user` directory has always existed, so production has always been
+    // served by supabase/functions/user/; what was missing is this entry, so
+    // DEV ran server/routes-settings.ts instead and the two disagreed about
+    // where the data goes. Express wrote phone/jobTitle/department to
+    // user_settings and changed passwords by rehashing users.password_hash; the
+    // edge function writes those three to users.metadata (they have no column -
+    // see _shared/user-profile.ts) and changes passwords through GoTrue,
+    // verifying the current one with signInWithPassword first. Same page, same
+    // fields, different rows and a different credential store, so testing this
+    // surface in dev proved nothing about production.
+    '/api/user': 'user',
+
+    // SEC-MFA-001: /api/mfa. Both backends implement MFA in full and neither was
+    // reachable - no client tree named the prefix until the Settings card
+    // landed. They also disagreed on the control that matters: Express verified
+    // a TOTP token before disabling, the edge function did not, so production
+    // was the weaker of the two. The edge function requires a code now, and
+    // proxying makes dev exercise the same handler.
+    '/api/mfa': 'mfa',
+
+    // SEC-SESSION-001: both of these were served in dev by routers that
+    // authenticate against req.session.user, which nothing assigns - so every
+    // request got a 401 while the edge functions behind the same prefixes
+    // worked fine in production. Proxying is the fix rather than repairing the
+    // routers, because the edge functions already cover what the frontend
+    // calls: /api/email-campaigns (useEmailSequences) and
+    // /api/lead-scoring/bant/:id (BANTAssessment).
+    '/api/email-campaigns': 'email-campaigns',
+    '/api/lead-scoring': 'lead-scoring',
+
+    // AUDIT-021: /api/performance. supabase/functions/performance/ answers
+    // /metrics, /alerts and /health from performance_metrics and system_alerts,
+    // with an `unbacked` array for what those tables cannot say. Express served
+    // dev from routes/performance-routes.ts, which INVENTED all of it - uptime
+    // 99 + random*0.99, throughput random*500 + 800, an error rate, disk usage
+    // and an active-user count, each changing on every refresh. Proxying makes
+    // dev show what production shows.
+    '/api/performance': 'performance',
+
+    // AUDIT-029: /api/device-monitoring. Three routed pages call this prefix -
+    // DeviceMonitoring, SupplyRunway and SupplyOrders - and nothing served it in
+    // production until supabase/functions/device-monitoring/ existed. Both hosts
+    // now share the projection and the forecast from
+    // _shared/device-monitoring-shape.ts, so proxying makes dev exercise the
+    // handler production uses rather than a second implementation of it.
+    '/api/device-monitoring': 'device-monitoring',
+
+    // CR-017: /api/commission. Dev used to be served by two Express routers on
+    // the same prefix - routes-operations-extended (mounted first, so it won
+    // /calculations and /disputes) over five tables that exist in no schema and
+    // no migration, and routes-commission (a hardcoded "Sales Rep Standard" plan
+    // with 5%/6.5%/8% tiers) for /plans and /analytics. Production has always
+    // run supabase/functions/commission/, which reads the real tables and covers
+    // every path CommissionManagement.tsx calls. Both routers are deleted and
+    // the prefix is proxied, so dev runs the same handler. POST /calculate had
+    // no Express handler at all under either router, so it worked only in prod.
+    '/api/commission': 'commission',
 
     // PROD-012: voice-agent had no edge function, so the after-hours intake
     // surface 404'd in production. Dir name matches the URL segment.
@@ -587,9 +658,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // entry, which check:routes flags as ambiguous ownership. Prod already
     // bypasses Express and hits the edge fn, so this only makes dev match prod.
     // PROD-008b retired routes-custom-fields.ts entirely; its shared
-    // validateCustomFieldValues moved to lib/custom-field-validation.ts, which
-    // is where routes-business-records.ts imports it from now. Dir name ==
-    // prefix segment, no override needed.
+    // validateCustomFieldValues moved to lib/custom-field-validation.ts, whose
+    // last caller (the /api/customers write path in routes-business-records.ts)
+    // PA-021 removed - so nothing validates custom-field VALUES on a write now,
+    // and nothing did in production before either. See that file's header. Dir
+    // name == prefix segment, no override needed.
     '/api/custom-fields': 'custom-fields',
 
     // New edge fns for three domains that 404'd in PROD — the frontend calls
@@ -640,14 +713,17 @@ export function registerEdgeFunctionProxy(app: any) {
     // PROD-010. Full parity: /dashboard is the ONLY endpoint Express serves on
     // this prefix (routes-sample-data.ts) and the only one the page calls.
     //
-    // NOT ported alongside it: /api/business-process. Both of its Express
-    // dashboard handlers (routes-business-process-optimization.ts:24 and
-    // routes-sample-data.ts:1209) return hardcoded numbers with ZERO database
-    // access — 47 processes, $127,890.50 "cost savings" — and they ignore the
-    // category/department filters the page sends. Porting that would publish
-    // fabricated business metrics to production, where the page currently 404s.
-    // A 404 is honest; confident fake numbers are not. It belongs to PA-040
-    // (wire or clearly flag the fully-mock dashboards), not to this batch.
+    // /api/business-process was the one domain in this batch that stayed
+    // unported, twice, because both of its Express handlers returned hardcoded
+    // numbers with ZERO database access and porting them would have published
+    // fabricated business metrics to production. That is now RESOLVED BY
+    // DELETION rather than left open: PROD-010 removed both handlers, the
+    // unregistered 746-line routes-business-process-optimization.ts and the
+    // page itself, along with the identical /api/incident-response mock and
+    // IncidentResponseSystem.tsx. missingEdge is 0 as a result. Neither page
+    // ever rendered the fixtures anyway - both passed filter state in the query
+    // key, and a query key IS a url, so both requested /dashboard/all/all and
+    // 404'd in dev as well as prod.
     '/api/ai-analytics': 'ai-analytics',
 
     // PROD-010. Full parity: all SEVEN Express endpoints are implemented
@@ -722,6 +798,58 @@ export function registerEdgeFunctionProxy(app: any) {
     // customer-managed, auto-ship-off, open-order dedupe and the cost gate. See
     // the edge fn header.
     '/api/toner-replenish': 'toner-replenish',
+
+    // AUDIT-019. SystemSecurity.tsx now reads GET /api/admin/system-health,
+    // which exists ONLY in supabase/functions/admin/ - no Express router serves
+    // it, so without this entry the page would work in prod and 404 in dev,
+    // the same invisible-in-dev trap the other entries here exist to close.
+    //
+    // Scoped to the single path, not the /api/admin prefix: routes-registry
+    // mounts routes-admin-workflows at /api/admin and app.use() matches on
+    // segment boundaries, so proxying the bare prefix would take every workflow
+    // endpoint from working-in-dev to 404-in-dev. pathPrefix re-adds the
+    // segment the mount strips, so the edge fn sees /system-health and
+    // normalizePath resolves parts[0] the same way it does in prod. The proxy
+    // registers at line ~297 of routes-registry, ahead of the /api/admin mount,
+    // so this wins for this one path and nothing else changes.
+    '/api/admin/system-health': { fn: 'admin', pathPrefix: '/system-health' },
+
+    // AUDIT-019. MeetingTranscription.tsx now calls this instead of rendering
+    // three hardcoded recordings. The meeting-transcription edge fn was fully
+    // built (upload, transcription, notes, highlights, search, analytics,
+    // consent) and had ZERO callers, so nothing had ever exercised it from
+    // either host. Dir name == prefix segment, so a plain entry is enough.
+    '/api/meeting-transcription': 'meeting-transcription',
+
+    // PROD-014. /api/erp-integration had no edge function, so ERPIntegration.tsx
+    // 404'd in prod. The Express handler it would have been ported from was a
+    // 670-line fixture and has been deleted; the new fn reads
+    // system_integrations + integration_metrics. Dir name == prefix segment.
+    '/api/erp-integration': 'erp-integration',
+
+    // COP-E02. supabase/functions/sales-pipeline/ serves SalesPipelineWorkflow,
+    // and routes-registry retired its Express router when it was migrated - but
+    // no proxy entry replaced it, so every read the page makes 404'd in dev
+    // while working in prod. The usual divergence, inverted.
+    //
+    // Scoped to the three paths the edge fn owns, NOT the /api/sales-pipeline
+    // prefix: routes-sales-forecasting.ts still owns PUT /api/sales-pipeline/:id
+    // over forecast_pipeline_items - a different table behind the same prefix -
+    // and proxying the whole prefix would take that write from working-in-dev to
+    // 404-in-dev. pathPrefix re-adds the segment app.use() strips.
+    '/api/sales-pipeline/opportunities': {
+      fn: 'sales-pipeline',
+      pathPrefix: '/opportunities',
+    },
+    // PA-022. /api/sales-forecasts had an Express handler AND an edge function
+    // with no proxy entry, so SalesPipelineForecasting and SalesCommandCenter
+    // listed forecasts from different code depending on the host. The three
+    // Express handlers are deleted; the edge function covers both reads, and
+    // the POST it does not cover has no caller in any client tree.
+    '/api/sales-forecasts': 'sales-forecasts',
+    '/api/sales-pipeline/rep-metrics': { fn: 'sales-pipeline', pathPrefix: '/rep-metrics' },
+    '/api/sales-pipeline/summary': { fn: 'sales-pipeline', pathPrefix: '/summary' },
+    '/api/sales-pipeline/stages': { fn: 'sales-pipeline', pathPrefix: '/stages' },
     //
     // /api/ai-employees is deliberately NOT here. Its edge fn covers the two
     // READ endpoints the dashboard calls, but the Express router also owns
@@ -737,22 +865,15 @@ export function registerEdgeFunctionProxy(app: any) {
     PROXIED_PREFIXES.add(prefix.replace(/^\/api\//, ''));
     app.use(prefix, createProxyHandler(functionName));
   }
-  // Special-cased forwards below that aren't in crmProxies but are still
-  // edge-served in dev (keep PROXIED_PREFIXES in sync for the divergence check).
-  PROXIED_PREFIXES.add('customers');
-
-  // Special case: GET /api/customers → companies edge function with recordType=Customer
-  // The old mobile app calls /api/customers but there's no "customers" edge function.
-  // Route it to the companies edge function with an added recordType filter.
-  app.get('/api/customers', (req: Request, res: ExpressResponse, next: NextFunction) => {
-    const search = (req.query as any)?.search || '';
-    const limit = (req.query as any)?.limit || '50';
-    const offset = (req.query as any)?.offset || '0';
-    const qs = `?recordType=Customer&search=${encodeURIComponent(search)}&limit=${limit}&offset=${offset}`;
-    const edgeUrl = `${EDGE_FUNCTIONS_URL}/companies${qs}`;
-
-    void forwardToEdgeFunction(req, res, next, edgeUrl);
-  });
+  // PA-021 removed two special-cased forwards that used to live here: a bare
+  // GET /api/customers redirect to the `companies` function, and an explicit
+  // GET /api/customers/:id/:sub forward. Both are covered by the plain
+  // '/api/customers' proxy entry above, which is also what production does.
+  //
+  // The sub-resource forward had a second problem the entry fixes: it matched
+  // exactly three segments, so /api/customers/:id/metrics/history fell through
+  // to Express while /api/customers/:id/devices did not. One tab of the
+  // Customer Detail page was served by a different backend from its neighbour.
 
   log.info('✅ Edge function proxy registered for CRM routes');
 }

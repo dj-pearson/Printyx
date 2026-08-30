@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
@@ -13,13 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import {} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,21 +29,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
 import {
   Package,
-  Plus,
   Search,
-  ShoppingCart,
   AlertTriangle,
-  CheckCircle2,
   MoreHorizontal,
   Eye,
   Truck,
   BarChart3,
-  Palette,
   FileText,
   Settings,
   DollarSign,
@@ -91,7 +78,6 @@ interface CustomerSupplyOrder {
 
 interface CustomerSuppliesProps {
   customerId: string;
-  customerName: string;
 }
 
 const statusColors = {
@@ -110,15 +96,10 @@ const supplyTypeColors = {
   Supplies: 'bg-green-100 text-green-800',
 };
 
-export function CustomerSupplies({ customerId, customerName }: CustomerSuppliesProps) {
+export function CustomerSupplies({ customerId }: CustomerSuppliesProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
-  const [selectedSupply, setSelectedSupply] = useState<Supply | null>(null);
-
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // Fetch customer supply orders
   const { data: supplyOrders = [], isLoading: loadingOrders } = useQuery<CustomerSupplyOrder[]>({
@@ -126,34 +107,25 @@ export function CustomerSupplies({ customerId, customerName }: CustomerSuppliesP
     queryFn: async () => apiRequest(`/api/customers/${customerId}/supply-orders`),
   });
 
-  // Fetch available supplies
-  const { data: availableSupplies = [], isLoading: loadingSupplies } = useQuery<Supply[]>({
-    queryKey: ['/api/supplies'],
-    queryFn: async () => apiRequest('/api/supplies?active=true'),
-  });
-
-  // Create supply order mutation
-  const createOrderMutation = useMutation({
-    mutationFn: async (orderData: any) =>
-      apiRequest(`/api/customers/${customerId}/supply-orders`, 'POST', orderData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [`/api/customers/${customerId}/supply-orders`],
-      });
-      setIsOrderDialogOpen(false);
-      toast({
-        title: 'Success',
-        description: 'Supply order created successfully',
-      });
-    },
-    onError: () => {
-      toast({
-        title: 'Error',
-        description: 'Failed to create supply order',
-        variant: 'destructive',
-      });
-    },
-  });
+  // PA-021: the "Order Supplies" dialog and its POST used to be here.
+  //
+  // It could never have worked. customer_supply_orders is an order HEADER -
+  // order_number NOT NULL UNIQUE, delivery_address jsonb NOT NULL,
+  // customer_portal_user_id NOT NULL referencing a portal login - with line
+  // items in customer_supply_order_items, and the form posted a flat
+  // {supplyId, quantity, unitPrice, totalPrice, orderType, notes} with a
+  // status of 'pending' that is not in the supply_order_status enum. Not one
+  // of those is a column, and a staff-side order has no portal user.
+  //
+  // What made it worth removing rather than leaving broken: nothing in Express
+  // served POST /api/customers/:id/supply-orders, so in production the request
+  // fell through the customers edge function's sub-resource branch into its
+  // create-CUSTOMER branch, wrote a junk companies row from the order payload,
+  // returned 201, and this component reported "Supply order created
+  // successfully". That path now answers 501.
+  //
+  // Placing an order needs the header/line-item model and a delivery address,
+  // which is a feature, not a repair. The read side below is unchanged.
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -287,25 +259,6 @@ export function CustomerSupplies({ customerId, customerName }: CustomerSuppliesP
                   <SelectItem value="Supplies">Supplies</SelectItem>
                 </SelectContent>
               </Select>
-              <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Order Supplies
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl">
-                  <DialogHeader>
-                    <DialogTitle>Order Supplies for {customerName}</DialogTitle>
-                  </DialogHeader>
-                  <SupplyOrderForm
-                    customerId={customerId}
-                    availableSupplies={availableSupplies}
-                    onSubmit={(data) => createOrderMutation.mutate(data)}
-                    isLoading={createOrderMutation.isPending}
-                  />
-                </DialogContent>
-              </Dialog>
             </div>
           </div>
         </CardContent>
@@ -431,10 +384,6 @@ export function CustomerSupplies({ customerId, customerName }: CustomerSuppliesP
                 ? 'No orders match your search criteria.'
                 : 'No supply orders have been placed for this customer yet.'}
             </p>
-            <Button onClick={() => setIsOrderDialogOpen(true)}>
-              <ShoppingCart className="w-4 h-4 mr-2" />
-              Order First Supplies
-            </Button>
           </CardContent>
         </Card>
       )}
@@ -443,161 +392,3 @@ export function CustomerSupplies({ customerId, customerName }: CustomerSuppliesP
 }
 
 // Supply Order Form Component
-function SupplyOrderForm({
-  customerId,
-  availableSupplies,
-  onSubmit,
-  isLoading,
-}: {
-  customerId: string;
-  availableSupplies: Supply[];
-  onSubmit: (data: any) => void;
-  isLoading: boolean;
-}) {
-  const [selectedSupply, setSelectedSupply] = useState<Supply | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [notes, setNotes] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSupply) return;
-
-    const unitPrice = selectedSupply.newRepPrice || 0;
-    const totalPrice = unitPrice * quantity;
-
-    onSubmit({
-      customerId,
-      supplyId: selectedSupply.id,
-      quantity,
-      unitPrice,
-      totalPrice,
-      status: 'pending',
-      orderType: 'manual',
-      notes,
-    });
-  };
-
-  const filteredSupplies = availableSupplies.filter((supply) => supply.isActive);
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="supply">Select Supply *</Label>
-            <Select
-              onValueChange={(value) => {
-                const supply = filteredSupplies.find((s) => s.id === value);
-                setSelectedSupply(supply || null);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a supply item" />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredSupplies.map((supply) => (
-                  <SelectItem key={supply.id} value={supply.id}>
-                    <div className="flex items-center space-x-2">
-                      <span>{supply.productName}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {supply.productCode}
-                      </Badge>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="quantity">Quantity *</Label>
-            <Input
-              id="quantity"
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-              required
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="notes">Order Notes</Label>
-            <Input
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Special delivery instructions..."
-            />
-          </div>
-        </div>
-
-        {selectedSupply && (
-          <div className="space-y-4">
-            <h4 className="font-semibold">Supply Details</h4>
-            <Card>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-sm text-gray-600">Product:</span>
-                    <p className="font-medium">{selectedSupply.productName}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-600">Code:</span>
-                    <p className="font-mono text-sm">{selectedSupply.productCode}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-600">Type:</span>
-                    <Badge
-                      className={
-                        supplyTypeColors[
-                          selectedSupply.productType as keyof typeof supplyTypeColors
-                        ]
-                      }
-                    >
-                      {selectedSupply.productType}
-                    </Badge>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-600">Unit Price:</span>
-                    <p className="font-medium">
-                      {selectedSupply.newRepPrice
-                        ? `$${selectedSupply.newRepPrice}`
-                        : 'Contact for pricing'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-600">Total:</span>
-                    <p className="text-lg font-bold text-blue-600">
-                      {selectedSupply.newRepPrice
-                        ? `$${(selectedSupply.newRepPrice * quantity).toFixed(2)}`
-                        : 'Contact for pricing'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-600">Stock Status:</span>
-                    <Badge
-                      className={
-                        selectedSupply.inStock === 'Y'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }
-                    >
-                      {selectedSupply.inStock === 'Y' ? 'In Stock' : 'Out of Stock'}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
-
-      <div className="flex justify-end space-x-2">
-        <Button type="submit" disabled={isLoading || !selectedSupply}>
-          {isLoading ? 'Creating Order...' : 'Create Order'}
-        </Button>
-      </div>
-    </form>
-  );
-}

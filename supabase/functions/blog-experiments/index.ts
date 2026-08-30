@@ -154,7 +154,17 @@ function computeSignificance(e: Experiment) {
 
   const sampleOk = nA >= e.min_sample && nB >= e.min_sample;
   if (nA === 0 || nB === 0) {
-    return { metric, a_rate: null, b_rate: null, z: null, p_value: null, significant: false, sample_ok: sampleOk, n_a: nA, n_b: nB };
+    return {
+      metric,
+      a_rate: null,
+      b_rate: null,
+      z: null,
+      p_value: null,
+      significant: false,
+      sample_ok: sampleOk,
+      n_a: nA,
+      n_b: nB,
+    };
   }
   const pA = xA / nA;
   const pB = xB / nB;
@@ -214,7 +224,7 @@ async function create(admin: Admin, tenantId: string, userId: string, req: Reque
   if (variantA === undefined) {
     const cur =
       d.element_type === 'title'
-        ? post.meta_title ?? post.title
+        ? (post.meta_title ?? post.title)
         : d.element_type === 'meta_description'
           ? post.meta_description
           : null;
@@ -348,7 +358,11 @@ async function record(admin: Admin, tenantId: string, userId: string, id: string
     );
   }
 
-  return createCorsResponse({ experiment: updated, significance: sig, auto_promoted: autoPromoted }, 200, req);
+  return createCorsResponse(
+    { experiment: updated, significance: sig, auto_promoted: autoPromoted },
+    200,
+    req,
+  );
 }
 
 // ─── serving helpers ─────────────────────────────────────────────────────────────
@@ -363,7 +377,11 @@ async function current(admin: Admin, tenantId: string, id: string, req: Request)
   if (!exp) return createCorsResponse({ error: 'Experiment not found' }, 404, req);
 
   if (exp.serving_mode === 'split') {
-    return createCorsResponse({ serving: 'split', note: 'Use /assign per visitor for split tests' }, 200, req);
+    return createCorsResponse(
+      { serving: 'split', note: 'Use /assign per visitor for split tests' },
+      200,
+      req,
+    );
   }
   // weekly_alternate: even weeks → A, odd weeks → B.
   const week = Math.floor((Date.now() - new Date(exp.started_at).getTime()) / ONE_WEEK_MS);

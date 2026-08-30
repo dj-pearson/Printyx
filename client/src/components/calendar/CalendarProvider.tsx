@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 
 // Phase 2: Calendar Provider Integration Types
 interface CalendarProvider {
@@ -75,17 +76,16 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
   const connectProvider = async (type: 'microsoft' | 'google' | 'outlook') => {
     try {
       // Attempt to initiate OAuth flow via backend
-      const response = await fetch(`/api/integrations/calendar/${type}/connect`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.authUrl) {
-          window.location.href = data.authUrl;
-          return;
-        }
+      // apiRequest, not fetch. A relative /api/... never passes through
+      // getApiUrl, so in production it hit the static-bundle origin, which
+      // answers an unknown path with index.html at 200 - `response.ok` was
+      // TRUE and `response.json()` then threw on the HTML. The honest
+      // "not configured" messages below never ran in production; a hard
+      // failure ran instead. PROD-013 is the general form.
+      const data = await apiRequest(`/api/integrations/calendar/${type}/connect`, 'POST');
+      if (data?.authUrl) {
+        window.location.href = data.authUrl;
+        return;
       }
 
       // OAuth endpoint not configured yet - notify user
@@ -145,32 +145,22 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
     }
 
     try {
-      const response = await fetch(`/api/integrations/calendar/${provider.type}/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(event),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.eventId || `event-${Date.now()}`;
-      }
-
-      // API not available - create local reference
+      const data = await apiRequest(
+        `/api/integrations/calendar/${provider.type}/events`,
+        'POST',
+        event,
+      );
+      return data?.eventId || `event-${Date.now()}`;
+    } catch {
+      // Nothing serves /api/integrations/calendar on either backend today, so
+      // this is the path that actually runs. Saying so beats a destructive
+      // "creation failed" for an event the user can still see.
       const eventId = `local-${Date.now()}`;
       toast({
         title: 'Event Saved Locally',
         description: `Calendar sync is not configured. Event "${event.title}" saved locally.`,
       });
       return eventId;
-    } catch {
-      toast({
-        title: 'Event Creation Failed',
-        description: `Failed to create calendar event in ${provider.name}.`,
-        variant: 'destructive',
-      });
-      throw new Error(`Failed to create event in ${provider.name}`);
     }
   };
 
@@ -186,12 +176,11 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
     }
 
     try {
-      await fetch(`/api/integrations/calendar/${provider.type}/events/${eventId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(event),
-      });
+      await apiRequest(
+        `/api/integrations/calendar/${provider.type}/events/${eventId}`,
+        'PATCH',
+        event,
+      );
     } catch {
       // Calendar sync not configured - update is local only
     }
@@ -205,10 +194,7 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
     }
 
     try {
-      await fetch(`/api/integrations/calendar/${provider.type}/events/${eventId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+      await apiRequest(`/api/integrations/calendar/${provider.type}/events/${eventId}`, 'DELETE');
     } catch {
       // Calendar sync not configured - deletion is local only
     }

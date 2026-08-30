@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -19,7 +18,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
@@ -27,68 +25,33 @@ import { apiRequest, extractRecords } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 import TeamStatsWidget from '@/components/stats/TeamStatsWidget';
 import {
-  Users,
-  TrendingUp,
-  Calendar,
   Phone,
   Mail,
-  FileText,
   DollarSign,
   ArrowRight,
-  ArrowDown,
   Target,
   CheckCircle,
   Clock,
   AlertCircle,
-  Eye,
-  Edit,
-  Plus,
-  Filter,
   Download,
-  BarChart3,
-  PieChart,
-  Activity,
-  Handshake,
   Award,
   Briefcase,
   MousePointer,
 } from 'lucide-react';
 
-// Icon mapping for dynamic stages
-import type { LucideIcon } from 'lucide-react';
 import { clickableProps } from '@/lib/accessibility';
-const ICON_MAP: Record<string, LucideIcon> = {
-  Users,
-  Phone,
-  Calendar,
-  CheckCircle,
-  FileText,
-  Mail,
-  Handshake,
-  Award,
-  AlertCircle,
-  Target,
-  TrendingUp,
-  Briefcase,
-  Clock,
-  DollarSign,
-  Activity,
-};
 
 // Dynamic Pipeline Stage Interface
+/**
+ * COP-E02. This is the LEAD-STATUS vocabulary served by
+ * GET /api/sales-pipeline/stages, NOT a `pipeline_stages` row. `id` is the
+ * value stored in business_records.status; the deals board's stage ids are
+ * gen_random_uuid() varchars and belong to a different object model.
+ */
 interface PipelineStage {
   id: string;
   name: string;
-  displayName: string;
-  description?: string;
   order: number;
-  color: string;
-  icon?: string;
-  stageType: 'open' | 'won' | 'lost' | 'inactive';
-  isFinalStage: boolean;
-  defaultProbability: number;
-  slaEnabled: boolean;
-  slaDays?: number;
 }
 
 // Sales Rep Performance Metrics
@@ -154,24 +117,22 @@ export default function SalesPipelineWorkflow() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Fetch default pipeline template with stages
-  const { data: defaultPipeline, isLoading: pipelineLoading } = useQuery({
-    queryKey: ['/api/pipeline-config/templates'],
+  // The stage vocabulary this board's records actually use.
+  //
+  // This used to fetch /api/pipeline-config/templates - the DEALS pipeline -
+  // while every record on the board is a business_records row whose "stage" is
+  // its lifecycle status. The two never lined up: the column filter compared a
+  // template stage NAME to a status, and the advance button compared a stage
+  // UUID to a status, so findIndex returned -1 and every click resolved to
+  // index 0 and PATCHed that UUID into business_records.status. The server now
+  // rejects a stage outside this list; this query is the same list.
+  const { data: pipelineStages = [], isLoading: pipelineLoading } = useQuery<PipelineStage[]>({
+    queryKey: ['/api/sales-pipeline/stages'],
     queryFn: async () => {
-      const rawTemplates = await apiRequest('/api/pipeline-config/templates');
-      const templates = extractRecords(rawTemplates);
-      // Get the default sales pipeline
-      const defaultTemplate = templates.find((t: any) => t.isDefault && t.pipelineType === 'sales');
-      if (defaultTemplate) {
-        // Fetch template with stages
-        return apiRequest(`/api/pipeline-config/templates/${defaultTemplate.id}`);
-      }
-      return null;
+      const raw = await apiRequest('/api/sales-pipeline/stages');
+      return extractRecords(raw) as PipelineStage[];
     },
   });
-
-  // Extract stages from pipeline template
-  const pipelineStages: PipelineStage[] = defaultPipeline?.stages || [];
 
   // Fetch pipeline opportunities
   const { data: opportunities = [], isLoading: opportunitiesLoading } = useQuery<
@@ -267,7 +228,10 @@ export default function SalesPipelineWorkflow() {
 
     if (actionType === 'move_stage') {
       const currentStageIndex = pipelineStages.findIndex((s) => s.id === selectedOpportunity.stage);
-      const nextStage = pipelineStages[currentStageIndex + 1];
+      // -1 means the record carries a status outside the vocabulary - including
+      // a UUID written by the bug this replaced. Advancing from there would
+      // silently move it to the first stage, so it is refused instead.
+      const nextStage = currentStageIndex >= 0 ? pipelineStages[currentStageIndex + 1] : undefined;
 
       if (nextStage) {
         moveToNextStageMutation.mutate({
@@ -283,16 +247,6 @@ export default function SalesPipelineWorkflow() {
         notes: actionNotes,
       });
     }
-  };
-
-  const getStageColor = (stageId: string) => {
-    const stage = pipelineStages.find((s) => s.id === stageId);
-    return stage?.color || '#6B7280';
-  };
-
-  const getStageIcon = (stageId: string) => {
-    const stage = pipelineStages.find((s) => s.id === stageId);
-    return stage?.icon || AlertCircle;
   };
 
   const calculateConversionRate = (metrics: SalesRepMetrics) => {
@@ -447,8 +401,8 @@ export default function SalesPipelineWorkflow() {
                 <SelectContent>
                   <SelectItem value="all">All Stages</SelectItem>
                   {pipelineStages.map((stage) => (
-                    <SelectItem key={stage.id} value={stage.name}>
-                      {stage.displayName}
+                    <SelectItem key={stage.id} value={stage.id}>
+                      {stage.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -469,43 +423,66 @@ export default function SalesPipelineWorkflow() {
               </Select>
             </div>
 
+            {/* COP-E02: a record whose status is not in the vocabulary belongs to
+                no column, so without this it would simply vanish from the board.
+                The bug this replaced wrote pipeline_stages UUIDs into
+                business_records.status, so these are the rows it damaged. */}
+            {(() => {
+              const known = new Set(pipelineStages.map((st) => st.id));
+              const stranded = opportunities.filter((opp) => !known.has(opp.stage));
+              if (stranded.length === 0) return null;
+              return (
+                <div className="rounded-lg border border-dashed p-4">
+                  <p className="text-sm font-medium">
+                    {stranded.length} record{stranded.length === 1 ? '' : 's'} sit in no column
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Their status is not one this board recognises. Set each back to a real stage
+                    from the record itself; the board cannot infer which one was intended.
+                  </p>
+                  <ul className="mt-3 space-y-1 text-sm">
+                    {stranded.map((opp) => (
+                      <li key={opp.id} className="flex justify-between gap-4">
+                        <span>{opp.company_name}</span>
+                        <code className="text-xs text-muted-foreground">{opp.stage}</code>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
+
             {/* Pipeline Stages Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {pipelineStages
                 .sort((a, b) => a.order - b.order)
                 .map((stage) => {
-                  const stageOpportunities = opportunities.filter(
-                    (opp) => opp.stage === stage.name,
-                  );
+                  // Match on the status VALUE. This compared against
+                  // stage.name before, which is a display label on the deals
+                  // template and has no reason to equal a lifecycle status.
+                  const stageOpportunities = opportunities.filter((opp) => opp.stage === stage.id);
                   const stageValue = stageOpportunities.reduce(
                     (sum, opp) => sum + (opp.estimated_value || 0),
                     0,
                   );
-                  // Get icon from icon name, default to Target if not found
-                  const StageIcon = stage.icon ? ICON_MAP[stage.icon] || Target : Target;
 
                   return (
                     <Card key={stage.id} className="h-fit">
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div
-                              className="p-2 rounded-lg"
-                              style={{ backgroundColor: `${stage.color}20`, color: stage.color }}
-                            >
-                              <StageIcon className="h-4 w-4" />
+                            <div className="rounded-lg bg-muted p-2 text-muted-foreground">
+                              <Target className="h-4 w-4" />
                             </div>
                             <div>
-                              <CardTitle className="text-sm font-medium">
-                                {stage.displayName}
-                              </CardTitle>
+                              <CardTitle className="text-sm font-medium">{stage.name}</CardTitle>
                               <CardDescription className="text-xs">
                                 {stageOpportunities.length} opportunities
                               </CardDescription>
                             </div>
                           </div>
                         </div>
-                        <div className="text-lg font-bold" style={{ color: stage.color }}>
+                        <div className="text-lg font-bold tabular-nums">
                           ${stageValue.toLocaleString()}
                         </div>
                       </CardHeader>

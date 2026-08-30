@@ -13,15 +13,19 @@ The Database Schema Reporter now supports **SSH tunnel connections** using your 
 ## 🚀 **Quick Start**
 
 ### **Option 1: Direct Connection (No Changes)**
+
 ```bash
 npm run check:schema
 ```
+
 Uses existing `DATABASE_URL`
 
 ### **Option 2: SSH Tunnel (NEW!)**
+
 ```bash
 npm run check:schema:ssh
 ```
+
 Connects via SSH tunnel using `DB_HOST`, `DB_PORT`, etc.
 
 ---
@@ -58,6 +62,7 @@ Your Computer → SSH Tunnel → Remote Server → Database
 ```
 
 **Process:**
+
 1. ✅ Script connects to SSH server (`SSH_HOST:SSH_PORT`)
 2. ✅ Creates encrypted tunnel forwarding local port to database
 3. ✅ Connects to database via localhost tunnel
@@ -65,6 +70,7 @@ Your Computer → SSH Tunnel → Remote Server → Database
 5. ✅ Closes tunnel when complete
 
 **Benefits:**
+
 - 🔒 Extra encryption layer
 - 🛡️ Bypass firewall restrictions
 - 🔐 Secure remote database access
@@ -116,18 +122,21 @@ $ npm run check:schema:ssh
 ## 🎓 **Usage Scenarios**
 
 ### **Scenario 1: Database Behind Firewall**
+
 ```bash
 # Database port 5433 is blocked, but SSH port 22 is open
 npm run check:schema:ssh
 ```
 
 ### **Scenario 2: Extra Security**
+
 ```bash
 # Want encrypted SSH tunnel + SSL
 npm run check:schema:ssh
 ```
 
 ### **Scenario 3: Local Development**
+
 ```bash
 # Direct connection works fine
 npm run check:schema
@@ -137,11 +146,11 @@ npm run check:schema
 
 ## 🛠️ **Commands Available**
 
-| Command | Connection | Use When |
-|---------|-----------|----------|
-| `npm run check:schema` | Direct | Database publicly accessible |
-| `npm run check:schema:ssh` | SSH Tunnel | Database behind firewall/SSH only |
-| `USE_SSH_TUNNEL=true npm run check:schema` | SSH Tunnel | Force SSH via env var |
+| Command                                    | Connection | Use When                          |
+| ------------------------------------------ | ---------- | --------------------------------- |
+| `npm run check:schema`                     | Direct     | Database publicly accessible      |
+| `npm run check:schema:ssh`                 | SSH Tunnel | Database behind firewall/SSH only |
+| `USE_SSH_TUNNEL=true npm run check:schema` | SSH Tunnel | Force SSH via env var             |
 
 ---
 
@@ -159,22 +168,27 @@ Both connection modes generate the same 4 files:
 ## 🔧 **Troubleshooting**
 
 ### **Error: "Connection refused on port 22"**
+
 SSH server not accessible.
 
 **Fix:** Test SSH first:
+
 ```bash
 ssh postgres@209.145.59.219
 ```
 
 ### **Error: "Authentication failed"**
+
 Wrong SSH credentials.
 
 **Fix:** Verify `SSH_USER` and `SSH_PASSWORD` in `.env`
 
 ### **Error: "Port 5532 already in use"**
+
 Previous tunnel still open.
 
 **Fix:**
+
 ```powershell
 # Windows
 netstat -ano | findstr :5532
@@ -182,9 +196,11 @@ netstat -ano | findstr :5532
 ```
 
 ### **Error: "Database connection timeout"**
+
 Database not accessible from SSH server.
 
 **Fix:** SSH into server and verify PostgreSQL is running:
+
 ```bash
 ssh postgres@209.145.59.219
 sudo systemctl status postgresql
@@ -198,16 +214,19 @@ netstat -tln | grep 5433
 ### **1. Use SSH Keys (Recommended)**
 
 Generate key:
+
 ```bash
 ssh-keygen -t rsa -b 4096 -f ~/.ssh/printyx_db
 ```
 
 Copy to server:
+
 ```bash
 ssh-copy-id -i ~/.ssh/printyx_db.pub postgres@209.145.59.219
 ```
 
 Update `.env`:
+
 ```env
 SSH_PRIVATE_KEY=~/.ssh/printyx_db
 # Remove SSH_PASSWORD line
@@ -216,6 +235,7 @@ SSH_PRIVATE_KEY=~/.ssh/printyx_db
 ### **2. Never Commit .env**
 
 Ensure `.gitignore` has:
+
 ```
 .env
 .env.*
@@ -224,6 +244,7 @@ Ensure `.gitignore` has:
 ### **3. Restrict SSH Access**
 
 On server (`/etc/ssh/sshd_config`):
+
 ```
 AllowUsers postgres
 PasswordAuthentication no
@@ -235,6 +256,7 @@ PermitRootLogin no
 ## 📖 **Complete Documentation**
 
 **Full guides available:**
+
 - `docs/DATABASE_SCHEMA_REPORTER.md` - Main documentation
 - `docs/DATABASE_SCHEMA_REPORTER_SSH.md` - **SSH tunnel guide** ⭐
 - `docs/SCHEMA_REPORTER_SUMMARY.md` - Quick summary
@@ -244,6 +266,7 @@ PermitRootLogin no
 ## 🎯 **What Changed**
 
 ### **New Features:**
+
 ✅ SSH tunnel support with `ssh2` package  
 ✅ Auto-creates encrypted tunnel to database  
 ✅ Uses `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`  
@@ -253,6 +276,7 @@ PermitRootLogin no
 ✅ Troubleshooting guide
 
 ### **Backward Compatible:**
+
 ✅ Direct mode still works (`npm run check:schema`)  
 ✅ Existing `DATABASE_URL` connections unchanged  
 ✅ All existing features preserved
@@ -264,6 +288,7 @@ PermitRootLogin no
 ### **Step 1: Verify Environment**
 
 Check your `.env` has:
+
 ```env
 DB_HOST=209.145.59.219
 DB_PORT=5433
@@ -297,13 +322,13 @@ cat database-schema-report.json | jq
 
 ## 📊 **Complete Toolset**
 
-| Tool | Command | Connection |
-|------|---------|-----------|
-| **Schema Reporter** | `npm run check:schema` | Direct |
-| **Schema Reporter (SSH)** | `npm run check:schema:ssh` | **SSH Tunnel** 🔐 |
-| **System Check** | `npm run check:system` | N/A (local files) |
-| **Transform Lint** | `npm run lint:transformations` | N/A (local files) |
-| **Transform Fix** | `npm run fix:transformations` | N/A (local files) |
+| Tool                      | Command                        | Connection        |
+| ------------------------- | ------------------------------ | ----------------- |
+| **Schema Reporter**       | `npm run check:schema`         | Direct            |
+| **Schema Reporter (SSH)** | `npm run check:schema:ssh`     | **SSH Tunnel** 🔐 |
+| **System Check**          | `npm run check:system`         | N/A (local files) |
+| **Transform Lint**        | `npm run lint:transformations` | N/A (local files) |
+| **Transform Fix**         | `npm run fix:transformations`  | N/A (local files) |
 
 ---
 
@@ -312,6 +337,7 @@ cat database-schema-report.json | jq
 **You asked for:** SSH tunnel connection using `DB_HOST` and related variables
 
 **You got:**
+
 - ✅ Full SSH tunnel support
 - ✅ Automatic tunnel creation and cleanup
 - ✅ Uses all your specified env vars
@@ -329,16 +355,19 @@ cat database-schema-report.json | jq
 ## 🎉 **Next Steps**
 
 1. **Test the SSH connection:**
+
    ```bash
    npm run check:schema:ssh
    ```
 
 2. **Review the generated docs:**
+
    ```bash
    code docs/DATABASE_SCHEMA.md
    ```
 
 3. **Read the SSH guide for advanced usage:**
+
    ```bash
    code docs/DATABASE_SCHEMA_REPORTER_SSH.md
    ```
@@ -357,6 +386,6 @@ cat database-schema-report.json | jq
 
 ---
 
-*Created: January 24, 2026*  
-*Status: ✅ SSH TUNNEL MODE READY*  
-*Command: `npm run check:schema:ssh`*
+_Created: January 24, 2026_  
+_Status: ✅ SSH TUNNEL MODE READY_  
+_Command: `npm run check:schema:ssh`_

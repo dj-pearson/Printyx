@@ -15,49 +15,61 @@ import { colors, spacing, typography, borderRadius, shadows } from '@/theme';
 export default function DealsScreen() {
   const router = useRouter();
 
-  const { data: rawDeals, isLoading, refetch, isRefetching } = useQuery<any>({
+  const {
+    data: rawDeals,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery<any>({
     queryKey: ['/api/deals?limit=50'],
   });
   // Handle both auto-unwrapped arrays and { data } / { records } response formats
-  const deals: any[] = Array.isArray(rawDeals) ? rawDeals : (rawDeals?.data || rawDeals?.records || []);
+  const deals: any[] = Array.isArray(rawDeals)
+    ? rawDeals
+    : rawDeals?.data || rawDeals?.records || [];
 
-  const renderItem = useCallback(({ item }: { item: any }) => {
-    // Handle both camelCase and snake_case field names from DB
-    const title = item.title || item.deal_name || item.name || 'Untitled Deal';
-    const value = Number(item.value || item.amount || item.deal_value || 0);
-    const companyName = item.companyName || item.company_name || item.customerName || item.customer_name || '--';
-    const stage = item.stage || item.status || 'Prospect';
-    const probability = item.probability ?? item.win_probability;
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      // Handle both camelCase and snake_case field names from DB
+      const title = item.title || item.deal_name || item.name || 'Untitled Deal';
+      const value = Number(item.value || item.amount || item.deal_value || 0);
+      const companyName =
+        item.companyName || item.company_name || item.customerName || item.customer_name || '--';
+      const stage = item.stage || item.status || 'Prospect';
+      const probability = item.probability ?? item.win_probability;
 
-    return (
-      <TouchableOpacity
-        style={styles.dealCard}
-        onPress={() => router.push({ pathname: '/(app)/(crm)/[id]', params: { id: item.id, type: 'deal' } })}
-        activeOpacity={0.7}
-      >
-        <View style={styles.dealHeader}>
-          <Text style={styles.dealTitle} numberOfLines={1}>{title}</Text>
-          <Text style={styles.dealValue}>
-            ${value.toLocaleString()}
+      return (
+        <TouchableOpacity
+          style={styles.dealCard}
+          onPress={() =>
+            router.push({ pathname: '/(app)/(crm)/[id]', params: { id: item.id, type: 'deal' } })
+          }
+          activeOpacity={0.7}
+        >
+          <View style={styles.dealHeader}>
+            <Text style={styles.dealTitle} numberOfLines={1}>
+              {title}
+            </Text>
+            <Text style={styles.dealValue}>${value.toLocaleString()}</Text>
+          </View>
+          <Text style={styles.dealCompany} numberOfLines={1}>
+            {companyName}
           </Text>
-        </View>
-        <Text style={styles.dealCompany} numberOfLines={1}>{companyName}</Text>
-        <View style={styles.dealFooter}>
-          <Badge
-            label={stage}
-            variant={getStageVariant(stage)}
-          />
-          {probability != null && (
-            <Text style={styles.dealProbability}>{probability}% likely</Text>
-          )}
-        </View>
-        {/* Pipeline progress bar */}
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${probability || 25}%` }]} />
-        </View>
-      </TouchableOpacity>
-    );
-  }, [router]);
+          <View style={styles.dealFooter}>
+            <Badge label={stage} variant={getStageVariant(stage)} />
+            {probability != null && (
+              <Text style={styles.dealProbability}>{probability}% likely</Text>
+            )}
+          </View>
+          {/* Pipeline progress bar */}
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${probability || 25}%` }]} />
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [router],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -66,8 +78,22 @@ export default function DealsScreen() {
         renderItem={renderItem}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary[600]} />}
-        ListEmptyComponent={!isLoading ? <EmptyState icon="handshake-outline" title="No Deals" description="Create deals from qualified leads" /> : null}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={colors.primary[600]}
+          />
+        }
+        ListEmptyComponent={
+          !isLoading ? (
+            <EmptyState
+              icon="handshake-outline"
+              title="No Deals"
+              description="Create deals from qualified leads"
+            />
+          ) : null
+        }
       />
     </SafeAreaView>
   );
@@ -76,27 +102,58 @@ export default function DealsScreen() {
 function getStageVariant(stage?: string): 'default' | 'success' | 'warning' | 'error' | 'info' {
   switch (stage?.toLowerCase()) {
     case 'won':
-    case 'closed won': return 'success';
+    case 'closed won':
+      return 'success';
     case 'negotiation':
-    case 'proposal': return 'warning';
+    case 'proposal':
+      return 'warning';
     case 'lost':
-    case 'closed lost': return 'error';
+    case 'closed lost':
+      return 'error';
     case 'qualification':
-    case 'discovery': return 'info';
-    default: return 'default';
+    case 'discovery':
+      return 'info';
+    default:
+      return 'default';
   }
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background.secondary },
   list: { padding: spacing.lg, paddingBottom: 140, gap: spacing.md },
-  dealCard: { backgroundColor: colors.background.default, borderRadius: borderRadius.lg, padding: spacing.lg, ...shadows.sm },
-  dealHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  dealTitle: { ...typography.body, fontWeight: '600', color: colors.text.primary, flex: 1, marginRight: spacing.sm },
+  dealCard: {
+    backgroundColor: colors.background.default,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    ...shadows.sm,
+  },
+  dealHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  dealTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.text.primary,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
   dealValue: { ...typography.body, fontWeight: '700', color: colors.success.main },
   dealCompany: { ...typography.bodySmall, color: colors.text.secondary, marginBottom: spacing.md },
-  dealFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  dealFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
   dealProbability: { ...typography.caption, color: colors.text.tertiary },
-  progressBar: { height: 4, backgroundColor: colors.gray[200], borderRadius: 2, overflow: 'hidden' },
+  progressBar: {
+    height: 4,
+    backgroundColor: colors.gray[200],
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
   progressFill: { height: '100%', backgroundColor: colors.primary[500], borderRadius: 2 },
 });

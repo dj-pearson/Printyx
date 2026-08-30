@@ -56,6 +56,28 @@ export interface NotificationPreferences {
   desktopNotifications: boolean;
 }
 
+/**
+ * Apply stored choices over the type catalogue above. A stored type the
+ * catalogue no longer lists is dropped rather than rendered without a label,
+ * and a new catalogue entry arrives carrying its declared defaults.
+ */
+function mergeWithDefaults(stored: unknown): NotificationPreferences {
+  const saved = (stored ?? {}) as Partial<NotificationPreferences> & {
+    typeSettings?: Record<string, { enabled?: boolean; channels?: NotificationChannel }>;
+  };
+  const overrides = saved.typeSettings ?? {};
+  return {
+    types: DEFAULT_NOTIFICATION_TYPES.map((t) => {
+      const o = overrides[t.type];
+      return o ? { ...t, enabled: o.enabled ?? t.enabled, channels: o.channels ?? t.channels } : t;
+    }),
+    quietHours: saved.quietHours ?? { enabled: false, start: '22:00', end: '08:00' },
+    digestMode: saved.digestMode ?? { enabled: false, frequency: 'daily', time: '09:00' },
+    soundEnabled: saved.soundEnabled ?? true,
+    desktopNotifications: saved.desktopNotifications ?? true,
+  };
+}
+
 interface NotificationPreferencesDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -134,21 +156,24 @@ export function NotificationPreferencesDialog({
 }: NotificationPreferencesDialogProps) {
   const queryClient = useQueryClient();
 
-  // Fetch current preferences
+  // Fetch current preferences.
+  //
+  // The endpoint stores CHOICES only - which types are on, their channels,
+  // quiet hours, digest, sound - and never the labels and descriptions below,
+  // so copy stays here and a type added to DEFAULT_NOTIFICATION_TYPES appears
+  // without a migration. Merging is therefore the client's job.
+  //
+  // The catch used to be load-bearing rather than defensive: until AUDIT-027
+  // nothing served /api/user/notification-preferences on either backend, so
+  // this always threw and always rendered defaults, while the save below
+  // silently failed every time.
   const { data: preferences, isLoading } = useQuery<NotificationPreferences>({
     queryKey: ['/api/user/notification-preferences'],
     queryFn: async () => {
       try {
-        return await apiRequest('/api/user/notification-preferences');
-      } catch (err) {
-        // Return defaults if endpoint doesn't exist
-        return {
-          types: DEFAULT_NOTIFICATION_TYPES,
-          quietHours: { enabled: false, start: '22:00', end: '08:00' },
-          digestMode: { enabled: false, frequency: 'daily' as const, time: '09:00' },
-          soundEnabled: true,
-          desktopNotifications: true,
-        };
+        return mergeWithDefaults(await apiRequest('/api/user/notification-preferences'));
+      } catch {
+        return mergeWithDefaults(null);
       }
     },
     enabled: open,
@@ -165,7 +190,17 @@ export function NotificationPreferencesDialog({
   // Save preferences mutation
   const saveMutation = useMutation({
     mutationFn: (prefs: NotificationPreferences) =>
-      apiRequest('/api/user/notification-preferences', 'PUT', prefs),
+      apiRequest('/api/user/notification-preferences', 'PUT', {
+        // Choices only - see mergeWithDefaults. Labels and descriptions belong
+        // to this component, not to a jsonb column.
+        typeSettings: Object.fromEntries(
+          prefs.types.map((t) => [t.type, { enabled: t.enabled, channels: t.channels }]),
+        ),
+        quietHours: prefs.quietHours,
+        digestMode: prefs.digestMode,
+        soundEnabled: prefs.soundEnabled,
+        desktopNotifications: prefs.desktopNotifications,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/user/notification-preferences'] });
       toast({

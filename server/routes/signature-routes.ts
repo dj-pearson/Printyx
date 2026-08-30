@@ -1,3 +1,29 @@
+/**
+ * E-signature: requests, signers, documents and the integration credentials
+ * behind them. 27 handlers mounted at the /api root.
+ *
+ * CANNOT AUTHENTICATE ANYONE - see SEC-SESSION-001 before changing this file.
+ *
+ * Every handler below reads `req.session.user` as its only source of identity.
+ * Nothing in this codebase assigns it: session login sets the flat
+ * req.session.userId / req.session.tenantId and the JWT path sets req.user, so
+ * each of these answers 401 in dev exactly as it does in production. It has
+ * never run. server/types/express-session.d.ts records the same finding and
+ * declares the type that lets it compile, which is why tsc sees nothing wrong.
+ *
+ * No client tree calls /api/signature-requests, /api/signature-documents,
+ * /api/signature-signers or /api/integration-credentials. The frontend's
+ * e-signature surface goes to supabase/functions/signatures/ instead
+ * (EDGE-005e consolidated it there), which is a different implementation over
+ * the same tables. This one also registers /customers/... at the /api root,
+ * which the /api/customers proxy claims first.
+ *
+ * The fix is one of three, and it is a product call rather than cleanup:
+ * migrate the handlers to getUserId/getTenantId from utils/auth-helpers and
+ * build the caller, retire the file in favour of an edge function that covers
+ * it, or delete it. Populating req.session.user in the login path would revive
+ * all twelve files at once and touches security-sensitive code.
+ */
 import { Router } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';

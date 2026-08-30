@@ -2,7 +2,10 @@
  * Performance Monitoring Service
  * Monitors and optimizes Motion AI system performance
  */
+import { sql } from 'drizzle-orm';
+import { db, pool } from '../db';
 import { createModuleLogger } from '../lib/logger';
+import { getQueryStats } from '../lib/db-logger';
 const log = createModuleLogger('performance-monitor');
 
 interface PerformanceMetric {
@@ -22,14 +25,19 @@ interface SystemHealth {
 }
 
 interface DatabasePerformance {
-  connectionPoolSize: number;
-  activeConnections: number;
-  averageQueryTime: number;
+  /** Null where the value has no source; see getDatabasePerformance. */
+  connectionPoolSize: number | null;
+  activeConnections: number | null;
+  idleConnections: number;
+  waitingRequests: number;
+  averageQueryTime: number | null;
   slowQueries: Array<{
     query: string;
     duration: number;
     timestamp: Date;
   }>;
+  /** How many queries crossed db-logger's threshold; the list above is empty. */
+  slowQueryCount: number | null;
 }
 
 interface AIPerformance {
@@ -87,13 +95,19 @@ class PerformanceMonitor {
     const memoryUsage = await this.getMemoryUsage();
     const cpuUsage = await this.getCPUUsage();
 
+    // A metric with no measurement is left out of the list rather than
+    // reported as zero - a zero query time would read as an instant database.
     const metrics: PerformanceMetric[] = [
-      {
-        name: 'database_query_time',
-        value: dbPerf.averageQueryTime,
-        unit: 'ms',
-        timestamp: new Date(),
-      },
+      ...(dbPerf.averageQueryTime !== null
+        ? [
+            {
+              name: 'database_query_time',
+              value: dbPerf.averageQueryTime,
+              unit: 'ms',
+              timestamp: new Date(),
+            },
+          ]
+        : []),
       { name: 'ai_api_latency', value: aiPerf.claudeApiLatency, unit: 'ms', timestamp: new Date() },
       { name: 'cache_hit_rate', value: cachePerf.hitRate, unit: '%', timestamp: new Date() },
       { name: 'memory_usage', value: memoryUsage, unit: 'MB', timestamp: new Date() },
@@ -117,18 +131,44 @@ class PerformanceMonitor {
    * Get database performance metrics
    */
   async getDatabasePerformance(): Promise<DatabasePerformance> {
-    // Mock implementation - in production, this would query actual DB metrics
+    // AUDIT-021: connectionPoolSize was written in as 20 and activeConnections
+    // was Math.floor(Math.random() * 15) + 5, which is worse - it changed on
+    // every call, which is what a real connection count does. Both have a real
+    // source: the pool this process created knows its own size, and Postgres
+    // knows how many connections are open to the database.
     const recentMetrics = this.getRecentMetrics('database_query_time', 100);
     const averageQueryTime =
       recentMetrics.length > 0
         ? recentMetrics.reduce((sum, m) => sum + m.value, 0) / recentMetrics.length
-        : 50; // Default 50ms
+        : null;
+
+    let activeConnections: number | null = null;
+    try {
+      const result = await db.execute(
+        sql`select count(*)::int as count from pg_stat_activity where datname = current_database()`,
+      );
+      const row = (result as unknown as { rows?: Array<{ count?: number }> }).rows?.[0];
+      activeConnections = typeof row?.count === 'number' ? row.count : null;
+    } catch {
+      // pg_stat_activity needs pg_monitor or superuser on some deployments.
+      // Null says "not measured"; a number here would be a guess.
+      activeConnections = null;
+    }
 
     return {
-      connectionPoolSize: 20,
-      activeConnections: Math.floor(Math.random() * 15) + 5, // 5-20
+      // node-postgres exposes the configured max and the live counts on the
+      // pool object itself.
+      connectionPoolSize: pool.options.max ?? null,
+      idleConnections: pool.idleCount,
+      waitingRequests: pool.waitingCount,
+      activeConnections,
+      // Null, not 50: no recorded query means no average, and a default of 50ms
+      // reads as a measured 50ms.
       averageQueryTime,
       slowQueries: this.getSlowQueries(),
+      // What IS measured: db-logger counts queries over its threshold without
+      // retaining them, so the count is real even though the list is empty.
+      slowQueryCount: getQueryStats().slowQueries ?? null,
     };
   }
 
@@ -357,7 +397,7 @@ class PerformanceMonitor {
     const recommendations: string[] = [];
 
     // Database recommendations
-    if (dbPerf.averageQueryTime > 500) {
+    if (dbPerf.averageQueryTime !== null && dbPerf.averageQueryTime > 500) {
       recommendations.push('Consider optimizing database queries or adding indexes');
     }
     if (dbPerf.slowQueries.length > 5) {
@@ -383,21 +423,24 @@ class PerformanceMonitor {
     return recommendations;
   }
 
+  /**
+   * The slow queries this process has recorded.
+   *
+   * Empty, until something retains them. server/lib/db-logger.ts COUNTS queries
+   * over SLOW_QUERY_THRESHOLD_MS but keeps no text or timestamp, so the count is
+   * all that exists - it is reported as slowQueryCount beside this list rather
+   * than being spread into invented entries.
+   *
+   * This used to return two hand-written rows: a 1250ms query against ai_tasks,
+   * a table that exists in no schema and no migration, and an 890ms one against
+   * calendar_events. The rest of getDatabasePerformance had already been
+   * corrected to answer null rather than guess ("a number here would be a
+   * guess"); this was the one branch still making them up, and the caller at
+   * line 397 branches on `slowQueries.length > 5`, so the fiction fed a
+   * recommendation too.
+   */
   private getSlowQueries(): Array<{ query: string; duration: number; timestamp: Date }> {
-    // Mock slow queries - in production, this would come from actual DB monitoring
-    return [
-      {
-        query: 'SELECT * FROM ai_tasks WHERE tenant_id = ? AND status = ?',
-        duration: 1250,
-        timestamp: new Date(Date.now() - 5 * 60 * 1000),
-      },
-      {
-        query:
-          'SELECT COUNT(*) FROM calendar_events WHERE user_id = ? AND start_time BETWEEN ? AND ?',
-        duration: 890,
-        timestamp: new Date(Date.now() - 15 * 60 * 1000),
-      },
-    ];
+    return [];
   }
 
   private async getMemoryUsage(): Promise<number> {

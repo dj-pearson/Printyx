@@ -12,9 +12,14 @@
 //   GET /                 — list forecasts for the tenant, newest first
 //   GET /:id/pipeline     — pipeline items belonging to one forecast
 //
-// SCOPE: reads only. POST /api/sales-forecasts stays on Express — no frontend
-// caller creates a forecast through this path today, and porting a write is a
-// separate decision from unbreaking the two pages that are 404ing.
+// SCOPE: reads only, and NOTHING WRITES sales_forecasts ANYWHERE (PA-022).
+// The Express POST this note used to defer to is deleted: it had no caller in
+// any client tree, and it could not run in production regardless, since
+// production does not reach Express. So the table has never had a producer that
+// a deployed user could trigger, and both pages that read it list an empty set
+// until someone builds a create path - which starts with a UI, not an endpoint.
+// Recorded in docs/unwritten-tables-baseline.json for that reason rather than
+// left to look like a table nobody happens to use.
 //
 // Rows come back camelCase: the Express handler returns Drizzle rows, which are
 // already camelCase, and the pages read forecastName/revenueTarget/startDate

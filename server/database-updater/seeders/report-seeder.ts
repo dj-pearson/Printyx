@@ -9,7 +9,6 @@ import { sql } from 'drizzle-orm';
 import { createModuleLogger } from '../../lib/logger';
 const log = createModuleLogger('report-seeder');
 
-
 // =====================================================================
 // TYPES AND INTERFACES
 // =====================================================================

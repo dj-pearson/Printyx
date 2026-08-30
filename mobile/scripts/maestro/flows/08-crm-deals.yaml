@@ -1,7 +1,6 @@
 appId: com.printyx.app
-name: "08 - Deals Pipeline"
+name: '08 - Deals Pipeline'
 ---
-
 - waitForAnimationToEnd
 
 # Go back to CRM hub
@@ -9,8 +8,8 @@ name: "08 - Deals Pipeline"
 - waitForAnimationToEnd
 
 # Navigate to Deals
-- tapOn: "Deals & Quotes"
+- tapOn: 'Deals & Quotes'
 - waitForAnimationToEnd
 
 # Screenshot: Deals pipeline
-- takeScreenshot: "08-deals-pipeline"
+- takeScreenshot: '08-deals-pipeline'

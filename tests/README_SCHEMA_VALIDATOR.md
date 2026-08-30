@@ -91,6 +91,7 @@ The validator checks these file types:
 - `database/**/*.sql` - Database scripts
 
 **Excluded:**
+
 - `node_modules/`
 - `dist/` and `build/`
 - Test files (`*.test.ts`, `*.spec.ts`)
@@ -100,6 +101,7 @@ The validator checks these file types:
 ### 1. NEON References
 
 **Issue:**
+
 ```typescript
 // ❌ Old NEON connection
 import { neon } from '@neondatabase/serverless';
@@ -107,6 +109,7 @@ const sql = neon(process.env.NEON_DATABASE_URL);
 ```
 
 **Fix:**
+
 ```typescript
 // ✅ Supabase PostgreSQL
 import { createClient } from '@supabase/supabase-js';
@@ -116,12 +119,14 @@ const db = drizzle(/* use DATABASE_URL */);
 ### 2. Invalid Table Names
 
 **Issue:**
+
 ```typescript
 // ❌ Table doesn't exist
 const data = await db.query.old_customers.findMany();
 ```
 
 **Fix:**
+
 ```typescript
 // ✅ Correct table name from schema
 const data = await db.query.business_records.findMany();
@@ -130,12 +135,14 @@ const data = await db.query.business_records.findMany();
 ### 3. Case Mismatches
 
 **Issue:**
+
 ```typescript
 // ❌ Wrong case
 const user = await db.query.Users.findFirst();
 ```
 
 **Fix:**
+
 ```typescript
 // ✅ Correct case (snake_case)
 const user = await db.query.users.findFirst();
@@ -144,15 +151,17 @@ const user = await db.query.users.findFirst();
 ### 4. Invalid Columns
 
 **Issue:**
+
 ```typescript
 // ❌ Column doesn't exist
-where: eq(customers.tenant_id, tenantId)
+where: eq(customers.tenant_id, tenantId);
 ```
 
 **Fix:**
+
 ```typescript
 // ✅ Correct column name
-where: eq(customers.tenantId, tenantId)
+where: eq(customers.tenantId, tenantId);
 ```
 
 ## Integration with CI/CD
@@ -176,6 +185,7 @@ jobs:
 ## Workflow
 
 1. **Run Validator**
+
    ```bash
    npx tsx tests/schema-validator.ts
    ```
@@ -216,10 +226,10 @@ The JSON report can be filtered programmatically:
 import report from './tests/schema-validation-report.json';
 
 // Get only NEON references
-const neonIssues = report.issues.filter(i => i.type === 'neon_reference');
+const neonIssues = report.issues.filter((i) => i.type === 'neon_reference');
 
 // Get errors only
-const errors = report.issues.filter(i => i.severity === 'error');
+const errors = report.issues.filter((i) => i.severity === 'error');
 ```
 
 ## Troubleshooting
@@ -235,6 +245,7 @@ If the validator reports valid code as an issue:
 ### Performance
 
 For large codebases:
+
 - The validator processes ~50 files per progress update
 - Typical run time: 30-60 seconds for 500 files
 - Output is buffered to avoid performance issues
@@ -244,6 +255,7 @@ For large codebases:
 If legitimate tables are reported as missing:
 
 1. Regenerate DATABASE_SCHEMA.md:
+
    ```bash
    npx tsx scripts/database-schema-reporter.ts
    ```
@@ -297,6 +309,7 @@ After running the validator:
 ## Support
 
 For issues or improvements, check:
+
 - `tests/SCHEMA_VALIDATION_REPORT.md` - Detailed issue report
 - `tests/schema-validation-report.json` - Raw data
 - `docs/DATABASE_SCHEMA.md` - Source of truth for schema

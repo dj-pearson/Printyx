@@ -10,27 +10,27 @@ the `ios-deploy.yml` workflow to build, sign, and upload to App Store Connect.
 
 ### Apple Developer Identity
 
-| Secret | Description | How to Get |
-|--------|-------------|------------|
-| `APPLE_DEVELOPER_TEAM_ID` | Your 10-character Apple Developer Team ID | [developer.apple.com](https://developer.apple.com/account) > Membership > Team ID |
-| `IOS_CERTIFICATE_P12` | Base64-encoded iOS Distribution Certificate (.p12) | See "Exporting Certificate" below |
-| `IOS_CERTIFICATE_PASSWORD` | Password used when exporting the .p12 file | The password you set during export |
-| `IOS_PROVISIONING_PROFILE` | Base64-encoded App Store provisioning profile | See "Creating Provisioning Profile" below |
-| `KEYCHAIN_PASSWORD` | Any random string (used for temp keychain in CI) | Generate with `openssl rand -hex 32` |
+| Secret                     | Description                                        | How to Get                                                                        |
+| -------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `APPLE_DEVELOPER_TEAM_ID`  | Your 10-character Apple Developer Team ID          | [developer.apple.com](https://developer.apple.com/account) > Membership > Team ID |
+| `IOS_CERTIFICATE_P12`      | Base64-encoded iOS Distribution Certificate (.p12) | See "Exporting Certificate" below                                                 |
+| `IOS_CERTIFICATE_PASSWORD` | Password used when exporting the .p12 file         | The password you set during export                                                |
+| `IOS_PROVISIONING_PROFILE` | Base64-encoded App Store provisioning profile      | See "Creating Provisioning Profile" below                                         |
+| `KEYCHAIN_PASSWORD`        | Any random string (used for temp keychain in CI)   | Generate with `openssl rand -hex 32`                                              |
 
 ### App Store Connect API
 
-| Secret | Description | How to Get |
-|--------|-------------|------------|
-| `APP_STORE_CONNECT_API_KEY_ID` | API Key ID (e.g., `ABC123DEFG`) | [appstoreconnect.apple.com](https://appstoreconnect.apple.com/access/integrations/api) > Keys > Generate |
-| `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID (UUID format) | Same page as API Key, shown at the top |
-| `APP_STORE_CONNECT_API_KEY_P8` | Base64-encoded `.p8` private key file contents | Downloaded when you create the API Key (one-time download) |
+| Secret                         | Description                                    | How to Get                                                                                               |
+| ------------------------------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `APP_STORE_CONNECT_API_KEY_ID` | API Key ID (e.g., `ABC123DEFG`)                | [appstoreconnect.apple.com](https://appstoreconnect.apple.com/access/integrations/api) > Keys > Generate |
+| `APP_STORE_CONNECT_ISSUER_ID`  | Issuer ID (UUID format)                        | Same page as API Key, shown at the top                                                                   |
+| `APP_STORE_CONNECT_API_KEY_P8` | Base64-encoded `.p8` private key file contents | Downloaded when you create the API Key (one-time download)                                               |
 
 ### App Configuration
 
-| Secret | Description | Example |
-|--------|-------------|---------|
-| `SUPABASE_URL` | Supabase project API URL | `https://api.printyx.net` |
+| Secret              | Description                   | Example                   |
+| ------------------- | ----------------------------- | ------------------------- |
+| `SUPABASE_URL`      | Supabase project API URL      | `https://api.printyx.net` |
 | `SUPABASE_ANON_KEY` | Supabase anonymous/public key | `eyJhbGciOiJIUzI1NiIs...` |
 
 ---
@@ -72,11 +72,14 @@ the `ios-deploy.yml` workflow to build, sign, and upload to App Store Connect.
 The workflow supports two version control methods:
 
 ### Automatic (on push to main)
+
 - Build number auto-increments from the value in `project.yml`
 - Marketing version stays as defined in `project.yml`
 
 ### Manual (workflow_dispatch)
+
 You can trigger a manual deploy from the Actions tab with:
+
 - **version**: Override the marketing version (e.g., `2.0.0`)
 - **build_number**: Override the build number (e.g., `100`)
 - **submit_for_review**: Whether to submit directly for App Store review

@@ -244,56 +244,18 @@ export default function UserManagement() {
                     <CardTitle>User Distribution by Role</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span>Company Admin</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-purple-600 h-2 rounded-full"
-                              style={{ width: '15%' }}
-                            ></div>
-                          </div>
-                          <span className="text-sm">89</span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Regional Manager</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{ width: '30%' }}
-                            ></div>
-                          </div>
-                          <span className="text-sm">423</span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Sales Manager</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-green-600 h-2 rounded-full"
-                              style={{ width: '25%' }}
-                            ></div>
-                          </div>
-                          <span className="text-sm">567</span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Users</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-orange-600 h-2 rounded-full"
-                              style={{ width: '60%' }}
-                            ></div>
-                          </div>
-                          <span className="text-sm">1,768</span>
-                        </div>
-                      </div>
-                    </div>
+                    {/* AUDIT-019: four role bars at fixed widths with fixed
+                        counts - 89 Company Admins, 423 Regional Managers, 567
+                        Sales Managers, 1,768 Users. Nothing was counted, and
+                        the bar widths did not even agree with the numbers
+                        beside them. The page loads the real user list; a role
+                        census can be derived from it, but not until the list is
+                        unpaginated, so this says nothing rather than the wrong
+                        thing. */}
+                    <p className="text-sm text-muted-foreground">
+                      Role distribution is not computed. The user list on this page is paginated, so
+                      a count taken from it would describe the current page rather than the tenant.
+                    </p>
                   </CardContent>
                 </Card>
               </div>
@@ -503,34 +465,17 @@ export default function UserManagement() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">1,847</div>
-                        <p className="text-sm text-gray-600">Daily Active Users</p>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">12,456</div>
-                        <p className="text-sm text-gray-600">Weekly Active Users</p>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <div className="text-2xl font-bold text-purple-600">45,789</div>
-                        <p className="text-sm text-gray-600">Monthly Active Users</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Button className="w-full" variant="outline">
-                        Generate Activity Report
-                      </Button>
-                      <Button className="w-full" variant="outline">
-                        Export User Data
-                      </Button>
-                      <Button className="w-full" variant="outline">
-                        View Login Analytics
-                      </Button>
-                    </div>
-                  </div>
+                  {/* AUDIT-019: 1,847 daily / 12,456 weekly / 45,789 monthly
+                      active users, typed in. This platform does not have 45,789
+                      users. Under them sat Generate Activity Report, Export
+                      User Data and View Login Analytics, none of which had a
+                      handler. The one active-user figure the platform really
+                      measures is users.activeLastDay from
+                      GET /api/admin/system-health, shown on System Security. */}
+                  <p className="text-sm text-muted-foreground">
+                    Active-user rollups are not computed here. System Security reports users signed
+                    in over the last 24 hours for this tenant, read from the users table.
+                  </p>
                 </CardContent>
               </Card>
             </TabsContent>

@@ -26,9 +26,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Routes that accept free text from a person and answer them. */
-const AUTH_REQUIRED_ROUTES = [
-  { file: 'server/routes-chatbot.ts', route: '/api/chatbot/query' },
-];
+const AUTH_REQUIRED_ROUTES = [{ file: 'server/routes-chatbot.ts', route: '/api/chatbot/query' }];
 
 /**
  * Files holding a conversational system prompt. Data-processing prompts (CSV
@@ -65,7 +63,10 @@ if (!fs.existsSync(safetyPath)) {
 for (const { file, route } of AUTH_REQUIRED_ROUTES) {
   const full = path.join(ROOT, file);
   if (!fs.existsSync(full)) {
-    violations.push({ file, msg: `Expected file is missing; update ${path.basename(import.meta.url)}.` });
+    violations.push({
+      file,
+      msg: `Expected file is missing; update ${path.basename(import.meta.url)}.`,
+    });
     continue;
   }
   const source = fs.readFileSync(full, 'utf8');

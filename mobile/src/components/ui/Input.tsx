@@ -16,19 +16,8 @@ import {
   ViewStyle,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
-import {
-  borderRadius,
-  colors,
-  motion,
-  spacing,
-  touchTargets,
-  typography,
-} from '@/theme';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { borderRadius, colors, motion, spacing, touchTargets, typography } from '@/theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -68,8 +57,8 @@ export const Input = forwardRef<TextInput, InputProps>(
       borderColor: error
         ? colors.error.main
         : focus.value > 0.5
-        ? colors.primary[500]
-        : colors.gray[200],
+          ? colors.primary[500]
+          : colors.gray[200],
       shadowOpacity: focus.value * 0.18,
     }));
 
@@ -136,14 +125,12 @@ export const Input = forwardRef<TextInput, InputProps>(
               onPress={handleTrailing}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel={showPasswordToggle ? 'Toggle password visibility' : 'Field action'}
+              accessibilityLabel={
+                showPasswordToggle ? 'Toggle password visibility' : 'Field action'
+              }
               style={({ pressed }) => [styles.trailing, pressed && { opacity: 0.6 }]}
             >
-              <MaterialCommunityIcons
-                name={effectiveTrailing}
-                size={20}
-                color={colors.gray[500]}
-              />
+              <MaterialCommunityIcons name={effectiveTrailing} size={20} color={colors.gray[500]} />
             </Pressable>
           ) : null}
         </Animated.View>

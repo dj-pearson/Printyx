@@ -10,37 +10,20 @@
 import { sanitizeURL } from './validations';
 
 /**
- * Whitelist of allowed redirect paths within the application
- * Routes that users can be redirected to after authentication
+ * NOTE: there is no allow-list of redirect targets, deliberately (AUDIT-014).
+ *
+ * One was declared here and its enforcement was commented out, so it never ran
+ * - and it had gone stale: most of its entries (/dashboard, /analytics,
+ * /profile, /reports, /settings) are not registered routes, so switching it on
+ * would have sent users to the 404 page after login. A commented-out security
+ * check plus a list nobody maintains is worse than neither.
+ *
+ * The control that does the work is the BLOCK list below, together with
+ * sanitizeURL and the requirement that a redirect be a same-origin relative
+ * path. Open redirect is what a redirect whitelist defends against, and that is
+ * already closed; an allow-list of routes would only stop a user landing on a
+ * valid-but-unintended page of the app, which is not a security boundary.
  */
-const ALLOWED_REDIRECT_PATHS = [
-  '/',
-  '/dashboard',
-  '/customers',
-  '/business-records',
-  '/leads',
-  '/deals',
-  '/crm/deals',
-  '/opportunities',
-  '/quotes',
-  '/proposals',
-  '/service',
-  '/service-dispatch',
-  '/mobile-field-service',
-  '/inventory',
-  '/warehouse',
-  '/products',
-  '/product-hub',
-  '/billing',
-  '/invoices',
-  '/reports',
-  '/analytics',
-  '/settings',
-  '/profile',
-  '/integrations',
-  '/team',
-  '/users',
-];
 
 /**
  * Paths that should never be redirect targets
@@ -132,10 +115,6 @@ export function saveRedirectRoute(route: string): void {
   if (!isValidRedirect(route)) {
     return;
   }
-
-  // Optionally enforce whitelist
-  // const isAllowed = ALLOWED_REDIRECT_PATHS.some(prefix => route.startsWith(prefix));
-  // if (!isAllowed) return;
 
   localStorage.setItem('printyx_last_route', route);
 }

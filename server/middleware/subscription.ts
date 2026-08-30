@@ -231,11 +231,15 @@ export async function enforceUsageLimits(req: Request, res: Response, next: Next
     }
 
     if (status.isOverLimit) {
-      log.warn({ tenantId, overageDetails: status.overageDetails }, 'Blocked resource creation: over usage limits');
+      log.warn(
+        { tenantId, overageDetails: status.overageDetails },
+        'Blocked resource creation: over usage limits',
+      );
       return res.status(403).json({
         error: 'Usage limit exceeded',
         code: 'USAGE_LIMIT_EXCEEDED',
-        message: 'You have exceeded your plan limits. Please upgrade your subscription to continue.',
+        message:
+          'You have exceeded your plan limits. Please upgrade your subscription to continue.',
         overageDetails: status.overageDetails,
         currentPlan: status.plan.slug,
         redirectTo: '/settings/subscription',

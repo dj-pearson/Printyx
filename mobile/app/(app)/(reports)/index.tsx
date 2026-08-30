@@ -6,23 +6,12 @@
  */
 
 import React from 'react';
-import {
-  Pressable,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import {
-  GlassCard,
-  SectionHeader,
-  StatCard,
-} from '@/components/ui';
+import { GlassCard, SectionHeader, StatCard } from '@/components/ui';
 import { borderRadius, colors, spacing, typography } from '@/theme';
 
 const REPORT_CATEGORIES = [
@@ -81,23 +70,14 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Reports</Text>
-        <Text style={styles.subtitle}>
-          Insights, KPIs, and exports across your operation.
-        </Text>
+        <Text style={styles.subtitle}>Insights, KPIs, and exports across your operation.</Text>
 
         <View style={styles.kpiRow}>
           <StatCard
             title="Revenue MTD"
-            value={
-              kpis?.revenueMtd
-                ? `$${Number(kpis.revenueMtd).toLocaleString()}`
-                : '--'
-            }
+            value={kpis?.revenueMtd ? `$${Number(kpis.revenueMtd).toLocaleString()}` : '--'}
             icon="currency-usd"
             iconColor={colors.success.main}
             variant="hero"
@@ -129,9 +109,7 @@ export default function ReportsScreen() {
             {REPORT_CATEGORIES.map((cat) => (
               <Pressable
                 key={cat.key}
-                onPress={() =>
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                }
+                onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
                 accessibilityRole="button"
                 accessibilityLabel={`${cat.title} reports`}
                 style={({ pressed }) => [
@@ -140,17 +118,8 @@ export default function ReportsScreen() {
                 ]}
               >
                 <GlassCard tone="light" padded>
-                  <View
-                    style={[
-                      styles.categoryIcon,
-                      { backgroundColor: cat.bg },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={cat.icon}
-                      size={24}
-                      color={cat.color}
-                    />
+                  <View style={[styles.categoryIcon, { backgroundColor: cat.bg }]}>
+                    <MaterialCommunityIcons name={cat.icon} size={24} color={cat.color} />
                   </View>
                   <Text style={styles.categoryTitle}>{cat.title}</Text>
                   <Text style={styles.categoryCount}>
@@ -167,11 +136,7 @@ export default function ReportsScreen() {
 
         {Array.isArray(reports) && reports.length > 0 ? (
           <View style={styles.section}>
-            <SectionHeader
-              title="Recent Reports"
-              actionLabel="See all"
-              onActionPress={() => {}}
-            />
+            <SectionHeader title="Recent Reports" actionLabel="See all" onActionPress={() => {}} />
             <GlassCard tone="light" padded={false}>
               {reports.slice(0, 5).map((report: any, i: number) => (
                 <Pressable
@@ -181,9 +146,7 @@ export default function ReportsScreen() {
                     i > 0 && styles.reportBorder,
                     pressed && { opacity: 0.85 },
                   ]}
-                  onPress={() =>
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                  }
+                  onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
                   onLongPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     Share.share({ message: `Report: ${report.name || report.title}` });
@@ -204,11 +167,7 @@ export default function ReportsScreen() {
                         : 'Never run'}
                     </Text>
                   </View>
-                  <MaterialCommunityIcons
-                    name="chevron-right"
-                    size={20}
-                    color={colors.gray[400]}
-                  />
+                  <MaterialCommunityIcons name="chevron-right" size={20} color={colors.gray[400]} />
                 </Pressable>
               ))}
             </GlassCard>

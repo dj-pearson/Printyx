@@ -27,6 +27,7 @@ npm run check:schema
 ```
 
 **That's it!** The script will:
+
 1. Connect to your database using `DATABASE_URL` from `.env`
 2. Query all tables and columns
 3. Extract relationships, types, keys
@@ -36,9 +37,11 @@ npm run check:schema
 ### **What Gets Generated**
 
 #### 1. **`docs/DATABASE_SCHEMA.md`** 📘
+
 **Comprehensive schema documentation**
 
 Shows for EACH table:
+
 - Row count
 - All columns with types
 - Primary keys (marked with 🔑 PK)
@@ -47,85 +50,101 @@ Shows for EACH table:
 - Default values
 
 **Perfect for:**
+
 - Onboarding new developers
 - Understanding the data model
 - Planning schema changes
 - Architecture reviews
 
 **Example output:**
+
 ```markdown
 ### `public.company_contacts`
 
 **Row Count:** 1,234
 **Columns:** 15
 
-| Column | Type | Nullable | Default | Keys |
-|--------|------|----------|---------|------|
-| `id` | uuid | ✗ | uuid_generate_v4() | 🔑 PK |
-| `company_id` | uuid | ✗ | - | 🔗 FK → public.business_records.id |
-| `first_name` | character varying | ✓ | - | - |
-| `last_name` | character varying | ✗ | - | - |
-| `email` | character varying | ✓ | - | - |
-| `is_primary_contact` | boolean | ✓ | false | - |
+| Column               | Type              | Nullable | Default            | Keys                               |
+| -------------------- | ----------------- | -------- | ------------------ | ---------------------------------- |
+| `id`                 | uuid              | ✗        | uuid_generate_v4() | 🔑 PK                              |
+| `company_id`         | uuid              | ✗        | -                  | 🔗 FK → public.business_records.id |
+| `first_name`         | character varying | ✓        | -                  | -                                  |
+| `last_name`          | character varying | ✗        | -                  | -                                  |
+| `email`              | character varying | ✓        | -                  | -                                  |
+| `is_primary_contact` | boolean           | ✓        | false              | -                                  |
+
 ...
 ```
 
 #### 2. **`docs/DATABASE_QUICK_REFERENCE.md`** 📄
+
 **Condensed quick lookup**
 
 Just table names and column lists - perfect for:
+
 - Quick reference while coding
 - Copy-pasting column names
 - Verifying spellings
 
 **Example output:**
+
 ```markdown
 ### company_contacts
 ```
-  id: uuid [PK]
-  company_id: uuid [FK → public.business_records.id]
-  first_name: character varying
-  last_name: character varying
-  email: character varying
-  is_primary_contact: boolean
+
+id: uuid [PK]
+company_id: uuid [FK → public.business_records.id]
+first_name: character varying
+last_name: character varying
+email: character varying
+is_primary_contact: boolean
+
 ```
+
 ```
 
 #### 3. **`docs/DATABASE_VALIDATION_HELPER.md`** 🛠️
+
 **Validation constants and mappings**
 
 Contains JavaScript objects for:
+
 - All valid table names
 - Column listings by table
 - **snake_case → camelCase mapping** (for transformations!)
 
 **Example output:**
+
 ```javascript
 const FIELD_MAPPING = {
-  'first_name': 'firstName',
-  'last_name': 'lastName',
-  'is_primary_contact': 'isPrimaryContact',
-  'company_id': 'companyId',
+  first_name: 'firstName',
+  last_name: 'lastName',
+  is_primary_contact: 'isPrimaryContact',
+  company_id: 'companyId',
   // ... ALL your snake_case fields!
 };
 ```
 
 **Use this for:**
+
 - Fixing data transformations
 - Validating API responses
 - Auto-generating code
 - Linting rules
 
 #### 4. **`database-schema-report.json`** 📊
+
 **Machine-readable complete schema**
 
 Structured JSON with everything:
+
 - All tables
 - All columns with full metadata
 - Types, keys, relationships
 - Row counts
 
 **Use this for:**
+
 - Automated validation
 - Code generation
 - Schema comparison
@@ -136,18 +155,23 @@ Structured JSON with everything:
 ## 🎓 **How This Helps You**
 
 ### **Problem 1: "What tables do I have?"**
+
 ✅ **Solution:** Check `DATABASE_SCHEMA.md` - shows all 127 tables
 
 ### **Problem 2: "What columns are in this table?"**
+
 ✅ **Solution:** Check `DATABASE_QUICK_REFERENCE.md` - instant lookup
 
 ### **Problem 3: "How do I spell this column?"**
+
 ✅ **Solution:** Check either doc - copy-paste exact name
 
 ### **Problem 4: "What's the snake_case name for firstName?"**
+
 ✅ **Solution:** Check `DATABASE_VALIDATION_HELPER.md` - has all mappings
 
 ### **Problem 5: "Does my code reference valid tables/columns?"**
+
 ✅ **Solution:** Generate schema, then run `npm run check:system`
 
 ---
@@ -165,6 +189,7 @@ npm run check:system
 ```
 
 **This gives you:**
+
 - ✅ Complete database structure (schema reporter)
 - ✅ Validation that code matches structure (system check)
 - ✅ Detection of missing endpoints
@@ -233,15 +258,17 @@ $ npm run check:schema
 ## 🛠️ **Technical Details**
 
 ### **Connection**
+
 - Uses your existing `DATABASE_URL` from `.env`
 - Same connection your app uses
 - No additional SSH setup needed
 - SSL supported (uses your `DB_SSL` settings)
 
 ### **What It Queries**
+
 ```sql
 -- Gets all tables
-SELECT table_schema, table_name 
+SELECT table_schema, table_name
 FROM information_schema.tables
 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
 
@@ -261,6 +288,7 @@ SELECT COUNT(*) FROM each_table
 ```
 
 ### **Performance**
+
 - **~30-60 seconds** for full schema (127 tables)
 - Most time spent counting rows
 - Safe to run anytime (read-only queries)
@@ -270,6 +298,7 @@ SELECT COUNT(*) FROM each_table
 ## 📚 **Full Documentation**
 
 See `docs/DATABASE_SCHEMA_REPORTER.md` for:
+
 - Detailed usage guide
 - All use cases
 - Troubleshooting
@@ -281,23 +310,28 @@ See `docs/DATABASE_SCHEMA_REPORTER.md` for:
 ## 🎯 **Next Steps**
 
 ### **1. Run It Now**
+
 ```bash
 npm run check:schema
 ```
 
 ### **2. Review Generated Docs**
+
 - Open `docs/DATABASE_SCHEMA.md`
 - Browse through your tables
 - Check relationships
 - Verify column names
 
 ### **3. Use for Validation**
+
 - Keep as reference while coding
 - Use FIELD_MAPPING for transformations
 - Commit docs to git for team
 
 ### **4. Automate**
+
 Add to your workflow:
+
 - Run weekly
 - Run before deploys
 - Run after schema changes
@@ -306,14 +340,15 @@ Add to your workflow:
 
 ## 🔗 **Complete Toolset You Now Have**
 
-| Tool | Command | Purpose |
-|------|---------|---------|
-| **Schema Reporter** | `npm run check:schema` | Document database structure |
-| **System Check** | `npm run check:system` | Validate code matches database |
-| **Transformation Linter** | `npm run lint:transformations` | Find missing transforms |
-| **Transformation Fixer** | `npm run fix:transformations` | Auto-fix transforms |
+| Tool                      | Command                        | Purpose                        |
+| ------------------------- | ------------------------------ | ------------------------------ |
+| **Schema Reporter**       | `npm run check:schema`         | Document database structure    |
+| **System Check**          | `npm run check:system`         | Validate code matches database |
+| **Transformation Linter** | `npm run lint:transformations` | Find missing transforms        |
+| **Transformation Fixer**  | `npm run fix:transformations`  | Auto-fix transforms            |
 
 **Together, these give you:**
+
 1. ✅ Complete visibility into your database
 2. ✅ Validation that code references are correct
 3. ✅ Detection and fixing of data transformation issues
@@ -326,6 +361,7 @@ Add to your workflow:
 **You asked for:** A script to pull database tables/headers into easy-to-read format
 
 **You got:**
+
 - ✅ Automated schema extraction tool
 - ✅ 4 different output formats
 - ✅ Comprehensive documentation
@@ -336,6 +372,6 @@ Add to your workflow:
 
 ---
 
-*Created: January 24, 2026*  
-*Status: ✅ READY TO USE*  
-*Command: `npm run check:schema`*
+_Created: January 24, 2026_  
+_Status: ✅ READY TO USE_  
+_Command: `npm run check:schema`_

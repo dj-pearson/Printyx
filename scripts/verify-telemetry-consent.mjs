@@ -138,14 +138,42 @@ await browser.close();
 server.close();
 
 const checks = [
-  ['no Sentry traffic at all before consent', requestsBeforeConsent === 0, `${requestsBeforeConsent} request(s)`],
-  ['no session replay before consent', replaysBeforeConsent === 0, `${replaysBeforeConsent} replay envelope(s)`],
-  ['tracing/replay/session not loaded before consent', loaded(before).length === 0, loaded(before).join(', ') || 'none'],
-  ['tracing sampled at zero before consent', before.tracesSampleRate === 0, String(before.tracesSampleRate)],
-  ['all three attach once analytics is granted', loaded(granted).length === 3, loaded(granted).join(', ') || 'none'],
+  [
+    'no Sentry traffic at all before consent',
+    requestsBeforeConsent === 0,
+    `${requestsBeforeConsent} request(s)`,
+  ],
+  [
+    'no session replay before consent',
+    replaysBeforeConsent === 0,
+    `${replaysBeforeConsent} replay envelope(s)`,
+  ],
+  [
+    'tracing/replay/session not loaded before consent',
+    loaded(before).length === 0,
+    loaded(before).join(', ') || 'none',
+  ],
+  [
+    'tracing sampled at zero before consent',
+    before.tracesSampleRate === 0,
+    String(before.tracesSampleRate),
+  ],
+  [
+    'all three attach once analytics is granted',
+    loaded(granted).length === 3,
+    loaded(granted).join(', ') || 'none',
+  ],
   ['tracing samples once granted', granted.tracesSampleRate > 0, String(granted.tracesSampleRate)],
-  ['tracing stops on withdrawal, no reload', withdrawn.tracesSampleRate === 0, String(withdrawn.tracesSampleRate)],
-  ['live GPC overrides a stored accept-all', underGpc.tracesSampleRate === 0, String(underGpc.tracesSampleRate)],
+  [
+    'tracing stops on withdrawal, no reload',
+    withdrawn.tracesSampleRate === 0,
+    String(withdrawn.tracesSampleRate),
+  ],
+  [
+    'live GPC overrides a stored accept-all',
+    underGpc.tracesSampleRate === 0,
+    String(underGpc.tracesSampleRate),
+  ],
 ];
 
 let failed = 0;

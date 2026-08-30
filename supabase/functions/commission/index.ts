@@ -67,136 +67,149 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
+      // A hardcoded "Sales Rep Standard" plan used to be returned here on any
+      // error, tiers and rates and all — 5%/6.5%/8% presented to a rep as their
+      // own commission structure, with a 200 so nothing downstream could tell
+      // it apart from a real plan. The rest of this file (EDGE-002h) already
+      // refused to port Express's mocks; this branch predates that.
       if (error) {
-        // Return sample data if table doesn't exist
-        return createCorsResponse(
-          [
-            {
-              id: 'plan-1',
-              planName: 'Sales Rep Standard',
-              planType: 'sales_rep',
-              description: 'Standard commission plan for sales representatives',
-              isActive: true,
-              effectiveDate: new Date('2024-01-01').toISOString(),
-              tiers: [
-                {
-                  tierLevel: 1,
-                  tierName: 'Starter',
-                  minimumSales: 0,
-                  maximumSales: 50000,
-                  commissionRate: 5.0,
-                },
-                {
-                  tierLevel: 2,
-                  tierName: 'Achiever',
-                  minimumSales: 50001,
-                  maximumSales: 100000,
-                  commissionRate: 6.5,
-                },
-                {
-                  tierLevel: 3,
-                  tierName: 'Top Performer',
-                  minimumSales: 100001,
-                  maximumSales: null,
-                  commissionRate: 8.0,
-                },
-              ],
-              rules: {
-                paymentFrequency: 'monthly',
-                paymentDelay: 30,
-                splitCommissionAllowed: true,
-                chargebackEnabled: true,
-                chargebackPeriod: 90,
-              },
-            },
-          ],
-          200,
-          req,
-        );
+        console.error('Error fetching commission plans:', error);
+        return createCorsResponse({ error: 'Failed to fetch commission plans' }, 500, req);
       }
 
       return createCorsResponse(plans || [], 200, req);
     }
 
-    // GET /commission/calculations - Get commission calculations
+    // GET /commission/calculations - the calculations that were actually run
+    //
+    // This used to recompute commission from won deals at a flat "simplified -
+    // 5% base rate", plus a $2,500 bonus over $100,000, and return it at 200.
+    // That is a rep reading invented numbers as their own pay - the same defect
+    // EDGE-002g removed from the /plans error branch and CR-017 removed from
+    // routes-commission.ts, still live here and harder to spot because it read
+    // real deals to get there. No plan, tier or product rate was consulted.
+    //
+    // POST /calculate answers 501 and says the engine that would write
+    // commission_calculations has not been built. This branch now agrees with
+    // it: it reads what the engine would have written, so an unbuilt engine
+    // shows an empty list rather than a plausible one.
+    //
+    // commission_calculation_details and commission_bonuses carry NO tenant_id
+    // - they hang off calculation_id - so they are fetched by the ids of the
+    // already-tenant-scoped calculations rather than filtered directly.
     if (req.method === 'GET' && endpoint === 'calculations') {
-      const period = url.searchParams.get('period') || 'current';
       const employeeId = url.searchParams.get('employeeId');
 
-      // Get won deals for the period
-      let periodStart = new Date();
-      periodStart.setDate(1); // Start of current month
-      periodStart.setHours(0, 0, 0, 0);
-
-      if (period === 'previous') {
-        periodStart.setMonth(periodStart.getMonth() - 1);
-      }
-
-      const periodEnd = new Date(periodStart);
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
-
-      // COP-M01: deal_value and closed_at are not columns on `deals` — they are
-      // amount and actual_close_date. PostgREST answered 42703, `deals` came back
-      // undefined, and the handler returned an empty commission list rather than
-      // an error, so every rep's calculated commission was silently zero.
       let query = admin
-        .from('deals')
-        .select('id, owner_id, amount, actual_close_date')
+        .from('commission_calculations')
+        .select('*')
         .eq('tenant_id', tenantId)
-        .eq('status', 'won')
-        .gte('actual_close_date', periodStart.toISOString())
-        .lt('actual_close_date', periodEnd.toISOString());
+        .order('calculation_period_start', { ascending: false })
+        .limit(500);
+      if (employeeId) query = query.eq('employee_id', employeeId);
 
-      if (employeeId) {
-        query = query.eq('owner_id', employeeId);
+      const { data: calcs, error } = await query;
+      if (error) {
+        console.error('Error fetching commission calculations:', error);
+        return createCorsResponse({ error: 'Failed to fetch commission calculations' }, 500, req);
       }
+      if (!calcs || calcs.length === 0) return createCorsResponse([], 200, req);
 
-      const { data: deals, error: dealsError } = await query;
+      const ids = calcs.map((c: any) => c.id);
+      const employeeIds = [...new Set(calcs.map((c: any) => c.employee_id).filter(Boolean))];
+      const planIds = [...new Set(calcs.map((c: any) => c.plan_id).filter(Boolean))];
 
-      if (dealsError) {
-        console.error('Error loading won deals for commission calculation:', dealsError);
-        return createCorsResponse(
-          { error: 'Failed to calculate commissions', details: dealsError.message },
-          500,
-          req,
-        );
+      const [detailRes, bonusRes, adjustmentRes, userRes, planRes] = await Promise.all([
+        admin.from('commission_calculation_details').select('*').in('calculation_id', ids),
+        admin.from('commission_bonuses').select('*').in('calculation_id', ids),
+        admin
+          .from('commission_adjustments')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .in('calculation_id', ids),
+        employeeIds.length
+          ? admin.from('users').select('id, first_name, last_name, role').in('id', employeeIds)
+          : Promise.resolve({ data: [] }),
+        planIds.length
+          ? admin.from('commission_plans').select('id, plan_name').in('id', planIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const groupBy = (rows: any[] | null, key: string) => {
+        const out = new Map<string, any[]>();
+        for (const row of rows ?? []) {
+          const id = row[key];
+          if (!id) continue;
+          if (!out.has(id)) out.set(id, []);
+          out.get(id)!.push(row);
+        }
+        return out;
+      };
+      const detailsByCalc = groupBy(detailRes.data, 'calculation_id');
+      const bonusesByCalc = groupBy(bonusRes.data, 'calculation_id');
+      const adjustmentsByCalc = groupBy(adjustmentRes.data, 'calculation_id');
+
+      // users has first_name/last_name, not name.
+      const employeeNames = new Map<string, string>();
+      const employeeRoles = new Map<string, string>();
+      for (const u of (userRes.data as any[]) ?? []) {
+        employeeNames.set(u.id, [u.first_name, u.last_name].filter(Boolean).join(' ').trim());
+        employeeRoles.set(u.id, u.role);
       }
+      const planNames = new Map<string, string>();
+      for (const pl of (planRes.data as any[]) ?? []) planNames.set(pl.id, pl.plan_name);
 
-      // Group by employee and calculate commissions
-      const employeeMap = new Map<string, { totalSales: number; dealCount: number }>();
-      (deals || []).forEach((deal: any) => {
-        const current = employeeMap.get(deal.owner_id) || { totalSales: 0, dealCount: 0 };
-        employeeMap.set(deal.owner_id, {
-          totalSales: current.totalSales + dealAmount(deal),
-          dealCount: current.dealCount + 1,
-        });
-      });
-
-      // Calculate commissions (simplified - 5% base rate)
-      const calculations = Array.from(employeeMap.entries()).map(([empId, stats]) => ({
-        employeeId: empId,
-        period: period,
-        totalSales: stats.totalSales,
-        dealCount: stats.dealCount,
-        baseCommission: stats.totalSales * 0.05,
-        bonuses: stats.totalSales > 100000 ? 2500 : 0,
-        totalCommission: stats.totalSales * 0.05 + (stats.totalSales > 100000 ? 2500 : 0),
+      const calculations = calcs.map((c: any) => ({
+        id: c.id,
+        employeeId: c.employee_id,
+        employeeName: employeeNames.get(c.employee_id) ?? null,
+        // users.role is the system role (the RBAC code), not a sales title. It
+        // is what exists; the page renders it as a badge, so do not read it as
+        // "this person's commission role".
+        employeeRole: employeeRoles.get(c.employee_id) ?? null,
+        planId: c.plan_id,
+        planName: planNames.get(c.plan_id) ?? null,
+        calculationPeriod: {
+          startDate: c.calculation_period_start,
+          endDate: c.calculation_period_end,
+          periodName: c.period_name,
+        },
+        salesMetrics: {
+          totalSales: toNumber(c.total_sales),
+          quotaTarget: toNumber(c.quota_target),
+          quotaAchievement: toNumber(c.quota_achievement),
+        },
+        commissionDetails: (detailsByCalc.get(c.id) ?? []).map((d: any) => ({
+          category: d.category_name ?? d.category,
+          salesAmount: toNumber(d.sales_amount),
+          commissionRate: toNumber(d.commission_rate),
+          commissionAmount: toNumber(d.commission_amount),
+          description: d.description ?? null,
+        })),
+        bonuses: (bonusesByCalc.get(c.id) ?? []).map((b: any) => ({
+          type: b.bonus_type,
+          description: b.description,
+          amount: toNumber(b.amount),
+          eligibilityMet: b.eligibility_met === true,
+        })),
+        adjustments: (adjustmentsByCalc.get(c.id) ?? []).map((a: any) => ({
+          type: a.adjustment_type,
+          description: a.description ?? a.reason,
+          amount: toNumber(a.amount),
+          reason: a.reason,
+        })),
+        summary: {
+          grossCommission: toNumber(c.gross_commission),
+          totalBonuses: toNumber(c.total_bonuses),
+          totalAdjustments: toNumber(c.total_adjustments),
+          netCommission: toNumber(c.net_commission),
+          payoutDate: c.payout_date,
+          status: c.status,
+        },
+        calculatedAt: c.calculated_at,
       }));
 
-      return createCorsResponse(
-        {
-          period,
-          periodStart: periodStart.toISOString(),
-          periodEnd: periodEnd.toISOString(),
-          calculations,
-          totals: {
-            totalSales: calculations.reduce((sum, c) => sum + c.totalSales, 0),
-            totalCommissions: calculations.reduce((sum, c) => sum + c.totalCommission, 0),
-          },
-        },
-        200,
-        req,
-      );
+      return createCorsResponse(calculations, 200, req);
     }
 
     // GET /commission/statements - Get commission statements

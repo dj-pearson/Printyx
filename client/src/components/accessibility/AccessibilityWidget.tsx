@@ -11,7 +11,11 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAccessibility } from '@/hooks/useAccessibility';
-import { COLOR_BLIND_TYPES, type FontSizeKey, type ColorBlindType } from '@/lib/accessibility/constants';
+import {
+  COLOR_BLIND_TYPES,
+  type FontSizeKey,
+  type ColorBlindType,
+} from '@/lib/accessibility/constants';
 import { FocusTrap } from '@/components/accessibility/FocusManager';
 
 export function AccessibilityWidget() {
@@ -288,7 +292,10 @@ export function AccessibilityWidget() {
                   Accessibility statement
                 </a>
                 <p className="text-xs text-muted-foreground text-center">
-                  Keyboard shortcut: <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted font-mono text-xs">Alt+A</kbd>
+                  Keyboard shortcut:{' '}
+                  <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted font-mono text-xs">
+                    Alt+A
+                  </kbd>
                 </p>
               </div>
             </div>

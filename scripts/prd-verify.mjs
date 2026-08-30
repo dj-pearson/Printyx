@@ -87,7 +87,8 @@ function arg(flag) {
 }
 function args(flag) {
   const out = [];
-  for (let i = 0; i < process.argv.length; i++) if (process.argv[i] === flag) out.push(process.argv[i + 1]);
+  for (let i = 0; i < process.argv.length; i++)
+    if (process.argv[i] === flag) out.push(process.argv[i + 1]);
   return out;
 }
 
@@ -132,7 +133,9 @@ if (mode === 'run') {
     if (!m) continue;
     try {
       const data = JSON.parse(fs.readFileSync(path.join(ROOT, f), 'utf8'));
-      gateResults[data.tier] = Object.fromEntries((data.results || []).map((r) => [r.name, r.status]));
+      gateResults[data.tier] = Object.fromEntries(
+        (data.results || []).map((r) => [r.name, r.status]),
+      );
     } catch {
       /* ignore unreadable result file */
     }
@@ -144,7 +147,8 @@ if (mode === 'run') {
     const recorded = gateResults[tier] || {};
     const statuses = gates.map((g) => recorded[g.name] || 'pending');
     if (statuses.some((s) => s === 'fail')) return { tier, status: 'FAIL', statuses };
-    if (statuses.length && statuses.every((s) => s === 'pass')) return { tier, status: 'VERIFIED', statuses };
+    if (statuses.length && statuses.every((s) => s === 'pass'))
+      return { tier, status: 'VERIFIED', statuses };
     return { tier, status: 'PENDING', statuses };
   }
 

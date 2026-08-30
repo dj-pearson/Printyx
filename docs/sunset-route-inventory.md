@@ -6,13 +6,13 @@ This document enumerates every Express file under `server/` and classifies it by
 
 ## Headline numbers
 
-| Category | Count |
-|---|---|
-| `server/routes/*.ts` | 51 |
-| `server/routes-*.ts` (root) | 155 |
-| `server/services/*.ts` | 97 |
+| Category                       | Count   |
+| ------------------------------ | ------- |
+| `server/routes/*.ts`           | 51      |
+| `server/routes-*.ts` (root)    | 155     |
+| `server/services/*.ts`         | 97      |
 | **Total Express source files** | **303** |
-| Edge functions deployed | 205 |
+| Edge functions deployed        | 205     |
 
 ## Classification buckets
 
@@ -28,6 +28,7 @@ This document enumerates every Express file under `server/` and classifies it by
 Grouped by phase. Every domain here has a named PRD, an edge function, and a session-status entry confirming it works.
 
 ### Phase 2 — Outreach + reconciles
+
 - [ ] `server/routes/apollo-routes.ts` → `supabase/functions/apollo/` (US-008)
 - [ ] `server/apollo-client.ts` → merged into `apollo/` (US-008)
 - [ ] `server/apollo-storage.ts` → merged into `apollo/` (US-008)
@@ -37,6 +38,7 @@ Grouped by phase. Every domain here has a named PRD, an edge function, and a ses
 - [ ] `server/routes/performance-routes.ts` → `supabase/functions/performance/` (US-011)
 
 ### Phase 3 — Core CRM (US-012 through US-015)
+
 - [ ] `server/routes/lead-scoring-routes.ts` → `supabase/functions/lead-scoring/`
 - [ ] `server/routes/lead-intelligence-routes.ts` → `supabase/functions/lead-scoring/`
 - [ ] `server/services/lead-intelligence-service.ts`
@@ -53,6 +55,7 @@ Grouped by phase. Every domain here has a named PRD, an edge function, and a ses
 Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-routing`, `lead-assignment-history`, etc.) were consolidated into the canonical ones. They can stay deployed for now; their source Express files are the delete targets here.
 
 ### Phase 4 — Operations (US-016 through US-019)
+
 - [ ] `server/routes/field-service-routes.ts` → `supabase/functions/field-service/`
 - [ ] `server/routes/gps-tracking-routes.ts` → `supabase/functions/field-service/`
 - [ ] `server/routes/geofence-alerts-routes.ts` → `supabase/functions/field-service/`
@@ -75,6 +78,7 @@ Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-r
 - [ ] `server/routes-esignature.ts`
 
 ### Phase 5 US-020 — AI features
+
 - [ ] `server/routes/ai-documentation-routes.ts` → `supabase/functions/ai-documentation/`
 - [ ] `server/routes/ai-employee-routes.ts` → `supabase/functions/ai-employee/`
 - [ ] `server/routes/ai-search-knowledge-routes.ts` → `supabase/functions/ai-search/`
@@ -85,6 +89,7 @@ Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-r
 - [ ] `server/services/claude-ai-service.ts` → replaced by `_shared/anthropic.ts`
 
 ### Phase 5 US-021 — Auth security
+
 - [ ] `server/routes/api-key-routes.ts` → `supabase/functions/api-keys/`
 - [ ] `server/routes/mfa-routes.ts` → `supabase/functions/mfa/`
 - [ ] `server/routes/sso-routes.ts` → `supabase/functions/sso/`
@@ -94,6 +99,7 @@ Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-r
 - [ ] `server/services/sso-service.ts`
 
 ### Phase 5 US-022 — Scheduling
+
 - [ ] `server/routes/calendar-routes.ts` → `supabase/functions/meetings/`
 - [ ] `server/routes/meeting-scheduling-routes.ts` → `supabase/functions/meetings/`
 - [ ] `server/routes/advanced-scheduling-routes.ts` → `supabase/functions/meetings/`
@@ -106,6 +112,7 @@ Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-r
 - [ ] `server/services/dynamic-rescheduling-service.ts`
 
 ### Phase 6 US-024 — Admin slice (this session, partial)
+
 - [ ] `server/routes-audit-logs.ts` → `supabase/functions/audit-logs/`
 - [ ] `server/services/audit-log-service.ts` (verify — may still be called by other services)
 - [ ] `server/routes-feature-flags.ts` → `supabase/functions/feature-flags/`
@@ -114,15 +121,18 @@ Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-r
 - [ ] `server/routes/chrome-extension-routes.ts` → `supabase/functions/chrome-extension/`
 
 ### Phase 6 US-025 — Content engagement (this session)
+
 - [ ] `server/routes/article-bookmarks-routes.ts` → `supabase/functions/knowledge-base/handlers/bookmarks.ts`
 - [ ] `server/routes/article-ratings-routes.ts` → `supabase/functions/knowledge-base/handlers/ratings.ts`
 - [ ] `server/routes/reading-history-routes.ts` → `supabase/functions/knowledge-base/handlers/reading-history.ts`
 
 ### Phase 6 US-023 — Reports (director only; 9 personas pending)
+
 - [ ] `server/routes/director-reports-api.ts` → `supabase/functions/persona-reports/handlers/director.ts`
 - [ ] `server/services/director-reporting-service.ts` → `drizzle/reports/director.sql`
 
 ### Phase 5/6 — Shared pieces
+
 - [ ] `server/services/email-service.ts` → replaced by `_shared/sendgrid.ts` (Phase 3)
 - [ ] `server/services/pdf-generation-service.ts` → replaced by `leases/_pdf.ts` + future pdf-lib work
 - [ ] `server/services/document-generation-service.ts` → depends on `pdf-generation-service`
@@ -135,6 +145,7 @@ Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-r
 ## B — Partially migrated (hold off)
 
 ### Reports (US-023 — director ported, 9 personas + engine pending)
+
 - `server/routes/executive-reports-api.ts` + `executive-reporting-service.ts`
 - `server/routes/sales-reports-api.ts` + `sales-reporting-service.ts`
 - `server/routes/sales-manager-reports-api.ts` + `sales-manager-reporting-service.ts`
@@ -155,6 +166,7 @@ Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-r
 **Blocker for sunset.** Tracked in `tasks/followup-reports-migration.md`.
 
 ### Admin (US-024 — ~10% done, large surface untouched)
+
 - `server/routes/admin-seed-routes.ts` (1,552 lines — RBAC + seed mixed)
 - `server/routes-admin-stats.ts`
 - `server/routes-admin-subscriptions.ts`
@@ -174,6 +186,7 @@ Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-r
 **Blocker for sunset.** PRD calls for `docs/admin-parity.md` audit before any of these are touched.
 
 ### Billing (not fully ported this migration)
+
 - `server/routes/advanced-billing-routes.ts`
 - `server/routes/automated-billing-routes.ts`
 - `server/routes-billing-core.ts`
@@ -195,6 +208,7 @@ Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-r
 Requires per-file frontend grep to confirm. Initial suspects:
 
 ### Likely called by frontend, no obvious edge function
+
 - `server/routes-business-records.ts` — business records CRUD
 - `server/routes-customers.ts`
 - `server/routes-contacts.ts`
@@ -214,6 +228,7 @@ Requires per-file frontend grep to confirm. Initial suspects:
 These appear to be basic CRUD surfaces. Supabase-JS auto-generates PostgREST for tables — it's plausible they're NOT needed as edge functions and the frontend talks directly to `/rest/v1/*`. Verify with frontend grep before classifying.
 
 ### Likely webhooks (silent — no frontend caller)
+
 - `server/routes-csp-report.ts` — CSP violation reports
 - `server/routes-gdpr.ts` + `routes-gdpr-core.ts`
 - `server/routes-breach-detection.ts`
@@ -313,20 +328,25 @@ Any `FAIL` line = the edge function has a dangling import and the corresponding 
 Per the sunset PRD §3, 5-PR cadence:
 
 ### PR 1 — Low-risk deletions (this session's scope if time permits)
+
 Only **Category A files that have zero frontend references**. That's a subset of A — a file may be migrated AND the frontend may still call the old path. Frontend update required first.
 
 Files that most clearly fit: the Phase 5 auth ports (`api-key-routes`, `mfa-routes`, `sso-routes`) since the frontend routing cleanup (US-029) also needs to happen anyway.
 
 ### PR 2 — Category A after frontend update
+
 All Category A files once frontend is calling edge function paths. Needs `client/src/lib/config.ts` review.
 
 ### PR 3 — Category D after confirmation
+
 Orphan candidates confirmed dead via grep + 24h error-rate watch.
 
 ### PR 4 — Category B once ports land
+
 Reports, admin — after the followup PRDs execute.
 
 ### PR 5 — Terminal cleanup
+
 `server/index.ts`, `server/db.ts`, `server/storage.ts`, `server/routes.ts`, Dockerfile, k8s/, package.json trim.
 
 ## Gaps in this document

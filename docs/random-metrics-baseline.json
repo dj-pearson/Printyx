@@ -1,0 +1,14 @@
+{
+  "note": "Object properties whose value comes from Math.random(), i.e. a measurement someone made up. Keyed by file and property name so line moves do not churn it. Do not grow this list; see scripts/check-no-random-metrics.mjs and AUDIT-020.",
+  "total": 7,
+  "offenders": {
+    "server/services/meeting-scheduling-service.ts": ["flexibility", "meetingFatigueRisk"],
+    "server/services/team-collaboration-service.ts": [
+      "aiEfficiencyScore",
+      "aiPredictedWorkload",
+      "overdueTasksCount",
+      "projectsCount",
+      "tasksCount"
+    ]
+  }
+}

@@ -18,7 +18,12 @@ export default function FieldServiceScreen() {
   const queryClient = useQueryClient();
   const [activeTimer, setActiveTimer] = useState<string | null>(null);
 
-  const { data: assignments, isLoading, refetch, isRefetching } = useQuery<any[]>({
+  const {
+    data: assignments,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery<any[]>({
     queryKey: ['/api/mobile/dashboard'],
   });
 
@@ -63,7 +68,13 @@ export default function FieldServiceScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary[600]} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={colors.primary[600]}
+          />
+        }
       >
         <View style={styles.statusBar}>
           <MaterialCommunityIcons
@@ -92,7 +103,11 @@ export default function FieldServiceScreen() {
               )}
               {ticket.address && (
                 <View style={styles.addressRow}>
-                  <MaterialCommunityIcons name="map-marker" size={16} color={colors.text.tertiary} />
+                  <MaterialCommunityIcons
+                    name="map-marker"
+                    size={16}
+                    color={colors.text.tertiary}
+                  />
                   <Text style={styles.addressText}>{ticket.address}</Text>
                 </View>
               )}
@@ -118,7 +133,12 @@ export default function FieldServiceScreen() {
                 )}
                 <Button
                   title="Complete"
-                  onPress={() => updateStatusMutation.mutate({ ticketId: String(ticket.id), status: 'completed' })}
+                  onPress={() =>
+                    updateStatusMutation.mutate({
+                      ticketId: String(ticket.id),
+                      status: 'completed',
+                    })
+                  }
                   variant="outline"
                   size="sm"
                   loading={updateStatusMutation.isPending}
@@ -142,18 +162,43 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background.secondary },
   content: { padding: spacing.lg, paddingBottom: 140, gap: spacing.md },
   statusBar: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.background.default, borderRadius: borderRadius.lg,
-    padding: spacing.md, ...shadows.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.background.default,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    ...shadows.sm,
   },
   statusText: { ...typography.bodySmall, color: colors.text.tertiary },
   activeText: { color: colors.success.main, fontWeight: '600' },
   ticketCard: { padding: spacing.lg },
-  ticketHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  ticketHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
   ticketId: { ...typography.caption, color: colors.text.tertiary, fontWeight: '600' },
-  ticketTitle: { ...typography.body, fontWeight: '600', color: colors.text.primary, marginBottom: spacing.xs },
+  ticketTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
+  },
   customerName: { ...typography.bodySmall, color: colors.text.secondary, marginBottom: spacing.sm },
-  addressRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
   addressText: { ...typography.bodySmall, color: colors.text.secondary, flex: 1 },
-  actionRow: { flexDirection: 'row', gap: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.gray[100] },
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[100],
+  },
 });

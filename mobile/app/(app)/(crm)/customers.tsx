@@ -5,14 +5,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, FlatList, RefreshControl, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -23,50 +16,57 @@ export default function CustomersScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
 
-  const { data: rawData, isLoading, refetch, isRefetching } = useQuery<any>({
+  const {
+    data: rawData,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery<any>({
     queryKey: [`/api/companies?recordType=Customer&search=${search}&limit=50`],
   });
   // Handle both auto-unwrapped arrays and { records } / { data } response formats
-  const customers: any[] = Array.isArray(rawData) ? rawData : (rawData?.records || rawData?.data || []);
+  const customers: any[] = Array.isArray(rawData)
+    ? rawData
+    : rawData?.records || rawData?.data || [];
 
-  const renderItem = useCallback(({ item }: { item: any }) => {
-    // Handle both camelCase and snake_case field names from DB
-    const name = item.companyName || item.business_name || item.name || 'Unnamed';
-    const detail = item.email || item.phone || 'No contact info';
-    const status = item.status || item.activity || 'Active';
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      // Handle both camelCase and snake_case field names from DB
+      const name = item.companyName || item.business_name || item.name || 'Unnamed';
+      const detail = item.email || item.phone || 'No contact info';
+      const status = item.status || item.activity || 'Active';
 
-    return (
-      <TouchableOpacity
-        style={styles.customerRow}
-        onPress={() => router.push({ pathname: '/(app)/(crm)/[id]', params: { id: item.id, type: 'customer' } })}
-        activeOpacity={0.7}
-      >
-        <Avatar name={name} size={44} />
-        <View style={styles.customerInfo}>
-          <Text style={styles.customerName} numberOfLines={1}>
-            {name}
-          </Text>
-          <Text style={styles.customerDetail} numberOfLines={1}>
-            {detail}
-          </Text>
-        </View>
-        <Badge
-          label={status}
-          variant={status === 'active' ? 'success' : 'default'}
-          size="sm"
-        />
-      </TouchableOpacity>
-    );
-  }, [router]);
+      return (
+        <TouchableOpacity
+          style={styles.customerRow}
+          onPress={() =>
+            router.push({
+              pathname: '/(app)/(crm)/[id]',
+              params: { id: item.id, type: 'customer' },
+            })
+          }
+          activeOpacity={0.7}
+        >
+          <Avatar name={name} size={44} />
+          <View style={styles.customerInfo}>
+            <Text style={styles.customerName} numberOfLines={1}>
+              {name}
+            </Text>
+            <Text style={styles.customerDetail} numberOfLines={1}>
+              {detail}
+            </Text>
+          </View>
+          <Badge label={status} variant={status === 'active' ? 'success' : 'default'} size="sm" />
+        </TouchableOpacity>
+      );
+    },
+    [router],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.searchContainer}>
-        <SearchBar
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search customers..."
-        />
+        <SearchBar value={search} onChangeText={setSearch} placeholder="Search customers..." />
       </View>
 
       <FlatList
@@ -75,7 +75,11 @@ export default function CustomersScreen() {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary[600]} />
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={colors.primary[600]}
+          />
         }
         ListEmptyComponent={
           !isLoading ? (
@@ -112,5 +116,9 @@ const styles = StyleSheet.create({
   customerInfo: { flex: 1 },
   customerName: { ...typography.body, fontWeight: '500', color: colors.text.primary },
   customerDetail: { ...typography.caption, color: colors.text.secondary, marginTop: 2 },
-  separator: { height: 1, backgroundColor: colors.gray[100], marginLeft: spacing.lg + 44 + spacing.md },
+  separator: {
+    height: 1,
+    backgroundColor: colors.gray[100],
+    marginLeft: spacing.lg + 44 + spacing.md,
+  },
 });

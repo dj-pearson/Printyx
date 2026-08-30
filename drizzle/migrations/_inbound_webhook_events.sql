@@ -2,6 +2,13 @@
 --
 -- Idempotent + hand-runnable:
 --   psql "$DATABASE_URL" -f drizzle/migrations/_inbound_webhook_events.sql
+-- SUPERSEDED 2026-08-29 (AUDIT-032): this table is now in the migration chain,
+-- as part of drizzle/migrations/0062_round_sway.sql - drizzle-kit reported it as
+-- missing the moment anything else was generated, because the snapshot never
+-- knew about it. That migration creates it with IF NOT EXISTS, so a database
+-- that ran this file by hand takes 0062 cleanly. Keep this file only for a
+-- database that is not on the migration chain at all.
+--
 -- Underscore prefix keeps drizzle-kit from picking it up, matching
 -- _backfill_blog_assets_bucket.sql and _recording_consent.sql. It is NOT
 -- journalled: a journal entry with no snapshot widens the known snapshot gap

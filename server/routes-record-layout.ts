@@ -57,23 +57,29 @@ export function registerRecordLayoutRoutes(app: Express) {
       const schema = z.object({
         objectType: z.enum(['deals', 'leads', 'contacts', 'companies', 'opportunities']),
         roleId: z.string().optional(),
-        layoutSections: z.array(z.object({
-          sectionId: z.string(),
-          title: z.string(),
-          position: z.enum(['header', 'left', 'center', 'right']),
-          order: z.number(),
-          propertyFields: z.array(z.object({
-            field: z.string(),
-            label: z.string(),
-            editable: z.boolean(),
-          })),
-          collapsed: z.boolean(),
-        })),
+        layoutSections: z.array(
+          z.object({
+            sectionId: z.string(),
+            title: z.string(),
+            position: z.enum(['header', 'left', 'center', 'right']),
+            order: z.number(),
+            propertyFields: z.array(
+              z.object({
+                field: z.string(),
+                label: z.string(),
+                editable: z.boolean(),
+              }),
+            ),
+            collapsed: z.boolean(),
+          }),
+        ),
       });
 
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ message: 'Validation failed', errors: parsed.error.flatten().fieldErrors });
+        return res
+          .status(400)
+          .json({ message: 'Validation failed', errors: parsed.error.flatten().fieldErrors });
       }
 
       // Upsert: find existing and update, or create new
@@ -88,7 +94,7 @@ export function registerRecordLayoutRoutes(app: Express) {
         );
 
       const match = existing.find((c) =>
-        (parsed.data.roleId ? c.roleId === parsed.data.roleId : !c.roleId),
+        parsed.data.roleId ? c.roleId === parsed.data.roleId : !c.roleId,
       );
 
       if (match) {

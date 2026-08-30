@@ -49,17 +49,17 @@ Three utilities used by this session's fixes and expected by Phase 3–6 PRDs:
 
 ### Part C — 8 production fixes from SESSION-STATUS open-items list
 
-| # | Fix | Express lines deleted | Key artefacts |
-|---|---|---:|---|
-| 1 | Cloudflare `_redirects` self-reference | — | `client/public/_redirects` cleaned |
-| 2 | PGRST205 missing integrations/webhooks tables | — | `shared/platform-integrations-schema.ts` + migration 0007 + `drizzle/rls/platform-integrations.sql` + 2 edge-function patches |
-| 3 | Dashboard widgets 404s (34 widgets) | 925 | `drizzle/functions/dashboard-widget-data.sql` + new `supabase/functions/dashboard-widgets/` |
-| 4 | `/ws/reporting` prod guards | — | `useWebSocket.ts` already had it; added to `enhanced-notification-bell.tsx` + `useRealTimeData.ts` |
-| 5 | Sales-pipeline full port (6 endpoints) | 527 | `drizzle/functions/sales-pipeline.sql` + rewritten `supabase/functions/sales-pipeline/index.ts` |
-| 6 | Deal-desk reconcile (14 endpoints) | 610 + ~440 ghost edge | Expanded `deal-desk/index.ts` with 7 missing endpoints; deleted 3 broken ghost sub-functions (`deal-desk-requests/`, `deal-desk-rules/`, `deal-desk-delegations/` — all pointed at non-existent tables) |
-| 7 | Pipeline-config full port (15 endpoints) | 782 | `drizzle/functions/pipeline-config.sql` + rewritten `supabase/functions/pipeline-config/index.ts` |
-| 8 | Proposals port (22+ endpoints, PDF stubbed) | 1,778 | Rewrote `supabase/functions/proposals/index.ts`; PDF endpoints return 501 with a follow-up pointer |
-|  | **Total Express lines removed** | **~5,060** | |
+| #   | Fix                                           | Express lines deleted | Key artefacts                                                                                                                                                                                           |
+| --- | --------------------------------------------- | --------------------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Cloudflare `_redirects` self-reference        |                     — | `client/public/_redirects` cleaned                                                                                                                                                                      |
+| 2   | PGRST205 missing integrations/webhooks tables |                     — | `shared/platform-integrations-schema.ts` + migration 0007 + `drizzle/rls/platform-integrations.sql` + 2 edge-function patches                                                                           |
+| 3   | Dashboard widgets 404s (34 widgets)           |                   925 | `drizzle/functions/dashboard-widget-data.sql` + new `supabase/functions/dashboard-widgets/`                                                                                                             |
+| 4   | `/ws/reporting` prod guards                   |                     — | `useWebSocket.ts` already had it; added to `enhanced-notification-bell.tsx` + `useRealTimeData.ts`                                                                                                      |
+| 5   | Sales-pipeline full port (6 endpoints)        |                   527 | `drizzle/functions/sales-pipeline.sql` + rewritten `supabase/functions/sales-pipeline/index.ts`                                                                                                         |
+| 6   | Deal-desk reconcile (14 endpoints)            | 610 + ~440 ghost edge | Expanded `deal-desk/index.ts` with 7 missing endpoints; deleted 3 broken ghost sub-functions (`deal-desk-requests/`, `deal-desk-rules/`, `deal-desk-delegations/` — all pointed at non-existent tables) |
+| 7   | Pipeline-config full port (15 endpoints)      |                   782 | `drizzle/functions/pipeline-config.sql` + rewritten `supabase/functions/pipeline-config/index.ts`                                                                                                       |
+| 8   | Proposals port (22+ endpoints, PDF stubbed)   |                 1,778 | Rewrote `supabase/functions/proposals/index.ts`; PDF endpoints return 501 with a follow-up pointer                                                                                                      |
+|     | **Total Express lines removed**               |            **~5,060** |                                                                                                                                                                                                         |
 
 TypeScript errors fell from 6,694 → 6,550 as code was deleted. **Zero new errors introduced by any change.** All 6,550 remaining errors pre-existed in `client/` and unrelated files.
 
@@ -94,17 +94,17 @@ Each has a clear home comment in the edge function that stubs it. A fresh sessio
 
 ## State of every SESSION-STATUS-2026-04-22 open item
 
-| Open item (from prior doc) | Status |
-|---|---|
-| Outreach migration Phase 2 ~40% done | ✅ **COMPLETE** — 22 endpoints live, Express deleted |
-| Dashboard widgets `/api/dashboard/widgets/*` return 404 | ✅ **FIXED** — new edge function + SQL function |
-| Deal-desk, proposals, pipeline-config, sales-pipeline 404s | ✅ **FIXED** — all 4 domains ported |
-| WebSocket `/ws/reporting` fails in prod | ✅ **GUARDED** — prod path short-circuits; Phase 6 US-027 migrates properly |
-| PGRST205: missing `platform_integrations` / `webhooks` | ✅ **FIXED** — schema + migration 0007 + RLS |
-| Cloudflare `_redirects` self-referential rule | ✅ **CLEANED** |
-| `server/services/ai-employee-service.ts:686` TS error | ⚠️ **PRE-EXISTING, UNCHANGED** (flagged in prior status; not in this session's scope) |
-| 5 unused `supabase/edge-runtime` containers on VPS | ⚠️ **UNTOUCHED** (Coolify housekeeping, not code) |
-| Deno 1.38.5 upgrade | ⚠️ **DEFERRED per PRD** (Phase 6 follow-up) |
+| Open item (from prior doc)                                 | Status                                                                                |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Outreach migration Phase 2 ~40% done                       | ✅ **COMPLETE** — 22 endpoints live, Express deleted                                  |
+| Dashboard widgets `/api/dashboard/widgets/*` return 404    | ✅ **FIXED** — new edge function + SQL function                                       |
+| Deal-desk, proposals, pipeline-config, sales-pipeline 404s | ✅ **FIXED** — all 4 domains ported                                                   |
+| WebSocket `/ws/reporting` fails in prod                    | ✅ **GUARDED** — prod path short-circuits; Phase 6 US-027 migrates properly           |
+| PGRST205: missing `platform_integrations` / `webhooks`     | ✅ **FIXED** — schema + migration 0007 + RLS                                          |
+| Cloudflare `_redirects` self-referential rule              | ✅ **CLEANED**                                                                        |
+| `server/services/ai-employee-service.ts:686` TS error      | ⚠️ **PRE-EXISTING, UNCHANGED** (flagged in prior status; not in this session's scope) |
+| 5 unused `supabase/edge-runtime` containers on VPS         | ⚠️ **UNTOUCHED** (Coolify housekeeping, not code)                                     |
+| Deno 1.38.5 upgrade                                        | ⚠️ **DEFERRED per PRD** (Phase 6 follow-up)                                           |
 
 Nothing from the prior list remains open. New follow-ups (§ above) are all clearly stubbed in code.
 
@@ -156,6 +156,7 @@ Preserving what still applies:
 ## Env vars that must be set in Coolify
 
 Inherited + still required from prior session:
+
 ```
 PORT=8000
 SUPABASE_URL=https://api.printyx.net
@@ -169,6 +170,7 @@ CLAUDE_API_KEY=sk-ant-...              # required for outreach generate-sequence
 ```
 
 No new env vars needed for tonight's changes. Follow-ups may introduce:
+
 - `OPENAI_API_KEY` — if embeddings go live (Phase 5 AI features PRD)
 - `INTERNAL_CRON_TOKEN` — when pg_cron jobs start calling edge functions (Phase 6 US-026)
 - `SENDGRID_API_KEY` — email-marketing port (Phase 3)

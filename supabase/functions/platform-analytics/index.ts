@@ -193,38 +193,56 @@ export default async function handler(req: Request) {
           ? (churnedTenantCount / (activeTenants.length + churnedTenantCount)) * 100
           : 0;
       const grr = 100 - churnRate;
-      // No last_mrr_change column → expansion always 0 (parity with Express runtime).
-      const expansionMRR = 0;
-      const expansionRate = 0;
-      const nrr = grr + expansionRate;
-      const avgLifetimeMonths = churnRate > 0 ? 1 / (churnRate / 100) : 24;
-      const ltv = arpa * avgLifetimeMonths;
-      const estimatedCAC = ltv / 3;
-      const ltvCacRatio = estimatedCAC > 0 ? ltv / estimatedCAC : 0;
-      const paybackPeriod = arpa > 0 ? estimatedCAC / arpa : 0;
+      // Average lifetime is 1/churn. With nothing churned there is no observed
+      // lifetime, and the 24-month default that used to stand here made LTV a
+      // number somebody picked.
+      const avgLifetimeMonths = churnRate > 0 ? 1 / (churnRate / 100) : null;
+      const ltv = avgLifetimeMonths == null ? null : arpa * avgLifetimeMonths;
+
+      // CAC, the LTV:CAC ratio and payback period are NOT computed here any more.
+      // estimatedCAC was `ltv / 3`, which made ltvCacRatio exactly 3.00 on every
+      // request for every tenant - a tautology presented as a measurement - and
+      // paybackPeriod was derived from the same invented figure. Nothing in this
+      // platform records acquisition cost.
 
       return createCorsResponse(
         {
-          metrics: {
-            mrr: totalMRR.toFixed(2),
-            arr: totalARR.toFixed(2),
-            arpa: arpa.toFixed(2),
-            ltv: ltv.toFixed(2),
-            cac: estimatedCAC.toFixed(2),
-            ltvCacRatio: ltvCacRatio.toFixed(2),
-            grr: grr.toFixed(2),
-            nrr: nrr.toFixed(2),
-            churnRate: churnRate.toFixed(2),
-            expansionRate: expansionRate.toFixed(2),
-            paybackPeriod: paybackPeriod.toFixed(1),
-          },
-          counts: {
-            activeTenants: activeTenants.length,
-            churnedTenants: churnedTenantCount,
-            newCustomers: newCustomerCount,
-            expandedTenants: 0,
-          },
+          // FLAT, and numbers. This used to answer { metrics, counts } with every
+          // value .toFixed(2)'d into a STRING, while PlatformAnalytics read
+          // revenueMetrics.mrr and friends at the top level - so all seventeen
+          // reads resolved to undefined and the page rendered its `|| 89000`
+          // fallbacks on every request (PA-040). Nested-vs-flat was the whole
+          // defect; the numbers underneath were mostly fine.
+          mrr: totalMRR,
+          arr: totalARR,
+          arpa,
+          activeTenants: activeTenants.length,
+          churnedCustomers: churnedTenantCount,
+          newCustomers: newCustomerCount,
+          churnRate,
+          grr,
+          ltv,
+          // Null rather than 0. expansionRate is 0 because business_records has no
+          // last_mrr_change column to read expansion from, so NRR would just be
+          // GRR under another name - which reads as a measured 100% retention.
+          expansionRate: null,
+          nrr: null,
+          cac: null,
+          ltvCacRatio: null,
+          paybackPeriod: null,
           dateRange: { start: sp.get('startDate') || 'all', end: sp.get('endDate') || 'all' },
+          unbacked: [
+            'cac, ltvCacRatio and paybackPeriod: nothing records acquisition cost. CAC was previously computed as ltv / 3, which made the ratio exactly 3.00 for every tenant on every request',
+            'expansionRate and nrr: business_records has no last_mrr_change column, so expansion MRR cannot be observed',
+            'mrrGrowth, arrGrowth and tenantGrowth: this endpoint reads one window and has nothing to compare it against - growth-trends returns a real month-by-month series',
+            'churnMrr and netChurnRate: the MRR of a churned tenant is not retained after the record moves to status=churned',
+          ].concat(
+            ltv == null
+              ? [
+                  'ltv: no tenant has churned in this window, so no average lifetime has been observed',
+                ]
+              : [],
+          ),
         },
         200,
         req,
@@ -1041,7 +1059,20 @@ export default async function handler(req: Request) {
     }
 
     // ---------------------------------------------------------------- cohort-analysis
-    // Adapted to the real platform_cohort_analysis columns.
+    //
+    // PlatformCohortAnalysis reads cohortTable, ltvData and summary. It used to
+    // read cohortTable / revenueCohorts / ltvData against a response of
+    // { cohorts, summary }, so all three resolved to undefined and the page
+    // rendered its `|| [...]` fallbacks every single time - a complete cohort
+    // study, retention curves and all, built from numbers someone typed
+    // (PA-040). The keys match now.
+    //
+    // WHAT THIS TABLE CANNOT ANSWER, and why the month-by-month matrices are
+    // gone rather than filled: platform_cohort_analysis holds ONE ROW PER
+    // COHORT - initial_size, current_size, retention_rate, initial_mrr,
+    // current_mrr - and no per-period history. A month0..month6 retention curve
+    // needs a row per cohort PER PERIOD, which nothing records, so no
+    // arithmetic over this data produces one. Named in `unbacked`.
     if (req.method === 'GET' && endpoint === 'cohort-analysis') {
       const startDate = sp.get('startDate');
       const endDate = sp.get('endDate');
@@ -1054,21 +1085,60 @@ export default async function handler(req: Request) {
       const { data: cohorts = [] } = await q;
       const list = cohorts || [];
 
-      const totalCustomers = list.reduce((s, c) => s + (c.initial_size || 0), 0);
-      const totalRevenue = list.reduce((s, c) => s + num(c.initial_mrr), 0);
-      const avgRetention =
-        list.length > 0 ? list.reduce((s, c) => s + num(c.retention_rate), 0) / list.length : 0;
+      // deno-lint-ignore no-explicit-any
+      const cohortTable = list.map((c: any) => ({
+        id: c.id,
+        cohort: c.cohort_name,
+        cohortDate: c.cohort_date,
+        period: c.cohort_period,
+        size: c.initial_size ?? 0,
+        currentSize: c.current_size ?? 0,
+        retentionRate: c.retention_rate == null ? null : num(c.retention_rate),
+        churnRate: c.churn_rate == null ? null : num(c.churn_rate),
+        initialMRR: c.initial_mrr == null ? null : num(c.initial_mrr),
+        currentMRR: c.current_mrr == null ? null : num(c.current_mrr),
+        cumulativeRevenue: c.cumulative_revenue == null ? null : num(c.cumulative_revenue),
+        netRevenueRetention: c.net_revenue_retention == null ? null : num(c.net_revenue_retention),
+        averageTenureMonths: c.average_tenure_months == null ? null : num(c.average_tenure_months),
+        periodsCovered: c.periods_covered ?? null,
+      }));
+
+      // deno-lint-ignore no-explicit-any
+      const ltvData = list.map((c: any) => ({
+        cohort: c.cohort_name,
+        ltv: c.average_ltv == null ? null : num(c.average_ltv),
+        cac: c.average_cac == null ? null : num(c.average_cac),
+        ratio: c.ltv_to_cac_ratio == null ? null : num(c.ltv_to_cac_ratio),
+      }));
+
+      // Averages over the rows that actually carry the value. Null when none
+      // does: a 0% retention rate reads as every customer having left.
+      const mean = (values: (number | null)[]) => {
+        const present = values.filter((v): v is number => v != null);
+        return present.length > 0 ? present.reduce((s, v) => s + v, 0) / present.length : null;
+      };
 
       return createCorsResponse(
         {
-          cohorts: list,
+          cohortTable,
+          ltvData,
           summary: {
             totalCohorts: list.length,
-            totalCustomers,
-            totalRevenue,
-            averageRetentionRate: avgRetention.toFixed(2),
+            // deno-lint-ignore no-explicit-any
+            totalCustomers: list.reduce((s: number, c: any) => s + (c.initial_size || 0), 0),
+            // deno-lint-ignore no-explicit-any
+            currentCustomers: list.reduce((s: number, c: any) => s + (c.current_size || 0), 0),
+            averageRetentionRate: mean(cohortTable.map((c) => c.retentionRate)),
+            averageChurnRate: mean(cohortTable.map((c) => c.churnRate)),
+            averageLTV: mean(ltvData.map((c) => c.ltv)),
+            averageCAC: mean(ltvData.map((c) => c.cac)),
+            ltvToCacRatio: mean(ltvData.map((c) => c.ratio)),
             dateRange: { start: startDate || 'all', end: endDate || 'all' },
           },
+          unbacked: [
+            'per-period retention and revenue curves: platform_cohort_analysis stores one row per cohort with a single retention_rate and MRR pair, not a row per period, so a month-by-month series cannot be derived from it',
+            'period-over-period deltas: nothing records a previous calculation of a cohort to compare against',
+          ],
         },
         200,
         req,

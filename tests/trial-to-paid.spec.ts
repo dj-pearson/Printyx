@@ -70,9 +70,9 @@ test.describe('Trial Signup Flow', () => {
     await page.waitForLoadState('networkidle');
 
     // Trial messaging should be visible (e.g., "14-day free trial", "Start your trial")
-    await expect(
-      page.getByText(/trial|free.*day|day.*free|no credit card/i).first(),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/trial|free.*day|day.*free|no credit card/i).first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('successful signup redirects appropriately', async ({ page }) => {
@@ -127,9 +127,9 @@ test.describe('Trial Status', () => {
     await page.waitForLoadState('networkidle');
 
     // Billing page should render with subscription/trial information
-    await expect(
-      page.getByText(/billing|subscription|plan|trial|account/i).first(),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/billing|subscription|plan|trial|account/i).first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('trial days remaining is displayed', async ({ page }) => {
@@ -192,7 +192,12 @@ test.describe('Plan Upgrade UI', () => {
       .getByRole('button', { name: /upgrade|change plan|subscribe|select plan/i })
       .or(page.getByRole('link', { name: /upgrade|change plan|subscribe|view plans/i }));
 
-    if (await upgradeButton.first().isVisible({ timeout: 5000 }).catch(() => false)) {
+    if (
+      await upgradeButton
+        .first()
+        .isVisible({ timeout: 5000 })
+        .catch(() => false)
+    ) {
       await expect(upgradeButton.first()).toBeEnabled();
     }
   });
@@ -212,9 +217,9 @@ test.describe('Subscription Management', () => {
     await page.waitForLoadState('networkidle');
 
     // Billing page should render
-    await expect(
-      page.getByText(/billing|subscription|plan|payment/i).first(),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/billing|subscription|plan|payment/i).first()).toBeVisible({
+      timeout: 10000,
+    });
 
     // Filter out non-critical errors (API 401s are expected in demo mode)
     const criticalErrors = errors.filter(
@@ -232,7 +237,9 @@ test.describe('Subscription Management', () => {
 
     // Current plan information should be visible
     await expect(
-      page.getByText(/current plan|your plan|active plan|trial|starter|professional|enterprise/i).first(),
+      page
+        .getByText(/current plan|your plan|active plan|trial|starter|professional|enterprise/i)
+        .first(),
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -244,9 +251,9 @@ test.describe('Subscription Management', () => {
     await page.waitForTimeout(2000);
 
     // Plan details section should have descriptive content
-    await expect(
-      page.getByText(/feature|limit|user|storage|included|usage/i).first(),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/feature|limit|user|storage|included|usage/i).first()).toBeVisible({
+      timeout: 10000,
+    });
   });
 });
 
@@ -264,9 +271,7 @@ test.describe('Trial Expiration Warning', () => {
     // Look for trial status indicators anywhere on the billing page
     // This could be a badge, banner, alert, or text element
     await expect(
-      page
-        .getByText(/trial|free plan|upgrade|expires|days remaining/i)
-        .first(),
+      page.getByText(/trial|free plan|upgrade|expires|days remaining/i).first(),
     ).toBeVisible({ timeout: 10000 });
   });
 });

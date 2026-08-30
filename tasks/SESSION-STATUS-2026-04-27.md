@@ -53,46 +53,46 @@ via the existing `pathParts[0]` switch + `isSecondTierEndpoint` /
 
 ### Endpoints — `second-tier.ts` (real ports, schema-honest)
 
-| Endpoint | Source | Schema reality fix |
-|---|---|---|
-| `/reports/breaches` | `routes-breach-detection.ts:31` | PO breach uses `expected_date IS NOT NULL` (no `approved_date` column); service SLA uses `status IN ('open','in-progress')` (Express used `'in_progress'`). Other 4 detectors translate cleanly. |
-| `/reports/breach-summary` | `routes-breach-detection.ts:210` | calls `breaches()` and aggregates per severity — Express version did the same via internal HTTP fetch which we don't need. |
-| `/reports/customer-health` | `routes-reports.ts:177` | `paid_date IS NOT NULL` (not `isPaid`); `total_amount` (not `amount`); `business_records.updated_at` as activity proxy (no `last_activity_date` column). `degraded.lastActivityProxy: true`. |
-| `/reports/sales-pipeline` | `routes-reports.ts:86` | `deals.owner_id` joins to `users` via `fetchUserNames`; no Drizzle `with: { stage, owner }` magic. |
-| `/reports/revenue-recognition` | `routes-reports.ts:136` | `total_amount` + `paid_date IS NOT NULL`. |
-| `/reports/service-sla-compliance` | `routes-reports.ts:26` | hardcoded 8h SLA threshold (no `sla_response_minutes` col); `resolved_at` (no `completed_at`); `assigned_technician_id` (no `technician_id`). `degraded.slaThresholdHardcoded: true`. |
-| `/reports/technician-utilization` | `routes-reports.ts:392` | hours-worked estimated from `completed-tickets × 60min` (no `started_at`/`completed_at`); FTF rate looks at follow-on tickets within 7d. `degraded.hoursEstimatedFromCount: true`. |
+| Endpoint                          | Source                           | Schema reality fix                                                                                                                                                                               |
+| --------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/reports/breaches`               | `routes-breach-detection.ts:31`  | PO breach uses `expected_date IS NOT NULL` (no `approved_date` column); service SLA uses `status IN ('open','in-progress')` (Express used `'in_progress'`). Other 4 detectors translate cleanly. |
+| `/reports/breach-summary`         | `routes-breach-detection.ts:210` | calls `breaches()` and aggregates per severity — Express version did the same via internal HTTP fetch which we don't need.                                                                       |
+| `/reports/customer-health`        | `routes-reports.ts:177`          | `paid_date IS NOT NULL` (not `isPaid`); `total_amount` (not `amount`); `business_records.updated_at` as activity proxy (no `last_activity_date` column). `degraded.lastActivityProxy: true`.     |
+| `/reports/sales-pipeline`         | `routes-reports.ts:86`           | `deals.owner_id` joins to `users` via `fetchUserNames`; no Drizzle `with: { stage, owner }` magic.                                                                                               |
+| `/reports/revenue-recognition`    | `routes-reports.ts:136`          | `total_amount` + `paid_date IS NOT NULL`.                                                                                                                                                        |
+| `/reports/service-sla-compliance` | `routes-reports.ts:26`           | hardcoded 8h SLA threshold (no `sla_response_minutes` col); `resolved_at` (no `completed_at`); `assigned_technician_id` (no `technician_id`). `degraded.slaThresholdHardcoded: true`.            |
+| `/reports/technician-utilization` | `routes-reports.ts:392`          | hours-worked estimated from `completed-tickets × 60min` (no `started_at`/`completed_at`); FTF rate looks at follow-on tickets within 7d. `degraded.hoursEstimatedFromCount: true`.               |
 
 ### Endpoints — `frontend-stubs.ts` (frontend-only, compute where possible)
 
-| Endpoint | What it returns | Real-data fields |
-|---|---|---|
-| `financial-summary` | FinancialSummary object | totalRevenue, totalAR, cashFlow, overdue*, collectionRate from invoices |
-| `payment-alerts` | PaymentAlert[] | severity-classified open invoices, with customer names; up to 50 |
-| `ar-aging` | ARAgingBucket[] | 5 buckets (Current, 1-30, 31-60, 61-90, 90+) computed from due_date |
-| `customer-profitability` | CustomerProfitability[] | revenue, outstanding, payment-history per customer; costs + margin = degraded |
-| `cash-flow-forecast` | CashFlowForecast[] | weekly inflow buckets across the horizon; outflow = degraded |
-| `territory-financials` | TerritoryFinancials[] | grouped by `business_records.territory`; growth + profitability = degraded |
-| `sales-reps` | SalesRep[] | one per user with deals; pipeline + close rate; coaching + targets = degraded |
-| `team-performance` | aggregate | sums sales-reps result |
-| `pipeline-funnel` | PipelineFunnel[] | per-stage value/count from `deal_stages`+`deals`; falls back to status buckets |
-| `service-forecasts` | `[]` | requires meter-reading time series + ML — out of scope |
-| `technician-capacity` | TechnicianCapacity[] | utilization estimated from open ticket count; forecasted = same as current |
-| `inventory-forecast` | `[]` | requires demand model — out of scope |
-| `service-summary` | aggregate | totalTickets, openTickets, avgResolutionHours, criticalTickets |
-| `revenue` | snapshot | 30-day total + collected revenue from invoices |
+| Endpoint                 | What it returns         | Real-data fields                                                               |
+| ------------------------ | ----------------------- | ------------------------------------------------------------------------------ |
+| `financial-summary`      | FinancialSummary object | totalRevenue, totalAR, cashFlow, overdue\*, collectionRate from invoices       |
+| `payment-alerts`         | PaymentAlert[]          | severity-classified open invoices, with customer names; up to 50               |
+| `ar-aging`               | ARAgingBucket[]         | 5 buckets (Current, 1-30, 31-60, 61-90, 90+) computed from due_date            |
+| `customer-profitability` | CustomerProfitability[] | revenue, outstanding, payment-history per customer; costs + margin = degraded  |
+| `cash-flow-forecast`     | CashFlowForecast[]      | weekly inflow buckets across the horizon; outflow = degraded                   |
+| `territory-financials`   | TerritoryFinancials[]   | grouped by `business_records.territory`; growth + profitability = degraded     |
+| `sales-reps`             | SalesRep[]              | one per user with deals; pipeline + close rate; coaching + targets = degraded  |
+| `team-performance`       | aggregate               | sums sales-reps result                                                         |
+| `pipeline-funnel`        | PipelineFunnel[]        | per-stage value/count from `deal_stages`+`deals`; falls back to status buckets |
+| `service-forecasts`      | `[]`                    | requires meter-reading time series + ML — out of scope                         |
+| `technician-capacity`    | TechnicianCapacity[]    | utilization estimated from open ticket count; forecasted = same as current     |
+| `inventory-forecast`     | `[]`                    | requires demand model — out of scope                                           |
+| `service-summary`        | aggregate               | totalTickets, openTickets, avgResolutionHours, criticalTickets                 |
+| `revenue`                | snapshot                | 30-day total + collected revenue from invoices                                 |
 
 ### Endpoints — `custom-reports.ts`
 
-| Method + path | Replaces | Notes |
-|---|---|---|
-| `GET /reports/custom` | `routes-custom-reports.ts:157` | own + public reports — fetched as two queries and merged in JS (PostgREST `.or()` with jsonb-contains is fragile) |
-| `POST /reports/custom/preview` | line 206 | basic SELECT with eq/gt/lt/like filters; aggregation/grouping flagged `degraded.aggregationsUnsupported` |
-| `POST /reports/custom` | line 321 | persists to `report_definitions` |
-| `GET /reports/custom/:id` | line 525 | id-or-code lookup; visibility check in JS |
-| `PUT /reports/custom/:id` | line 407 | ownership-checked update |
-| `DELETE /reports/custom/:id` | line 485 | ownership-checked delete |
-| `POST /reports/custom/:id/execute` | line 567 | replays the saved config; `report_executions` audit row inserted fire-and-forget |
+| Method + path                      | Replaces                       | Notes                                                                                                             |
+| ---------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `GET /reports/custom`              | `routes-custom-reports.ts:157` | own + public reports — fetched as two queries and merged in JS (PostgREST `.or()` with jsonb-contains is fragile) |
+| `POST /reports/custom/preview`     | line 206                       | basic SELECT with eq/gt/lt/like filters; aggregation/grouping flagged `degraded.aggregationsUnsupported`          |
+| `POST /reports/custom`             | line 321                       | persists to `report_definitions`                                                                                  |
+| `GET /reports/custom/:id`          | line 525                       | id-or-code lookup; visibility check in JS                                                                         |
+| `PUT /reports/custom/:id`          | line 407                       | ownership-checked update                                                                                          |
+| `DELETE /reports/custom/:id`       | line 485                       | ownership-checked delete                                                                                          |
+| `POST /reports/custom/:id/execute` | line 567                       | replays the saved config; `report_executions` audit row inserted fire-and-forget                                  |
 
 The execute path uses `applyFilter()` which translates filter operators
 (`eq`/`gt`/`lt`/`contains`/`starts_with`/`is_null`/`between`) to PostgREST.
@@ -182,6 +182,7 @@ npm run check:deno-schemas
 ```
 
 Expected:
+
 - 3 new handler files in `git status` as untracked
 - index.ts dispatcher contains the new branches
 - `degraded:` grep returns ~30 instances total (was ~25 before this session)

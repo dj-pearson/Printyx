@@ -11,6 +11,7 @@
 ## 1. Scope
 
 **Source Express files:**
+
 - `server/routes/outreach-routes.ts` (22 endpoints, ~760 lines)
 - `server/services/outreach/outreach-ai-service.ts` (~400 lines — Claude API integration)
 - `server/services/outreach/specialty-knowledge-packs.ts` (~550 lines — pure data + helpers, no side effects)
@@ -22,6 +23,7 @@
 **Tables touched:** 6 (`business_contexts`, `rep_specializations`, `outreach_sequences`, `outreach_sequence_steps`, `outreach_prospects`, `outreach_drafts`)
 
 **Explicitly out of scope:**
+
 - UI changes to Outreach pages (OutreachHub, BusinessContext, MySpecialty, SequenceStudio, DraftGenerator) — they already call `/api/outreach/*` which the frontend routes to `functions.printyx.net/outreach/*`, so no frontend work needed if parity holds.
 - Background jobs (Outreach has none yet).
 
@@ -29,30 +31,30 @@
 
 ## 2. Endpoint parity matrix
 
-| Method | Path | Express location (line) | Target edge path | Notes |
-|---|---|---|---|---|
-| GET | `/outreach/specialties` | outreach-routes.ts L76 | `/outreach/specialties` | Returns `SPECIALTY_PACKS`, no DB |
-| GET | `/outreach/business-context` | L102 | `/outreach/business-context` | Effective context (user override or tenant default) |
-| GET | `/outreach/business-context/all` | L115 | `/outreach/business-context/all` | Both tenant + user contexts |
-| PUT | `/outreach/business-context` | L136 | `/outreach/business-context` | Upsert with scope='tenant' or 'user' |
-| GET | `/outreach/specializations` | L185 | `/outreach/specializations` | Current user's specs |
-| PUT | `/outreach/specializations` | L216 | `/outreach/specializations` | Bulk replace (txn) |
-| GET | `/outreach/sequences` | L255 | `/outreach/sequences` | List user's sequences |
-| GET | `/outreach/sequences/:id` | L269 | `/outreach/sequences/:id` | Detail + steps |
-| POST | `/outreach/sequences/generate` | L301 | `/outreach/sequences/generate` | Claude call + insert |
-| PATCH | `/outreach/sequences/:id` | L403 | `/outreach/sequences/:id` | Update |
-| DELETE | `/outreach/sequences/:id` | L478 | `/outreach/sequences/:id` | Cascade delete steps |
-| PATCH | `/outreach/sequence-steps/:id` | L427 | `/outreach/sequence-steps/:id` | Update step + re-lint |
-| GET | `/outreach/prospects` | L501 | `/outreach/prospects` | List |
-| POST | `/outreach/prospects` | L518 | `/outreach/prospects` | Create |
-| PATCH | `/outreach/prospects/:id` | L527 | `/outreach/prospects/:id` | Update |
-| DELETE | `/outreach/prospects/:id` | L549 | `/outreach/prospects/:id` | Delete |
-| POST | `/outreach/drafts/generate` | L572 | `/outreach/drafts/generate` | Claude call + insert |
-| GET | `/outreach/drafts` | L674 | `/outreach/drafts` | List with status filter + prospect hydration |
-| PATCH | `/outreach/drafts/:id` | L725 | `/outreach/drafts/:id` | Update |
-| POST | `/outreach/drafts/:id/mark-sent` | L747 | `/outreach/drafts/:id/mark-sent` | Status transition |
-| POST | `/outreach/drafts/:id/mark-replied` | L761 | `/outreach/drafts/:id/mark-replied` | Sentiment capture |
-| DELETE | `/outreach/drafts/:id` | L786 | `/outreach/drafts/:id` | Delete |
+| Method | Path                                | Express location (line) | Target edge path                    | Notes                                               |
+| ------ | ----------------------------------- | ----------------------- | ----------------------------------- | --------------------------------------------------- |
+| GET    | `/outreach/specialties`             | outreach-routes.ts L76  | `/outreach/specialties`             | Returns `SPECIALTY_PACKS`, no DB                    |
+| GET    | `/outreach/business-context`        | L102                    | `/outreach/business-context`        | Effective context (user override or tenant default) |
+| GET    | `/outreach/business-context/all`    | L115                    | `/outreach/business-context/all`    | Both tenant + user contexts                         |
+| PUT    | `/outreach/business-context`        | L136                    | `/outreach/business-context`        | Upsert with scope='tenant' or 'user'                |
+| GET    | `/outreach/specializations`         | L185                    | `/outreach/specializations`         | Current user's specs                                |
+| PUT    | `/outreach/specializations`         | L216                    | `/outreach/specializations`         | Bulk replace (txn)                                  |
+| GET    | `/outreach/sequences`               | L255                    | `/outreach/sequences`               | List user's sequences                               |
+| GET    | `/outreach/sequences/:id`           | L269                    | `/outreach/sequences/:id`           | Detail + steps                                      |
+| POST   | `/outreach/sequences/generate`      | L301                    | `/outreach/sequences/generate`      | Claude call + insert                                |
+| PATCH  | `/outreach/sequences/:id`           | L403                    | `/outreach/sequences/:id`           | Update                                              |
+| DELETE | `/outreach/sequences/:id`           | L478                    | `/outreach/sequences/:id`           | Cascade delete steps                                |
+| PATCH  | `/outreach/sequence-steps/:id`      | L427                    | `/outreach/sequence-steps/:id`      | Update step + re-lint                               |
+| GET    | `/outreach/prospects`               | L501                    | `/outreach/prospects`               | List                                                |
+| POST   | `/outreach/prospects`               | L518                    | `/outreach/prospects`               | Create                                              |
+| PATCH  | `/outreach/prospects/:id`           | L527                    | `/outreach/prospects/:id`           | Update                                              |
+| DELETE | `/outreach/prospects/:id`           | L549                    | `/outreach/prospects/:id`           | Delete                                              |
+| POST   | `/outreach/drafts/generate`         | L572                    | `/outreach/drafts/generate`         | Claude call + insert                                |
+| GET    | `/outreach/drafts`                  | L674                    | `/outreach/drafts`                  | List with status filter + prospect hydration        |
+| PATCH  | `/outreach/drafts/:id`              | L725                    | `/outreach/drafts/:id`              | Update                                              |
+| POST   | `/outreach/drafts/:id/mark-sent`    | L747                    | `/outreach/drafts/:id/mark-sent`    | Status transition                                   |
+| POST   | `/outreach/drafts/:id/mark-replied` | L761                    | `/outreach/drafts/:id/mark-replied` | Sentiment capture                                   |
+| DELETE | `/outreach/drafts/:id`              | L786                    | `/outreach/drafts/:id`              | Delete                                              |
 
 **22 endpoints total.** Public path shape matches exactly — frontend requires no changes.
 
@@ -62,14 +64,14 @@
 
 All 6 tables already have migrations applied (0006_certain_jean_grey.sql). RLS policies land in `drizzle/rls/outreach.sql` as part of Phase 1 US-003.
 
-| Table | tenant_id? | Notes |
-|---|---|---|
-| `business_contexts` | ✓ | `userId` NULL = tenant default; non-null = user override. Unique constraint `(tenant_id, user_id)` — Postgres treats NULL as distinct, which is OK here since app logic handles singleton tenant-default lookup. |
-| `rep_specializations` | ✓ | Per-user. Unique `(user_id, specialty)`. |
-| `outreach_sequences` | ✓ | Per-user (userId NOT NULL). |
-| `outreach_sequence_steps` | ✓ | Child of sequences. `sequenceId` is FK (application-enforced, no DB-level constraint currently). |
-| `outreach_prospects` | ✓ | Per-user staging. |
-| `outreach_drafts` | ✓ | Per-user. Links to sequence+step+prospect. |
+| Table                     | tenant_id? | Notes                                                                                                                                                                                                            |
+| ------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `business_contexts`       | ✓          | `userId` NULL = tenant default; non-null = user override. Unique constraint `(tenant_id, user_id)` — Postgres treats NULL as distinct, which is OK here since app logic handles singleton tenant-default lookup. |
+| `rep_specializations`     | ✓          | Per-user. Unique `(user_id, specialty)`.                                                                                                                                                                         |
+| `outreach_sequences`      | ✓          | Per-user (userId NOT NULL).                                                                                                                                                                                      |
+| `outreach_sequence_steps` | ✓          | Child of sequences. `sequenceId` is FK (application-enforced, no DB-level constraint currently).                                                                                                                 |
+| `outreach_prospects`      | ✓          | Per-user staging.                                                                                                                                                                                                |
+| `outreach_drafts`         | ✓          | Per-user. Links to sequence+step+prospect.                                                                                                                                                                       |
 
 **RLS decision:** apply the standard 4-policy template from `_template.sql` — tenant isolation via JWT claim. No per-user row-level restriction at the DB layer; `userId` filtering stays in handler code (a user can be scoped to "my records" vs. "my tenant's records" depending on the endpoint).
 
@@ -77,11 +79,11 @@ All 6 tables already have migrations applied (0006_certain_jean_grey.sql). RLS p
 
 ## 4. External dependencies to port
 
-| Dependency | Express location | Deno port |
-|---|---|---|
-| Anthropic Claude API | `server/services/claude-ai-service.ts` | New `supabase/functions/_shared/anthropic.ts` — plain `fetch` to `api.anthropic.com/v1/messages`. Export `generateCompletion(options)` with the same signature. |
-| Specialty knowledge packs | `server/services/outreach/specialty-knowledge-packs.ts` | Copy to `supabase/functions/outreach/specialty-knowledge-packs.ts` as-is (pure TS, no deps). Alternatively move to `shared/outreach-knowledge-packs.ts` for reuse if needed later. |
-| Outreach AI service | `server/services/outreach/outreach-ai-service.ts` | Copy to `supabase/functions/outreach/_ai.ts` — imports `_shared/anthropic.ts` + local knowledge packs + `@shared/outreach-schema.ts`. All logic (prompt building, spam linter, JSON parsing) is pure and ports cleanly. |
+| Dependency                | Express location                                        | Deno port                                                                                                                                                                                                               |
+| ------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Anthropic Claude API      | `server/services/claude-ai-service.ts`                  | New `supabase/functions/_shared/anthropic.ts` — plain `fetch` to `api.anthropic.com/v1/messages`. Export `generateCompletion(options)` with the same signature.                                                         |
+| Specialty knowledge packs | `server/services/outreach/specialty-knowledge-packs.ts` | Copy to `supabase/functions/outreach/specialty-knowledge-packs.ts` as-is (pure TS, no deps). Alternatively move to `shared/outreach-knowledge-packs.ts` for reuse if needed later.                                      |
+| Outreach AI service       | `server/services/outreach/outreach-ai-service.ts`       | Copy to `supabase/functions/outreach/_ai.ts` — imports `_shared/anthropic.ts` + local knowledge packs + `@shared/outreach-schema.ts`. All logic (prompt building, spam linter, JSON parsing) is pure and ports cleanly. |
 
 No SendGrid, no Puppeteer, no WebSockets, no cron. Cleanest possible migration.
 
@@ -149,11 +151,22 @@ serve(async (req) => {
     const ctx = await requireAuth(req);
 
     if (tenantList.length > 0 && !tenantList.includes(ctx.tenantId)) {
-      return errorResponse(403, 'Outreach is not enabled for your tenant', 'OUTREACH_NOT_ENABLED', undefined, requestId);
+      return errorResponse(
+        403,
+        'Outreach is not enabled for your tenant',
+        'OUTREACH_NOT_ENABLED',
+        undefined,
+        requestId,
+      );
     }
 
     const db = getDb();
-    const handlerCtx = { ctx, db, log: log.child?.({ requestId, userId: ctx.userId, tenantId: ctx.tenantId }) ?? log, requestId };
+    const handlerCtx = {
+      ctx,
+      db,
+      log: log.child?.({ requestId, userId: ctx.userId, tenantId: ctx.tenantId }) ?? log,
+      requestId,
+    };
 
     // Dispatch
     if (path === '/specialties' && method === 'GET') {
@@ -188,6 +201,7 @@ serve(async (req) => {
 ## 6. Acceptance criteria
 
 ### Per-endpoint functional parity
+
 - [ ] Every one of the 22 endpoints returns the same response shape as the Express version for equivalent inputs
 - [ ] `POST /outreach/sequences/generate` with valid input returns a saved sequence + steps (Claude call succeeds)
 - [ ] `POST /outreach/drafts/generate` with valid input returns a saved draft with variants (Claude call succeeds)
@@ -196,15 +210,18 @@ serve(async (req) => {
 - [ ] `GET /outreach/business-context` correctly prefers user override over tenant default
 
 ### Security / RLS
+
 - [ ] RLS applied to all 6 tables (via `drizzle/rls/outreach.sql`)
 - [ ] Two-tenant test: create a sequence as tenant A, attempt to `GET /outreach/sequences/:id` as tenant B → 404 (not 403 leaking existence — 404 because RLS filters it out of the SELECT)
 - [ ] Attempt to insert with a forged `tenant_id` from frontend → rejected by RLS (logged as policy violation)
 
 ### Feature flag
+
 - [ ] `OUTREACH_ENABLED_TENANTS` env var still gates access
 - [ ] Unset = all tenants allowed (dev mode default)
 
 ### Frontend compatibility
+
 - [ ] Each of the 5 Outreach pages loads without console errors:
   - `/outreach` (Hub)
   - `/outreach/business-context`
@@ -220,6 +237,7 @@ serve(async (req) => {
 - [ ] Verify in browser using Playwright MCP (`browser_navigate` to prod URL, run the flow, assert no console errors, take screenshots)
 
 ### Deletion (Express cleanup)
+
 - [ ] `server/routes/outreach-routes.ts` deleted
 - [ ] `server/services/outreach/outreach-ai-service.ts` deleted
 - [ ] `server/services/outreach/specialty-knowledge-packs.ts` deleted (or moved to `shared/` if needed elsewhere)
@@ -227,6 +245,7 @@ serve(async (req) => {
 - [ ] `grep -r "outreach-routes\|outreach-ai-service" server/ client/` returns zero matches
 
 ### Quality gates
+
 - [ ] `deno check supabase/functions/outreach/**/*.ts` passes
 - [ ] `npm run check` passes (TypeScript, once outreach-routes.ts is removed)
 - [ ] `npm run build` succeeds
@@ -237,10 +256,12 @@ serve(async (req) => {
 ## 7. Test plan
 
 ### Unit (Deno)
+
 - `supabase/functions/outreach/_ai.test.ts` — test `lintForSpam`, `buildSystemPrompt` construction (pure functions).
 - `supabase/functions/_shared/anthropic.test.ts` — mock fetch, verify request shape.
 
 ### Integration (local)
+
 Run `supabase functions serve outreach` against local Supabase stack. Curl each endpoint with a test JWT:
 
 ```bash
@@ -260,7 +281,9 @@ curl http://localhost:54321/functions/v1/outreach/business-context \
 A script `tasks/outreach-integration-test.sh` is included in the PR that exercises all 22 endpoints end-to-end.
 
 ### Integration (production smoke)
+
 After Coolify deploy:
+
 1. Load `/outreach/business-context` in browser, edit a field, save, refresh — persists.
 2. Load `/outreach/sequence-studio`, click "New sequence", fill angle, submit — sequence generated and saved.
 3. Load `/outreach/draft-generator`, pick prospect, generate draft, copy, mark sent — status updates.
@@ -268,6 +291,7 @@ After Coolify deploy:
 Use the Playwright MCP tools (`browser_navigate`, `browser_click`, `browser_type`, `browser_console_messages`, `browser_take_screenshot`) to script this.
 
 ### E2E (if applicable)
+
 No existing Playwright tests touch Outreach (it's brand new). Consider adding one in this phase; otherwise the manual smoke test above suffices.
 
 ---
@@ -275,6 +299,7 @@ No existing Playwright tests touch Outreach (it's brand new). Consider adding on
 ## 8. Rollback
 
 If anything breaks:
+
 1. Revert the Outreach edge function PR → Coolify auto-redeploys without it → endpoints return 404
 2. The Outreach frontend pages stop working (as before the migration started)
 3. No data is lost; tables + data remain intact
@@ -287,13 +312,13 @@ No schema migrations are part of this PRD — rollback is code-only.
 
 ## 9. Risks + mitigations
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Drizzle+postgres-js doesn't handle our `jsonb` array-of-object types correctly | Medium | High (`variants`, `pastWins`, `positioningObjections` columns use this) | Test early in US-007 with a fixture; if broken, fall back to raw SQL for those columns |
-| Claude API calls exceed Deno edge function timeout (typically 60s) | Low | Medium | Claude usually responds in 5-15s for our prompts. Set explicit timeout to 45s; fail with clear error if exceeded. |
-| RLS policy blocks a legitimate write due to JWT claim shape mismatch | Medium | High | Smoke test in dev with real JWT before prod deploy; verify `app_metadata.tenantId` is actually set on all tokens |
-| `postgres` client connection to pooler fails on SSL or network | Low | High | Validated in Phase 1 `_db_probe` — if probe works, outreach will too |
-| Feature flag check behaves differently (env var parsing) | Low | Low | Explicit test of `OUTREACH_ENABLED_TENANTS='a,b,c'` + `OUTREACH_ENABLED_TENANTS=''` + unset |
+| Risk                                                                           | Likelihood | Impact                                                                  | Mitigation                                                                                                        |
+| ------------------------------------------------------------------------------ | ---------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Drizzle+postgres-js doesn't handle our `jsonb` array-of-object types correctly | Medium     | High (`variants`, `pastWins`, `positioningObjections` columns use this) | Test early in US-007 with a fixture; if broken, fall back to raw SQL for those columns                            |
+| Claude API calls exceed Deno edge function timeout (typically 60s)             | Low        | Medium                                                                  | Claude usually responds in 5-15s for our prompts. Set explicit timeout to 45s; fail with clear error if exceeded. |
+| RLS policy blocks a legitimate write due to JWT claim shape mismatch           | Medium     | High                                                                    | Smoke test in dev with real JWT before prod deploy; verify `app_metadata.tenantId` is actually set on all tokens  |
+| `postgres` client connection to pooler fails on SSL or network                 | Low        | High                                                                    | Validated in Phase 1 `_db_probe` — if probe works, outreach will too                                              |
+| Feature flag check behaves differently (env var parsing)                       | Low        | Low                                                                     | Explicit test of `OUTREACH_ENABLED_TENANTS='a,b,c'` + `OUTREACH_ENABLED_TENANTS=''` + unset                       |
 
 ---
 
@@ -321,6 +346,7 @@ No schema migrations are part of this PRD — rollback is code-only.
 ## 12. Next up after Outreach ships
 
 Phase 2 remainder (in parallel if capacity allows):
+
 - `prd-migration-apollo-reconcile.md`
 - `prd-migration-billing-reconcile.md`
 - `prd-migration-knowledge-base-reconcile.md`

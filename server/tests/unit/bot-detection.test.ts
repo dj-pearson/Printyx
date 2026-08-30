@@ -70,16 +70,14 @@ describe('Bot Detection Middleware (SEC-014)', () => {
 
     it('should not flag Googlebot (allowlisted)', () => {
       const req = mockRequest({
-        'user-agent':
-          'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+        'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
       });
       expect(getBotScore(req)).toBe(0);
     });
 
     it('should not flag Bingbot (allowlisted)', () => {
       const req = mockRequest({
-        'user-agent':
-          'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
+        'user-agent': 'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)',
       });
       expect(getBotScore(req)).toBe(0);
     });

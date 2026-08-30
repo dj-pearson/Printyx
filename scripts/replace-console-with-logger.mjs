@@ -26,7 +26,7 @@ const EXCLUDE_PATHS = [
 
 function shouldExclude(filePath) {
   const rel = path.relative(ROOT, filePath).replace(/\\/g, '/');
-  return EXCLUDE_PATHS.some(ex => rel === ex || rel.startsWith(ex));
+  return EXCLUDE_PATHS.some((ex) => rel === ex || rel.startsWith(ex));
 }
 
 function getAllTsFiles(dir) {
@@ -116,14 +116,27 @@ function processFile(filePath) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       // Track last import statement
-      if (line.startsWith('import ') || (lastImportIndex >= 0 && (line.startsWith('} from') || line.endsWith("from '") || /^\s*['"]/.test(line)))) {
+      if (
+        line.startsWith('import ') ||
+        (lastImportIndex >= 0 &&
+          (line.startsWith('} from') || line.endsWith("from '") || /^\s*['"]/.test(line)))
+      ) {
         // Check if this line or a continuation ends an import
         if (line.includes(' from ') || line.includes("from '") || line.includes('from "')) {
           lastImportIndex = i;
         }
       }
       // Handle multi-line imports
-      if (lastImportIndex >= 0 && i > lastImportIndex && !line.startsWith('import ') && !line.startsWith('}') && line !== '' && !line.startsWith('//') && !line.startsWith('/*') && !line.startsWith('*')) {
+      if (
+        lastImportIndex >= 0 &&
+        i > lastImportIndex &&
+        !line.startsWith('import ') &&
+        !line.startsWith('}') &&
+        line !== '' &&
+        !line.startsWith('//') &&
+        !line.startsWith('/*') &&
+        !line.startsWith('*')
+      ) {
         break;
       }
     }
@@ -140,7 +153,14 @@ function processFile(filePath) {
       let insertIndex = 0;
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
-        if (line.startsWith('/**') || line.startsWith(' *') || line.startsWith('*/') || line.startsWith('//') || line === '' || line.startsWith('#!')) {
+        if (
+          line.startsWith('/**') ||
+          line.startsWith(' *') ||
+          line.startsWith('*/') ||
+          line.startsWith('//') ||
+          line === '' ||
+          line.startsWith('#!')
+        ) {
           insertIndex = i + 1;
         } else {
           break;

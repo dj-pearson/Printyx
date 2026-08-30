@@ -28,9 +28,11 @@ interface ReplenishmentMetrics {
   suppliesTracked?: number;
   lowSupplies?: number;
   urgentOrders?: number;
-  projectedSavings?: number;
-  emergenciesPrevented?: number;
-  averageLeadTime?: number;
+  // Null until something summarises a period into supply_replenishment_analytics.
+  projectedSavings?: number | null;
+  emergenciesPrevented?: number | null;
+  averageLeadTime?: number | null;
+  unbacked?: string[];
   ordersThisMonth?: number;
 }
 
@@ -160,11 +162,19 @@ export default function AutoSupplyReplenishmentDashboard() {
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
+            {/* AUDIT-028: `|| '0.00'` turned a null into a confident $0.00 - and
+                null is what this always is, because supply_replenishment_analytics
+                has no producer. A dash says "not measured"; a zero says "we saved
+                nothing", which is a different and untrue claim. */}
             <div className="text-2xl font-bold text-green-600">
-              ${metrics?.projectedSavings?.toFixed(2) || '0.00'}
+              {typeof metrics?.projectedSavings === 'number'
+                ? `$${metrics.projectedSavings.toFixed(2)}`
+                : '—'}
             </div>
             <p className="text-xs text-muted-foreground">
-              {metrics?.emergenciesPrevented || 0} emergencies prevented
+              {typeof metrics?.emergenciesPrevented === 'number'
+                ? `${metrics.emergenciesPrevented} emergencies prevented`
+                : 'No period has been summarised yet'}
             </p>
           </CardContent>
         </Card>
@@ -176,7 +186,9 @@ export default function AutoSupplyReplenishmentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {metrics?.averageLeadTime?.toFixed(1) || '0'} days
+              {typeof metrics?.averageLeadTime === 'number'
+                ? `${metrics.averageLeadTime.toFixed(1)} days`
+                : '—'}
             </div>
             <p className="text-xs text-muted-foreground">
               {metrics?.ordersThisMonth || 0} orders this month

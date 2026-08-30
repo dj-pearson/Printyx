@@ -9,6 +9,7 @@ The Database Schema Reporter now supports **SSH tunnel connections** for secure 
 ## 🔐 **Two Connection Modes**
 
 ### **1. Direct Connection (Default)**
+
 Uses `DATABASE_URL` to connect directly to the database.
 
 ```bash
@@ -16,6 +17,7 @@ npm run check:schema
 ```
 
 **When to use:**
+
 - Database is publicly accessible
 - Already using SSL/TLS
 - DATABASE_URL is configured
@@ -23,6 +25,7 @@ npm run check:schema
 ---
 
 ### **2. SSH Tunnel Connection**
+
 Creates an SSH tunnel to the database server, then connects through localhost.
 
 ```bash
@@ -30,6 +33,7 @@ npm run check:schema:ssh
 ```
 
 **When to use:**
+
 - Database is behind a firewall
 - SSH access to the database server
 - Need extra security layer
@@ -131,6 +135,7 @@ Your Computer → SSH Tunnel → Remote Server → PostgreSQL Database
 ```
 
 **Steps:**
+
 1. Script connects to SSH server (`SSH_HOST:SSH_PORT`)
 2. SSH tunnel forwards local port (`LOCAL_TUNNEL_PORT`) to remote database (`DB_HOST:DB_PORT`)
 3. Script connects to database via `localhost:5532`
@@ -189,6 +194,7 @@ $ npm run check:schema:ssh
 **Cause:** SSH server is not accessible or firewall blocking.
 
 **Fix:**
+
 ```bash
 # Test SSH connectivity
 ssh postgres@209.145.59.219
@@ -204,6 +210,7 @@ ssh -p 2222 postgres@209.145.59.219
 **Cause:** Wrong SSH username, password, or key.
 
 **Fix:**
+
 - Verify `SSH_USER` and `SSH_PASSWORD` are correct
 - If using key, ensure `SSH_PRIVATE_KEY` path is correct
 - Check SSH key permissions: `chmod 600 ~/.ssh/id_rsa`
@@ -215,6 +222,7 @@ ssh -p 2222 postgres@209.145.59.219
 **Cause:** Previous tunnel didn't close or port is used by another process.
 
 **Fix:**
+
 ```bash
 # Kill process using port
 netstat -ano | findstr :5532  # Windows
@@ -231,13 +239,16 @@ LOCAL_TUNNEL_PORT=5533 npm run check:schema:ssh
 **Cause:** Database is not listening on the specified port or host.
 
 **Fix:**
+
 1. SSH into server and verify database is running:
+
    ```bash
    ssh postgres@209.145.59.219
    sudo systemctl status postgresql
    ```
 
 2. Check PostgreSQL is listening:
+
    ```bash
    netstat -tln | grep 5433
    ```
@@ -266,6 +277,7 @@ SSH_PRIVATE_KEY=~/.ssh/database_key
 ```
 
 **Benefits:**
+
 - More secure than passwords
 - No password in environment variables
 - Can be easily revoked
@@ -303,6 +315,7 @@ Host printyx-db
 ```
 
 Then in `.env`:
+
 ```env
 SSH_HOST=printyx-db  # Uses SSH config
 ```
@@ -314,6 +327,7 @@ SSH_HOST=printyx-db  # Uses SSH config
 **⚠️ NEVER commit `.env` to git!**
 
 Ensure `.gitignore` includes:
+
 ```
 .env
 .env.*
@@ -324,14 +338,14 @@ Ensure `.gitignore` includes:
 
 ## 🔄 **Comparison: Direct vs SSH**
 
-| Feature | Direct Connection | SSH Tunnel |
-|---------|------------------|------------|
-| **Speed** | Faster | Slightly slower |
-| **Security** | SSL/TLS only | SSH encryption + SSL |
-| **Firewall** | Needs open port | SSH port only |
-| **Setup** | Simple | More complex |
-| **Use Case** | Public databases | Private/secured databases |
-| **Command** | `npm run check:schema` | `npm run check:schema:ssh` |
+| Feature      | Direct Connection      | SSH Tunnel                 |
+| ------------ | ---------------------- | -------------------------- |
+| **Speed**    | Faster                 | Slightly slower            |
+| **Security** | SSL/TLS only           | SSH encryption + SSL       |
+| **Firewall** | Needs open port        | SSH port only              |
+| **Setup**    | Simple                 | More complex               |
+| **Use Case** | Public databases       | Private/secured databases  |
+| **Command**  | `npm run check:schema` | `npm run check:schema:ssh` |
 
 ---
 
@@ -339,28 +353,28 @@ Ensure `.gitignore` includes:
 
 ### **Database Connection**
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | Direct mode | - | Full connection string |
-| `DB_HOST` | SSH mode | - | Database server IP/hostname |
-| `DB_PORT` | SSH mode | `5432` | Database port |
-| `DB_USER` | SSH mode | `postgres` | Database username |
-| `DB_PASSWORD` | SSH mode | - | Database password |
-| `DB_NAME` | SSH mode | `postgres` | Database name |
-| `DB_SSL` | Direct mode | `false` | Enable SSL |
-| `DB_SSL_REJECT_UNAUTHORIZED` | Direct mode | `true` | Verify SSL cert |
+| Variable                     | Required    | Default    | Description                 |
+| ---------------------------- | ----------- | ---------- | --------------------------- |
+| `DATABASE_URL`               | Direct mode | -          | Full connection string      |
+| `DB_HOST`                    | SSH mode    | -          | Database server IP/hostname |
+| `DB_PORT`                    | SSH mode    | `5432`     | Database port               |
+| `DB_USER`                    | SSH mode    | `postgres` | Database username           |
+| `DB_PASSWORD`                | SSH mode    | -          | Database password           |
+| `DB_NAME`                    | SSH mode    | `postgres` | Database name               |
+| `DB_SSL`                     | Direct mode | `false`    | Enable SSL                  |
+| `DB_SSL_REJECT_UNAUTHORIZED` | Direct mode | `true`     | Verify SSL cert             |
 
 ### **SSH Tunnel**
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `SSH_HOST` | Yes | `DB_HOST` | SSH server |
-| `SSH_PORT` | No | `22` | SSH port |
-| `SSH_USER` | Yes | `DB_USER` | SSH username |
-| `SSH_PASSWORD` | One of† | - | SSH password |
-| `SSH_PRIVATE_KEY` | One of† | - | SSH key path |
-| `LOCAL_TUNNEL_PORT` | No | `5532` | Local tunnel port |
-| `USE_SSH_TUNNEL` | No | `false` | Force SSH mode |
+| Variable            | Required | Default   | Description       |
+| ------------------- | -------- | --------- | ----------------- |
+| `SSH_HOST`          | Yes      | `DB_HOST` | SSH server        |
+| `SSH_PORT`          | No       | `22`      | SSH port          |
+| `SSH_USER`          | Yes      | `DB_USER` | SSH username      |
+| `SSH_PASSWORD`      | One of†  | -         | SSH password      |
+| `SSH_PRIVATE_KEY`   | One of†  | -         | SSH key path      |
+| `LOCAL_TUNNEL_PORT` | No       | `5532`    | Local tunnel port |
+| `USE_SSH_TUNNEL`    | No       | `false`   | Force SSH mode    |
 
 **†** Must provide either `SSH_PASSWORD` or `SSH_PRIVATE_KEY`
 
@@ -436,12 +450,14 @@ import { Client } from 'ssh2';
 
 const ssh = new Client();
 
-ssh.on('ready', () => {
-  console.log('✅ SSH connection successful!');
-  ssh.end();
-}).on('error', (err) => {
-  console.error('❌ SSH connection failed:', err.message);
-});
+ssh
+  .on('ready', () => {
+    console.log('✅ SSH connection successful!');
+    ssh.end();
+  })
+  .on('error', (err) => {
+    console.error('❌ SSH connection failed:', err.message);
+  });
 
 ssh.connect({
   host: process.env.SSH_HOST || '209.145.59.219',
@@ -452,6 +468,7 @@ ssh.connect({
 ```
 
 Run:
+
 ```bash
 tsx test-ssh-connection.ts
 ```
@@ -504,4 +521,4 @@ npm run check:system
 
 ---
 
-*Last Updated: January 24, 2026*
+_Last Updated: January 24, 2026_

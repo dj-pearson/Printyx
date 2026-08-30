@@ -36,11 +36,55 @@ export interface IntegrationData {
   tenantId: string;
   providerId: string;
   name: string;
-  status: 'connected' | 'disconnected' | 'error' | 'pending';
+  /** Mirrors system_integrations.status, whose vocabulary is this - not 'connected'. */
+  status: 'active' | 'inactive' | 'error' | 'pending';
   config: any;
   tokens?: OAuthTokens;
   lastSync?: Date;
   metadata?: any;
+}
+
+/** A system_integrations row as Drizzle returns it. */
+type SystemIntegrationRow = {
+  id: string;
+  tenantId: string | null;
+  name: string;
+  provider: string;
+  status: string;
+  configuration: unknown;
+  credentials: unknown;
+  lastSync: Date | null;
+};
+
+/**
+ * QUALITY-002. Every read in this file used to go through `integration.config`,
+ * and there is no `config` column - it is `configuration`, with OAuth tokens in
+ * `credentials`. Because the property does not exist, `integration.config?.tokens`
+ * evaluated to undefined on every row, so getIntegrations returned entries with
+ * no tokens and every downstream call that needed one threw or returned empty.
+ *
+ * One mapper now owns the column names so the three call sites cannot drift
+ * apart again.
+ */
+export function toIntegrationData(
+  integration: SystemIntegrationRow,
+  overrides: { providerId?: string; tokens?: OAuthTokens; metadata?: any } = {},
+): IntegrationData {
+  const configuration = (integration.configuration ?? {}) as Record<string, any>;
+  const credentials = (integration.credentials ?? {}) as Record<string, any>;
+
+  return {
+    id: integration.id,
+    tenantId: integration.tenantId!,
+    providerId: overrides.providerId ?? integration.provider,
+    name: integration.name,
+    status: integration.status as IntegrationData['status'],
+    config: configuration,
+    tokens:
+      overrides.tokens ?? (credentials.access_token ? (credentials as OAuthTokens) : undefined),
+    lastSync: integration.lastSync || undefined,
+    metadata: overrides.metadata ?? configuration.userInfo,
+  };
 }
 
 export class IntegrationService {
@@ -105,41 +149,44 @@ export class IntegrationService {
       throw error;
     }
 
-    // Store integration in database
+    // Store integration in database.
+    //
+    // QUALITY-002: this payload used to carry `category`, `description`,
+    // `config` and `syncFrequency`, none of which are columns on
+    // system_integrations, and it omitted `type`, which is NOT NULL with no
+    // default. Drizzle drops unknown keys silently, so the insert reduced to a
+    // row missing a NOT NULL column and threw - every OAuth callback failed at
+    // the point of storing the connection.
+    //
+    // The real columns are `configuration` (jsonb: API keys, endpoints) and
+    // `credentials` (jsonb: OAuth tokens), which is also the split the schema
+    // comments describe. Tokens go in `credentials`; everything descriptive
+    // goes in `configuration`.
     const integrationData = {
       tenantId,
       name: `${config.name} - ${userInfo.email || userInfo.displayName || 'User'}`,
-      category: config.category,
       provider: providerId,
-      description: config.description,
-      status: 'connected' as const,
-      config: {
+      type: 'oauth',
+      status: 'active',
+      configuration: {
         ...config.config,
-        tokens: {
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          expires_in: tokens.expires_in,
-          token_type: tokens.token_type || 'Bearer',
-        },
+        category: config.category,
+        description: config.description,
+        syncFrequency: 'real-time',
         userInfo,
       },
+      credentials: {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expires_in: tokens.expires_in,
+        token_type: tokens.token_type || 'Bearer',
+      },
       lastSync: new Date(),
-      syncFrequency: 'real-time',
     };
 
     const [integration] = await db.insert(systemIntegrations).values(integrationData).returning();
 
-    return {
-      id: integration.id,
-      tenantId: integration.tenantId!,
-      providerId,
-      name: integration.name,
-      status: integration.status as any,
-      config: integration.config,
-      tokens,
-      lastSync: integration.lastSync || undefined,
-      metadata: userInfo,
-    };
+    return toIntegrationData(integration, { providerId, tokens, metadata: userInfo });
   }
 
   /**
@@ -151,17 +198,7 @@ export class IntegrationService {
       .from(systemIntegrations)
       .where(eq(systemIntegrations.tenantId, tenantId));
 
-    return integrations.map((integration) => ({
-      id: integration.id,
-      tenantId: integration.tenantId!,
-      providerId: integration.provider,
-      name: integration.name,
-      status: integration.status as any,
-      config: integration.config,
-      tokens: integration.config?.tokens,
-      lastSync: integration.lastSync || undefined,
-      metadata: integration.config?.userInfo,
-    }));
+    return integrations.map((integration) => toIntegrationData(integration));
   }
 
   /**
@@ -415,17 +452,7 @@ export class IntegrationService {
 
     if (!integration) return null;
 
-    return {
-      id: integration.id,
-      tenantId: integration.tenantId!,
-      providerId: integration.provider,
-      name: integration.name,
-      status: integration.status as any,
-      config: integration.config,
-      tokens: integration.config?.tokens,
-      lastSync: integration.lastSync || undefined,
-      metadata: integration.config?.userInfo,
-    };
+    return toIntegrationData(integration);
   }
 
   private static async updateLastSync(integrationId: string): Promise<void> {
@@ -552,14 +579,20 @@ export class IntegrationService {
       throw new Error('QuickBooks integration not found');
     }
 
+    // QUALITY-002: companyId is the THIRD argument and was never passed, so the
+    // client was built with an undefined realm - JS does not enforce arity, so
+    // this failed at the API rather than at the call. It was already being
+    // computed four lines below, purely for logging.
+    const companyId = integration.metadata?.realmId || 'default-company';
+
     const qboClient = createQuickBooksClient(
       integration.tokens!.access_token,
       integration.tokens!.refresh_token!,
+      companyId,
     );
 
     try {
       let data: any;
-      const companyId = integration.metadata?.realmId || 'default-company';
 
       switch (dataType) {
         case 'customers':
@@ -665,7 +698,10 @@ export class IntegrationService {
       await db
         .update(systemIntegrations)
         .set({
-          status: 'connected',
+          // 'active', not 'connected' - the column's vocabulary is
+          // active | inactive | error | pending, and nothing that reads it
+          // recognises 'connected'.
+          status: 'active',
           lastSync: new Date(),
           updatedAt: new Date(),
         })

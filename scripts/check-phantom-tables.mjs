@@ -83,6 +83,35 @@ function knownRelations() {
 const known = knownRelations();
 const findings = [];
 const swallowing = [];
+const fabricating = [];
+
+/**
+ * An error branch that answers with invented rows.
+ *
+ * The swallowing rule above keys on the 42P01/PGRST205 literal, and the two
+ * worst instances in this tree did not test the code at all: `if (error) {` and
+ * then a 200 carrying a hand-written array of objects. auto-lead-routing
+ * returned two "sample" routing rules for `lead_routing_rules`, a relation
+ * named by no schema, no migration and no other file in the repository, so the
+ * routing UI listed rules that did not exist and could not be edited.
+ * commission returned a "Sales Rep Standard" plan with 5%/6.5%/8% tiers, which
+ * is a rep reading fabricated numbers as their own pay structure.
+ *
+ * This is a hard gate at zero rather than a baseline: a caller cannot tell
+ * invented data from real data, so there is no version of it that is merely
+ * debt. Matching is deliberately narrow - an `if (error)` block whose body
+ * returns an array-of-objects literal - which misses a fabricated SINGLE object
+ * and anything returned via a named constant. Both would be worth catching; the
+ * narrow form is what has actually occurred.
+ *
+ * The block end is the first closing brace at ANY indent, not the one matching
+ * the `if`. A version anchored to the outer brace missed the commission case
+ * entirely: its fabricated plan runs ~60 lines and the block never closed
+ * inside the scan window. Ending early is safe here because the array literal
+ * that decides the finding opens before any brace can close.
+ */
+const ERROR_BRANCH = /if\s*\(\s*(?:\w+\.)?error\s*\)\s*\{([\s\S]{0,600}?)\n\s*\}/g;
+const RETURNS_ROW_LITERAL = /return[\s\S]{0,160}?\[\s*\{/;
 
 /**
  * PA-031: strip comments before matching. `_shared/case.ts` documents its usage
@@ -109,6 +138,13 @@ for (const file of walk(join(repo, 'supabase', 'functions'))) {
     seen.add(table);
     findings.push({ table, file: rel });
     if (swallows) swallowing.push({ table, file: rel });
+  }
+
+  for (const m of src.matchAll(ERROR_BRANCH)) {
+    if (RETURNS_ROW_LITERAL.test(m[1])) {
+      fabricating.push(rel);
+      break;
+    }
   }
 }
 
@@ -148,6 +184,19 @@ if (update) {
     `✓ Baseline updated: ${new Set(findings.map(key)).size} undeclared table reference(s).`,
   );
   process.exit(0);
+}
+
+// Invented rows on an error path, checked before the baseline for the reason in
+// the ERROR_BRANCH comment: the caller cannot tell them from real ones.
+if (fabricating.length > 0) {
+  console.error(`\u2717 ${fabricating.length} error branch(es) returning fabricated rows:\n`);
+  for (const f of fabricating) console.error(`  ${f}`);
+  console.error(
+    '\nA 200 carrying hand-written objects is indistinguishable from real data to every\n' +
+      'caller. Return the error. This is how a commission page showed invented 5%/6.5%/8%\n' +
+      'tiers and a routing page listed rules that did not exist.',
+  );
+  process.exit(1);
 }
 
 // A handler that swallows 42P01 CANNOT report a missing table, so this pairing is

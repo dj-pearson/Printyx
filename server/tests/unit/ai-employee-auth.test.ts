@@ -108,8 +108,7 @@ describe('AUDIT-015: no /api-root router fabricates or leaks identity', () => {
     .map((m) => `server/${m[1].replace(/^\.\//, '')}.ts`)
     .filter((p) => fsMod.existsSync(p));
 
-  const strip = (src: string) =>
-    src.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  const strip = (src: string) => src.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
   it('finds the /api-root routers to check', () => {
     // If this drops to zero the rest of the suite passes vacuously.

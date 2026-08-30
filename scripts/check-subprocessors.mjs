@@ -41,8 +41,14 @@ const VENDORS = [
   { match: /api\.apollo\.io/, name: 'Apollo' },
   { match: /api\.zoominfo\.com/, name: 'ZoomInfo' },
   { match: /api\.dataforseo\.com/, name: 'DataForSEO' },
-  { match: /graph\.microsoft\.com|login\.microsoftonline\.com|MICROSOFT_CLIENT_SECRET/, name: 'Microsoft' },
-  { match: /googleapis\.com|accounts\.google\.com|GOOGLE_CLIENT_SECRET|GOOGLE_PLACES_API_KEY/, name: 'Google' },
+  {
+    match: /graph\.microsoft\.com|login\.microsoftonline\.com|MICROSOFT_CLIENT_SECRET/,
+    name: 'Microsoft',
+  },
+  {
+    match: /googleapis\.com|accounts\.google\.com|GOOGLE_CLIENT_SECRET|GOOGLE_PLACES_API_KEY/,
+    name: 'Google',
+  },
   { match: /appleid\.apple\.com|APPLE_CLIENT_SECRET/, name: 'Apple' },
   { match: /quickbooks\.api\.intuit\.com|oauth\.platform\.intuit\.com/, name: 'QuickBooks' },
   { match: /login\.salesforce\.com/, name: 'Salesforce' },
@@ -59,9 +65,18 @@ const VENDORS = [
  * silent exclusion.
  */
 const NOT_DATA_FLOWS = [
-  { file: 'server/seed-signature-data.ts', why: 'Seed fixture. The signature send path is a stub; no envelope is created.' },
-  { file: 'server/seed-manufacturer-orders.ts', why: 'Seed fixture for Canon/HP/Xerox endpoints that are not called.' },
-  { file: 'server/quickbooks-mapping.ts', why: 'Field-mapping reference including a commented sandbox URL.' },
+  {
+    file: 'server/seed-signature-data.ts',
+    why: 'Seed fixture. The signature send path is a stub; no envelope is created.',
+  },
+  {
+    file: 'server/seed-manufacturer-orders.ts',
+    why: 'Seed fixture for Canon/HP/Xerox endpoints that are not called.',
+  },
+  {
+    file: 'server/quickbooks-mapping.ts',
+    why: 'Field-mapping reference including a commented sandbox URL.',
+  },
 ];
 
 function walk(dir, out = []) {
@@ -136,7 +151,9 @@ for (const [name, exampleFile] of found) {
 }
 
 if (missing.length > 0) {
-  console.error(`\ncheck:subprocessors FAILED - ${missing.length} vendor(s) receive data but are not listed:\n`);
+  console.error(
+    `\ncheck:subprocessors FAILED - ${missing.length} vendor(s) receive data but are not listed:\n`,
+  );
   for (const m of missing) {
     console.error(`  ${m.name}  (e.g. ${m.exampleFile})`);
   }

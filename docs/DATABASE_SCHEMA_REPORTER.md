@@ -9,6 +9,7 @@ The Database Schema Reporter is a comprehensive tool that connects to your Supab
 ✅ **Connects to your database** via SSH/connection string  
 ✅ **Extracts complete schema** - all tables, columns, types, keys  
 ✅ **Generates 4 outputs:**
+
 1. Comprehensive schema documentation (Markdown)
 2. Quick reference guide (Markdown)
 3. Validation helper with mappings (Markdown)
@@ -21,16 +22,19 @@ The Database Schema Reporter is a comprehensive tool that connects to your Supab
 ### Run the Reporter
 
 **Direct Connection (default):**
+
 ```bash
 npm run check:schema
 ```
 
 **SSH Tunnel Mode:**
+
 ```bash
 npm run check:schema:ssh
 ```
 
 **Use SSH mode when:**
+
 - Database is behind a firewall
 - You have SSH access to the database server
 - You want an extra layer of security
@@ -41,6 +45,7 @@ npm run check:schema:ssh
 ### What You Need
 
 #### Direct Connection Mode
+
 The script uses your existing `DATABASE_URL` environment variable from `.env`:
 
 ```env
@@ -50,6 +55,7 @@ DB_SSL_REJECT_UNAUTHORIZED=false
 ```
 
 #### SSH Tunnel Mode
+
 Add these to your `.env`:
 
 ```env
@@ -71,9 +77,11 @@ SSH_PASSWORD=your_ssh_password
 ## Generated Files
 
 ### 1. `docs/DATABASE_SCHEMA.md`
+
 **Purpose:** Complete, detailed schema documentation
 
 **Contents:**
+
 - Table of contents with links
 - Every table with full details:
   - Row count
@@ -84,12 +92,14 @@ SSH_PASSWORD=your_ssh_password
   - Default values
 
 **Use for:**
+
 - Onboarding new developers
 - Architecture reviews
 - Planning migrations
 - Understanding relationships
 
 **Example:**
+
 ```markdown
 ### `public.company_contacts`
 
@@ -97,64 +107,76 @@ SSH_PASSWORD=your_ssh_password
 
 **Columns:** 15
 
-| Column | Type | Nullable | Default | Keys |
-|--------|------|----------|---------|------|
-| `id` | uuid | ✗ | uuid_generate_v4() | 🔑 PK |
-| `company_id` | uuid | ✗ | - | 🔗 FK → public.business_records.id |
-| `first_name` | character varying | ✓ | - | - |
-| `last_name` | character varying | ✗ | - | - |
-| `email` | character varying | ✓ | - | - |
-| `is_primary_contact` | boolean | ✓ | false | - |
+| Column               | Type              | Nullable | Default            | Keys                               |
+| -------------------- | ----------------- | -------- | ------------------ | ---------------------------------- |
+| `id`                 | uuid              | ✗        | uuid_generate_v4() | 🔑 PK                              |
+| `company_id`         | uuid              | ✗        | -                  | 🔗 FK → public.business_records.id |
+| `first_name`         | character varying | ✓        | -                  | -                                  |
+| `last_name`          | character varying | ✗        | -                  | -                                  |
+| `email`              | character varying | ✓        | -                  | -                                  |
+| `is_primary_contact` | boolean           | ✓        | false              | -                                  |
+
 ...
 ```
 
 ---
 
 ### 2. `docs/DATABASE_QUICK_REFERENCE.md`
+
 **Purpose:** Fast lookup of all tables and columns
 
 **Contents:**
+
 - Condensed view of all tables
 - Just table names and column lists
 - Perfect for quick checks
 
 **Use for:**
+
 - Quick column name lookups
 - Verifying table exists
 - Copy-pasting column names
 - IDE reference window
 
 **Example:**
+
 ```markdown
 ### company_contacts
 ```
-  id: uuid [PK]
-  company_id: uuid [FK → public.business_records.id]
-  first_name: character varying
-  last_name: character varying
-  email: character varying
-  is_primary_contact: boolean
-  ...
+
+id: uuid [PK]
+company_id: uuid [FK → public.business_records.id]
+first_name: character varying
+last_name: character varying
+email: character varying
+is_primary_contact: boolean
+...
+
 ```
+
 ```
 
 ---
 
 ### 3. `docs/DATABASE_VALIDATION_HELPER.md`
+
 **Purpose:** Validation constants and field mappings
 
 **Contents:**
+
 - Array of all valid table names
 - Object mapping tables to their columns
 - snake_case → camelCase conversion map
 
 **Use for:**
+
 - Validating code references
 - Auto-complete in IDEs
 - Transformation helpers
 - Linting rules
 
 **Example:**
+
 ```javascript
 const VALID_TABLES = [
   'public.company_contacts',
@@ -174,9 +196,9 @@ const TABLE_COLUMNS = {
 };
 
 const FIELD_MAPPING = {
-  'first_name': 'firstName',
-  'last_name': 'lastName',
-  'is_primary_contact': 'isPrimaryContact',
+  first_name: 'firstName',
+  last_name: 'lastName',
+  is_primary_contact: 'isPrimaryContact',
   // ... all snake_case fields
 };
 ```
@@ -184,20 +206,24 @@ const FIELD_MAPPING = {
 ---
 
 ### 4. `database-schema-report.json`
+
 **Purpose:** Machine-readable schema data
 
 **Contents:**
+
 - Full schema as structured JSON
 - All tables, columns, types, keys
 - Metadata (row counts, timestamps)
 
 **Use for:**
+
 - Automated validation scripts
 - Code generators
 - Schema comparison tools
 - CI/CD checks
 
 **Structure:**
+
 ```json
 {
   "generatedAt": "2026-01-24T...",
@@ -235,11 +261,13 @@ const FIELD_MAPPING = {
 ### 1. **Verify Code References**
 
 **Before deploying:**
+
 ```bash
 npm run check:schema
 ```
 
 **Then check:**
+
 - Does my code reference valid table names?
 - Are column names spelled correctly?
 - Do relationships match actual foreign keys?
@@ -251,10 +279,12 @@ npm run check:schema
 ### 2. **Onboard New Developers**
 
 **Give them:**
+
 1. `DATABASE_SCHEMA.md` - comprehensive overview
 2. `DATABASE_QUICK_REFERENCE.md` - quick lookups
 
 **They can:**
+
 - Understand the data model quickly
 - See all relationships visually
 - Know what data exists before coding
@@ -264,6 +294,7 @@ npm run check:schema
 ### 3. **Debug Data Issues**
 
 **When users report bugs:**
+
 1. Check `DATABASE_SCHEMA.md`
 2. Verify column types match expectations
 3. Check for nullable vs. required fields
@@ -274,6 +305,7 @@ npm run check:schema
 ### 4. **Plan Migrations**
 
 **Before schema changes:**
+
 1. Run `npm run check:schema` for baseline
 2. Make database changes
 3. Run `npm run check:schema` again
@@ -284,6 +316,7 @@ npm run check:schema
 ### 5. **Auto-Generate Code**
 
 **Use the JSON to generate:**
+
 - TypeScript types
 - API validation schemas
 - Drizzle ORM models
@@ -305,6 +338,7 @@ npm run check:system
 ```
 
 **Combined workflow:**
+
 1. Schema reporter shows what **exists in DB**
 2. System check validates **code matches DB**
 
@@ -325,6 +359,7 @@ npm run lint:transformations
 ## Automation Ideas
 
 ### 1. **Pre-Deploy Check**
+
 ```bash
 # In CI/CD pipeline
 npm run check:schema
@@ -333,6 +368,7 @@ git diff docs/DATABASE_SCHEMA.md
 ```
 
 ### 2. **Weekly Schema Snapshot**
+
 ```bash
 # Cron job
 npm run check:schema
@@ -341,6 +377,7 @@ git commit -m "Weekly schema snapshot"
 ```
 
 ### 3. **Migration Validation**
+
 ```bash
 # Before migration
 npm run check:schema
@@ -359,15 +396,19 @@ diff schema-before.json database-schema-report.json
 ## Troubleshooting
 
 ### Error: "DATABASE_URL environment variable not set"
+
 **Fix:** Ensure `.env` file has `DATABASE_URL`
 
 ### Error: "Connection refused"
+
 **Fix:** Check database is running and accessible
 
 ### Error: "Could not get row count for table X"
+
 **Fix:** Check RLS policies allow read access (won't fail, just warns)
 
 ### Slow execution
+
 **Reason:** Counting rows on large tables  
 **Solution:** Normal - takes ~30-60 seconds for full schema
 
@@ -411,12 +452,14 @@ $ npm run check:schema
 ## Best Practices
 
 ### 1. **Run Regularly**
+
 - Weekly snapshots
 - Before major deployments
 - After schema changes
 - When onboarding developers
 
 ### 2. **Commit Reports**
+
 ```bash
 # Commit markdown docs for easy viewing in GitHub
 git add docs/DATABASE_*.md
@@ -427,7 +470,9 @@ git add database-schema-report.json
 ```
 
 ### 3. **Review Before Deploys**
+
 Always generate fresh schema docs before deploying code that references database:
+
 ```bash
 npm run check:schema
 npm run check:system
@@ -435,7 +480,9 @@ npm run check:system
 ```
 
 ### 4. **Use for Code Reviews**
+
 When reviewing PRs that touch database:
+
 1. Check if schema changes are needed
 2. Reference `DATABASE_SCHEMA.md` for correct column names
 3. Verify foreign keys are used correctly
@@ -447,18 +494,21 @@ When reviewing PRs that touch database:
 ⚠️ **The reports contain database structure but NO actual data**
 
 **Safe to commit:**
+
 - Table names
-- Column names  
+- Column names
 - Data types
 - Relationships
 
 **NOT included:**
+
 - Actual data values
 - Passwords
 - API keys
 - User information
 
 **However:**
+
 - Exposing your database structure could help attackers
 - Consider keeping `database-schema-report.json` in `.gitignore` if repo is public
 - Markdown docs in `docs/` are generally safe for internal/private repos
@@ -468,6 +518,7 @@ When reviewing PRs that touch database:
 ## Future Enhancements
 
 Possible additions:
+
 - [ ] Index documentation
 - [ ] View and materialized view support
 - [ ] Enum type listings
@@ -480,4 +531,4 @@ Possible additions:
 
 ---
 
-*Last Updated: January 24, 2026*
+_Last Updated: January 24, 2026_

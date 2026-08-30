@@ -46,6 +46,13 @@ if (!reachabilityTrusted) {
 const current = {
   bothDivergent: byClass('both-divergent'),
   missingEdge: byClass('missing-edge'),
+  // PA-022: the subset nothing serves on EITHER host. It used to be folded into
+  // missing-edge, which reads as "works in dev, 404s in prod" and is the wrong
+  // instruction: here there is no handler to proxy or port, so the fix is to
+  // build the endpoint or delete the call. It is empty today and gated at zero
+  // rather than baselined, because a domain in it is broken for everyone -
+  // there is no dev-only grace period in which someone might notice.
+  deadInBoth: byClass('dead-in-both'),
 };
 
 // A missing-edge domain is only a PROD BLOCKER when a file a user can actually
@@ -55,6 +62,8 @@ const current = {
 // Same LIVE/DEAD split, and the same rule, as scripts/check-nav-targets.mjs.
 const liveMissing = new Set(byClassLive('missing-edge'));
 const deadMissing = byClassDead('missing-edge');
+const liveDeadInBoth = byClassLive('dead-in-both');
+const deadDeadInBoth = byClassDead('dead-in-both');
 
 const note =
   'EDGE-018 ratchet baseline. Grandfathered route-ownership debt as of the audit date. ' +
@@ -66,19 +75,25 @@ const note =
   'detection previously matched only app.METHOD("/api/x"), missing every route declared on a Router — both ' +
   'the absolute form (router.get("/api/x") + app.use(router)) and the prefixed form (router.get("/x") + ' +
   'app.use("/api", router)). Those 10 domains were always divergent; the tool simply could not see them, and ' +
-  'reported several as edge-only "fully migrated". Each was hand-verified before baselining.';
+  'reported several as edge-only "fully migrated". Each was hand-verified before baselining. PA-022 (2026-08-30): the dead-in-both class was split out of missing-edge - a domain a live page calls that NEITHER Express nor an edge function serves. It is gated at zero rather than grandfathered, so deadInBoth here should always be empty; if it is not, something was baselined that should have been fixed.';
 
 if (update) {
   writeFileSync(
     baselinePath,
     JSON.stringify(
-      { note, bothDivergent: current.bothDivergent, missingEdge: current.missingEdge },
+      {
+        note,
+        bothDivergent: current.bothDivergent,
+        missingEdge: current.missingEdge,
+        deadInBoth: current.deadInBoth,
+      },
       null,
       2,
     ) + '\n',
   );
   console.log(
-    `Baseline updated: bothDivergent=${current.bothDivergent.length} missingEdge=${current.missingEdge.length}`,
+    `Baseline updated: bothDivergent=${current.bothDivergent.length}` +
+      ` missingEdge=${current.missingEdge.length} deadInBoth=${current.deadInBoth.length}`,
   );
   process.exit(0);
 }
@@ -108,7 +123,10 @@ const newMissingDead = current.missingEdge.filter(
 const resolvedBoth = [...baseBoth].filter((d) => !current.bothDivergent.includes(d));
 const resolvedMissing = [...baseMissing].filter((d) => !current.missingEdge.includes(d));
 
-const fail = newBoth.length > 0 || newMissing.length > 0;
+// deadInBoth is NOT baselined away: it is at zero and stays there. Only a live
+// caller gates, for the same reason missing-edge does - a call inside an
+// orphaned file can never run.
+const fail = newBoth.length > 0 || newMissing.length > 0 || liveDeadInBoth.length > 0;
 
 if (newBoth.length) {
   console.error(
@@ -125,6 +143,28 @@ if (newMissing.length) {
   );
   for (const d of newMissing) console.error(`    /api/${d}`);
   console.error('  Fix: add the edge function, or remove the dead frontend call.');
+}
+
+if (liveDeadInBoth.length) {
+  console.error(
+    `\n✗ ${liveDeadInBoth.length} route(s) that NOTHING serves - no Express handler and no edge` +
+      ` function - called from a live page:`,
+  );
+  for (const d of liveDeadInBoth) console.error(`    /api/${d}`);
+  console.error(
+    '  This is broken on every host, not just production, and presents as an empty section rather',
+  );
+  console.error(
+    '  than an error. Fix: build the endpoint, or delete the call. Do NOT baseline it.',
+  );
+}
+
+if (deadDeadInBoth.length) {
+  console.log(
+    `\nℹ ${deadDeadInBoth.length} domain(s) nothing serves whose only callers are orphaned files` +
+      ` - not gated, since the call can never run:`,
+  );
+  for (const d of deadDeadInBoth) console.log(`    /api/${d}`);
 }
 
 if (newMissingDead.length) {
@@ -152,6 +192,7 @@ console.log(
   `✓ Route ownership OK — no new ambiguous or missing-edge routes ` +
     `(${baseBoth.size} both-divergent + ${baseMissing.size} missing-edge grandfathered; ` +
     `of the grandfathered missing-edge, ${liveMissing.size} are LIVE prod 404s and ` +
-    `${deadMissing.length} have only orphaned callers).`,
+    `${deadMissing.length} have only orphaned callers; ` +
+    `${current.deadInBoth.length} served-by-nothing, gated at zero).`,
 );
 process.exit(0);

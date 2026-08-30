@@ -40,6 +40,27 @@ export default async function handler(req: Request) {
     // - If pathname is just the endpoint (server.ts strips function name): /profile → pathParts[0]
     const endpoint = pathParts[0] === 'user' ? pathParts[1] : pathParts[0];
 
+    // user_settings.tenant_id is NOT NULL, so every upsert below needs one. The
+    // JWT carries it under either spelling depending on when the claim was
+    // issued, and the `users` row is the fallback for a token that carries
+    // neither - without that fallback the write fails with a not-null violation
+    // that reads like a bug in the settings form.
+    const jwtTenantId =
+      (user.app_metadata?.tenantId as string | undefined) ??
+      (user.app_metadata?.tenant_id as string | undefined) ??
+      (user.user_metadata?.tenantId as string | undefined) ??
+      (user.user_metadata?.tenant_id as string | undefined) ??
+      null;
+    const resolveTenantId = async (): Promise<string | null> => {
+      if (jwtTenantId) return jwtTenantId;
+      const { data } = await admin
+        .from('users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .maybeSingle();
+      return (data?.tenant_id as string | undefined) ?? null;
+    };
+
     // GET /user or /user/profile - Get current user profile
     if (req.method === 'GET' && (!endpoint || endpoint === 'profile')) {
       // COP-M01: this list named name, avatar_url, phone, department, job_title,
@@ -94,24 +115,42 @@ export default async function handler(req: Request) {
     }
 
     // GET /user/preferences - Get user preferences
+    //
+    // AUDIT-027: both preference handlers used to read and write
+    // `user_preferences`, a relation that exists in no Drizzle schema, no
+    // migration and no other file in the repository - it was in
+    // docs/phantom-tables-baseline.json, named only here. The real table is
+    // `user_settings`, which is what GET /settings reads, so the Settings page
+    // saved preferences into nothing and then rendered them from somewhere
+    // else. This read swallowed the 42P01 and answered 200 with hardcoded
+    // defaults, which is why it looked like a user who had set nothing.
     if (req.method === 'GET' && endpoint === 'preferences') {
-      const { data: prefs } = await admin
-        .from('user_preferences')
-        .select('*')
+      const { data: prefs, error } = await admin
+        .from('user_settings')
+        .select('theme, language, timezone, date_format, time_format, currency, notifications')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error reading preferences:', error);
+        return createCorsResponse({ error: 'Failed to read preferences' }, 500, req);
+      }
 
       return createCorsResponse(
-        prefs || {
+        {
           userId: user.id,
-          theme: 'system',
-          language: 'en',
-          notifications: {
+          theme: prefs?.theme ?? 'system',
+          language: prefs?.language ?? 'en',
+          timezone: prefs?.timezone ?? 'America/New_York',
+          dateFormat: prefs?.date_format ?? 'MM/dd/yyyy',
+          timeFormat: prefs?.time_format ?? '12',
+          currency: prefs?.currency ?? 'USD',
+          notifications: prefs?.notifications ?? {
             email: true,
             push: true,
             sms: false,
+            marketing: false,
           },
-          dashboardLayout: 'default',
         },
         200,
         req,
@@ -208,50 +247,120 @@ export default async function handler(req: Request) {
 
     // PUT /user/preferences - Update user preferences
     if (req.method === 'PUT' && endpoint === 'preferences') {
-      const body = await req.json();
-
-      const { data: existingPrefs } = await admin
-        .from('user_preferences')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (existingPrefs) {
-        const { data: prefs, error } = await admin
-          .from('user_preferences')
-          .update({
-            ...body,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', user.id)
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error updating preferences:', error);
-          return createCorsResponse({ error: 'Failed to update preferences' }, 500, req);
-        }
-
-        return createCorsResponse(prefs, 200, req);
-      } else {
-        const { data: prefs, error } = await admin
-          .from('user_preferences')
-          .insert({
-            user_id: user.id,
-            ...body,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error creating preferences:', error);
-          return createCorsResponse({ error: 'Failed to create preferences' }, 500, req);
-        }
-
-        return createCorsResponse(prefs, 201, req);
+      const tenantId = await resolveTenantId();
+      if (!tenantId) {
+        return createCorsResponse({ error: 'No tenant ID found for user' }, 400, req);
       }
+
+      const body = (await req.json()) as Record<string, unknown>;
+
+      // Named columns only. The old version spread the request body straight
+      // into the write, so the caller decided what got written; PostgREST
+      // rejects an unknown key outright, which is the opposite of Drizzle's
+      // silent drop but no better as a contract.
+      const updates: Record<string, unknown> = {
+        user_id: user.id,
+        tenant_id: tenantId,
+        updated_at: new Date().toISOString(),
+      };
+      const columnFor: Record<string, string> = {
+        theme: 'theme',
+        language: 'language',
+        timezone: 'timezone',
+        dateFormat: 'date_format',
+        date_format: 'date_format',
+        timeFormat: 'time_format',
+        time_format: 'time_format',
+        currency: 'currency',
+      };
+      for (const [key, column] of Object.entries(columnFor)) {
+        if (body[key] !== undefined) updates[column] = body[key];
+      }
+
+      // `notifications` is shared with /notification-preferences, which stores
+      // the dialog's per-type choices under a `detailed` key on the same jsonb.
+      // Writing this tab's four channel toggles over the whole object would
+      // erase them, so merge.
+      if (body.notifications !== undefined) {
+        const { data: current } = await admin
+          .from('user_settings')
+          .select('notifications')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        updates.notifications = {
+          ...((current?.notifications ?? {}) as Record<string, unknown>),
+          ...(body.notifications as Record<string, unknown>),
+        };
+      }
+
+      const { error } = await admin
+        .from('user_settings')
+        .upsert(updates, { onConflict: 'user_id' });
+
+      if (error) {
+        console.error('Error updating preferences:', error);
+        return createCorsResponse({ error: 'Failed to update preferences' }, 500, req);
+      }
+
+      return createCorsResponse({ message: 'Preferences updated successfully' }, 200, req);
+    }
+
+    // GET/PUT /user/notification-preferences - the dialog behind the bell.
+    //
+    // Nothing served this on either backend: no Express handler existed and no
+    // edge branch matched, so it 404'd in dev and in production. The dialog's
+    // read sat inside a try/catch that fell back to its own defaults, which is
+    // why it looked like it worked; the save had no such fallback and simply
+    // failed.
+    //
+    // Only the user's CHOICES are stored. The catalogue of notification types,
+    // with labels and descriptions, is presentation and stays in the component
+    // - persisting it here would freeze copy into a jsonb column and silently
+    // drop any type added later.
+    if (endpoint === 'notification-preferences' && (req.method === 'GET' || req.method === 'PUT')) {
+      const { data: current, error: readError } = await admin
+        .from('user_settings')
+        .select('notifications')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (readError) {
+        console.error('Error reading notification preferences:', readError);
+        return createCorsResponse({ error: 'Failed to read notification preferences' }, 500, req);
+      }
+
+      const notifications = (current?.notifications ?? {}) as Record<string, unknown>;
+
+      if (req.method === 'GET') {
+        return createCorsResponse(
+          (notifications.detailed ?? {}) as Record<string, unknown>,
+          200,
+          req,
+        );
+      }
+
+      const tenantId = await resolveTenantId();
+      if (!tenantId) {
+        return createCorsResponse({ error: 'No tenant ID found for user' }, 400, req);
+      }
+
+      const body = (await req.json()) as Record<string, unknown>;
+      const { error } = await admin.from('user_settings').upsert(
+        {
+          user_id: user.id,
+          tenant_id: tenantId,
+          notifications: { ...notifications, detailed: body },
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' },
+      );
+
+      if (error) {
+        console.error('Error saving notification preferences:', error);
+        return createCorsResponse({ error: 'Failed to save notification preferences' }, 500, req);
+      }
+
+      return createCorsResponse({ message: 'Notification preferences saved' }, 200, req);
     }
 
     // POST /user/update-last-login - Update last login timestamp
@@ -427,18 +536,14 @@ export default async function handler(req: Request) {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      // Get user preferences
-      const { data: preferences } = await admin
-        .from('user_preferences')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
+      // Preferences are columns on user_settings, not a separate row - see the
+      // GET /preferences handler. The second read this used to do was against
+      // `user_preferences`, which does not exist, so `preferences` in the
+      // exported file was always {}.
       const exportData = {
         exportedAt: new Date().toISOString(),
         profile: profile || {},
         settings: settings || {},
-        preferences: preferences || {},
       };
 
       return createCorsResponse(exportData, 200, req);
@@ -446,11 +551,8 @@ export default async function handler(req: Request) {
 
     // DELETE /user or /user/delete - Delete user account
     if (req.method === 'DELETE' && (!endpoint || endpoint === 'delete')) {
-      // Delete user settings
+      // One row holds settings and preferences both.
       await admin.from('user_settings').delete().eq('user_id', user.id);
-
-      // Delete user preferences
-      await admin.from('user_preferences').delete().eq('user_id', user.id);
 
       // Delete the user from the users table
       const { error: deleteError } = await admin.from('users').delete().eq('id', user.id);

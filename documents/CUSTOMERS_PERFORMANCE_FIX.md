@@ -3,7 +3,9 @@
 ## Issues Fixed
 
 ### 1. Performance Issue - Loading 15,000 Records
+
 **Problem**: The `/customers` page was attempting to load all 15,000+ customer records at once, causing:
+
 - Extremely slow page load times
 - Browser "page not responding" warnings
 - Poor user experience
@@ -11,6 +13,7 @@
 **Solution**: Implemented server-side pagination with the following changes:
 
 #### Backend Changes (`server/routes-business-records.ts`)
+
 - ✅ Updated `/api/customers` GET endpoint to support pagination with `limit` and `offset` query parameters
 - ✅ Added `/api/customers/:identifier` GET endpoint to fetch single customer by ID, slug, or display ID
 - ✅ Default limit set to 100 records per page
@@ -20,6 +23,7 @@
 - ✅ Supports search across company name, contact name, email, phone, city, industry
 
 #### Frontend Changes (`client/src/pages/customers.tsx`)
+
 - ✅ Updated query to fetch paginated data (500 records per page for better UX)
 - ✅ Added page state management
 - ✅ Added pagination controls with Previous/Next buttons and page indicators
@@ -27,7 +31,9 @@
 - ✅ Shows pagination info: "Showing 1-500 of 15,000 records"
 
 ### 2. Navigation 404 Error
+
 **Problem**: Clicking on a customer record resulted in 404 errors because:
+
 - The list page queried the Express backend → `business_records` table
 - The detail page tried to query Edge Functions → `customers` table (different table!)
 - Production config routes `/api/customers/:id` to `functions.printyx.net/customers/:id`
@@ -35,6 +41,7 @@
 **Solution**: Updated Edge Functions to query the correct `business_records` table
 
 #### Edge Function Changes (`supabase/functions/customers/index.ts`)
+
 - ✅ Updated GET list endpoint to query `business_records` instead of `customers` table
 - ✅ Updated GET single endpoint to query `business_records` with support for ID, slug, or display ID lookup
 - ✅ Added pagination support to Edge Function (limit/offset parameters)
@@ -47,6 +54,7 @@
 ## Architecture Context
 
 The application uses a **Unified Business Records** pattern where:
+
 - All leads, prospects, and customers are stored in the `business_records` table
 - Record type is determined by the `record_type` column ('lead', 'prospect', 'customer')
 - Lead-to-customer conversion is a simple status update (zero data loss)
@@ -57,11 +65,13 @@ The application uses a **Unified Business Records** pattern where:
 ### New Pagination Format
 
 **Request:**
+
 ```
 GET /api/customers?limit=100&offset=0&search=acme&status=active
 ```
 
 **Response:**
+
 ```json
 {
   "records": [...],
@@ -77,11 +87,13 @@ GET /api/customers?limit=100&offset=0&search=acme&status=active
 ### Customer Detail Endpoint
 
 **Request:**
+
 ```
 GET /api/customers/{id_or_slug_or_displayId}
 ```
 
 **Response:**
+
 ```json
 {
   "id": "uuid",
@@ -107,11 +119,13 @@ GET /api/customers/{id_or_slug_or_displayId}
 ## Performance Improvements
 
 **Before:**
+
 - Load time: ~10-30 seconds (loading 15,000 records)
 - Memory usage: High (all records in browser memory)
 - Browser warnings: Frequent "page not responding"
 
 **After (Expected):**
+
 - Load time: ~1-3 seconds (loading 500 records)
 - Memory usage: Low (only current page in memory)
 - Browser warnings: None
@@ -133,6 +147,7 @@ GET /api/customers/{id_or_slug_or_displayId}
 ## Deployment Notes
 
 1. Deploy Edge Function updates first:
+
    ```bash
    supabase functions deploy customers
    ```

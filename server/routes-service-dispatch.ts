@@ -335,6 +335,55 @@ router.get(
         {} as Record<string, number>,
       );
 
+      // AUDIT-021: `performance` below was four Math.random() values dressed as
+      // measurements - completionRate 92 + random*8, customerSatisfaction
+      // 4.2 + random*0.6 and so on. A random number is worse than a fixed one
+      // here: it changes on every refresh, which is what real telemetry does,
+      // so reloading appeared to confirm it. These two are derivable from
+      // service_tickets; the other two are not, and are named in `unbacked`
+      // rather than invented.
+      const lifetimeTickets = await db
+        .select({
+          technicianId: serviceTickets.assignedTechnicianId,
+          status: serviceTickets.status,
+          laborHours: serviceTickets.laborHours,
+        })
+        .from(serviceTickets)
+        .where(eq(serviceTickets.tenantId, tenantId));
+
+      const perTechnician = new Map<string, { total: number; resolved: number; hours: number[] }>();
+      for (const row of lifetimeTickets) {
+        if (!row.technicianId) continue;
+        const entry = perTechnician.get(row.technicianId) ?? { total: 0, resolved: 0, hours: [] };
+        entry.total += 1;
+        if (row.status === 'completed' || row.status === 'resolved') {
+          entry.resolved += 1;
+          const hours = Number(row.laborHours);
+          if (Number.isFinite(hours) && hours > 0) entry.hours.push(hours);
+        }
+        perTechnician.set(row.technicianId, entry);
+      }
+
+      // NULL, not 0: a technician with no closed tickets has no completion rate,
+      // and 0% reads as a technician who fails everything.
+      const performanceFor = (technicianId: string) => {
+        const entry = perTechnician.get(technicianId);
+        const completionRate =
+          entry && entry.total > 0 ? Math.round((entry.resolved / entry.total) * 100) : null;
+        const averageCallTimeMinutes = entry?.hours.length
+          ? Math.round((entry.hours.reduce((a, b) => a + b, 0) / entry.hours.length) * 60)
+          : null;
+        return {
+          completionRate,
+          averageCallTimeMinutes,
+          ticketsClosed: entry?.resolved ?? 0,
+          unbacked: [
+            'customerSatisfaction: no rating is captured against a service ticket',
+            'onTimeArrival: service_tickets records scheduled_date and resolved_at, but no arrival time',
+          ],
+        };
+      };
+
       // Create availability data based on real technician data
       const technicianAvailability = allTechnicians.map((tech) => {
         const assignedTicketCount = assignedTicketsCounts[tech.id] || 0;
@@ -356,12 +405,7 @@ router.get(
           },
           status: technicianStatusLabel(tech),
           assignedTickets: assignedTicketCount,
-          performance: {
-            completionRate: 92 + Math.random() * 8, // Randomized realistic performance metrics
-            averageCallTime: 90 + Math.random() * 30,
-            customerSatisfaction: 4.2 + Math.random() * 0.6,
-            onTimeArrival: 88 + Math.random() * 10,
-          },
+          performance: performanceFor(tech.id),
         };
       });
 
@@ -393,6 +437,15 @@ router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any
       .where(eq(serviceTickets.tenantId, tenantId))
       .groupBy(serviceTickets.status, serviceTickets.priority);
 
+    // Created/resolved timestamps for the one duration this schema can express.
+    const allTicketRows = await db
+      .select({
+        createdAt: serviceTickets.createdAt,
+        resolvedAt: serviceTickets.resolvedAt,
+      })
+      .from(serviceTickets)
+      .where(eq(serviceTickets.tenantId, tenantId));
+
     // Get technician performance data
     const techPerformance = await db
       .select({
@@ -415,58 +468,58 @@ router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any
       .filter((stat) => stat.status === 'open')
       .reduce((sum, stat) => sum + stat.count, 0);
 
+    // AUDIT-021 / AUDIT-019: everything below the three real counts used to be
+    // written in - averageResponseTime 4.2, firstCallResolution 78.5,
+    // customerSatisfaction 4.6, 2,847 miles driven, $425.50 of route
+    // optimization savings - with four Math.random() values in
+    // technician_performance and a fixed avgResponseTime per priority band.
+    // What service_tickets can answer is answered; the rest is named.
+    const priorityCount = (priority: string) =>
+      ticketStats.filter((s) => s.priority === priority).reduce((sum, s) => sum + s.count, 0);
+
+    const closedHours = allTicketRows
+      .filter((r) => r.resolvedAt && r.createdAt)
+      .map(
+        (r) =>
+          (new Date(r.resolvedAt as Date).getTime() - new Date(r.createdAt as Date).getTime()) /
+          3600000,
+      )
+      .filter((h) => Number.isFinite(h) && h >= 0);
+
     const analytics = {
       summary: {
         totalTickets,
         completedTickets,
         pendingTickets,
-        averageResponseTime: 4.2,
-        firstCallResolution: 78.5,
-        customerSatisfaction: 4.6,
-        technicianUtilization: 73.2,
-      },
-      efficiency: {
-        averageTravelTime: 18.5,
-        fuelCostPerCall: 8.75,
-        totalMilesDriven: 2847,
-        routeOptimizationSavings: 425.5,
-        onTimeArrivalRate: 92.3,
+        // Created to resolved, in hours. NULL when nothing has been resolved -
+        // an average of no tickets is not zero hours.
+        averageResolutionHours: closedHours.length
+          ? Math.round((closedHours.reduce((a, b) => a + b, 0) / closedHours.length) * 10) / 10
+          : null,
       },
       technician_performance: techPerformance.map((tech) => ({
         technicianId: tech.technicianId,
         name: technicianDisplayName(tech),
         ticketsCompleted: tech.completedTickets,
-        averageCallTime: 90 + Math.random() * 30, // Simulated for now
-        completionRate: 90 + Math.random() * 8,
-        customerRating: 4.2 + Math.random() * 0.6,
-        utilizationRate: 60 + Math.random() * 20,
       })),
       priority_distribution: {
-        urgent: {
-          count: ticketStats
-            .filter((s) => s.priority === 'urgent')
-            .reduce((sum, s) => sum + s.count, 0),
-          avgResponseTime: 1.2,
-        },
-        high: {
-          count: ticketStats
-            .filter((s) => s.priority === 'high')
-            .reduce((sum, s) => sum + s.count, 0),
-          avgResponseTime: 2.8,
-        },
-        medium: {
-          count: ticketStats
-            .filter((s) => s.priority === 'medium')
-            .reduce((sum, s) => sum + s.count, 0),
-          avgResponseTime: 5.1,
-        },
-        low: {
-          count: ticketStats
-            .filter((s) => s.priority === 'low')
-            .reduce((sum, s) => sum + s.count, 0),
-          avgResponseTime: 8.7,
-        },
+        urgent: { count: priorityCount('urgent') },
+        high: { count: priorityCount('high') },
+        medium: { count: priorityCount('medium') },
+        low: { count: priorityCount('low') },
       },
+      // Named rather than fabricated, the way _shared/erp-integration-dashboard.ts
+      // does it. Each line says which column is missing, so it is actionable
+      // rather than an apology.
+      unbacked: [
+        'averageResponseTime: no first-response timestamp on service_tickets, only created_at and resolved_at',
+        'firstCallResolution: nothing records whether a ticket needed a second visit',
+        'customerSatisfaction / customerRating: no rating is captured against a service ticket',
+        'technicianUtilization / utilizationRate: technicians.working_hours is a jsonb schedule, not hours worked',
+        'efficiency (travel time, fuel cost, miles driven, route-optimization savings): no telemetry or mileage is recorded against a dispatch',
+        'onTimeArrivalRate: scheduled_date and resolved_at are stored, arrival time is not',
+        'per-priority avgResponseTime: same gap as averageResponseTime',
+      ],
     };
 
     res.json(analytics);
@@ -580,32 +633,69 @@ router.get('/api/dispatch/tracking', cacheControl(60), etag(), async (req: any, 
       .from(technicians)
       .where(eq(technicians.tenantId, tenantId));
 
-    // Create tracking data based on real technician data
-    const tracking = allTechnicians.map((tech) => ({
-      technicianId: tech.id,
-      name: technicianDisplayName(tech),
-      currentStatus: technicianStatusLabel(tech),
-      currentLocation: {
-        address: tech.currentLocation || 'Service Center',
-        coordinates: {
-          lat: 40.7128 + (Math.random() - 0.5) * 0.1,
-          lng: -74.006 + (Math.random() - 0.5) * 0.1,
-        },
-      },
-      currentAssignment:
-        technicianStatusLabel(tech) === 'busy'
-          ? {
-              ticketId: `ticket-${Math.floor(Math.random() * 1000)}`,
-              customer: 'Active Service Call',
-              estimatedCompletion: '2:30 PM',
-            }
-          : null,
-      nextAssignment: {
-        ticketId: `ticket-${Math.floor(Math.random() * 1000)}`,
-        customer: 'Scheduled Service',
-        scheduledStart: '3:00 PM',
-      },
-    }));
+    // AUDIT-021: this took real technician rows and decorated each with a
+    // random point within 0.05 degrees of 40.7128/-74.006, an invented ticket
+    // id, a customer called "Active Service Call" and the times 2:30 PM and
+    // 3:00 PM. Real names on fabricated positions is the worst version of this
+    // defect - a map of people that is not where they are, and plausible enough
+    // to act on. technicians has a free-text current_location and no
+    // coordinates, so there is nothing to plot; the assignments are real now,
+    // read from the tickets actually assigned to each technician.
+    const openTickets = await db
+      .select({
+        id: serviceTickets.id,
+        ticketNumber: serviceTickets.ticketNumber,
+        title: serviceTickets.title,
+        status: serviceTickets.status,
+        scheduledDate: serviceTickets.scheduledDate,
+        customerAddress: serviceTickets.customerAddress,
+        technicianId: serviceTickets.assignedTechnicianId,
+      })
+      .from(serviceTickets)
+      .where(
+        and(
+          eq(serviceTickets.tenantId, tenantId),
+          inArray(serviceTickets.status, ['assigned', 'in_progress']),
+        ),
+      )
+      .orderBy(serviceTickets.scheduledDate);
+
+    const ticketsByTechnician = new Map<string, typeof openTickets>();
+    for (const ticket of openTickets) {
+      if (!ticket.technicianId) continue;
+      const list = ticketsByTechnician.get(ticket.technicianId) ?? [];
+      list.push(ticket);
+      ticketsByTechnician.set(ticket.technicianId, list);
+    }
+
+    const asAssignment = (ticket: (typeof openTickets)[number] | undefined) =>
+      ticket
+        ? {
+            ticketId: ticket.id,
+            ticketNumber: ticket.ticketNumber,
+            title: ticket.title,
+            customerAddress: ticket.customerAddress,
+            scheduledDate: ticket.scheduledDate,
+          }
+        : null;
+
+    const tracking = allTechnicians.map((tech) => {
+      const assigned = ticketsByTechnician.get(tech.id) ?? [];
+      const current = assigned.find((t) => t.status === 'in_progress');
+      const next = assigned.find((t) => t.id !== current?.id);
+      return {
+        technicianId: tech.id,
+        name: technicianDisplayName(tech),
+        currentStatus: technicianStatusLabel(tech),
+        currentLocation: tech.currentLocation || null,
+        currentAssignment: asAssignment(current),
+        nextAssignment: asAssignment(next),
+        unbacked: [
+          'coordinates: technicians records a free-text current_location and no latitude or longitude, so a technician cannot be placed on a map',
+          'estimatedCompletion: service_tickets has estimated_duration but no start time to add it to',
+        ],
+      };
+    });
 
     res.json(tracking);
   } catch (error) {

@@ -1,7 +1,6 @@
 appId: com.printyx.app
-name: "07 - Contacts"
+name: '07 - Contacts'
 ---
-
 - waitForAnimationToEnd
 
 # Go back to CRM hub
@@ -10,11 +9,11 @@ name: "07 - Contacts"
 
 # Navigate to Contacts
 - tapOn:
-    text: "All business contacts"
+    text: 'All business contacts'
     optional: true
 - tapOn:
-    text: "Contacts"
+    text: 'Contacts'
 - waitForAnimationToEnd
 
 # Screenshot: Contacts with call/email actions
-- takeScreenshot: "07-contacts"
+- takeScreenshot: '07-contacts'

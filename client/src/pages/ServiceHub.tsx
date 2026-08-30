@@ -54,6 +54,7 @@ import {
 import { useMobileDetection } from '@/hooks/useExternalIntegrations';
 import { MobileServiceDispatch } from '@/components/mobile/MobileServiceDispatch';
 import { CustomerEquipmentProfile } from '@/components/CustomerEquipmentProfile';
+import { useActionParam } from '@/hooks/use-action-param';
 
 /**
  * AUDIT-013: the `service_tickets` table stores FKs (customer_id, equipment_id,
@@ -73,6 +74,12 @@ export default function ServiceHub() {
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
   const [showPhoneInCreator, setShowPhoneInCreator] = useState(false);
+  // A breadcrumb quick action links here with ?action=new;
+  // open the create dialog rather than dropping the user on the list.
+  const quickAction = useActionParam();
+  useEffect(() => {
+    if (quickAction === 'new') setShowPhoneInCreator(true);
+  }, [quickAction]);
   const [showTechWorkflow, setShowTechWorkflow] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<ServiceHubTicket | null>(null);
   const [searchTerm, setSearchTerm] = useState('');

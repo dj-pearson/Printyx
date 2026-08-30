@@ -118,10 +118,6 @@ const AutoSupplyReplenishmentDashboard = React.lazy(
 );
 
 // Feature implementations - AI/ML powered features
-const PredictiveContractProfitability = React.lazy(
-  () => import('@/pages/PredictiveContractProfitability'),
-);
-const AIServiceIntelligence = React.lazy(() => import('@/pages/AIServiceIntelligence'));
 const SalesRepAssignments = React.lazy(() => import('@/pages/SalesRepAssignments'));
 const LeadMapViewer = React.lazy(() => import('@/pages/LeadMapViewer'));
 
@@ -301,8 +297,6 @@ const CustomerSuccessManagement = React.lazy(() => import('@/pages/CustomerSucce
 const DocumentManagement = React.lazy(() => import('@/pages/DocumentManagement'));
 const MobileServiceApp = React.lazy(() => import('@/pages/MobileServiceApp'));
 const AdvancedAnalyticsDashboard = React.lazy(() => import('@/pages/AdvancedAnalyticsDashboard'));
-const BusinessProcessOptimization = React.lazy(() => import('@/pages/BusinessProcessOptimization'));
-const IncidentResponseSystem = React.lazy(() => import('@/pages/IncidentResponseSystem'));
 const AIAnalyticsDashboard = React.lazy(() => import('@/pages/AIAnalyticsDashboard'));
 const IntegrationHub = React.lazy(() => import('@/pages/IntegrationHub'));
 const WorkflowAutomation = React.lazy(() => import('@/pages/WorkflowAutomation'));
@@ -482,6 +476,33 @@ function Router() {
         </React.Suspense>
       );
     }
+  }
+
+  // CRMX-016: public booking pages — no auth, no app shell, same shape as /p/
+  // and /f/ above. Both components were lazily imported here and never routed,
+  // so the whole booking surface shipped unreachable: two edge functions
+  // (public-booking, booking-pages), both proxied, and 41KB of pages behind
+  // three missing Route lines. AUDIT-014 carried /book/__DYN__ in its baseline
+  // for exactly this reason.
+  //
+  // /book/manage/:token is checked FIRST. Both pages read their own parameter
+  // out of window.location rather than taking a wouter param, and
+  // PublicBooking's getSlug() takes the segment after 'book' - which for a
+  // manage URL is the literal 'manage'. Segment counts differ, but the order is
+  // still the honest way to express that manage is not a slug.
+  if (pathname.startsWith('/book/manage/')) {
+    return (
+      <React.Suspense fallback={null}>
+        <BookingManage />
+      </React.Suspense>
+    );
+  }
+  if (pathname.startsWith('/book/')) {
+    return (
+      <React.Suspense fallback={null}>
+        <PublicBooking />
+      </React.Suspense>
+    );
   }
 
   // CRMX-011: public hosted/embeddable web form (/f/:token) — no auth, no shell.
@@ -735,7 +756,6 @@ function Router() {
                 <Route path="/preventive-maintenance" component={PreventiveMaintenanceScheduling} />
                 {/* Unified Predictive Maintenance Hub - consolidates proactive + AI predictions */}
                 <Route path="/predictive-maintenance-hub" component={PredictiveMaintenanceHub} />
-                <Route path="/incident-response-system" component={IncidentResponseSystem} />
                 <Route path="/customer-portal" component={CustomerSelfServicePortal} />
                 <Route path="/advanced-billing" component={AdvancedBillingEngine} />
                 <Route path="/financial-forecasting">
@@ -971,12 +991,7 @@ function Router() {
                   path="/advanced-analytics-dashboard"
                   component={AdvancedAnalyticsDashboard}
                 />
-                <Route
-                  path="/business-process-optimization"
-                  component={BusinessProcessOptimization}
-                />
                 <Route path="/customer-self-service-portal" component={CustomerSelfServicePortal} />
-                <Route path="/incident-response" component={IncidentResponseSystem} />
                 <Route path="/ai-analytics-dashboard" component={AIAnalyticsDashboard} />
                 <Route path="/predictive-analytics">
                   {() => (
@@ -987,11 +1002,38 @@ function Router() {
                     />
                   )}
                 </Route>
-                <Route
-                  path="/predictive-contract-profitability"
-                  component={PredictiveContractProfitability}
-                />
-                <Route path="/ai-service-intelligence" component={AIServiceIntelligence} />
+                {/* AUDIT-019: /predictive-contract-profitability was 516 lines
+                    over a `const contractData = [...]` literal carrying
+                    per-contract margins, predicted margins, risk levels and a
+                    "Reprice at renewal (+12%)" recommendation. That is pricing
+                    advice with nothing behind it.
+
+                    Its actual-margin half is what /contracts/profitability
+                    already computes from the contract-pnl engine (real CPC
+                    revenue minus parts, labour, supplies and financing). Its
+                    predictive half - predictedCost, predictedMargin, the
+                    reprice recommendation - has no model anywhere in the
+                    codebase, so there was nothing to wire it to. Deleted, with
+                    the URL redirected so the email campaign still lands. */}
+                <Route path="/predictive-contract-profitability">
+                  {() => <LegacyRedirect to="/contracts/profitability" />}
+                </Route>
+                {/* AUDIT-019: /ai-service-intelligence was 373 lines over a
+                    `const predictions = [...]` literal - Acme Corporation, a
+                    Canon imageRUNNER, a fuser failure at 87% probability in
+                    15-20 days, part FM4-8400-000, $170 saved - with no network
+                    call in the file. A technician reading it would book a
+                    preventive visit against an invented prediction.
+
+                    It is the same domain /service/predictions already serves
+                    from the real predictive-failure engine (scoring, approve,
+                    snooze, dismiss, accuracy). Rather than build a second
+                    consumer of one endpoint, the fixture twin is deleted and
+                    its URL redirects, so the marketing campaign in
+                    data/emailCampaigns.ts still lands somewhere real. */}
+                <Route path="/ai-service-intelligence">
+                  {() => <LegacyRedirect to="/service/predictions" />}
+                </Route>
                 <Route path="/integration-hub" component={IntegrationHub} />
                 <Route path="/integrations" component={IntegrationHub} />
                 <Route path="/social-media-generator" component={SocialMediaGenerator} />
@@ -1214,6 +1256,10 @@ function Router() {
                 <Route path="/ai-employees" component={AIEmployeeDashboard} />
                 <Route path="/calendar" component={CalendarPage} />
                 <Route path="/meeting-transcription" component={MeetingTranscription} />
+                {/* CRMX-016: the authenticated side of booking - where a rep
+                    creates and edits the pages /book/:slug serves. Lazily
+                    imported since the feature was built and never routed. */}
+                <Route path="/booking-pages" component={BookingPages} />
                 <Route path="/ai-task-scheduling" component={TaskHub} />
                 <Route path="/ai-search" component={AISearchKnowledgeDashboard} />
                 <Route path="/conversational-ai-dashboard" component={ConversationalAIDashboard} />

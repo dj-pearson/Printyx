@@ -17,8 +17,7 @@ import { createModuleLogger } from '../lib/logger';
 
 const log = createModuleLogger('threat-detection-middleware');
 
-const isDebugMode =
-  process.env.NODE_ENV === 'development' || process.env.THREAT_DEBUG === 'true';
+const isDebugMode = process.env.NODE_ENV === 'development' || process.env.THREAT_DEBUG === 'true';
 
 /**
  * Extract the client IP from the request, respecting common proxy headers.
@@ -52,11 +51,7 @@ function extractParams(req: Request): Record<string, unknown> {
 /**
  * Express middleware for behavioral threat detection.
  */
-export function threatDetectionMiddleware(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void {
+export function threatDetectionMiddleware(req: Request, res: Response, next: NextFunction): void {
   const ip = getClientIp(req);
   const endpoint = req.path;
 

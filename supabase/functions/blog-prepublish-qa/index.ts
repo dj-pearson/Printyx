@@ -31,13 +31,17 @@ const LINK_TIMEOUT_MS = 8000;
 const MAX_LINKS = 100;
 
 const runSchema = z.object({ post_id: z.string().uuid(), force: z.boolean().optional() });
-const overrideSchema = z.object({ post_id: z.string().uuid(), reason: z.string().min(3).max(1000) });
+const overrideSchema = z.object({
+  post_id: z.string().uuid(),
+  reason: z.string().min(3).max(1000),
+});
 
 function permFlags(user: { app_metadata?: Record<string, unknown> }) {
   const meta = user.app_metadata ?? {};
   const perms = Array.isArray(meta.permissions) ? (meta.permissions as string[]) : [];
   const role = String(meta.role ?? '').toLowerCase();
-  const admin = meta.isPlatformAdmin === true || role === 'platform_admin' || role === 'super_admin';
+  const admin =
+    meta.isPlatformAdmin === true || role === 'platform_admin' || role === 'super_admin';
   return {
     edit: admin || role === 'company_admin' || perms.includes('blog.post.edit'),
     publish: admin || perms.includes('blog.post.publish'),
@@ -144,9 +148,10 @@ async function runQa(admin: Admin, tenantId: string, userId: string, req: Reques
     .select('organization_name, organization_url, organization_logo_url, own_domain')
     .eq('tenant_id', tenantId)
     .maybeSingle();
-  const ownHost = hostOf(settings?.organization_url ?? null) ?? (settings?.own_domain ?? null);
+  const ownHost = hostOf(settings?.organization_url ?? null) ?? settings?.own_domain ?? null;
 
-  const html = String(post.body_html ?? '') || markdownLinksToHtml(String(post.body_markdown ?? ''));
+  const html =
+    String(post.body_html ?? '') || markdownLinksToHtml(String(post.body_markdown ?? ''));
 
   const linkCheck = await checkLinks(html, ownHost);
   const ogPreview = buildOgPreview(post, settings);
@@ -161,10 +166,30 @@ async function runQa(admin: Admin, tenantId: string, userId: string, req: Reques
 
   const summary = {
     checks: [
-      { key: 'links', status: linkCheck.broken.length ? 'fail' : linkCheck.redirects.length ? 'warn' : 'pass', count: linkCheck.total },
-      { key: 'og', status: ogPreview.warnings.length ? 'warn' : 'pass', count: ogPreview.warnings.length },
-      { key: 'a11y', status: a11y.violations.some((v) => v.severity === 'high') ? 'fail' : a11y.violations.length ? 'warn' : 'pass', count: a11y.violations.length },
-      { key: 'schema', status: schemaCheck.valid ? 'pass' : 'fail', count: schemaCheck.missing.length },
+      {
+        key: 'links',
+        status: linkCheck.broken.length ? 'fail' : linkCheck.redirects.length ? 'warn' : 'pass',
+        count: linkCheck.total,
+      },
+      {
+        key: 'og',
+        status: ogPreview.warnings.length ? 'warn' : 'pass',
+        count: ogPreview.warnings.length,
+      },
+      {
+        key: 'a11y',
+        status: a11y.violations.some((v) => v.severity === 'high')
+          ? 'fail'
+          : a11y.violations.length
+            ? 'warn'
+            : 'pass',
+        count: a11y.violations.length,
+      },
+      {
+        key: 'schema',
+        status: schemaCheck.valid ? 'pass' : 'fail',
+        count: schemaCheck.missing.length,
+      },
     ],
     gating_failures: gatingFailures.length,
     gating_failure_keys: gatingFailures,
@@ -263,7 +288,9 @@ async function override(admin: Admin, tenantId: string, userId: string, req: Req
       action: 'blog_qa.override',
       targetType: 'blog_post',
       targetId: post_id,
-      beforeState: { gating_failures: (cached.summary as { gating_failures?: number })?.gating_failures },
+      beforeState: {
+        gating_failures: (cached.summary as { gating_failures?: number })?.gating_failures,
+      },
       afterState: { reason },
       summary: `QA gate overridden for publish: ${reason}`,
     }),
@@ -301,7 +328,14 @@ function extractLinks(html: string): string[] {
   let m: RegExpExecArray | null;
   while ((m = hrefRe.exec(html)) !== null) {
     const u = m[1].trim();
-    if (u && !u.startsWith('#') && !u.startsWith('mailto:') && !u.startsWith('tel:') && !u.startsWith('javascript:') && !u.startsWith('data:')) {
+    if (
+      u &&
+      !u.startsWith('#') &&
+      !u.startsWith('mailto:') &&
+      !u.startsWith('tel:') &&
+      !u.startsWith('javascript:') &&
+      !u.startsWith('data:')
+    ) {
       urls.add(u);
     }
   }
@@ -346,10 +380,19 @@ async function checkLinks(html: string, ownHost: string | null) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), LINK_TIMEOUT_MS);
       try {
-        let res = await fetch(raw, { method: 'HEAD', redirect: 'manual', signal: controller.signal });
+        let res = await fetch(raw, {
+          method: 'HEAD',
+          redirect: 'manual',
+          signal: controller.signal,
+        });
         // Some servers reject HEAD; retry with GET (range-limited) on 405.
         if (res.status === 405) {
-          res = await fetch(raw, { method: 'GET', redirect: 'manual', signal: controller.signal, headers: { Range: 'bytes=0-0' } });
+          res = await fetch(raw, {
+            method: 'GET',
+            redirect: 'manual',
+            signal: controller.signal,
+            headers: { Range: 'bytes=0-0' },
+          });
         }
         const entry: LinkResult = { url: raw, status: res.status, kind };
         if (res.status >= 300 && res.status < 400) {
@@ -372,10 +415,7 @@ async function checkLinks(html: string, ownHost: string | null) {
 }
 
 // ─── OG / Twitter preview ───────────────────────────────────────────────────────
-function buildOgPreview(
-  post: Record<string, unknown>,
-  settings: Record<string, unknown> | null,
-) {
+function buildOgPreview(post: Record<string, unknown>, settings: Record<string, unknown> | null) {
   const title = String(post.meta_title || post.title || '');
   const description = String(post.meta_description || '');
   const siteName = String(settings?.organization_name || '');
@@ -386,12 +426,20 @@ function buildOgPreview(
   if (!title) warnings.push('Missing meta title / title');
   if (title.length > 60) warnings.push(`Title ${title.length} chars — may truncate (>60)`);
   if (!description) warnings.push('Missing meta description');
-  else if (description.length > 200) warnings.push(`Description ${description.length} chars — long for cards (>200)`);
-  else if (description.length < 50) warnings.push(`Description ${description.length} chars — thin (<50)`);
+  else if (description.length > 200)
+    warnings.push(`Description ${description.length} chars — long for cards (>200)`);
+  else if (description.length < 50)
+    warnings.push(`Description ${description.length} chars — thin (<50)`);
   if (!hasImage) warnings.push('No featured image — cards render without a thumbnail');
   if (!urlStr) warnings.push('No canonical URL set');
 
-  const card = { title, description, image: hasImage ? '(featured image asset)' : null, url: urlStr, site_name: siteName };
+  const card = {
+    title,
+    description,
+    image: hasImage ? '(featured image asset)' : null,
+    url: urlStr,
+    site_name: siteName,
+  };
   return {
     slack: card,
     twitter: { ...card, card_type: hasImage ? 'summary_large_image' : 'summary' },
@@ -421,7 +469,11 @@ function a11yHeuristics(html: string, markdown: string) {
     if (!altMatch || altMatch[1].trim() === '') imgNoAlt++;
   }
   if (imgNoAlt > 0) {
-    violations.push({ rule: 'image-alt', severity: 'high', detail: `${imgNoAlt} image(s) missing alt text` });
+    violations.push({
+      rule: 'image-alt',
+      severity: 'high',
+      detail: `${imgNoAlt} image(s) missing alt text`,
+    });
   }
 
   // Heading-order skips (e.g. h2 → h4). Source from HTML headings or markdown #.
@@ -454,7 +506,11 @@ function a11yHeuristics(html: string, markdown: string) {
     if (generic.has(lt[1].trim().toLowerCase())) genericCount++;
   }
   if (genericCount > 0) {
-    violations.push({ rule: 'link-name', severity: 'low', detail: `${genericCount} link(s) with non-descriptive text` });
+    violations.push({
+      rule: 'link-name',
+      severity: 'low',
+      detail: `${genericCount} link(s) with non-descriptive text`,
+    });
   }
 
   return {

@@ -3,9 +3,10 @@
 **Parent:** `prd-edge-functions-migration.md` · **Phase:** 4 · **Week:** 12 (July 8 – July 14) · **Story:** US-019
 
 **Why:** The e-signature domain has 31 Express endpoints across 702 lines — but **the actual e-signature provider integrations are not implemented**. Inspection of `signature-routes.ts` reveals:
+
 - Line 357 comment: `// TODO: Integrate with actual e-signature provider (DocuSign, Adobe Sign, etc.)`
 - Webhook handlers at lines 661, 675, 689 are **all stubs** that log payloads without processing them
-- The endpoints manage signature *request records* in our database, but the actual document signing workflow has never been wired up
+- The endpoints manage signature _request records_ in our database, but the actual document signing workflow has never been wired up
 
 **This reshapes the PRD scope significantly.** We're not migrating a working e-signature integration — we're migrating a CRUD layer for tracking signature requests, plus deciding whether to land a real integration as part of this phase.
 
@@ -14,6 +15,7 @@
 ## 1. Scope
 
 **Source Express file:**
+
 - `server/routes/signature-routes.ts` (702 lines, **31 endpoints**)
 - `server/seed-signature-data.ts` — seed data for dev
 
@@ -45,6 +47,7 @@ supabase/functions/signatures/
 **Decision gate at kickoff:** do we wire a real provider as part of this PRD, or port the stubs as-is?
 
 **Recommendation:** **port stubs as-is + land DocuSign only as a single-provider implementation in a follow-up PRD.** Rationale:
+
 - Landing 3 providers now triples surface area with no proven product demand
 - Stubs work today (CRUD on signature-request records is real even without actual signing)
 - DocuSign is the clear industry leader; pick one, land well, add others later
@@ -54,43 +57,49 @@ supabase/functions/signatures/
 ## 2. Endpoint parity matrix
 
 ### Integration Credentials (6) — credentials for future provider wiring
-| Method | Path | Line | Notes |
-|---|---|---|---|
-| GET    | `/signatures/integration-credentials` | 22 | redacted |
-| GET    | `/signatures/integration-credentials/:id` | 50 | redacted |
-| POST   | `/signatures/integration-credentials` | 80 | **sensitive** |
-| PATCH  | `/signatures/integration-credentials/:id` | 116 | **sensitive** |
-| DELETE | `/signatures/integration-credentials/:id` | 160 | |
-| POST   | `/signatures/integration-credentials/:id/test` | 176 | stub today; real probe if wired |
+
+| Method | Path                                           | Line | Notes                           |
+| ------ | ---------------------------------------------- | ---- | ------------------------------- |
+| GET    | `/signatures/integration-credentials`          | 22   | redacted                        |
+| GET    | `/signatures/integration-credentials/:id`      | 50   | redacted                        |
+| POST   | `/signatures/integration-credentials`          | 80   | **sensitive**                   |
+| PATCH  | `/signatures/integration-credentials/:id`      | 116  | **sensitive**                   |
+| DELETE | `/signatures/integration-credentials/:id`      | 160  |                                 |
+| POST   | `/signatures/integration-credentials/:id/test` | 176  | stub today; real probe if wired |
 
 ### Signature Requests (9)
-| Method | Path | Line | Notes |
-|---|---|---|---|
-| GET    | `/signatures/signature-requests` | 196 | |
-| GET    | `/signatures/signature-requests/:id` | 213 | |
-| GET    | `/signatures/customers/:customerId/signature-requests` | 233 | |
-| GET    | `/signatures/signature-requests/expiring/soon` | 249 | |
-| POST   | `/signatures/signature-requests` | 266 | |
-| PATCH  | `/signatures/signature-requests/:id` | 304 | |
-| DELETE | `/signatures/signature-requests/:id` | 329 | |
-| POST   | `/signatures/signature-requests/:id/send` | 345 | **STUB** — line 357 TODO |
-| POST   | `/signatures/signature-requests/:id/void` | 384 | |
+
+| Method | Path                                                   | Line | Notes                    |
+| ------ | ------------------------------------------------------ | ---- | ------------------------ |
+| GET    | `/signatures/signature-requests`                       | 196  |                          |
+| GET    | `/signatures/signature-requests/:id`                   | 213  |                          |
+| GET    | `/signatures/customers/:customerId/signature-requests` | 233  |                          |
+| GET    | `/signatures/signature-requests/expiring/soon`         | 249  |                          |
+| POST   | `/signatures/signature-requests`                       | 266  |                          |
+| PATCH  | `/signatures/signature-requests/:id`                   | 304  |                          |
+| DELETE | `/signatures/signature-requests/:id`                   | 329  |                          |
+| POST   | `/signatures/signature-requests/:id/send`              | 345  | **STUB** — line 357 TODO |
+| POST   | `/signatures/signature-requests/:id/void`              | 384  |                          |
 
 ### Signers (5)
+
 GET list by request, GET/POST/PATCH/DELETE :id
 
 ### Documents (5)
+
 GET list by request, GET/POST/PATCH/DELETE :id
 
 ### Audit Logs (2)
+
 GET /signature-requests/:requestId/audit-logs, GET /signature-signers/:signerId/audit-logs
 
 ### Webhooks (3) — ALL STUBS
-| Method | Path | Line | Current status |
-|---|---|---|---|
-| POST | `/signatures/webhooks/docusign` | 661 | logs payload, TODO to process |
-| POST | `/signatures/webhooks/adobe-sign` | 675 | same |
-| POST | `/signatures/webhooks/hellosign` | 689 | same |
+
+| Method | Path                              | Line | Current status                |
+| ------ | --------------------------------- | ---- | ----------------------------- |
+| POST   | `/signatures/webhooks/docusign`   | 661  | logs payload, TODO to process |
+| POST   | `/signatures/webhooks/adobe-sign` | 675  | same                          |
+| POST   | `/signatures/webhooks/hellosign`  | 689  | same                          |
 
 **Total: 31 endpoints.**
 
@@ -99,6 +108,7 @@ GET /signature-requests/:requestId/audit-logs, GET /signature-signers/:signerId/
 ## 3. Tables + RLS plan
 
 Expected tables:
+
 - `signature_integration_credentials` — per-tenant provider creds
 - `signature_requests`
 - `signature_signers`
@@ -124,11 +134,11 @@ All 3 webhook endpoints are stubs. **Port path:**
 
 **Authentication:** webhooks are public (no JWT). Each provider has a different verification method:
 
-| Provider | Verification |
-|---|---|
-| DocuSign | HMAC-SHA256 on `X-DocuSign-Signature-1` header using account's Connect secret |
-| Adobe Sign | OAuth token in body + webhook secret |
-| HelloSign (Dropbox Sign) | SHA256 HMAC of request body using API key |
+| Provider                 | Verification                                                                  |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| DocuSign                 | HMAC-SHA256 on `X-DocuSign-Signature-1` header using account's Connect secret |
+| Adobe Sign               | OAuth token in body + webhook secret                                          |
+| HelloSign (Dropbox Sign) | SHA256 HMAC of request body using API key                                     |
 
 Implementation in `_providers/{provider}.ts` handlers if real. Stubs for now.
 
@@ -136,11 +146,11 @@ Implementation in `_providers/{provider}.ts` handlers if real. Stubs for now.
 
 ## 5. External dependencies to port
 
-| Dependency | Express location | Deno port |
-|---|---|---|
-| Provider SDKs (DocuSign Node, Adobe Sign, HelloSign) | Not in use today (stubs) | If wired: use provider REST APIs via fetch |
-| `IStorage` methods | `server/storage.ts` | Reimplement as Drizzle calls |
-| Document upload | likely tied to Supabase Storage | Use `@supabase/storage-js` via esm.sh |
+| Dependency                                           | Express location                | Deno port                                  |
+| ---------------------------------------------------- | ------------------------------- | ------------------------------------------ |
+| Provider SDKs (DocuSign Node, Adobe Sign, HelloSign) | Not in use today (stubs)        | If wired: use provider REST APIs via fetch |
+| `IStorage` methods                                   | `server/storage.ts`             | Reimplement as Drizzle calls               |
+| Document upload                                      | likely tied to Supabase Storage | Use `@supabase/storage-js` via esm.sh      |
 
 **No active external calls in this port** unless we change the decision in §1.
 
@@ -149,6 +159,7 @@ Implementation in `_providers/{provider}.ts` handlers if real. Stubs for now.
 ## 6. Acceptance criteria
 
 ### Functional parity
+
 - [ ] All 31 endpoints return the same shape as Express for equivalent inputs
 - [ ] Signature request CRUD works end-to-end
 - [ ] Signer / document CRUD works
@@ -157,6 +168,7 @@ Implementation in `_providers/{provider}.ts` handlers if real. Stubs for now.
 - [ ] `signature-requests/expiring/soon` returns requests with `expires_at < now() + 7 days`
 
 ### Security / RLS + credentials
+
 - [ ] RLS on all 5 signature tables
 - [ ] Credential redaction: POST credentials → GET shows redacted
 - [ ] Two-tenant test: request in tenant A invisible to tenant B
@@ -164,6 +176,7 @@ Implementation in `_providers/{provider}.ts` handlers if real. Stubs for now.
 - [ ] Webhook signature verification present (even if stub) — port the code path, document what's needed to light up
 
 ### Frontend compatibility
+
 - [ ] `ESignatureIntegration.tsx` loads, integration credentials list renders with redacted values
 - [ ] Create/edit credential flow works
 - [ ] Test credential button returns placeholder or real result based on wiring
@@ -172,12 +185,14 @@ Implementation in `_providers/{provider}.ts` handlers if real. Stubs for now.
 - [ ] Playwright MCP pass on ESignatureIntegration page
 
 ### Deletion
+
 - [ ] `server/routes/signature-routes.ts` deleted
 - [ ] `server/seed-signature-data.ts` deleted (move seed data to `scripts/seed-signatures.ts` if still needed for dev)
 - [ ] Route registry entry removed
 - [ ] `grep -r "signature-routes\|seed-signature-data" server/ client/` returns zero matches
 
 ### Quality gates
+
 - [ ] `deno check` passes
 - [ ] `npm run check` passes
 - [ ] `npm run build` succeeds
@@ -187,19 +202,23 @@ Implementation in `_providers/{provider}.ts` handlers if real. Stubs for now.
 ## 7. Test plan
 
 ### Unit (Deno)
+
 - `_providers/docusign.test.ts` — HMAC verification with known-good fixture (even if provider not wired, the verification helper should exist for future use)
 - Redaction unit test for credentials
 
 ### Integration
+
 - Full signature request lifecycle: create → add signers → add documents → send (stub) → void → verify audit log has all events
 - Webhook smoke: POST a fake DocuSign event payload; verify log line matches Express
 - Expiring-soon query: seed 3 requests with varying expiry, verify filter correctness
 
 ### Production smoke
+
 - ESignatureIntegration page: create a test integration credential, verify redacted read-back
 - Signature request creation, send (stub), void — verify state machine
 
 ### Future: real provider smoke
+
 - Flag as follow-up: after real DocuSign wiring, test full envelope send + callback → request completion
 
 ---
@@ -212,13 +231,13 @@ Standard: revert PR. Express file is already non-functional in prod. No schema c
 
 ## 9. Risks + mitigations
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Port masks latent bugs in stub endpoints (since they've never been exercised in prod) | High | Low | Integration tests pass = parity; bug fixes are post-migration work |
-| Webhook endpoints DDoS'd (public, no auth) | Low | Medium | Cloudflare WAF; add rate limit per IP in the handler |
-| Credentials fields differ from manufacturer-orders redaction list | Medium | Low | Extract `redactCredentials(fields, row)` as generic helper in `_shared/rbac.ts` or `_credentials.ts` |
-| Downstream code (lease signing, contract signing) assumes this works and will break on production use | High | High | **Flag clearly:** this migration does NOT fix the stubbed signing — it only preserves the CRUD layer. Follow-up PRD needed for actual provider wiring |
-| User creates an integration credential expecting it to work | High | Medium | Frontend should display "Integration pending activation" banner; backlog item |
+| Risk                                                                                                  | Likelihood | Impact | Mitigation                                                                                                                                            |
+| ----------------------------------------------------------------------------------------------------- | ---------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Port masks latent bugs in stub endpoints (since they've never been exercised in prod)                 | High       | Low    | Integration tests pass = parity; bug fixes are post-migration work                                                                                    |
+| Webhook endpoints DDoS'd (public, no auth)                                                            | Low        | Medium | Cloudflare WAF; add rate limit per IP in the handler                                                                                                  |
+| Credentials fields differ from manufacturer-orders redaction list                                     | Medium     | Low    | Extract `redactCredentials(fields, row)` as generic helper in `_shared/rbac.ts` or `_credentials.ts`                                                  |
+| Downstream code (lease signing, contract signing) assumes this works and will break on production use | High       | High   | **Flag clearly:** this migration does NOT fix the stubbed signing — it only preserves the CRUD layer. Follow-up PRD needed for actual provider wiring |
+| User creates an integration credential expecting it to work                                           | High       | Medium | Frontend should display "Integration pending activation" banner; backlog item                                                                         |
 
 ---
 

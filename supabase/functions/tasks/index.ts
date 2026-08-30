@@ -4,10 +4,19 @@
  * Replaces:
  *   server/routes/task-routes.ts (9 endpoints)
  *   supabase/functions/tasks/ (pre-rewrite — 273 loc)
- *   supabase/functions/tasks-enhanced/ (merged in)
- *   supabase/functions/tasks-bulk/ (merged in)
- *   supabase/functions/tasks-stats/ (merged in)
- *   supabase/functions/task-comments/ (merged in)
+ *   supabase/functions/tasks-enhanced/  (DELETED 2026-08-29, EDGE-006a)
+ *   supabase/functions/tasks-bulk/      (DELETED 2026-08-29, EDGE-006a)
+ *   supabase/functions/tasks-stats/     (DELETED 2026-08-29, EDGE-006a)
+ *   supabase/functions/task-comments/   (DELETED 2026-08-29, EDGE-006a)
+ *
+ * The four are gone rather than merely superseded. None was reachable: no
+ * client tree named /api/<any of them>, none was a crmProxies target, none was
+ * a server.ts alias, and no pg_cron job posted to one. Their endpoints are all
+ * served here, and two of them could not have worked anyway - tasks-enhanced
+ * selected assignee_id, customer_id and a users.full_name that the real tables
+ * do not have, and task-comments read task_time_entries, a relation in no
+ * schema and no migration (handlers/time-entries.ts uses time_entries, which
+ * exists).
  *
  * URL prefix: /tasks/*
  *

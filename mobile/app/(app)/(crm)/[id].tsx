@@ -35,7 +35,8 @@ export default function CRMDetailScreen() {
     );
   }
 
-  const name = record.companyName || record.business_name || record.name || record.title || 'Unknown';
+  const name =
+    record.companyName || record.business_name || record.name || record.title || 'Unknown';
   const email = record.email || record.primaryContactEmail || record.contactEmail;
   const phone = record.phone || record.primaryContactPhone || record.contactPhone;
 
@@ -96,8 +97,15 @@ export default function CRMDetailScreen() {
           <Text style={styles.sectionTitle}>Details</Text>
           {email && <DetailRow label="Email" value={email} />}
           {phone && <DetailRow label="Phone" value={phone} />}
-          {(record.address || record.billing_address) && <DetailRow label="Address" value={record.address || record.billing_address} />}
-          {(record.city || record.billing_city) && <DetailRow label="City" value={`${record.city || record.billing_city}${(record.state || record.billing_state) ? `, ${record.state || record.billing_state}` : ''}`} />}
+          {(record.address || record.billing_address) && (
+            <DetailRow label="Address" value={record.address || record.billing_address} />
+          )}
+          {(record.city || record.billing_city) && (
+            <DetailRow
+              label="City"
+              value={`${record.city || record.billing_city}${record.state || record.billing_state ? `, ${record.state || record.billing_state}` : ''}`}
+            />
+          )}
           {record.source && <DetailRow label="Source" value={record.source} />}
           {record.industry && <DetailRow label="Industry" value={record.industry} />}
           {(record.value || record.estimatedValue || record.amount) && (
@@ -127,7 +135,9 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.detailRow}>
       <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue} selectable>{value}</Text>
+      <Text style={styles.detailValue} selectable>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -138,16 +148,46 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notFound: { ...typography.body, color: colors.text.secondary },
   headerCard: { padding: spacing.lg },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, marginBottom: spacing.lg },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    marginBottom: spacing.lg,
+  },
   headerInfo: { flex: 1, gap: spacing.sm },
   name: { ...typography.h3, color: colors.text.primary },
-  quickActions: { flexDirection: 'row', gap: spacing.md, justifyContent: 'center', paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.gray[100] },
-  quickAction: { alignItems: 'center', gap: 4, width: touchTargets.comfortable, minHeight: touchTargets.comfortable },
+  quickActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    justifyContent: 'center',
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[100],
+  },
+  quickAction: {
+    alignItems: 'center',
+    gap: 4,
+    width: touchTargets.comfortable,
+    minHeight: touchTargets.comfortable,
+  },
   quickActionLabel: { ...typography.caption, color: colors.primary[600] },
   sectionTitle: { ...typography.h4, color: colors.text.primary, marginBottom: spacing.md },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.gray[50] },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[50],
+  },
   detailLabel: { ...typography.bodySmall, color: colors.text.secondary, flex: 1 },
-  detailValue: { ...typography.bodySmall, color: colors.text.primary, fontWeight: '500', flex: 2, textAlign: 'right' },
+  detailValue: {
+    ...typography.bodySmall,
+    color: colors.text.primary,
+    fontWeight: '500',
+    flex: 2,
+    textAlign: 'right',
+  },
   notesCard: { marginBottom: spacing['3xl'] },
   notes: { ...typography.body, color: colors.text.secondary, lineHeight: 22 },
 });

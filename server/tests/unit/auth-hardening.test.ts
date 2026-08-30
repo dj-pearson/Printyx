@@ -107,9 +107,18 @@ describe('SEC-004: Authentication Hardening', () => {
 
   describe('Login Anomaly Detection', () => {
     const AUTOMATED_UA_PATTERNS = [
-      /curl\//i, /python-requests/i, /python-urllib/i, /axios\//i,
-      /headlesschrome/i, /phantomjs/i, /selenium/i, /puppeteer/i,
-      /scrapy/i, /httpie/i, /postman/i, /insomnia/i,
+      /curl\//i,
+      /python-requests/i,
+      /python-urllib/i,
+      /axios\//i,
+      /headlesschrome/i,
+      /phantomjs/i,
+      /selenium/i,
+      /puppeteer/i,
+      /scrapy/i,
+      /httpie/i,
+      /postman/i,
+      /insomnia/i,
     ];
 
     function detectAnomaly(userAgent: string, acceptLanguage?: string): string[] {
@@ -136,22 +145,22 @@ describe('SEC-004: Authentication Hardening', () => {
 
     it('should detect python-requests User-Agent', () => {
       const reasons = detectAnomaly('python-requests/2.28.0');
-      expect(reasons.some(r => r.includes('python-requests'))).toBe(true);
+      expect(reasons.some((r) => r.includes('python-requests'))).toBe(true);
     });
 
     it('should detect headless Chrome', () => {
       const reasons = detectAnomaly('Mozilla/5.0 (HeadlessChrome/91.0.4472.124)');
-      expect(reasons.some(r => r.includes('headlesschrome'))).toBe(true);
+      expect(reasons.some((r) => r.includes('headlesschrome'))).toBe(true);
     });
 
     it('should detect Selenium WebDriver', () => {
       const reasons = detectAnomaly('Mozilla/5.0 Selenium/4.0');
-      expect(reasons.some(r => r.includes('selenium'))).toBe(true);
+      expect(reasons.some((r) => r.includes('selenium'))).toBe(true);
     });
 
     it('should detect Postman', () => {
       const reasons = detectAnomaly('PostmanRuntime/7.29.2');
-      expect(reasons.some(r => r.includes('postman'))).toBe(true);
+      expect(reasons.some((r) => r.includes('postman'))).toBe(true);
     });
 
     it('should not flag normal browser User-Agent', () => {
@@ -163,9 +172,7 @@ describe('SEC-004: Authentication Hardening', () => {
     });
 
     it('should flag missing Accept-Language', () => {
-      const reasons = detectAnomaly(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
-      );
+      const reasons = detectAnomaly('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0');
       expect(reasons).toContain('missing_accept_language');
     });
 

@@ -116,22 +116,18 @@ export function usePushNotifications() {
     registerForPushNotifications();
 
     // Listen for incoming notifications while app is in foreground
-    notificationListener.current = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        setState((prev) => ({ ...prev, notification }));
-      },
-    );
+    notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
+      setState((prev) => ({ ...prev, notification }));
+    });
 
     // Listen for user tapping on notifications
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data;
-        // Handle deep link from notification payload
-        if (data?.url) {
-          // Navigation will be handled by expo-router's linking
-        }
-      },
-    );
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      // Handle deep link from notification payload
+      if (data?.url) {
+        // Navigation will be handled by expo-router's linking
+      }
+    });
 
     return () => {
       if (notificationListener.current) {

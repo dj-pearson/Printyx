@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import {
@@ -70,6 +70,7 @@ import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TableSkeleton, ListSkeleton, LoadingSpinner } from '@/components/ui/skeletons';
+import { useActionParam } from '@/hooks/use-action-param';
 
 // Types
 type EquipmentLifecycleStage = {
@@ -272,6 +273,12 @@ const lifecycleStageCards: StageCard[] = [
 export default function EquipmentLifecycleHub() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isPODialogOpen, setIsPODialogOpen] = useState(false);
+  // A breadcrumb quick action links here with ?action=new;
+  // open the create dialog rather than dropping the user on the list.
+  const quickAction = useActionParam();
+  useEffect(() => {
+    if (quickAction === 'new') setIsPODialogOpen(true);
+  }, [quickAction]);
   const [isDeliveryDialogOpen, setIsDeliveryDialogOpen] = useState(false);
   const [isInstallationDialogOpen, setIsInstallationDialogOpen] = useState(false);
   const [selectedStage, setSelectedStage] = useState('all');

@@ -7,6 +7,7 @@ import {
   jsonb,
   decimal,
   pgEnum,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -60,7 +61,7 @@ export const orderPriorityEnum = pgEnum('order_priority', [
  */
 export const supplyMonitoring = pgTable('supply_monitoring', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Equipment Reference
   equipmentId: integer('equipment_id').notNull(),
@@ -113,7 +114,7 @@ export const supplyMonitoring = pgTable('supply_monitoring', {
  */
 export const autoSupplyOrders = pgTable('auto_supply_orders', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Reference
   supplyMonitoringId: integer('supply_monitoring_id').notNull(),
@@ -173,7 +174,7 @@ export const autoSupplyOrders = pgTable('auto_supply_orders', {
  */
 export const supplyUsageHistory = pgTable('supply_usage_history', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Reference
   supplyMonitoringId: integer('supply_monitoring_id').notNull(),
@@ -207,7 +208,7 @@ export const supplyUsageHistory = pgTable('supply_usage_history', {
  */
 export const supplyReplenishmentRules = pgTable('supply_replenishment_rules', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull().unique(),
+  tenantId: varchar('tenant_id').notNull().unique(),
 
   // Global Settings
   autoOrderEnabled: boolean('auto_order_enabled').default(true),
@@ -261,7 +262,7 @@ export const supplyReplenishmentRules = pgTable('supply_replenishment_rules', {
  */
 export const supplyReplenishmentAnalytics = pgTable('supply_replenishment_analytics', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Time Period
   periodStart: timestamp('period_start').notNull(),

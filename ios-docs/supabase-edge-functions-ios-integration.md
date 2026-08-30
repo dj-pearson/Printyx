@@ -51,22 +51,22 @@ iOS App (Swift/SwiftUI)
 
 ### Services & URLs
 
-| Service | URL | Purpose |
-|---|---|---|
-| Supabase API (Kong) | `https://api.printyx.net` | Auth, PostgREST, pg-meta |
-| Edge Functions | `https://functions.printyx.net` | Business logic APIs |
-| Express Backend | `https://printyx.net` | Web app backend |
-| PostgreSQL | `209.145.59.219:5433` | Database (via Supabase pooler) |
+| Service             | URL                             | Purpose                        |
+| ------------------- | ------------------------------- | ------------------------------ |
+| Supabase API (Kong) | `https://api.printyx.net`       | Auth, PostgREST, pg-meta       |
+| Edge Functions      | `https://functions.printyx.net` | Business logic APIs            |
+| Express Backend     | `https://printyx.net`           | Web app backend                |
+| PostgreSQL          | `209.145.59.219:5433`           | Database (via Supabase pooler) |
 
 ### Docker Services (Coolify-managed)
 
-| Container | Image | Port | Purpose |
-|---|---|---|---|
-| `supabase-db-*` | `supabase/postgres` | 5432 (internal) | PostgreSQL |
-| `supabase-kong-*` | `kong` | 8000 → HTTPS | API gateway (routes to PostgREST, GoTrue, etc.) |
-| `supabase-rest-*` | `postgrest/postgrest` | 3000 (internal) | Auto-generated REST API from schema |
-| `supabase-auth-*` | `supabase/gotrue` | 9999 (internal) | Authentication (JWT issuance) |
-| `supabase-edge-*` | Custom Dockerfile | 8000 | Edge Functions runtime |
+| Container         | Image                 | Port            | Purpose                                         |
+| ----------------- | --------------------- | --------------- | ----------------------------------------------- |
+| `supabase-db-*`   | `supabase/postgres`   | 5432 (internal) | PostgreSQL                                      |
+| `supabase-kong-*` | `kong`                | 8000 → HTTPS    | API gateway (routes to PostgREST, GoTrue, etc.) |
+| `supabase-rest-*` | `postgrest/postgrest` | 3000 (internal) | Auto-generated REST API from schema             |
+| `supabase-auth-*` | `supabase/gotrue`     | 9999 (internal) | Authentication (JWT issuance)                   |
+| `supabase-edge-*` | Custom Dockerfile     | 8000            | Edge Functions runtime                          |
 
 ### Environment Variables (Edge Functions)
 
@@ -111,7 +111,10 @@ export default async function handler(req: Request) {
     const authHeader = req.headers.get('Authorization');
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
     const supabase = createSupabaseClient(req);
-    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(jwt);
     if (userError || !user) return createCorsResponse({ error: 'Unauthorized' }, 401, req);
 
     // 3. Extract tenant ID from JWT claims
@@ -172,7 +175,8 @@ export const createSupabaseServiceClient = () => {
 export function getCorsHeaders(origin: string | null): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-tenant-id, x-request-id',
+    'Access-Control-Allow-Headers':
+      'authorization, x-client-info, apikey, content-type, x-tenant-id, x-request-id',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Max-Age': '86400',
@@ -241,13 +245,13 @@ iOS uses `request<T>()` for these.
 
 ### Rules
 
-| Endpoint Pattern | Edge Function Returns | iOS Method |
-|---|---|---|
-| `GET /resource` (list) | `{ data: [...], total: N }` | `requestArray<T>()` |
-| `GET /resource/:id` (single) | `{ id, field1, field2 }` | `request<T>()` |
-| `POST /resource` (create) | `{ id, field1, field2 }` | `request<T>()` |
-| `PATCH /resource/:id` (update) | `{ id, field1, field2 }` | `request<T>()` |
-| `DELETE /resource/:id` | `{ success: true }` | `requestVoid()` |
+| Endpoint Pattern               | Edge Function Returns       | iOS Method          |
+| ------------------------------ | --------------------------- | ------------------- |
+| `GET /resource` (list)         | `{ data: [...], total: N }` | `requestArray<T>()` |
+| `GET /resource/:id` (single)   | `{ id, field1, field2 }`    | `request<T>()`      |
+| `POST /resource` (create)      | `{ id, field1, field2 }`    | `request<T>()`      |
+| `PATCH /resource/:id` (update) | `{ id, field1, field2 }`    | `request<T>()`      |
+| `DELETE /resource/:id`         | `{ success: true }`         | `requestVoid()`     |
 
 ### Column Naming
 
@@ -440,14 +444,14 @@ iOS APIClient detects 401
 
 ### Keychain Storage
 
-| Key | Value | Purpose |
-|---|---|---|
-| `accessToken` | JWT string | Auth header on every request |
-| `refreshToken` | Opaque token | Get new accessToken when expired |
-| `tenantId` | UUID string | Tenant context header |
-| `userId` | UUID string | Current user ID |
-| `userEmail` | Email string | Display and identification |
-| `roleLevel` | Int string | RBAC level (1=Guest, 8=PlatformAdmin) |
+| Key            | Value        | Purpose                               |
+| -------------- | ------------ | ------------------------------------- |
+| `accessToken`  | JWT string   | Auth header on every request          |
+| `refreshToken` | Opaque token | Get new accessToken when expired      |
+| `tenantId`     | UUID string  | Tenant context header                 |
+| `userId`       | UUID string  | Current user ID                       |
+| `userEmail`    | Email string | Display and identification            |
+| `roleLevel`    | Int string   | RBAC level (1=Guest, 8=PlatformAdmin) |
 
 Service ID: `net.printyx.ios` (tied to app bundle).
 
@@ -459,11 +463,11 @@ Service ID: `net.printyx.ios` (tied to app bundle).
 
 PostgreSQL has two timestamp types that produce **different JSON** through PostgREST:
 
-| Drizzle Schema | PostgreSQL Type | PostgREST JSON Output |
-|---|---|---|
-| `timestamp('col')` | `timestamp without time zone` | `"2024-01-15T10:30:00"` or `"2024-01-15T10:30:00.123456"` |
-| `timestamp('col', { withTimezone: true })` | `timestamp with time zone` | `"2024-01-15T10:30:00+00:00"` or `"2024-01-15T10:30:00.123456+00:00"` |
-| `date('col')` | `date` | `"2024-01-15"` |
+| Drizzle Schema                             | PostgreSQL Type               | PostgREST JSON Output                                                 |
+| ------------------------------------------ | ----------------------------- | --------------------------------------------------------------------- |
+| `timestamp('col')`                         | `timestamp without time zone` | `"2024-01-15T10:30:00"` or `"2024-01-15T10:30:00.123456"`             |
+| `timestamp('col', { withTimezone: true })` | `timestamp with time zone`    | `"2024-01-15T10:30:00+00:00"` or `"2024-01-15T10:30:00.123456+00:00"` |
+| `date('col')`                              | `date`                        | `"2024-01-15"`                                                        |
 
 ### What iOS Can Parse
 
@@ -491,7 +495,7 @@ function normalizeDates(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(normalizeDates);
   if (value && typeof value === 'object') {
     return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, normalizeDates(v)])
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, normalizeDates(v)]),
     );
   }
   return value;
@@ -680,18 +684,18 @@ steps:
 
 ### Required GitHub Secrets (10)
 
-| Secret | Description | How to Get |
-|---|---|---|
-| `APPLE_DEVELOPER_TEAM_ID` | 10-char Team ID | developer.apple.com → Membership |
-| `APP_STORE_CONNECT_API_KEY_ID` | API Key ID | appstoreconnect.apple.com → Users → Keys |
-| `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID | Same page as above |
-| `APP_STORE_CONNECT_API_KEY_P8` | Private key (.p8), base64-encoded | `base64 -i AuthKey_XXXX.p8` |
-| `IOS_CERTIFICATE_P12` | Distribution cert (.p12), base64-encoded | Export from Keychain Access |
-| `IOS_CERTIFICATE_PASSWORD` | Password for .p12 | Set when exporting |
-| `IOS_PROVISIONING_PROFILE` | App Store profile, base64-encoded | developer.apple.com → Profiles |
-| `KEYCHAIN_PASSWORD` | Any random string | Generate: `openssl rand -hex 20` |
-| `SUPABASE_URL` | `https://api.printyx.net` | Your Supabase instance |
-| `SUPABASE_ANON_KEY` | Supabase anon JWT | Supabase dashboard → API |
+| Secret                         | Description                              | How to Get                               |
+| ------------------------------ | ---------------------------------------- | ---------------------------------------- |
+| `APPLE_DEVELOPER_TEAM_ID`      | 10-char Team ID                          | developer.apple.com → Membership         |
+| `APP_STORE_CONNECT_API_KEY_ID` | API Key ID                               | appstoreconnect.apple.com → Users → Keys |
+| `APP_STORE_CONNECT_ISSUER_ID`  | Issuer ID                                | Same page as above                       |
+| `APP_STORE_CONNECT_API_KEY_P8` | Private key (.p8), base64-encoded        | `base64 -i AuthKey_XXXX.p8`              |
+| `IOS_CERTIFICATE_P12`          | Distribution cert (.p12), base64-encoded | Export from Keychain Access              |
+| `IOS_CERTIFICATE_PASSWORD`     | Password for .p12                        | Set when exporting                       |
+| `IOS_PROVISIONING_PROFILE`     | App Store profile, base64-encoded        | developer.apple.com → Profiles           |
+| `KEYCHAIN_PASSWORD`            | Any random string                        | Generate: `openssl rand -hex 20`         |
+| `SUPABASE_URL`                 | `https://api.printyx.net`                | Your Supabase instance                   |
+| `SUPABASE_ANON_KEY`            | Supabase anon JWT                        | Supabase dashboard → API                 |
 
 ### XcodeGen Project Config (`project.yml`)
 
@@ -700,15 +704,15 @@ name: Printyx
 options:
   bundleIdPrefix: net.printyx
   deploymentTarget:
-    iOS: "17.0"
-  xcodeVersion: "15.0"
+    iOS: '17.0'
+  xcodeVersion: '15.0'
 
 settings:
   base:
-    MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "1"
-    SWIFT_VERSION: "5.9"
-    TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad
+    MARKETING_VERSION: '1.0.0'
+    CURRENT_PROJECT_VERSION: '1'
+    SWIFT_VERSION: '5.9'
+    TARGETED_DEVICE_FAMILY: '1,2' # iPhone + iPad
 
 targets:
   Printyx:
@@ -719,20 +723,20 @@ targets:
       configs:
         Release:
           CODE_SIGN_STYLE: Manual
-          CODE_SIGN_IDENTITY: "Apple Distribution"
-          PROVISIONING_PROFILE_SPECIFIER: "__PROVISIONING_PROFILE_UUID__"
-          DEVELOPMENT_TEAM: "YOUR_TEAM_ID"
+          CODE_SIGN_IDENTITY: 'Apple Distribution'
+          PROVISIONING_PROFILE_SPECIFIER: '__PROVISIONING_PROFILE_UUID__'
+          DEVELOPMENT_TEAM: 'YOUR_TEAM_ID'
     dependencies:
-      - package: supabase-swift     # Auth client
-      - package: lottie-spm         # Animations
+      - package: supabase-swift # Auth client
+      - package: lottie-spm # Animations
 
 packages:
   supabase-swift:
     url: https://github.com/supabase-community/supabase-swift
-    from: "2.0.0"
+    from: '2.0.0'
   lottie-spm:
     url: https://github.com/airbnb/lottie-spm
-    from: "4.4.0"
+    from: '4.4.0'
 ```
 
 ---
@@ -791,6 +795,7 @@ These issues caused multi-hour debugging sessions. Prevent them:
 The Drizzle schema defines a column but the actual PostgreSQL table doesn't have it. Edge function tries to SELECT/INSERT that column → PostgREST returns an error.
 
 **Fix:** Always verify columns exist before using them in edge functions:
+
 ```bash
 curl "https://api.printyx.net/rest/v1/table_name?select=column_name&limit=1" \
   -H "apikey: <service_role_key>" -H "Authorization: Bearer <service_role_key>"
@@ -804,6 +809,7 @@ curl "https://api.printyx.net/rest/v1/table_name?select=column_name&limit=1" \
 Edge function queries a table that was never created.
 
 **Fix:** Handle gracefully with error code checks:
+
 ```typescript
 if (error.code === '42P01' || error.code === 'PGRST205') {
   return createCorsResponse({ data: [], total: 0 }, 200, req);
@@ -813,14 +819,17 @@ if (error.code === '42P01' || error.code === 'PGRST205') {
 ### 3. PostgREST Schema Cache
 
 PostgREST caches the database schema. After adding columns/tables:
+
 ```sql
 NOTIFY pgrst, 'reload schema';
 ```
+
 Or restart the PostgREST container.
 
 ### 4. Missing Default Values
 
 `id` columns may lack `DEFAULT gen_random_uuid()`. Always provide explicit IDs in INSERTs:
+
 ```typescript
 const record = { id: crypto.randomUUID(), ...data };
 ```
@@ -828,6 +837,7 @@ const record = { id: crypto.randomUUID(), ...data };
 ### 5. RLS Permissions
 
 Creating a table requires BOTH:
+
 ```sql
 GRANT ALL ON table_name TO authenticated;
 GRANT ALL ON table_name TO service_role;
@@ -938,37 +948,37 @@ CREATE POLICY "..." ON table_name FOR ALL USING (...);
 
 ## File Reference Map
 
-| Purpose | File |
-|---|---|
-| **iOS** | |
-| App entry point | `ios/Printyx/App/PrintyxApp.swift` |
-| Auth state router | `ios/Printyx/App/RootView.swift` |
-| HTTP client | `ios/Printyx/Core/Network/APIClient.swift` |
-| Endpoint definitions | `ios/Printyx/Core/Network/APIEndpoint.swift` |
-| Error types | `ios/Printyx/Core/Network/APIError.swift` |
-| Token storage | `ios/Printyx/Core/Auth/KeychainManager.swift` |
-| Auth manager | `ios/Printyx/Core/Auth/AuthManager.swift` |
-| Auth models & JWT | `ios/Printyx/Core/Auth/AuthModels.swift` |
-| URL configuration | `ios/Printyx/Core/Storage/AppConfig.swift` |
-| XcodeGen config | `ios/project.yml` |
-| SPM dependencies | `ios/Package.swift` |
-| App manifest | `ios/Printyx/Resources/Info.plist` |
-| **Edge Functions** | |
-| Router / normalizer | `supabase/functions/server.ts` |
-| CORS utilities | `supabase/functions/_shared/cors.ts` |
-| Supabase clients | `supabase/functions/_shared/supabase.ts` |
-| Handler template | `supabase/functions/{name}/index.ts` |
-| Dockerfile | `Dockerfile.edge-functions` |
-| Docker Compose | `docker-compose.edge-functions.yml` |
-| **CI/CD** | |
-| iOS deploy workflow | `.github/workflows/ios-deploy.yml` |
-| Mobile CI workflow | `.github/workflows/mobile-ci.yml` |
-| Fastlane metadata | `mobile/fastlane/Fastfile` |
-| **Database** | |
-| Drizzle schema | `shared/schema.ts` |
-| Specialized schemas | `shared/*-schema.ts` |
-| Migrations | `drizzle/migrations/` |
-| **Documentation** | |
-| This guide | `ios-docs/supabase-edge-functions-ios-integration.md` |
-| Edge function deploy | `SUPABASE_EDGE_FUNCTIONS_DEPLOYMENT.md` |
-| Coolify quickstart | `COOLIFY_EDGE_FUNCTIONS_QUICKSTART.md` |
+| Purpose              | File                                                  |
+| -------------------- | ----------------------------------------------------- |
+| **iOS**              |                                                       |
+| App entry point      | `ios/Printyx/App/PrintyxApp.swift`                    |
+| Auth state router    | `ios/Printyx/App/RootView.swift`                      |
+| HTTP client          | `ios/Printyx/Core/Network/APIClient.swift`            |
+| Endpoint definitions | `ios/Printyx/Core/Network/APIEndpoint.swift`          |
+| Error types          | `ios/Printyx/Core/Network/APIError.swift`             |
+| Token storage        | `ios/Printyx/Core/Auth/KeychainManager.swift`         |
+| Auth manager         | `ios/Printyx/Core/Auth/AuthManager.swift`             |
+| Auth models & JWT    | `ios/Printyx/Core/Auth/AuthModels.swift`              |
+| URL configuration    | `ios/Printyx/Core/Storage/AppConfig.swift`            |
+| XcodeGen config      | `ios/project.yml`                                     |
+| SPM dependencies     | `ios/Package.swift`                                   |
+| App manifest         | `ios/Printyx/Resources/Info.plist`                    |
+| **Edge Functions**   |                                                       |
+| Router / normalizer  | `supabase/functions/server.ts`                        |
+| CORS utilities       | `supabase/functions/_shared/cors.ts`                  |
+| Supabase clients     | `supabase/functions/_shared/supabase.ts`              |
+| Handler template     | `supabase/functions/{name}/index.ts`                  |
+| Dockerfile           | `Dockerfile.edge-functions`                           |
+| Docker Compose       | `docker-compose.edge-functions.yml`                   |
+| **CI/CD**            |                                                       |
+| iOS deploy workflow  | `.github/workflows/ios-deploy.yml`                    |
+| Mobile CI workflow   | `.github/workflows/mobile-ci.yml`                     |
+| Fastlane metadata    | `mobile/fastlane/Fastfile`                            |
+| **Database**         |                                                       |
+| Drizzle schema       | `shared/schema.ts`                                    |
+| Specialized schemas  | `shared/*-schema.ts`                                  |
+| Migrations           | `drizzle/migrations/`                                 |
+| **Documentation**    |                                                       |
+| This guide           | `ios-docs/supabase-edge-functions-ios-integration.md` |
+| Edge function deploy | `SUPABASE_EDGE_FUNCTIONS_DEPLOYMENT.md`               |
+| Coolify quickstart   | `COOLIFY_EDGE_FUNCTIONS_QUICKSTART.md`                |

@@ -42,11 +42,7 @@ export function SectionHeader({
           accessibilityLabel={actionLabel}
         >
           <Text style={styles.actionText}>{actionLabel}</Text>
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={18}
-            color={colors.primary[600]}
-          />
+          <MaterialCommunityIcons name="chevron-right" size={18} color={colors.primary[600]} />
         </Pressable>
       ) : null}
     </View>

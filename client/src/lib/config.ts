@@ -61,7 +61,11 @@ if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
  * Ping GoTrue's health endpoint so a *present-but-rotated/stale* anon key can be
  * distinguished from a missing one — a stale key returns 401 (see .env.example).
  */
-export async function pingSupabaseHealth(): Promise<{ ok: boolean; status: number; hint?: string }> {
+export async function pingSupabaseHealth(): Promise<{
+  ok: boolean;
+  status: number;
+  hint?: string;
+}> {
   try {
     const res = await fetch(`${config.supabase.url}/auth/v1/health`, {
       headers: {
@@ -71,7 +75,8 @@ export async function pingSupabaseHealth(): Promise<{ ok: boolean; status: numbe
     });
     let hint: string | undefined;
     if (res.status === 401) {
-      hint = 'GoTrue returned 401 for the anon key — it is likely rotated/stale and must be updated.';
+      hint =
+        'GoTrue returned 401 for the anon key — it is likely rotated/stale and must be updated.';
     }
     return { ok: res.ok, status: res.status, hint };
   } catch (e) {

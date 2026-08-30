@@ -23,7 +23,12 @@ interface SkeletonProps {
   style?: ViewStyle | ViewStyle[];
 }
 
-export function Skeleton({ width = '100%', height = 16, radius = borderRadius.md, style }: SkeletonProps) {
+export function Skeleton({
+  width = '100%',
+  height = 16,
+  radius = borderRadius.md,
+  style,
+}: SkeletonProps) {
   const progress = useSharedValue(0);
 
   useEffect(() => {

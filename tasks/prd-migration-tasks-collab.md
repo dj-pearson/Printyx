@@ -9,10 +9,12 @@
 ## 1. Scope
 
 **Express source:**
+
 - `server/routes/task-routes.ts` (447 lines, **9 endpoints**) — list, CRUD, schedule, categories, time-entry, suggestions
 - `server/routes/team-collaboration-routes.ts` (780 lines, **13 endpoints**) — teams, projects, capacity, insights, templates, analytics
 
 **Services:**
+
 - `server/services/task-scheduling-service.ts` — scheduling logic (recurring tasks, assignment rules?)
 
 **Existing edge functions (6):**
@@ -54,6 +56,7 @@ supabase/functions/
 ```
 
 **Explicitly out of scope:**
+
 - Task notifications (if any — look for email/push logic; if present, use Supabase Realtime for in-app + SendGrid for email)
 - Integration with external task systems (ClickUp via `routes-clickup-tasks.ts`) — separate domain, out of this PRD
 
@@ -74,40 +77,43 @@ Produce `docs/tasks-collab-parity.md` in the PR body before writing any handler 
 ## 3. Endpoint parity matrix (Express side)
 
 ### `task-routes.ts` — 9 endpoints
-| Method | Path | Line | Notes |
-|---|---|---|---|
-| GET    | `/tasks/` | 19 | list (big handler — 118 lines) |
-| POST   | `/tasks/` | 118 | create |
-| PUT    | `/tasks/:taskId` | 188 | update |
-| DELETE | `/tasks/:taskId` | 211 | |
-| POST   | `/tasks/schedule` | 227 | recurring/scheduled |
-| GET    | `/tasks/categories` | 308 | enum list or DB-backed? |
-| POST   | `/tasks/:taskId/time-entry` | 331 | time tracking |
-| GET    | `/tasks/suggestions` | 362 | **AI-assisted?** — audit for Claude call |
-| POST   | `/tasks/suggestions/:id/accept` | 414 | |
+
+| Method | Path                            | Line | Notes                                    |
+| ------ | ------------------------------- | ---- | ---------------------------------------- |
+| GET    | `/tasks/`                       | 19   | list (big handler — 118 lines)           |
+| POST   | `/tasks/`                       | 118  | create                                   |
+| PUT    | `/tasks/:taskId`                | 188  | update                                   |
+| DELETE | `/tasks/:taskId`                | 211  |                                          |
+| POST   | `/tasks/schedule`               | 227  | recurring/scheduled                      |
+| GET    | `/tasks/categories`             | 308  | enum list or DB-backed?                  |
+| POST   | `/tasks/:taskId/time-entry`     | 331  | time tracking                            |
+| GET    | `/tasks/suggestions`            | 362  | **AI-assisted?** — audit for Claude call |
+| POST   | `/tasks/suggestions/:id/accept` | 414  |                                          |
 
 ### `team-collaboration-routes.ts` — 13 endpoints
-| Method | Path | Line | Notes |
-|---|---|---|---|
-| POST | `/team-collaboration/teams` | 18 | |
-| GET  | `/team-collaboration/teams` | 38 | |
-| GET  | `/team-collaboration/teams/:teamId` | 124 | |
-| POST | `/team-collaboration/teams/:teamId/members` | 213 | |
-| GET  | `/team-collaboration/teams/:teamId/capacity` | 230 | |
-| GET  | `/team-collaboration/teams/:teamId/insights` | 246 | |
-| POST | `/team-collaboration/projects` | 262 | |
-| GET  | `/team-collaboration/projects` | 282 | |
-| GET  | `/team-collaboration/projects/:projectId` | 403 | |
-| POST | `/team-collaboration/projects/:projectId/assignments/optimize` | 574 | **algorithm** |
-| GET  | `/team-collaboration/projects/:projectId/dependencies` | 598 | |
-| GET  | `/team-collaboration/collaboration/templates` | 615 | |
-| GET  | `/team-collaboration/collaboration/analytics` | 707 | |
+
+| Method | Path                                                           | Line | Notes         |
+| ------ | -------------------------------------------------------------- | ---- | ------------- |
+| POST   | `/team-collaboration/teams`                                    | 18   |               |
+| GET    | `/team-collaboration/teams`                                    | 38   |               |
+| GET    | `/team-collaboration/teams/:teamId`                            | 124  |               |
+| POST   | `/team-collaboration/teams/:teamId/members`                    | 213  |               |
+| GET    | `/team-collaboration/teams/:teamId/capacity`                   | 230  |               |
+| GET    | `/team-collaboration/teams/:teamId/insights`                   | 246  |               |
+| POST   | `/team-collaboration/projects`                                 | 262  |               |
+| GET    | `/team-collaboration/projects`                                 | 282  |               |
+| GET    | `/team-collaboration/projects/:projectId`                      | 403  |               |
+| POST   | `/team-collaboration/projects/:projectId/assignments/optimize` | 574  | **algorithm** |
+| GET    | `/team-collaboration/projects/:projectId/dependencies`         | 598  |               |
+| GET    | `/team-collaboration/collaboration/templates`                  | 615  |               |
+| GET    | `/team-collaboration/collaboration/analytics`                  | 707  |               |
 
 ---
 
 ## 4. Tables + RLS plan
 
 From `shared/task-schema.ts` + `shared/team-alerts-schema.ts`:
+
 - `tasks`
 - `task_comments`
 - `task_categories`
@@ -123,6 +129,7 @@ From `shared/task-schema.ts` + `shared/team-alerts-schema.ts`:
 - `team_alerts` (from `team-alerts-schema.ts`)
 
 RLS files:
+
 - `drizzle/rls/tasks.sql` — standard template on all task-related tables
 - `drizzle/rls/teams.sql` — standard template on team-related tables
 
@@ -131,6 +138,7 @@ RLS files:
 ## 5. AI suggestions endpoint
 
 `GET /tasks/suggestions` (line 362) is flagged for audit. If it uses Claude:
+
 - Reuse `_shared/anthropic.ts` from Outreach
 - Move prompt-building logic to `_scheduling.ts` or a new `_ai.ts`
 - Cache responses where reasonable (suggestions don't need to be real-time-fresh)
@@ -150,10 +158,12 @@ Read the endpoint implementation during audit; if it's rule-based (no external A
 ## 7. Acceptance criteria
 
 ### Audit
+
 - [ ] `docs/tasks-collab-parity.md` published — all 22 Express endpoints + all edge-function endpoints classified
 - [ ] Duplicates resolved, canonical location assigned to each
 
 ### Functional
+
 - [ ] All Express endpoints ported or reconciled
 - [ ] Existing edge-function endpoints preserved (no frontend regression)
 - [ ] Bulk task updates atomic (transaction)
@@ -163,11 +173,13 @@ Read the endpoint implementation during audit; if it's rule-based (no external A
 - [ ] Team insights aggregates match Express numbers
 
 ### Security / RLS
+
 - [ ] RLS on all task + team tables
 - [ ] Two-tenant test: task in tenant A invisible to tenant B
 - [ ] Cross-tenant project access forbidden even with valid projectId guess
 
 ### Frontend compatibility
+
 - [ ] `TaskHub.tsx` loads
 - [ ] `my-tasks.tsx` + `TaskManagement.tsx` + `BasicTaskManagement.tsx` all functional
 - [ ] Task components (`TemplatesView`, `TaskTimeTracker`, `AIInsightsView`, `AllTasksView`, `MyTasksView`) all functional
@@ -176,6 +188,7 @@ Read the endpoint implementation during audit; if it's rule-based (no external A
 - [ ] Playwright MCP pass on TaskHub, TeamLeadDashboard
 
 ### Deletion
+
 - [ ] `server/routes/task-routes.ts` deleted
 - [ ] `server/routes/team-collaboration-routes.ts` deleted
 - [ ] `server/services/task-scheduling-service.ts` deleted (logic in `_scheduling.ts`)
@@ -184,6 +197,7 @@ Read the endpoint implementation during audit; if it's rule-based (no external A
 - [ ] `grep -r "task-routes\|team-collaboration-routes\|task-scheduling-service" server/ client/` returns zero matches
 
 ### Quality gates
+
 - [ ] `deno check` passes
 - [ ] `npm run check` passes
 - [ ] `npm run build` succeeds
@@ -193,16 +207,19 @@ Read the endpoint implementation during audit; if it's rule-based (no external A
 ## 8. Test plan
 
 ### Unit (Deno)
+
 - `_scheduling.test.ts` — recurring task generator on fixture (weekly, monthly, custom)
 - `_optimize.test.ts` — project assignment on fixture team + tasks
 - Comment CRUD with nested replies (if supported)
 
 ### Integration
+
 - Local: create task, comment, log time, mark complete
 - Bulk: update 50 tasks in one request, verify atomicity
 - Scheduled: create a weekly recurring task, simulate Phase 6 pg_cron trigger (or API trigger), verify instances appear
 
 ### Production smoke
+
 - TaskHub + all task views, verify no regressions
 - Team Lead dashboard, verify capacity + insights
 
@@ -223,14 +240,14 @@ Keep PR 1 and PR 2 as separate merges.
 
 ## 10. Risks + mitigations
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Duplicate endpoints diverge silently; canonical chooses wrong one | High | Medium | Require line-by-line diff in audit doc for every `both-diverged` row |
-| AI suggestions endpoint uses Claude with expensive prompts | Medium | Medium | Audit during port; add per-tenant rate limit; cache suggestions for 15 min |
-| Project optimizer uses a Node-only solver lib | Low | High | Read service before porting; if solver-based, decide: port to WASM or simplify to heuristic |
-| `task-scheduling-service.ts` has cron-triggered methods (recurring generator) | High | Medium | The cron trigger moves to `pg_cron` Phase 6; edge function exposes the run-once endpoint |
-| Frontend still calls deprecated edge-function paths during soak | Medium | Low | Keep old functions live during soak; sunset only after frontend verified |
-| Large-tenant "list all tasks" paginates inefficiently and times out | Medium | Medium | Add cursor-based pagination during port if not already present |
+| Risk                                                                          | Likelihood | Impact | Mitigation                                                                                  |
+| ----------------------------------------------------------------------------- | ---------- | ------ | ------------------------------------------------------------------------------------------- |
+| Duplicate endpoints diverge silently; canonical chooses wrong one             | High       | Medium | Require line-by-line diff in audit doc for every `both-diverged` row                        |
+| AI suggestions endpoint uses Claude with expensive prompts                    | Medium     | Medium | Audit during port; add per-tenant rate limit; cache suggestions for 15 min                  |
+| Project optimizer uses a Node-only solver lib                                 | Low        | High   | Read service before porting; if solver-based, decide: port to WASM or simplify to heuristic |
+| `task-scheduling-service.ts` has cron-triggered methods (recurring generator) | High       | Medium | The cron trigger moves to `pg_cron` Phase 6; edge function exposes the run-once endpoint    |
+| Frontend still calls deprecated edge-function paths during soak               | Medium     | Low    | Keep old functions live during soak; sunset only after frontend verified                    |
+| Large-tenant "list all tasks" paginates inefficiently and times out           | Medium     | Medium | Add cursor-based pagination during port if not already present                              |
 
 ---
 

@@ -9,11 +9,7 @@
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { GlassElevation, GlassSurface, GlassTone } from './GlassSurface';
 import { borderRadius, motion, spacing } from '@/theme';
 

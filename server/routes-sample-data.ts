@@ -237,48 +237,11 @@ export function registerSampleDataRoutes(app: Express) {
     }
   });
 
-  // ──────────────────────────────────────────────
-  // Sales Trends (Sample Data)
-  // ──────────────────────────────────────────────
-
-  app.get('/api/sales-trends', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      const monthsNum = Number((req.query as any)?.months ?? 6);
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Sample trend data
-      const sampleTrends = Array.from(
-        { length: Number.isFinite(monthsNum) ? monthsNum : 6 },
-        (_, i) => {
-          const date = new Date();
-          date.setMonth(date.getMonth() - i);
-
-          return {
-            month: date.toISOString().substring(0, 7),
-            monthName: date.toLocaleDateString('en-US', {
-              month: 'long',
-              year: 'numeric',
-            }),
-            revenue: Math.floor(Math.random() * 50000) + 80000,
-            deals: Math.floor(Math.random() * 3) + 3,
-            units: Math.floor(Math.random() * 4) + 4,
-            pipelineValue: Math.floor(Math.random() * 100000) + 300000,
-            conversionRate: Math.floor(Math.random() * 20) + 25,
-            averageDealSize: Math.floor(Math.random() * 10000) + 25000,
-          };
-        },
-      ).reverse();
-
-      res.json(sampleTrends);
-    } catch (error) {
-      log.error('Error fetching sales trends:', error);
-      res.status(500).json({ message: 'Failed to fetch sales trends' });
-    }
-  });
+  // SALES TRENDS: removed (AUDIT-021). GET /api/sales-trends built six months of
+  // revenue, deal counts, unit counts, pipeline value, conversion rate and
+  // average deal size entirely from Math.random(), so every refresh produced a
+  // different history. No client tree named the path, the prefix is not proxied
+  // and no edge function serves it, so nothing lost a caller.
 
   // ──────────────────────────────────────────────
   // E-signature Integration Routes (Sample Data)
@@ -668,8 +631,6 @@ export function registerSampleDataRoutes(app: Express) {
   // customer_health_scores and friends. These three returned hand-built mock
   // objects and never ran.
 
-
-
   // ──────────────────────────────────────────────
   // Remote Monitoring & IoT Integration Routes (Mock)
   // ──────────────────────────────────────────────
@@ -985,117 +946,17 @@ export function registerSampleDataRoutes(app: Express) {
     }
   });
 
-  // ──────────────────────────────────────────────
-  // Business Process Optimization Routes (Mock)
-  // ──────────────────────────────────────────────
-
-  app.get('/api/business-process/dashboard', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const processOptimizationData = {
-        processOverview: {
-          totalProcesses: 47,
-          automatedProcesses: 32,
-          manualProcesses: 15,
-          automationRate: 68.1,
-          avgProcessTime: 4.7,
-          processEfficiency: 84.3,
-          costSavings: 127890.5,
-          timeReduction: 32.4,
-        },
-        keyMetrics: [
-          {
-            metric: 'Lead to Customer Conversion',
-            currentTime: 5.2,
-            optimizedTime: 3.1,
-            improvement: 40.4,
-            status: 'optimized',
-            automationLevel: 85,
-          },
-          {
-            metric: 'Service Ticket Resolution',
-            currentTime: 6.8,
-            optimizedTime: 4.2,
-            improvement: 38.2,
-            status: 'optimized',
-            automationLevel: 72,
-          },
-        ],
-        workflowTemplates: [
-          {
-            id: 'wf-001',
-            name: 'New Customer Onboarding',
-            description:
-              'Standardized process for onboarding new customers from lead to active account',
-            steps: 12,
-            avgDuration: 3.5,
-            automationLevel: 85,
-            successRate: 96.8,
-            category: 'Customer Management',
-            status: 'active',
-            usageCount: 156,
-            lastUpdated: new Date('2025-01-15T00:00:00Z'),
-          },
-        ],
-        processAnalytics: {
-          bottlenecks: [
-            {
-              process: 'Equipment Installation',
-              step: 'Site Survey Scheduling',
-              avgDelay: 3.2,
-              impact: 'high',
-              frequency: 78,
-              recommendation: 'Implement automated scheduling with customer self-service portal',
-            },
-          ],
-          efficiency: [
-            {
-              department: 'Sales',
-              currentEfficiency: 78.5,
-              targetEfficiency: 90.0,
-              gap: 11.5,
-              improvementAreas: ['Lead qualification', 'Proposal generation'],
-              estimatedROI: 156780.25,
-            },
-          ],
-          trends: [
-            {
-              month: '2025-01',
-              efficiency: 84.3,
-              automation: 68.1,
-              processes: 47,
-            },
-          ],
-        },
-        automationOpportunities: [
-          {
-            id: 'auto-001',
-            process: 'Customer Onboarding Documentation',
-            description: 'Automate generation of welcome packets and setup documentation',
-            currentEffort: 2.5,
-            estimatedReduction: 80,
-            potentialSavings: 45600.0,
-            complexity: 'low',
-            priority: 'high',
-            implementationTime: 2,
-            roi: 456.7,
-            status: 'ready_to_implement',
-          },
-        ],
-      };
-
-      res.json(processOptimizationData);
-    } catch (error) {
-      log.error('Error fetching business process optimization data:', error);
-      res.status(500).json({
-        message: 'Failed to fetch business process optimization data',
-      });
-    }
-  });
+  // GET /api/business-process/dashboard was removed here (PROD-010), along with
+  // BusinessProcessOptimization.tsx and the unregistered 746-line
+  // routes-business-process-optimization.ts. It returned the same invented
+  // figures for every tenant - 47 processes, a 68.1% automation rate,
+  // $127,890.50 saved, a "Lead to Customer Conversion" metric improved 40.4% -
+  // with zero database calls, and no table in any schema defines what a
+  // "business process" is here. Porting it to an edge function would have
+  // published those numbers to production, which is why PROD-010 refused the
+  // port twice. The page never rendered them anyway: its query key was
+  // ['/api/business-process/dashboard', category, department], and a query key
+  // IS a url, so it actually requested /dashboard/all/all and 404'd in dev too.
 
   // GET /api/security/dashboard was removed here (PROD-008b). It returned mock
   // data and had NO caller — SecurityDashboard.tsx calls /overview,
@@ -1103,177 +964,14 @@ export function registerSampleDataRoutes(app: Express) {
   // the edge function has no /dashboard branch at all, so this path 404s; that
   // is correct, nothing asks for it.
 
-  // ──────────────────────────────────────────────
-  // Security Incident Response System Routes (Mock)
-  // ──────────────────────────────────────────────
-
-  app.get('/api/incident-response/dashboard', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const incidentResponseData = {
-        responseOverview: {
-          activeIncidents: 7,
-          criticalIncidents: 1,
-          highIncidents: 2,
-          mediumIncidents: 3,
-          lowIncidents: 1,
-          avgResponseTime: 12.5,
-          avgResolutionTime: 4.2,
-          mttr: 3.8,
-          slaCompliance: 94.7,
-          escalatedIncidents: 2,
-          falsePositives: 8,
-        },
-        activeIncidents: [
-          {
-            id: 'INC-2025-007',
-            title: 'Potential Data Exfiltration',
-            severity: 'critical',
-            priority: 'p1',
-            status: 'investigating',
-            category: 'data_breach',
-            subcategory: 'data_exfiltration',
-            detectedAt: new Date('2025-02-01T08:15:00Z'),
-            reportedBy: 'DLP System',
-            assignedTo: 'Incident Response Team Alpha',
-            responder: 'Sarah Chen',
-            affectedSystems: ['Customer Database', 'File Server', 'Email System'],
-            affectedUsers: 15,
-            estimatedImpact: 'high',
-            businessImpact: 'Potential customer data exposure - regulatory compliance risk',
-            detectionMethod: 'automated',
-            confidenceLevel: 87.5,
-            ttl: 2.3,
-            slaDeadline: new Date('2025-02-01T12:15:00Z'),
-            currentPhase: 'containment',
-            progress: 35,
-            tags: ['gdpr', 'customer_data', 'regulatory'],
-            threatActors: ['Unknown Internal User'],
-            indicators: [
-              'Unusual bulk data access pattern',
-              'Large file transfers to external email',
-              'After-hours system access',
-            ],
-          },
-        ],
-        incidentStats: {
-          monthlyTrends: [{ month: '2025-01', incidents: 24, resolved: 22, avgTime: 4.2 }],
-          categoriesBreakdown: [
-            {
-              category: 'malware',
-              count: 35,
-              percentage: 28.5,
-              avgSeverity: 'medium',
-            },
-            {
-              category: 'social_engineering',
-              count: 28,
-              percentage: 22.8,
-              avgSeverity: 'high',
-            },
-          ],
-          severityDistribution: {
-            critical: { count: 8, percentage: 6.5, avgResolutionTime: 2.1 },
-            high: { count: 31, percentage: 25.2, avgResolutionTime: 6.8 },
-          },
-          detectionSources: [
-            { source: 'SIEM/SOAR', incidents: 45, percentage: 36.6 },
-            { source: 'EDR/XDR', incidents: 32, percentage: 26.0 },
-          ],
-        },
-        teamPerformance: {
-          teams: [
-            {
-              name: 'Incident Response Team Alpha',
-              lead: 'Sarah Chen',
-              members: 4,
-              specialization: 'Critical Incidents & Data Breaches',
-              activeIncidents: 3,
-              avgResponseTime: 8.2,
-              avgResolutionTime: 2.8,
-              slaCompliance: 97.3,
-              workload: 'high',
-              status: 'available',
-              onCallSchedule: 'Week 1-2 February',
-            },
-          ],
-          individuals: [
-            {
-              name: 'Sarah Chen',
-              role: 'Senior Incident Response Analyst',
-              team: 'Alpha',
-              activeIncidents: 1,
-              totalIncidents: 47,
-              avgResponseTime: 6.2,
-              avgResolutionTime: 2.1,
-              specialties: ['Data Breaches', 'Forensics', 'Compliance'],
-              certifications: ['GCIH', 'GCFA', 'CISSP'],
-              availability: 'on_call',
-              performance: 'excellent',
-            },
-          ],
-        },
-        threatIntelligence: {
-          activeThreatFeeds: 12,
-          iocMatches: 156,
-          newThreats: 23,
-          currentThreats: [
-            {
-              threatId: 'TI-2025-001',
-              name: 'Lazarus Group Campaign',
-              threatActor: 'Lazarus Group (APT38)',
-              firstSeen: new Date('2025-01-28T00:00:00Z'),
-              lastUpdated: new Date('2025-02-01T06:30:00Z'),
-              severity: 'high',
-              confidence: 89.2,
-              targeting: ['Financial Services', 'Technology'],
-              ttps: ['T1566.001', 'T1055', 'T1071.001'],
-              iocs: [
-                {
-                  type: 'domain',
-                  value: 'malicious-domain.com',
-                  confidence: 95,
-                },
-              ],
-              mitigation: 'Block domains, monitor for lateral movement techniques',
-              relevanceScore: 78.5,
-            },
-          ],
-        },
-        automatedResponse: {
-          playbooks: [
-            {
-              id: 'playbook-001',
-              name: 'Malware Incident Response',
-              triggers: ['malware_detected', 'suspicious_process'],
-              automationLevel: 78.5,
-              steps: 12,
-              avgExecutionTime: 15.7,
-              successRate: 94.2,
-              lastUpdated: new Date('2025-01-15T00:00:00Z'),
-              status: 'active',
-            },
-          ],
-          automationMetrics: {
-            totalAutomatedActions: 1247,
-            automationSuccessRate: 92.8,
-            timesSaved: 847.3,
-            falsePositiveReduction: 67.4,
-            humanInterventionRequired: 12.5,
-          },
-        },
-      };
-
-      res.json(incidentResponseData);
-    } catch (error) {
-      log.error('Error fetching incident response dashboard:', error);
-      res.status(500).json({ message: 'Failed to fetch incident response dashboard' });
-    }
-  });
+  // GET /api/incident-response/dashboard was removed here (PROD-010), along with
+  // IncidentResponseSystem.tsx. Same shape as the business-process mock above
+  // and the same query-key defect: 7 active incidents, an SLA compliance
+  // figure, threat feeds, IOC matches and automated-response playbooks, none of
+  // it from a table - there is no incident, threat or playbook relation in any
+  // schema. A security page asserting posture with nothing behind it is
+  // AUDIT-019's SystemSecurity case, and the rule from LEGAL-010 applies: a
+  // claim with no backing data is deleted, not relabelled.
 
   // GET /api/ai-analytics/dashboard was removed here (PROD-008b). Unlike its
   // neighbours this one was NOT mock — CRMX-001 rebuilt it on real churn scores
@@ -1295,238 +993,18 @@ export function registerSampleDataRoutes(app: Express) {
 
   // ──────────────────────────────────────────────
 
-  app.get('/api/erp-integration/dashboard', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const erpIntegrationData = {
-        integrationOverview: {
-          totalIntegrations: 18,
-          activeIntegrations: 16,
-          failedIntegrations: 2,
-          syncSuccessRate: 98.7,
-          dataPointsSynced: 2.4,
-          syncFrequency: 'real-time',
-          lastSyncCompleted: new Date('2025-02-01T08:15:00Z'),
-          nextScheduledSync: new Date('2025-02-01T08:30:00Z'),
-          averageLatency: 234,
-          systemUptime: 99.94,
-          errorRate: 0.13,
-        },
-        erpSystems: [
-          {
-            id: 'sap-001',
-            name: 'SAP Business One',
-            type: 'erp',
-            category: 'financial_management',
-            status: 'active',
-            version: '10.0',
-            lastSync: new Date('2025-02-01T08:15:00Z'),
-            syncFrequency: 'real-time',
-            successRate: 99.2,
-            recordsProcessed: 45672,
-            apiCalls: 234567,
-            dataVolume: 1.2,
-            latency: 187,
-            capabilities: [
-              'accounting',
-              'financial_reporting',
-              'inventory',
-              'procurement',
-              'sales_orders',
-            ],
-            endpoints: [
-              {
-                name: 'Chart of Accounts',
-                url: '/api/ChartOfAccounts',
-                status: 'active',
-                lastCall: new Date('2025-02-01T08:14:00Z'),
-              },
-              {
-                name: 'Business Partners',
-                url: '/api/BusinessPartners',
-                status: 'active',
-                lastCall: new Date('2025-02-01T08:13:00Z'),
-              },
-            ],
-            authentication: {
-              type: 'oauth2',
-              status: 'authenticated',
-              tokenExpiry: new Date('2025-02-15T00:00:00Z'),
-              lastRefresh: new Date('2025-02-01T06:00:00Z'),
-            },
-            recentSync: {
-              recordsCreated: 124,
-              recordsUpdated: 3456,
-              recordsDeleted: 23,
-              errors: 5,
-              warnings: 12,
-              duration: 2.4,
-            },
-          },
-          {
-            id: 'oracle-001',
-            name: 'Oracle NetSuite',
-            type: 'erp',
-            category: 'cloud_erp',
-            status: 'active',
-            version: '2024.2',
-            lastSync: new Date('2025-02-01T08:14:00Z'),
-            syncFrequency: 'hourly',
-            successRate: 97.8,
-            recordsProcessed: 78934,
-            apiCalls: 456789,
-            dataVolume: 2.1,
-            latency: 298,
-            capabilities: ['financial_management', 'crm', 'inventory', 'e_commerce', 'analytics'],
-            endpoints: [
-              {
-                name: 'Customers',
-                url: '/services/rest/record/v1/customer',
-                status: 'active',
-                lastCall: new Date('2025-02-01T08:13:00Z'),
-              },
-            ],
-            authentication: {
-              type: 'token_based',
-              status: 'authenticated',
-              tokenExpiry: new Date('2025-03-01T00:00:00Z'),
-              lastRefresh: new Date('2025-02-01T00:00:00Z'),
-            },
-            recentSync: {
-              recordsCreated: 89,
-              recordsUpdated: 2134,
-              recordsDeleted: 12,
-              errors: 3,
-              warnings: 8,
-              duration: 3.7,
-            },
-          },
-        ],
-        dataSynchronization: {
-          syncSchedules: [
-            {
-              id: 'schedule-001',
-              name: 'Customer Data Sync',
-              description: 'Synchronize customer records across all ERP systems',
-              systems: ['SAP Business One', 'Oracle NetSuite', 'Microsoft Dynamics 365'],
-              frequency: 'real-time',
-              lastRun: new Date('2025-02-01T08:15:00Z'),
-              nextRun: new Date('2025-02-01T08:30:00Z'),
-              status: 'active',
-              successRate: 99.1,
-              recordsProcessed: 12456,
-              averageDuration: 2.3,
-              conflicts: 3,
-              resolvedConflicts: 3,
-            },
-          ],
-          conflictResolution: {
-            totalConflicts: 34,
-            resolvedConflicts: 31,
-            pendingResolution: 3,
-            autoResolutionRate: 91.2,
-            resolutionRules: [{ rule: 'Last Modified Wins', usage: 67, success: 94.1 }],
-          },
-          dataQuality: {
-            overallScore: 96.8,
-            completeness: 98.2,
-            accuracy: 95.7,
-            consistency: 97.1,
-            timeliness: 96.3,
-            duplicates: 23,
-            missingFields: 156,
-            validationErrors: 45,
-          },
-        },
-        businessProcessAutomation: {
-          automatedProcesses: [
-            {
-              id: 'process-001',
-              name: 'Order-to-Cash Automation',
-              description: 'Automated end-to-end order processing from creation to payment',
-              systems: ['Oracle NetSuite', 'SAP Business One', 'Printyx CRM'],
-              status: 'active',
-              executionsToday: 234,
-              successRate: 97.8,
-              averageProcessingTime: 45,
-              steps: [
-                {
-                  step: 'Order Creation',
-                  system: 'Printyx CRM',
-                  avgTime: 5,
-                  successRate: 99.2,
-                },
-              ],
-              kpis: {
-                cycleTimeReduction: 67.3,
-                errorReduction: 84.2,
-                costSavings: 45600,
-                customerSatisfaction: 94.7,
-              },
-            },
-          ],
-          workflowOrchestration: {
-            totalWorkflows: 67,
-            activeWorkflows: 64,
-            pausedWorkflows: 2,
-            erroredWorkflows: 1,
-            executionsToday: 2134,
-            successRate: 96.7,
-            averageExecutionTime: 23.4,
-            parallelExecutions: 12,
-            queuedExecutions: 5,
-          },
-        },
-        monitoring: {
-          systemHealth: [
-            {
-              system: 'SAP Business One',
-              status: 'healthy',
-              uptime: 99.8,
-              lastCheck: new Date('2025-02-01T08:14:00Z'),
-              responseTime: 187,
-            },
-            {
-              system: 'Oracle NetSuite',
-              status: 'healthy',
-              uptime: 99.2,
-              lastCheck: new Date('2025-02-01T08:13:00Z'),
-              responseTime: 298,
-            },
-          ],
-          alerts: [
-            {
-              id: 'alert-001',
-              type: 'performance_degradation',
-              severity: 'medium',
-              system: 'Oracle NetSuite',
-              message: 'Response time increased by 25% in last hour',
-              triggeredAt: new Date('2025-02-01T07:45:00Z'),
-              status: 'investigating',
-              assignee: 'integration_team',
-            },
-          ],
-          performanceMetrics: {
-            dataLatency: 234,
-            syncThroughput: 12456,
-            errorRate: 0.13,
-            availabilityScore: 99.7,
-            integrationComplexity: 8.7,
-            maintenanceOverhead: 4.2,
-          },
-        },
-      };
-
-      res.json(erpIntegrationData);
-    } catch (error) {
-      log.error('Error fetching ERP integration dashboard:', error);
-      res.status(500).json({ message: 'Failed to fetch ERP integration dashboard' });
-    }
-  });
+  // PROD-014: a 670-line GET /api/erp-integration/dashboard used to sit here,
+  // returning "SAP Business One", 18 integrations, a 98.7% sync success rate, a
+  // 99.94% uptime and data-quality scores for accuracy, completeness,
+  // consistency and timeliness. Every value was a literal. An identical
+  // unregistered copy lived in routes-erp-integration.ts and has been deleted
+  // too.
+  //
+  // Porting it to an edge function would have shipped invented integration
+  // health to production, which is the fix PROD-011 already ruled out for a
+  // mock handler. supabase/functions/erp-integration/ serves the domain from
+  // system_integrations and integration_metrics instead, and
+  // ERPIntegration.tsx drops the sections no table backs.
 
   // GET /api/integration-hub/dashboard was removed here (PROD-008b). The
   // integrations edge function serves it from its /dashboard branch (EDGE-005f).

@@ -5,6 +5,7 @@ Script to sync environment variables (e.g. from Coolify/Supabase `.env`) into an
 ## Prerequisites
 
 1. **Infisical CLI** installed on the Coolify server:
+
    ```bash
    curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | sudo -E bash
    sudo apt-get install infisical
@@ -45,6 +46,7 @@ export INFISICAL_PROJECT_ID="..."     # Your Infisical project ID
 ```
 
 3. Optionally load your Supabase `.env`:
+
    ```bash
    cd /path/to/your/supabase-config
    source .env

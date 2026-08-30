@@ -1,3 +1,26 @@
+/**
+ * Geofence alerts: rules, dwell sessions, event processing and statistics.
+ * 20 handlers over /api/geofence-alerts.
+ *
+ * CANNOT AUTHENTICATE ANYONE - see SEC-SESSION-001 before changing this file.
+ *
+ * Every handler below reads `req.session.user` as its only source of identity.
+ * Nothing in this codebase assigns it: session login sets the flat
+ * req.session.userId / req.session.tenantId and the JWT path sets req.user, so
+ * each of these answers 401 in dev exactly as it does in production. It has
+ * never run. server/types/express-session.d.ts records the same finding and
+ * declares the type that lets it compile, which is why tsc sees nothing wrong.
+ *
+ * No client tree calls /api/geofence-alerts and there is no edge function for
+ * it. Same shape as gps-tracking-routes.ts, which owns the geofences these
+ * alerts fire on and is equally unreachable.
+ *
+ * The fix is one of three, and it is a product call rather than cleanup:
+ * migrate the handlers to getUserId/getTenantId from utils/auth-helpers and
+ * build the caller, retire the file in favour of an edge function that covers
+ * it, or delete it. Populating req.session.user in the login path would revive
+ * all twelve files at once and touches security-sensitive code.
+ */
 import express, { Request, Response } from 'express';
 import { z } from 'zod';
 import { geofenceAlertsService } from '../services/geofence-alerts-service';

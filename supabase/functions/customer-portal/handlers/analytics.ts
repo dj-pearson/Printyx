@@ -3,10 +3,19 @@
 //   GET /equipment-health  — used by EquipmentHealthDashboard.tsx
 //
 // usage-analytics ports the real delta-based meter computation from
-// server/services/customer-portal-service.ts (getUsageAnalytics). The
-// comparison block uses a fixed previous-period multiplier instead of the
-// Express version's Math.random() — deterministic responses cache better and
-// the random "previous period" was placeholder data anyway.
+// server/services/customer-portal-service.ts (getUsageAnalytics).
+//
+// CORRECTED (AUDIT-021). The comparison block used to multiply this period by
+// 0.9 and call the result "previous period" — the Express version rolled a
+// random 0.85-1.15 multiplier for it, and swapping that for a constant made it
+// worse rather than better: every customer was shown "volume up 11.1%" and
+// "cost up 11.1%" forever, stable enough to look measured. It now queries the
+// window immediately before this one, the same length, and answers null when
+// that window holds no readings. Peak usage was a hardcoded block asserting
+// 9am and Tuesday to every customer; day and month are derived from the
+// readings now, and hourly is ABSENT because a meter read carries a date and no
+// time of day. What still cannot be measured is listed in the response's
+// `unbacked` array instead of being filled in.
 //
 // equipment-health intentionally DIVERGES from Express: the Express service
 // returned three hardcoded mock machines to every customer. Here health rows
@@ -169,31 +178,146 @@ function generateTrends(deltas: MeterDelta[], periodType: string) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// Static peak-usage analysis — same placeholder values as the Express service
-// (real time-of-day patterns need per-job telemetry that meter reads lack).
-const PEAK_USAGE = {
-  hourlyPeaks: [
-    { hour: 9, averageVolume: 120 },
-    { hour: 10, averageVolume: 98 },
-    { hour: 11, averageVolume: 87 },
-    { hour: 14, averageVolume: 67 },
-    { hour: 15, averageVolume: 89 },
-  ],
-  dailyPeaks: [
-    { dayOfWeek: 1, averageVolume: 450 },
-    { dayOfWeek: 2, averageVolume: 520 },
-    { dayOfWeek: 3, averageVolume: 480 },
-    { dayOfWeek: 4, averageVolume: 465 },
-    { dayOfWeek: 5, averageVolume: 380 },
-  ],
-  monthlyPeaks: [
-    { month: 1, averageVolume: 8200 },
-    { month: 3, averageVolume: 9500 },
-    { month: 6, averageVolume: 7800 },
-    { month: 9, averageVolume: 9200 },
-    { month: 12, averageVolume: 6500 },
-  ],
+/**
+ * The rate card the cost figures are built from.
+ *
+ * These are industry averages, NOT this customer's contract. A copier contract
+ * carries its own black and colour rates and a monthly base, and nothing here
+ * reads them - so every cost on this screen is an estimate for a generic
+ * customer. It is named in the response's `unbacked` array rather than being
+ * presented as billing, and wiring it to the customer's contract is its own job.
+ */
+const RATE_CARD = {
+  blackWhitePerPage: 0.03,
+  colorPerPage: 0.12,
+  largeFormatPerPage: 0.25,
+  scanPerPage: 0.01,
+  maintenancePerThousandPages: 25,
+  supplyPerCartridge: 85,
+  pagesPerCartridge: 2500,
+  kgCo2PerPage: 0.004,
 };
+
+/**
+ * Peaks by day of week and by month, from the readings themselves.
+ *
+ * This replaces a hardcoded block - 9am is your busiest hour, Tuesday is your
+ * busiest day at 520 pages - that both hosts returned to every customer as
+ * fact. Day and month ARE derivable: a meter submission carries a reading_date.
+ *
+ * HOURLY IS NOT, and is absent rather than invented. A meter read is a
+ * cumulative counter with a date on it; the platform never learns what time of
+ * day a job ran, so no arithmetic over this data produces an hourly profile.
+ * The response says so in `unbacked` and the dashboard hides that chart.
+ */
+// deno-lint-ignore no-explicit-any
+function derivePeaks(readings: any[]) {
+  const byDay = new Map<number, number>();
+  const byMonth = new Map<number, number>();
+  for (const reading of readings) {
+    const at = new Date(reading.reading_date);
+    if (Number.isNaN(at.getTime())) continue;
+    const volume = reading.total_impressions || 0;
+    byDay.set(at.getDay(), (byDay.get(at.getDay()) || 0) + volume);
+    byMonth.set(at.getMonth() + 1, (byMonth.get(at.getMonth() + 1) || 0) + volume);
+  }
+  const counts = new Map<string, number>();
+  for (const reading of readings) {
+    const at = new Date(reading.reading_date);
+    if (Number.isNaN(at.getTime())) continue;
+    counts.set(`d${at.getDay()}`, (counts.get(`d${at.getDay()}`) || 0) + 1);
+    counts.set(`m${at.getMonth() + 1}`, (counts.get(`m${at.getMonth() + 1}`) || 0) + 1);
+  }
+  // Averages, not sums: three Tuesdays in the window should not outrank one
+  // Wednesday just because the window happened to contain more of them.
+  return {
+    dailyPeaks: [...byDay.entries()]
+      .map(([dayOfWeek, total]) => ({
+        dayOfWeek,
+        averageVolume: Math.round(total / (counts.get(`d${dayOfWeek}`) || 1)),
+      }))
+      .sort((a, b) => a.dayOfWeek - b.dayOfWeek),
+    monthlyPeaks: [...byMonth.entries()]
+      .map(([month, total]) => ({
+        month,
+        averageVolume: Math.round(total / (counts.get(`m${month}`) || 1)),
+      }))
+      .sort((a, b) => a.month - b.month),
+  };
+}
+
+/** Everything a period's summary card shows, from that period's own deltas. */
+function summarise(deltas: MeterDelta[], days: number) {
+  const totalImpressions = deltas.reduce((sum, d) => sum + d.totalImpressions, 0);
+  const totalBlackWhite = deltas.reduce((sum, d) => sum + d.blackWhiteImpressions, 0);
+  const totalColor = deltas.reduce((sum, d) => sum + d.colorImpressions, 0);
+  const totalLargeFormat = deltas.reduce((sum, d) => sum + d.largeFormatImpressions, 0);
+  const totalScans = deltas.reduce((sum, d) => sum + d.scanImpressions, 0);
+
+  const averageDaily = days > 0 ? totalImpressions / days : 0;
+  const blackWhiteCost = totalBlackWhite * RATE_CARD.blackWhitePerPage;
+  const colorCost = totalColor * RATE_CARD.colorPerPage;
+  const largeFormatCost = totalLargeFormat * RATE_CARD.largeFormatPerPage;
+  const scanCost = totalScans * RATE_CARD.scanPerPage;
+  const maintenanceCost =
+    Math.floor(totalImpressions / 1000) * RATE_CARD.maintenancePerThousandPages;
+  const supplyCost =
+    (totalImpressions / RATE_CARD.pagesPerCartridge) * RATE_CARD.supplyPerCartridge;
+  const totalCost =
+    blackWhiteCost + colorCost + largeFormatCost + scanCost + maintenanceCost + supplyCost;
+
+  const colorRatio = totalImpressions > 0 ? (totalColor / totalImpressions) * 100 : 0;
+  const scanRatio = totalImpressions > 0 ? (totalScans / totalImpressions) * 100 : 0;
+
+  return {
+    totalImpressions,
+    totalBlackWhite,
+    totalColor,
+    totalLargeFormat,
+    totalScans,
+    averageDaily,
+    averageMonthly: averageDaily * 30,
+    colorRatio,
+    scanRatio,
+    blackWhiteCost,
+    colorCost,
+    largeFormatCost,
+    scanCost,
+    maintenanceCost,
+    supplyCost,
+    totalCost,
+    costPerPage: totalImpressions > 0 ? totalCost / totalImpressions : 0,
+    carbonFootprint: totalImpressions * RATE_CARD.kgCo2PerPage,
+    paperSaved: totalScans * 0.1,
+    efficiencyScore: Math.min(100, 100 - colorRatio * 0.5 + scanRatio * 0.3),
+  };
+}
+
+/** The peak reading and the busiest weekday in a set of readings. */
+// deno-lint-ignore no-explicit-any
+function peaksOf(readings: any[]) {
+  const dayTotals = new Map<string, number>();
+  for (const reading of readings) {
+    const day = new Date(reading.reading_date).toLocaleDateString('en-US', { weekday: 'long' });
+    dayTotals.set(day, (dayTotals.get(day) || 0) + (reading.total_impressions || 0));
+  }
+  let peakDay: string | null = null;
+  let best = -1;
+  for (const [day, volume] of dayTotals) {
+    if (volume > best) {
+      best = volume;
+      peakDay = day;
+    }
+  }
+  return {
+    // Null, not 'Monday': with no readings there is no busiest day, and a
+    // default weekday reads as a measured one.
+    peakDay,
+    peakVolume: readings.length
+      ? Math.max(...readings.map((r: { total_impressions?: number }) => r.total_impressions || 0))
+      : 0,
+  };
+}
 
 export async function handleUsageAnalytics(ctx: PortalCtx): Promise<Response> {
   const { req, admin, tenantId, url } = ctx;
@@ -227,6 +351,12 @@ export async function handleUsageAnalytics(ctx: PortalCtx): Promise<Response> {
 
   const endDate = new Date();
   const startDate = rangeStart(timeRange, endDate);
+  // The window immediately before this one, the same length. Fetching both in
+  // one query and splitting them is what makes the comparison real: it used to
+  // be this period multiplied by 0.9, so every customer was always shown
+  // "volume up 11.1%" no matter what their meters said.
+  const windowMs = endDate.getTime() - startDate.getTime();
+  const previousStart = new Date(startDate.getTime() - windowMs);
 
   let query = admin
     .from('customer_meter_submissions')
@@ -234,7 +364,7 @@ export async function handleUsageAnalytics(ctx: PortalCtx): Promise<Response> {
     .eq('tenant_id', tenantId)
     .eq('customer_id', customerId)
     .eq('is_validated', true)
-    .gte('reading_date', startDate.toISOString())
+    .gte('reading_date', previousStart.toISOString())
     .lte('reading_date', endDate.toISOString())
     .order('reading_date', { ascending: false });
   if (equipmentIds && equipmentIds.length > 0) {
@@ -250,55 +380,40 @@ export async function handleUsageAnalytics(ctx: PortalCtx): Promise<Response> {
       req,
     );
   }
-  const meterReadings = readings || [];
+  const allReadings = readings || [];
+  const meterReadings = allReadings.filter(
+    (r: { reading_date: string }) => new Date(r.reading_date) >= startDate,
+  );
+  const previousReadings = allReadings.filter(
+    (r: { reading_date: string }) => new Date(r.reading_date) < startDate,
+  );
 
   const deltas = calculateMeterDeltas(meterReadings);
-  const totalImpressions = deltas.reduce((sum, d) => sum + d.totalImpressions, 0);
-  const totalBlackWhite = deltas.reduce((sum, d) => sum + d.blackWhiteImpressions, 0);
-  const totalColor = deltas.reduce((sum, d) => sum + d.colorImpressions, 0);
-  const totalLargeFormat = deltas.reduce((sum, d) => sum + d.largeFormatImpressions, 0);
-  const totalScans = deltas.reduce((sum, d) => sum + d.scanImpressions, 0);
-
   const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
-  const averageDaily = daysDiff > 0 ? totalImpressions / daysDiff : 0;
-  const averageMonthly = averageDaily * 30;
+  const summary = summarise(deltas, daysDiff);
+  const previousSummary = summarise(calculateMeterDeltas(previousReadings), daysDiff);
 
-  // Same industry-standard rate card as the Express service.
-  const blackWhiteCost = totalBlackWhite * 0.03;
-  const colorCost = totalColor * 0.12;
-  const largeFormatCost = totalLargeFormat * 0.25;
-  const scanCost = totalScans * 0.01;
-  const maintenanceCost = Math.floor(totalImpressions / 1000) * 25;
-  const supplyCost = (totalImpressions / 2500) * 85;
-  const totalCost =
-    blackWhiteCost + colorCost + largeFormatCost + scanCost + maintenanceCost + supplyCost;
-  const costPerPage = totalImpressions > 0 ? totalCost / totalImpressions : 0;
+  const {
+    totalImpressions,
+    averageDaily,
+    averageMonthly,
+    blackWhiteCost,
+    colorCost,
+    largeFormatCost,
+    scanCost,
+    maintenanceCost,
+    supplyCost,
+    totalCost,
+    costPerPage,
+    carbonFootprint,
+    paperSaved,
+    colorRatio,
+    scanRatio,
+    efficiencyScore,
+  } = summary;
 
-  const carbonFootprint = totalImpressions * 0.004;
-  const paperSaved = totalScans * 0.1;
-  const colorRatio = totalImpressions > 0 ? (totalColor / totalImpressions) * 100 : 0;
-  const scanRatio = totalImpressions > 0 ? (totalScans / totalImpressions) * 100 : 0;
-  const efficiencyScore = Math.min(100, 100 - colorRatio * 0.5 + scanRatio * 0.3);
-
-  // Peak day/volume from raw readings (mirrors Express findPeakDay/findPeakVolume).
-  const dayTotals = new Map<string, number>();
-  for (const reading of meterReadings) {
-    const day = new Date(reading.reading_date).toLocaleDateString('en-US', { weekday: 'long' });
-    dayTotals.set(day, (dayTotals.get(day) || 0) + (reading.total_impressions || 0));
-  }
-  let peakDay = 'Monday';
-  let peakDayVolume = 0;
-  for (const [day, volume] of dayTotals) {
-    if (volume > peakDayVolume) {
-      peakDayVolume = volume;
-      peakDay = day;
-    }
-  }
-  const peakVolume = meterReadings.length
-    ? Math.max(
-        ...meterReadings.map((r: { total_impressions?: number }) => r.total_impressions || 0),
-      )
-    : 0;
+  const { peakDay, peakVolume } = peaksOf(meterReadings);
+  const previousPeaks = peaksOf(previousReadings);
 
   const trends = generateTrends(deltas, periodType);
 
@@ -344,22 +459,28 @@ export async function handleUsageAnalytics(ctx: PortalCtx): Promise<Response> {
       totalImpressions: equipment.totalImpressions,
       monthlyAverage,
       utilizationRate: Math.min(100, (monthlyAverage / 1000) * 100),
-      costPerPage: 0.05,
-      efficiency: 95,
+      // Fleet-wide figures, applied per device: the rate card is not per-model
+      // and nothing measures a single machine's efficiency. Named in `unbacked`
+      // rather than given a per-device number that would read as measured.
+      costPerPage,
+      efficiency: efficiencyScore,
       lastReading: equipment.lastReading,
-      trendDirection: 'stable' as const,
+      // Null, not 'stable': one window of readings shows no direction, and
+      // 'stable' is a claim.
+      trendDirection: null,
     };
   });
 
-  // Previous-period comparison with a fixed multiplier (see header note).
-  const previousMultiplier = 0.9;
+  // Both sides are measured now. percentageChange is null when the previous
+  // window has no readings at all - a customer with one month of history has no
+  // trend, and 0% or 100% would both be claims the data does not support.
   const current = {
     totalVolume: totalImpressions,
     averageDaily,
     averageMonthly,
     colorRatio,
     peakDay,
-    peakVolume: Math.floor(totalImpressions * 0.15),
+    peakVolume,
     totalCost,
     costPerPage,
     efficiencyScore,
@@ -367,22 +488,25 @@ export async function handleUsageAnalytics(ctx: PortalCtx): Promise<Response> {
     paperSaved,
   };
   const previous = {
-    totalVolume: Math.floor(totalImpressions * previousMultiplier),
-    averageDaily: Math.floor(averageDaily * previousMultiplier),
-    averageMonthly: Math.floor(averageMonthly * previousMultiplier),
-    colorRatio,
-    peakDay,
-    peakVolume: Math.floor(totalImpressions * previousMultiplier * 0.15),
-    totalCost: totalCost * previousMultiplier,
-    costPerPage,
-    efficiencyScore,
-    carbonFootprint: carbonFootprint * previousMultiplier,
-    paperSaved: 0,
+    totalVolume: previousSummary.totalImpressions,
+    averageDaily: previousSummary.averageDaily,
+    averageMonthly: previousSummary.averageMonthly,
+    colorRatio: previousSummary.colorRatio,
+    peakDay: previousPeaks.peakDay,
+    peakVolume: previousPeaks.peakVolume,
+    totalCost: previousSummary.totalCost,
+    costPerPage: previousSummary.costPerPage,
+    efficiencyScore: previousSummary.efficiencyScore,
+    carbonFootprint: previousSummary.carbonFootprint,
+    paperSaved: previousSummary.paperSaved,
+    periodStart: previousStart.toISOString(),
+    periodEnd: startDate.toISOString(),
+    readingCount: previousReadings.length,
   };
   const percentageChange =
-    previous.totalVolume > 0
-      ? ((current.totalVolume - previous.totalVolume) / previous.totalVolume) * 100
-      : 0;
+    previousReadings.length === 0 || previous.totalVolume === 0
+      ? null
+      : ((current.totalVolume - previous.totalVolume) / previous.totalVolume) * 100;
 
   // Recommendations — same thresholds as the Express service.
   const recommendations = [];
@@ -461,15 +585,28 @@ export async function handleUsageAnalytics(ctx: PortalCtx): Promise<Response> {
       supplyCost,
       totalCost,
     },
-    peakUsage: PEAK_USAGE,
+    peakUsage: derivePeaks(meterReadings),
     comparison: {
       current,
       previous,
       percentageChange,
       trendDirection:
-        percentageChange > 5 ? 'up' : percentageChange < -5 ? 'down' : ('stable' as string),
+        percentageChange === null
+          ? null
+          : percentageChange > 5
+            ? 'up'
+            : percentageChange < -5
+              ? 'down'
+              : ('stable' as string),
     },
     recommendations,
+    // Named rather than filled in. PROD-014a's rule: a field the platform cannot
+    // measure is reported as unmeasured, so an absence is never read as a zero.
+    unbacked: [
+      'peakUsage.hourlyPeaks: a meter submission carries a date, not a time of day, so no hourly profile exists to derive',
+      'costBreakdown and costPerPage use an industry-average rate card, not this customer contract rates',
+      'equipmentUsage[].costPerPage and .efficiency are per-fleet estimates, not per-device measurements',
+    ],
   };
 
   return createCorsResponse(

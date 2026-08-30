@@ -6,28 +6,11 @@
  */
 
 import React, { useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  TextInput,
-  View,
-  ViewStyle,
-} from 'react-native';
+import { Pressable, StyleSheet, TextInput, View, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import {
-  borderRadius,
-  colors,
-  motion,
-  spacing,
-  touchTargets,
-  typography,
-} from '@/theme';
+import { borderRadius, colors, motion, spacing, touchTargets, typography } from '@/theme';
 import { GlassSurface } from './GlassSurface';
 
 interface SearchBarProps {
@@ -53,8 +36,7 @@ export function SearchBar({
   const focusValue = useSharedValue(0);
 
   const ringStyle = useAnimatedStyle(() => ({
-    borderColor:
-      focusValue.value > 0.5 ? colors.primary[400] : 'transparent',
+    borderColor: focusValue.value > 0.5 ? colors.primary[400] : 'transparent',
     shadowOpacity: focusValue.value * 0.18,
   }));
 
@@ -101,11 +83,7 @@ export function SearchBar({
           accessibilityLabel="Clear search"
           accessibilityRole="button"
         >
-          <MaterialCommunityIcons
-            name="close-circle"
-            size={18}
-            color={colors.gray[400]}
-          />
+          <MaterialCommunityIcons name="close-circle" size={18} color={colors.gray[400]} />
         </Pressable>
       ) : null}
     </View>
@@ -127,11 +105,7 @@ export function SearchBar({
     );
   }
 
-  return (
-    <Animated.View style={[styles.solid, ringStyle, style]}>
-      {inner}
-    </Animated.View>
-  );
+  return <Animated.View style={[styles.solid, ringStyle, style]}>{inner}</Animated.View>;
 }
 
 const styles = StyleSheet.create({

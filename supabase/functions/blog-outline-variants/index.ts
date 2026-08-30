@@ -269,7 +269,9 @@ async function select(admin: Admin, tenantId: string, userId: string, req: Reque
     .eq('tenant_id', tenantId)
     .eq('status', 'candidate')
     .neq('id', variant_id);
-  sib = variant.brief_id ? sib.eq('brief_id', variant.brief_id) : sib.eq('keyword', variant.keyword);
+  sib = variant.brief_id
+    ? sib.eq('brief_id', variant.brief_id)
+    : sib.eq('keyword', variant.keyword);
   await sib;
 
   // Optionally write the selected outline into the brief.
@@ -290,7 +292,11 @@ async function select(admin: Admin, tenantId: string, userId: string, req: Reque
       action: 'blog_outline_variants.select',
       targetType: 'blog_outline_variant',
       targetId: variant_id,
-      afterState: { keyword: variant.keyword, angle: variant.angle, wrote_brief: Boolean(write_to_brief && variant.brief_id) },
+      afterState: {
+        keyword: variant.keyword,
+        angle: variant.angle,
+        wrote_brief: Boolean(write_to_brief && variant.brief_id),
+      },
       summary: `Selected "${variant.angle}" outline for "${variant.keyword}"; siblings archived`,
     }),
   );
@@ -335,11 +341,7 @@ async function abTest(admin: Admin, tenantId: string, userId: string, req: Reque
     );
   }
   if (variants[0].target_intent && variants[0].target_intent === variants[1].target_intent) {
-    return createCorsResponse(
-      { error: 'A/B variants should target different intents' },
-      400,
-      req,
-    );
+    return createCorsResponse({ error: 'A/B variants should target different intents' }, 400, req);
   }
 
   const group = crypto.randomUUID();
@@ -363,7 +365,12 @@ async function abTest(admin: Admin, tenantId: string, userId: string, req: Reque
       createdPosts.push({ post_id: post.id, variant_id: v.id });
       await admin
         .from('blog_outline_variants')
-        .update({ ab_test_group: group, post_id: post.id, status: 'selected', updated_at: new Date().toISOString() })
+        .update({
+          ab_test_group: group,
+          post_id: post.id,
+          status: 'selected',
+          updated_at: new Date().toISOString(),
+        })
         .eq('tenant_id', tenantId)
         .eq('id', v.id);
     }
@@ -426,9 +433,15 @@ function summarizeSerp(organic: unknown, aggregate: unknown): string {
     const h2s = (o.headings as { h2?: string[] } | undefined)?.h2 ?? [];
     return `${i + 1}. ${o.title ?? '(no title)'} — ${o.word_count ?? '?'} words; H2s: ${Array.isArray(h2s) ? h2s.slice(0, 6).join('; ') : ''}`;
   });
-  const agg = aggregate as { median_word_count?: number; common_h2s?: Array<{ text: string }> } | null;
+  const agg = aggregate as {
+    median_word_count?: number;
+    common_h2s?: Array<{ text: string }>;
+  } | null;
   const aggLine = agg
-    ? `Median word count: ${agg.median_word_count ?? '?'}. Common H2s: ${(agg.common_h2s ?? []).map((c) => c.text).slice(0, 8).join('; ')}`
+    ? `Median word count: ${agg.median_word_count ?? '?'}. Common H2s: ${(agg.common_h2s ?? [])
+        .map((c) => c.text)
+        .slice(0, 8)
+        .join('; ')}`
     : '';
   return [aggLine, ...lines].filter(Boolean).join('\n').slice(0, 4000);
 }

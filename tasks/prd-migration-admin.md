@@ -9,10 +9,12 @@
 ## 1. Scope
 
 **Source Express files (in `server/routes/`):**
+
 - `admin-seed-routes.ts` (1,552 lines) — seed/demo data + **RBAC role endpoints** (`/roles`, `/my-role`, `/assign-role`)
 - `chrome-extension-routes.ts` (532 lines, 4 endpoints) — lead import, auth key gen, health, duplicate check
 
 **Additional admin routes in `server/` root (not covered by other phase PRDs):**
+
 - `routes-admin-stats.ts`
 - `routes-admin-subscriptions.ts`
 - `routes-admin-workflows.ts`
@@ -29,6 +31,7 @@
 **Total files: ~14**, likely 100-200 endpoints across all. Per-file enumeration deferred to parity audit.
 
 **Existing edge functions:**
+
 - `supabase/functions/admin/` — may already cover some
 - `supabase/functions/enhanced-rbac/` — partial (audit)
 
@@ -65,6 +68,7 @@ supabase/functions/
 ```
 
 **Explicitly out of scope:**
+
 - Platform-admin superuser tools beyond basic CRUD (no refactor of how superusers work)
 - New feature flags — keep existing flag format
 - Seeding strategy redesign — port whatever exists
@@ -87,6 +91,7 @@ Expect ≥ 20% of endpoints to be orphaned (legacy features never fully wired). 
 ## 3. Chrome extension (special case)
 
 `chrome-extension-routes.ts` is a lightweight API for the browser extension:
+
 - `POST /chrome-extension/leads/quick-import` — browser-captured prospects
 - `GET /chrome-extension/leads/check-duplicate`
 - `POST /chrome-extension/auth/generate-key` — extension auth
@@ -105,6 +110,7 @@ Expect ≥ 20% of endpoints to be orphaned (legacy features never fully wired). 
 `admin-seed-routes.ts` contains `/roles`, `/my-role`, `/assign-role` at lines 1356/1388/1441 — these are **not seed logic**, they're RBAC management. The master PRD didn't anticipate this overlap.
 
 **Strategy:**
+
 1. Extract RBAC endpoints from `admin-seed-routes.ts` into their own target (`rbac/` edge function)
 2. Combine with `routes-enhanced-rbac.ts` endpoints — one canonical RBAC surface
 3. Admin `seed.ts` handler keeps only seed/demo creation logic
@@ -115,6 +121,7 @@ Expect ≥ 20% of endpoints to be orphaned (legacy features never fully wired). 
 ## 5. Tables + RLS plan
 
 Admin domains touch many tables — most already have RLS from prior phases. New RLS needed:
+
 - `tenant_onboarding_state`
 - `white_label_config`
 - `feature_flags`
@@ -132,11 +139,11 @@ RLS files: `drizzle/rls/admin.sql`, `drizzle/rls/rbac.sql`, `drizzle/rls/tenant-
 
 ## 6. External dependencies to port
 
-| Dependency | Express location | Deno port |
-|---|---|---|
-| Seed data generators | `admin-seed-routes.ts` | Port as-is (mostly pure TS) |
-| Feature flag engine | `routes-feature-flags.ts` | Port; check for external flag service (LaunchDarkly?) integration |
-| White-label customization logic | `routes-white-label.ts` | Port |
+| Dependency                        | Express location               | Deno port                                                                                 |
+| --------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------- |
+| Seed data generators              | `admin-seed-routes.ts`         | Port as-is (mostly pure TS)                                                               |
+| Feature flag engine               | `routes-feature-flags.ts`      | Port; check for external flag service (LaunchDarkly?) integration                         |
+| White-label customization logic   | `routes-white-label.ts`        | Port                                                                                      |
 | Session management (Redis or DB?) | `routes-session-management.ts` | Audit — if Redis, decide: swap for DB-backed sessions OR use Supabase's own session table |
 
 ---
@@ -144,11 +151,13 @@ RLS files: `drizzle/rls/admin.sql`, `drizzle/rls/rbac.sql`, `drizzle/rls/tenant-
 ## 7. Acceptance criteria
 
 ### Audit
+
 - [ ] `docs/admin-parity.md` published — full endpoint list with classification
 - [ ] Dead / orphaned endpoints listed; each confirmed unused via frontend grep
 - [ ] Orphaned endpoints deleted (not ported)
 
 ### Functional
+
 - [ ] All active admin endpoints ported
 - [ ] Seed data creation works end-to-end for demo tenant
 - [ ] RBAC role CRUD + assign + my-role work
@@ -157,12 +166,14 @@ RLS files: `drizzle/rls/admin.sql`, `drizzle/rls/rbac.sql`, `drizzle/rls/tenant-
 - [ ] Audit log records all admin state changes
 
 ### Security / RLS
+
 - [ ] RLS applied to all new tables listed in §5
 - [ ] Platform-admin-only endpoints enforce role check via `_shared/rbac.ts` (requires `roleLevel === 8` or equivalent)
 - [ ] Service-role DB access logged and documented per-handler
 - [ ] Audit log entries for every admin action verified
 
 ### Frontend compatibility
+
 - [ ] Platform admin UI pages load (audit for specific pages — likely `PlatformAdmin.tsx`, `AdminHub.tsx`, `RBACSettings.tsx`, etc.)
 - [ ] Feature flags UI works
 - [ ] Tenant onboarding wizard works
@@ -170,12 +181,14 @@ RLS files: `drizzle/rls/admin.sql`, `drizzle/rls/rbac.sql`, `drizzle/rls/tenant-
 - [ ] Playwright MCP pass on each admin page
 
 ### Deletion
+
 - [ ] ~14 Express files deleted
 - [ ] Services for admin / RBAC / onboarding ported + originals deleted
 - [ ] Route registry entries removed
 - [ ] `grep -r "admin-seed-routes\|chrome-extension-routes\|enhanced-rbac" server/` returns zero matches
 
 ### Quality gates
+
 - [ ] `deno check` passes on all new edge functions
 - [ ] `npm run check` passes
 - [ ] `npm run build` succeeds
@@ -185,17 +198,20 @@ RLS files: `drizzle/rls/admin.sql`, `drizzle/rls/rbac.sql`, `drizzle/rls/tenant-
 ## 8. Test plan
 
 ### Unit (Deno)
+
 - Seed generator tests (fixture output matches Express for same seed input)
 - RBAC role assignment validation
 - Feature flag evaluation logic
 
 ### Integration
+
 - Tenant onboarding: create trial → wizard → first login → settings
 - RBAC: create role → assign permissions → assign user → verify permission enforcement on gated edge function
 - Audit log: run 10 admin actions, verify 10 audit rows
 - Chrome extension: generate key → simulate extension request → verify lead inserted
 
 ### Production smoke
+
 - Platform admin hub: verify stats, user count, subscription state
 - Seed a demo tenant in prod; verify it can be logged into
 
@@ -213,14 +229,14 @@ No schema changes unless admin-specific tables lack RLS today (add RLS migration
 
 ## 10. Risks + mitigations
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| 14 files is a large review surface; some routes silently break | High | Medium | Split into 4-5 sub-PRs under a feature branch |
-| RBAC changes during migration introduce permission regressions | Medium | High | Snapshot-test the RBAC permission table pre/post migration |
-| Session-management uses Redis that isn't ported | Medium | High | Audit first; if Redis, switch to Supabase Auth session OR Postgres-backed with 15 min TTL |
-| Chrome extension breaks because CORS policy differs | Medium | Medium | Test with actual extension; replicate exact CORS policy in edge function |
-| Seed scripts create data that violates new RLS policies | Low | Medium | Run seed as service-role; document intentional bypass |
-| Feature flag lookup becomes slow due to cold-start cost | Low | Medium | Cache flag evaluation per tenant per 5min in memory |
+| Risk                                                           | Likelihood | Impact | Mitigation                                                                                |
+| -------------------------------------------------------------- | ---------- | ------ | ----------------------------------------------------------------------------------------- |
+| 14 files is a large review surface; some routes silently break | High       | Medium | Split into 4-5 sub-PRs under a feature branch                                             |
+| RBAC changes during migration introduce permission regressions | Medium     | High   | Snapshot-test the RBAC permission table pre/post migration                                |
+| Session-management uses Redis that isn't ported                | Medium     | High   | Audit first; if Redis, switch to Supabase Auth session OR Postgres-backed with 15 min TTL |
+| Chrome extension breaks because CORS policy differs            | Medium     | Medium | Test with actual extension; replicate exact CORS policy in edge function                  |
+| Seed scripts create data that violates new RLS policies        | Low        | Medium | Run seed as service-role; document intentional bypass                                     |
+| Feature flag lookup becomes slow due to cold-start cost        | Low        | Medium | Cache flag evaluation per tenant per 5min in memory                                       |
 
 ---
 

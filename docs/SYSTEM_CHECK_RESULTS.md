@@ -13,27 +13,29 @@ The comprehensive system check found **real architectural issues** in the codeba
 
 ### **Top Missing Endpoints (by frequency):**
 
-| Endpoint | Status | Impact | Priority |
-|----------|--------|--------|----------|
-| `/api/billing` | ❌ Missing | Billing features broken | 🔴 **CRITICAL** |
-| `/api/customer-portal` | ❌ Missing | Customer portal broken | 🔴 **CRITICAL** |
-| `/api/public` | ❌ Missing | Public calculator broken | 🟡 Medium |
-| `/api/supplies` | ❌ Missing | Supply management broken | 🟡 Medium |
-| `/api/commission` | ❌ Missing | Commission features broken | 🟡 Medium |
-| `/api/financial` | ❌ Missing | Financial reporting broken | 🟡 Medium |
-| `/api/workflows` | ❌ Missing | Workflow automation broken | 🟡 Medium |
-| `/api/phone-in-tickets` | ❌ Missing | Phone ticket tracking broken | 🟢 Low |
-| `/api/document-management` | ❌ Missing | Document features broken | 🟢 Low |
-| `/api/accounts-*` | ❌ Missing | AP/AR features broken | 🟢 Low |
+| Endpoint                   | Status     | Impact                       | Priority        |
+| -------------------------- | ---------- | ---------------------------- | --------------- |
+| `/api/billing`             | ❌ Missing | Billing features broken      | 🔴 **CRITICAL** |
+| `/api/customer-portal`     | ❌ Missing | Customer portal broken       | 🔴 **CRITICAL** |
+| `/api/public`              | ❌ Missing | Public calculator broken     | 🟡 Medium       |
+| `/api/supplies`            | ❌ Missing | Supply management broken     | 🟡 Medium       |
+| `/api/commission`          | ❌ Missing | Commission features broken   | 🟡 Medium       |
+| `/api/financial`           | ❌ Missing | Financial reporting broken   | 🟡 Medium       |
+| `/api/workflows`           | ❌ Missing | Workflow automation broken   | 🟡 Medium       |
+| `/api/phone-in-tickets`    | ❌ Missing | Phone ticket tracking broken | 🟢 Low          |
+| `/api/document-management` | ❌ Missing | Document features broken     | 🟢 Low          |
+| `/api/accounts-*`          | ❌ Missing | AP/AR features broken        | 🟢 Low          |
 
 ---
 
 ## 🔍 **Detailed Breakdown**
 
 ### 1. **Billing System (Critical) - 50+ calls**
+
 **Missing:** `/api/billing/*` endpoints
 
 **Affected Components:**
+
 - `billing-rule-dialog.tsx` (5 calls)
 - `invoice-email-dialog.tsx` (3 calls)
 - `invoice-pdf-preview.tsx` (8 calls)
@@ -44,6 +46,7 @@ The comprehensive system check found **real architectural issues** in the codeba
 **Impact:** Entire billing module non-functional
 
 **Recommendation:** 🔴 **CREATE IMMEDIATELY**
+
 ```
 Priority 1: Create supabase/functions/billing/index.ts
 Handle: /api/billing/invoices, /api/billing/rules, /api/billing/analytics, etc.
@@ -52,9 +55,11 @@ Handle: /api/billing/invoices, /api/billing/rules, /api/billing/analytics, etc.
 ---
 
 ### 2. **Customer Portal (Critical) - 40+ calls**
+
 **Missing:** `/api/customer-portal/*` endpoints
 
 **Affected Components:**
+
 - `CustomerDashboard.tsx` (5 calls)
 - `ServiceRequestForm.tsx` (10 calls)
 - `CustomerSatisfactionForm.tsx` (8 calls)
@@ -65,6 +70,7 @@ Handle: /api/billing/invoices, /api/billing/rules, /api/billing/analytics, etc.
 **Impact:** Customer-facing portal completely broken
 
 **Recommendation:** 🔴 **CREATE IMMEDIATELY**
+
 ```
 Priority 1: Create supabase/functions/customer-portal/index.ts
 Handle: Service requests, satisfaction surveys, equipment health, maintenance
@@ -73,9 +79,11 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 ---
 
 ### 3. **Commission Management - 30+ calls**
+
 **Missing:** `/api/commission/*` endpoints
 
 **Affected Pages:**
+
 - `CommissionManagement.tsx` (all features)
 
 **Impact:** Sales commission tracking broken
@@ -85,9 +93,11 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 ---
 
 ### 4. **Financial Reporting - 25+ calls**
+
 **Missing:** `/api/financial/*` endpoints
 
 **Affected Pages:**
+
 - `FinancialForecasting.tsx` (all features)
 
 **Impact:** Financial analysis and forecasting broken
@@ -97,9 +107,11 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 ---
 
 ### 5. **Workflow Automation - 20+ calls**
+
 **Missing:** `/api/workflows/*` endpoints
 
 **Affected Pages:**
+
 - `workflow-automation.tsx` (all features)
 
 **Impact:** Workflow automation non-functional
@@ -111,6 +123,7 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 ### 6. **Other Missing Endpoints**
 
 **Each affecting 5-15 API calls:**
+
 - `/api/accounts-receivable` - AR management
 - `/api/accounts-payable` - AP management
 - `/api/journal-entries` - Journal entries
@@ -132,6 +145,7 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 ### **Components Missing queryFn Transformations:**
 
 **High-Traffic Pages:**
+
 1. `ServiceRequestsDashboard.tsx` - Customer portal
 2. `DashboardCustomizer.tsx` - Main dashboard
 3. `MultipleContactsForm.tsx` - Contact management
@@ -140,6 +154,7 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 6. `MyTasksView.tsx` - User tasks
 
 **Hooks:**
+
 - `useCrossModuleIntegration.ts` (3 instances)
 - `useOptimisticMutations.ts` (3 instances)
 
@@ -150,6 +165,7 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 ## 🎯 **Recommended Action Plan**
 
 ### **Phase 1: Critical Fixes (This Week)**
+
 1. ✅ **Contacts Page** - DONE (just fixed!)
 2. 🔴 **Create `/api/billing` Edge Function**
    - Handle invoices, rules, analytics, payment methods
@@ -157,6 +173,7 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
    - Handle service requests, satisfaction surveys, equipment health
 
 ### **Phase 2: High-Priority (Next Week)**
+
 4. 🟡 Create `/api/commission` Edge Function
 5. 🟡 Create `/api/financial` Edge Function
 6. 🟡 Create `/api/workflows` Edge Function
@@ -164,10 +181,12 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 8. 🟡 Create `/api/accounts-payable` Edge Function
 
 ### **Phase 3: Medium-Priority (Next 2 Weeks)**
+
 9. 🟢 Create remaining Edge Functions (15+ endpoints)
 10. 🟢 Fix all missing queryFn transformations (79 warnings)
 
 ### **Phase 4: Prevention (Ongoing)**
+
 11. 🔧 Add CI/CD check: Run `npm run check:system` before deploy
 12. 🔧 Add pre-commit hook to flag new missing endpoints
 13. 🔧 Document API endpoint creation pattern
@@ -177,12 +196,14 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 ## 💡 **Why This Happened**
 
 **Root Causes:**
+
 1. **Frontend code written before Edge Functions** - UI created optimistically
 2. **No validation** - No checks to ensure Edge Functions exist before calling them
 3. **Split development** - Frontend and backend developed separately
 4. **No API contract** - No formal API specification or contract
 
 **Lessons:**
+
 1. ✅ Always create Edge Functions **before** frontend components
 2. ✅ Use TypeScript API client with compile-time checking
 3. ✅ Run `npm run check:system` regularly
@@ -195,6 +216,7 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 ### **For Missing Edge Functions:**
 
 1. **Create the Edge Function:**
+
    ```bash
    # Example for billing
    cd supabase/functions
@@ -203,15 +225,16 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
    ```
 
 2. **Implement the handler:**
+
    ```typescript
    // supabase/functions/billing/index.ts
    import { createSupabaseServiceClient } from '../_shared/supabase.ts';
    import { handleCors, createCorsResponse } from '../_shared/cors.ts';
-   
+
    export default async function handler(req: Request) {
      const corsResponse = handleCors(req);
      if (corsResponse) return corsResponse;
-     
+
      // Extract JWT and tenant ID
      // Implement endpoints: /invoices, /rules, /analytics, etc.
      // Return proper responses
@@ -226,10 +249,11 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 ### **For Missing queryFn Transformations:**
 
 1. **Find the useQuery:**
+
    ```typescript
    // ❌ BEFORE
    const { data } = useQuery({
-     queryKey: ['/api/contacts']
+     queryKey: ['/api/contacts'],
    });
    ```
 
@@ -245,7 +269,7 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
          lastName: item.last_name,
          // ... transform all fields
        }));
-     }
+     },
    });
    ```
 
@@ -254,6 +278,7 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 ## 📈 **Success Metrics**
 
 **After completing all fixes:**
+
 - ✅ 0 errors from `npm run check:system`
 - ✅ All pages load without 404/403 errors
 - ✅ All features fully functional
@@ -275,6 +300,7 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 7. **Deploy** - Push to production
 
 ### **Checklist:**
+
 - [ ] Edge Function exists
 - [ ] Edge Function tested
 - [ ] Frontend has queryFn transformation
@@ -283,6 +309,6 @@ Handle: Service requests, satisfaction surveys, equipment health, maintenance
 
 ---
 
-*Generated: January 24, 2026*
-*Tool: `npm run check:system`*
-*Status: ⚠️ 463 Errors, 79 Warnings - Action Required*
+_Generated: January 24, 2026_
+_Tool: `npm run check:system`_
+_Status: ⚠️ 463 Errors, 79 Warnings - Action Required_

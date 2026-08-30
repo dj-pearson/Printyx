@@ -165,7 +165,9 @@ export default function TenantSetup() {
                         <ExternalLink className="h-4 w-4" />
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">For testing and development</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      For testing and development
+                    </p>
                   </div>
                 )}
 
@@ -189,7 +191,9 @@ export default function TenantSetup() {
                         <ExternalLink className="h-4 w-4" />
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Currently active environment</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Currently active environment
+                    </p>
                   </div>
                 )}
               </div>

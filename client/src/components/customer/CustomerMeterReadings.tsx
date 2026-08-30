@@ -75,10 +75,12 @@ export default function CustomerMeterReadings({ customerId }: Props) {
     }),
   });
 
-  // Fetch customer devices for selection
-  const { data: customerDevices } = useQuery({
-    queryKey: ['/api/customers', customerId, 'devices'],
-  });
+  // PA-021: a second query for /api/customers/:id/devices used to sit here.
+  // Nothing read its result - the device picker below is built from
+  // metricsHistory.timeline - so it was one request per render of this tab for
+  // a value that was discarded. Its Express handler also ignored customerId
+  // entirely and returned the whole tenant's fleet, so removing it loses
+  // nothing and prevents anyone wiring that up later.
 
   if (isLoading) {
     return (

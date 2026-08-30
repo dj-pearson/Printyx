@@ -7,6 +7,7 @@ The Contacts page at `printyx.net/contacts` is experiencing **403 Forbidden erro
 ### Root Causes
 
 1. **Direct Supabase REST API Calls** (Line 425-429 in `Contacts.tsx`)
+
    ```typescript
    const { data, error } = await supabase
      .from('company_contacts')
@@ -14,21 +15,26 @@ The Contacts page at `printyx.net/contacts` is experiencing **403 Forbidden erro
      .eq('tenant_id', tenantId)
      .order('updated_at', { ascending: false });
    ```
+
    - This bypasses Edge Functions
    - Gets blocked by Row Level Security (RLS) policies
    - Results in **403 Forbidden** errors
 
 2. **Non-Existent Edge Function Call**
+
    ```
    GET https://functions.printyx.net/enrichment/contacts?page=1&limit=25 404 (Not Found)
    ```
+
    - The `/enrichment/contacts` endpoint doesn't exist
    - Needs to be removed or implemented
 
 3. **Auth Context Issue**
+
    ```
    "No role found (neither role string nor role_id), using default user role"
    ```
+
    - User's role isn't being properly detected
    - May be causing RLS policy failures
 
@@ -95,17 +101,17 @@ const {
     const params = new URLSearchParams();
     params.append('page', currentPage.toString());
     params.append('limit', pageSize.toString());
-    
+
     if (searchQuery) params.append('search', searchQuery);
-    if (filters.leadStatus && filters.leadStatus !== 'all') 
+    if (filters.leadStatus && filters.leadStatus !== 'all')
       params.append('status', filters.leadStatus);
-    if (filters.contactOwner && filters.contactOwner !== 'all') 
+    if (filters.contactOwner && filters.contactOwner !== 'all')
       params.append('ownerId', filters.contactOwner);
     if (sortBy) params.append('sortBy', sortBy);
     if (sortOrder) params.append('sortOrder', sortOrder);
 
     const response = await apiRequest(`/api/companies/all/contacts?${params.toString()}`, 'GET');
-    
+
     return {
       contacts: (response?.contacts || []).map((c: any) => ({
         id: c.id,
@@ -153,8 +159,8 @@ ON company_contacts
 FOR SELECT
 USING (
   tenant_id = (
-    SELECT raw_app_meta_data->>'tenantId' 
-    FROM auth.users 
+    SELECT raw_app_meta_data->>'tenantId'
+    FROM auth.users
     WHERE id = auth.uid()
   )::uuid
 );
@@ -165,8 +171,8 @@ ON company_contacts
 FOR INSERT
 WITH CHECK (
   tenant_id = (
-    SELECT raw_app_meta_data->>'tenantId' 
-    FROM auth.users 
+    SELECT raw_app_meta_data->>'tenantId'
+    FROM auth.users
     WHERE id = auth.uid()
   )::uuid
 );
@@ -177,8 +183,8 @@ ON company_contacts
 FOR UPDATE
 USING (
   tenant_id = (
-    SELECT raw_app_meta_data->>'tenantId' 
-    FROM auth.users 
+    SELECT raw_app_meta_data->>'tenantId'
+    FROM auth.users
     WHERE id = auth.uid()
   )::uuid
 );
@@ -189,8 +195,8 @@ ON company_contacts
 FOR DELETE
 USING (
   tenant_id = (
-    SELECT raw_app_meta_data->>'tenantId' 
-    FROM auth.users 
+    SELECT raw_app_meta_data->>'tenantId'
+    FROM auth.users
     WHERE id = auth.uid()
   )::uuid
 );
@@ -218,6 +224,7 @@ grep -r "enrichment/contacts" client/src/
 **Check:** `client/src/providers/AuthProvider.tsx` and ensure it's properly setting the user's role from JWT metadata.
 
 **Expected JWT structure:**
+
 ```json
 {
   "app_metadata": {
@@ -233,14 +240,17 @@ grep -r "enrichment/contacts" client/src/
 ## 🎯 **Recommended Immediate Action**
 
 ### Step 1: Fix Contacts Page (5 minutes)
+
 Use **Option 1** above - change to use the Edge Function API instead of direct Supabase calls.
 
 ### Step 2: Run System Check (1 minute)
+
 ```bash
 npm run check:system
 ```
 
 This will scan your entire codebase and report:
+
 - Missing Edge Functions
 - Direct Supabase REST API calls (potential RLS issues)
 - Missing queryFn transformations
@@ -265,6 +275,7 @@ If the `/api/companies/all/contacts` endpoint doesn't exist, create it or use th
 ### Always Use Edge Functions for Data Access
 
 **Why?**
+
 - ✅ Consistent authorization
 - ✅ Better error handling
 - ✅ Centralized business logic
@@ -273,16 +284,18 @@ If the `/api/companies/all/contacts` endpoint doesn't exist, create it or use th
 - ✅ Data transformation in one place
 
 **Pattern to Follow:**
+
 ```
-Frontend (React Query with queryFn) 
+Frontend (React Query with queryFn)
   → Edge Function (/api/*)
     → Database (with tenant filtering)
       → Return transformed data
 ```
 
 **NOT:**
+
 ```
-Frontend (React Query) 
+Frontend (React Query)
   → Direct Supabase Client
     → Database (blocked by RLS) ❌
 ```
@@ -311,6 +324,6 @@ Frontend (React Query)
 
 ---
 
-*Last Updated: January 24, 2026*
-*Issue: 403 Forbidden on Contacts Page*
-*Fix: Use Edge Functions instead of Direct Supabase Calls*
+_Last Updated: January 24, 2026_
+_Issue: 403 Forbidden on Contacts Page_
+_Fix: Use Edge Functions instead of Direct Supabase Calls_

@@ -30,7 +30,7 @@
 > HIGH-YIELD PATTERN (batches 43-44): many `/api` route modules in routes-registry `asyncRootApiMounts` are
 > mounted with NO auth middleware yet dereference `req.user.x` directly (TS18048). Where the access is plain
 > `req.user.x` (NO `?.`/`.claims` fallback — grep to confirm), the minimal faithful fix is `sed -i
-> 's/req\.user\./req.user!./g'` (type-only, preserves runtime). Done: ai-documentation, meeting-transcription,
+'s/req\.user\./req.user!./g'` (type-only, preserves runtime). Done: ai-documentation, meeting-transcription,
 > team-collaboration, ai-search-knowledge, meeting-scheduling, task-routes. More `req.user` TS18048 files
 > likely remain — grep `TS18048 .* req.user` in the fresh tsc log. (Latent security note: these routes lack
 > auth; a real fix wraps the mounts in requireAuth — separate story.)
@@ -103,7 +103,7 @@ The naive check — `comm` on `file(line,col): code` between before/after — **
   # empty output = no file got worse = clean batch
   ```
 - **Per-code count diff for the file you edited** — confirms exactly which codes you cleared and that no new code appeared (used in batch 25/26).
-- **Empty diff of non-target files** — when your change is confined to a few files, `diff` the sorted error lines of *everything else*; must be empty.
+- **Empty diff of non-target files** — when your change is confined to a few files, `diff` the sorted error lines of _everything else_; must be empty.
 
 If "new" errors appear, check whether they are the SAME pre-existing errors with shifted line numbers (compare the message text) before assuming you regressed.
 
@@ -128,25 +128,33 @@ The **easy mechanical clusters are exhausted.** What remains needs judgment. Top
 Code distribution: TS2339 (855, property-does-not-exist), TS2769 (409, no-overload/insert-shape), TS2322 (225), TS2345 (196), TS18048 (138, possibly-undefined), TS18047 (79, possibly-null), TS7006 (64, implicit-any), TS2304 (61, cannot-find-name), TS18046 (58, error-unknown), TS2353 (51, extra-property).
 
 ### Bucket A — PHANTOM SHAPE (the big one; real latent bugs)
+
 Routes/seeds that read or write **columns/relations that don't exist** on the real Drizzle table → these queries 500 (or silently return `[]`) at runtime.
+
 - **Examples:** `routes-product-models` (product_models read with `price`/`stockQuantity`/`specifications`…), `routes-technician-management` (technicians read with `name`/`specialties`/`availability`…), `routes-service-dispatch` (`technicians.name`, `service_tickets.technicianId`), `seed-all-demo-data`.
-- **How:** the **batch-14 recipe** (`routes-opportunities`). For each phantom column, find the REAL column in `shared/schema.ts` (+ migration `0000`), remap, and **delete features with no backing column**. Preserve API response *alias keys* (only change the column the value reads from) so consumers don't break.
+- **How:** the **batch-14 recipe** (`routes-opportunities`). For each phantom column, find the REAL column in `shared/schema.ts` (+ migration `0000`), remap, and **delete features with no backing column**. Preserve API response _alias keys_ (only change the column the value reads from) so consumers don't break.
 - **⚠️ Risk:** this changes runtime SQL and you can't run the app. Only do it when the mapping is **unambiguous and schema-verified**. Where a phantom field has no clean equivalent (e.g. `deals.dealStage` → there's only `stageId`, an FK; or `db.query.activities` → an unregistered relation), it's a **feature rewrite that needs testing** — flag it, don't guess. `routes-today-dashboard` is the cautionary example: its `db.query.activities/deals` are unregistered relations that silently return `[]`, and `activities.status`→`completedDate IS NULL` is a semantic change. Leave those for a tested story.
 
 ### Bucket B — UNIMPLEMENTED STORAGE METHODS (feature gaps)
+
 `advanced-billing-routes`, `gps-tracking-routes` call `storage.X()` methods that **were never implemented** (`generateInvoice`, `resolve/escalate/assignBillingDispute`, `getActiveTechnicianLocations`…). TS "did you mean" suggests the WRONG method (`create` ≠ `resolve`). **Do not blind-rename.** These need the methods implemented in `storage.ts` (+ `IStorage` interface). Real feature work.
-- *Exception:* a few were genuine stale renames where the method exists with matching args — verify the signature arg-for-arg before renaming (batch 30 did 2 safe ones, rejected 1 that had an arg-count mismatch).
+
+- _Exception:_ a few were genuine stale renames where the method exists with matching args — verify the signature arg-for-arg before renaming (batch 30 did 2 safe ones, rejected 1 that had an arg-count mismatch).
 
 ### Bucket C — MISSING DEPENDENCY
+
 `routes-equipment-qr.ts` uses `QRCode` but the `qrcode` package isn't in `package.json` at all → endpoint throws at runtime. Needs the dep added + installed, not an import line.
 
 ### Bucket D — `storage.ts` (93) — mixed Drizzle internals
+
 TS18047 (possibly-null on `const [x] = await db…; x.field`), TS2416 (`DatabaseStorage` method not assignable to `IStorage` — return-type/signature drift), TS2769/TS2740 (more `let q = …; q = q.where()` → fixable with `.$dynamic()` like batch 25), a few TS2741/TS2739. Pick the `.$dynamic()` ones and the null-guards first; the IStorage TS2416 mismatches need per-method signature reconciliation.
 
 ### Bucket E — `routes-customer-portal.ts` (54 remaining)
+
 Batch 28 cleared the easy half (Request augmentation + error guards). Remaining: 16 TS18048 (`req.user` possibly-undefined — `AuthenticatedRequest.user` is optional; use `getUserId/getTenantId` helpers or guards), 10 TS2538 (null-as-index-type), 9 TS18047 (data-null), plus reduce/aggregation typing. Per-site work.
 
 ### DEFERRED — do not touch without new schema
+
 `routes-predictive-service-dispatch.ts` (69) references **phantom TABLES** (`serviceCallsEnhanced`, `equipmentMetrics`, `technicianResourcesEnhanced`) that exist in NO schema/migration. These endpoints already 500. A real fix needs new tables + a migration, not types. CLAUDE.md documents this.
 
 ---
@@ -173,4 +181,4 @@ Batch 28 cleared the easy half (Request augmentation + error guards). Remaining:
 
 QUALITY-002 flips to `passes: true` only when `./node_modules/.bin/tsc --noEmit` exits 0 (under the pinned 5.6.3). Then wire `node scripts/check-types.mjs` (already CI-wired) to require `total: 0`, i.e. make tsc blocking. Until then keep the ratchet tightening — never let `total` grow.
 
-**Recommendation for the next session:** the remaining count is dominated by feature-level work (Buckets A/B) that needs the ability to run the app. The highest-value *mechanical* remaining work is the `storage.ts` `.$dynamic()` + null-guard subset (Bucket D) and the `customer-portal` helpers (Bucket E). Bigger wins (phantom-shape rewrites, unimplemented methods) should each be their own scoped, **testable** story rather than blind typecheck batches.
+**Recommendation for the next session:** the remaining count is dominated by feature-level work (Buckets A/B) that needs the ability to run the app. The highest-value _mechanical_ remaining work is the `storage.ts` `.$dynamic()` + null-guard subset (Bucket D) and the `customer-portal` helpers (Bucket E). Bigger wins (phantom-shape rewrites, unimplemented methods) should each be their own scoped, **testable** story rather than blind typecheck batches.

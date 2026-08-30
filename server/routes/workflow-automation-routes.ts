@@ -1,3 +1,32 @@
+/**
+ * Workflow automation management API: workflows, triggers, steps, executions,
+ * approvals, assignment groups and the runtime dashboard. 35 handlers mounted
+ * at the /api root.
+ *
+ * CANNOT AUTHENTICATE ANYONE - see SEC-SESSION-001 before changing this file.
+ *
+ * Every handler below reads `req.session.user` as its only source of identity.
+ * Nothing in this codebase assigns it: session login sets the flat
+ * req.session.userId / req.session.tenantId and the JWT path sets req.user, so
+ * each of these answers 401 in dev exactly as it does in production. It has
+ * never run. server/types/express-session.d.ts records the same finding and
+ * declares the type that lets it compile, which is why tsc sees nothing wrong.
+ *
+ * This one is worth reading carefully, because CRMX-008 describes it as the
+ * registered workflow router and the only one in the tree - which is true, and
+ * does not mean it works. No client tree calls /api/workflows, /api/executions,
+ * /api/triggers or /api/approvals, and every handler 401s regardless. The
+ * RUNTIME is a separate thing and is genuinely live: workflow-execution-service.ts
+ * and workflow-runtime.ts are driven by dispatchWorkflowEvent from the edge
+ * seams and by the boot-started sweeper, none of which passes through this
+ * router. So workflows execute and nobody can create, inspect or approve one.
+ *
+ * The fix is one of three, and it is a product call rather than cleanup:
+ * migrate the handlers to getUserId/getTenantId from utils/auth-helpers and
+ * build the caller, retire the file in favour of an edge function that covers
+ * it, or delete it. Populating req.session.user in the login path would revive
+ * all twelve files at once and touches security-sensitive code.
+ */
 import express, { Request, Response } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';

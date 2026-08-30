@@ -24,25 +24,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  Button,
-  GlassSurface,
-  GradientBackground,
-  Input,
-} from '@/components/ui';
-import {
-  borderRadius,
-  colors,
-  motion,
-  spacing,
-  typography,
-} from '@/theme';
+import { Button, GlassSurface, GradientBackground, Input } from '@/components/ui';
+import { borderRadius, colors, motion, spacing, typography } from '@/theme';
 
 const signupSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -134,11 +119,7 @@ export default function SignupScreen() {
                 hitSlop={10}
                 style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.6 }]}
               >
-                <MaterialCommunityIcons
-                  name="chevron-left"
-                  size={24}
-                  color="#ffffff"
-                />
+                <MaterialCommunityIcons name="chevron-left" size={24} color="#ffffff" />
               </Pressable>
             </Animated.View>
 

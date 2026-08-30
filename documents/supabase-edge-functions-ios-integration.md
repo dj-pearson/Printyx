@@ -30,11 +30,11 @@ Key insight: **the iOS app never talks directly to PostgreSQL**. Data flows thro
 
 PostgreSQL has two timestamp types that produce **different JSON output** through PostgREST:
 
-| Drizzle Schema | PostgreSQL Type | PostgREST JSON Output |
-|---|---|---|
-| `timestamp('col')` | `timestamp without time zone` | `"2024-01-15T10:30:00"` or `"2024-01-15T10:30:00.123456"` |
-| `timestamp('col', { withTimezone: true })` | `timestamp with time zone` | `"2024-01-15T10:30:00+00:00"` or `"2024-01-15T10:30:00.123456+00:00"` |
-| `date('col')` | `date` | `"2024-01-15"` |
+| Drizzle Schema                             | PostgreSQL Type               | PostgREST JSON Output                                                 |
+| ------------------------------------------ | ----------------------------- | --------------------------------------------------------------------- |
+| `timestamp('col')`                         | `timestamp without time zone` | `"2024-01-15T10:30:00"` or `"2024-01-15T10:30:00.123456"`             |
+| `timestamp('col', { withTimezone: true })` | `timestamp with time zone`    | `"2024-01-15T10:30:00+00:00"` or `"2024-01-15T10:30:00.123456+00:00"` |
+| `date('col')`                              | `date`                        | `"2024-01-15"`                                                        |
 
 ### What iOS Can Parse
 
@@ -63,8 +63,7 @@ Rather than fighting every format on the client, **normalize all dates in `serve
 
 ```typescript
 // Match timestamps with OR without timezone
-const PG_TIMESTAMP_RE =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+const PG_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
 
 function normalizeDates(value: unknown): unknown {
   if (typeof value === 'string' && PG_TIMESTAMP_RE.test(value)) {
@@ -77,7 +76,7 @@ function normalizeDates(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(normalizeDates);
   if (value && typeof value === 'object') {
     return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, normalizeDates(v)])
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, normalizeDates(v)]),
     );
   }
   return value;
@@ -173,6 +172,7 @@ func detailedDecodingError(_ error: DecodingError) -> String {
 ```
 
 This produces errors like:
+
 ```
 "Data corrupted at 'index 0.createdAt': Cannot decode date: 2024-01-15T10:30:00.123456"
 ```
@@ -209,6 +209,7 @@ enum Status: String, Codable, SafeDecodable {
 ```
 
 Or, make the field optional with a default:
+
 ```swift
 struct Record: Codable {
     let status: String  // Use String instead of enum when backend values change frequently
@@ -251,24 +252,24 @@ When adding a new feature that involves data flowing from PostgreSQL to iOS:
 
 ## Environment Quick Reference
 
-| Component | Location | How to Deploy |
-|---|---|---|
-| Edge function code | `supabase/functions/` | Restart edge function service in Coolify |
-| Edge function router | `supabase/functions/server.ts` | Same — this is the entry point |
-| Shared CORS/auth | `supabase/functions/_shared/` | Same deployment |
-| iOS app code | `ios/Printyx/` | Rebuild in Xcode, deploy via TestFlight |
-| Drizzle schema | `shared/schema.ts` | Affects PostgREST auto-generated API |
-| Database | `209.145.59.219:5433` | Migrations via `npm run db:migrate` |
+| Component            | Location                       | How to Deploy                            |
+| -------------------- | ------------------------------ | ---------------------------------------- |
+| Edge function code   | `supabase/functions/`          | Restart edge function service in Coolify |
+| Edge function router | `supabase/functions/server.ts` | Same — this is the entry point           |
+| Shared CORS/auth     | `supabase/functions/_shared/`  | Same deployment                          |
+| iOS app code         | `ios/Printyx/`                 | Rebuild in Xcode, deploy via TestFlight  |
+| Drizzle schema       | `shared/schema.ts`             | Affects PostgREST auto-generated API     |
+| Database             | `209.145.59.219:5433`          | Migrations via `npm run db:migrate`      |
 
 ### Key Files
 
-| Purpose | File |
-|---|---|
-| Date normalization | `supabase/functions/server.ts` → `normalizeDates()` |
-| iOS API client | `ios/Printyx/Core/Network/APIClient.swift` |
-| iOS data models | `ios/Printyx/Core/Models/` |
-| CORS headers | `supabase/functions/_shared/cors.ts` |
-| Edge function handlers | `supabase/functions/{name}/index.ts` |
+| Purpose                | File                                                |
+| ---------------------- | --------------------------------------------------- |
+| Date normalization     | `supabase/functions/server.ts` → `normalizeDates()` |
+| iOS API client         | `ios/Printyx/Core/Network/APIClient.swift`          |
+| iOS data models        | `ios/Printyx/Core/Models/`                          |
+| CORS headers           | `supabase/functions/_shared/cors.ts`                |
+| Edge function handlers | `supabase/functions/{name}/index.ts`                |
 
 ### Debugging Workflow
 

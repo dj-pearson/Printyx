@@ -39,5 +39,27 @@ declare module 'express-session' {
       twoFactorEnabled?: boolean;
       twoFactorSecret?: string;
     };
+
+    /**
+     * Set by mfa-enforcement.ts (markMfaVerified/clearMfaVerification) and by
+     * the verify branch of routes/mfa-routes.ts, and read by requireMFA in
+     * enhanced-rbac-middleware.ts. It was never declared, so every reader
+     * either produced a TS2339 or reached for `(req.session as any)` - which
+     * is how the writer and the reader came to disagree on the reset value
+     * without anything noticing.
+     *
+     * mfaVerifiedAt is nullable because clearMfaVerification sets it to null
+     * rather than deleting it.
+     */
+    mfaVerified?: boolean;
+    mfaVerifiedAt?: number | null;
+
+    /**
+     * The TOTP secret held between "show me a QR code" and "here is the code
+     * from my authenticator", with the timestamp used to expire it. Written and
+     * read only by routes/mfa-routes.ts during enrolment.
+     */
+    pendingMfaSecret?: string;
+    pendingMfaTimestamp?: number;
   }
 }

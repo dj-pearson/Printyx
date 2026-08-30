@@ -1,4 +1,13 @@
-import { pgTable, text, integer, timestamp, jsonb, boolean, pgEnum } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  text,
+  integer,
+  timestamp,
+  jsonb,
+  boolean,
+  pgEnum,
+  varchar,
+} from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
@@ -44,7 +53,7 @@ export const aiConfidenceEnum = pgEnum('ai_confidence', ['high', 'medium', 'low'
  */
 export const documentTemplates = pgTable('document_templates', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Template metadata
   name: text('name').notNull(),
@@ -88,7 +97,7 @@ export const documentTemplates = pgTable('document_templates', {
  */
 export const generatedDocuments = pgTable('generated_documents', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Template reference
   templateId: integer('template_id').notNull(),
@@ -135,7 +144,7 @@ export const generatedDocuments = pgTable('generated_documents', {
  */
 export const documentUploads = pgTable('document_uploads', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // File metadata
   fileName: text('file_name').notNull(),
@@ -190,7 +199,7 @@ export const documentUploads = pgTable('document_uploads', {
  */
 export const documentFieldMappings = pgTable('document_field_mappings', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Mapping configuration
   name: text('name').notNull(),
@@ -228,7 +237,7 @@ export const documentFieldMappings = pgTable('document_field_mappings', {
  */
 export const documentWorkflowActions = pgTable('document_workflow_actions', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Workflow reference
   workflowId: integer('workflow_id').notNull(),
@@ -269,7 +278,7 @@ export const documentWorkflowActions = pgTable('document_workflow_actions', {
  */
 export const documentNotifications = pgTable('document_notifications', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer('tenant_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Document reference
   documentId: integer('document_id').notNull(),

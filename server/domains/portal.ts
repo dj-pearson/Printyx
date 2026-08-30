@@ -4,4 +4,3 @@
  */
 export { registerClientMonitoringRoutes } from '../routes-client-monitoring';
 export { default as clientMetricsRoutes } from '../routes-client-metrics';
-export { default as deviceMonitoringRoutes } from '../routes-device-monitoring';

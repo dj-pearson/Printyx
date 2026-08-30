@@ -5,6 +5,7 @@
 **Why bundled:** both are Node-Express infrastructure primitives that must be replaced before the Express server can be sunset (US-028). Cron and WebSocket are ~100% technical cleanup — no user-facing features, just plumbing swaps.
 
 **Critical finding from code audit:** `node-cron` is **already disabled in this codebase**:
+
 - `server/services/cron-service.ts:5` — "Cron functionality is temporarily disabled until node-cron package is installed"
 - `server/database-updater/core/CronScheduler.ts:6` — "node-cron temporarily disabled due to import issues"
 - `server/services/customer-notification-service.ts:356` — "In production, this would integrate with a job scheduler..."
@@ -18,6 +19,7 @@
 ### Part A — US-026: Scheduled jobs (`node-cron` → `pg_cron`)
 
 **Sources of "jobs that should be scheduled":**
+
 - `server/services/cron-service.ts` — contains the disabled cron interface
 - `server/database-updater/core/CronScheduler.ts` — test-data generator scheduling
 - `server/services/customer-notification-service.ts` — notification dispatch (currently manual)
@@ -25,10 +27,12 @@
 - Per-domain services where cron would be natural (billing runs, contract renewals, health score recalc, mileage auto-generate, email campaign sends, report scheduling, retention cleanup)
 
 **Target:** every recurring job becomes:
+
 1. A `pg_cron` SQL schedule in `drizzle/cron/*.sql`
 2. The job body is either (a) pure SQL, or (b) a `pg_net.http_post` call to a dedicated edge-function endpoint
 
 **Canonical layout:**
+
 ```
 drizzle/cron/
 ├── README.md                          # inventory table + how to add a job
@@ -46,6 +50,7 @@ drizzle/cron/
 ### Part B — US-027: WebSockets (`/ws/*` → Supabase Realtime)
 
 **Current WebSocket surface (server-side files):**
+
 - `server/websocket-service.ts` — the WS server
 - `server/index.ts` — WS attachment
 - `server/routes.ts` — WS route registration
@@ -55,6 +60,7 @@ drizzle/cron/
 - `server/config/default.ts`, `server/config/test.ts` — WS config
 
 **Frontend consumers (5 files):**
+
 - `client/src/hooks/useWebSocket.ts` — the hook (replace)
 - `client/src/hooks/useRealTimeData.ts` — real-time data wrapper
 - `client/src/components/layout/enhanced-notification-bell.tsx` — notifications
@@ -66,6 +72,7 @@ drizzle/cron/
 2. **`broadcast`** — when the app wants to push an event without a DB write (e.g., "admin forced all users to refresh permissions")
 
 ### Explicitly out of scope
+
 - Replacing the real-time technician location WebSocket (already migrated in Phase 4 US-016)
 - Long-polling / SSE as alternatives — Supabase Realtime is the target
 - New real-time features during this migration
@@ -75,6 +82,7 @@ drizzle/cron/
 ## 2. Part A: pg_cron — required extensions + pattern
 
 ### Prerequisites
+
 ```sql
 -- drizzle/cron/_bootstrap.sql
 CREATE EXTENSION IF NOT EXISTS pg_cron;
@@ -85,6 +93,7 @@ GRANT USAGE ON SCHEMA cron TO postgres;
 **Verify first:** `SELECT * FROM pg_extension WHERE extname IN ('pg_cron', 'pg_net');` — both should be available in Supabase. If not, file blocker.
 
 ### Pattern — pure SQL job
+
 ```sql
 -- drizzle/cron/retention.sql
 -- Daily at 02:00 UTC: trim audit logs older than 2 years
@@ -96,6 +105,7 @@ SELECT cron.schedule(
 ```
 
 ### Pattern — edge function call
+
 ```sql
 -- drizzle/cron/customer-success.sql
 -- Nightly at 01:00 UTC: recalculate at-risk health scores
@@ -116,20 +126,20 @@ SELECT cron.schedule(
 
 ### Inventory of needed jobs (per-domain guess — refine at audit)
 
-| Domain | Frequency | Job | Currently |
-|---|---|---|---|
-| Billing | Monthly 1st @ 03:00 | Invoice generation run | TODO |
-| Billing | Daily @ 04:00 | Meter aggregation | TODO |
-| Contract renewals | Daily @ 06:00 | Renewal notifications | TODO |
-| Customer success | Nightly @ 01:00 | Health score recalc | TODO |
-| Customer success | Hourly | At-risk alerts | TODO |
-| Email marketing | Every 5 min | Scheduled campaign sends | TODO |
-| Reports | Per-schedule | Scheduled report delivery | TODO |
-| Retention | Daily @ 02:00 | Audit logs, reading history, recordings trim | TODO |
-| Subscriptions | Hourly | Trial expiry, renewal charges | TODO |
-| Test data | Configurable | Database-updater generators | Disabled |
-| Mileage | Daily @ 05:00 | Auto-generate mileage from GPS | TODO |
-| Leases | Daily @ 07:00 | Payment due notifications | TODO |
+| Domain            | Frequency           | Job                                          | Currently |
+| ----------------- | ------------------- | -------------------------------------------- | --------- |
+| Billing           | Monthly 1st @ 03:00 | Invoice generation run                       | TODO      |
+| Billing           | Daily @ 04:00       | Meter aggregation                            | TODO      |
+| Contract renewals | Daily @ 06:00       | Renewal notifications                        | TODO      |
+| Customer success  | Nightly @ 01:00     | Health score recalc                          | TODO      |
+| Customer success  | Hourly              | At-risk alerts                               | TODO      |
+| Email marketing   | Every 5 min         | Scheduled campaign sends                     | TODO      |
+| Reports           | Per-schedule        | Scheduled report delivery                    | TODO      |
+| Retention         | Daily @ 02:00       | Audit logs, reading history, recordings trim | TODO      |
+| Subscriptions     | Hourly              | Trial expiry, renewal charges                | TODO      |
+| Test data         | Configurable        | Database-updater generators                  | Disabled  |
+| Mileage           | Daily @ 05:00       | Auto-generate mileage from GPS               | TODO      |
+| Leases            | Daily @ 07:00       | Payment due notifications                    | TODO      |
 
 **~12+ jobs.** Full list confirmed in parity audit.
 
@@ -146,36 +156,37 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.subscription_events;
 ```
 
 ### Frontend hook pattern
+
 ```typescript
 // client/src/hooks/useRealtimeTable.ts — REPLACES useWebSocket
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-export function useRealtimeRows<T>(
-  table: string,
-  filter?: string,
-) {
+export function useRealtimeRows<T>(table: string, filter?: string) {
   const [rows, setRows] = useState<T[]>([]);
   useEffect(() => {
     const channel = supabase
       .channel(`${table}-changes`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table, filter },
-        (payload) => {
-          if (payload.eventType === 'INSERT') setRows(r => [payload.new as T, ...r]);
-          if (payload.eventType === 'UPDATE') setRows(r => r.map(x => (x as any).id === (payload.new as any).id ? payload.new as T : x));
-          if (payload.eventType === 'DELETE') setRows(r => r.filter(x => (x as any).id !== (payload.old as any).id));
-        },
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table, filter }, (payload) => {
+        if (payload.eventType === 'INSERT') setRows((r) => [payload.new as T, ...r]);
+        if (payload.eventType === 'UPDATE')
+          setRows((r) =>
+            r.map((x) => ((x as any).id === (payload.new as any).id ? (payload.new as T) : x)),
+          );
+        if (payload.eventType === 'DELETE')
+          setRows((r) => r.filter((x) => (x as any).id !== (payload.old as any).id));
+      })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [table, filter]);
   return rows;
 }
 ```
 
 ### Broadcast pattern (application events)
+
 ```typescript
 // Sender (from an edge function, for example)
 await supabase.channel('admin-events').send({
@@ -185,7 +196,8 @@ await supabase.channel('admin-events').send({
 });
 
 // Receiver (frontend)
-supabase.channel('admin-events')
+supabase
+  .channel('admin-events')
   .on('broadcast', { event: 'force-permission-refresh' }, ({ payload }) => {
     if (payload.tenantId === currentTenantId) queryClient.invalidateQueries();
   })
@@ -193,6 +205,7 @@ supabase.channel('admin-events')
 ```
 
 ### Authentication
+
 - Realtime respects RLS — cross-tenant payloads are filtered automatically
 - JWT is attached via `supabase.realtime.setAuth(jwt)` on login; refresh on JWT rotation
 
@@ -201,12 +214,14 @@ supabase.channel('admin-events')
 ## 4. Tables + migration plan
 
 ### Part A: cron tables
+
 - `cron.job` (built-in via pg_cron) — holds schedule definitions
 - `cron.job_run_details` (built-in) — run history
 
 **Monitoring:** query `cron.job_run_details` for failure rate; surface via an admin dashboard endpoint in Phase 6.
 
 ### Part B: Realtime
+
 - Tables added to `supabase_realtime` publication — no new tables
 - `notifications` table (from `routes-notifications.ts` inventory) — RLS must be tight since Realtime filters at payload time
 
@@ -215,6 +230,7 @@ supabase.channel('admin-events')
 ## 5. Acceptance criteria
 
 ### Part A — pg_cron (US-026)
+
 - [ ] `pg_cron` + `pg_net` extensions enabled in Supabase
 - [ ] `drizzle/cron/README.md` inventorying all jobs published
 - [ ] Each `drizzle/cron/*.sql` file applies cleanly (idempotent: `SELECT cron.unschedule('job_name');` before `cron.schedule(...)`)
@@ -227,6 +243,7 @@ supabase.channel('admin-events')
 - [ ] `server/database-updater/core/CronScheduler.ts` replaced with pg_cron SQL or deleted if obsolete
 
 ### Part B — Supabase Realtime (US-027)
+
 - [ ] Tables listed in §3 added to `supabase_realtime` publication
 - [ ] `useWebSocket.ts` replaced with `useRealtimeTable.ts` + `useRealtimeBroadcast.ts`
 - [ ] `useRealTimeData.ts` rewritten to use Realtime
@@ -238,6 +255,7 @@ supabase.channel('admin-events')
 - [ ] `ws` npm package removed from `package.json` (if exclusively for this)
 
 ### Shared
+
 - [ ] Type checks + build pass
 - [ ] No references to `node-cron`, `ws`, `/ws/`, or `websocket-service` in server/ or client/
 - [ ] Playwright MCP pass on notification + any real-time dashboard
@@ -247,17 +265,20 @@ supabase.channel('admin-events')
 ## 6. Test plan
 
 ### Part A — cron
+
 - Schedule one test job with `* * * * *` (every minute), verify it fires 3 times
 - Simulate failed edge function call; verify `cron.job_run_details.status = 'failed'`
 - Unschedule + reschedule idempotency test
 
 ### Part B — Realtime
+
 - Open notification bell, insert a notification row from another session, verify it appears < 2s
 - Two browser tabs different tenants: confirm only matching tenant sees payload
 - Broadcast event round-trip test
 - Disconnect + reconnect (close laptop lid, reopen): verify channel re-subscribes
 
 ### Production smoke
+
 - After deploy, wait 24 hours and inspect `cron.job_run_details` — every job should have 1+ successful run (or be on a less-frequent schedule)
 - Trigger a test notification in prod, verify delivery to test account
 
@@ -266,14 +287,19 @@ supabase.channel('admin-events')
 ## 7. Rollback
 
 ### Part A
+
 If a cron job misbehaves (e.g., infinite loop, DoS on edge function):
+
 ```sql
 SELECT cron.unschedule('job_name');
 ```
+
 Individual job kill; no full rollback needed.
 
 ### Part B
+
 If Realtime flakes:
+
 - Revert frontend hook PR → frontend falls back to polling (or nothing, if we fully swap)
 - Cannot easily re-enable Express WebSocket mid-Phase-6; design assumes Realtime works
 
@@ -283,16 +309,16 @@ If Realtime flakes:
 
 ## 8. Risks + mitigations
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| `pg_cron` not available in Supabase | Low | High | Verify at start of phase; if unavailable, use external scheduler (Cloudflare Cron Triggers) as backup |
-| Cron job stuck / locks held | Medium | High | `pg_cron` default concurrent execution; for mutex-required jobs use `pg_advisory_lock` |
-| Internal cron token leaked | Low | Medium | Rotate monthly; never log; service-role access only |
-| Realtime latency > WebSocket baseline | Medium | Medium | Measure; if > 3s p95, investigate (usually indexed publication) |
-| Realtime delivers cross-tenant payloads under complex RLS | Low | **Critical** | Explicit two-tenant test per subscribed table; require passing test as merge gate |
-| Frontend hook rewrite breaks notification bell UX | Medium | Low | Staged rollout: keep both hooks live for 48h, feature flag |
-| Marketing pages using WS (low priority) — break during migration | Low | Low | Document; fix or delete; not a blocker for sunset |
-| Cron failures silently ignored | Medium | Medium | Dashboard on `cron.job_run_details`; alert if consecutive failures > 3 |
+| Risk                                                             | Likelihood | Impact       | Mitigation                                                                                            |
+| ---------------------------------------------------------------- | ---------- | ------------ | ----------------------------------------------------------------------------------------------------- |
+| `pg_cron` not available in Supabase                              | Low        | High         | Verify at start of phase; if unavailable, use external scheduler (Cloudflare Cron Triggers) as backup |
+| Cron job stuck / locks held                                      | Medium     | High         | `pg_cron` default concurrent execution; for mutex-required jobs use `pg_advisory_lock`                |
+| Internal cron token leaked                                       | Low        | Medium       | Rotate monthly; never log; service-role access only                                                   |
+| Realtime latency > WebSocket baseline                            | Medium     | Medium       | Measure; if > 3s p95, investigate (usually indexed publication)                                       |
+| Realtime delivers cross-tenant payloads under complex RLS        | Low        | **Critical** | Explicit two-tenant test per subscribed table; require passing test as merge gate                     |
+| Frontend hook rewrite breaks notification bell UX                | Medium     | Low          | Staged rollout: keep both hooks live for 48h, feature flag                                            |
+| Marketing pages using WS (low priority) — break during migration | Low        | Low          | Document; fix or delete; not a blocker for sunset                                                     |
+| Cron failures silently ignored                                   | Medium     | Medium       | Dashboard on `cron.job_run_details`; alert if consecutive failures > 3                                |
 
 ---
 
@@ -312,6 +338,7 @@ If Realtime flakes:
 ## 10. Definition of done
 
 ### US-026
+
 - [ ] `drizzle/cron/` directory complete with all scheduled jobs
 - [ ] All jobs verified running successfully for 24h+ in prod
 - [ ] `node-cron` removed from package.json
@@ -319,6 +346,7 @@ If Realtime flakes:
 - [ ] Documentation in `drizzle/cron/README.md`
 
 ### US-027
+
 - [ ] All frontend WS usage swapped to Supabase Realtime
 - [ ] `server/websocket-service.ts` deleted
 - [ ] `ws` npm package removed from package.json

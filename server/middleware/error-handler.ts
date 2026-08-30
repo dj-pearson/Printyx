@@ -63,9 +63,7 @@ export function globalErrorHandler(
           method: req.method,
           path: req.path,
           statusCode: err.statusCode,
-          headers: stripSensitiveHeaders(
-            (req.headers as Record<string, string>) || {},
-          ),
+          headers: stripSensitiveHeaders((req.headers as Record<string, string>) || {}),
         },
         `Error ${err.statusCode}: ${err.message}`,
       );
@@ -96,9 +94,7 @@ export function globalErrorHandler(
       method: req.method,
       path: req.path,
       statusCode,
-      headers: stripSensitiveHeaders(
-        (req.headers as Record<string, string>) || {},
-      ),
+      headers: stripSensitiveHeaders((req.headers as Record<string, string>) || {}),
     },
     `Error ${statusCode}: ${err.message}`,
   );

@@ -1,442 +1,215 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
-import {
-  Database,
-  Server,
-  Lock,
-  Shield,
-  Activity,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-} from 'lucide-react';
+import { AlertTriangle, Activity, KeyRound, ScrollText, Users } from 'lucide-react';
 import { MainLayout } from '@/components/layout/main-layout';
+import { QueryState } from '@/components/ui/query-state';
+import { Skeleton } from '@/components/ui/skeleton';
+
+/**
+ * AUDIT-019. Every value on this page used to be a literal. It asserted
+ * "System Health: Healthy, 95% optimal", "Database Security: Secured /
+ * Encrypted", "Firewall: Protected - 847 blocked today", and an "SSL/TLS
+ * Status: Active - Valid until 2025-12-31" whose date had already passed while
+ * still rendering green. Nothing on the page had ever queried anything.
+ *
+ * What replaces it is the subset the platform can actually measure, from
+ * GET /api/admin/system-health: users, sessions, failed logins, audit events
+ * and open tickets, all scoped to the caller's tenant by the edge function.
+ * Everything else - host patching, container posture, firewall counters, TLS
+ * expiry, resource utilisation, connection-pool numbers - is deleted rather
+ * than faked, per the rule AUDIT-016 and LEGAL-010 already applied here.
+ *
+ * The endpoint's top-level `status` field is deliberately NOT rendered: it is
+ * initialised to the string 'healthy' server-side and only ever moves on two
+ * audit thresholds, so displaying it would reintroduce the same unearned
+ * all-clear this story removed. `alerts[]` below is the part of that logic
+ * that is genuinely derived, so that is what the page shows.
+ */
+
+interface SystemHealth {
+  timestamp: string;
+  metrics: {
+    users: { total: number; activeLastDay: number };
+    sessions: { active: number; failedLoginsLastDay: number };
+    audit: { eventsLastDay: number; criticalEventsLastWeek: number };
+    service: { openTickets: number };
+    storage: number | null;
+  };
+  alerts: string[];
+}
+
+function Metric({
+  label,
+  value,
+  caption,
+  icon: Icon,
+}: {
+  label: string;
+  value: number | string;
+  caption: string;
+  icon: typeof Users;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{label}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold tabular-nums">{value}</div>
+        <p className="mt-2 text-xs text-muted-foreground">{caption}</p>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function SystemSecurity() {
-  const [activeTab, setActiveTab] = useState('infrastructure');
+  const healthQuery = useQuery<SystemHealth>({
+    queryKey: ['/api/admin/system-health'],
+    refetchInterval: 60_000,
+  });
 
-  // CR-033: a `useQuery(['/api/admin/system/health'])` polling every 10 seconds
-  // used to sit here. Nothing read its result, and the URL does not exist on
-  // either backend - the admin edge function serves `system-health` as one
-  // segment, and no Express route matches at all - so this was a 404 every ten
-  // seconds, discarded. Removed rather than given an error state: there is no
-  // data on this page to fail. Every value it renders is a literal (see
-  // AUDIT-019).
   return (
     <MainLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">System Security</h1>
-          <p className="text-gray-600 mt-2">
-            Infrastructure security monitoring, database protection, and system hardening
+          <p className="mt-2 text-gray-600">
+            Access, session and audit signals for this tenant, read from the platform database.
           </p>
         </div>
 
-        {/* System Health Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">System Health</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">Healthy</div>
-              <Progress value={95} className="mt-2" />
-              <p className="text-xs text-gray-500 mt-2">95% optimal</p>
-            </CardContent>
-          </Card>
+        <QueryState
+          query={healthQuery}
+          loading={
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-32" />
+              ))}
+            </div>
+          }
+          errorTitle="Could not load system security signals"
+          className="py-6"
+        >
+          {(health) => (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+                <Metric
+                  label="Active sessions"
+                  value={health.metrics.sessions.active}
+                  caption="Sessions currently marked active"
+                  icon={Activity}
+                />
+                <Metric
+                  label="Failed logins (24h)"
+                  value={health.metrics.sessions.failedLoginsLastDay}
+                  caption="Summed across sessions opened in the last 24 hours"
+                  icon={KeyRound}
+                />
+                <Metric
+                  label="Audit events (24h)"
+                  value={health.metrics.audit.eventsLastDay}
+                  caption="Rows written to the audit log in the last 24 hours"
+                  icon={ScrollText}
+                />
+                <Metric
+                  label="Critical events (7d)"
+                  value={health.metrics.audit.criticalEventsLastWeek}
+                  caption="Audit events at critical or high severity"
+                  icon={AlertTriangle}
+                />
+              </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Database Security</CardTitle>
-              <Database className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">Secured</div>
-              <Badge variant="outline" className="mt-2 text-blue-600 border-blue-200">
-                Encrypted
-              </Badge>
-            </CardContent>
-          </Card>
+              {health.alerts.length > 0 && (
+                <div className="space-y-3">
+                  {health.alerts.map((alert) => (
+                    <Alert key={alert} variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>{alert}</AlertDescription>
+                    </Alert>
+                  ))}
+                </div>
+              )}
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">SSL/TLS Status</CardTitle>
-              <Lock className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">Active</div>
-              <p className="text-xs text-gray-500 mt-2">Valid until 2025-12-31</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Firewall</CardTitle>
-              <Shield className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">Protected</div>
-              <p className="text-xs text-gray-500 mt-2">847 blocked today</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="infrastructure">Infrastructure</TabsTrigger>
-            <TabsTrigger value="database">Database</TabsTrigger>
-            <TabsTrigger value="network">Network</TabsTrigger>
-            <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
-            <TabsTrigger value="compliance">Compliance</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="infrastructure" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Server className="h-5 w-5" />
-                    Server Security Status
-                  </CardTitle>
+                  <CardTitle>Accounts and workload</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span>OS Security Patches</span>
-                      <Badge variant="outline" className="text-green-600 border-green-200">
-                        Up to date
-                      </Badge>
+                  <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="flex items-baseline justify-between gap-4">
+                      <dt className="text-sm text-muted-foreground">Active user accounts</dt>
+                      <dd className="font-semibold tabular-nums">{health.metrics.users.total}</dd>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span>Container Security</span>
-                      <Badge variant="outline" className="text-green-600 border-green-200">
-                        Secure
-                      </Badge>
+                    <div className="flex items-baseline justify-between gap-4">
+                      <dt className="text-sm text-muted-foreground">Signed in (last 24h)</dt>
+                      <dd className="font-semibold tabular-nums">
+                        {health.metrics.users.activeLastDay}
+                      </dd>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span>Application Firewall</span>
-                      <Badge variant="outline" className="text-green-600 border-green-200">
-                        Active
-                      </Badge>
+                    <div className="flex items-baseline justify-between gap-4">
+                      <dt className="text-sm text-muted-foreground">Open service tickets</dt>
+                      <dd className="font-semibold tabular-nums">
+                        {health.metrics.service.openTickets}
+                      </dd>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span>Intrusion Detection</span>
-                      <Badge variant="outline" className="text-orange-600 border-orange-200">
-                        Monitoring
-                      </Badge>
+                    <div className="flex items-baseline justify-between gap-4">
+                      <dt className="text-sm text-muted-foreground">Storage used</dt>
+                      <dd className="font-semibold tabular-nums">
+                        {health.metrics.storage === null
+                          ? 'Not recorded'
+                          : `${health.metrics.storage}`}
+                      </dd>
                     </div>
-                  </div>
+                  </dl>
+                  <p className="mt-4 text-xs text-muted-foreground">
+                    Read {new Date(health.timestamp).toLocaleString()}. Refreshes every minute.
+                  </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" />
-                    Resource Utilization
-                  </CardTitle>
+                  <CardTitle>What this page does not tell you</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm">CPU Usage</span>
-                        <span className="text-sm">45%</span>
-                      </div>
-                      <Progress value={45} />
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm">Memory Usage</span>
-                        <span className="text-sm">67%</span>
-                      </div>
-                      <Progress value={67} />
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm">Disk Usage</span>
-                        <span className="text-sm">34%</span>
-                      </div>
-                      <Progress value={34} />
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm">Network I/O</span>
-                        <span className="text-sm">23%</span>
-                      </div>
-                      <Progress value={23} />
-                    </div>
-                  </div>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    Host patching, container posture, firewall counters, TLS certificate expiry,
+                    intrusion detection, CPU and disk utilisation, and database connection-pool
+                    numbers are not collected by Printyx. This page used to show all of them as
+                    fixed strings, including a certificate expiry date that had already passed. They
+                    have been removed rather than left to be read as a measurement.
+                  </p>
+                  <p>
+                    Infrastructure posture lives with the hosting provider and the Coolify
+                    deployment; check it there. An absence here is not an all-clear.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Certification status is not tracked here</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  {/* LEGAL-010: this panel hardcoded compliance badges for SOC 2 Type II,
+                      ISO 27001, GDPR and CCPA, plus invented audit scores. None of it came
+                      from data. An admin reading it would reasonably answer a customer
+                      security questionnaire with it, which is how a fabricated dashboard
+                      turns into a written misrepresentation. */}
+                  <p>
+                    Printyx does not currently hold a SOC 2 or ISO 27001 report. The controls that
+                    are in place and verifiable in the platform are row-level security enforcing
+                    tenant isolation, encryption in transit and at rest, multi-factor
+                    authentication, role-based access control, and audit logging. For a customer
+                    security questionnaire, answer from those, not from a badge.
+                  </p>
                 </CardContent>
               </Card>
             </div>
-
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                All infrastructure security checks passed. Last scan completed 2 hours ago.
-              </AlertDescription>
-            </Alert>
-          </TabsContent>
-
-          <TabsContent value="database" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Database Security</CardTitle>
-                <CardDescription>PostgreSQL security configuration and monitoring</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <h4 className="font-semibold">Security Features</h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span>Encryption at Rest</span>
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>Encryption in Transit</span>
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>Row Level Security</span>
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>Audit Logging</span>
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h4 className="font-semibold">Connection Security</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span>Active Connections</span>
-                          <span className="font-semibold">47</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Max Connections</span>
-                          <span className="font-semibold">200</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>SSL Connections</span>
-                          <span className="font-semibold">47/47</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Failed Connections</span>
-                          <span className="font-semibold">0</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Button className="w-full" variant="outline">
-                      Run Security Audit
-                    </Button>
-                    <Button className="w-full" variant="outline">
-                      Backup Database
-                    </Button>
-                    <Button className="w-full" variant="outline">
-                      View Connection Logs
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="network" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Network Security</CardTitle>
-                <CardDescription>
-                  Firewall rules, DDoS protection, and network monitoring
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center p-4 border rounded-lg">
-                      <Shield className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                      <div className="text-2xl font-bold">847</div>
-                      <p className="text-sm text-gray-600">Blocked Today</p>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <Activity className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                      <div className="text-2xl font-bold">1.2TB</div>
-                      <p className="text-sm text-gray-600">Data Transferred</p>
-                    </div>
-                    <div className="text-center p-4 border rounded-lg">
-                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                      <div className="text-2xl font-bold">99.9%</div>
-                      <p className="text-sm text-gray-600">Uptime</p>
-                    </div>
-                  </div>
-
-                  <Alert>
-                    <Shield className="h-4 w-4" />
-                    <AlertDescription>
-                      DDoS protection is active. All traffic is being filtered through our security
-                      layer.
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="space-y-3">
-                    <Button className="w-full" variant="outline">
-                      Configure Firewall Rules
-                    </Button>
-                    <Button className="w-full" variant="outline">
-                      View Traffic Logs
-                    </Button>
-                    <Button className="w-full" variant="outline">
-                      Generate Network Report
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="monitoring" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Security Monitoring</CardTitle>
-                <CardDescription>
-                  Real-time security alerts and monitoring dashboard
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <h4 className="font-semibold">Active Monitors</h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span>Login Anomalies</span>
-                          <Badge variant="outline" className="text-green-600 border-green-200">
-                            Active
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>API Rate Limiting</span>
-                          <Badge variant="outline" className="text-green-600 border-green-200">
-                            Active
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>Data Exfiltration</span>
-                          <Badge variant="outline" className="text-green-600 border-green-200">
-                            Active
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>Privilege Escalation</span>
-                          <Badge variant="outline" className="text-green-600 border-green-200">
-                            Active
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <h4 className="font-semibold">Alert Statistics</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span>Total Alerts (24h)</span>
-                          <span className="font-semibold">23</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Critical Alerts</span>
-                          <span className="font-semibold text-red-600">2</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Warning Alerts</span>
-                          <span className="font-semibold text-orange-600">8</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Info Alerts</span>
-                          <span className="font-semibold">13</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Button className="w-full" variant="outline">
-                      Configure Alert Rules
-                    </Button>
-                    <Button className="w-full" variant="outline">
-                      View Alert History
-                    </Button>
-                    <Button className="w-full" variant="outline">
-                      Test Alert System
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="compliance" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Security Compliance</CardTitle>
-                <CardDescription>
-                  Compliance monitoring and reporting for security standards
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {/* LEGAL-010: this panel hardcoded "Compliant" badges for SOC 2 Type II,
-                      ISO 27001, GDPR and CCPA, plus invented audit scores (98/100, 95/100,
-                      99/100, 87/100). None of it came from data. An admin reading it would
-                      reasonably answer a customer security questionnaire with it, which is
-                      how a fabricated dashboard turns into a written misrepresentation.
-                      Nothing tracks certification status today, so this says so. */}
-                  <div className="rounded-lg border border-dashed p-6">
-                    <h4 className="font-semibold text-foreground">
-                      Certification status is not tracked here
-                    </h4>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      This panel previously showed compliance badges and audit scores that were
-                      hardcoded rather than measured. They have been removed rather than left to be
-                      quoted to a customer.
-                    </p>
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      Printyx does not currently hold a SOC 2 or ISO 27001 report. The controls that
-                      are in place and verifiable in the platform are row-level security enforcing
-                      tenant isolation, encryption in transit and at rest, multi-factor
-                      authentication, role-based access control, and audit logging. For a customer
-                      security questionnaire, answer from those, not from a badge.
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Button className="w-full" variant="outline">
-                      Generate Compliance Report
-                    </Button>
-                    <Button className="w-full" variant="outline">
-                      Schedule Audit
-                    </Button>
-                    <Button className="w-full" variant="outline">
-                      View Remediation Plan
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+        </QueryState>
       </div>
     </MainLayout>
   );

@@ -15,7 +15,10 @@
 //     monitoring agent) and /install/* (installer assets).
 //
 // Classification per top-level /api/<segment>:
-//   missing-edge   — frontend calls it, NO edge function  => PROD BLOCKER
+//   dead-in-both   — frontend calls it and NEITHER Express nor an edge function
+//                    serves it => BROKEN ON EVERY HOST, not just production
+//   missing-edge   — frontend calls it, Express serves it, NO edge function
+//                    => PROD BLOCKER (works in dev, 404s in prod)
 //   both-divergent — Express handler + edge function, NOT proxied => dev≠prod
 //   proxied        — in the proxy map (dev forwards to edge; aligned)
 //   express-only   — Express handler, no edge function (not yet migrated)
@@ -54,6 +57,11 @@ export const EXPRESS_CANONICAL = new Set([
 export const PROXY_REDIRECTS = new Set(['kpis', 'reporting', 'scheduled-reports']);
 
 export const CLASS_ORDER = [
+  // dead-in-both first: it is strictly worse than missing-edge. A missing-edge
+  // domain at least works while you are developing, which is why those survive
+  // review; a dead-in-both one is a page calling a url nothing answers, on any
+  // host, and it presents as a permanently empty section rather than an error.
+  'dead-in-both',
   'missing-edge',
   'both-divergent',
   'express-only',
@@ -345,6 +353,11 @@ export function computeParity(repo = repoDefault) {
     const px = proxied.has(d) || fullyCoveredBySubProxy(d);
     if (EXPRESS_CANONICAL.has(d)) return 'express-canonical';
     if (px) return 'proxied'; // dev forwards to edge (possibly under another name) → aligned
+    // PA-022: split out the subset nothing serves at all. Folding these into
+    // missing-edge told the reader "add an edge function" when the real answer
+    // is "build the endpoint, or delete the call" - the audit that opened that
+    // story had to re-derive the distinction by hand for fourteen prefixes.
+    if (fe && !edge && !exp) return 'dead-in-both';
     if (fe && !edge) return 'missing-edge';
     if (exp && edge && fe) return 'both-divergent';
     if (exp && edge && !fe) return 'dead-express';

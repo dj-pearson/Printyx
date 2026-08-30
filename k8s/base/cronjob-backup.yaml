@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/component: backup
 spec:
   # Run daily at 2:00 AM UTC
-  schedule: "0 2 * * *"
+  schedule: '0 2 * * *'
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 7
   failedJobsHistoryLimit: 3
@@ -144,11 +144,11 @@ spec:
                       key: DB_HOST
                       optional: true
                 - name: DB_PORT
-                  value: "5433"
+                  value: '5433'
                 - name: DB_USER
-                  value: "postgres"
+                  value: 'postgres'
                 - name: DB_NAME
-                  value: "postgres"
+                  value: 'postgres'
                 - name: DB_PASSWORD
                   valueFrom:
                     secretKeyRef:

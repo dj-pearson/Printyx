@@ -2225,10 +2225,7 @@ export default function CustomerDetailHubspot() {
               </TabsContent>
 
               <TabsContent value="supplies" className="mt-6">
-                <CustomerSupplies
-                  customerId={customer?.id || ''}
-                  customerName={customer?.companyName || 'Unknown Customer'}
-                />
+                <CustomerSupplies customerId={customer?.id || ''} />
               </TabsContent>
 
               <TabsContent value="invoices" className="mt-6">

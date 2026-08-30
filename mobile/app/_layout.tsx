@@ -24,12 +24,16 @@ import { colors } from '@/theme';
 SplashScreen.preventAutoHideAsync();
 
 // Log app startup config so we can verify routing in server logs
-remoteLog.info('App startup', {
-  edgeFunctionsUrl: config.edgeFunctionsUrl,
-  supabaseUrl: config.supabase.url,
-  hasAnonKey: !!config.supabase.anonKey,
-  isDev: config.isDevelopment,
-}, 'RootLayout');
+remoteLog.info(
+  'App startup',
+  {
+    edgeFunctionsUrl: config.edgeFunctionsUrl,
+    supabaseUrl: config.supabase.url,
+    hasAnonKey: !!config.supabase.anonKey,
+    isDev: config.isDevelopment,
+  },
+  'RootLayout',
+);
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuthContext();
@@ -39,10 +43,14 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return;
 
-    remoteLog.info('Auth state resolved', {
-      isAuthenticated,
-      segments: segments.join('/'),
-    }, 'RootLayout');
+    remoteLog.info(
+      'Auth state resolved',
+      {
+        isAuthenticated,
+        segments: segments.join('/'),
+      },
+      'RootLayout',
+    );
 
     const inAuthGroup = segments[0] === '(auth)';
 

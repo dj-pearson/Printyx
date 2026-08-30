@@ -19,7 +19,11 @@ import {
   findDangerousStrings,
   findUnknownProperties,
 } from '../server/middleware/openapi-validator';
-import { businessRecordSchemas, dealSchemas, userSchemas } from '../server/middleware/enhanced-validation';
+import {
+  businessRecordSchemas,
+  dealSchemas,
+  userSchemas,
+} from '../server/middleware/enhanced-validation';
 import { z, ZodSchema } from 'zod';
 
 // ---------------------------------------------------------------------------
@@ -125,7 +129,11 @@ function buildFuzzCases(): FuzzCase[] {
 
   cases.push({
     name: 'String where number expected (deal amount)',
-    payload: { name: 'Deal', customerId: '550e8400-e29b-41d4-a716-446655440000', amount: 'not-a-number' },
+    payload: {
+      name: 'Deal',
+      customerId: '550e8400-e29b-41d4-a716-446655440000',
+      amount: 'not-a-number',
+    },
     check: 'schema',
     schema: dealSchemas.create,
     expectValid: false,
@@ -282,9 +290,7 @@ function buildFuzzCases(): FuzzCase[] {
 
   cases.push({
     name: 'Payload with 1000 keys',
-    payload: Object.fromEntries(
-      Array.from({ length: 1000 }, (_, i) => [`key_${i}`, `value_${i}`]),
-    ),
+    payload: Object.fromEntries(Array.from({ length: 1000 }, (_, i) => [`key_${i}`, `value_${i}`])),
     check: 'unknown_props',
     schema: businessRecordSchemas.create,
     expectValid: false,
@@ -331,10 +337,7 @@ function runCase(c: FuzzCase): FuzzResult {
 
       case 'unknown_props': {
         if (!c.schema) throw new Error('Schema required for unknown_props check');
-        const unknowns = findUnknownProperties(
-          c.payload as Record<string, unknown>,
-          c.schema,
-        );
+        const unknowns = findUnknownProperties(c.payload as Record<string, unknown>, c.schema);
         actualValid = unknowns.length === 0;
         if (unknowns.length > 0) {
           detail = `Unknown properties: ${unknowns.join(', ')}`;

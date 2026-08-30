@@ -1,8 +1,32 @@
+/**
+ * GPS tracking: technician locations, routes, ETAs, geofences and deviations.
+ * 39 handlers over /api/gps.
+ *
+ * CANNOT AUTHENTICATE ANYONE - see SEC-SESSION-001 before changing this file.
+ *
+ * Every handler below reads `req.session.user` as its only source of identity.
+ * Nothing in this codebase assigns it: session login sets the flat
+ * req.session.userId / req.session.tenantId and the JWT path sets req.user, so
+ * each of these answers 401 in dev exactly as it does in production. It has
+ * never run. server/types/express-session.d.ts records the same finding and
+ * declares the type that lets it compile, which is why tsc sees nothing wrong.
+ *
+ * No client tree calls /api/gps, and there is no supabase/functions/gps/, so
+ * this is the only implementation of the domain and it cannot run. Wiring it
+ * up means an edge function and a screen, not an auth fix.
+ *
+ * The fix is one of three, and it is a product call rather than cleanup:
+ * migrate the handlers to getUserId/getTenantId from utils/auth-helpers and
+ * build the caller, retire the file in favour of an edge function that covers
+ * it, or delete it. Populating req.session.user in the login path would revive
+ * all twelve files at once and touches security-sensitive code.
+ */
 import express, { Request, Response } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('gps-tracking-routes');
+import { sendError } from '../lib/error-response';
 
 import {
   insertTechnicianLocationSchema,
@@ -982,10 +1006,14 @@ router.post('/geofences/check', async (req: Request, res: Response) => {
     // codebase does point-in-polygon. Saying so beats returning `false`, which
     // a caller cannot tell from "outside".
     if (!geofence.radiusMeters) {
-      return res.status(501).json({
-        error: 'Only circular geofences can be checked',
-        geofenceId,
-        geofenceType: geofence.geofenceType,
+      // The API error contract is { message, code, details, requestId }; a bare
+      // `error` key gives a client nothing to branch on. This one arrived with
+      // 0427f17 and drifted the check:error-shape baseline (117 -> 118), which
+      // nobody noticed because that commit's own point was that /api/gps has no
+      // caller. Bringing it into contract restores the count.
+      return sendError(res, 501, 'Only circular geofences can be checked', {
+        code: 'UNSUPPORTED_GEOFENCE_TYPE',
+        details: { geofenceId, geofenceType: geofence.geofenceType },
       });
     }
 

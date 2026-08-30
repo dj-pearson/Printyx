@@ -49,7 +49,13 @@ const ALLOWED_SCHEMES = new Set(['http:', 'https:']);
  */
 function ipToInt(ip: string): number {
   const parts = ip.split('.');
-  return ((parseInt(parts[0]) << 24) | (parseInt(parts[1]) << 16) | (parseInt(parts[2]) << 8) | parseInt(parts[3])) >>> 0;
+  return (
+    ((parseInt(parts[0]) << 24) |
+      (parseInt(parts[1]) << 16) |
+      (parseInt(parts[2]) << 8) |
+      parseInt(parts[3])) >>>
+    0
+  );
 }
 
 /**
@@ -106,7 +112,13 @@ function isPrivateIPv6(ip: string): boolean {
   }
 
   // Link-local (fe80::/10)
-  if (normalized.startsWith('fe80:') || normalized.startsWith('fe8') || normalized.startsWith('fe9') || normalized.startsWith('fea') || normalized.startsWith('feb')) {
+  if (
+    normalized.startsWith('fe80:') ||
+    normalized.startsWith('fe8') ||
+    normalized.startsWith('fe9') ||
+    normalized.startsWith('fea') ||
+    normalized.startsWith('feb')
+  ) {
     return true;
   }
 

@@ -746,13 +746,13 @@ const ROLE_ACTIONS: Record<
       path: '/deals?action=create',
       color: 'bg-green-100 text-green-600',
     },
-    {
-      label: 'Log Call',
-      icon: 'Phone',
-      path: '/activities?action=call',
-      color: 'bg-orange-100 text-orange-600',
-    },
   ],
+  // The 'Log Call' quick action that stood in SALES_REP and SENIOR_SALES_REP is
+  // removed (AUDIT-014). It linked to /activities, which is not a registered
+  // route, so it rendered the 404 page for every rep who clicked it. There is no
+  // activities surface for a sales rep - PlatformActivities is root-admin only,
+  // at /platform-crm/activities - so the honest fix is to drop the control
+  // rather than point it at /tasks, which is a different thing.
   SENIOR_SALES_REP: [
     {
       label: 'New Lead',
@@ -771,12 +771,6 @@ const ROLE_ACTIONS: Record<
       icon: 'Target',
       path: '/deals?action=create',
       color: 'bg-green-100 text-green-600',
-    },
-    {
-      label: 'Log Call',
-      icon: 'Phone',
-      path: '/activities?action=call',
-      color: 'bg-orange-100 text-orange-600',
     },
   ],
   SALES_SUPERVISOR: [

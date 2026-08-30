@@ -10,23 +10,23 @@ by the **`supabase/functions/proposals/`** edge function and consumed by the UI 
 `/api/proposals`. This is the only quote system the UI actually used, and the line-item
 table already carries `unit_cost`, `unit_price`, `margin`, and `discount`.
 
-The three-tier cost *concepts* (dealer cost → rep/selling price → customer price, plus
+The three-tier cost _concepts_ (dealer cost → rep/selling price → customer price, plus
 margin/discount thresholds) are **absorbed into this model**, rather than re-wiring the UI
 onto the parallel `enhanced_quote_pricing` tables.
 
 ### Deprecated (do not build on; not yet deleted)
 
-| Thing | Location | Why deprecated |
-|---|---|---|
-| `quotes` edge fn | `supabase/functions/quotes/index.ts` | Duplicate quote CRUD; UI never calls it |
-| `quote-line-items` edge fn | `supabase/functions/quote-line-items/index.ts` | Duplicate line-item CRUD |
-| `quotePricing` / `quotePricingLineItems` | `shared/schema.ts` (~6228) | Parallel quote-document tables, unused by UI |
-| `enhancedQuotePricing` / `enhancedQuotePricingLineItems` | `shared/product-pricing-schema.ts` (~174/235) | Parallel quote-document tables, unused by UI |
+| Thing                                                    | Location                                       | Why deprecated                               |
+| -------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------- |
+| `quotes` edge fn                                         | `supabase/functions/quotes/index.ts`           | Duplicate quote CRUD; UI never calls it      |
+| `quote-line-items` edge fn                               | `supabase/functions/quote-line-items/index.ts` | Duplicate line-item CRUD                     |
+| `quotePricing` / `quotePricingLineItems`                 | `shared/schema.ts` (~6228)                     | Parallel quote-document tables, unused by UI |
+| `enhancedQuotePricing` / `enhancedQuotePricingLineItems` | `shared/product-pricing-schema.ts` (~174/235)  | Parallel quote-document tables, unused by UI |
 
 ### Retained from the "enhanced" set (still used)
 
-| Thing | Location | Use |
-|---|---|---|
+| Thing                      | Location                                 | Use                                                                                         |
+| -------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `company_pricing_settings` | `shared/product-pricing-schema.ts` (~44) | Per-tenant **pricing policy** (min margin, max discount, price floor, approval) — QUOTE-006 |
 
 ## 2. End-to-end data flow
@@ -49,7 +49,7 @@ proposals  ──────────────  proposal_line_items
 
 - **Customer** comes from `business_records` (leads + customers share this table).
 - **Products** come from the per-type product catalog edge functions. Each line item stores
-  a *snapshot* of `unit_cost` (dealer/hard cost) and `unit_price` (customer price) at the
+  a _snapshot_ of `unit_cost` (dealer/hard cost) and `unit_price` (customer price) at the
   time it is added, so later catalog price changes never rewrite historical quotes.
 - **Cost/margin** is computed from the line-item snapshots and rolled up onto the proposal.
 
@@ -69,10 +69,10 @@ is_optional, is_customizable, configuration_options, alternative_options`
 
 ### Product catalog price/cost columns (ACTUAL live columns)
 
-| Type | List | Selling price | Hard cost |
-|---|---|---|---|
-| `product_models` | `msrp` | `new_rep_price`, `upgrade_rep_price`, `lexmark_rep_price` | `new_dealer_cost`, `upgrade_dealer_cost`, `lexmark_dealer_cost` *(added QUOTE-002)* |
-| `product_accessories` | `*_suggested_retail` | `standard/new/upgrade_rep_price` | `standard/new/upgrade_dealer_cost` *(already present)* |
+| Type                  | List                 | Selling price                                             | Hard cost                                                                           |
+| --------------------- | -------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `product_models`      | `msrp`               | `new_rep_price`, `upgrade_rep_price`, `lexmark_rep_price` | `new_dealer_cost`, `upgrade_dealer_cost`, `lexmark_dealer_cost` _(added QUOTE-002)_ |
+| `product_accessories` | `*_suggested_retail` | `standard/new/upgrade_rep_price`                          | `standard/new/upgrade_dealer_cost` _(already present)_                              |
 
 > The Drizzle declarations in `shared/schema.ts` for `product_models` use different names
 > (`newRepCost`, `newSuggestedRetail`); the **live** table uses `new_rep_price` etc. The live

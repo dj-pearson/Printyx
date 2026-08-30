@@ -16,7 +16,7 @@
 
 For every `server/routes/<persona>-reports-api.ts`:
 
-1. **Port the SQL body** — open `server/services/<persona>-reporting-service.ts`, take each `db.execute(sql\`...\`)` block, and rewrite as a PL/pgSQL function in a new `drizzle/reports/<persona>.sql`. Convention:
+1. **Port the SQL body** — open `server/services/<persona>-reporting-service.ts`, take each `db.execute(sql\`...\`)`block, and rewrite as a PL/pgSQL function in a new`drizzle/reports/<persona>.sql`. Convention:
    - Function name: `report_<short_name>` (e.g. `report_sales_rep_pipeline`)
    - First arg `p_tenant_id uuid`, then report-specific filters
    - Return `jsonb` — mirror the Express response shape
@@ -35,6 +35,7 @@ For every `server/routes/<persona>-reports-api.ts`:
 ## Inventory of pending endpoints (67 total)
 
 ### Executive — `executive-reports-api.ts` (131 lines, 3 endpoints) ✅ DONE
+
 Handler: `supabase/functions/persona-reports/handlers/executive.ts`
 SQL: `drizzle/reports/executive.sql`
 
@@ -56,6 +57,7 @@ values need historical snapshots (for growth/churn) and a monitoring feed
 (for uptime/error rate) — separate follow-ups.
 
 ### Sales — `sales-reports-api.ts` (414 lines, 9 endpoints) 🟡 PARTIAL
+
 Handler: `supabase/functions/persona-reports/handlers/sales.ts`
 SQL: `drizzle/reports/sales.sql`
 
@@ -73,9 +75,11 @@ Actual endpoint paths differ from the PRD's guess. Real endpoints:
 
 **5 of 9 done.** Remaining 4 endpoints return 501 from the handler with a
 source-file pointer.
+
 - [ ] `GET /sales/my-lead-conversion`
 
 ### Sales Manager — `sales-manager-reports-api.ts` (291 lines, 6 endpoints)
+
 Level gate: 4. Service: implied in `sales-reporting-service.ts` or a sibling.
 
 - [ ] `GET /sales-manager/team-performance`
@@ -86,6 +90,7 @@ Level gate: 4. Service: implied in `sales-reporting-service.ts` or a sibling.
 - [ ] `POST /sales-manager/clear-cache`
 
 ### Sales Supervisor — `sales-supervisor-reports-api.ts` (285 lines, 6 endpoints)
+
 Level gate: 3.
 
 - [ ] `GET /sales-supervisor/squad-performance`
@@ -96,6 +101,7 @@ Level gate: 3.
 - [ ] `POST /sales-supervisor/clear-cache`
 
 ### Service — `service-reports-api.ts` (341 lines, 7 endpoints) 🟡 PARTIAL
+
 Handler: `supabase/functions/persona-reports/handlers/service.ts`
 SQL: `drizzle/reports/service.sql`
 
@@ -118,6 +124,7 @@ need `service_ticket_parts` schema confirmation (parts) and the
 hierarchical scope builder (dispatch-queue).
 
 ### Service Manager — `service-manager-reports-api.ts` (292 lines, 6 endpoints)
+
 Level gate: 4.
 
 - [ ] `GET /service-manager/team-performance`
@@ -128,6 +135,7 @@ Level gate: 4.
 - [ ] `POST /service-manager/clear-cache`
 
 ### Service Supervisor — `service-supervisor-reports-api.ts` (289 lines, 6 endpoints)
+
 Level gate: 3.
 
 - [ ] `GET /service-supervisor/squad-performance`
@@ -138,6 +146,7 @@ Level gate: 3.
 - [ ] `POST /service-supervisor/clear-cache`
 
 ### Team — `team-reports-api.ts` (460 lines, 8 endpoints)
+
 Service: `team-reporting-service.ts` (934 lines) — the largest service.
 
 - [ ] `GET /team/members` — team roster with roles
@@ -150,6 +159,7 @@ Service: `team-reporting-service.ts` (934 lines) — the largest service.
 - [ ] `POST /team/clear-cache`
 
 ### Warehouse — `warehouse-reports-api.ts` (100 lines, 2 endpoints) ✅ DONE
+
 Handler: `supabase/functions/persona-reports/handlers/warehouse.ts`
 SQL: `drizzle/reports/warehouse.sql` (`report_warehouse_team_quick_stats`)
 
@@ -190,21 +200,24 @@ The scheduled dispatcher is already wired in pg_cron (`scheduled-reports-dispatc
 3. **Sales** — 5/9 done. Finish the 4 stubbed (commissions, leaderboard, team/pipeline-summary) when the hierarchical builder lands.
 4. **Service** — 4/7 done. Finish parts / dispatch-queue / single-call detail.
 5. **Manager / Supervisor personas** — filter-based variants of the rep queries; can often share PL/pgSQL with a `p_scope` argument.
-5. **Team** — 8 endpoints, 934-line service. Do last; most complex aggregation.
-6. **Generic reporting engine** — separate follow-up session. Unblocks scheduled report delivery.
+6. **Team** — 8 endpoints, 934-line service. Do last; most complex aggregation.
+7. **Generic reporting engine** — separate follow-up session. Unblocks scheduled report delivery.
 
 ## Frontend routing note
 
 The Express version mounts each persona at its own path:
+
 - `/api/director-reports/sales/company-performance`
 - `/api/executive-reports/financial-overview`
 - etc.
 
 The edge function mounts all under `/api/persona-reports/<persona>/*`:
+
 - `/api/persona-reports/director/sales/company-performance`
 - `/api/persona-reports/executive/financial-overview`
 
 Before sunset, either:
+
 - **(a)** update the frontend to use the new paths (grep for `director-reports`, `executive-reports`, etc.), or
 - **(b)** add a rewrite rule so `/<persona>-reports/*` → `/persona-reports/<persona>/*`
 
@@ -213,6 +226,7 @@ Option (a) is cleaner; option (b) preserves frontend code for a soak period. Tra
 ## Tables touched
 
 Report queries read from (no writes):
+
 - `opportunities`, `sales_quotas` (sales reports)
 - `service_calls`, `time_entries` (service reports)
 - `users`, `regions`, `locations` (joined throughout)

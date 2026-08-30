@@ -2,6 +2,20 @@
  * TEAM ALERT SERVICE
  * Monitors team performance metrics and triggers alerts based on configured thresholds
  * Sends notifications via email for coaching flags and performance issues
+ *
+ * UNREACHABLE, AND KEPT DELIBERATELY (CR-017 follow-on, PROD-008c's rule).
+ * Nothing imports this file - no route, no cron job, no other service - so none
+ * of it runs. It is real, complete work over four real tables
+ * (shared/team-alerts-schema.ts), not a mock, which is why it is annotated
+ * rather than deleted: removing a finished feature because nobody wired it is a
+ * decision for a human.
+ *
+ * It is also the only reason warehouse-reporting-service.ts and
+ * service-supervisor-reporting-service.ts still exist. The other eight
+ * reporting services were deleted in the same pass - orphans superseded by
+ * supabase/functions/reports/, which says so in its own handler headers - and
+ * these two would have gone with them but for the getTeamQuickStats calls
+ * below. Wiring this service up, or retiring it, retires those two as well.
  */
 
 import { db } from '../db';

@@ -46,19 +46,22 @@ const PATTERNS: Array<{
     name: 'execSync-template-literal',
     regex: /\bexecSync\s*\(\s*`/,
     severity: 'critical',
-    description: 'child_process.execSync() called with template literal - potential command injection',
+    description:
+      'child_process.execSync() called with template literal - potential command injection',
   },
   {
     name: 'exec-string-concat',
     regex: /\bexec\s*\(\s*[a-zA-Z_$][\w$]*\s*\+/,
     severity: 'high',
-    description: 'child_process.exec() called with string concatenation - potential command injection',
+    description:
+      'child_process.exec() called with string concatenation - potential command injection',
   },
   {
     name: 'execSync-string-concat',
     regex: /\bexecSync\s*\(\s*[a-zA-Z_$][\w$]*\s*\+/,
     severity: 'high',
-    description: 'child_process.execSync() called with string concatenation - potential command injection',
+    description:
+      'child_process.execSync() called with string concatenation - potential command injection',
   },
   {
     name: 'spawn-shell-true',
@@ -194,7 +197,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(__filename
     console.error(
       `\nFound ${result.totalFindings} potential command injection risks ` +
         `(${result.summary.critical} critical, ${result.summary.high} high, ` +
-        `${result.summary.medium} medium, ${result.summary.low} low)`
+        `${result.summary.medium} medium, ${result.summary.low} low)`,
     );
   } else {
     console.error('\nNo command injection risks found.');

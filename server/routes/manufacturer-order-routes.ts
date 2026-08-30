@@ -1,3 +1,27 @@
+/**
+ * Manufacturer orders: connections, shipments, confirmations, exceptions,
+ * line items and analytics. 43 handlers over /api/manufacturer-orders.
+ *
+ * CANNOT AUTHENTICATE ANYONE - see SEC-SESSION-001 before changing this file.
+ *
+ * Every handler below reads `req.session.user` as its only source of identity.
+ * Nothing in this codebase assigns it: session login sets the flat
+ * req.session.userId / req.session.tenantId and the JWT path sets req.user, so
+ * each of these answers 401 in dev exactly as it does in production. It has
+ * never run. server/types/express-session.d.ts records the same finding and
+ * declares the type that lets it compile, which is why tsc sees nothing wrong.
+ *
+ * Nothing calls /api/manufacturer-orders in any client tree, and
+ * supabase/functions/manufacturer-orders/ exists but is itself in
+ * docs/unreferenced-edge-fns-baseline.json. So the whole domain has two back
+ * ends and no front end; fixing the auth here would not make it reachable.
+ *
+ * The fix is one of three, and it is a product call rather than cleanup:
+ * migrate the handlers to getUserId/getTenantId from utils/auth-helpers and
+ * build the caller, retire the file in favour of an edge function that covers
+ * it, or delete it. Populating req.session.user in the login path would revive
+ * all twelve files at once and touches security-sensitive code.
+ */
 import express, { Request, Response } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';

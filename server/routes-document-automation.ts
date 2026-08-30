@@ -1,3 +1,33 @@
+/**
+ * Document automation: templates, generation, uploads, field mappings and AI
+ * extraction. 17 endpoints over real tables (shared/document-automation-schema.ts).
+ *
+ * NOT REACHED BY ANYTHING - READ PROD-008d BEFORE INVESTING IN THIS FILE.
+ *
+ * It is mounted with no prefix (routes-registry: app.use(default)), so its
+ * routes register at their literal paths, and they split two ways:
+ *
+ *   /api/documents/*         SHADOWED. That prefix is in crmProxies, so the
+ *                            proxy answers first and supabase/functions/documents/
+ *                            handles it - and that function serves only /, /:id
+ *                            and /:id/pdf for DocumentBuilder.tsx. It has no
+ *                            branch for generated, uploads, ai-extract,
+ *                            batch-generate or generate, and reads parts[0] as a
+ *                            document id, so those paths resolve to a lookup for
+ *                            a document named "generated" or "uploads".
+ *
+ *   /api/document-templates/*        Not shadowed - they would run. Nothing
+ *   /api/document-field-mappings     calls them: no page or component in
+ *                                    client/src references either prefix.
+ *
+ * So half of it cannot run and the other half is never asked to. The schema and
+ * the Drizzle inserts are real, which is why this is still here rather than
+ * deleted with the shadowed mocks: porting it means building a UI too, and
+ * retiring it means dropping tables. Same decision as PROD-008c's billing.
+ *
+ * Note DocumentManagement.tsx is a DIFFERENT feature on a THIRD prefix
+ * (/api/document-management) with its own live problem - see SUPA-024.
+ */
 import express, { type Request, Response } from 'express';
 import { db } from './db';
 import { createModuleLogger } from './lib/logger';

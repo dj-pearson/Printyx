@@ -242,28 +242,40 @@ export class GeofenceAlertsService {
       // Email notification
       if (rule.notifyByEmail) {
         // TODO: Integrate with email service
-        log.warn({ userId, alertType: 'geofence' }, 'Email notification skipped: email service not yet integrated');
+        log.warn(
+          { userId, alertType: 'geofence' },
+          'Email notification skipped: email service not yet integrated',
+        );
         result.email = false;
       }
 
       // Push notification
       if (rule.notifyByPush) {
         // TODO: Integrate with push notification service
-        log.warn({ userId, alertType: 'geofence' }, 'Push notification skipped: push service not yet integrated');
+        log.warn(
+          { userId, alertType: 'geofence' },
+          'Push notification skipped: push service not yet integrated',
+        );
         result.push = false;
       }
 
       // SMS notification
       if (rule.notifyBySms) {
         // TODO: Integrate with SMS service
-        log.warn({ userId, alertType: 'geofence' }, 'SMS notification skipped: SMS service not yet integrated');
+        log.warn(
+          { userId, alertType: 'geofence' },
+          'SMS notification skipped: SMS service not yet integrated',
+        );
         result.sms = false;
       }
 
       // In-app notification
       if (rule.notifyInApp) {
         // TODO: Integrate with in-app notification system
-        log.warn({ userId, alertType: 'geofence' }, 'In-app notification skipped: notification system not yet integrated');
+        log.warn(
+          { userId, alertType: 'geofence' },
+          'In-app notification skipped: notification system not yet integrated',
+        );
         result.inApp = false;
       }
     }

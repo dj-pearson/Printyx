@@ -3,12 +3,29 @@
  *
  * Enforces Multi-Factor Authentication requirements for admin and sensitive roles.
  * Implements configurable role-level MFA requirements.
+ *
+ * NOT MOUNTED, AND NOT MOUNTABLE AS WRITTEN. Three separate things stop it:
+ *
+ *   1. Nothing imports enforceMfaForAdmins - it is exported and never used, so
+ *      no route in this application requires MFA today. requirePermissionWithMFA
+ *      in enhanced-rbac-middleware.ts is in the same position (SEC-MFA-001).
+ *   2. It reads req.session.user, which nothing in this codebase assigns
+ *      (SEC-SESSION-001), so mounting it would deny every request rather than
+ *      check anything.
+ *   3. QUALITY-002 found it passing storage.getUserWithRole's `role` - a Role
+ *      ROW, not a string - to parseRoleLevel, which calls .toLowerCase(); read
+ *      role?.code for the name and role?.level for the level.
+ *
+ * It also reads two-factor state from user_settings.two_factor_enabled, which
+ * supabase/functions/mfa/ does not write - that function's enrolments live in
+ * mfa_enrollments. Whichever of those becomes authoritative, this file has to
+ * follow it, so fix the storage question before the auth one.
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
 import { db } from '../db';
-import { users } from '../../shared/schema';
+import { users, userSettings } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { getComplianceSettings } from '../storage/security-storage';
 import { createModuleLogger } from '../lib/logger';
@@ -180,9 +197,14 @@ export function requireMfaForAdmins(options: MfaEnforcementOptions = {}) {
         return next();
       }
 
-      // Check if role requires MFA
-      const userRole = userWithRole.role;
-      const userLevel = parseRoleLevel(userRole);
+      // QUALITY-002: storage.getUserWithRole returns `role` as a Role ROW, not
+      // a string, so this passed an object into parseRoleLevel, which calls
+      // .toLowerCase() on it. Every request through this middleware threw a
+      // TypeError into the catch below and answered 500. The row carries a
+      // numeric `level` of its own, which is better than parsing a name;
+      // parseRoleLevel stays as the fallback for a role with no level.
+      const userRole = userWithRole.role?.code;
+      const userLevel = userWithRole.role?.level ?? parseRoleLevel(userRole);
 
       const needsMfa =
         roleRequiresMfa(
@@ -345,27 +367,40 @@ export async function getUsersNeedingMfa(tenantId: string): Promise<
 
   const allUsers = await db.select().from(users).where(eq(users.tenantId, tenantId));
 
+  const enrolled = await db
+    .select({ userId: userSettings.userId, twoFactorEnabled: userSettings.twoFactorEnabled })
+    .from(userSettings)
+    .where(eq(userSettings.tenantId, tenantId));
+  const enrolledUserIds = new Set(
+    enrolled.filter((row) => row.twoFactorEnabled).map((row) => row.userId),
+  );
+
   const usersNeedingMfa = [];
 
   for (const user of allUsers) {
     const userWithRole = await storage.getUserWithRole(user.id);
     if (!userWithRole) continue;
 
-    const userLevel = parseRoleLevel(userWithRole.role);
+    const userRole = userWithRole.role?.code;
+    const userLevel = userWithRole.role?.level ?? parseRoleLevel(userRole);
     const needsMfa = roleRequiresMfa(
-      userWithRole.role,
+      userRole,
       userLevel,
       tenantSettings.mfaRequiredRoles,
       tenantSettings.mfaRequiredLevel,
     );
 
-    if (needsMfa && !user.twoFactorEnabled) {
+    // twoFactorEnabled lives on user_settings, NOT users. Reading it off the
+    // users row gave undefined, so `!user.twoFactorEnabled` was true for
+    // everyone and this report named every user in the tenant as missing MFA,
+    // including the ones who had enrolled.
+    if (needsMfa && !enrolledUserIds.has(user.id)) {
       usersNeedingMfa.push({
         id: user.id,
         email: user.email || '',
         firstName: user.firstName || '',
         lastName: user.lastName || '',
-        role: userWithRole.role || '',
+        role: userRole || '',
       });
     }
   }

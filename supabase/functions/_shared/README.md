@@ -4,14 +4,14 @@ Drop-in modules every edge function should use. All are Deno-compatible and requ
 
 ## Files
 
-| File | Purpose | Added |
-|---|---|---|
-| `cors.ts` | CORS preflight + headers | pre-existing |
-| `supabase.ts` | Supabase JS client factories (user-scoped + service-role) — low-level | pre-existing |
-| `db.ts` | Canonical DB client for new handlers (`getDb()` — service-role, `getUserDb(jwt)` — RLS-scoped) | Phase 1 |
-| `auth.ts` | `requireAuth(req)` — JWT verify + tenant resolution | Phase 1 |
-| `http.ts` | `jsonResponse`, `errorResponse`, `validateBody`, `validateQuery` | Phase 1 |
-| `logger.ts` | `createLogger(module)` — structured JSON logs | Phase 1 |
+| File          | Purpose                                                                                        | Added        |
+| ------------- | ---------------------------------------------------------------------------------------------- | ------------ |
+| `cors.ts`     | CORS preflight + headers                                                                       | pre-existing |
+| `supabase.ts` | Supabase JS client factories (user-scoped + service-role) — low-level                          | pre-existing |
+| `db.ts`       | Canonical DB client for new handlers (`getDb()` — service-role, `getUserDb(jwt)` — RLS-scoped) | Phase 1      |
+| `auth.ts`     | `requireAuth(req)` — JWT verify + tenant resolution                                            | Phase 1      |
+| `http.ts`     | `jsonResponse`, `errorResponse`, `validateBody`, `validateQuery`                               | Phase 1      |
+| `logger.ts`   | `createLogger(module)` — structured JSON logs                                                  | Phase 1      |
 
 ## DB access pattern
 
@@ -97,20 +97,20 @@ The `server.ts` router strips the function-name prefix before calling `handler`,
 
 If you want RLS enforcement too, use `getUserDb(ctx.jwt)` instead — passes the user's JWT and policies apply. Trade-off: it's a per-request client (not cached), slightly higher latency, but any forgotten `tenant_id` filter is caught by RLS.
 
-| Client | Use when | RLS applies | Cached |
-|---|---|---|---|
-| `getDb()` | Most handlers — server-side, trusted | No | Yes |
-| `getUserDb(ctx.jwt)` | Belt-and-suspenders tenant safety | Yes | No |
+| Client               | Use when                             | RLS applies | Cached |
+| -------------------- | ------------------------------------ | ----------- | ------ |
+| `getDb()`            | Most handlers — server-side, trusted | No          | Yes    |
+| `getUserDb(ctx.jwt)` | Belt-and-suspenders tenant safety    | Yes         | No     |
 
 ## Environment variables consumed
 
-| Var | Consumer | Purpose |
-|---|---|---|
-| `SUPABASE_URL` | `db.ts`, `auth.ts`, `supabase.ts` | Base URL of self-hosted Supabase (`https://api.printyx.net`) |
-| `SUPABASE_ANON_KEY` | `db.ts` (user client), `auth.ts` | Anon key for JWT verification + user-scoped client |
-| `SUPABASE_SERVICE_ROLE_KEY` | `db.ts` (service client) | Service role key for bypass-RLS queries |
-| `LOG_LEVEL` | `logger.ts` | `trace`/`debug`/`info`/`warn`/`error` (default `info`) |
-| `ALLOWED_ORIGINS` | `cors.ts` | Comma-separated CORS allowlist |
+| Var                         | Consumer                          | Purpose                                                      |
+| --------------------------- | --------------------------------- | ------------------------------------------------------------ |
+| `SUPABASE_URL`              | `db.ts`, `auth.ts`, `supabase.ts` | Base URL of self-hosted Supabase (`https://api.printyx.net`) |
+| `SUPABASE_ANON_KEY`         | `db.ts` (user client), `auth.ts`  | Anon key for JWT verification + user-scoped client           |
+| `SUPABASE_SERVICE_ROLE_KEY` | `db.ts` (service client)          | Service role key for bypass-RLS queries                      |
+| `LOG_LEVEL`                 | `logger.ts`                       | `trace`/`debug`/`info`/`warn`/`error` (default `info`)       |
+| `ALLOWED_ORIGINS`           | `cors.ts`                         | Comma-separated CORS allowlist                               |
 
 **Note**: `DATABASE_URL` is no longer required — we no longer connect directly to Postgres from edge functions. If you see a handler trying to read it, that's legacy and should be refactored.
 

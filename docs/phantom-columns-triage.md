@@ -11,170 +11,170 @@ letters — `audit_logs.created_at` really is just `timestamp`, and this table s
 "none" for it. What the column says reliably is where a substitution is NOT obvious,
 which is exactly where guessing has been the expensive mistake.
 
-| phantom | closest real columns | file |
-| --- | --- | --- |
-| `api_keys.service` | **none — redesign, not a rename** | chrome-extension/index.ts |
-| `api_keys.user_id` | `id`, `tenant_id` | chrome-extension/index.ts |
-| `blog_assets.filename` | **none — redesign, not a rename** | blog-platform-api/index.ts |
-| `business_record_activities.notes` | **none — redesign, not a rename** | activities/index.ts |
-| `business_records.email` | `primary_contact_email`, `billing_contact_email` | business-records-search/index.ts |
-| `business_records.email` | `primary_contact_email`, `billing_contact_email` | chrome-extension/index.ts |
-| `business_records.first_name` | `company_name`, `competitor_name` | chrome-extension/index.ts |
-| `business_records.job_title` | **none — redesign, not a rename** | chrome-extension/index.ts |
-| `business_records.last_name` | `company_name`, `competitor_name` | chrome-extension/index.ts |
-| `business_records.lead_source` | `source`, `lead_score` | chrome-extension/index.ts |
-| `business_records.linkedin_url` | `url_slug` | chrome-extension/index.ts |
-| `business_records.tags` | **none — redesign, not a rename** | chrome-extension/index.ts |
-| `companies.status` | **none — redesign, not a rename** | demos/index.ts |
-| `deal_stages.order_index` | `sort_order` | pipeline/index.ts |
-| `deals.assigned_to_id` | `id` | user-assignments/index.ts |
-| `deals.closed_at` | `created_at`, `updated_at` | today-dashboard/index.ts |
-| `deals.deal_value` | `deal_type` | pipeline/index.ts |
-| `deals.deal_value` | `deal_type` | sales-reports/index.ts |
-| `deals.name` | `company_name`, `primary_contact_name` | user-assignments/index.ts |
-| `deals.stage` | `stage_id` | pipeline/index.ts |
-| `deals.stage` | `stage_id` | sales-reports/index.ts |
-| `deals.stage` | `stage_id` | user-assignments/index.ts |
-| `deals.value` | `estimated_monthly_value` | today-dashboard/index.ts |
-| `deals.value` | `estimated_monthly_value` | user-assignments/index.ts |
-| `deals.weighted_value` | **none — redesign, not a rename** | sales-reports/index.ts |
-| `device_alerts.client_id` | `id`, `tenant_id`, `device_id` | client-metrics/index.ts |
-| `device_alerts.metadata` | **none — redesign, not a rename** | client-metrics/index.ts |
-| `device_alerts.serial_number` | **none — redesign, not a rename** | client-metrics/index.ts |
-| `device_metrics.client_id` | `id`, `tenant_id`, `device_id` | client-metrics/index.ts |
-| `device_metrics.collected_at` | `created_at` | client-metrics/index.ts |
-| `device_metrics.collected_at` | `created_at` | customer-metrics/index.ts |
-| `device_metrics.collected_at` | `created_at` | devices/index.ts |
-| `device_metrics.collected_at` | `created_at` | fleet-dashboard/index.ts |
-| `device_metrics.collected_at` | `created_at` | fleet-devices/index.ts |
-| `device_metrics.metadata` | **none — redesign, not a rename** | client-metrics/index.ts |
-| `device_metrics.metric_type` | **none — redesign, not a rename** | client-metrics/index.ts |
-| `device_metrics.serial_number` | **none — redesign, not a rename** | client-metrics/index.ts |
-| `device_metrics.unit` | **none — redesign, not a rename** | client-metrics/index.ts |
-| `device_metrics.value` | **none — redesign, not a rename** | client-metrics/index.ts |
-| `documents.entity_id` | `id`, `tenant_id`, `customer_id` | document-management/index.ts |
-| `documents.entity_type` | `document_type` | document-management/index.ts |
-| `documents.folder` | **none — redesign, not a rename** | document-management/index.ts |
-| `documents.name` | `buyer_name`, `ship_to_name`, `customer_name` | document-management/index.ts |
-| `email_campaigns.from_email` | `sender_email` | email-campaigns/index.ts |
-| `email_campaigns.from_name` | `campaign_name`, `sender_name` | email-campaigns/index.ts |
-| `email_campaigns.html_content` | **none — redesign, not a rename** | email-campaigns/index.ts |
-| `email_campaigns.name` | `campaign_name`, `sender_name` | email-campaigns/index.ts |
-| `email_campaigns.reply_to` | `reply_to_email` | email-campaigns/index.ts |
-| `email_campaigns.scheduled_at` | `scheduled_date`, `sent_at`, `completed_at` | email-campaigns/index.ts |
-| `email_campaigns.segment_id` | `id`, `tenant_id`, `template_id` | email-campaigns/index.ts |
-| `email_campaigns.text_content` | **none — redesign, not a rename** | email-campaigns/index.ts |
-| `email_templates.description` | `template_description` | email-templates/index.ts |
-| `email_templates.name` | `template_name` | email-templates/index.ts |
-| `email_templates.variables` | **none — redesign, not a rename** | email-templates/index.ts |
-| `enriched_contacts.status` | `email_verification_status`, `prospecting_status` | data-enrichment/index.ts |
-| `equipment.current_meter_reading` | **none — redesign, not a rename** | predictive-maintenance/index.ts |
-| `equipment.location` | `location_description` | predictive-maintenance/index.ts |
-| `equipment.make` | **none — redesign, not a rename** | predictive-maintenance/index.ts |
-| `equipment.model` | `model_number` | predictive-maintenance/index.ts |
-| `equipment.status` | `equipment_status` | predictive-maintenance/index.ts |
-| `expansion_opportunities.actual_value` | `actual_revenue` | expansion-opportunities/index.ts |
-| `expansion_opportunities.description` | **none — redesign, not a rename** | expansion-opportunities/index.ts |
-| `expansion_opportunities.lost_at` | `identified_at`, `closed_at`, `created_at` | expansion-opportunities/index.ts |
-| `expansion_opportunities.lost_reason` | **none — redesign, not a rename** | expansion-opportunities/index.ts |
-| `expansion_opportunities.name` | **none — redesign, not a rename** | expansion-opportunities/index.ts |
-| `expansion_opportunities.potential_value` | **none — redesign, not a rename** | expansion-opportunities/index.ts |
-| `expansion_opportunities.probability` | **none — redesign, not a rename** | expansion-opportunities/index.ts |
-| `expansion_opportunities.products` | `proposed_products` | expansion-opportunities/index.ts |
-| `expansion_opportunities.won_at` | `identified_at`, `closed_at`, `created_at` | expansion-opportunities/index.ts |
-| `geofence_alerts.acknowledged` | `is_acknowledged`, `acknowledged_at`, `acknowledged_by` | field-service/handlers/geofence-alerts.ts |
-| `geofence_alerts.resolved` | `is_resolved`, `resolved_at`, `resolved_by` | field-service/handlers/geofence-alerts.ts |
-| `handoff_task_templates.category` | **none — redesign, not a rename** | handoff-task-templates/index.ts |
-| `handoff_task_templates.default_assignee_role` | **none — redesign, not a rename** | handoff-task-templates/index.ts |
-| `handoff_task_templates.name` | `template_name` | handoff-task-templates/index.ts |
-| `handoff_tasks.assignee_id` | `id`, `tenant_id`, `handoff_id` | handoff-tasks/index.ts |
-| `handoff_tasks.created_by` | `blocked_by`, `completed_by`, `created_at` | handoff-tasks/index.ts |
-| `handoff_tasks.priority` | **none — redesign, not a rename** | handoff-tasks/index.ts |
-| `handoff_tasks.title` | **none — redesign, not a rename** | handoff-tasks/index.ts |
-| `implementation_projects.actual_go_live_date` | `go_live_date`, `actual_start_date`, `actual_end_date` | implementation-projects/index.ts |
-| `implementation_projects.description` | **none — redesign, not a rename** | implementation-projects/index.ts |
-| `implementation_projects.name` | `project_name` | implementation-projects/index.ts |
-| `implementation_projects.requirements` | **none — redesign, not a rename** | implementation-projects/index.ts |
-| `implementation_projects.start_date` | `planned_start_date`, `actual_start_date` | implementation-projects/index.ts |
-| `implementation_projects.target_go_live_date` | `go_live_date` | implementation-projects/index.ts |
-| `journal_entries.original_entry_id` | `id` | journal-entries/index.ts |
-| `journal_entries.posted_at` | `created_at`, `updated_at` | journal-entries/index.ts |
-| `journal_entries.posted_by` | `created_by` | journal-entries/index.ts |
-| `lead_assignment_history.assigned_by_id` | `assigned_by`, `id` | assign-lead/index.ts |
-| `lead_assignment_history.assigned_by_id` | `assigned_by`, `id` | lead-assignment-history/index.ts |
-| `lead_assignment_history.assigned_to_id` | `assigned_to`, `id` | assign-lead/index.ts |
-| `lead_assignment_history.assigned_to_id` | `assigned_to`, `id` | lead-assignment-history/index.ts |
-| `lead_assignment_history.assigned_to_id` | `assigned_to`, `id` | user-assignments/index.ts |
-| `lead_assignment_queue.assigned_to_id` | `id` | lead-assignment-queue/index.ts |
-| `lead_assignment_queue.source` | **none — redesign, not a rename** | lead-assignment-queue/index.ts |
-| `lead_assignment_rules.assigned_users` | **none — redesign, not a rename** | lead-assignment-rules/index.ts |
-| `lead_assignment_rules.conditions` | **none — redesign, not a rename** | lead-assignment-rules/index.ts |
-| `lead_assignment_rules.name` | `rule_name` | lead-assignment-rules/index.ts |
-| `manufacturer_orders.actual_delivery_date` | `requested_delivery_date`, `estimated_delivery_date` | manufacturer-orders/handlers/analytics.ts |
-| `monitored_devices.status` | **none — redesign, not a rename** | remote-monitoring/index.ts |
-| `onboarding_checklists.customer_id` | `id`, `tenant_id`, `user_id` | onboarding-checklists/index.ts |
-| `onboarding_checklists.status` | **none — redesign, not a rename** | onboarding-checklists/index.ts |
-| `opportunities.stage` | `stage_name` | opportunities-dashboard/index.ts |
-| `opportunities.status` | `migration_status`, `delivery_status` | opportunities-dashboard/index.ts |
-| `opportunities.value` | **none — redesign, not a rename** | opportunities-dashboard/index.ts |
-| `parts_orders.ordered_by` | **none — redesign, not a rename** | service-analysis/index.ts |
-| `parts_orders.parts` | **none — redesign, not a rename** | service-analysis/index.ts |
-| `parts_orders.total_cost` | `total` | service-analysis/index.ts |
-| `platform_health_scores.assigned_csm` | **none — redesign, not a rename** | platform-cs/index.ts |
-| `quote_line_items.discount_percent` | **none — redesign, not a rename** | quote-line-items/index.ts |
-| `quote_line_items.line_number` | **none — redesign, not a rename** | quote-line-items/index.ts |
-| `quote_line_items.product_id` | `id`, `tenant_id`, `quote_id` | quote-line-items/index.ts |
-| `renewal_activities.completed_at` | `created_at` | renewal-activities/index.ts |
-| `renewal_activities.description` | `activity_description` | renewal-activities/index.ts |
-| `renewal_activities.subject` | `activity_subject` | renewal-activities/index.ts |
-| `renewal_playbooks.name` | `playbook_name` | renewal-playbooks/index.ts |
-| `renewal_playbooks.risk_levels` | **none — redesign, not a rename** | renewal-playbooks/index.ts |
-| `roles.hierarchy_level` | `level` | role-management/index.ts |
-| `roles.is_system` | `is_system_role` | role-management/index.ts |
-| `roles.tenant_id` | `id` | role-management/index.ts |
-| `roles.tenant_id` | `id` | roles/index.ts |
-| `roles.updated_at` | `created_at` | role-management/index.ts |
-| `sales_goals.target_value` | `target_count` | pipeline-forecast/index.ts |
-| `sales_territories.assigned_rep_id` | `id` | sales-territories/index.ts |
-| `sales_territories.name` | `territory_name` | sales-territories/index.ts |
-| `sales_territories.region` | **none — redesign, not a rename** | sales-territories/index.ts |
-| `sales_territories.rules` | `geographic_rules`, `account_rules` | sales-territories/index.ts |
-| `sales_territories.states` | **none — redesign, not a rename** | sales-territories/index.ts |
-| `sales_territories.zip_codes` | **none — redesign, not a rename** | sales-territories/index.ts |
-| `service_tickets.completed_at` | `resolved_at`, `created_at`, `updated_at` | technicians/index.ts |
-| `service_tickets.first_response_time` | **none — redesign, not a rename** | technicians/index.ts |
-| `service_tickets.technician_id` | `assigned_technician_id`, `id`, `tenant_id` | validate/index.ts |
-| `service_tickets.ticket_type` | `ticket_number` | predictive-maintenance/index.ts |
-| `service_tickets.time_spent` | **none — redesign, not a rename** | validate/index.ts |
-| `service_tickets.work_performed` | **none — redesign, not a rename** | validate/index.ts |
-| `sso_provider_configs.last_test_error` | `last_error`, `last_error_at` | sso/index.ts |
-| `sso_provider_configs.last_test_success` | **none — redesign, not a rename** | sso/index.ts |
-| `sso_provider_configs.last_tested_at` | `last_login_at`, `last_error_at` | sso/index.ts |
-| `sso_sessions.access_token_hash` | `oidc_access_token` | sso/index.ts |
-| `sso_sessions.metadata` | **none — redesign, not a rename** | sso/index.ts |
-| `sso_sessions.user_identifier` | `id`, `user_id`, `user_agent` | sso/index.ts |
-| `supplies.manufacturer` | **none — redesign, not a rename** | manufacturer-integrations/index.ts |
-| `supplies.part_number` | **none — redesign, not a rename** | manufacturer-integrations/index.ts |
-| `supply_orders.customer_id` | `id`, `tenant_id`, `machine_id` | order-toner/index.ts |
-| `supply_orders.device_id` | `id`, `tenant_id`, `machine_id` | devices/index.ts |
-| `supply_orders.device_id` | `id`, `tenant_id`, `machine_id` | order-toner/index.ts |
-| `supply_orders.items` | **none — redesign, not a rename** | devices/index.ts |
-| `supply_orders.items` | **none — redesign, not a rename** | order-toner/index.ts |
-| `supply_orders.notes` | **none — redesign, not a rename** | devices/index.ts |
-| `supply_orders.notes` | **none — redesign, not a rename** | order-toner/index.ts |
-| `supply_orders.order_type` | **none — redesign, not a rename** | devices/index.ts |
-| `supply_orders.order_type` | **none — redesign, not a rename** | order-toner/index.ts |
-| `supply_orders.priority` | **none — redesign, not a rename** | order-toner/index.ts |
-| `supply_orders.requested_by` | **none — redesign, not a rename** | devices/index.ts |
-| `supply_orders.requested_by` | **none — redesign, not a rename** | order-toner/index.ts |
-| `supply_orders.shipping_address` | **none — redesign, not a rename** | order-toner/index.ts |
-| `supply_replenishment_rules.auto_order` | `auto_order_enabled` | auto-supply-replenishment/index.ts |
-| `supply_replenishment_rules.is_active` | **none — redesign, not a rename** | auto-supply-replenishment/index.ts |
-| `supply_replenishment_rules.product_id` | `id`, `tenant_id` | auto-supply-replenishment/index.ts |
-| `task_comments.content` | **none — redesign, not a rename** | task-comments/index.ts |
-| `technicians.employment_status` | **none — redesign, not a rename** | technicians/index.ts |
-| `technicians.skill_set` | **none — redesign, not a rename** | technicians/index.ts |
-| `tenants.settings` | **none — redesign, not a rename** | auth-me/index.ts |
-| `tenants.settings` | **none — redesign, not a rename** | settings/index.ts |
-| `users.full_name` | `first_name`, `last_name` | role-management/index.ts |
-| `users.status` | **none — redesign, not a rename** | role-management/index.ts |
+| phantom                                        | closest real columns                                    | file                                      |
+| ---------------------------------------------- | ------------------------------------------------------- | ----------------------------------------- |
+| `api_keys.service`                             | **none — redesign, not a rename**                       | chrome-extension/index.ts                 |
+| `api_keys.user_id`                             | `id`, `tenant_id`                                       | chrome-extension/index.ts                 |
+| `blog_assets.filename`                         | **none — redesign, not a rename**                       | blog-platform-api/index.ts                |
+| `business_record_activities.notes`             | **none — redesign, not a rename**                       | activities/index.ts                       |
+| `business_records.email`                       | `primary_contact_email`, `billing_contact_email`        | business-records-search/index.ts          |
+| `business_records.email`                       | `primary_contact_email`, `billing_contact_email`        | chrome-extension/index.ts                 |
+| `business_records.first_name`                  | `company_name`, `competitor_name`                       | chrome-extension/index.ts                 |
+| `business_records.job_title`                   | **none — redesign, not a rename**                       | chrome-extension/index.ts                 |
+| `business_records.last_name`                   | `company_name`, `competitor_name`                       | chrome-extension/index.ts                 |
+| `business_records.lead_source`                 | `source`, `lead_score`                                  | chrome-extension/index.ts                 |
+| `business_records.linkedin_url`                | `url_slug`                                              | chrome-extension/index.ts                 |
+| `business_records.tags`                        | **none — redesign, not a rename**                       | chrome-extension/index.ts                 |
+| `companies.status`                             | **none — redesign, not a rename**                       | demos/index.ts                            |
+| `deal_stages.order_index`                      | `sort_order`                                            | pipeline/index.ts                         |
+| `deals.assigned_to_id`                         | `id`                                                    | user-assignments/index.ts                 |
+| `deals.closed_at`                              | `created_at`, `updated_at`                              | today-dashboard/index.ts                  |
+| `deals.deal_value`                             | `deal_type`                                             | pipeline/index.ts                         |
+| `deals.deal_value`                             | `deal_type`                                             | sales-reports/index.ts                    |
+| `deals.name`                                   | `company_name`, `primary_contact_name`                  | user-assignments/index.ts                 |
+| `deals.stage`                                  | `stage_id`                                              | pipeline/index.ts                         |
+| `deals.stage`                                  | `stage_id`                                              | sales-reports/index.ts                    |
+| `deals.stage`                                  | `stage_id`                                              | user-assignments/index.ts                 |
+| `deals.value`                                  | `estimated_monthly_value`                               | today-dashboard/index.ts                  |
+| `deals.value`                                  | `estimated_monthly_value`                               | user-assignments/index.ts                 |
+| `deals.weighted_value`                         | **none — redesign, not a rename**                       | sales-reports/index.ts                    |
+| `device_alerts.client_id`                      | `id`, `tenant_id`, `device_id`                          | client-metrics/index.ts                   |
+| `device_alerts.metadata`                       | **none — redesign, not a rename**                       | client-metrics/index.ts                   |
+| `device_alerts.serial_number`                  | **none — redesign, not a rename**                       | client-metrics/index.ts                   |
+| `device_metrics.client_id`                     | `id`, `tenant_id`, `device_id`                          | client-metrics/index.ts                   |
+| `device_metrics.collected_at`                  | `created_at`                                            | client-metrics/index.ts                   |
+| `device_metrics.collected_at`                  | `created_at`                                            | customer-metrics/index.ts                 |
+| `device_metrics.collected_at`                  | `created_at`                                            | devices/index.ts                          |
+| `device_metrics.collected_at`                  | `created_at`                                            | fleet-dashboard/index.ts                  |
+| `device_metrics.collected_at`                  | `created_at`                                            | fleet-devices/index.ts                    |
+| `device_metrics.metadata`                      | **none — redesign, not a rename**                       | client-metrics/index.ts                   |
+| `device_metrics.metric_type`                   | **none — redesign, not a rename**                       | client-metrics/index.ts                   |
+| `device_metrics.serial_number`                 | **none — redesign, not a rename**                       | client-metrics/index.ts                   |
+| `device_metrics.unit`                          | **none — redesign, not a rename**                       | client-metrics/index.ts                   |
+| `device_metrics.value`                         | **none — redesign, not a rename**                       | client-metrics/index.ts                   |
+| `documents.entity_id`                          | `id`, `tenant_id`, `customer_id`                        | document-management/index.ts              |
+| `documents.entity_type`                        | `document_type`                                         | document-management/index.ts              |
+| `documents.folder`                             | **none — redesign, not a rename**                       | document-management/index.ts              |
+| `documents.name`                               | `buyer_name`, `ship_to_name`, `customer_name`           | document-management/index.ts              |
+| `email_campaigns.from_email`                   | `sender_email`                                          | email-campaigns/index.ts                  |
+| `email_campaigns.from_name`                    | `campaign_name`, `sender_name`                          | email-campaigns/index.ts                  |
+| `email_campaigns.html_content`                 | **none — redesign, not a rename**                       | email-campaigns/index.ts                  |
+| `email_campaigns.name`                         | `campaign_name`, `sender_name`                          | email-campaigns/index.ts                  |
+| `email_campaigns.reply_to`                     | `reply_to_email`                                        | email-campaigns/index.ts                  |
+| `email_campaigns.scheduled_at`                 | `scheduled_date`, `sent_at`, `completed_at`             | email-campaigns/index.ts                  |
+| `email_campaigns.segment_id`                   | `id`, `tenant_id`, `template_id`                        | email-campaigns/index.ts                  |
+| `email_campaigns.text_content`                 | **none — redesign, not a rename**                       | email-campaigns/index.ts                  |
+| `email_templates.description`                  | `template_description`                                  | email-templates/index.ts                  |
+| `email_templates.name`                         | `template_name`                                         | email-templates/index.ts                  |
+| `email_templates.variables`                    | **none — redesign, not a rename**                       | email-templates/index.ts                  |
+| `enriched_contacts.status`                     | `email_verification_status`, `prospecting_status`       | data-enrichment/index.ts                  |
+| `equipment.current_meter_reading`              | **none — redesign, not a rename**                       | predictive-maintenance/index.ts           |
+| `equipment.location`                           | `location_description`                                  | predictive-maintenance/index.ts           |
+| `equipment.make`                               | **none — redesign, not a rename**                       | predictive-maintenance/index.ts           |
+| `equipment.model`                              | `model_number`                                          | predictive-maintenance/index.ts           |
+| `equipment.status`                             | `equipment_status`                                      | predictive-maintenance/index.ts           |
+| `expansion_opportunities.actual_value`         | `actual_revenue`                                        | expansion-opportunities/index.ts          |
+| `expansion_opportunities.description`          | **none — redesign, not a rename**                       | expansion-opportunities/index.ts          |
+| `expansion_opportunities.lost_at`              | `identified_at`, `closed_at`, `created_at`              | expansion-opportunities/index.ts          |
+| `expansion_opportunities.lost_reason`          | **none — redesign, not a rename**                       | expansion-opportunities/index.ts          |
+| `expansion_opportunities.name`                 | **none — redesign, not a rename**                       | expansion-opportunities/index.ts          |
+| `expansion_opportunities.potential_value`      | **none — redesign, not a rename**                       | expansion-opportunities/index.ts          |
+| `expansion_opportunities.probability`          | **none — redesign, not a rename**                       | expansion-opportunities/index.ts          |
+| `expansion_opportunities.products`             | `proposed_products`                                     | expansion-opportunities/index.ts          |
+| `expansion_opportunities.won_at`               | `identified_at`, `closed_at`, `created_at`              | expansion-opportunities/index.ts          |
+| `geofence_alerts.acknowledged`                 | `is_acknowledged`, `acknowledged_at`, `acknowledged_by` | field-service/handlers/geofence-alerts.ts |
+| `geofence_alerts.resolved`                     | `is_resolved`, `resolved_at`, `resolved_by`             | field-service/handlers/geofence-alerts.ts |
+| `handoff_task_templates.category`              | **none — redesign, not a rename**                       | handoff-task-templates/index.ts           |
+| `handoff_task_templates.default_assignee_role` | **none — redesign, not a rename**                       | handoff-task-templates/index.ts           |
+| `handoff_task_templates.name`                  | `template_name`                                         | handoff-task-templates/index.ts           |
+| `handoff_tasks.assignee_id`                    | `id`, `tenant_id`, `handoff_id`                         | handoff-tasks/index.ts                    |
+| `handoff_tasks.created_by`                     | `blocked_by`, `completed_by`, `created_at`              | handoff-tasks/index.ts                    |
+| `handoff_tasks.priority`                       | **none — redesign, not a rename**                       | handoff-tasks/index.ts                    |
+| `handoff_tasks.title`                          | **none — redesign, not a rename**                       | handoff-tasks/index.ts                    |
+| `implementation_projects.actual_go_live_date`  | `go_live_date`, `actual_start_date`, `actual_end_date`  | implementation-projects/index.ts          |
+| `implementation_projects.description`          | **none — redesign, not a rename**                       | implementation-projects/index.ts          |
+| `implementation_projects.name`                 | `project_name`                                          | implementation-projects/index.ts          |
+| `implementation_projects.requirements`         | **none — redesign, not a rename**                       | implementation-projects/index.ts          |
+| `implementation_projects.start_date`           | `planned_start_date`, `actual_start_date`               | implementation-projects/index.ts          |
+| `implementation_projects.target_go_live_date`  | `go_live_date`                                          | implementation-projects/index.ts          |
+| `journal_entries.original_entry_id`            | `id`                                                    | journal-entries/index.ts                  |
+| `journal_entries.posted_at`                    | `created_at`, `updated_at`                              | journal-entries/index.ts                  |
+| `journal_entries.posted_by`                    | `created_by`                                            | journal-entries/index.ts                  |
+| `lead_assignment_history.assigned_by_id`       | `assigned_by`, `id`                                     | assign-lead/index.ts                      |
+| `lead_assignment_history.assigned_by_id`       | `assigned_by`, `id`                                     | lead-assignment-history/index.ts          |
+| `lead_assignment_history.assigned_to_id`       | `assigned_to`, `id`                                     | assign-lead/index.ts                      |
+| `lead_assignment_history.assigned_to_id`       | `assigned_to`, `id`                                     | lead-assignment-history/index.ts          |
+| `lead_assignment_history.assigned_to_id`       | `assigned_to`, `id`                                     | user-assignments/index.ts                 |
+| `lead_assignment_queue.assigned_to_id`         | `id`                                                    | lead-assignment-queue/index.ts            |
+| `lead_assignment_queue.source`                 | **none — redesign, not a rename**                       | lead-assignment-queue/index.ts            |
+| `lead_assignment_rules.assigned_users`         | **none — redesign, not a rename**                       | lead-assignment-rules/index.ts            |
+| `lead_assignment_rules.conditions`             | **none — redesign, not a rename**                       | lead-assignment-rules/index.ts            |
+| `lead_assignment_rules.name`                   | `rule_name`                                             | lead-assignment-rules/index.ts            |
+| `manufacturer_orders.actual_delivery_date`     | `requested_delivery_date`, `estimated_delivery_date`    | manufacturer-orders/handlers/analytics.ts |
+| `monitored_devices.status`                     | **none — redesign, not a rename**                       | remote-monitoring/index.ts                |
+| `onboarding_checklists.customer_id`            | `id`, `tenant_id`, `user_id`                            | onboarding-checklists/index.ts            |
+| `onboarding_checklists.status`                 | **none — redesign, not a rename**                       | onboarding-checklists/index.ts            |
+| `opportunities.stage`                          | `stage_name`                                            | opportunities-dashboard/index.ts          |
+| `opportunities.status`                         | `migration_status`, `delivery_status`                   | opportunities-dashboard/index.ts          |
+| `opportunities.value`                          | **none — redesign, not a rename**                       | opportunities-dashboard/index.ts          |
+| `parts_orders.ordered_by`                      | **none — redesign, not a rename**                       | service-analysis/index.ts                 |
+| `parts_orders.parts`                           | **none — redesign, not a rename**                       | service-analysis/index.ts                 |
+| `parts_orders.total_cost`                      | `total`                                                 | service-analysis/index.ts                 |
+| `platform_health_scores.assigned_csm`          | **none — redesign, not a rename**                       | platform-cs/index.ts                      |
+| `quote_line_items.discount_percent`            | **none — redesign, not a rename**                       | quote-line-items/index.ts                 |
+| `quote_line_items.line_number`                 | **none — redesign, not a rename**                       | quote-line-items/index.ts                 |
+| `quote_line_items.product_id`                  | `id`, `tenant_id`, `quote_id`                           | quote-line-items/index.ts                 |
+| `renewal_activities.completed_at`              | `created_at`                                            | renewal-activities/index.ts               |
+| `renewal_activities.description`               | `activity_description`                                  | renewal-activities/index.ts               |
+| `renewal_activities.subject`                   | `activity_subject`                                      | renewal-activities/index.ts               |
+| `renewal_playbooks.name`                       | `playbook_name`                                         | renewal-playbooks/index.ts                |
+| `renewal_playbooks.risk_levels`                | **none — redesign, not a rename**                       | renewal-playbooks/index.ts                |
+| `roles.hierarchy_level`                        | `level`                                                 | role-management/index.ts                  |
+| `roles.is_system`                              | `is_system_role`                                        | role-management/index.ts                  |
+| `roles.tenant_id`                              | `id`                                                    | role-management/index.ts                  |
+| `roles.tenant_id`                              | `id`                                                    | roles/index.ts                            |
+| `roles.updated_at`                             | `created_at`                                            | role-management/index.ts                  |
+| `sales_goals.target_value`                     | `target_count`                                          | pipeline-forecast/index.ts                |
+| `sales_territories.assigned_rep_id`            | `id`                                                    | sales-territories/index.ts                |
+| `sales_territories.name`                       | `territory_name`                                        | sales-territories/index.ts                |
+| `sales_territories.region`                     | **none — redesign, not a rename**                       | sales-territories/index.ts                |
+| `sales_territories.rules`                      | `geographic_rules`, `account_rules`                     | sales-territories/index.ts                |
+| `sales_territories.states`                     | **none — redesign, not a rename**                       | sales-territories/index.ts                |
+| `sales_territories.zip_codes`                  | **none — redesign, not a rename**                       | sales-territories/index.ts                |
+| `service_tickets.completed_at`                 | `resolved_at`, `created_at`, `updated_at`               | technicians/index.ts                      |
+| `service_tickets.first_response_time`          | **none — redesign, not a rename**                       | technicians/index.ts                      |
+| `service_tickets.technician_id`                | `assigned_technician_id`, `id`, `tenant_id`             | validate/index.ts                         |
+| `service_tickets.ticket_type`                  | `ticket_number`                                         | predictive-maintenance/index.ts           |
+| `service_tickets.time_spent`                   | **none — redesign, not a rename**                       | validate/index.ts                         |
+| `service_tickets.work_performed`               | **none — redesign, not a rename**                       | validate/index.ts                         |
+| `sso_provider_configs.last_test_error`         | `last_error`, `last_error_at`                           | sso/index.ts                              |
+| `sso_provider_configs.last_test_success`       | **none — redesign, not a rename**                       | sso/index.ts                              |
+| `sso_provider_configs.last_tested_at`          | `last_login_at`, `last_error_at`                        | sso/index.ts                              |
+| `sso_sessions.access_token_hash`               | `oidc_access_token`                                     | sso/index.ts                              |
+| `sso_sessions.metadata`                        | **none — redesign, not a rename**                       | sso/index.ts                              |
+| `sso_sessions.user_identifier`                 | `id`, `user_id`, `user_agent`                           | sso/index.ts                              |
+| `supplies.manufacturer`                        | **none — redesign, not a rename**                       | manufacturer-integrations/index.ts        |
+| `supplies.part_number`                         | **none — redesign, not a rename**                       | manufacturer-integrations/index.ts        |
+| `supply_orders.customer_id`                    | `id`, `tenant_id`, `machine_id`                         | order-toner/index.ts                      |
+| `supply_orders.device_id`                      | `id`, `tenant_id`, `machine_id`                         | devices/index.ts                          |
+| `supply_orders.device_id`                      | `id`, `tenant_id`, `machine_id`                         | order-toner/index.ts                      |
+| `supply_orders.items`                          | **none — redesign, not a rename**                       | devices/index.ts                          |
+| `supply_orders.items`                          | **none — redesign, not a rename**                       | order-toner/index.ts                      |
+| `supply_orders.notes`                          | **none — redesign, not a rename**                       | devices/index.ts                          |
+| `supply_orders.notes`                          | **none — redesign, not a rename**                       | order-toner/index.ts                      |
+| `supply_orders.order_type`                     | **none — redesign, not a rename**                       | devices/index.ts                          |
+| `supply_orders.order_type`                     | **none — redesign, not a rename**                       | order-toner/index.ts                      |
+| `supply_orders.priority`                       | **none — redesign, not a rename**                       | order-toner/index.ts                      |
+| `supply_orders.requested_by`                   | **none — redesign, not a rename**                       | devices/index.ts                          |
+| `supply_orders.requested_by`                   | **none — redesign, not a rename**                       | order-toner/index.ts                      |
+| `supply_orders.shipping_address`               | **none — redesign, not a rename**                       | order-toner/index.ts                      |
+| `supply_replenishment_rules.auto_order`        | `auto_order_enabled`                                    | auto-supply-replenishment/index.ts        |
+| `supply_replenishment_rules.is_active`         | **none — redesign, not a rename**                       | auto-supply-replenishment/index.ts        |
+| `supply_replenishment_rules.product_id`        | `id`, `tenant_id`                                       | auto-supply-replenishment/index.ts        |
+| `task_comments.content`                        | **none — redesign, not a rename**                       | task-comments/index.ts                    |
+| `technicians.employment_status`                | **none — redesign, not a rename**                       | technicians/index.ts                      |
+| `technicians.skill_set`                        | **none — redesign, not a rename**                       | technicians/index.ts                      |
+| `tenants.settings`                             | **none — redesign, not a rename**                       | auth-me/index.ts                          |
+| `tenants.settings`                             | **none — redesign, not a rename**                       | settings/index.ts                         |
+| `users.full_name`                              | `first_name`, `last_name`                               | role-management/index.ts                  |
+| `users.status`                                 | **none — redesign, not a rename**                       | role-management/index.ts                  |

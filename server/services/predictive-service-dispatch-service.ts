@@ -177,7 +177,11 @@ export class PredictiveServiceDispatchService {
 
     return db.query.clientCollectedMetrics.findMany({
       where: and(
-        eq(clientCollectedMetrics.tenantId, parseInt(tenantId)),
+        // Not parseInt(tenantId): tenant ids are uuids, and parseInt on one
+        // returns the leading digits ('550e8400-...' -> 550) or NaN, so this
+        // filtered on an integer belonging to no tenant. The parseInt was there
+        // to satisfy a tenant_id column wrongly declared integer (AUDIT-032).
+        eq(clientCollectedMetrics.tenantId, tenantId),
         eq(clientCollectedMetrics.serialNumber, serialNumber),
         gte(clientCollectedMetrics.collectionTimestamp, thirtyDaysAgo),
       ),

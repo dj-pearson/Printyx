@@ -15,86 +15,20 @@
  */
 
 import type { Express } from 'express';
-import multer from 'multer';
-import csv from 'csv-parser';
-import { Readable } from 'stream';
 import { storage } from './storage';
 import { insertLeadSchema, insertLeadContactSchema } from '@shared/schema';
 import { BusinessRecordsTransformer } from './data-field-mapping';
-import { cacheControl, etag } from './middleware/cache-middleware';
 import { enforceUsageLimits } from './middleware/subscription';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 
 // Multer for CSV import
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only CSV files are allowed'));
-    }
-  },
-});
-
-function parseCSV(buffer: Buffer): Promise<any[]> {
-  return new Promise((resolve, reject) => {
-    const results: any[] = [];
-    const stream = Readable.from(buffer.toString());
-    stream
-      .pipe(csv())
-      .on('data', (data) => results.push(data))
-      .on('end', () => resolve(results))
-      .on('error', (error) => reject(error));
-  });
-}
 
 export function registerCrmCoreRoutes(app: Express) {
-  // ─── Customer List & Detail ──────────────────────────────────────
-
-  app.get('/api/customers', cacheControl(180), etag(), async (req: any, res, next) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      const customers = await storage.getBusinessRecords(tenantId, 'customer');
-      const transformedCustomers = customers.map((customer) =>
-        BusinessRecordsTransformer.toFrontend(customer),
-      );
-      res.json(transformedCustomers);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  app.get('/api/customers/:id', cacheControl(300), etag(), async (req: any, res, next) => {
-    try {
-      const { id } = req.params;
-      const tenantId = getTenantId(req);
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      let customer;
-      const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
-
-      if (isSlug) {
-        customer = await storage.getBusinessRecordBySlug(id, tenantId);
-      } else {
-        customer = await storage.getBusinessRecord(id, tenantId);
-      }
-
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
-
-      const transformedCustomer = BusinessRecordsTransformer.toFrontend(customer);
-      res.json(transformedCustomer);
-    } catch (error) {
-      next(error);
-    }
-  });
+  // GET /api/customers and GET /api/customers/:id were removed here (PA-021).
+  // /api/customers is a crmProxies prefix now, so both were shadowed, and
+  // production had never reached them: supabase/functions/customers/ serves
+  // both, reading `companies` rather than `business_records`. Which of those
+  // two is canonical for the record is COP-B00's question, not this file's.
 
   // ─── Lead List & Detail ──────────────────────────────────────────
 
@@ -279,108 +213,15 @@ export function registerCrmCoreRoutes(app: Express) {
 
   // ─── Business Records CSV Import ─────────────────────────────────
 
-  app.post('/api/business-records/import', enforceUsageLimits, upload.single('file'), async (req: any, res, next) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID is required' });
-      }
-
-      if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-      }
-
-      const csvData = await parseCSV(req.file.buffer);
-
-      let imported = 0;
-      let skipped = 0;
-      let duplicates = 0;
-      const errors: string[] = [];
-
-      for (let i = 0; i < csvData.length; i++) {
-        const row = csvData[i];
-
-        if (!row.companyName || !row.companyName.trim()) {
-          skipped++;
-          continue;
-        }
-
-        try {
-          const existing = await storage.getBusinessRecords(
-            tenantId,
-            undefined,
-            undefined,
-            row.companyName.trim(),
-          );
-
-          if (
-            existing.some(
-              (record: any) =>
-                record.companyName.toLowerCase() === row.companyName.toLowerCase().trim(),
-            )
-          ) {
-            duplicates++;
-            continue;
-          }
-
-          const businessRecordData = {
-            tenantId,
-            recordType: 'lead',
-            status: 'new',
-            companyName: row.companyName.trim(),
-            primaryContactName: row.primaryContactName || '',
-            primaryContactEmail: row.primaryContactEmail || '',
-            primaryContactPhone: row.primaryContactPhone || '',
-            primaryContactTitle: row.primaryContactTitle || '',
-            website: row.website || '',
-            industry: row.industry || '',
-            employeeCount: row.employeeCount ? parseInt(row.employeeCount) : null,
-            annualRevenue: row.annualRevenue ? parseFloat(row.annualRevenue) : null,
-            addressLine1: row.addressLine1 || '',
-            addressLine2: row.addressLine2 || '',
-            city: row.city || '',
-            state: row.state || '',
-            postalCode: row.postalCode || '',
-            country: row.country || 'US',
-            phone: row.phone || row.primaryContactPhone || '',
-            fax: row.fax || '',
-            leadSource: row.leadSource || 'import',
-            estimatedAmount: row.estimatedAmount ? parseFloat(row.estimatedAmount) : null,
-            probability: row.probability ? parseInt(row.probability) : 50,
-            salesStage: row.salesStage || 'new',
-            interestLevel: row.interestLevel || 'medium',
-            priority: row.priority || 'medium',
-            territory: row.territory || '',
-            notes: row.notes || '',
-            assignedSalesRep:
-              row.assignedSalesRep === 'current_user'
-                ? getUserId(req)
-                : row.assignedSalesRep || getUserId(req),
-            ownerId:
-              row.assignedSalesRep === 'current_user'
-                ? getUserId(req)
-                : row.assignedSalesRep || getUserId(req),
-            createdBy: getUserId(req),
-          };
-
-          await storage.createBusinessRecord(businessRecordData);
-          imported++;
-        } catch (error: any) {
-          errors.push(`Row ${i + 2}: ${error.message}`);
-          skipped++;
-        }
-      }
-
-      res.json({
-        success: true,
-        imported,
-        skipped,
-        duplicates,
-        errors,
-        message: `Successfully imported ${imported} leads. ${skipped > 0 ? `${skipped} rows skipped.` : ''} ${duplicates > 0 ? `${duplicates} duplicates found.` : ''}`,
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
+  // POST /api/business-records/import DELETED (QUALITY-002). It was shadowed by
+  // the /api/business-records proxy, and its only caller,
+  // client/src/components/leads/LeadsImport.tsx, was an ORPHAN with no importer
+  // anywhere - so no user could reach it from either end. The capability is not
+  // lost: /import is routed to CSVImportWizard, which drives the /api/import
+  // subsystem (supabase/functions/import/), and that handles business_records
+  // and leads directly. LeadsImport.tsx is deleted with it.
+  //
+  // docs/shadowed-express-baseline.json used to annotate this entry as a "LIVE
+  // BROKEN FEATURE". That was wrong twice over: the caller was unreachable, and
+  // a working replacement already shipped.
 }

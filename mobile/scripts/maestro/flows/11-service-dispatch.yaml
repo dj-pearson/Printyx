@@ -1,7 +1,6 @@
 appId: com.printyx.app
-name: "11 - Service Dispatch"
+name: '11 - Service Dispatch'
 ---
-
 - waitForAnimationToEnd
 
 # Go back to Service hub
@@ -9,8 +8,8 @@ name: "11 - Service Dispatch"
 - waitForAnimationToEnd
 
 # Navigate to Dispatch
-- tapOn: "Service Dispatch"
+- tapOn: 'Service Dispatch'
 - waitForAnimationToEnd
 
 # Screenshot: Dispatch view
-- takeScreenshot: "11-service-dispatch"
+- takeScreenshot: '11-service-dispatch'

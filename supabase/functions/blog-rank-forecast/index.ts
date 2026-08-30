@@ -101,7 +101,16 @@ export default async function handler(req: Request) {
 
 // ─── CTR-by-position curve (organic, desktop+mobile blended) ────────────────────
 const CTR_CURVE: Record<number, number> = {
-  1: 0.281, 2: 0.157, 3: 0.11, 4: 0.08, 5: 0.061, 6: 0.047, 7: 0.039, 8: 0.032, 9: 0.028, 10: 0.025,
+  1: 0.281,
+  2: 0.157,
+  3: 0.11,
+  4: 0.08,
+  5: 0.061,
+  6: 0.047,
+  7: 0.039,
+  8: 0.032,
+  9: 0.028,
+  10: 0.025,
 };
 function ctrForPosition(pos: number): number {
   if (pos <= 10) return CTR_CURVE[Math.max(1, Math.round(pos))] ?? 0.025;
@@ -157,7 +166,13 @@ function computeForecast(inp: ForecastInputs, calibrationFactor: number): Foreca
   else if (inp.domainAuthority < 35 && net > 5) recommendation = 'build_links';
   else recommendation = 'publish_now';
 
-  return { predictedPosition: Number(predictedPosition.toFixed(2)), rankLow, rankHigh, predictedClicksMonth, recommendation };
+  return {
+    predictedPosition: Number(predictedPosition.toFixed(2)),
+    rankLow,
+    rankHigh,
+    predictedClicksMonth,
+    recommendation,
+  };
 }
 
 const RECOMMENDATION_LABELS: Record<ForecastOutput['recommendation'], string> = {
@@ -350,10 +365,15 @@ async function computeCalibration(
     .not('actual_position', 'is', null)
     .limit(500);
   const rows = (data ?? []).filter(
-    (r) => r.predicted_position != null && r.actual_position != null && Number(r.predicted_position) > 0,
+    (r) =>
+      r.predicted_position != null && r.actual_position != null && Number(r.predicted_position) > 0,
   );
   if (rows.length === 0) {
-    return { sampleSize: 0, factor: 1, note: 'No post-publish actuals yet; factor=1 (uncalibrated).' };
+    return {
+      sampleSize: 0,
+      factor: 1,
+      note: 'No post-publish actuals yet; factor=1 (uncalibrated).',
+    };
   }
   const ratios = rows.map((r) => Number(r.actual_position) / Number(r.predicted_position));
   const mean = ratios.reduce((s, x) => s + x, 0) / ratios.length;
@@ -484,7 +504,10 @@ async function backfillActuals(admin: Admin, tenantId: string, userId: string, r
       action: 'blog_rank_forecast.actuals',
       targetType: 'blog_post',
       targetId: post_id,
-      afterState: { actual_position: updated.actual_position, actual_clicks_month: actualClicksMonth },
+      afterState: {
+        actual_position: updated.actual_position,
+        actual_clicks_month: actualClicksMonth,
+      },
       summary: `Backfilled actuals: position ${updated.actual_position}, ~${actualClicksMonth} clicks/mo`,
     }),
   );
@@ -507,7 +530,8 @@ async function latest(admin: Admin, tenantId: string, postId: string, req: Reque
     {
       forecast: data,
       recommendation_label:
-        RECOMMENDATION_LABELS[data.recommendation as ForecastOutput['recommendation']] ?? data.recommendation,
+        RECOMMENDATION_LABELS[data.recommendation as ForecastOutput['recommendation']] ??
+        data.recommendation,
     },
     200,
     req,

@@ -35,14 +35,12 @@ const createTestApp = async () => {
     next();
   });
 
-  const [aiRoutes, calendarRoutes, taskRoutes] = await Promise.all([
+  const [aiRoutes, taskRoutes] = await Promise.all([
     import('../routes/ai-routes-simple').then((m) => m.default),
-    import('../routes/calendar-routes').then((m) => m.default),
     import('../routes/task-routes').then((m) => m.default),
   ]);
 
   app.use('/api/ai', aiRoutes);
-  app.use('/api/calendar', calendarRoutes);
   app.use('/api/tasks', taskRoutes);
 
   return app;
@@ -103,116 +101,12 @@ describe('Motion AI API Endpoints', () => {
     });
   });
 
-  describe('Calendar Routes', () => {
-    describe('GET /api/calendar/connections', () => {
-      test('should return calendar connections', async () => {
-        const response = await request(app).get('/api/calendar/connections').expect(200);
-
-        expect(Array.isArray(response.body)).toBe(true);
-      });
-    });
-
-    describe('POST /api/calendar/connections', () => {
-      test('should create calendar connection', async () => {
-        const connectionData = {
-          provider: 'google',
-          accessToken: 'test-token',
-          calendarId: 'primary',
-        };
-
-        const response = await request(app)
-          .post('/api/calendar/connections')
-          .send(connectionData)
-          .expect(200);
-
-        expect(response.body).toHaveProperty('id');
-        expect(response.body).toHaveProperty('provider', 'google');
-        expect(response.body).toHaveProperty('isConnected', true);
-      });
-
-      test('should validate required fields', async () => {
-        const response = await request(app).post('/api/calendar/connections').send({}).expect(400);
-
-        expect(response.body).toHaveProperty('error');
-      });
-    });
-
-    describe('GET /api/calendar/events', () => {
-      test('should return calendar events', async () => {
-        const response = await request(app)
-          .get('/api/calendar/events')
-          .query({
-            start: '2025-09-26T00:00:00Z',
-            end: '2025-09-27T23:59:59Z',
-          })
-          .expect(200);
-
-        expect(Array.isArray(response.body)).toBe(true);
-
-        if (response.body.length > 0) {
-          const event = response.body[0];
-          expect(event).toHaveProperty('id');
-          expect(event).toHaveProperty('title');
-          expect(event).toHaveProperty('startTime');
-          expect(event).toHaveProperty('endTime');
-        }
-      });
-
-      test('should validate date parameters', async () => {
-        const response = await request(app).get('/api/calendar/events').expect(400);
-
-        expect(response.body).toHaveProperty('error');
-      });
-    });
-
-    describe('POST /api/calendar/events', () => {
-      test('should create calendar event', async () => {
-        const eventData = {
-          title: 'Test Meeting',
-          startTime: '2025-09-26T10:00:00Z',
-          endTime: '2025-09-26T11:00:00Z',
-          description: 'Test meeting description',
-        };
-
-        const response = await request(app)
-          .post('/api/calendar/events')
-          .send(eventData)
-          .expect(200);
-
-        expect(response.body).toHaveProperty('id');
-        expect(response.body).toHaveProperty('title', 'Test Meeting');
-        expect(response.body).toHaveProperty('startTime');
-        expect(response.body).toHaveProperty('endTime');
-      });
-
-      test('should validate required event fields', async () => {
-        const response = await request(app).post('/api/calendar/events').send({}).expect(400);
-
-        expect(response.body).toHaveProperty('error');
-      });
-    });
-
-    describe('GET /api/calendar/availability/:userId', () => {
-      test('should return user availability', async () => {
-        const response = await request(app)
-          .get('/api/calendar/availability/test-user')
-          .query({
-            start: '2025-09-26T00:00:00Z',
-            end: '2025-09-26T23:59:59Z',
-          })
-          .expect(200);
-
-        expect(response.body).toHaveProperty('busy');
-        expect(Array.isArray(response.body.busy)).toBe(true);
-      });
-
-      test('should validate time parameters', async () => {
-        const response = await request(app).get('/api/calendar/availability/test-user').expect(400);
-
-        expect(response.body).toHaveProperty('error');
-      });
-    });
-  });
+  // The Calendar Routes block stood here and asserted the mock responses of
+  // server/routes/calendar-routes.ts - "should return calendar connections"
+  // against a hardcoded array, and so on for events and availability. That
+  // router is deleted: all nine of its handlers were mocks that said so, and no
+  // client tree called /api/calendar. Tests that pin a mock's shape go with it;
+  // keeping them would have meant keeping the mock to satisfy them.
 
   describe('Task Routes', () => {
     describe('GET /api/tasks', () => {

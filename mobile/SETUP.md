@@ -112,12 +112,14 @@ mobile/
 ## Compliance
 
 ### Apple (iOS)
+
 - Privacy manifest configured in `app.json` → `ios.privacyManifests`
 - ATT prompt via `expo-tracking-transparency`
 - Account deletion in Settings screen
 - Associated domains for Universal Links
 
 ### Google (Android)
+
 - Target API 35 (Android 15)
 - Data safety declaration reference in `data-safety.md`
 - Intent filters for App Links
@@ -125,12 +127,12 @@ mobile/
 
 ## Key Differences from Web
 
-| Feature | Web | Mobile |
-|---------|-----|--------|
-| Auth storage | localStorage | Keychain / EncryptedSharedPreferences |
-| Token refresh | On 401 + window focus | On 401 + app foreground |
-| Navigation | Wouter | Expo Router (React Navigation) |
-| Styling | Tailwind CSS | React Native StyleSheet |
-| Push | Web Push API | APNs (iOS) / FCM (Android) |
-| Deep links | URL routing | Universal Links / App Links |
-| Biometric | N/A | Face ID / Fingerprint |
+| Feature       | Web                   | Mobile                                |
+| ------------- | --------------------- | ------------------------------------- |
+| Auth storage  | localStorage          | Keychain / EncryptedSharedPreferences |
+| Token refresh | On 401 + window focus | On 401 + app foreground               |
+| Navigation    | Wouter                | Expo Router (React Navigation)        |
+| Styling       | Tailwind CSS          | React Native StyleSheet               |
+| Push          | Web Push API          | APNs (iOS) / FCM (Android)            |
+| Deep links    | URL routing           | Universal Links / App Links           |
+| Biometric     | N/A                   | Face ID / Fingerprint                 |

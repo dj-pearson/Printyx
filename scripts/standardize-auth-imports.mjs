@@ -82,7 +82,7 @@ for (const filePath of routeFiles) {
     // Normalize: replace various import sources with replitAuth
     content = content.replace(
       /import\s*\{\s*requireAuth\s*\}\s*from\s*['"]\.\/auth-setup['"]\s*;?\n?/g,
-      authImport + '\n'
+      authImport + '\n',
     );
     // Leave replitAuth imports as-is (they're correct)
     // Leave supabase-auth aliased imports as-is (they're fine)
@@ -104,7 +104,8 @@ for (const filePath of routeFiles) {
           lastImportEnd = m.index + m[0].length;
         }
         if (lastImportEnd > 0) {
-          content = content.slice(0, lastImportEnd) + '\n' + authImport + content.slice(lastImportEnd);
+          content =
+            content.slice(0, lastImportEnd) + '\n' + authImport + content.slice(lastImportEnd);
         }
       }
     } else {
@@ -114,7 +115,8 @@ for (const filePath of routeFiles) {
   }
 
   // 5. Add getUserId/getTenantId import if file uses req.user directly but doesn't have helpers
-  const hasHelpersImport = /import.*getUserId.*from/.test(content) || /import.*getTenantId.*from/.test(content);
+  const hasHelpersImport =
+    /import.*getUserId.*from/.test(content) || /import.*getTenantId.*from/.test(content);
   const usesReqUser = /req\.user\b/.test(content);
 
   if (!hasHelpersImport && usesReqUser) {
@@ -126,7 +128,8 @@ for (const filePath of routeFiles) {
       lastImportEnd = m.index + m[0].length;
     }
     if (lastImportEnd > 0) {
-      content = content.slice(0, lastImportEnd) + '\n' + helpersImport + content.slice(lastImportEnd);
+      content =
+        content.slice(0, lastImportEnd) + '\n' + helpersImport + content.slice(lastImportEnd);
       changed = true;
     }
   }

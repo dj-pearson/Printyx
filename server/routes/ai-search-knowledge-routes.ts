@@ -28,7 +28,6 @@ const router = express.Router();
 // They are mock too, and also have no callers; removing them is a separate
 // story, since this one is scoped to shadowed handlers.
 
-
 /**
  * GET /api/search/suggestions
  * Get search query suggestions based on popular searches and user history

@@ -20,7 +20,6 @@ import {
 } from './domains/auth';
 
 import {
-  registerCommissionRoutes,
   registerQuickBooksRoutes,
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -43,7 +42,6 @@ import {
 import {
   registerCrmCoreRoutes,
   registerCompaniesRoutes,
-  registerCustomerRoutes,
   registerBusinessRecordRoutes,
   registerCrmGoalRoutes,
   registerCrmNotesRoutes,
@@ -156,11 +154,7 @@ import {
 
 import { emailParserRoutes } from './domains/notifications';
 
-import {
-  registerClientMonitoringRoutes,
-  clientMetricsRoutes,
-  deviceMonitoringRoutes,
-} from './domains/portal';
+import { registerClientMonitoringRoutes, clientMetricsRoutes } from './domains/portal';
 
 // ─── Non-domain imports ──────────────────────────────────���──────────────
 import { registerHealthRoutes } from './routes/health-routes';
@@ -293,6 +287,20 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerAuthCoreRoutes(app);
   app.use('/api/trial', trialRoutes);
 
+  // ─── Inbound provider webhooks (must be BEFORE the proxy) ──────────
+  // INTEG-WEBHOOK-001. /api/webhooks is proxied, and the webhooks edge function
+  // authenticates with auth.getUser() before it routes. A provider sends no
+  // JWT, so every inbound delivery - Stripe, Google Calendar, QuickBooks -
+  // got 401, and the proxy falls through only on a NETWORK error, never a 401.
+  // The receiver below therefore never ran, on either host.
+  //
+  // Only POST /api/webhooks/:provider is mounted early. The edge function has
+  // POST / , POST /:id/test and POST /:id/regenerate-secret but no POST /:id,
+  // so that shape belongs to the receiver alone and nothing it owns is taken
+  // from it. The health probe and the outbound list stay proxied.
+  const { inboundWebhookReceiver } = await import('./integrations/webhook-routes');
+  app.use(inboundWebhookReceiver);
+
   // ─── Edge Function Proxy (must be before CRM routes) ───────────────
   registerEdgeFunctionProxy(app);
 
@@ -370,25 +378,13 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── User Profile & Settings ───────────────────────────────────────
   const { registerUserProfileRoutes } = await import('./routes-user-profile');
   registerUserProfileRoutes(app);
-  const {
-    getUserSettings,
-    updateUserProfile,
-    updateUserPassword,
-    updateUserPreferences,
-    updateAccessibilitySettings,
-    uploadAvatar,
-    exportUserData,
-    deleteUserAccount,
-    upload: avatarUpload,
-  } = await import('./routes-settings');
-  app.get('/api/user/settings', getUserSettings);
-  app.put('/api/user/profile', updateUserProfile);
-  app.put('/api/user/password', updateUserPassword);
-  app.put('/api/user/preferences', updateUserPreferences);
-  app.put('/api/user/accessibility', updateAccessibilitySettings);
-  app.post('/api/user/avatar', avatarUpload.single('avatar'), uploadAvatar);
-  app.get('/api/user/export', exportUserData);
-  app.delete('/api/user/delete', deleteUserAccount);
+  // routes-settings.ts retired (AUDIT-027). /api/user is proxied now, so these
+  // eight handlers were dev-only, and supabase/functions/user/ - which has
+  // always served production - covers seven of them against the columns that
+  // actually exist. The eighth was POST /api/user/avatar, a multer upload no
+  // client tree calls; replacing it means Supabase Storage plus a PUT /profile
+  // with the URL. Deleting them is what makes dev and prod agree about where a
+  // phone number is stored and what changing a password does.
 
   // ─── API Key Management ──────────────────────────────────────────
   // routes/api-key-routes.ts retired (PROD-008b). All nine handlers were shadowed
@@ -483,7 +479,18 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     // supabase/functions/documents/. Its generateDocumentHTML moved to
     // server/lib/document-html.ts, which the parity test now imports.
     ['/api/root-admin', './routes-root-admin'],
-    ['/api/admin', './routes-admin-workflows'],
+    // ['/api/admin', './routes-admin-workflows'] — DELETED (QUALITY-002).
+    // Seven routes, six with no caller anywhere in the client, all stubs whose
+    // own comments read "In a real implementation, this would...".
+    // /workflows/:id/status reported status 'completed', progress 100 for ANY
+    // id. Every query in it filtered `activity_reports` on type/severity/
+    // resolved, none of which are columns on that table - it is a sales
+    // activity rollup (total_calls, total_emails) - so those handlers threw,
+    // and its two audit inserts dropped every key and violated NOT NULL on
+    // tenant_id/report_date/period. The one route with a caller,
+    // /execute-action, reported success for work it never did; that caller is
+    // now gone too. The real /root-admin/pending-tasks lives in
+    // supabase/functions/root-admin/.
     ['/api/dashboard', './routes-dashboard-customization'],
   ];
   for (const [mountPath, modulePath] of asyncMounts) {
@@ -512,11 +519,15 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Incident Response ──────────────────────────────────────────
   app.use(incidentResponseRoutes);
 
-  const customerNumberRoutes = await import('./routes-customer-numbers');
-  app.use('/api/customer-numbers', customerNumberRoutes.customerNumberRoutes);
+  // routes-customer-numbers.ts DELETED (QUALITY-002). /api/customer-numbers is
+  // proxied, so this mount was shadowed and never ran. supabase/functions/
+  // customer-numbers/ covers all eight of its routes - its header records that
+  // it replaces this file - and the frontend only calls four of them.
 
-  const companyIdRoutes = await import('./routes-company-ids');
-  app.use('/api/company-ids', companyIdRoutes.default);
+  // routes-company-ids.ts DELETED (QUALITY-002). /api/company-ids is proxied,
+  // so this mount was shadowed. supabase/functions/company-ids/ serves all four
+  // of its routes and handles the named-route-before-:id precedence the Express
+  // copy did not.
 
   // ─── Feature Flags ────────────────────────────────────────��─────────
 
@@ -547,11 +558,40 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   const asyncApiMounts: [string, string][] = [
     ['/api/ai', './routes/ai-routes-simple'],
-    ['/api/calendar', './routes/calendar-routes'],
-    ['/api/performance', './routes/performance-routes'],
+    // ['/api/calendar', './routes/calendar-routes'] - retired (PROD-011's rule:
+    // porting a mock handler is not a fix). All nine handlers were mocks and
+    // said so - "Mock response for now", "Mock event creation", "Mock event
+    // deletion" - and no client tree called /api/calendar. The only reference
+    // anywhere was a test NAME inside an archived .backup file. The real
+    // calendar surface is CalendarProvider, which uses a different prefix
+    // entirely (/api/integrations/calendar/*) that neither backend serves.
+    // ['/api/performance', './routes/performance-routes'] - retired
+    // (AUDIT-021). The three endpoints anything calls - /metrics, /alerts,
+    // /health - are served by supabase/functions/performance/ from
+    // performance_metrics and system_alerts, and the prefix is proxied now. The
+    // Express versions invented every number they returned: 99 + random*0.99
+    // uptime, random*500 + 800 throughput, a random error rate, disk usage and
+    // active-user count. Of the nine remaining handlers no client tree called
+    // one, and /run-tests and /optimize were self-declared mocks returning
+    // invented test results with a random duration.
     ['/api/advanced-scheduling', './routes/advanced-scheduling-routes'],
-    ['/api/mfa', './routes/mfa-routes'],
-    ['/api/lead-scoring', './routes/lead-scoring-routes'],
+    // ['/api/mfa', './routes/mfa-routes'] - retired (SEC-MFA-001). All 16
+    // handlers gated on `req.session.user`, which nothing in this codebase ever
+    // assigns (server/types/express-session.d.ts records the same finding), so
+    // every one of them answered 401 in dev as well as prod - the router has
+    // never run. It also kept a SECOND storage model, the secret on
+    // user_settings.two_factor_secret, while supabase/functions/mfa/ uses
+    // mfa_enrollments; that is why the Settings card's twoFactorEnabled flag was
+    // permanently false. /api/mfa is proxied to the edge function now, which
+    // covers all 16 endpoints.
+    // ['/api/lead-scoring', './routes/lead-scoring-routes'] - retired
+    // (SEC-SESSION-001). Every handler authenticated against req.session.user,
+    // which nothing assigns, so all 18 answered 401 in dev as well as prod -
+    // BANTAssessment.tsx has been unable to load or save an assessment for as
+    // long as the router has existed. supabase/functions/lead-scoring/ covers
+    // rules, calculate, score, leaderboard, grade, bant, bant-analytics,
+    // qualified, qualification-history, engagement and analytics, and the
+    // prefix is proxied now.
     ['/api/lead-intelligence', './routes/lead-intelligence-routes'],
     ['/api/manufacturer-orders', './routes/manufacturer-order-routes'],
     ['/api/gps', './routes/gps-tracking-routes'],
@@ -645,7 +685,13 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // whose id is the word "recent" - the shadowing class check:route-shadowing
   // gates on the Express side.
   app.use('/api/client-metrics', clientMetricsRoutes);
-  app.use('/api/device-monitoring', deviceMonitoringRoutes);
+  // routes-device-monitoring.ts retired (AUDIT-029). /api/device-monitoring is
+  // proxied to supabase/functions/device-monitoring/, which serves all twelve
+  // endpoints and shares the projection and the forecast with what this router
+  // used - _shared/device-monitoring-shape.ts - so there is no second copy of
+  // the contract three routed pages depend on. Three of these handlers also
+  // selected r.manufacturer, a column device_registrations does not have, so
+  // they answered 500 in dev on top of 404 in production.
 
   const contractAlertsRoutes = (await import('./routes-contract-alerts')).default;
   app.use(contractAlertsRoutes);
@@ -746,7 +792,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // working alternative either: it reads the same two non-existent tables and is
   // already recorded in docs/phantom-tables-baseline.json. The prefix is dead on
   // both hosts. Reviving it means creating the tables first.
-  registerCustomerRoutes(app);
+  // routes-customers.ts DELETED (PA-021). Its single handler, POST
+  // /api/customers, was shadowed the moment /api/customers went into
+  // crmProxies - and production, which never reaches Express, had always
+  // created customers through supabase/functions/customers/ instead.
   app.use(businessRecordsRoutes);
   // routes-web-forms.ts retired (PROD-008b); supabase/functions/web-forms/ has
   // all six handlers and already returns camelCase rows.
@@ -793,7 +842,15 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
   registerSalesHandoffRoutes(app);
-  registerCommissionRoutes(app);
+  // registerCommissionRoutes was called here and is DELETED (CR-017).
+  //
+  // routes-commission.ts's four handlers returned a hardcoded "Sales Rep
+  // Standard" plan - 5%/6.5%/8% tiers presented to a rep as their own pay
+  // structure - and the two of them that were not shadowed by
+  // routes-operations-extended (mounted 485 lines earlier) were what dev served.
+  // /api/commission is proxied to supabase/functions/commission/ now, which
+  // reads commission_plans / commission_calculations / commission_disputes /
+  // deals and already covers every path the page calls.
   registerCatalogRoutes(app);
   // registerAnalyticsRoutes was called here and is DELETED (CR-017).
   //
@@ -804,15 +861,14 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // performance_benchmarks. Every one of them 500'd on a missing relation, and
   // because the queries were raw SQL rather than drizzle, tsc reported nothing.
   //
-  // DELIBERATELY NOT PROXIED, and this is the part worth reading before anyone
-  // "finishes the job": /api/analytics is served by a SECOND router,
-  // server/analytics-routes.ts (dynamically imported below), which owns
-  // conversion-metrics, activity-nudges, control-charts and trend-widgets - four
-  // paths with live callers (PipelineTrendWidgets.tsx, ConversionInsights.tsx)
-  // that WORK today. A crmProxies entry forwards the whole prefix, so proxying
-  // would take those four from working to 404 in order to fix nothing: the
-  // analytics edge function only answers 'dashboard' out of the eleven paths
-  // deleted here.
+  // DELIBERATELY NOT PROXIED. The analytics edge function answers 'dashboard',
+  // 'sales', 'service' and 'performance' - none of the eleven paths deleted
+  // here - so a crmProxies entry on /api/analytics would forward the whole
+  // prefix and fix nothing. This used to warn about a SECOND router,
+  // server/analytics-routes.ts, whose four paths were said to WORK today; they
+  // did not. That router held no database access at all and PA-040 deleted it
+  // (see the note further down), so nothing under /api/analytics is live in dev
+  // that is not also live in production.
   //
   // So dev now returns 404 for those eleven instead of 500, which is what
   // production already returns for ten of them. Making them work means creating
@@ -834,25 +890,29 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerDataRetentionRoutes(app);
 
   // ─── Security Dashboard ────────────────────────────────────────
-  const { registerSecurityDashboardRoutes } = await import('./routes-security-dashboard');
-  registerSecurityDashboardRoutes(app);
+  // routes-security-dashboard.ts DELETED (QUALITY-002). /api/security is in
+  // crmProxies, and the proxy registers far earlier than this, so the router was
+  // shadowed and never ran - which is why nobody noticed that every one of its
+  // four handlers filtered audit_logs on `createdAt`, `resourceType` and
+  // `details`, none of which are columns on it (the real ones are `timestamp`,
+  // `resource` and `additional_context`). supabase/functions/security/ has
+  // served all four endpoints since EDGE-005d and its own header records the
+  // same column bugs as the reason it exists.
   const validateRoutes = await import('./routes-validate');
   app.use('/api', validateRoutes.default);
 
   // ─── Previously Lazy-Loaded Modules (now properly awaited) ─────────
-  try {
-    const { analyticsRouter } = await import('./analytics-routes');
-    app.use(analyticsRouter);
-    log.info('✅ Analytics routes registered');
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    log.error('Failed to load analytics routes:', err);
-    failedRouteModules.push({
-      module: 'analytics-routes',
-      error: msg,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  // server/analytics-routes.ts DELETED (PA-040). 184 lines, four handlers, no
+  // database access of any kind: conversion-metrics, activity-nudges,
+  // control-charts and trend-widgets each returned a hardcoded object - 65%
+  // lead-to-qualified, a 45-day cycle, four ranked loss reasons, control charts
+  // with sigma bands drawn over invented points. Its two callers
+  // (ConversionInsights.tsx, PipelineTrendWidgets.tsx) wrapped them in
+  // `select: (data) => data || {...}` fallbacks holding the same numbers, so
+  // production - where all four 404, the analytics edge function serving only
+  // dashboard/sales/service/performance - rendered figures identical to dev.
+  // Both components are now NotConnectedState gates naming what would have to
+  // be recorded first (stage-transition history, a loss reason per deal).
 
   try {
     const { catalogRouter } = await import('./routes-catalog');

@@ -287,9 +287,7 @@ export const CustomerSatisfactionAnalyticsDashboard = memo(
                     <LineChart
                       data={analytics.trends}
                       xDataKey="date"
-                      lines={[
-                        { dataKey: 'averageScore', name: 'Average Score', color: '#3b82f6' },
-                      ]}
+                      lines={[{ dataKey: 'averageScore', name: 'Average Score', color: '#3b82f6' }]}
                       title="Average Satisfaction Score Over Time"
                     />
                   </div>
