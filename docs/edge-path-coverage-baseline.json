@@ -1,7 +1,7 @@
 {
-  "note": "Literal /api/<domain>/<segment> paths a reachable client file calls whose segment appears nowhere in that domain's edge function. Likely prod-only 404s, or worse — a request that falls through to a generic :id branch. Do not grow this list; see scripts/check-edge-path-coverage.mjs.",
+  "note": "Sub-paths a reachable client file calls whose literal segment appears nowhere in that domain's edge function. An entry is either a bare segment (/api/<domain>/<seg>) or, since PA-025, a normalized shape with ids collapsed to :id (/api/<domain>/:id/<seg>). Likely prod-only 404s, or worse - a request that falls through to a generic :id branch and answers 200 with the PARENT OBJECT, which a component maps over and renders as empty. Do not grow this list; see scripts/check-edge-path-coverage.mjs.",
   "gaps": {
-    "address-books": ["exports", "import"],
+    "address-books": [":id/export", ":id/import", "exports", "exports/:id/download", "import"],
     "admin": [
       "audit-logs",
       "disposable-emails",
@@ -11,17 +11,13 @@
       "user-stats"
     ],
     "analytics": [
-      "activity-nudges",
       "benchmarks",
-      "control-charts",
-      "conversion-metrics",
       "customer-service",
       "dashboards",
       "generate-reports",
       "metrics",
       "performance-metrics",
       "technician-performance",
-      "trend-widgets",
       "trends"
     ],
     "apollo": ["credentials", "leads", "stats"],
@@ -42,13 +38,28 @@
       "widgets"
     ],
     "deal-desk": ["dashboard"],
+    "demos": [":id/status"],
     "document-management": ["library", "upload", "workflows"],
-    "equipment-lifecycle": ["assets", "deliveries", "installations", "metrics", "purchase-orders"],
+    "equipment": [":id/meter-readings"],
+    "equipment-lifecycle": [
+      ":id/available-transitions",
+      ":id/can-transition/:id",
+      "assets",
+      "deliveries",
+      "installations",
+      "metrics",
+      "purchase-orders"
+    ],
     "financial": ["kpis", "profitability"],
-    "fleet": ["devices"],
+    "import": ["jobs/:id/duplicates/:id/resolve"],
     "integrations": [
+      ":id/disconnect",
+      ":id/test",
       "bulk-sync",
       "calendar",
+      "calendar/:id/connect",
+      "calendar/:id/events",
+      "calendar/:id/events/:id",
       "connect",
       "eautomate",
       "oauth",
@@ -57,28 +68,21 @@
     ],
     "leads": ["import-eda"],
     "maintenance": ["analytics", "auto-generate", "predictions", "templates"],
+    "manufacturer-integrations": [":id/discover"],
     "mobile": ["dashboard", "jobs", "route-optimization", "service-report"],
     "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"],
-    "onboarding": ["export", "getting-started", "wizard-state"],
-    "outreach": [
-      "business-context",
-      "drafts",
-      "prospects",
-      "sequence-steps",
-      "sequences",
-      "specializations",
-      "specialties"
-    ],
-    "pipeline-config": ["board", "stages", "templates"],
+    "onboarding": ["checklists/:id/generate-pdf", "export", "getting-started", "wizard-state"],
     "platform-crm": [
       "assignment-rules",
+      "assignment-rules/:id/test",
+      "assignment-rules/:id/toggle",
+      "business-records/:id/convert-to-tenant",
       "managers",
       "scoring-models",
       "scoring-rules",
       "territories"
     ],
-    "proposals": ["equipment-packages", "proposal-templates"],
-    "sales-pipeline": ["opportunities", "rep-metrics", "stages", "summary"],
+    "platform-deals": [":id/bant"],
     "seo": [
       "content",
       "images",
@@ -91,7 +95,9 @@
       "semantic",
       "structured-data"
     ],
+    "social-media": ["cron-jobs/:id/execute", "posts/:id/broadcast"],
     "subscriptions": ["checkout", "portal", "preview-upgrade", "setup-intent", "stripe"],
+    "tasks": [":id/timer/start", ":id/timer/stop"],
     "technician-management": ["dashboard"]
   }
 }

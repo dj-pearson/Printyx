@@ -9,6 +9,26 @@
  * (/api/<domain>/<segment>), does that segment appear anywhere in the domain's
  * edge function source?
  *
+ * PA-025 EXTENDED IT PAST AN ID. The original regex captured one segment and
+ * `isLiteralSegment` rejected anything holding a `$` or `{`, so a call shaped
+ *
+ *     `/api/equipment/${id}/meter-readings`
+ *
+ * was dropped ENTIRELY: the placeholder failed the literal test and the
+ * `meter-readings` behind it was never looked at. That is the PA-020 defect
+ * class - a sub-resource after an id - and it is the worst-behaved one, because
+ * such a request does not 404. The handler reads parts[0] as the id, never
+ * looks at parts[1], and answers 200 WITH THE PARENT OBJECT. A component
+ * mapping over it renders an empty list and reports nothing. PA-020 found five
+ * tabs like that on one page; this found the same shape live in `equipment`.
+ *
+ * A path is now normalized to a SHAPE - `${...}` and `:param` become `:id` -
+ * and every literal segment AFTER the first placeholder is checked. Baseline
+ * entries are shape strings, so `equipment/:id/meter-readings` sits beside the
+ * older depth-1 `admin/audit-logs` in the same list. A literal at depth 1 is
+ * deliberately NOT re-reported through this path; the original branch owns it,
+ * and reporting both would put one defect in the baseline twice.
+ *
  * A segment that appears nowhere is not proof of a 404 — a handler could
  * dispatch on a variable — but every real defect found this way had the same
  * shape, and the shape is worse than a 404 when the request falls through to a
@@ -95,6 +115,55 @@ function isLiteralSegment(segment) {
   return /^[a-z0-9][a-z0-9-]*$/.test(segment);
 }
 
+/** `${expr}` in a template literal, or `:param` in a route string. */
+function isPlaceholder(segment) {
+  return /^\$\{[^}]*\}$/.test(segment) || /^:[A-Za-z]/.test(segment);
+}
+
+/**
+ * Split a raw path tail into shape segments, or null if it cannot be read.
+ *
+ * The match stops at whitespace, so an interpolation containing a space
+ * (`${opts.format ?? 'pdf'}`) arrives truncated as `${opts`. Returning null
+ * there matters: guessing would have put `proposals/:id/export` in the baseline
+ * off a fragment, and a baseline holding a misread entry is where a real one
+ * hides.
+ */
+function shapeSegments(rawTail) {
+  const opens = (rawTail.match(/\$\{/g) ?? []).length;
+  const closes = (rawTail.match(/\}/g) ?? []).length;
+  if (opens !== closes) return null;
+  return rawTail.split('/').filter(Boolean);
+}
+
+/**
+ * Does the edge function name this segment as a ROUTE TOKEN?
+ *
+ * Two wrong versions came before this one, in both directions.
+ *
+ * Quoted-literal only (`'seg'`) was the original, and it missed three of the
+ * first four deep paths I spot-checked, because a handler can name a segment
+ * without quoting it on its own:
+ *
+ *     if (path === '/summary')                       // sales-pipeline
+ *     path.match(/^\/public\/([^/]+)\/respond$/)     // proposals
+ *
+ * A plain word-boundary search fixed those and broke something worse: it
+ * "resolved" `admin/security` against the prose string 'Multiple critical
+ * security events in the last 7 days', and `analytics/metrics` against a local
+ * `const metrics`. Twenty-five baselined gaps disappeared on that rule, which
+ * would have been a silent de-gating dressed up as progress.
+ *
+ * So the segment must sit between path/quote delimiters: preceded by a quote,
+ * a backtick or a slash, and followed by one of those or by a regex anchor.
+ * Prose and identifiers have a space or a letter on at least one side and are
+ * rejected; every real dispatch form above is accepted.
+ */
+function appearsIn(src, segment) {
+  const esc = segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`['"\`/]${esc}(?=['"\`/$?\\\\)])`).test(src);
+}
+
 export function computeCoverageGaps() {
   const parity = computeParity(repo);
   const gaps = {};
@@ -106,6 +175,7 @@ export function computeCoverageGaps() {
     const src = readDirSrc(dir);
 
     const segments = new Set();
+    const deepShapes = new Set();
     for (const file of row.callers.live) {
       let text;
       try {
@@ -118,16 +188,36 @@ export function computeCoverageGaps() {
       } catch {
         continue;
       }
+      // Depth 1: the original check, unchanged.
       const re = new RegExp(`['"\`]/api/${row.domain}/([^'"\`?\\s/]+)`, 'g');
       for (const m of text.matchAll(re)) {
         if (isLiteralSegment(m[1])) segments.add(m[1]);
       }
+
+      // Deeper: a literal sitting behind an id. Same emptiness test, but the
+      // ENTRY is the whole shape, so the report names the path a page calls
+      // rather than a bare word that could belong to any depth.
+      const deepRe = new RegExp(`['"\`]/api/${row.domain}/([^'"\`?\\s]+)`, 'g');
+      for (const m of text.matchAll(deepRe)) {
+        const segs = shapeSegments(m[1]);
+        if (!segs || !segs.some(isPlaceholder)) continue;
+        let afterPlaceholder = false;
+        let unhandled = false;
+        for (const seg of segs) {
+          if (isPlaceholder(seg)) {
+            afterPlaceholder = true;
+            continue;
+          }
+          if (!afterPlaceholder || !isLiteralSegment(seg)) continue;
+          if (!appearsIn(src, seg)) unhandled = true;
+        }
+        if (unhandled) deepShapes.add(segs.map((s) => (isPlaceholder(s) ? ':id' : s)).join('/'));
+      }
     }
 
-    const missing = [...segments]
-      .filter((s) => !src.includes(`'${s}'`) && !src.includes(`"${s}"`) && !src.includes('`' + s))
-      .sort();
-    if (missing.length) gaps[row.domain] = missing;
+    const missing = [...segments].filter((s) => !appearsIn(src, s));
+    const entries = [...new Set([...missing, ...deepShapes])].sort();
+    if (entries.length) gaps[row.domain] = entries;
   }
 
   return gaps;
@@ -155,9 +245,12 @@ if (args.includes('--update-baseline')) {
     JSON.stringify(
       {
         note:
-          'Literal /api/<domain>/<segment> paths a reachable client file calls whose segment ' +
-          "appears nowhere in that domain's edge function. Likely prod-only 404s, or worse — " +
-          'a request that falls through to a generic :id branch. Do not grow this list; see ' +
+          'Sub-paths a reachable client file calls whose literal segment appears nowhere in ' +
+          "that domain's edge function. An entry is either a bare segment (/api/<domain>/<seg>) " +
+          'or, since PA-025, a normalized shape with ids collapsed to :id ' +
+          '(/api/<domain>/:id/<seg>). Likely prod-only 404s, or worse - a request that falls ' +
+          'through to a generic :id branch and answers 200 with the PARENT OBJECT, which a ' +
+          'component maps over and renders as empty. Do not grow this list; see ' +
           'scripts/check-edge-path-coverage.mjs.',
         gaps,
       },
