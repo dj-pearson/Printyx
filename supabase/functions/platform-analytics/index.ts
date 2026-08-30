@@ -193,38 +193,56 @@ export default async function handler(req: Request) {
           ? (churnedTenantCount / (activeTenants.length + churnedTenantCount)) * 100
           : 0;
       const grr = 100 - churnRate;
-      // No last_mrr_change column → expansion always 0 (parity with Express runtime).
-      const expansionMRR = 0;
-      const expansionRate = 0;
-      const nrr = grr + expansionRate;
-      const avgLifetimeMonths = churnRate > 0 ? 1 / (churnRate / 100) : 24;
-      const ltv = arpa * avgLifetimeMonths;
-      const estimatedCAC = ltv / 3;
-      const ltvCacRatio = estimatedCAC > 0 ? ltv / estimatedCAC : 0;
-      const paybackPeriod = arpa > 0 ? estimatedCAC / arpa : 0;
+      // Average lifetime is 1/churn. With nothing churned there is no observed
+      // lifetime, and the 24-month default that used to stand here made LTV a
+      // number somebody picked.
+      const avgLifetimeMonths = churnRate > 0 ? 1 / (churnRate / 100) : null;
+      const ltv = avgLifetimeMonths == null ? null : arpa * avgLifetimeMonths;
+
+      // CAC, the LTV:CAC ratio and payback period are NOT computed here any more.
+      // estimatedCAC was `ltv / 3`, which made ltvCacRatio exactly 3.00 on every
+      // request for every tenant - a tautology presented as a measurement - and
+      // paybackPeriod was derived from the same invented figure. Nothing in this
+      // platform records acquisition cost.
 
       return createCorsResponse(
         {
-          metrics: {
-            mrr: totalMRR.toFixed(2),
-            arr: totalARR.toFixed(2),
-            arpa: arpa.toFixed(2),
-            ltv: ltv.toFixed(2),
-            cac: estimatedCAC.toFixed(2),
-            ltvCacRatio: ltvCacRatio.toFixed(2),
-            grr: grr.toFixed(2),
-            nrr: nrr.toFixed(2),
-            churnRate: churnRate.toFixed(2),
-            expansionRate: expansionRate.toFixed(2),
-            paybackPeriod: paybackPeriod.toFixed(1),
-          },
-          counts: {
-            activeTenants: activeTenants.length,
-            churnedTenants: churnedTenantCount,
-            newCustomers: newCustomerCount,
-            expandedTenants: 0,
-          },
+          // FLAT, and numbers. This used to answer { metrics, counts } with every
+          // value .toFixed(2)'d into a STRING, while PlatformAnalytics read
+          // revenueMetrics.mrr and friends at the top level - so all seventeen
+          // reads resolved to undefined and the page rendered its `|| 89000`
+          // fallbacks on every request (PA-040). Nested-vs-flat was the whole
+          // defect; the numbers underneath were mostly fine.
+          mrr: totalMRR,
+          arr: totalARR,
+          arpa,
+          activeTenants: activeTenants.length,
+          churnedCustomers: churnedTenantCount,
+          newCustomers: newCustomerCount,
+          churnRate,
+          grr,
+          ltv,
+          // Null rather than 0. expansionRate is 0 because business_records has no
+          // last_mrr_change column to read expansion from, so NRR would just be
+          // GRR under another name - which reads as a measured 100% retention.
+          expansionRate: null,
+          nrr: null,
+          cac: null,
+          ltvCacRatio: null,
+          paybackPeriod: null,
           dateRange: { start: sp.get('startDate') || 'all', end: sp.get('endDate') || 'all' },
+          unbacked: [
+            'cac, ltvCacRatio and paybackPeriod: nothing records acquisition cost. CAC was previously computed as ltv / 3, which made the ratio exactly 3.00 for every tenant on every request',
+            'expansionRate and nrr: business_records has no last_mrr_change column, so expansion MRR cannot be observed',
+            'mrrGrowth, arrGrowth and tenantGrowth: this endpoint reads one window and has nothing to compare it against - growth-trends returns a real month-by-month series',
+            'churnMrr and netChurnRate: the MRR of a churned tenant is not retained after the record moves to status=churned',
+          ].concat(
+            ltv == null
+              ? [
+                  'ltv: no tenant has churned in this window, so no average lifetime has been observed',
+                ]
+              : [],
+          ),
         },
         200,
         req,
