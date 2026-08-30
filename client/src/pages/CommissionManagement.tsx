@@ -124,10 +124,10 @@ interface CommissionCalculation {
     totalBonuses: number;
     totalAdjustments: number;
     netCommission: number;
-    payoutDate: Date;
+    payoutDate?: Date;
     status: string;
   };
-  calculatedAt: Date;
+  calculatedAt?: Date;
   calculatedBy: string;
 }
 
@@ -179,12 +179,12 @@ export default function CommissionManagement() {
       data.map((plan) => ({
         ...plan,
         effectiveDate: new Date(plan.effectiveDate || plan.effective_date),
-        // AUDIT-011a: these were `x || x`. Confirmed against both serving
-        // handlers rather than guessed — /api/commission is NOT proxied, so
-        // Express serves it in dev (routes-commission.ts returns camelCase
-        // literals) and supabase/functions/commission/ serves it in prod, where
-        // every row goes through toCamel(). camelCase is authoritative on both
-        // and there is no snake_case key to fall back to.
+        // CORRECTED by CR-017: this used to say Express served /plans in dev
+        // from routes-commission.ts. That file is deleted - its plans handler
+        // returned one hardcoded "Sales Rep Standard" plan - and
+        // /api/commission is proxied now, so supabase/functions/commission/
+        // serves both environments. Every row there goes through toCamel(), so
+        // camelCase is authoritative and there is no snake_case to fall back to.
         createdAt: new Date(plan.createdAt),
         updatedAt: new Date(plan.updatedAt),
       })),
@@ -197,47 +197,27 @@ export default function CommissionManagement() {
       const response = await apiRequest('/api/commission/calculations', 'GET');
       return response || [];
     },
-    // AUDIT-011a: the two `calc.calculationPeriod.x || calc.calculationPeriod.x`
-    // fallbacks here could not be repointed, because NEITHER casing exists on the
-    // handler that serves production. The two backends disagree on the whole
-    // shape, not on a key name:
-    //
-    //   Express (dev, routes-commission.ts:112) returns an ARRAY of calculations,
-    //     each with calculationPeriod: { periodName, startDate, endDate }.
-    //   The edge function (prod, commission/index.ts:186) returns an OBJECT
-    //     { period, periodStart, periodEnd, calculations, totals } whose rows carry
-    //     employeeId / totalSales / dealCount / totalCommission and NO
-    //     calculationPeriod, no summary and no calculatedAt.
-    //
-    // So in production `data` is not an array and `data.map` throws before any of
-    // this runs. Guarded to degrade to empty instead of crashing the page, and the
-    // nested reads are made optional; reconciling the two contracts is its own
-    // story, not a casing fix.
-    select: (data: any) =>
-      (Array.isArray(data) ? data : (data?.calculations ?? [])).map((calc: any) => ({
+    // CR-017: one shape now. The two backends used to disagree about the whole
+    // response - Express returned an array of calculations while the edge
+    // function returned an object of deal-derived rows at an invented 5% rate -
+    // so this had to guard against `data` not being an array at all. Both
+    // Express routers are deleted, /api/commission is proxied, and the edge
+    // function reads commission_calculations, the table POST /calculate says it
+    // would write to. The engine that fills it is not built (that endpoint
+    // answers 501), so this list is honestly empty rather than plausibly wrong.
+    select: (data: CommissionCalculation[]) =>
+      data.map((calc) => ({
         ...calc,
         calculationPeriod: {
           ...calc.calculationPeriod,
-          startDate: calc.calculationPeriod?.startDate
-            ? new Date(calc.calculationPeriod.startDate)
-            : undefined,
-          endDate: calc.calculationPeriod?.endDate
-            ? new Date(calc.calculationPeriod.endDate)
-            : undefined,
+          startDate: new Date(calc.calculationPeriod.startDate),
+          endDate: new Date(calc.calculationPeriod.endDate),
         },
         summary: {
           ...calc.summary,
-          payoutDate: calc.summary?.payoutDate
-            ? new Date(calc.summary.payoutDate)
-            : calc.summary?.payout_date
-              ? new Date(calc.summary.payout_date)
-              : undefined,
+          payoutDate: calc.summary.payoutDate ? new Date(calc.summary.payoutDate) : undefined,
         },
-        calculatedAt: calc.calculatedAt
-          ? new Date(calc.calculatedAt)
-          : calc.calculated_at
-            ? new Date(calc.calculated_at)
-            : undefined,
+        calculatedAt: calc.calculatedAt ? new Date(calc.calculatedAt) : undefined,
       })),
   });
 
@@ -596,9 +576,11 @@ export default function CommissionManagement() {
                             )}
                           </div>
 
-                          <div className="mt-2 text-xs text-gray-600">
-                            Payout: {format(calc.summary.payoutDate, 'MMM dd, yyyy')}
-                          </div>
+                          {calc.summary.payoutDate && (
+                            <div className="mt-2 text-xs text-gray-600">
+                              Payout: {format(calc.summary.payoutDate, 'MMM dd, yyyy')}
+                            </div>
+                          )}
                         </div>
                       </div>
 

@@ -20,7 +20,6 @@ import {
 } from './domains/auth';
 
 import {
-  registerCommissionRoutes,
   registerQuickBooksRoutes,
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -841,7 +840,15 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
   registerSalesHandoffRoutes(app);
-  registerCommissionRoutes(app);
+  // registerCommissionRoutes was called here and is DELETED (CR-017).
+  //
+  // routes-commission.ts's four handlers returned a hardcoded "Sales Rep
+  // Standard" plan - 5%/6.5%/8% tiers presented to a rep as their own pay
+  // structure - and the two of them that were not shadowed by
+  // routes-operations-extended (mounted 485 lines earlier) were what dev served.
+  // /api/commission is proxied to supabase/functions/commission/ now, which
+  // reads commission_plans / commission_calculations / commission_disputes /
+  // deals and already covers every path the page calls.
   registerCatalogRoutes(app);
   // registerAnalyticsRoutes was called here and is DELETED (CR-017).
   //

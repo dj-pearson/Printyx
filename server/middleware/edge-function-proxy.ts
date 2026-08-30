@@ -386,6 +386,17 @@ export function registerEdgeFunctionProxy(app: any) {
     // handler production uses rather than a second implementation of it.
     '/api/device-monitoring': 'device-monitoring',
 
+    // CR-017: /api/commission. Dev used to be served by two Express routers on
+    // the same prefix - routes-operations-extended (mounted first, so it won
+    // /calculations and /disputes) over five tables that exist in no schema and
+    // no migration, and routes-commission (a hardcoded "Sales Rep Standard" plan
+    // with 5%/6.5%/8% tiers) for /plans and /analytics. Production has always
+    // run supabase/functions/commission/, which reads the real tables and covers
+    // every path CommissionManagement.tsx calls. Both routers are deleted and
+    // the prefix is proxied, so dev runs the same handler. POST /calculate had
+    // no Express handler at all under either router, so it worked only in prod.
+    '/api/commission': 'commission',
+
     // PROD-012: voice-agent had no edge function, so the after-hours intake
     // surface 404'd in production. Dir name matches the URL segment.
     '/api/voice-agent': 'voice-agent',
