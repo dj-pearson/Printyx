@@ -2,74 +2,36 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte, between, isNotNull } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
-import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-sales-forecasting');
 
-import {
-  businessRecords,
-  deals,
-  quotes,
-  proposals,
-  salesGoals,
-  goalProgress,
-  dealStages,
-} from '../shared/schema';
-import {
-  salesForecasts,
-  forecastPipelineItems,
-  forecastMetrics,
-  forecastRules,
-} from './sales-forecasting-schema';
+import { businessRecords } from '../shared/schema';
+import { forecastPipelineItems, forecastMetrics, forecastRules } from './sales-forecasting-schema';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 
 // Sales Pipeline Forecasting API Routes
 // Note: Database tables will be created after schema update
 
-// Get all sales forecasts
-router.get(
-  '/api/sales-forecasts',
-  resolveTenant,
-  requireTenant,
-  async (req: TenantRequest, res) => {
-    try {
-      const tenantId = req.tenantId!;
-      const forecasts = await db
-        .select()
-        .from(salesForecasts)
-        .where(eq(salesForecasts.tenantId, tenantId))
-        .orderBy(desc(salesForecasts.createdAt));
-      res.json(forecasts);
-    } catch (error) {
-      log.error('Error fetching sales forecasts:', error);
-      res.status(500).json({ message: 'Failed to fetch sales forecasts' });
-    }
-  },
-);
-
-// Get pipeline items for a specific forecast
-router.get('/api/sales-forecasts/:id/pipeline', async (req: any, res) => {
-  try {
-    const { id } = req.params;
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
-
-    const items = await db
-      .select()
-      .from(forecastPipelineItems)
-      .where(
-        and(eq(forecastPipelineItems.tenantId, tenantId), eq(forecastPipelineItems.forecastId, id)),
-      )
-      .orderBy(asc(forecastPipelineItems.expectedCloseDate));
-
-    res.json(items);
-  } catch (error) {
-    log.error('Error fetching pipeline items:', error);
-    res.status(500).json({ message: 'Failed to fetch pipeline items' });
-  }
-});
+// ── /api/sales-forecasts: RETIRED (PA-022) ──────────────────────────────────
+//
+// Three handlers lived here - GET list, GET /:id/pipeline and POST. The prefix
+// is in crmProxies now, so dev and prod both run
+// supabase/functions/sales-forecasts/, which already covered the two reads.
+// Until this change SalesPipelineForecasting.tsx and SalesCommandCenter.tsx
+// listed forecasts from two different implementations depending on the host.
+//
+// The POST is not ported. No file in any client tree creates a forecast - the
+// only two callers of this prefix are those two list queries - and it could not
+// have run in production anyway, since production does not reach Express. Its
+// edge function header already recorded the read-only scope as deliberate.
+// Building a create path is a feature, and it starts with a caller.
+//
+// Untouched below, and NOT under this prefix: /api/sales-performance-metrics,
+// /api/sales-forecasting-rules, /api/sales-trends, and PUT /api/sales-pipeline/:id
+// - the last of which is a fourth stage model behind a prefix that already has
+// three (see the two-stage-vocabularies note in CLAUDE.md), which is why
+// /api/sales-pipeline takes per-path proxy entries and not a bare one.
 
 // Get comprehensive pipeline forecast data
 // GET /api/pipeline-forecast/:forecastId? was removed here (PROD-008b).
@@ -93,50 +55,6 @@ router.get('/api/sales-performance-metrics', async (req: any, res) => {
   } catch (error) {
     log.error('Error fetching performance metrics:', error);
     res.status(500).json({ message: 'Failed to fetch performance metrics' });
-  }
-});
-
-// Create new sales forecast
-router.post('/api/sales-forecasts', isAuthenticated, async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    const userId = req.user?.id;
-
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
-    }
-
-    const {
-      forecastName,
-      forecastType,
-      startDate,
-      endDate,
-      revenueTarget,
-      unitTarget,
-      dealCountTarget,
-    } = req.body;
-
-    const [newForecast] = await db
-      .insert(salesForecasts)
-      .values({
-        tenantId,
-        forecastName,
-        forecastType: forecastType || 'monthly',
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        revenueTarget: parseFloat(revenueTarget).toString(),
-        unitTarget: parseInt(unitTarget) || null,
-        dealCountTarget: parseInt(dealCountTarget) || null,
-        confidenceLevel: 'medium',
-        status: 'active',
-        createdBy: userId,
-      })
-      .returning();
-
-    res.status(201).json(newForecast);
-  } catch (error) {
-    log.error('Error creating sales forecast:', error);
-    res.status(500).json({ message: 'Failed to create sales forecast' });
   }
 });
 

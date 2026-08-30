@@ -841,6 +841,12 @@ export function registerEdgeFunctionProxy(app: any) {
       fn: 'sales-pipeline',
       pathPrefix: '/opportunities',
     },
+    // PA-022. /api/sales-forecasts had an Express handler AND an edge function
+    // with no proxy entry, so SalesPipelineForecasting and SalesCommandCenter
+    // listed forecasts from different code depending on the host. The three
+    // Express handlers are deleted; the edge function covers both reads, and
+    // the POST it does not cover has no caller in any client tree.
+    '/api/sales-forecasts': 'sales-forecasts',
     '/api/sales-pipeline/rep-metrics': { fn: 'sales-pipeline', pathPrefix: '/rep-metrics' },
     '/api/sales-pipeline/summary': { fn: 'sales-pipeline', pathPrefix: '/summary' },
     '/api/sales-pipeline/stages': { fn: 'sales-pipeline', pathPrefix: '/stages' },
