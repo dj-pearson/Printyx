@@ -859,15 +859,14 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // performance_benchmarks. Every one of them 500'd on a missing relation, and
   // because the queries were raw SQL rather than drizzle, tsc reported nothing.
   //
-  // DELIBERATELY NOT PROXIED, and this is the part worth reading before anyone
-  // "finishes the job": /api/analytics is served by a SECOND router,
-  // server/analytics-routes.ts (dynamically imported below), which owns
-  // conversion-metrics, activity-nudges, control-charts and trend-widgets - four
-  // paths with live callers (PipelineTrendWidgets.tsx, ConversionInsights.tsx)
-  // that WORK today. A crmProxies entry forwards the whole prefix, so proxying
-  // would take those four from working to 404 in order to fix nothing: the
-  // analytics edge function only answers 'dashboard' out of the eleven paths
-  // deleted here.
+  // DELIBERATELY NOT PROXIED. The analytics edge function answers 'dashboard',
+  // 'sales', 'service' and 'performance' - none of the eleven paths deleted
+  // here - so a crmProxies entry on /api/analytics would forward the whole
+  // prefix and fix nothing. This used to warn about a SECOND router,
+  // server/analytics-routes.ts, whose four paths were said to WORK today; they
+  // did not. That router held no database access at all and PA-040 deleted it
+  // (see the note further down), so nothing under /api/analytics is live in dev
+  // that is not also live in production.
   //
   // So dev now returns 404 for those eleven instead of 500, which is what
   // production already returns for ten of them. Making them work means creating
@@ -901,19 +900,17 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api', validateRoutes.default);
 
   // ─── Previously Lazy-Loaded Modules (now properly awaited) ─────────
-  try {
-    const { analyticsRouter } = await import('./analytics-routes');
-    app.use(analyticsRouter);
-    log.info('✅ Analytics routes registered');
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    log.error('Failed to load analytics routes:', err);
-    failedRouteModules.push({
-      module: 'analytics-routes',
-      error: msg,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  // server/analytics-routes.ts DELETED (PA-040). 184 lines, four handlers, no
+  // database access of any kind: conversion-metrics, activity-nudges,
+  // control-charts and trend-widgets each returned a hardcoded object - 65%
+  // lead-to-qualified, a 45-day cycle, four ranked loss reasons, control charts
+  // with sigma bands drawn over invented points. Its two callers
+  // (ConversionInsights.tsx, PipelineTrendWidgets.tsx) wrapped them in
+  // `select: (data) => data || {...}` fallbacks holding the same numbers, so
+  // production - where all four 404, the analytics edge function serving only
+  // dashboard/sales/service/performance - rendered figures identical to dev.
+  // Both components are now NotConnectedState gates naming what would have to
+  // be recorded first (stage-transition history, a loss reason per deal).
 
   try {
     const { catalogRouter } = await import('./routes-catalog');

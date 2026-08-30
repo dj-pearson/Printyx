@@ -1,15 +1,8 @@
 {
   "note": "AUDIT-019 fabricated-fallback ratchet. scripts/check-fabricated-fallbacks.mjs fails CI when a read off useQuery data falls back to a literal that looks like DATA rather than like emptiness — a number above 1, or a populated object/array. Those render as measurements when the request failed or returned nothing. Honest empty defaults (|| 0, || [], an all-zero shape) are not reported, and strings are never reported. Shrink this list, never grow it: node scripts/check-fabricated-fallbacks.mjs --update-baseline.",
-  "count": 9,
+  "count": 2,
   "allowed": [
-    "client/src/components/analytics/ConversionInsights.tsx:select@36",
-    "client/src/components/analytics/ConversionInsights.tsx:select@62",
-    "client/src/components/analytics/PipelineTrendWidgets.tsx:select@36",
-    "client/src/components/analytics/PipelineTrendWidgets.tsx:select@76",
     "client/src/pages/AutoLeadRoutingDashboard.tsx:config?.maxLeadsPerRepPerDay",
-    "client/src/pages/ContractProfitability.tsx:list?.gpAlertThreshold",
-    "client/src/pages/PlatformAnalytics.tsx:conversionMetrics?.leadConversionRate",
-    "client/src/pages/PlatformAnalytics.tsx:pipelineMetrics?.totalValue",
-    "client/src/pages/PlatformAnalytics.tsx:pipelineMetrics?.weightedValue"
+    "client/src/pages/ContractProfitability.tsx:list?.gpAlertThreshold"
   ]
 }

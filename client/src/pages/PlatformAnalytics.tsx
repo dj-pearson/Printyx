@@ -109,6 +109,14 @@ interface RevenueMetrics {
 interface ConversionMetrics {
   funnelData?: FunnelDatum[];
   leadConversionRate?: number;
+  summary?: {
+    totalProspects: number;
+    totalTenants: number;
+    totalConverted: number;
+    closedWon: number;
+    closedLost: number;
+    totalDeals: number;
+  };
 }
 interface PipelineMetrics {
   totalValue?: number;
@@ -381,14 +389,30 @@ export default function PlatformAnalytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold mb-2">
-                    {formatPercent(conversionMetrics?.leadConversionRate || 10.2)}
+                    {metricOrDash(conversionMetrics?.leadConversionRate, formatPercent)}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    125 of 1,250 prospects converted
-                  </p>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: '10.2%' }} />
-                  </div>
+                  {/*
+                    The caption said "125 of 1,250 prospects converted" and the
+                    bar was drawn at a literal width: '10.2%' (PA-040). The
+                    endpoint already sends both counts in its summary.
+                  */}
+                  {conversionMetrics?.summary && (
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {conversionMetrics.summary.totalConverted.toLocaleString()} of{' '}
+                      {conversionMetrics.summary.totalProspects.toLocaleString()} prospects
+                      converted
+                    </p>
+                  )}
+                  {conversionMetrics?.leadConversionRate != null && (
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full"
+                        style={{
+                          width: `${Math.min(conversionMetrics.leadConversionRate, 100)}%`,
+                        }}
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -540,7 +564,7 @@ export default function PlatformAnalytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold mb-2">
-                    {formatCurrency(pipelineMetrics?.totalValue || 2450000)}
+                    {metricOrDash(pipelineMetrics?.totalValue, formatCurrency)}
                   </div>
                   <p className="text-sm text-muted-foreground">Total value of active deals</p>
                 </CardContent>
@@ -552,7 +576,7 @@ export default function PlatformAnalytics() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold mb-2">
-                    {formatCurrency(pipelineMetrics?.weightedValue || 875000)}
+                    {metricOrDash(pipelineMetrics?.weightedValue, formatCurrency)}
                   </div>
                   <p className="text-sm text-muted-foreground">Probability-adjusted value</p>
                 </CardContent>
