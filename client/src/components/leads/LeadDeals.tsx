@@ -132,7 +132,11 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
           prefill: 'true',
           source: 'deal',
         });
-        window.open(`/proposals/new?${params.toString()}`, '_blank');
+        // /proposals/new is not a registered route - this opened the 404 page
+        // in a new tab, which is worse than doing nothing because the original
+        // tab looks like it worked (AUDIT-014). The proposal builder is at
+        // /proposal-builder and takes the same query parameters.
+        window.open(`/proposal-builder?${params.toString()}`, '_blank');
       }
     };
 

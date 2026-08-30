@@ -77,6 +77,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import WarehouseTeamStatsWidget from '@/components/stats/WarehouseTeamStatsWidget';
+import { useActionParam } from '@/hooks/use-action-param';
 
 // Warehouse operation schema
 const warehouseOperationSchema = z.object({
@@ -188,6 +189,12 @@ export default function WarehouseOperations() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOperation, setSelectedOperation] = useState<WarehouseOperation | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  // A breadcrumb quick action links here with ?action=new-part;
+  // open the create dialog rather than dropping the user on the list.
+  const quickAction = useActionParam();
+  useEffect(() => {
+    if (quickAction === 'new-part') setShowCreateDialog(true);
+  }, [quickAction]);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showSerialDialog, setShowSerialDialog] = useState(false);
   const [showBuildDialog, setShowBuildDialog] = useState(false);

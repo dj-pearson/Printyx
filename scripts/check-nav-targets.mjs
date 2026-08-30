@@ -84,6 +84,24 @@ const IGNORE_PREFIXES = [
 const ASSET_EXT =
   /\.(png|jpe?g|svg|gif|webp|ico|css|js|mjs|ts|tsx|json|xml|txt|woff2?|ttf|pdf|csv|xlsx?)$/i;
 
+/**
+ * A navigation target's PATH, without its query string or fragment.
+ *
+ * `/customers?action=new` is a link to /customers. Before this, the `?` put the
+ * whole literal into isNoise's regex-fragment branch and it was never checked
+ * at all - so nine breadcrumb quick actions carrying ?action= were invisible to
+ * this guard, including two pointing at /equipment, which is not a registered
+ * route (AUDIT-014). A false NEGATIVE is the failure this check exists to
+ * avoid, and skipping every target with a query string is one.
+ *
+ * Only applied to something already shaped like a path: a regex fragment that
+ * happens to contain '?' still reaches isNoise intact.
+ */
+function pathOf(target) {
+  if (!/^\/[A-Za-z0-9$_/-]/.test(target)) return target;
+  return target.split('#')[0].split('?')[0];
+}
+
 function isNoise(path) {
   if (path === '/') return true; // "/" is always a registered route
   if (path.startsWith('//')) return true; // protocol-relative / comment residue
@@ -331,7 +349,8 @@ const propertyRoutes = buildPropertyRoutes(files);
 
 const all = [];
 for (const file of files) {
-  for (const { raw, line, via, base } of candidates(file, propertyRoutes)) {
+  for (const { raw: literal, line, via, base } of candidates(file, propertyRoutes)) {
+    const raw = pathOf(literal);
     if (isNoise(raw)) continue;
     if (resolves(raw)) continue;
     // A base is legitimate when something is routed one segment under it -

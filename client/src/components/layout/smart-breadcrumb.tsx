@@ -24,7 +24,6 @@ import {
   Calendar,
   DollarSign,
   Wrench,
-  Package,
   Eye,
   Edit,
   Trash,
@@ -171,12 +170,15 @@ export function SmartBreadcrumb({ customSegments, quickActions }: SmartBreadcrum
         {
           label: 'Add Equipment',
           icon: <Plus className="h-4 w-4" />,
-          href: '/equipment?action=new',
+          // /equipment is not a registered route - this branch fires on
+          // /equipment-lifecycle and /equipment-lifecycle-management, and both
+          // of these links landed on the 404 page (AUDIT-014).
+          href: '/equipment-lifecycle?action=new',
         },
         {
           label: 'View All Equipment',
           icon: <Eye className="h-4 w-4" />,
-          href: '/equipment',
+          href: '/equipment-lifecycle',
         },
       );
     } else if (location.includes('/invoices')) {
@@ -199,11 +201,10 @@ export function SmartBreadcrumb({ customSegments, quickActions }: SmartBreadcrum
           icon: <Plus className="h-4 w-4" />,
           href: '/warehouse-operations?action=new-part',
         },
-        {
-          label: 'Transfer Parts',
-          icon: <Package className="h-4 w-4" />,
-          href: '/warehouse-operations?action=transfer',
-        },
+        // 'Transfer Parts' stood here and is removed (AUDIT-014).
+        // WarehouseOperations has no transfer feature at all - the word does not
+        // appear in the page - so the button opened a list and did nothing. A
+        // control for something the app does not do is worse than no control.
       );
     }
 

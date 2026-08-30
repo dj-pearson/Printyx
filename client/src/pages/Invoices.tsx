@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,9 +53,16 @@ import {
 } from '@/components/ui/bulk-operations-toolbar';
 import { BulkProgressTracker, useBulkProgress } from '@/components/ui/bulk-progress-tracker';
 import { useToast } from '@/hooks/use-toast';
+import { useActionParam } from '@/hooks/use-action-param';
 
 export default function Invoices() {
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+  // A breadcrumb quick action links here with ?action=new;
+  // open the create dialog rather than dropping the user on the list.
+  const quickAction = useActionParam();
+  useEffect(() => {
+    if (quickAction === 'new') setIsGenerateDialogOpen(true);
+  }, [quickAction]);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<NormalizedInvoice | null>(null);
   const [selectedContractId, setSelectedContractId] = useState<string>('');

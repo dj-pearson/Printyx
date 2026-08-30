@@ -5,7 +5,7 @@
  * Account managers track customer health, equipment, contracts, and service history.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest, extractPagination } from '@/lib/queryClient';
@@ -62,6 +62,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMemo } from 'react';
+import { useActionParam } from '@/hooks/use-action-param';
 
 // ─── Form Schema ────────────────────────────────────────────────────────────
 
@@ -258,6 +259,12 @@ export default function CustomersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // A breadcrumb quick action links here with ?action=new;
+  // open the create dialog rather than dropping the user on the list.
+  const quickAction = useActionParam();
+  useEffect(() => {
+    if (quickAction === 'new') setIsCreateOpen(true);
+  }, [quickAction]);
 
   // COP-I02: honour ?action=new from the command palette.
   useCreateFromUrl(() => setIsCreateOpen(true));

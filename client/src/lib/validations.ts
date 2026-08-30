@@ -219,25 +219,20 @@ export async function checkDisposableEmail(
 // ============================================================================
 
 /**
- * Whitelist of allowed redirect paths within the application
+ * NOTE: there is no allow-list of redirect targets, deliberately (AUDIT-014).
+ *
+ * One was declared here and its enforcement was commented out, so it never ran
+ * - and it had gone stale: most of its entries (/dashboard, /analytics,
+ * /profile, /reports, /settings) are not registered routes, so switching it on
+ * would have sent users to the 404 page after login. A commented-out security
+ * check plus a list nobody maintains is worse than neither.
+ *
+ * The control that does the work is the BLOCK list below, together with
+ * sanitizeURL and the requirement that a redirect be a same-origin relative
+ * path. Open redirect is what a redirect whitelist defends against, and that is
+ * already closed; an allow-list of routes would only stop a user landing on a
+ * valid-but-unintended page of the app, which is not a security boundary.
  */
-const ALLOWED_REDIRECT_PREFIXES = [
-  '/dashboard',
-  '/customers',
-  '/business-records',
-  '/leads',
-  '/deals',
-  '/crm/deals',
-  '/opportunities',
-  '/service',
-  '/inventory',
-  '/products',
-  '/reports',
-  '/settings',
-  '/profile',
-  '/billing',
-  '/analytics',
-];
 
 /**
  * Paths that should never be redirect targets
@@ -306,8 +301,6 @@ export function sanitizeURL(url: string): string {
   }
 
   // Optionally enforce whitelist (commented out for flexibility)
-  // const isAllowed = ALLOWED_REDIRECT_PREFIXES.some(prefix => pathOnly.startsWith(prefix));
-  // if (!isAllowed) return '/';
 
   return decoded;
 }

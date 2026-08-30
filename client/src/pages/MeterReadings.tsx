@@ -54,6 +54,7 @@ import { format, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
+import { useActionParam } from '@/hooks/use-action-param';
 
 // tenantId + createdBy are injected server-side; the form never supplies them.
 const createMeterReadingSchema = insertMeterReadingSchema
@@ -109,6 +110,12 @@ const dateRangePresets: DateRangePreset[] = [
 export default function MeterReadings() {
   const [, setLocationPath] = useLocation();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  // A breadcrumb quick action links here with ?action=new;
+  // open the create dialog rather than dropping the user on the list.
+  const quickAction = useActionParam();
+  useEffect(() => {
+    if (quickAction === 'new') setIsCreateDialogOpen(true);
+  }, [quickAction]);
   const [urlFilter, setUrlFilter] = useState<{ type?: string; n?: string } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<string>('all');
