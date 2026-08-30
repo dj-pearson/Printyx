@@ -292,10 +292,6 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['reporting.service.view'],
     minLevel: 4,
   },
-  '/incident-response-system': {
-    requiredPermissions: ['service.ticket.view_location', 'service.ticket.assign'],
-    minLevel: 3,
-  },
   '/service/address-books': {
     requiredPermissions: ['service.address_book.view_team', 'service.address_book.view_own'],
     minLevel: 1,
@@ -479,10 +475,6 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/workflow-automation': {
     requiredPermissions: ['admin.settings.update'],
     minLevel: 4,
-  },
-  '/business-process-optimization': {
-    requiredPermissions: ['admin.settings.update'],
-    minLevel: 5,
   },
   '/document-management': {
     requiredPermissions: ['admin.settings.view'],
@@ -695,10 +687,6 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   },
   '/predictive-maintenance-hub': {
     requiredPermissions: ['service.equipment.view', 'service.workorder.view_own'],
-    minLevel: 3,
-  },
-  '/incident-response': {
-    requiredPermissions: ['service.ticket.view_location', 'service.ticket.assign'],
     minLevel: 3,
   },
 

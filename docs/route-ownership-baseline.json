@@ -60,5 +60,5 @@
     "templates",
     "warehouse-operations"
   ],
-  "missingEdge": ["business-process", "incident-response"]
+  "missingEdge": []
 }

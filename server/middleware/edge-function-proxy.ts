@@ -699,14 +699,17 @@ export function registerEdgeFunctionProxy(app: any) {
     // PROD-010. Full parity: /dashboard is the ONLY endpoint Express serves on
     // this prefix (routes-sample-data.ts) and the only one the page calls.
     //
-    // NOT ported alongside it: /api/business-process. Both of its Express
-    // dashboard handlers (routes-business-process-optimization.ts:24 and
-    // routes-sample-data.ts:1209) return hardcoded numbers with ZERO database
-    // access — 47 processes, $127,890.50 "cost savings" — and they ignore the
-    // category/department filters the page sends. Porting that would publish
-    // fabricated business metrics to production, where the page currently 404s.
-    // A 404 is honest; confident fake numbers are not. It belongs to PA-040
-    // (wire or clearly flag the fully-mock dashboards), not to this batch.
+    // /api/business-process was the one domain in this batch that stayed
+    // unported, twice, because both of its Express handlers returned hardcoded
+    // numbers with ZERO database access and porting them would have published
+    // fabricated business metrics to production. That is now RESOLVED BY
+    // DELETION rather than left open: PROD-010 removed both handlers, the
+    // unregistered 746-line routes-business-process-optimization.ts and the
+    // page itself, along with the identical /api/incident-response mock and
+    // IncidentResponseSystem.tsx. missingEdge is 0 as a result. Neither page
+    // ever rendered the fixtures anyway - both passed filter state in the query
+    // key, and a query key IS a url, so both requested /dashboard/all/all and
+    // 404'd in dev as well as prod.
     '/api/ai-analytics': 'ai-analytics',
 
     // PROD-010. Full parity: all SEVEN Express endpoints are implemented

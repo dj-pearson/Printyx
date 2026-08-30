@@ -297,8 +297,6 @@ const CustomerSuccessManagement = React.lazy(() => import('@/pages/CustomerSucce
 const DocumentManagement = React.lazy(() => import('@/pages/DocumentManagement'));
 const MobileServiceApp = React.lazy(() => import('@/pages/MobileServiceApp'));
 const AdvancedAnalyticsDashboard = React.lazy(() => import('@/pages/AdvancedAnalyticsDashboard'));
-const BusinessProcessOptimization = React.lazy(() => import('@/pages/BusinessProcessOptimization'));
-const IncidentResponseSystem = React.lazy(() => import('@/pages/IncidentResponseSystem'));
 const AIAnalyticsDashboard = React.lazy(() => import('@/pages/AIAnalyticsDashboard'));
 const IntegrationHub = React.lazy(() => import('@/pages/IntegrationHub'));
 const WorkflowAutomation = React.lazy(() => import('@/pages/WorkflowAutomation'));
@@ -758,7 +756,6 @@ function Router() {
                 <Route path="/preventive-maintenance" component={PreventiveMaintenanceScheduling} />
                 {/* Unified Predictive Maintenance Hub - consolidates proactive + AI predictions */}
                 <Route path="/predictive-maintenance-hub" component={PredictiveMaintenanceHub} />
-                <Route path="/incident-response-system" component={IncidentResponseSystem} />
                 <Route path="/customer-portal" component={CustomerSelfServicePortal} />
                 <Route path="/advanced-billing" component={AdvancedBillingEngine} />
                 <Route path="/financial-forecasting">
@@ -994,12 +991,7 @@ function Router() {
                   path="/advanced-analytics-dashboard"
                   component={AdvancedAnalyticsDashboard}
                 />
-                <Route
-                  path="/business-process-optimization"
-                  component={BusinessProcessOptimization}
-                />
                 <Route path="/customer-self-service-portal" component={CustomerSelfServicePortal} />
-                <Route path="/incident-response" component={IncidentResponseSystem} />
                 <Route path="/ai-analytics-dashboard" component={AIAnalyticsDashboard} />
                 <Route path="/predictive-analytics">
                   {() => (

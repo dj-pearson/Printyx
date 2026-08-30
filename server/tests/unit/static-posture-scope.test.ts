@@ -63,25 +63,20 @@ describe('the baseline', () => {
   });
 });
 
-describe('the audit-readiness card is gone', () => {
-  const page = read('client/src/pages/BusinessProcessOptimization.tsx');
-
-  it('renders none of the four typed percentages', () => {
-    // Read raw, then strip only the replacement note - the note names each
-    // number it removed, and matching it would clear the assertion.
-    const withoutNote = page.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
-    for (const claim of ['94.7%', '91.3%', '88.9%', '96.1%', '14 initiatives']) {
-      expect(withoutNote).not.toContain(claim);
-    }
-  });
-
-  it('says why, where the card was', () => {
-    expect(page).toContain('Audit Readiness');
-    expect(page).toContain('LEGAL-010');
-  });
-
-  it('drops the icon import that only that card used', () => {
-    expect(page).not.toMatch(/^\s*Award,$/m);
+describe('the audit-readiness card is gone, and so is the page', () => {
+  // This block used to assert that BusinessProcessOptimization.tsx still
+  // existed with its Quality Metrics card removed and a note in its place -
+  // four typed percentages ending in Audit Readiness 96.1%, deleted under
+  // LEGAL-010 because nothing in this platform measures audit readiness.
+  //
+  // PROD-010 then deleted the whole page. Its dashboard came from an Express
+  // handler with zero database calls, and the domain had sat on the
+  // route-ownership ratchet's missingEdge list for weeks precisely because
+  // porting a mock to production was refused - correctly, but a refusal is not
+  // a resolution. Removing one fabricated card from a page whose every other
+  // number was equally fabricated was the smaller half of the fix.
+  it('the page no longer exists', () => {
+    expect(existsSync(join(repo, 'client/src/pages/BusinessProcessOptimization.tsx'))).toBe(false);
   });
 
   it('does not appear in the baseline at all', () => {
