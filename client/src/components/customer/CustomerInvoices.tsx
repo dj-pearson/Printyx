@@ -53,6 +53,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
 
 interface Invoice {
   id: string;
@@ -108,11 +109,7 @@ export function CustomerInvoices({ customerId, customerName }: CustomerInvoicesP
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
     queryKey: [`/api/customers/${customerId}/invoices`],
     queryFn: async () => {
-      const response = await fetch(`/api/customers/${customerId}/invoices`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch invoices');
-      return response.json();
+      return apiRequest(`/api/customers/${customerId}/invoices`);
     },
   });
 

@@ -3,6 +3,8 @@
 // Updated Jan 13, 2026 - Now uses companies as single source of truth
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
+import { toCamel } from '../_shared/case.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -75,11 +77,17 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // Handle both path formats:
-    // - If pathname includes function name: /customers/:id → pathParts[1]
-    // - If pathname is just the ID (Supabase strips function name): /:id → pathParts[0]
-    const customerId = pathParts[0] === 'customers' ? pathParts[1] : pathParts[0];
+    const { parts } = normalizePath(url.pathname, 'customers');
+    const customerId = parts[0];
+    // PA-020: the sub-segment used to be dropped entirely, so every Customer
+    // Detail tab - invoices, equipment, service history, financials, supplies -
+    // got the CUSTOMER OBJECT back instead of its list, at 200. A page mapping
+    // over an object renders nothing and reports no error.
+    const subResource = parts[1];
+
+    if (req.method === 'GET' && customerId && subResource) {
+      return await handleSubResource(req, admin, tenantId, customerId, subResource, url);
+    }
 
     // GET /customers - List all companies from companies table
     if (req.method === 'GET' && !customerId) {
@@ -396,4 +404,218 @@ export default async function handler(req: Request) {
       req,
     );
   }
+}
+
+// ─── Customer detail sub-resources (PA-020) ─────────────────────────────────
+//
+// The Customer Detail tabs each fetch /api/customers/:id/<thing>. Before this,
+// the handler read the id and ignored the sub-segment, so every tab received
+// the customer object at 200 - a page that maps over it renders an empty list
+// and reports nothing wrong. No Express route covered financial-summary,
+// payments, aging, supply-orders or activities either, so those five were dead
+// in dev as well.
+//
+// Every query is scoped to BOTH tenant and customer. Rows go through toCamel
+// because these components read camelCase (invoiceNumber, balanceDue,
+// serialNumber) and PostgREST answers snake_case.
+//
+// WHAT IS NOT BACKED, named rather than invented: there is no `payments` table
+// in any schema or migration. Payment history is derived from invoices that
+// record an amount_paid, which gives a real date and amount but no method and
+// no cheque number; the response says so in `unbacked` and the fields are null.
+
+// deno-lint-ignore no-explicit-any
+type Admin = any;
+
+const SUB_RESOURCE_TABLES: Record<string, string> = {
+  invoices: 'invoices',
+  equipment: 'equipment',
+  contracts: 'contracts',
+  'service-tickets': 'service_tickets',
+  'service-calls': 'service_calls',
+  'supply-orders': 'customer_supply_orders',
+};
+
+/** Numeric columns arrive from PostgREST as strings; sum them as numbers. */
+function num(value: unknown): number {
+  const n = typeof value === 'number' ? value : parseFloat(String(value ?? ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Days between a due date and now; negative means not yet due. */
+function daysOverdue(dueDate: unknown, now: number): number {
+  const due = new Date(String(dueDate ?? '')).getTime();
+  if (!Number.isFinite(due)) return 0;
+  return Math.floor((now - due) / (1000 * 60 * 60 * 24));
+}
+
+async function handleSubResource(
+  req: Request,
+  admin: Admin,
+  tenantId: string,
+  customerId: string,
+  subResource: string,
+  url: URL,
+): Promise<Response> {
+  if (req.method !== 'GET') {
+    return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+  }
+
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '500'), 1000);
+
+  const table = SUB_RESOURCE_TABLES[subResource];
+  if (table) {
+    const { data, error } = await admin
+      .from(table)
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) {
+      console.error(`Error fetching customer ${subResource}:`, error);
+      return createCorsResponse({ error: `Failed to fetch ${subResource}` }, 500, req);
+    }
+    return createCorsResponse(toCamel(data ?? []), 200, req);
+  }
+
+  if (subResource === 'activities') {
+    // business_record_activities keys off business_record_id, not customer_id -
+    // a customer IS a business record here, and the id is the same value.
+    const { data, error } = await admin
+      .from('business_record_activities')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('business_record_id', customerId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) {
+      console.error('Error fetching customer activities:', error);
+      return createCorsResponse({ error: 'Failed to fetch activities' }, 500, req);
+    }
+    return createCorsResponse(toCamel(data ?? []), 200, req);
+  }
+
+  // The three derived views below all read the same invoice set. PostgREST has
+  // no SUM, so the arithmetic happens here.
+  if (
+    subResource === 'financial-summary' ||
+    subResource === 'aging' ||
+    subResource === 'payments'
+  ) {
+    const { data, error } = await admin
+      .from('invoices')
+      .select(
+        'id, invoice_number, invoice_date, due_date, total_amount, amount_paid, balance_due, invoice_status, paid_date',
+      )
+      .eq('tenant_id', tenantId)
+      .eq('customer_id', customerId)
+      .limit(2000);
+    if (error) {
+      console.error(`Error fetching invoices for ${subResource}:`, error);
+      return createCorsResponse({ error: `Failed to fetch ${subResource}` }, 500, req);
+    }
+    const invoices = data ?? [];
+
+    if (subResource === 'payments') {
+      const payments = invoices
+        .filter((i: Record<string, unknown>) => num(i.amount_paid) > 0)
+        .map((i: Record<string, unknown>) => ({
+          id: i.id,
+          paymentDate: i.paid_date ?? null,
+          amount: num(i.amount_paid),
+          invoiceNumber: i.invoice_number ?? null,
+          // No payments table exists, so these are unknown rather than empty.
+          paymentMethod: null,
+          checkNumber: null,
+          notes: null,
+        }))
+        .sort((a: { paymentDate: unknown }, b: { paymentDate: unknown }) =>
+          String(b.paymentDate ?? '').localeCompare(String(a.paymentDate ?? '')),
+        );
+      return createCorsResponse(
+        {
+          payments,
+          unbacked: [
+            'paymentMethod and checkNumber: there is no payments table, so a payment is only visible as an invoice amount_paid',
+          ],
+        },
+        200,
+        req,
+      );
+    }
+
+    if (subResource === 'aging') {
+      const now = Date.now();
+      const buckets = { current: 0, thirtyDays: 0, sixtyDays: 0, ninetyDays: 0, overNinety: 0 };
+      for (const invoice of invoices as Record<string, unknown>[]) {
+        const outstanding = num(invoice.balance_due);
+        if (outstanding <= 0) continue;
+        const age = daysOverdue(invoice.due_date, now);
+        if (age <= 0) buckets.current += outstanding;
+        else if (age <= 30) buckets.thirtyDays += outstanding;
+        else if (age <= 60) buckets.sixtyDays += outstanding;
+        else if (age <= 90) buckets.ninetyDays += outstanding;
+        else buckets.overNinety += outstanding;
+      }
+      const totalOutstanding = Object.values(buckets).reduce((sum, v) => sum + v, 0);
+      return createCorsResponse({ ...buckets, totalOutstanding }, 200, req);
+    }
+
+    // financial-summary
+    let totalBilled = 0;
+    let totalPaid = 0;
+    let balanceDue = 0;
+    let lastPaymentDate: string | null = null;
+    let lastPaymentAmount: number | null = null;
+    const paymentLags: number[] = [];
+    for (const invoice of invoices as Record<string, unknown>[]) {
+      totalBilled += num(invoice.total_amount);
+      totalPaid += num(invoice.amount_paid);
+      balanceDue += num(invoice.balance_due);
+      const paidAt = invoice.paid_date ? String(invoice.paid_date) : null;
+      if (paidAt) {
+        if (!lastPaymentDate || paidAt > lastPaymentDate) {
+          lastPaymentDate = paidAt;
+          lastPaymentAmount = num(invoice.amount_paid);
+        }
+        const issued = new Date(String(invoice.invoice_date ?? '')).getTime();
+        const settled = new Date(paidAt).getTime();
+        if (Number.isFinite(issued) && Number.isFinite(settled) && settled >= issued) {
+          paymentLags.push((settled - issued) / (1000 * 60 * 60 * 24));
+        }
+      }
+    }
+
+    // The customer's own credit limit, when the record carries one.
+    const { data: record } = await admin
+      .from('business_records')
+      .select('credit_limit')
+      .eq('tenant_id', tenantId)
+      .eq('id', customerId)
+      .maybeSingle();
+    const creditLimit = record?.credit_limit == null ? null : num(record.credit_limit);
+
+    return createCorsResponse(
+      {
+        totalBilled,
+        totalPaid,
+        balanceDue,
+        // Null, not 0: no settled invoice means no average, and 0 days reads as
+        // a customer who pays instantly.
+        averagePaymentDays:
+          paymentLags.length > 0
+            ? Math.round(paymentLags.reduce((sum, d) => sum + d, 0) / paymentLags.length)
+            : null,
+        creditLimit,
+        availableCredit: creditLimit == null ? null : creditLimit - balanceDue,
+        lastPaymentDate,
+        lastPaymentAmount,
+      },
+      200,
+      req,
+    );
+  }
+
+  return createCorsResponse({ error: `Unknown customer sub-resource: ${subResource}` }, 404, req);
 }

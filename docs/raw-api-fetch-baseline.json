@@ -1,15 +1,6 @@
 {
   "note": "PROD-013 raw-fetch ratchet. scripts/check-raw-api-fetch.mjs fails CI when a NEW bare fetch(\"/api/...\") is added to a file reachable from App.tsx. Such a call skips getApiUrl (so it hits the static origin in production, not the edge function) and sends cookies instead of a Bearer JWT. Use apiRequest() from lib/queryClient, or a helper modelled on lib/invoice-pdf.ts for blob downloads. Shrink this list, never grow it: node scripts/check-raw-api-fetch.mjs --update-baseline",
   "allowed": [
-    "client/src/components/customer/CustomerEquipment.tsx:/api/customers/__DYN__/equipment",
-    "client/src/components/customer/CustomerEquipment.tsx:/api/equipment/__DYN__/meter-readings",
-    "client/src/components/customer/CustomerFinancials.tsx:/api/customers/__DYN__/aging",
-    "client/src/components/customer/CustomerFinancials.tsx:/api/customers/__DYN__/contracts",
-    "client/src/components/customer/CustomerFinancials.tsx:/api/customers/__DYN__/financial-summary",
-    "client/src/components/customer/CustomerFinancials.tsx:/api/customers/__DYN__/payments",
-    "client/src/components/customer/CustomerInvoices.tsx:/api/customers/__DYN__/invoices",
-    "client/src/components/customer/CustomerServiceHistory.tsx:/api/customers/__DYN__/service-calls",
-    "client/src/components/customer/CustomerServiceHistory.tsx:/api/customers/__DYN__/service-tickets",
     "client/src/hooks/useSubscription.ts:/api/subscriptions/checkout",
     "client/src/hooks/useSubscription.ts:/api/subscriptions/checkout/addon",
     "client/src/hooks/useSubscription.ts:/api/subscriptions/checkout/session/__DYN__",

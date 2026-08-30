@@ -26,26 +26,31 @@ import {
   Activity,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
 
 interface FinancialSummary {
   totalBilled: number;
   totalPaid: number;
   balanceDue: number;
-  averagePaymentDays: number;
-  creditLimit: number;
-  availableCredit: number;
+  // Null when no invoice has settled, and when the record carries no credit
+  // limit: 0 days would read as a customer who pays instantly, and $0 of
+  // available credit as one who has none.
+  averagePaymentDays: number | null;
+  creditLimit: number | null;
+  availableCredit: number | null;
   lastPaymentDate?: string;
   lastPaymentAmount?: number;
 }
 
 interface PaymentHistory {
   id: string;
-  paymentDate: string;
+  paymentDate: string | null;
   amount: number;
-  paymentMethod: string;
-  checkNumber?: string;
-  invoiceNumber: string;
-  notes?: string;
+  // Null because no payments table exists - see the query below.
+  paymentMethod: string | null;
+  checkNumber?: string | null;
+  invoiceNumber: string | null;
+  notes?: string | null;
 }
 
 interface AgingData {
@@ -85,35 +90,33 @@ export function CustomerFinancials({ customerId, customerName }: CustomerFinanci
   const { data: financialSummary, isLoading: loadingSummary } = useQuery<FinancialSummary>({
     queryKey: [`/api/customers/${customerId}/financial-summary`],
     queryFn: async () => {
-      const response = await fetch(`/api/customers/${customerId}/financial-summary`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch financial summary');
-      return response.json();
+      return apiRequest(`/api/customers/${customerId}/financial-summary`);
     },
   });
 
-  // Fetch payment history
-  const { data: paymentHistory = [], isLoading: loadingPayments } = useQuery<PaymentHistory[]>({
+  // Fetch payment history.
+  //
+  // The response is { payments, unbacked } rather than a bare array: there is
+  // no payments table, so a payment is only visible as an invoice that records
+  // an amount_paid. That gives a real date and amount but no method and no
+  // cheque number, and the endpoint names the gap instead of leaving the
+  // columns looking empty (PA-020).
+  const { data: paymentResponse, isLoading: loadingPayments } = useQuery<{
+    payments: PaymentHistory[];
+    unbacked?: string[];
+  }>({
     queryKey: [`/api/customers/${customerId}/payments`],
     queryFn: async () => {
-      const response = await fetch(`/api/customers/${customerId}/payments`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch payments');
-      return response.json();
+      return apiRequest(`/api/customers/${customerId}/payments`);
     },
   });
+  const paymentHistory = paymentResponse?.payments ?? [];
 
   // Fetch aging data
   const { data: agingData, isLoading: loadingAging } = useQuery<AgingData>({
     queryKey: [`/api/customers/${customerId}/aging`],
     queryFn: async () => {
-      const response = await fetch(`/api/customers/${customerId}/aging`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch aging data');
-      return response.json();
+      return apiRequest(`/api/customers/${customerId}/aging`);
     },
   });
 
@@ -121,11 +124,7 @@ export function CustomerFinancials({ customerId, customerName }: CustomerFinanci
   const { data: contracts = [], isLoading: loadingContracts } = useQuery<ContractInfo[]>({
     queryKey: [`/api/customers/${customerId}/contracts`],
     queryFn: async () => {
-      const response = await fetch(`/api/customers/${customerId}/contracts`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch contracts');
-      return response.json();
+      return apiRequest(`/api/customers/${customerId}/contracts`);
     },
   });
 
@@ -146,14 +145,18 @@ export function CustomerFinancials({ customerId, customerName }: CustomerFinanci
     return 'text-red-600';
   };
 
-  const calculateCreditUtilization = () => {
-    if (!financialSummary || !financialSummary.creditLimit) return 0;
+  // Null when the record carries no credit limit: there is no utilization to
+  // show, and 0% reads as a customer using none of a limit they have.
+  const calculateCreditUtilization = (): number | null => {
+    if (!financialSummary?.creditLimit || financialSummary.availableCredit == null) return null;
     return (
       ((financialSummary.creditLimit - financialSummary.availableCredit) /
         financialSummary.creditLimit) *
       100
     );
   };
+
+  const creditUtilization = calculateCreditUtilization();
 
   if (loadingSummary) {
     return (
@@ -238,23 +241,35 @@ export function CustomerFinancials({ customerId, customerName }: CustomerFinanci
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <span className="text-sm text-gray-600">Credit Limit</span>
-                <p className="text-2xl font-bold">{formatCurrency(financialSummary.creditLimit)}</p>
+                <p className="text-2xl font-bold">
+                  {financialSummary.creditLimit == null
+                    ? 'Not set'
+                    : formatCurrency(financialSummary.creditLimit)}
+                </p>
               </div>
               <div>
                 <span className="text-sm text-gray-600">Available Credit</span>
                 <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(financialSummary.availableCredit)}
+                  {financialSummary.availableCredit == null
+                    ? 'Not set'
+                    : formatCurrency(financialSummary.availableCredit)}
                 </p>
               </div>
               <div>
                 <span className="text-sm text-gray-600">Credit Utilization</span>
                 <div className="mt-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-lg font-bold">
-                      {calculateCreditUtilization().toFixed(1)}%
-                    </span>
-                  </div>
-                  <Progress value={calculateCreditUtilization()} className="h-2" />
+                  {creditUtilization == null ? (
+                    <p className="text-sm text-muted-foreground">
+                      No credit limit on this account.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-lg font-bold">{creditUtilization.toFixed(1)}%</span>
+                      </div>
+                      <Progress value={creditUtilization} className="h-2" />
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -408,7 +423,9 @@ export function CustomerFinancials({ customerId, customerName }: CustomerFinanci
                     <TableBody>
                       {paymentHistory.map((payment) => (
                         <TableRow key={payment.id}>
-                          <TableCell>{formatDate(payment.paymentDate)}</TableCell>
+                          <TableCell>
+                            {payment.paymentDate ? formatDate(payment.paymentDate) : '—'}
+                          </TableCell>
                           <TableCell className="font-medium">
                             {formatCurrency(payment.amount)}
                           </TableCell>

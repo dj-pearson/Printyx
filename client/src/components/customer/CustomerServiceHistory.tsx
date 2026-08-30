@@ -54,6 +54,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
 
 interface ServiceCall {
   id: string;
@@ -138,11 +139,7 @@ export function CustomerServiceHistory({ customerId, customerName }: CustomerSer
   const { data: serviceTickets = [], isLoading: loadingTickets } = useQuery<ServiceTicket[]>({
     queryKey: [`/api/customers/${customerId}/service-tickets`],
     queryFn: async () => {
-      const response = await fetch(`/api/customers/${customerId}/service-tickets`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch service tickets');
-      return response.json();
+      return apiRequest(`/api/customers/${customerId}/service-tickets`);
     },
   });
 
@@ -150,11 +147,7 @@ export function CustomerServiceHistory({ customerId, customerName }: CustomerSer
   const { data: serviceCalls = [], isLoading: loadingCalls } = useQuery<ServiceCall[]>({
     queryKey: [`/api/customers/${customerId}/service-calls`],
     queryFn: async () => {
-      const response = await fetch(`/api/customers/${customerId}/service-calls`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch service calls');
-      return response.json();
+      return apiRequest(`/api/customers/${customerId}/service-calls`);
     },
   });
 

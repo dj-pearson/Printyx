@@ -847,8 +847,17 @@ export function registerEdgeFunctionProxy(app: any) {
   PROXIED_PREFIXES.add('customers');
 
   // Special case: GET /api/customers → companies edge function with recordType=Customer
-  // The old mobile app calls /api/customers but there's no "customers" edge function.
-  // Route it to the companies edge function with an added recordType filter.
+  //
+  // CORRECTED (PA-020): the note here used to say there is no "customers" edge
+  // function. There is - supabase/functions/customers/ - and production has
+  // always resolved /api/customers/* to it. Only the BARE list is redirected to
+  // `companies`, which is the single source of truth for the record itself; the
+  // sub-resource routes below go to the customers function, which now serves
+  // the Customer Detail tabs.
+  //
+  // Sub-resources are forwarded explicitly rather than by adding /api/customers
+  // to crmProxies, because that would take the bare list off this special case
+  // and send it to a function that answers a different shape.
   app.get('/api/customers', (req: Request, res: ExpressResponse, next: NextFunction) => {
     const search = (req.query as any)?.search || '';
     const limit = (req.query as any)?.limit || '50';
@@ -856,6 +865,18 @@ export function registerEdgeFunctionProxy(app: any) {
     const qs = `?recordType=Customer&search=${encodeURIComponent(search)}&limit=${limit}&offset=${offset}`;
     const edgeUrl = `${EDGE_FUNCTIONS_URL}/companies${qs}`;
 
+    void forwardToEdgeFunction(req, res, next, edgeUrl);
+  });
+
+  // Customer Detail tabs: /api/customers/:id/<sub-resource> → customers edge fn.
+  // Dev used to fall through to Express, which covered five of these and had no
+  // route at all for financial-summary, payments, aging, supply-orders or
+  // activities. Production has always gone to the edge function, where the
+  // sub-segment was dropped and every tab got the customer object back.
+  app.get('/api/customers/:id/:sub', (req: Request, res: ExpressResponse, next: NextFunction) => {
+    const { id, sub } = req.params as { id: string; sub: string };
+    const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    const edgeUrl = `${EDGE_FUNCTIONS_URL}/customers/${encodeURIComponent(id)}/${encodeURIComponent(sub)}${query}`;
     void forwardToEdgeFunction(req, res, next, edgeUrl);
   });
 

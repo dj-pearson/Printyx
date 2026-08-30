@@ -54,6 +54,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
 
 interface Equipment {
   id: string;
@@ -119,11 +120,7 @@ export function CustomerEquipment({ customerId, customerName }: CustomerEquipmen
   const { data: equipment = [], isLoading } = useQuery<Equipment[]>({
     queryKey: [`/api/customers/${customerId}/equipment`],
     queryFn: async () => {
-      const response = await fetch(`/api/customers/${customerId}/equipment`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch equipment');
-      return response.json();
+      return apiRequest(`/api/customers/${customerId}/equipment`);
     },
   });
 
@@ -132,11 +129,7 @@ export function CustomerEquipment({ customerId, customerName }: CustomerEquipmen
     queryKey: [`/api/equipment/${selectedEquipment?.id}/meter-readings`],
     queryFn: async () => {
       if (!selectedEquipment?.id) return [];
-      const response = await fetch(`/api/equipment/${selectedEquipment.id}/meter-readings`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch meter readings');
-      return response.json();
+      return apiRequest(`/api/equipment/${selectedEquipment.id}/meter-readings`);
     },
     enabled: !!selectedEquipment?.id,
   });
