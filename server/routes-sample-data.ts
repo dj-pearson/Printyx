@@ -237,48 +237,11 @@ export function registerSampleDataRoutes(app: Express) {
     }
   });
 
-  // ──────────────────────────────────────────────
-  // Sales Trends (Sample Data)
-  // ──────────────────────────────────────────────
-
-  app.get('/api/sales-trends', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      const monthsNum = Number((req.query as any)?.months ?? 6);
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Sample trend data
-      const sampleTrends = Array.from(
-        { length: Number.isFinite(monthsNum) ? monthsNum : 6 },
-        (_, i) => {
-          const date = new Date();
-          date.setMonth(date.getMonth() - i);
-
-          return {
-            month: date.toISOString().substring(0, 7),
-            monthName: date.toLocaleDateString('en-US', {
-              month: 'long',
-              year: 'numeric',
-            }),
-            revenue: Math.floor(Math.random() * 50000) + 80000,
-            deals: Math.floor(Math.random() * 3) + 3,
-            units: Math.floor(Math.random() * 4) + 4,
-            pipelineValue: Math.floor(Math.random() * 100000) + 300000,
-            conversionRate: Math.floor(Math.random() * 20) + 25,
-            averageDealSize: Math.floor(Math.random() * 10000) + 25000,
-          };
-        },
-      ).reverse();
-
-      res.json(sampleTrends);
-    } catch (error) {
-      log.error('Error fetching sales trends:', error);
-      res.status(500).json({ message: 'Failed to fetch sales trends' });
-    }
-  });
+  // SALES TRENDS: removed (AUDIT-021). GET /api/sales-trends built six months of
+  // revenue, deal counts, unit counts, pipeline value, conversion rate and
+  // average deal size entirely from Math.random(), so every refresh produced a
+  // different history. No client tree named the path, the prefix is not proxied
+  // and no edge function serves it, so nothing lost a caller.
 
   // ──────────────────────────────────────────────
   // E-signature Integration Routes (Sample Data)

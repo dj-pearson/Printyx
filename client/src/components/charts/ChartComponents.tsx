@@ -755,8 +755,9 @@ export function ComposedChartComponent({
 interface MetricCardProps {
   title: string;
   value: string | number;
-  change?: number;
-  trend?: 'up' | 'down' | 'stable';
+  /** null means "no comparison available", and renders nothing. */
+  change?: number | null;
+  trend?: 'up' | 'down' | 'stable' | null;
   sparklineData?: number[];
   target?: number;
   format?: 'currency' | 'percentage' | 'number';
@@ -827,7 +828,7 @@ function MetricCard({
 
         <div className="flex items-baseline space-x-2 mb-2">
           <span className="text-2xl font-bold text-gray-900">{formatValue(value)}</span>
-          {change !== undefined && (
+          {change != null && Number.isFinite(change) && (
             <span
               className={cn(
                 'text-sm font-medium',
@@ -835,7 +836,7 @@ function MetricCard({
               )}
             >
               {change > 0 ? '+' : ''}
-              {change}%
+              {change.toFixed(1)}%
             </span>
           )}
         </div>

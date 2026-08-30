@@ -42,6 +42,33 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 // Remove local type definition - using shared schema types instead
 
+const MONTH_LABELS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/**
+ * Percentage change, or null when there is nothing to compare against.
+ *
+ * The API queries the real preceding window now (AUDIT-021); a customer whose
+ * meter history does not reach back that far gets no previous total, and
+ * returning 0 there would assert that nothing changed.
+ */
+function percentChange(current: number, previous: number): number | null {
+  if (!Number.isFinite(previous) || previous === 0) return null;
+  return ((current - previous) / previous) * 100;
+}
+
 interface UsageAnalyticsDashboardProps {
   customerId?: string;
   tenantId?: string;
@@ -121,12 +148,6 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
         name: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][peak.dayOfWeek],
         value: peak.averageVolume,
       })),
-
-      // Memoize hourly patterns data transformation
-      hourlyPatternsData: analytics.peakUsage.hourlyPeaks.map((peak: any) => ({
-        hour: `${peak.hour}:00`,
-        volume: peak.averageVolume,
-      })),
     };
   }, [analytics]);
 
@@ -141,28 +162,23 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
       efficiencyScoreFormatted: `${Math.round(analytics.metrics.efficiencyScore)}%`,
 
       // Calculate trend changes with memoization
-      averageDailyChange:
-        analytics.comparison.previous.averageDaily > 0
-          ? ((analytics.comparison.current.averageDaily -
-              analytics.comparison.previous.averageDaily) /
-              analytics.comparison.previous.averageDaily) *
-            100
-          : 0,
+      // null, not 0. The previous window is queried for real now, and a
+      // customer whose history does not reach back that far has no trend - 0%
+      // would assert that nothing changed.
+      averageDailyChange: percentChange(
+        analytics.comparison.current.averageDaily,
+        analytics.comparison.previous.averageDaily,
+      ),
 
-      totalCostChange:
-        analytics.comparison.previous.totalCost > 0
-          ? ((analytics.comparison.current.totalCost - analytics.comparison.previous.totalCost) /
-              analytics.comparison.previous.totalCost) *
-            100
-          : 0,
+      totalCostChange: percentChange(
+        analytics.comparison.current.totalCost,
+        analytics.comparison.previous.totalCost,
+      ),
 
-      efficiencyScoreChange:
-        analytics.comparison.previous.efficiencyScore > 0
-          ? ((analytics.comparison.current.efficiencyScore -
-              analytics.comparison.previous.efficiencyScore) /
-              analytics.comparison.previous.efficiencyScore) *
-            100
-          : 0,
+      efficiencyScoreChange: percentChange(
+        analytics.comparison.current.efficiencyScore,
+        analytics.comparison.previous.efficiencyScore,
+      ),
     };
   }, [analytics]);
 
@@ -263,19 +279,15 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
         <MetricCard
           title="Average Daily"
           value={Math.round(analytics.metrics.averageDaily).toLocaleString()}
-          change={
-            ((analytics.comparison.current.averageDaily -
-              analytics.comparison.previous.averageDaily) /
-              analytics.comparison.previous.averageDaily) *
-            100
-          }
+          change={memoizedMetrics?.averageDailyChange ?? null}
           trend={
-            analytics.comparison.current.averageDaily > analytics.comparison.previous.averageDaily
-              ? 'up'
-              : analytics.comparison.current.averageDaily <
-                  analytics.comparison.previous.averageDaily
-                ? 'down'
-                : 'stable'
+            memoizedMetrics?.averageDailyChange == null
+              ? null
+              : memoizedMetrics.averageDailyChange > 0
+                ? 'up'
+                : memoizedMetrics.averageDailyChange < 0
+                  ? 'down'
+                  : 'stable'
           }
           icon={<BarChart3 className="h-4 w-4" />}
           color={CHART_COLORS[1]}
@@ -285,17 +297,15 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
         <MetricCard
           title="Total Cost"
           value={`$${analytics.metrics.totalCost.toFixed(2)}`}
-          change={
-            ((analytics.comparison.current.totalCost - analytics.comparison.previous.totalCost) /
-              analytics.comparison.previous.totalCost) *
-            100
-          }
+          change={memoizedMetrics?.totalCostChange ?? null}
           trend={
-            analytics.comparison.current.totalCost > analytics.comparison.previous.totalCost
-              ? 'up'
-              : analytics.comparison.current.totalCost < analytics.comparison.previous.totalCost
-                ? 'down'
-                : 'stable'
+            memoizedMetrics?.totalCostChange == null
+              ? null
+              : memoizedMetrics.totalCostChange > 0
+                ? 'up'
+                : memoizedMetrics.totalCostChange < 0
+                  ? 'down'
+                  : 'stable'
           }
           icon={<DollarSign className="h-4 w-4" />}
           color={CHART_COLORS[2]}
@@ -305,20 +315,15 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
         <MetricCard
           title="Efficiency Score"
           value={`${Math.round(analytics.metrics.efficiencyScore)}%`}
-          change={
-            ((analytics.comparison.current.efficiencyScore -
-              analytics.comparison.previous.efficiencyScore) /
-              analytics.comparison.previous.efficiencyScore) *
-            100
-          }
+          change={memoizedMetrics?.efficiencyScoreChange ?? null}
           trend={
-            analytics.comparison.current.efficiencyScore >
-            analytics.comparison.previous.efficiencyScore
-              ? 'up'
-              : analytics.comparison.current.efficiencyScore <
-                  analytics.comparison.previous.efficiencyScore
-                ? 'down'
-                : 'stable'
+            memoizedMetrics?.efficiencyScoreChange == null
+              ? null
+              : memoizedMetrics.efficiencyScoreChange > 0
+                ? 'up'
+                : memoizedMetrics.efficiencyScoreChange < 0
+                  ? 'down'
+                  : 'stable'
           }
           icon={<Zap className="h-4 w-4" />}
           color={CHART_COLORS[3]}
@@ -561,24 +566,38 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
               </CardContent>
             </Card>
 
+            {/*
+              The "Peak Usage Hours" card that stood here is removed (AUDIT-021).
+              It charted a hardcoded block the API returned to every customer -
+              9am 120 pages, 10am 98, and so on - and there is no data behind it:
+              a meter submission carries a reading_date, not a time of day, so no
+              hourly profile can be derived. The API now says so in its
+              `unbacked` array rather than inventing one.
+            */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Peak Usage Hours
+                  <Calendar className="h-5 w-5" />
+                  Monthly Pattern
                 </CardTitle>
-                <CardDescription>Average volume by hour of day</CardDescription>
+                <CardDescription>Average volume by month, from your meter reads</CardDescription>
               </CardHeader>
               <CardContent>
-                <LineChart
-                  data={analytics.peakUsage.hourlyPeaks.map((peak: any) => ({
-                    hour: `${peak.hour}:00`,
-                    volume: peak.averageVolume,
-                  }))}
-                  xDataKey="hour"
-                  lines={[{ dataKey: 'volume', name: 'Avg Volume', color: CHART_COLORS[1] }]}
-                  height={window.innerWidth < 640 ? 200 : 250}
-                />
+                {analytics.peakUsage.monthlyPeaks?.length ? (
+                  <LineChart
+                    data={analytics.peakUsage.monthlyPeaks.map((peak: any) => ({
+                      month: MONTH_LABELS[peak.month - 1] ?? String(peak.month),
+                      volume: peak.averageVolume,
+                    }))}
+                    xDataKey="month"
+                    lines={[{ dataKey: 'volume', name: 'Avg Volume', color: CHART_COLORS[1] }]}
+                    height={window.innerWidth < 640 ? 200 : 250}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Not enough meter history in this range to show a monthly pattern.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
