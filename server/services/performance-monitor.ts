@@ -5,6 +5,7 @@
 import { sql } from 'drizzle-orm';
 import { db, pool } from '../db';
 import { createModuleLogger } from '../lib/logger';
+import { getQueryStats } from '../lib/db-logger';
 const log = createModuleLogger('performance-monitor');
 
 interface PerformanceMetric {
@@ -35,6 +36,8 @@ interface DatabasePerformance {
     duration: number;
     timestamp: Date;
   }>;
+  /** How many queries crossed db-logger's threshold; the list above is empty. */
+  slowQueryCount: number | null;
 }
 
 interface AIPerformance {
@@ -163,6 +166,9 @@ class PerformanceMonitor {
       // reads as a measured 50ms.
       averageQueryTime,
       slowQueries: this.getSlowQueries(),
+      // What IS measured: db-logger counts queries over its threshold without
+      // retaining them, so the count is real even though the list is empty.
+      slowQueryCount: getQueryStats().slowQueries ?? null,
     };
   }
 
@@ -417,21 +423,24 @@ class PerformanceMonitor {
     return recommendations;
   }
 
+  /**
+   * The slow queries this process has recorded.
+   *
+   * Empty, until something retains them. server/lib/db-logger.ts COUNTS queries
+   * over SLOW_QUERY_THRESHOLD_MS but keeps no text or timestamp, so the count is
+   * all that exists - it is reported as slowQueryCount beside this list rather
+   * than being spread into invented entries.
+   *
+   * This used to return two hand-written rows: a 1250ms query against ai_tasks,
+   * a table that exists in no schema and no migration, and an 890ms one against
+   * calendar_events. The rest of getDatabasePerformance had already been
+   * corrected to answer null rather than guess ("a number here would be a
+   * guess"); this was the one branch still making them up, and the caller at
+   * line 397 branches on `slowQueries.length > 5`, so the fiction fed a
+   * recommendation too.
+   */
   private getSlowQueries(): Array<{ query: string; duration: number; timestamp: Date }> {
-    // Mock slow queries - in production, this would come from actual DB monitoring
-    return [
-      {
-        query: 'SELECT * FROM ai_tasks WHERE tenant_id = ? AND status = ?',
-        duration: 1250,
-        timestamp: new Date(Date.now() - 5 * 60 * 1000),
-      },
-      {
-        query:
-          'SELECT COUNT(*) FROM calendar_events WHERE user_id = ? AND start_time BETWEEN ? AND ?',
-        duration: 890,
-        timestamp: new Date(Date.now() - 15 * 60 * 1000),
-      },
-    ];
+    return [];
   }
 
   private async getMemoryUsage(): Promise<number> {

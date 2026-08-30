@@ -2,6 +2,13 @@
 // WAREHOUSE REPORTING SERVICE
 // Business logic for warehouse team reports (Level 2+ - FPY metrics)
 // =====================================================================
+//
+// UNREACHABLE (CR-017 follow-on). Its only caller is
+// server/services/team-alert-service.ts, which nothing imports either - see the
+// header there. The other eight *-reporting-service.ts files were deleted in
+// that pass, superseded by supabase/functions/reports/, whose handlers say so
+// in their own headers and which builds every query through PostgREST rather
+// than raw SQL. This one survives only to keep team-alert-service compiling.
 
 import { db } from '../db';
 import { sql, and, eq, gte, lte, desc, inArray } from 'drizzle-orm';

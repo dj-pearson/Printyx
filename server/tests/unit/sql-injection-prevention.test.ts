@@ -27,15 +27,26 @@ describe('SEC-001: SQL Injection Prevention', () => {
   // Edge-function SQL runs via .rpc() with typed parameters — no string
   // interpolation, so the injection surface is gone.
 
+  // Eight of the ten reporting services this block scanned are DELETED (CR-017
+  // follow-on): director, executive, sales, sales-manager, sales-supervisor,
+  // service, service-manager and team. They were orphans - nothing in any tree
+  // imported them but this test - and supabase/functions/reports/ says so in its
+  // own headers ("Replaces server/routes/<x>-reports-api.ts + server/services/
+  // <x>-reporting-service.ts"). Six of the eight also queried activities, quotas,
+  // sales_quotas or parts_usage, tables that exist in no schema and no migration.
+  //
+  // The injection surface went with them. The reports edge function builds every
+  // query through PostgREST's builder - no sql.raw, no ARRAY literal assembled
+  // from a string, no interpolation - which is the same reason the
+  // routes-sales-pipeline block above was removed rather than repointed.
+  //
+  // Two services survive because server/services/team-alert-service.ts calls
+  // their getTeamQuickStats: warehouse and service-supervisor. That cluster is
+  // itself unreachable (nothing imports team-alert-service either) and is
+  // annotated rather than deleted, per PROD-008c. service-supervisor is the one
+  // of the two that carried raw SQL, so it stays under this guard.
   describe('HIGH: Reporting services - No ARRAY construction via sql.raw()', () => {
-    const reportingServices = [
-      'services/sales-supervisor-reporting-service.ts',
-      'services/sales-manager-reporting-service.ts',
-      'services/sales-reporting-service.ts',
-      'services/service-supervisor-reporting-service.ts',
-      'services/service-manager-reporting-service.ts',
-      'services/service-reporting-service.ts',
-    ];
+    const reportingServices = ['services/service-supervisor-reporting-service.ts'];
 
     for (const service of reportingServices) {
       it(`${service} should not use sql.raw() to construct ARRAY literals`, () => {

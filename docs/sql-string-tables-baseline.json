@@ -1,6 +1,6 @@
 {
   "note": "Table names inside raw SQL strings in server/ that exist in no Drizzle schema and no migration. A query naming one is a permanent runtime error that tsc, check:phantom-cols and check:phantom-tables all miss. A TODO list, not settled debt - most of the bulk is database-updater/seeders/, which STORE SQL for report definitions rather than executing it. See scripts/check-sql-string-tables.mjs.",
-  "total": 90,
+  "total": 79,
   "references": [
     "server/database-updater/seeders/kpi-seeder.ts  cycle_counts",
     "server/database-updater/seeders/kpi-seeder.ts  deliveries",
@@ -80,17 +80,6 @@
     "server/database-updater/seeders/report-seeder.ts  warehouse_daily_metrics",
     "server/database-updater/seeders/report-seeder.ts  warehouse_productivity_metrics",
     "server/database-updater/seeders/report-seeder.ts  work_orders",
-    "server/services/director-reporting-service.ts  sales_quotas",
-    "server/services/performance-monitor.ts  ai_tasks",
-    "server/services/sales-manager-reporting-service.ts  activities",
-    "server/services/sales-manager-reporting-service.ts  sales_quotas",
-    "server/services/sales-reporting-service.ts  activities",
-    "server/services/sales-reporting-service.ts  quotas",
-    "server/services/sales-supervisor-reporting-service.ts  activities",
-    "server/services/sales-supervisor-reporting-service.ts  quotas",
-    "server/services/service-reporting-service.ts  parts_usage",
-    "server/services/team-reporting-service.ts  activities",
-    "server/services/team-reporting-service.ts  quotas",
     "server/tests/unit/error-sanitization.test.ts  payments"
   ]
 }
