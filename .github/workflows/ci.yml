@@ -51,6 +51,8 @@ jobs:
         run: npm run check:tenant-id-types
       - name: Raw-SQL phantom-table ratchet (CR-017)
         run: npm run check:sql-string-tables
+      - name: Server orphaned-file ratchet (AUDIT-034)
+        run: npm run check:server-orphans
       - name: Nav-target ratchet (AUDIT-014)
         run: npm run check:nav
       - name: Orphaned-file ratchet (AUDIT-018)

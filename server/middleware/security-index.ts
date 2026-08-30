@@ -3,6 +3,33 @@
  *
  * Central export point for all security-related middleware.
  * Provides a unified interface for security features.
+ *
+ * NOTHING IMPORTS THIS FILE (AUDIT-034), and it is the only place three of the
+ * controls below are ever applied. Confirmed by walking the import graph from
+ * server/index.ts, not by grep: `enforceSessionTimeout`,
+ * `extendSessionOnActivity`, `enforceIpWhitelist`, `requireMfaForAdmins` and
+ * `requireMfaVerification` are referenced by applySecurityMiddleware here and
+ * by no mount site anywhere else. So:
+ *
+ *   - Sessions never time out on inactivity. routes-session-management.ts
+ *     imports session-timeout, which is why that file is not itself reported as
+ *     an orphan - but it takes the HELPERS (getActiveSessions,
+ *     terminateSession, logoutOtherSessions, getSessionConfig) and not the
+ *     enforcement middleware. File-reachable is not middleware-mounted.
+ *   - No IP whitelist is enforced.
+ *   - No privileged user is ever required to hold MFA, and
+ *     requireMfaVerification gates nothing. SEC-MFA-001 fixed the MANAGEMENT
+ *     side (disabling MFA or regenerating codes now needs a second factor);
+ *     enforcement - requiring an admin to have it at all - is this.
+ *
+ * apiVersioning and legacyRouteSupport are the exception: server/routes.ts
+ * mounts them directly, so API versioning does work.
+ *
+ * This is annotated rather than wired because mounting it is a behaviour
+ * change, not cleanup. requireMfaForAdmins reads per-tenant settings and 403s
+ * an admin without MFA; enforceSessionTimeout writes to security_sessions.
+ * Turning either on needs a decision and a real database to verify against,
+ * which is AUDIT-034.
  */
 
 // MFA Enforcement
