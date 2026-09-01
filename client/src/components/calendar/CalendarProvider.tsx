@@ -30,6 +30,10 @@ interface CalendarEvent {
 
 interface CalendarContextType {
   providers: CalendarProvider[];
+  /** The connection list is still loading. Not the same as "none connected". */
+  isLoadingProviders: boolean;
+  /** The connection list could not be read, so `providers` says nothing. */
+  providersError: boolean;
   connectProvider: (type: 'microsoft' | 'google' | 'outlook') => Promise<void>;
   disconnectProvider: (id: string) => Promise<void>;
   createEvent: (event: CalendarEvent, providerId: string) => Promise<string>;
@@ -85,7 +89,15 @@ const PROVIDER_LABEL: Record<string, string> = {
 export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) => {
   const queryClient = useQueryClient();
 
-  const { data: connections = [] } = useQuery<CalendarConnectionRow[]>({
+  // The load and error states go through the context rather than being dropped
+  // here. An empty array on a failed request renders as "no calendar connected",
+  // which is a different claim from "we could not find out" - and the user acts
+  // on it by connecting a provider they have already connected.
+  const {
+    data: connections = [],
+    isLoading: isLoadingProviders,
+    isError: providersError,
+  } = useQuery<CalendarConnectionRow[]>({
     queryKey: ['/api/meetings/calendar/connections'],
   });
 
@@ -209,6 +221,8 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
     <CalendarContext.Provider
       value={{
         providers,
+        isLoadingProviders,
+        providersError,
         connectProvider,
         disconnectProvider,
         createEvent,

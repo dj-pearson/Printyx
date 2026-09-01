@@ -93,12 +93,18 @@ describe('the findings are recorded as findings', () => {
     ss.map((s) => `${d}/${s}`),
   );
 
-  it('holds the deep shapes the extension found', () => {
-    // equipment/:id/meter-readings was the worked example here until PA-052
-    // closed it (a real branch in the equipment fn + the Express mirror), so
-    // it is deliberately gone from the list. The shape entries remain.
-    expect(flat).not.toContain('equipment/:id/meter-readings');
-    expect(flat.filter((p) => p.includes('/:id/')).length).toBeGreaterThanOrEqual(19);
+  it('has no deep shapes left in the baseline', () => {
+    // This used to assert at least 19 of them, which was an assertion about
+    // DEBT: equipment/:id/meter-readings was the worked example, and the rest
+    // were the same shape elsewhere. PA-052 and the ports after it closed every
+    // one, so the count is 0 and asserting a floor made the story's own success
+    // look like a regression.
+    //
+    // The guard that FINDS them is locked by the describe above, which is the
+    // part that has to survive. A new deep shape appearing here is not a silent
+    // pass either way - check:edge-coverage gates the baseline against growth.
+    expect(flat.filter((p) => p.includes('/:id/'))).toEqual([]);
+    expect(flat.length).toBeGreaterThan(0);
   });
 
   it('keeps the depth-1 entries alongside them in one list', () => {

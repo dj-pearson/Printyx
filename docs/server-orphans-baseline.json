@@ -1,6 +1,6 @@
 {
   "note": "server/*.ts files not reachable from server/index.ts by any static or dynamic import. Dead product code: it cannot run. \"(test-only)\" marks a file reached only from server/tests, which is dead product code a test still pins. A TODO list, not settled debt - each entry is wire it, delete it, or record why it is loaded some other way. See scripts/check-server-orphans.mjs.",
-  "total": 150,
+  "total": 149,
   "orphans": [
     "server/auth-setup.ts",
     "server/cli/company-dedup-cli.ts",
@@ -54,7 +54,6 @@
     "server/routes-mobile.ts",
     "server/routes-pagination.ts",
     "server/routes-preventive-maintenance.ts",
-    "server/routes-remote-monitoring.ts",
     "server/routes-security-compliance.ts",
     "server/routes-tenant-onboarding.ts (test-only)",
     "server/routes-user-lifecycle.ts",

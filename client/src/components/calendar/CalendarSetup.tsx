@@ -13,7 +13,8 @@ import { useCalendar } from './CalendarProvider';
 import { Calendar, Settings, Link, Unlink, CheckCircle, AlertCircle } from 'lucide-react';
 
 export const CalendarSetup: React.FC = () => {
-  const { providers, connectProvider, disconnectProvider } = useCalendar();
+  const { providers, connectProvider, disconnectProvider, isLoadingProviders, providersError } =
+    useCalendar();
   const [isSetupDialogOpen, setIsSetupDialogOpen] = useState(false);
 
   const getProviderIcon = (type: string) => {
@@ -125,9 +126,13 @@ export const CalendarSetup: React.FC = () => {
             <div className="space-y-2">
               <h4 className="font-medium">Integration Status</h4>
               <div className="text-sm text-gray-600">
-                {connectedCount > 0
-                  ? `${connectedCount} calendar provider${connectedCount > 1 ? 's' : ''} connected`
-                  : 'No calendar providers connected'}
+                {providersError
+                  ? 'Could not read your calendar connections'
+                  : isLoadingProviders
+                    ? 'Checking calendar connections...'
+                    : connectedCount > 0
+                      ? `${connectedCount} calendar provider${connectedCount > 1 ? 's' : ''} connected`
+                      : 'No calendar providers connected'}
               </div>
             </div>
 

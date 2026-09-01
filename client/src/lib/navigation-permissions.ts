@@ -257,9 +257,14 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/asset-management': {
     requiredPermissions: ['service.equipment.view'],
   },
+  // AUDIT-030: /remote-monitoring redirects to /fleet-monitoring. The entry
+  // stays because both sidebars and old bookmarks still name the path, and it
+  // MIRRORS the target's gate exactly - a redirect that advertises a page the
+  // user is then denied is worse than no link, and a looser source would let
+  // someone reach the target on terms the target does not accept.
   '/remote-monitoring': {
-    requiredPermissions: ['service.equipment.view', 'service.equipment.configure'],
-    minLevel: 2,
+    requiredPermissions: ['service.equipment.view'],
+    minLevel: 3,
   },
   '/fleet-monitoring': {
     requiredPermissions: ['service.equipment.view'],

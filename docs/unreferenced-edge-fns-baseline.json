@@ -1,6 +1,6 @@
 {
   "note": "Edge functions nothing reaches: no client tree names /api/<its-directory-name>, no crmProxies alias or server.ts override maps a segment onto it, and no pg_cron job in drizzle/cron/*.sql posts to it. Each is a back end with no caller - wire it, delete it, or record that it is reached server-to-server. A TODO list, not settled debt. See scripts/check-unreferenced-edge-fns.mjs.",
-  "total": 83,
+  "total": 84,
   "ofFunctions": 275,
   "unreferenced": [
     "ai-documentation",
@@ -64,6 +64,7 @@
     "pipeline",
     "pricing-rules",
     "projects-enhanced",
+    "remote-monitoring",
     "renewal-activities",
     "renewal-playbooks",
     "rep-capacity",

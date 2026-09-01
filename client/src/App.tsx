@@ -255,7 +255,6 @@ const CommissionManagement = React.lazy(() => import('@/pages/CommissionManageme
 const SalesPerformanceAnalytics = React.lazy(() => import('@/pages/SalesPerformanceAnalytics'));
 const ServiceAnalytics = React.lazy(() => import('@/pages/ServiceAnalytics'));
 const MobileFieldOperations = React.lazy(() => import('@/pages/MobileFieldOperations'));
-const RemoteMonitoring = React.lazy(() => import('@/pages/RemoteMonitoring'));
 const FleetMonitoringDashboard = React.lazy(() => import('@/pages/FleetMonitoringDashboard'));
 const DemoScheduling = React.lazy(() => import('@/pages/DemoScheduling'));
 const SocialMediaGenerator = React.lazy(() => import('@/pages/SocialMediaGenerator'));
@@ -780,7 +779,17 @@ function Router() {
                 <Route path="/commission-management" component={CommissionManagement} />
                 <Route path="/sales-command-center" component={SalesCommandCenter} />
                 <Route path="/sales-performance-analytics" component={SalesPerformanceAnalytics} />
-                <Route path="/remote-monitoring" component={RemoteMonitoring} />
+                {/*
+                  AUDIT-030: Remote Monitoring was a fixture twin of Fleet
+                  Monitoring - same fleet, same three tables, 1,176 lines bound
+                  to a shape no endpoint produced. Its five paths 404'd in
+                  production and two of them were answered in dev by hardcoded
+                  equipment. The route is kept as a redirect because
+                  navigation-permissions and both sidebars still name it.
+                */}
+                <Route path="/remote-monitoring">
+                  {() => <LegacyRedirect to="/fleet-monitoring" />}
+                </Route>
                 <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
                 <Route path="/service-analytics" component={ServiceAnalytics} />
                 <Route path="/workflow-automation" component={WorkflowAutomation} />

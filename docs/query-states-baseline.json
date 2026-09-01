@@ -1,6 +1,6 @@
 {
   "note": "CR-033 query-state ratchet. scripts/check-query-states.mjs fails CI when a REACHABLE component calls useQuery and neither reads isError nor uses the shared QueryState / QueryStates wrapper (client/src/components/ui/query-state.tsx). Such a component renders the same markup whether the request succeeded, is in flight, or failed. Shrink this list, never grow it: node scripts/check-query-states.mjs --update-baseline.",
-  "count": 207,
+  "count": 204,
   "allowed": [
     "client/src/components/ActivityTimeline.tsx",
     "client/src/components/ContactManager.tsx",
@@ -59,7 +59,6 @@
     "client/src/pages/BillingAnalytics.tsx",
     "client/src/pages/BillingRules.tsx",
     "client/src/pages/BookingPages.tsx",
-    "client/src/pages/BusinessProcessOptimization.tsx",
     "client/src/pages/CSVImportWizard.tsx",
     "client/src/pages/ChartOfAccounts.tsx",
     "client/src/pages/CommissionManagement.tsx",
@@ -92,7 +91,6 @@
     "client/src/pages/FinancialForecasting.tsx",
     "client/src/pages/FleetMonitoringDashboard.tsx",
     "client/src/pages/GPT5Dashboard.tsx",
-    "client/src/pages/IncidentResponseSystem.tsx",
     "client/src/pages/IntegrationHub.tsx",
     "client/src/pages/Invoices.tsx",
     "client/src/pages/JournalEntries.tsx",
@@ -146,7 +144,6 @@
     "client/src/pages/QuoteProposalGeneration.tsx",
     "client/src/pages/QuoteView.tsx",
     "client/src/pages/QuotesManagement.tsx",
-    "client/src/pages/RemoteMonitoring.tsx",
     "client/src/pages/RoleManagement.tsx",
     "client/src/pages/RootAdminDashboard.tsx",
     "client/src/pages/RootAdminSEO.tsx",

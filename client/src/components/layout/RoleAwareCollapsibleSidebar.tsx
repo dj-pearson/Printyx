@@ -334,7 +334,6 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Technicians', path: '/technician-management', icon: Users },
       { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
       { title: 'Preventive Maintenance', path: '/preventive-maintenance', icon: Calendar },
-      { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor },
       { title: 'Fleet Monitoring', path: '/fleet-monitoring', icon: Activity },
       { title: 'Monitoring Clients', path: '/monitoring-clients', icon: Monitor },
       { title: 'Supply Runway', path: '/supply-runway', icon: Activity },

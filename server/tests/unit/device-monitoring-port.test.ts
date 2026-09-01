@@ -57,7 +57,17 @@ describe('contract', () => {
   });
 
   it('never selects the manufacturer column, which does not exist', () => {
-    expect(edge).not.toMatch(/manufacturer(?!: null)/);
+    // Scoped to device_registrations. A bare search for the word fails now that
+    // the same function reads manufacturer_integrations, which is a real table
+    // with a real manufacturer column - the defect was always about WHICH table
+    // the projection sits on, not about the word.
+    const chains = [...edge.matchAll(/\.from\('device_registrations'\)/g)];
+    expect(chains.length).toBeGreaterThan(0);
+    for (const m of chains) {
+      const chain = edge.slice(m.index ?? 0, (m.index ?? 0) + 400);
+      const select = chain.match(/\.select\(([\s\S]*?)\)/);
+      if (select) expect(select[1]).not.toMatch(/manufacturer/);
+    }
     expect(existsSync(join(repo, 'server/routes-device-monitoring.ts'))).toBe(false);
   });
 

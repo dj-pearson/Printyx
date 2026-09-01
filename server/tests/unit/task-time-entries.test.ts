@@ -43,9 +43,16 @@ describe('every endpoint TaskTimeTracker calls is dispatched', () => {
     expect(DISPATCH).toMatch(/parts\[1\] === 'time-entry' \|\| parts\[1\] === 'time'/);
   });
 
-  it('routes the timer verbs', () => {
+  it('routes the timer verbs, and only the two that exist', () => {
     expect(DISPATCH).toMatch(/parts\[1\] === 'timer'/);
-    expect(DISPATCH).toContain('`timer-${parts[2]}`');
+    // This used to assert `timer-${parts[2]}`, which interpolated any third
+    // segment into the op name and relied on the handler returning null for the
+    // ones it did not know. PA-052 enumerated the verbs instead, so they are
+    // named somewhere a reader - and check:edge-coverage - can see them.
+    expect(DISPATCH).toMatch(
+      /parts\[2\] === 'start' \? 'start' : parts\[2\] === 'stop' \? 'stop' : null/,
+    );
+    expect(DISPATCH).toContain('`timer-${verb}`');
     expect(HANDLER).toContain("op === 'timer-start'");
     expect(HANDLER).toContain("op === 'timer-stop'");
   });
