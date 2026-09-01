@@ -11,6 +11,14 @@ import { CalculatorResults } from '@/components/calculator/CalculatorResults';
 import { EmailCaptureModal } from '@/components/calculator/EmailCaptureModal';
 import type { FleetInputs, CalculatorSession } from '@/components/calculator/types';
 import { v4 as uuidv4 } from 'uuid';
+import { getApiUrl } from '@/lib/config';
+
+// AUDIT-023: raw fetch on a PUBLIC page must still go through getApiUrl. In
+// production getApiUrl rewrites /api/x to the functions host; a bare relative
+// fetch stays on the Pages origin, where nothing serves it - so every call here
+// worked in dev and 404'd for a real visitor. Same defect PublicBooking carried.
+// apiRequest is not used because this page has no session and sends no Bearer
+// header; getApiUrl is the part that matters.
 
 const STEPS = [
   { id: 1, title: 'Fleet Information', description: 'Tell us about your devices' },
@@ -37,7 +45,7 @@ export default function PrintCostCalculator() {
   // Calculate results mutation
   const calculateMutation = useMutation({
     mutationFn: async (data: FleetInputs) => {
-      const response = await fetch('/api/public/calculator/sessions', {
+      const response = await fetch(getApiUrl('/api/public/calculator/sessions'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -67,7 +75,7 @@ export default function PrintCostCalculator() {
 
   const trackEvent = async (eventType: string, eventData: Record<string, any>) => {
     try {
-      await fetch('/api/public/calculator/track/event', {
+      await fetch(getApiUrl('/api/public/calculator/track/event'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -112,10 +120,11 @@ export default function PrintCostCalculator() {
     trackEvent('view_results_preview', {});
   };
 
-  const handleDownloadPDF = () => {
-    // Trigger email capture modal
+  const handleRequestAnalysis = () => {
+    // Opens the contact form. The event used to be 'pdf_download_attempt', which
+    // named a download that never existed on either side of this page.
     setShowEmailModal(true);
-    trackEvent('pdf_download_attempt', {});
+    trackEvent('analysis_requested', {});
   };
 
   const isStepValid = () => {
@@ -169,7 +178,7 @@ export default function PrintCostCalculator() {
 
         <CalculatorResults
           session={sessionData}
-          onDownloadPDF={handleDownloadPDF}
+          onRequestAnalysis={handleRequestAnalysis}
           onBookDemo={() => trackEvent('book_demo_click', {})}
         />
 

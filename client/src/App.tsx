@@ -77,6 +77,7 @@ const DynamicPricingAIBlog = React.lazy(
 
 // Conversion pages
 const ROICalculator = React.lazy(() => import('@/pages/marketing/ROICalculator'));
+const PrintCostCalculator = React.lazy(() => import('@/pages/PrintCostCalculator'));
 const CaseStudies = React.lazy(() => import('@/pages/marketing/CaseStudies'));
 const CompetitiveBattleCard = React.lazy(() => import('@/pages/marketing/CompetitiveBattleCard'));
 
@@ -581,6 +582,15 @@ function Router() {
 
           {/* Conversion pages */}
           <Route path="/roi-calculator" component={ROICalculator} />
+          {/*
+            AUDIT-023: the page, its lead capture and an unauthenticated edge
+            function all existed with nothing linking to any of them. It sits
+            beside /roi-calculator because it is the same kind of thing - a
+            public tool a visitor completes before talking to anyone - and the
+            page names no path of its own, so this URL is a choice, not a
+            recovery.
+          */}
+          <Route path="/print-cost-calculator" component={PrintCostCalculator} />
           <Route path="/case-studies" component={CaseStudies} />
           <Route path="/battle-card" component={CompetitiveBattleCard} />
 

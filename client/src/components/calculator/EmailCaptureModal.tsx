@@ -18,8 +18,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, CheckCircle, Download } from 'lucide-react';
+import { Loader2, CheckCircle, Mail } from 'lucide-react';
 import { USER_ROLES } from './types';
+import { getApiUrl } from '@/lib/config';
 
 interface EmailCaptureModalProps {
   open: boolean;
@@ -47,7 +48,7 @@ export function EmailCaptureModal({
 
   const captureMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await fetch('/api/public/calculator/leads', {
+      const response = await fetch(getApiUrl('/api/public/calculator/leads'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -64,12 +65,11 @@ export function EmailCaptureModal({
     },
     onSuccess: () => {
       setSubmitted(true);
-      // Track PDF download
-      fetch('/api/public/calculator/track/pdf-download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionKey }),
-      });
+      // AUDIT-023: the pdf-download event is NOT fired here. It sets
+      // calculator_sessions.pdf_downloaded, and no PDF is generated or sent by
+      // anything - marking the column true would have made a fabricated figure
+      // out of a real column. The page's own trackEvent('email_captured') is
+      // what happened.
 
       // Auto-close after showing success
       setTimeout(() => {
@@ -95,22 +95,21 @@ export function EmailCaptureModal({
                 <CheckCircle className="h-12 w-12 text-green-600" />
               </div>
             </div>
-            <h3 className="text-2xl font-bold mb-2">Report on its way!</h3>
+            <h3 className="text-2xl font-bold mb-2">Got it - we'll be in touch</h3>
             <p className="text-gray-600 mb-4">
-              Check your email for your comprehensive print fleet analysis report.
+              Your details are with our team. Someone will follow up with a detailed analysis of
+              your fleet.
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-left">
-              <p className="font-medium mb-2">What's in your inbox:</p>
+              <p className="font-medium mb-2">Meanwhile, your results are on this page:</p>
               <ul className="space-y-1 text-gray-700">
-                <li>✓ 12-page detailed PDF report</li>
-                <li>✓ Device-level cost breakdown</li>
-                <li>✓ Implementation roadmap</li>
-                <li>✓ ROI calculator spreadsheet</li>
-                <li>✓ First action step to save money today</li>
+                <li>Device-level cost breakdown</li>
+                <li>Where your fleet sits against industry benchmarks</li>
+                <li>The savings each change is worth</li>
               </ul>
             </div>
             <p className="text-xs text-gray-500 mt-4">
-              Didn't receive it? Check your spam folder or contact support.
+              Close this to go back to your results. Nothing is emailed automatically.
             </p>
           </div>
         </DialogContent>
@@ -123,11 +122,18 @@ export function EmailCaptureModal({
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Download className="h-6 w-6" />
-            Download Your Complete Fleet Analysis Report
+            <Mail className="h-6 w-6" />
+            Get a Fleet Analysis From Our Team
           </DialogTitle>
+          {/*
+            The subtitle claimed 892 print managers and an $18K average saving.
+            Nothing counts either figure - calculator_leads holds the sessions
+            but no code aggregates them - so a number printed here would be
+            invented, and inventing a peer count is what makes the rest of the
+            page hard to believe.
+          */}
           <DialogDescription>
-            Join 892 print managers who've identified an average of $18K in annual savings
+            Tell us where to send it and a specialist will work through your numbers.
           </DialogDescription>
         </DialogHeader>
 
@@ -223,15 +229,18 @@ export function EmailCaptureModal({
             </label>
           </div>
 
+          {/*
+            AUDIT-023: this listed six deliverables - a 12-page PDF, an RFP
+            template, two spreadsheets - none of which any code produces, and
+            the lead capture sends no email at all. What a visitor actually gets
+            is a person, so that is what it says.
+          */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h4 className="font-semibold text-green-900 mb-2">📥 Instant access to:</h4>
+            <h4 className="font-semibold text-green-900 mb-2">What happens next</h4>
             <ul className="text-sm text-green-800 space-y-1">
-              <li>✓ Complete 12-page PDF Fleet Analysis Report</li>
-              <li>✓ Device-by-device cost breakdown</li>
-              <li>✓ Detailed savings roadmap with implementation steps</li>
-              <li>✓ RFP template for managed print services</li>
-              <li>✓ Supply cost tracking spreadsheet</li>
-              <li>✓ ROI calculator for new equipment</li>
+              <li>A specialist reviews the numbers you just entered</li>
+              <li>They follow up with a fleet analysis written for your setup</li>
+              <li>Your results stay on this page in the meantime</li>
             </ul>
           </div>
 
@@ -257,8 +266,8 @@ export function EmailCaptureModal({
                 </>
               ) : (
                 <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Get My Report
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Me the Analysis
                 </>
               )}
             </Button>
