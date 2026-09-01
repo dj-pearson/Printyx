@@ -38,10 +38,9 @@ import {
   Zap,
   RefreshCw,
   Shield,
-  Activity,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import { apiRequest, extractRecords, queryClient } from '@/lib/queryClient';
 import { ApolloCredentialManager } from '@/components/integrations/ApolloCredentialManager';
 
 interface Integration {
@@ -71,18 +70,34 @@ interface WebhookEndpoint {
   successRate: number | null;
 }
 
+interface IntegrationTestResult {
+  success?: boolean;
+  message?: string;
+  // False whenever the backend only inspected stored configuration. Both
+  // backends set it that way for every type they have no provider client for.
+  connectivityVerified?: boolean;
+  checkedFields?: string[];
+  missingFields?: string[];
+}
+
 export default function SystemIntegrations() {
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: integrations, isLoading } = useQuery<Integration[]>({
+  // PA-052: the two backends disagree about this response. Express returns a bare
+  // array; the integrations edge function returns { data, total, page, limit }, so
+  // `integrations.filter(...)` below threw "filter is not a function" and blanked
+  // the whole page in production. extractRecords tolerates either.
+  const { data: integrationsResponse, isLoading } = useQuery({
     queryKey: ['/api/integrations'],
   });
+  const integrations = extractRecords<Integration>(integrationsResponse);
 
-  const { data: webhooks } = useQuery<WebhookEndpoint[]>({
+  const { data: webhooksResponse } = useQuery({
     queryKey: ['/api/webhooks'],
   });
+  const webhooks = extractRecords<WebhookEndpoint>(webhooksResponse);
 
   const connectIntegration = useMutation({
     mutationFn: async (data: { integrationId: string; config: any }) => {
@@ -123,32 +138,33 @@ export default function SystemIntegrations() {
     },
   });
 
-  const testIntegration = useMutation({
+  // The server says what it checked; repeat that rather than asserting the
+  // integration "is working correctly" — neither backend contacts the provider
+  // on every type, so a blanket success claim would not be true.
+  const testIntegration = useMutation<IntegrationTestResult, Error, string>({
     mutationFn: async (integrationId: string) => {
       return apiRequest(`/api/integrations/${integrationId}/test`, {
         method: 'POST',
       });
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast({
-        title: 'Test Successful',
-        description: 'The integration is working correctly.',
+        title: result?.success === false ? 'Test Failed' : 'Test Complete',
+        description: result?.message ?? 'The integration test returned no detail.',
+        variant: result?.success === false ? 'destructive' : 'default',
       });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: 'Test Failed',
-        description: 'The integration test failed. Please check your configuration.',
+        description: error?.message ?? 'The integration test could not be run.',
         variant: 'destructive',
       });
     },
   });
 
-  // Use real database integrations data
-  const displayIntegrations = integrations || [];
-
-  // Use real database webhooks data
-  const displayWebhooks = webhooks || [];
+  const displayIntegrations = integrations;
+  const displayWebhooks = webhooks;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -187,7 +203,7 @@ export default function SystemIntegrations() {
     >
       <div className="space-y-6">
         {/* Overview Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <Card>
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
@@ -242,19 +258,9 @@ export default function SystemIntegrations() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Success Rate</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">99.2%</p>
-                </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* A "Success Rate" card sat here reading a typed-in 99.2%. Nothing on
+              either backend measures per-integration success rate for this page,
+              so it is gone rather than relabelled. */}
         </div>
 
         {/* Main Content */}

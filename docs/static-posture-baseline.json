@@ -40,7 +40,6 @@
     "client/src/pages/ExecutiveDashboard.tsx  <span className=\"font-bold\">62%</span>",
     "client/src/pages/ExecutiveDashboard.tsx  <span className=\"font-bold\">78%</span>",
     "client/src/pages/ExecutiveDashboard.tsx  <span className=\"font-bold\">85%</span>",
-    "client/src/pages/MobileFieldOperations.tsx  <div className=\"text-2xl font-bold\">98.5%</div>",
-    "client/src/pages/SystemIntegrations.tsx  <p className=\"text-2xl sm:text-3xl font-bold text-gray-900\">99.2%</p>"
+    "client/src/pages/MobileFieldOperations.tsx  <div className=\"text-2xl font-bold\">98.5%</div>"
   ]
 }

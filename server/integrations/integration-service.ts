@@ -292,6 +292,35 @@ export class IntegrationService {
       );
   }
 
+  /**
+   * Disconnect an integration: revoke the stored credentials and stop syncing,
+   * keeping the row so its metrics and API logs stay attributable.
+   *
+   * PA-052: this is what SystemIntegrations.tsx's Disconnect button means. It is
+   * NOT deleteIntegration above — that drops the row, orphaning integration_metrics
+   * and integration_api_logs. 'disconnected' is the column's own default, and the
+   * matching branch in the integrations edge function writes the same value.
+   *
+   * Returns false when no row matched, so the caller can answer 404 rather than
+   * reporting success for an integration that does not exist.
+   */
+  static async disconnectIntegration(integrationId: string, tenantId: string): Promise<boolean> {
+    const updated = await db
+      .update(systemIntegrations)
+      .set({
+        status: 'disconnected',
+        credentials: {},
+        errorMessage: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(systemIntegrations.id, integrationId), eq(systemIntegrations.tenantId, tenantId)),
+      )
+      .returning({ id: systemIntegrations.id });
+
+    return updated.length > 0;
+  }
+
   // Private helper methods
 
   private static async exchangeGoogleCode(code: string): Promise<OAuthTokens> {

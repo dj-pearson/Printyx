@@ -579,6 +579,107 @@ export default async function handler(req: Request) {
     }
 
     // DELETE /integrations/:id - Delete/Disconnect integration
+    // POST /integrations/:id/disconnect - Revoke credentials, stop syncing
+    // PA-052: SystemIntegrations.tsx has always called this and the function had
+    // no branch for it, so it fell to the 405 at the bottom. The DELETE branch
+    // below already does exactly these writes; this is the verb the page uses.
+    if (req.method === 'POST' && segment1 && segment2 === 'disconnect' && !isIntegrationType) {
+      const integrationId = segment1;
+
+      const { data: updated, error } = await admin
+        .from('platform_integrations')
+        .update({
+          status: 'disconnected',
+          credentials: {},
+          last_error_message: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', integrationId)
+        .eq('tenant_id', tenantId)
+        .select('id')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error disconnecting integration:', error);
+        return createCorsResponse({ error: 'Failed to disconnect integration' }, 500, req);
+      }
+
+      if (!updated) {
+        return createCorsResponse({ error: 'Integration not found' }, 404, req);
+      }
+
+      return createCorsResponse({ success: true, message: 'Integration disconnected' }, 200, req);
+    }
+
+    // POST /integrations/:id/test - Check the stored configuration
+    //
+    // PA-052: this had no branch either. What it can honestly answer is bounded:
+    // there is no provider client in this function, so it verifies that every
+    // credential field the integration type REQUIRES is present and non-empty,
+    // and says so. It never claims the remote end answered - `connectivityVerified`
+    // is false, and the caller renders `message` rather than asserting success.
+    if (req.method === 'POST' && segment1 && segment2 === 'test' && !isIntegrationType) {
+      const integrationId = segment1;
+
+      const { data: integration, error } = await admin
+        .from('platform_integrations')
+        .select('id, integration_key, integration_name, status, credentials, last_error_message')
+        .eq('id', integrationId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading integration for test:', error);
+        return createCorsResponse({ error: 'Failed to load integration' }, 500, req);
+      }
+
+      if (!integration) {
+        return createCorsResponse({ error: 'Integration not found' }, 404, req);
+      }
+
+      const config = INTEGRATION_CONFIGS[integration.integration_key];
+      const requiredFields: string[] = config?.fields ?? [];
+      const credentials = (integration.credentials ?? {}) as Record<string, unknown>;
+
+      const missingFields = requiredFields.filter((field) => {
+        const value = credentials[field];
+        return value === undefined || value === null || String(value).trim() === '';
+      });
+
+      // An unknown integration_key means this function has no field list to check
+      // against. Saying "configuration is complete" there would be a claim about
+      // something never examined.
+      if (!config) {
+        return createCorsResponse(
+          {
+            success: false,
+            connectivityVerified: false,
+            checkedFields: [],
+            missingFields: [],
+            message: `No credential requirements are defined for "${integration.integration_key}", so its configuration cannot be checked here.`,
+          },
+          200,
+          req,
+        );
+      }
+
+      const success = missingFields.length === 0;
+      return createCorsResponse(
+        {
+          success,
+          connectivityVerified: false,
+          checkedFields: requiredFields,
+          missingFields,
+          lastErrorMessage: integration.last_error_message ?? null,
+          message: success
+            ? `All ${requiredFields.length} required credential field(s) for ${integration.integration_name} are present. Connectivity to the provider was not tested.`
+            : `Missing credential field(s): ${missingFields.join(', ')}.`,
+        },
+        success ? 200 : 400,
+        req,
+      );
+    }
+
     if (req.method === 'DELETE' && segment1 && !segment2 && !isIntegrationType) {
       const integrationId = segment1;
 

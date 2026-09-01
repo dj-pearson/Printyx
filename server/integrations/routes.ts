@@ -303,6 +303,34 @@ router.delete('/api/integrations/:integrationId', requireAuth, async (req: any, 
 });
 
 /**
+ * Disconnect an integration
+ *
+ * PA-052: SystemIntegrations.tsx called this on both hosts and neither served it
+ * (Express had DELETE /:integrationId only; the edge function fell to its 405).
+ */
+router.post('/api/integrations/:integrationId/disconnect', requireAuth, async (req: any, res) => {
+  try {
+    const { integrationId } = req.params;
+    const tenantId = req.user?.tenantId;
+
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID is required' });
+    }
+
+    const disconnected = await IntegrationService.disconnectIntegration(integrationId, tenantId);
+
+    if (!disconnected) {
+      return res.status(404).json({ message: 'Integration not found' });
+    }
+
+    res.json({ success: true, message: 'Integration disconnected' });
+  } catch (error) {
+    log.error('Error disconnecting integration:', error);
+    res.status(500).json({ message: 'Failed to disconnect integration' });
+  }
+});
+
+/**
  * Test an integration connection
  */
 router.post('/api/integrations/:integrationId/test', requireAuth, async (req: any, res) => {

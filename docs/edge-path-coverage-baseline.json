@@ -52,8 +52,6 @@
     "financial": ["kpis", "profitability"],
     "import": ["jobs/:id/duplicates/:id/resolve"],
     "integrations": [
-      ":id/disconnect",
-      ":id/test",
       "bulk-sync",
       "calendar",
       "calendar/:id/connect",
