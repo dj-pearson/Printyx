@@ -1,3 +1,40 @@
+/**
+ * Email marketing: templates, campaigns, lists, list members, sends, events and
+ * unsubscribes. 72 identity reads over seven prefixes.
+ *
+ * CANNOT AUTHENTICATE ANYONE - see SEC-SESSION-001 before changing this file.
+ *
+ * Every handler below reads `req.session.user` as its only source of identity.
+ * Nothing in this codebase assigns it: session login sets the flat
+ * req.session.userId / req.session.tenantId and the JWT path sets req.user, so
+ * each of these answers 401 in dev exactly as it does in production. It has
+ * never run. server/types/express-session.d.ts records the same finding and
+ * declares the type that lets it compile, which is why tsc sees nothing wrong.
+ *
+ * WHICH OF THE SEVEN PREFIXES MATTER, checked across all seven client trees:
+ *
+ *   /email-campaigns is the only one anything calls - useEmailSequences, from
+ *   the routed /marketing/sequences page. It is served: the prefix is proxied to
+ *   supabase/functions/email-campaigns/, and the proxy registers at
+ *   routes-registry:297 while this router mounts at :620, so these handlers are
+ *   shadowed as well as dead. The live page has never depended on them.
+ *
+ *   The other six - email-templates, email-lists, email-list-members,
+ *   email-sends, email-events, email-unsubscribes - have NO caller in any client
+ *   tree. Only email-templates has an edge function; the rest have neither a
+ *   caller nor a counterpart.
+ *
+ * The shadowed-express baseline describes retiring this file as a per-prefix
+ * job because the edge coverage is uneven. That is true, and the reading above
+ * narrows it: with no caller on six prefixes and a proxy on the seventh, the
+ * per-prefix question is whether anyone wants the feature, not how to port it.
+ *
+ * The fix is one of three, and it is a product call rather than cleanup:
+ * migrate the handlers to getUserId/getTenantId from utils/auth-helpers and
+ * build the callers, retire the file in favour of edge functions, or delete it.
+ * Populating req.session.user in the login path would revive all twelve of
+ * these files at once and touches security-sensitive code.
+ */
 import { Router, type Request, type Response } from 'express';
 import { storage } from '../storage';
 import { stripServerFields } from '../utils/strip-server-fields';
