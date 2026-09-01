@@ -16,7 +16,6 @@
     "client/src/pages/DeviceMonitoring.tsx:/api/device-monitoring/alerts/__DYN__/__DYN__",
     "client/src/pages/IntegrationHub.tsx:/api/integrations/oauth/init",
     "client/src/pages/LeadMapViewer.tsx:/api/leads/import-eda",
-    "client/src/pages/ManufacturerIntegrationDevices.tsx:/api/devices/__DYN__/collect",
     "client/src/pages/MarginAnalysisReport.tsx:/api/pricing/margin-report/export?__DYN__",
     "client/src/pages/OidManagement.tsx:/api/oid-mappings",
     "client/src/pages/OidManagement.tsx:/api/oid-mappings/__DYN__",

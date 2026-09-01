@@ -36,6 +36,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { getRoleLevel } from '../_shared/rbac.ts';
+import { createAdapter } from '../_shared/manufacturer-adapters.ts';
 import {
   shapeMetricForUi,
   decorateAlert,
@@ -296,6 +297,145 @@ export default async function handler(req: Request) {
         };
       });
       return createCorsResponse({ orders }, 200, req);
+    }
+
+    // ─── GET /devices ───────────────────────────────────────────────────────
+    //
+    // PA-054: the page's list and per-device metrics called /api/devices, a
+    // prefix neither host proxies, so both 404'd in production. Serving them
+    // here keeps the whole page on the function that owns these two tables.
+    if (method === 'GET' && resource === 'devices' && !parts[1]) {
+      const integrationId = url.searchParams.get('integrationId');
+
+      let query = admin
+        .from('device_registrations')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('last_seen', { ascending: false, nullsFirst: false })
+        .limit(500);
+
+      if (integrationId) query = query.eq('integration_id', integrationId);
+
+      const { data, error } = await query;
+      if (error) return dbError(req, 'Failed to fetch devices', error);
+
+      return createCorsResponse(data ?? [], 200, req);
+    }
+
+    // ─── GET /devices/:id/metrics ───────────────────────────────────────────
+    if (method === 'GET' && resource === 'devices' && parts[1] && parts[2] === 'metrics') {
+      const limit = Math.min(Number(url.searchParams.get('limit')) || 100, 1000);
+
+      const { data, error } = await admin
+        .from('device_metrics')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('device_id', parts[1])
+        .order('collection_timestamp', { ascending: false })
+        .limit(limit);
+
+      if (error) return dbError(req, 'Failed to fetch device metrics', error);
+
+      return createCorsResponse(data ?? [], 200, req);
+    }
+
+    // ─── POST /devices/:id/collect ──────────────────────────────────────────
+    //
+    // PA-054: the page called /api/devices/:id/collect, a prefix neither host
+    // proxies, so it 404'd in production and was served in dev by a handler in
+    // routes-manufacturer-integration.ts that runs the Node-only adapters. This
+    // is the same capability on the function that already owns
+    // device_registrations and device_metrics (AUDIT-031).
+    if (method === 'POST' && resource === 'devices' && parts[1] && parts[2] === 'collect') {
+      const registrationId = parts[1];
+
+      const { data: registration, error: regError } = await admin
+        .from('device_registrations')
+        .select('id, device_id, integration_id, serial_number')
+        .eq('id', registrationId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (regError) return dbError(req, 'Failed to load device', regError);
+      if (!registration) {
+        return createCorsResponse({ message: 'Device not found' }, 404, req);
+      }
+
+      const { data: integration } = await admin
+        .from('manufacturer_integrations')
+        .select('id, manufacturer, credentials, api_endpoint, is_active')
+        .eq('id', registration.integration_id)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (!integration) {
+        return createCorsResponse(
+          { message: 'The device is not linked to a manufacturer integration' },
+          409,
+          req,
+        );
+      }
+      if (!integration.is_active) {
+        return createCorsResponse({ message: 'Integration is inactive' }, 400, req);
+      }
+
+      let metrics: Record<string, any>;
+      try {
+        const adapter = createAdapter(
+          integration.manufacturer,
+          integration.credentials ?? {},
+          integration.api_endpoint || '',
+        );
+        // The adapter is asked for the MANUFACTURER's device id, not our row id.
+        metrics = await adapter.collectMetrics(registration.device_id);
+      } catch (err) {
+        // collectMetrics rethrows on a vendor failure, unlike discoverDevices.
+        // A failed collection must not be written as a reading of zero.
+        console.error('Metric collection failed:', err);
+        return createCorsResponse(
+          {
+            message: 'Metric collection failed',
+            details: err instanceof Error ? err.message : String(err),
+          },
+          502,
+          req,
+        );
+      }
+
+      const { data: inserted, error: insertError } = await admin
+        .from('device_metrics')
+        .insert({
+          tenant_id: tenantId,
+          device_id: registration.id,
+          integration_id: integration.id,
+          collection_timestamp: new Date().toISOString(),
+          total_impressions: metrics.totalImpressions ?? null,
+          bw_impressions: metrics.bwImpressions ?? null,
+          color_impressions: metrics.colorImpressions ?? null,
+          large_impressions: metrics.largeImpressions ?? null,
+          toner_levels: metrics.tonerLevels ?? {},
+          paper_levels: metrics.paperLevels ?? {},
+          error_codes: metrics.errorCodes ?? null,
+          response_time: metrics.responseTime ?? null,
+          uptime: metrics.uptime ?? null,
+          raw_data: metrics.rawData ?? metrics,
+        })
+        .select('id, collection_timestamp')
+        .single();
+
+      if (insertError) return dbError(req, 'Failed to record metrics', insertError);
+
+      await admin
+        .from('device_registrations')
+        .update({ last_seen: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('id', registration.id)
+        .eq('tenant_id', tenantId);
+
+      return createCorsResponse(
+        { metricId: inserted.id, collectedAt: inserted.collection_timestamp },
+        200,
+        req,
+      );
     }
 
     // ─── GET /device/:serialNumber/{history,alerts} ─────────────────────────

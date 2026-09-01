@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { createAdapter } from '../_shared/manufacturer-adapters.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -410,13 +411,10 @@ export default async function handler(req: Request) {
 
     // POST /manufacturer-integrations/:id/discover - Discover and register devices
     //
-    // PA-052: the page has always called this and there was no branch, so it
-    // 404'd in production. It cannot be served here either, and saying so is the
-    // point: discovery runs the per-manufacturer adapters in
-    // server/manufacturer-integration-service.ts, which fetch the vendor API and
-    // insert device_registrations. Those adapters are Node-only and the browser
-    // cannot reach Express in production, because getApiUrl sends /api/* to the
-    // functions host. 501 names the gap; PA-054 is the port.
+    // PA-054: this answered 501 (PA-052) because the vendor adapters were
+    // Node-only and the browser cannot reach Express in production. They are
+    // ported to _shared/manufacturer-adapters.ts now - plain fetch and field
+    // mapping, no Node built-ins - so discovery runs here.
     if (req.method === 'POST' && manufacturer && endpoint === 'discover') {
       const { integration, error } = await resolveIntegration(admin, tenantId, manufacturer);
 
@@ -424,19 +422,150 @@ export default async function handler(req: Request) {
         console.error('Error loading integration for discovery:', error);
         return createCorsResponse({ error: 'Failed to load integration' }, 500, req);
       }
-
       if (!integration) {
         return createCorsResponse({ error: 'Integration not found' }, 404, req);
+      }
+      if (!integration.is_active) {
+        return createCorsResponse({ error: 'Integration is inactive' }, 400, req);
+      }
+
+      let devices: Awaited<ReturnType<ReturnType<typeof createAdapter>['discoverDevices']>>;
+      try {
+        const adapter = createAdapter(
+          integration.manufacturer,
+          integration.credentials ?? {},
+          integration.api_endpoint || '',
+        );
+        devices = await adapter.discoverDevices();
+      } catch (err) {
+        // A vendor API that errors must NOT come back as an empty device list.
+        // Every adapter's discoverDevices already swallows its own fetch failure
+        // and returns [], which is why this says so explicitly: "registered 0
+        // devices" and "could not reach the vendor" are different answers, and
+        // the Express version reported them identically.
+        console.error('Device discovery failed:', err);
+        return createCorsResponse(
+          {
+            error: 'Device discovery failed',
+            details: err instanceof Error ? err.message : String(err),
+          },
+          502,
+          req,
+        );
+      }
+
+      if (!devices.length) {
+        return createCorsResponse(
+          {
+            registered: 0,
+            devices: [],
+            message:
+              'The integration answered with no devices. That is either an empty fleet or a ' +
+              'vendor error the adapter swallowed; check the integration credentials if this is unexpected.',
+          },
+          200,
+          req,
+        );
+      }
+
+      const adapter = createAdapter(
+        integration.manufacturer,
+        integration.credentials ?? {},
+        integration.api_endpoint || '',
+      );
+
+      const rows = [];
+      for (const device of devices) {
+        try {
+          const shaped = await adapter.registerDevice(device);
+          rows.push({
+            tenant_id: tenantId,
+            integration_id: integration.id,
+            device_id: String(shaped.deviceId ?? ''),
+            device_name: shaped.deviceName ?? null,
+            model: shaped.model ?? null,
+            serial_number: shaped.serialNumber ?? null,
+            ip_address: shaped.ipAddress ?? null,
+            mac_address: shaped.macAddress ?? null,
+            location: shaped.location ?? null,
+            capabilities: shaped.capabilities ?? [],
+            status: shaped.status ?? 'unknown',
+            last_seen: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.error('Failed to shape a discovered device:', err);
+        }
+      }
+
+      // device_id is the manufacturer's id and is NOT NULL; a device the adapter
+      // could not identify is counted as skipped rather than inserted blank.
+      const registrable = rows.filter((r) => r.device_id);
+
+      // NO UPSERT: device_registrations has indexes on (tenant_id, device_id)
+      // and integration_id but no UNIQUE constraint, and PostgREST's onConflict
+      // needs one. Re-running discovery would otherwise duplicate the whole
+      // fleet, so existing ids are read first and updated in place.
+      const { data: existing } = await admin
+        .from('device_registrations')
+        .select('id, device_id')
+        .eq('tenant_id', tenantId)
+        .eq('integration_id', integration.id);
+
+      const existingByDeviceId = new Map<string, string>(
+        (existing || []).map((d: any) => [d.device_id, d.id]),
+      );
+
+      let updated = 0;
+      let created = 0;
+      const toInsert: typeof registrable = [];
+
+      for (const row of registrable) {
+        const id = existingByDeviceId.get(row.device_id);
+        if (id) {
+          const { error: updateError } = await admin
+            .from('device_registrations')
+            .update({ ...row, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .eq('tenant_id', tenantId);
+          if (updateError) {
+            console.error('Error updating a discovered device:', updateError);
+          } else {
+            updated++;
+          }
+        } else {
+          toInsert.push(row);
+        }
+      }
+
+      if (toInsert.length) {
+        const { data: inserted, error: insertError } = await admin
+          .from('device_registrations')
+          .insert(toInsert)
+          .select('id');
+        if (insertError) {
+          console.error('Error registering devices:', insertError);
+          return createCorsResponse(
+            {
+              error: 'Devices were discovered but could not be registered',
+              details: insertError,
+              updated,
+            },
+            500,
+            req,
+          );
+        }
+        created = inserted?.length ?? 0;
       }
 
       return createCorsResponse(
         {
-          error: 'Device discovery is not available on this host',
-          message:
-            'Device discovery runs the manufacturer adapters, which exist only in the Node service. No devices were registered.',
-          manufacturer: integration.manufacturer,
+          registered: created + updated,
+          created,
+          updated,
+          skipped: rows.length - registrable.length,
+          message: `Discovered ${devices.length} device(s): ${created} new, ${updated} updated.`,
         },
-        501,
+        200,
         req,
       );
     }
