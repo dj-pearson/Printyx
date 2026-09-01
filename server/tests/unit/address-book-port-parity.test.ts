@@ -19,8 +19,12 @@ const nodeDir = join(repo, 'server/services/address-book');
 const edgeDir = join(repo, 'supabase/functions/_shared/address-book');
 
 const read = (p: string) => readFileSync(p, 'utf8');
+// LINE comments come out FIRST. This file's own headers write paths like
+// `/api/*` in prose, and stripping block comments first pairs that `/*` with the
+// next real `*/` and deletes everything between - which silently satisfied an
+// absence assertion over code the stripper had eaten.
 const stripComments = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  s.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
 describe('the Canon crypto scheme is identical on both hosts', () => {
   const nodeCrypto = read(join(nodeDir, 'vendors/canon/crypto.ts'));
@@ -214,5 +218,60 @@ describe('a source password never leaves memory', () => {
     const readAt = importer.indexOf('file.arrayBuffer()');
     expect(capAt).toBeGreaterThan(-1);
     expect(capAt).toBeLessThan(readAt);
+  });
+});
+
+describe('generated export bytes live in one place, reachable from both hosts', () => {
+  const importer = read(join(repo, 'supabase/functions/address-books/_import-export.ts'));
+  const express = read(join(repo, 'server/routes-address-books.ts'));
+  const storage = read(join(repo, 'server/services/address-book/export-storage.ts'));
+
+  it('has no in-process cache left on the Express side', () => {
+    // PA-055 AC4. A module-level Map cannot answer a download that lands on a
+    // different instance from the one that generated the file, and the edge
+    // function has no Map at all.
+    const code = stripComments(express);
+    expect(code).not.toMatch(/exportCache/);
+    expect(code).not.toMatch(/EXPORT_TTL_MS/);
+  });
+
+  it('writes the same bucket and key on both hosts', () => {
+    expect(stripComments(storage)).toMatch(
+      /ADDRESS_BOOK_EXPORT_BUCKET.*\|\|\s*'address-book-exports'/,
+    );
+    expect(importer).toMatch(/ADDRESS_BOOK_EXPORT_BUCKET.*\|\|\s*'address-book-exports'/);
+    // `<tenantId>/<exportId>` on both. The tenant prefix is the isolation.
+    expect(storage).toMatch(/\$\{tenantId\}\/\$\{exportId\}/);
+    expect(importer).toMatch(/\$\{tenantId\}\/\$\{exportRow\.id\}/);
+  });
+
+  it('streams the bytes instead of minting a signed URL', () => {
+    // An address book export is a customer's whole contact list; a signed URL is
+    // an unauthenticated link to it. Both download paths send bytes.
+    const code = stripComments(importer);
+    expect(code).not.toMatch(/createSignedUrl|getPublicUrl/);
+    expect(code).toMatch(/blob\.arrayBuffer\(\)/);
+    expect(stripComments(express)).not.toMatch(/createSignedUrl|getPublicUrl/);
+  });
+
+  it('scopes every read by tenant before it touches the object', () => {
+    expect(importer).toMatch(/from\('address_book_exports'\)[\s\S]{0,200}tenant_id/);
+    expect(stripComments(express)).toMatch(
+      /addressBookExports[\s\S]{0,400}eq\(addressBookExports\.tenantId, tenantId\)/,
+    );
+  });
+
+  it('separates a missing export row from a missing file', () => {
+    // A pruned bucket is a 410 about the FILE. Answering 404 for both says the
+    // export never existed, which sends the user looking in the wrong place.
+    expect(importer).toMatch(/410/);
+    expect(express).toMatch(/status\(410\)/);
+  });
+
+  it('routes both export paths on the edge host', () => {
+    const dispatcher = stripComments(read(join(repo, 'supabase/functions/address-books/index.ts')));
+    expect(dispatcher).toMatch(/sub === 'export'[\s\S]{0,120}handleExport\(/);
+    expect(dispatcher).toMatch(/bookId === 'exports' && entryId === 'download'/);
+    expect(dispatcher).not.toMatch(/NOT_IMPLEMENTED/);
   });
 });
