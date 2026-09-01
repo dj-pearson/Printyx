@@ -47,6 +47,7 @@
     "check:server-orphans": "node scripts/check-server-orphans.mjs",
     "check:sql-string-tables": "node scripts/check-sql-string-tables.mjs",
     "check:tenant-id-types": "node scripts/check-tenant-id-types.mjs",
+    "check:fk-id-types": "node scripts/check-fk-id-types.mjs",
     "check:migrations": "node scripts/check-migration-journal.mjs",
     "check:no-mocks": "node scripts/check-no-mock-fallbacks.mjs",
     "check:no-static-posture": "node scripts/check-no-static-posture.mjs",

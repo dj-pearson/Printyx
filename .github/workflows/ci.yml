@@ -49,6 +49,8 @@ jobs:
         run: npm run check:migrations
       - name: tenant_id column-type guard (AUDIT-032)
         run: npm run check:tenant-id-types
+      - name: Foreign-key column-type ratchet (AUDIT-036)
+        run: npm run check:fk-id-types
       - name: Raw-SQL phantom-table ratchet (CR-017)
         run: npm run check:sql-string-tables
       - name: Server orphaned-file ratchet (AUDIT-034)

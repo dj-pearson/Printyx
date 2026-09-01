@@ -12913,6 +12913,22 @@
       "priority": 4,
       "passes": false,
       "notes": "Filed 2026-09-01 while closing AUDIT-021. Found by extending check:dup-routes to resolve mount prefixes: the guard could only see literals starting with /api/, and a router mounted under a prefix declares its paths without one, so all nine root-mounted routers were invisible to it. That exposed GET/POST /api/projects here as dead mocks behind the real handler, and the rest of the file came with the reading."
+    },
+    {
+      "id": "AUDIT-036",
+      "title": "Seventeen foreign-key columns cannot hold the key they name",
+      "description": "Seventeen foreign-key columns are declared `integer` against a target whose\nprimary key is a varchar uuid. An integer column cannot hold a uuid, so a row\nreferencing a real record cannot be written and a filtered read cannot match:\nthe read is 22P02, the write is 42804 - both reproduced for the tenant_id\nversion of this defect on Postgres 16 under AUDIT-032.\n\nThis is AUDIT-032 one column family over. That story found 21 tables declaring\n`tenant_id integer` against a varchar `tenants.id`, converted them in migration\n0062, and stopped at that column name. The foreign keys on the SAME tables were\nnever looked at, and they break the same three features AUDIT-032's own note\nnames: auto-supply replenishment, contract renewal and document automation.\n\n  contract_renewal_tracking.contract_id -> contracts.id\n  renewal_proposals.contract_id         -> contracts.id\n  supply_monitoring.equipment_id        -> equipment.id\n  supply_usage_history.equipment_id     -> equipment.id\n  auto_supply_orders.equipment_id       -> equipment.id\n  generated_documents.{workflow,task,business_record,quote,deal,service_call}_id\n  document_uploads.{workflow,task}_id\n  document_workflow_actions.workflow_id\n  document_notifications.{document,workflow,task}_id\n\nConfirmed on both sides independently: the Drizzle declarations, which are what\ndb:generate diffs, and the migration chain replayed in journal order. The two\nagree exactly, which is what makes this a schema fact rather than a reading of\none file.\n\nThe consequence is the same silent one AUDIT-032 documents. The routed\n/contract-renewal-autopilot dashboard analyses contracts it structurally cannot\njoin to, and `contract_renewal_tracking` sits in\ndocs/unwritten-tables-baseline.json as a table nothing writes to - when the\ntruth is again that nothing COULD.\n\nnpm run check:fk-id-types now gates this at 34 baselined entries (17 columns,\nseen once per side). The guard is written and CI-wired by this story; what\nremains is the conversion.",
+      "acceptanceCriteria": [
+        "Convert all 17 columns to varchar in one migration, following the shape of 0062_round_sway.sql: idempotent, USING clauses, and generated through npm run db:generate so the journal and snapshot stay consistent (SUPA-005, COP-M00)",
+        "PROVE it against a real Postgres before claiming it works. COP-M07 records that this container ships PostgreSQL 16 at /usr/lib/postgresql/16/bin and how to bring one up; apply the chain in journal order and then apply the new migration twice, as AUDIT-032 did",
+        "Check the columns the name-based rule cannot see. contract_renewal_tracking.customer_id is integer and the real customer is business_records.id, a varchar uuid, but no `customers` pgTable exists so the guard does not resolve it - walk the three affected schema files by hand for the same shape",
+        "Drive docs/fk-id-types-baseline.json to 0 and keep the guard at a hard gate, the way check:tenant-id-types is gated",
+        "Re-check docs/unwritten-tables-baseline.json afterwards: entries that were unwritable rather than unwritten need re-reading, since the question 'who fills this in' has a different answer once the column can hold a key",
+        "npm run check && npm run test pass"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Filed 2026-09-01 while triaging AUDIT-026. The renewal model comparison turned on which of the two schemas could actually reference a contract, and the live one could not - contract_renewal_tracking.contract_id is integer against a uuid contracts.id. Scanning the rest of shared/ for the same shape found sixteen more. The guard landed with the story because the finding is only useful if it cannot grow while the conversion waits."
     }
   ]
 }
