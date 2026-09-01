@@ -553,9 +553,9 @@ export default async function handler(req: Request) {
         updateData.sync_frequency = body.syncFrequency || body.sync_frequency;
       }
       if (body.status !== undefined) updateData.status = body.status;
-      if (body.isEnabled !== undefined || body.is_enabled !== undefined) {
-        updateData.is_enabled = body.isEnabled !== undefined ? body.isEnabled : body.is_enabled;
-      }
+      // PA-053: an `isEnabled` branch wrote `is_enabled`, which is not a column
+      // on platform_integrations - the update was a PGRST204 whenever a caller
+      // sent it. Enablement is `status`.
 
       const { data: integration, error } = await admin
         .from('platform_integrations')

@@ -41,21 +41,43 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, extractRecords, queryClient } from '@/lib/queryClient';
+import {
+  INTEGRATION_CATEGORIES,
+  STATUS_LABEL,
+  isLiveStatus,
+  normalizeCategory,
+  normalizeStatus,
+  type IntegrationStatus,
+} from '@/lib/integration-status';
 import { ApolloCredentialManager } from '@/components/integrations/ApolloCredentialManager';
 
+// Mirrors platform_integrations (shared/platform-integrations-schema.ts) - the
+// connector catalogue, which PA-053 settled as the table behind this page. It is
+// the only one of the two candidates with a `category` column, it is what
+// production has always served /api/integrations from, and it is what the
+// integration hub dashboard reads. system_integrations stays the OAuth
+// CONNECTION store for the calendar and ERP flows (PA-056).
+//
+// `description` was on the old shape and is a column on neither table.
 interface Integration {
   id: string;
-  name: string;
+  integrationKey: string;
+  integrationName: string;
   category: string;
-  description: string;
-  status: 'connected' | 'disconnected' | 'error' | 'pending';
-  provider: string;
-  lastSync: string;
-  config?: {
-    apiKey?: string;
-    endpoint?: string;
-    syncFrequency?: string;
-  };
+  status: string;
+  syncFrequency?: string | null;
+  lastSyncedAt?: string | null;
+  lastSyncStatus?: string | null;
+  lastErrorMessage?: string | null;
+}
+
+/** The page's view of a row: raw columns plus the normalized vocabularies. */
+// PostgREST returns snake_case; the Express list camelCases. Either is read.
+type IntegrationRow = Record<string, string | null | undefined>;
+
+interface IntegrationView extends Integration {
+  normalizedStatus: IntegrationStatus;
+  normalizedCategory: string;
 }
 
 interface WebhookEndpoint {
@@ -83,6 +105,14 @@ interface IntegrationTestResult {
 export default function SystemIntegrations() {
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  // PA-053: the Connect button used to post a hardcoded
+  // `config: { apiKey: 'test', endpoint: 'test' }` and ignore all three inputs,
+  // so it stored the literal string 'test' as an API key.
+  const [configForm, setConfigForm] = useState({
+    apiKey: '',
+    endpoint: '',
+    syncFrequency: 'hourly',
+  });
   const { toast } = useToast();
 
   // PA-052: the two backends disagree about this response. Express returns a bare
@@ -92,7 +122,30 @@ export default function SystemIntegrations() {
   const { data: integrationsResponse, isLoading } = useQuery({
     queryKey: ['/api/integrations'],
   });
-  const integrations = extractRecords<Integration>(integrationsResponse);
+  const integrations: IntegrationView[] = extractRecords<IntegrationRow>(integrationsResponse).map(
+    (row) => {
+      // Both backends are on platform_integrations now, but one returns snake_case
+      // (PostgREST) and the Express list camelCases; read either.
+      const integration: Integration = {
+        id: String(row.id ?? ''),
+        integrationKey: String(row.integrationKey ?? row.integration_key ?? ''),
+        integrationName: String(
+          row.integrationName ?? row.integration_name ?? row.integration_key ?? 'Integration',
+        ),
+        category: String(row.category ?? ''),
+        status: String(row.status ?? ''),
+        syncFrequency: row.syncFrequency ?? row.sync_frequency ?? null,
+        lastSyncedAt: row.lastSyncedAt ?? row.last_synced_at ?? null,
+        lastSyncStatus: row.lastSyncStatus ?? row.last_sync_status ?? null,
+        lastErrorMessage: row.lastErrorMessage ?? row.last_error_message ?? null,
+      };
+      return {
+        ...integration,
+        normalizedStatus: normalizeStatus(integration.status),
+        normalizedCategory: normalizeCategory(integration.category),
+      };
+    },
+  );
 
   const { data: webhooksResponse } = useQuery({
     queryKey: ['/api/webhooks'],
@@ -100,24 +153,35 @@ export default function SystemIntegrations() {
   const webhooks = extractRecords<WebhookEndpoint>(webhooksResponse);
 
   const connectIntegration = useMutation({
-    mutationFn: async (data: { integrationId: string; config: any }) => {
-      return apiRequest('/api/integrations/connect', {
-        method: 'POST',
-        body: data,
-      });
-    },
+    mutationFn: async (data: {
+      integrationId: string;
+      credentials: Record<string, string>;
+      syncFrequency: string;
+    }) =>
+      // /api/integrations/connect had no branch on either host: the edge
+      // function's connect is POST /:type/connect keyed on an integration TYPE,
+      // and this page holds a row id. Credentials belong on the row.
+      apiRequest(`/api/integrations/${data.integrationId}`, {
+        method: 'PUT',
+        body: {
+          credentials: data.credentials,
+          syncFrequency: data.syncFrequency,
+          status: 'configured',
+        },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({
-        title: 'Integration Connected',
-        description: 'The integration has been successfully configured.',
+        title: 'Integration Configured',
+        description: 'Credentials stored. Connectivity is verified by Test.',
       });
       setIsConfigOpen(false);
+      setConfigForm({ apiKey: '', endpoint: '', syncFrequency: 'hourly' });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
-        title: 'Connection Failed',
-        description: 'Failed to connect the integration. Please check your configuration.',
+        title: 'Configuration Failed',
+        description: error?.message ?? 'The integration could not be configured.',
         variant: 'destructive',
       });
     },
@@ -166,34 +230,30 @@ export default function SystemIntegrations() {
   const displayIntegrations = integrations;
   const displayWebhooks = webhooks;
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: IntegrationStatus) => {
     switch (status) {
-      case 'connected':
+      case 'active':
         return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case 'disconnected':
-        return <XCircle className="h-5 w-5 text-gray-400" />;
       case 'error':
         return <AlertTriangle className="h-5 w-5 text-red-600" />;
-      case 'pending':
-        return <RefreshCw className="h-5 w-5 text-yellow-600 animate-spin" />;
+      case 'configured':
+        return <RefreshCw className="h-5 w-5 text-yellow-600" />;
       default:
         return <XCircle className="h-5 w-5 text-gray-400" />;
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      connected: 'default',
-      disconnected: 'secondary',
-      error: 'destructive',
-      pending: 'outline',
-    } as const;
+  const getStatusBadge = (status: IntegrationStatus) => {
+    const variants: Record<IntegrationStatus, 'default' | 'secondary' | 'destructive' | 'outline'> =
+      {
+        active: 'default',
+        configured: 'outline',
+        error: 'destructive',
+        paused: 'secondary',
+        disconnected: 'secondary',
+      };
 
-    return (
-      <Badge variant={variants[status as keyof typeof variants] || 'secondary'}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
+    return <Badge variant={variants[status]}>{STATUS_LABEL[status]}</Badge>;
   };
 
   return (
@@ -212,7 +272,7 @@ export default function SystemIntegrations() {
                     Active Integrations
                   </p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    {displayIntegrations.filter((i) => i.status === 'connected').length}
+                    {displayIntegrations.filter((i) => isLiveStatus(i.normalizedStatus)).length}
                   </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -226,13 +286,9 @@ export default function SystemIntegrations() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">API Endpoints</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Needs Attention</p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    {
-                      displayIntegrations.filter(
-                        (i) => i.status === 'pending' || i.status === 'error',
-                      ).length
-                    }
+                    {displayIntegrations.filter((i) => i.normalizedStatus === 'error').length}
                   </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -273,44 +329,59 @@ export default function SystemIntegrations() {
 
           <TabsContent value="integrations" className="space-y-6">
             <div className="grid gap-6">
-              {['Device Management', 'Accounting', 'CRM'].map((category) => (
-                <Card key={category}>
+              {/* PA-053: this was hardcoded to Device Management / Accounting /
+                  CRM. platform_integrations.category holds erp / crm / ai /
+                  data-enrichment, so all three groups filtered to nothing and
+                  the list was empty whatever the backend answered. A row whose
+                  category is absent or unrecognised lands in Other rather than
+                  being dropped from every group. An empty category renders no
+                  card at all, so an empty tenant does not show a wall of empty
+                  headings. */}
+              {INTEGRATION_CATEGORIES.filter((category) =>
+                displayIntegrations.some((i) => i.normalizedCategory === category.value),
+              ).map((category) => (
+                <Card key={category.value}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Settings className="h-5 w-5" />
-                      {category}
+                      {category.label}
                     </CardTitle>
-                    <CardDescription>
-                      Manage {category.toLowerCase()} system integrations
-                    </CardDescription>
+                    <CardDescription>Manage {category.label} system integrations</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid gap-4">
                       {displayIntegrations
-                        .filter((integration) => integration.category === category)
+                        .filter((integration) => integration.normalizedCategory === category.value)
                         .map((integration) => (
                           <div
                             key={integration.id}
                             className="flex items-center justify-between p-4 border rounded-lg"
                           >
                             <div className="flex items-center gap-4">
-                              {getStatusIcon(integration.status)}
+                              {getStatusIcon(integration.normalizedStatus)}
                               <div>
-                                <h4 className="font-medium">{integration.name}</h4>
-                                <p className="text-sm text-gray-600">{integration.description}</p>
+                                <h4 className="font-medium">{integration.integrationName}</h4>
+                                {/* `description` was on the old shape and is a
+                                    column on neither candidate table. The last
+                                    error is real and is what a reader needs. */}
+                                {integration.lastErrorMessage && (
+                                  <p className="text-sm text-red-600">
+                                    {integration.lastErrorMessage}
+                                  </p>
+                                )}
                                 <div className="flex items-center gap-2 mt-1">
-                                  {getStatusBadge(integration.status)}
+                                  {getStatusBadge(integration.normalizedStatus)}
                                   <span className="text-xs text-gray-500">
                                     Last sync:{' '}
-                                    {integration.lastSync === 'Never'
-                                      ? 'Never'
-                                      : new Date(integration.lastSync).toLocaleString()}
+                                    {integration.lastSyncedAt
+                                      ? new Date(integration.lastSyncedAt).toLocaleString()
+                                      : 'Never'}
                                   </span>
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              {integration.status === 'connected' && (
+                              {isLiveStatus(integration.normalizedStatus) && (
                                 <>
                                   <Button
                                     variant="outline"
@@ -330,7 +401,7 @@ export default function SystemIntegrations() {
                                   </Button>
                                 </>
                               )}
-                              {integration.status !== 'connected' && (
+                              {!isLiveStatus(integration.normalizedStatus) && (
                                 <Button
                                   size="sm"
                                   onClick={() => {
@@ -338,7 +409,9 @@ export default function SystemIntegrations() {
                                     setIsConfigOpen(true);
                                   }}
                                 >
-                                  {integration.status === 'pending' ? 'Configure' : 'Connect'}
+                                  {integration.normalizedStatus === 'error'
+                                    ? 'Reconfigure'
+                                    : 'Connect'}
                                 </Button>
                               )}
                               <Button aria-label="Open in a new tab" variant="ghost" size="sm">
@@ -489,32 +562,45 @@ export default function SystemIntegrations() {
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Configure {selectedIntegration?.name}</DialogTitle>
+            <DialogTitle>Configure {selectedIntegration?.integrationName}</DialogTitle>
             <DialogDescription>
-              Enter the connection details for {selectedIntegration?.name} integration.
+              Enter the connection details for {selectedIntegration?.integrationName}.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="api-key">API Key</Label>
-              <Input id="api-key" placeholder="Enter your API key" type="password" />
+              <Input
+                id="api-key"
+                placeholder="Enter your API key"
+                type="password"
+                value={configForm.apiKey}
+                onChange={(e) => setConfigForm({ ...configForm, apiKey: e.target.value })}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="endpoint">Endpoint URL</Label>
               <Input
                 id="endpoint"
                 placeholder="https://api.example.com/v1"
-                defaultValue={selectedIntegration?.config?.endpoint}
+                value={configForm.endpoint}
+                onChange={(e) => setConfigForm({ ...configForm, endpoint: e.target.value })}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="sync-frequency">Sync Frequency</Label>
-              <Select defaultValue="hourly">
+              <Select
+                value={configForm.syncFrequency}
+                onValueChange={(value) => setConfigForm({ ...configForm, syncFrequency: value })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="realtime">Real-time</SelectItem>
+                  {/* platform_integrations.sync_frequency documents
+                      manual | hourly | daily | weekly. "Real-time" was not among
+                      them and nothing schedules one. */}
+                  <SelectItem value="manual">Manual</SelectItem>
                   <SelectItem value="hourly">Hourly</SelectItem>
                   <SelectItem value="daily">Daily</SelectItem>
                   <SelectItem value="weekly">Weekly</SelectItem>
@@ -530,12 +616,16 @@ export default function SystemIntegrations() {
               onClick={() =>
                 connectIntegration.mutate({
                   integrationId: selectedIntegration?.id || '',
-                  config: { apiKey: 'test', endpoint: 'test' },
+                  credentials: {
+                    ...(configForm.apiKey ? { apiKey: configForm.apiKey } : {}),
+                    ...(configForm.endpoint ? { endpoint: configForm.endpoint } : {}),
+                  },
+                  syncFrequency: configForm.syncFrequency,
                 })
               }
-              disabled={connectIntegration.isPending}
+              disabled={connectIntegration.isPending || !configForm.apiKey}
             >
-              Connect Integration
+              Save Credentials
             </Button>
           </div>
         </DialogContent>
