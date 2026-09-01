@@ -6073,6 +6073,22 @@ export const proposalLineItems = pgTable(
     totalPrice: decimal('total_price').notNull(),
     margin: decimal('margin'), // Line margin %, server-computed from cost vs price
 
+    // QUOTE-016: a DOLLAR amount off the whole line, not a percentage.
+    // total_price is stored NET of it. Migration 0047 added the column to real
+    // databases by hand after 0002 dropped it, but it was never added back to
+    // this declaration - so drizzle-kit's snapshot did not know it existed and
+    // the next db:generate would have emitted a DROP for it.
+    discount: decimal('discount').default('0'),
+
+    // QUOTE-017: recurring lines. Every money field on one is a PER PERIOD
+    // amount. 0002 dropped all three and nothing restored them, so the quote
+    // builder wrote to columns that did not exist; the proposals edge function
+    // caught the PGRST204 and retried with core columns only, which persisted a
+    // monthly charge as a one-time amount and logged a warning.
+    isRecurring: boolean('is_recurring').default(false),
+    recurringFrequency: varchar('recurring_frequency'), // monthly | quarterly | annually
+    recurringDuration: integer('recurring_duration'), // period count; NULL/0 = ongoing
+
     // Service-specific fields
     serviceFrequency: varchar('service_frequency'), // monthly, quarterly, annually
     serviceDuration: varchar('service_duration'), // Contract duration
