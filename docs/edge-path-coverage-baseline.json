@@ -45,7 +45,7 @@
     "maintenance": ["analytics", "auto-generate", "predictions", "templates"],
     "mobile": ["dashboard", "jobs", "route-optimization", "service-report"],
     "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"],
-    "onboarding": ["checklists/:id/generate-pdf", "export", "getting-started", "wizard-state"],
+    "onboarding": ["export", "getting-started", "wizard-state"],
     "seo": [
       "content",
       "images",

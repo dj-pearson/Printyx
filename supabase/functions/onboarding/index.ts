@@ -3,6 +3,10 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { renderChecklistPdf } from './_pdf.ts';
+
+// Long enough to open the tab, short enough that a copied link stops working.
+const PDF_SIGNED_URL_TTL_SECONDS = 900;
 import { resolveTenantId } from '../_shared/tenant.ts';
 
 export default async function handler(req: Request) {
@@ -45,6 +49,123 @@ export default async function handler(req: Request) {
     const { parts: pathParts } = normalizePath(url.pathname, 'onboarding');
     const checklistId = pathParts[1];
     const subResource = pathParts[2]; // 'equipment', 'sections', 'tasks'
+
+    // POST /onboarding/checklists/:id/generate-pdf
+    //
+    // PA-052: Express-only, so the button worked in dev and 404'd in production.
+    // Its implementation renders a 251-line HTML template through puppeteer,
+    // which needs a headless Chrome binary. ./_pdf.ts emits the same content as
+    // headings and tables through the pdf-lib section renderer the proposals
+    // function already uses; the template's flex label/value divs were NOT
+    // ported, because that renderer degrades unknown tags to bare text.
+    //
+    // The link is SIGNED and time-limited, following supabase/functions/qbr: a
+    // checklist carries a customer's site details, contacts and serial numbers,
+    // and a permanent public URL to that needs no login at all.
+    if (req.method === 'POST' && checklistId && subResource === 'generate-pdf') {
+      const { data: checklist, error: checklistError } = await admin
+        .from('equipment_onboarding_checklists')
+        .select('*')
+        .eq('id', checklistId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (checklistError) {
+        console.error('Error loading checklist:', checklistError);
+        return createCorsResponse({ error: 'Failed to load checklist' }, 500, req);
+      }
+      if (!checklist) {
+        return createCorsResponse({ error: 'Checklist not found' }, 404, req);
+      }
+
+      // Each related set is fetched independently and tolerated empty: one
+      // missing table must not turn a whole checklist into a 500.
+      const related = async (table: string) => {
+        const { data, error } = await admin
+          .from(table)
+          .select('*')
+          .eq('checklist_id', checklistId)
+          .eq('tenant_id', tenantId);
+        if (error) {
+          console.error(`Error loading ${table}:`, error);
+          return [];
+        }
+        return data || [];
+      };
+
+      const [equipment, networkConfigs, printConfigs, dynamicSections, tasks] = await Promise.all([
+        related('onboarding_equipment'),
+        related('onboarding_network_config'),
+        related('onboarding_print_management'),
+        related('onboarding_dynamic_sections'),
+        related('onboarding_tasks'),
+      ]);
+
+      let pdfBytes: Uint8Array;
+      try {
+        pdfBytes = await renderChecklistPdf({
+          checklist,
+          equipment,
+          networkConfigs,
+          printConfigs,
+          dynamicSections,
+          tasks,
+        });
+      } catch (err) {
+        console.error('Error rendering checklist PDF:', err);
+        return createCorsResponse(
+          {
+            error: 'Failed to render PDF',
+            details: err instanceof Error ? err.message : String(err),
+          },
+          500,
+          req,
+        );
+      }
+
+      const bucket = Deno.env.get('ONBOARDING_PDF_BUCKET') || 'onboarding-checklists';
+      const path = `${tenantId}/${checklistId}.pdf`;
+
+      const { error: uploadError } = await admin.storage.from(bucket).upload(path, pdfBytes, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+      if (uploadError) {
+        console.error('Error uploading checklist PDF:', uploadError);
+        return createCorsResponse(
+          { error: 'Failed to store the generated PDF', details: uploadError.message },
+          500,
+          req,
+        );
+      }
+
+      const { data: signed, error: signError } = await admin.storage
+        .from(bucket)
+        .createSignedUrl(path, PDF_SIGNED_URL_TTL_SECONDS);
+
+      if (signError || !signed?.signedUrl) {
+        // The file exists but cannot be handed over. Say that rather than
+        // answering 200 with no link, which the caller opens as `undefined`.
+        console.error('Error signing checklist PDF URL:', signError);
+        return createCorsResponse({ error: 'PDF was generated but could not be linked' }, 500, req);
+      }
+
+      // pdf_url and pdf_generated_at are real columns. The storage PATH is
+      // recorded, not the signed link, which would be a dead URL in the row
+      // within the quarter-hour.
+      await admin
+        .from('equipment_onboarding_checklists')
+        .update({ pdf_url: path, pdf_generated_at: new Date().toISOString() })
+        .eq('id', checklistId)
+        .eq('tenant_id', tenantId);
+
+      return createCorsResponse(
+        { pdfUrl: signed.signedUrl, expiresInSeconds: PDF_SIGNED_URL_TTL_SECONDS },
+        200,
+        req,
+      );
+    }
 
     // GET /onboarding/checklists - List checklists
     // NOTE: this guard compared pathParts[0] to 'onboarding', which is never
