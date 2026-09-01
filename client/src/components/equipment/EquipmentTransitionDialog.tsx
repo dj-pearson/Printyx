@@ -13,7 +13,6 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, XCircle, AlertCircle, ArrowRight, Clock, Loader2 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -37,8 +36,12 @@ interface TransitionValidation {
   currentStage: string;
   targetStage: string;
   validationRequirements: string[];
-  validation: {
+  // PA-052: false whenever the backend listed the requirements without checking
+  // them, which is currently always. Both hosts send it.
+  requirementsChecked?: boolean;
+  validation?: {
     isValid: boolean;
+    requirementsChecked?: boolean;
     passed: ValidationCheck[];
     failed: ValidationCheck[];
   };
@@ -135,10 +138,10 @@ export function EquipmentTransitionDialog({
 
   const handleTransition = () => {
     if (!selectedStage) return;
-    if (validationDetails && !validationDetails.validation.isValid) {
+    if (validationDetails && !validationDetails.canTransition) {
       toast({
-        title: 'Validation Failed',
-        description: 'Please complete all required validations before transitioning',
+        title: 'Transition not allowed',
+        description: `${formatStageName(validationDetails.currentStage)} cannot move directly to ${formatStageName(validationDetails.targetStage)}.`,
         variant: 'destructive',
       });
       return;
@@ -239,8 +242,8 @@ export function EquipmentTransitionDialog({
               {validationDetails && (
                 <>
                   {/* Overall Status */}
-                  <Alert variant={validationDetails.validation.isValid ? 'default' : 'destructive'}>
-                    {validationDetails.validation.isValid ? (
+                  <Alert variant={validationDetails.canTransition ? 'default' : 'destructive'}>
+                    {validationDetails.canTransition ? (
                       <CheckCircle2 className="h-4 w-4" />
                     ) : (
                       <AlertCircle className="h-4 w-4" />
@@ -251,70 +254,32 @@ export function EquipmentTransitionDialog({
                   {/* Validation Requirements */}
                   {validationDetails.validationRequirements.length > 0 && (
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Required Validations:</Label>
+                      <Label className="text-sm font-medium">Confirm before transitioning:</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Nothing verifies these automatically. They were previously shown as
+                        &quot;verified&quot; by a backend that checked none of them.
+                      </p>
                       <div className="space-y-2">
-                        {validationDetails.validationRequirements.map((req, index) => {
-                          const check = [
-                            ...validationDetails.validation.passed,
-                            ...validationDetails.validation.failed,
-                          ].find((c) => c.name === req);
-
-                          const isPassed = check?.passed ?? false;
-
-                          return (
-                            <div
-                              key={index}
-                              className={`
-                                flex items-start gap-2 p-2 rounded-lg border
-                                ${
-                                  isPassed
-                                    ? 'border-green-200 bg-green-50'
-                                    : 'border-orange-200 bg-orange-50'
-                                }
-                              `}
-                            >
-                              {isPassed ? (
-                                <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                              ) : (
-                                <Clock className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium">
-                                  {formatStageName(req.replace(/_/g, ' '))}
-                                </p>
-                                {check?.message && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {check.message}
-                                  </p>
-                                )}
-                              </div>
+                        {validationDetails.validationRequirements.map((req, index) => (
+                          <div
+                            key={index}
+                            className="flex items-start gap-2 p-2 rounded-lg border border-orange-200 bg-orange-50"
+                          >
+                            <Clock className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium">
+                                {formatStageName(req.replace(/_/g, ' '))}
+                              </p>
                             </div>
-                          );
-                        })}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Progress Bar */}
-                  {validationDetails.validationRequirements.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Validation Progress</span>
-                        <span className="font-medium">
-                          {validationDetails.validation.passed.length} /{' '}
-                          {validationDetails.validationRequirements.length}
-                        </span>
-                      </div>
-                      <Progress
-                        value={
-                          (validationDetails.validation.passed.length /
-                            validationDetails.validationRequirements.length) *
-                          100
-                        }
-                        className="h-2"
-                      />
-                    </div>
-                  )}
+                  {/* A "Validation Progress" bar stood here, filled from
+                      validation.passed.length. Every requirement was marked
+                      passed by a mock, so it always read 100%. */}
                 </>
               )}
 
@@ -349,7 +314,7 @@ export function EquipmentTransitionDialog({
             disabled={
               !selectedStage ||
               loadingValidation ||
-              (validationDetails && !validationDetails.validation.isValid) ||
+              (validationDetails && !validationDetails.canTransition) ||
               transitionMutation.isPending
             }
           >
