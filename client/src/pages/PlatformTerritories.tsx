@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Dialog,
   DialogContent,
@@ -31,53 +33,69 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  MapPin,
-  Plus,
-  Edit,
-  Trash2,
-  Users,
-  Building2,
-  TrendingUp,
-  DollarSign,
-  Globe,
-  Filter,
-} from 'lucide-react';
+import { MapPin, Plus, Edit, Trash2, Users, Building2, Globe, Filter } from 'lucide-react';
 
+// Mirrors platform_sales_territories (shared/platform-crm-schema.ts) in the
+// camelCase the platform-crm function returns. PA-052: the previous shape used
+// status/assignedManagerId/regions/assignmentPriority/totalTenants/
+// totalRevenue/conversionRate, none of which is a column, against endpoints that
+// existed on neither host.
 interface Territory {
   id: string;
   name: string;
-  description?: string;
-  status: 'active' | 'inactive';
-  assignedManagerId?: string;
-  assignedManagerName?: string;
-  regions?: string[];
-  industries?: string[];
-  companySizeMin?: number;
-  companySizeMax?: number;
-  revenueMin?: string;
-  revenueMax?: string;
-  assignmentPriority: number;
-  totalProspects?: number;
-  totalTenants?: number;
-  totalRevenue?: string;
-  conversionRate?: number;
+  code?: string | null;
+  description?: string | null;
+  territoryType?: string | null;
+  isActive: boolean;
+
+  // Geographic rules. The old shape had a single free-text `regions`; the table
+  // separates the four levels it actually matches on.
+  countries?: string[] | null;
+  states?: string[] | null;
+  cities?: string[] | null;
+  postalCodes?: string[] | null;
+
+  // Account rules
+  industries?: string[] | null;
+  companySizeMin?: number | null;
+  companySizeMax?: number | null;
+  revenueMin?: string | null;
+  revenueMax?: string | null;
+
+  // Ownership
+  ownerId: string;
+  managerId?: string | null;
+
+  // Quotas
+  monthlyQuota?: string | null;
+  quarterlyQuota?: string | null;
+  annualQuota?: string | null;
+
+  // Performance, maintained by the platform rather than by this form
+  currentPipeline?: string | null;
+  activeProspectsCount?: number | null;
+  activeDealsCount?: number | null;
+
   createdAt: string;
   updatedAt: string;
 }
 
 interface TerritoryFormData {
   name: string;
+  code: string;
   description: string;
-  status: 'active' | 'inactive';
-  assignedManagerId: string;
-  regions: string;
+  territoryType: string;
+  isActive: boolean;
+  countries: string;
+  states: string;
   industries: string;
   companySizeMin: string;
   companySizeMax: string;
   revenueMin: string;
   revenueMax: string;
-  assignmentPriority: string;
+  ownerId: string;
+  managerId: string;
+  annualQuota: string;
 }
 
 const INDUSTRIES = [
@@ -99,20 +117,26 @@ const INDUSTRIES = [
   'Other',
 ];
 
-const REGIONS = [
-  'North America - East',
-  'North America - West',
-  'North America - Central',
-  'Europe - North',
-  'Europe - South',
-  'Europe - East',
-  'Europe - West',
-  'Asia Pacific - North',
-  'Asia Pacific - South',
-  'Latin America',
-  'Middle East',
-  'Africa',
-];
+// A REGIONS list stood here, feeding the free-text Regions field. The table
+// has no region column - geography is countries/states/cities/postal codes.
+
+const EMPTY_FORM: TerritoryFormData = {
+  name: '',
+  code: '',
+  description: '',
+  territoryType: 'geographic',
+  isActive: true,
+  countries: '',
+  states: '',
+  industries: '',
+  companySizeMin: '',
+  companySizeMax: '',
+  revenueMin: '',
+  revenueMax: '',
+  ownerId: '',
+  managerId: '',
+  annualQuota: '',
+};
 
 export default function PlatformTerritories() {
   const { toast } = useToast();
@@ -122,19 +146,7 @@ export default function PlatformTerritories() {
   const [selectedTab, setSelectedTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [formData, setFormData] = useState<TerritoryFormData>({
-    name: '',
-    description: '',
-    status: 'active',
-    assignedManagerId: '',
-    regions: '',
-    industries: '',
-    companySizeMin: '',
-    companySizeMax: '',
-    revenueMin: '',
-    revenueMax: '',
-    assignmentPriority: '1',
-  });
+  const [formData, setFormData] = useState<TerritoryFormData>({ ...EMPTY_FORM });
 
   // Fetch territories
   const { data: territories = [], isLoading } = useQuery<Territory[]>({
@@ -147,16 +159,11 @@ export default function PlatformTerritories() {
   });
 
   // Create territory mutation
+  // PA-052: raw fetch() carries no Authorization header, so these would 401
+  // against the platform-crm edge function that now serves them.
   const createMutation = useMutation({
-    mutationFn: async (data: Partial<Territory>) => {
-      const response = await fetch('/api/platform-crm/territories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to create territory');
-      return response.json();
-    },
+    mutationFn: async (data: Partial<Territory>) =>
+      apiRequest('/api/platform-crm/territories', { method: 'POST', body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/territories'] });
       toast({
@@ -177,15 +184,8 @@ export default function PlatformTerritories() {
 
   // Update territory mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Territory> }) => {
-      const response = await fetch(`/api/platform-crm/territories/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to update territory');
-      return response.json();
-    },
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Territory> }) =>
+      apiRequest(`/api/platform-crm/territories/${id}`, { method: 'PUT', body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/territories'] });
       toast({
@@ -206,13 +206,8 @@ export default function PlatformTerritories() {
 
   // Delete territory mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`/api/platform-crm/territories/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete territory');
-      return response.json();
-    },
+    mutationFn: async (id: string) =>
+      apiRequest(`/api/platform-crm/territories/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/territories'] });
       toast({
@@ -230,19 +225,7 @@ export default function PlatformTerritories() {
   });
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      description: '',
-      status: 'active',
-      assignedManagerId: '',
-      regions: '',
-      industries: '',
-      companySizeMin: '',
-      companySizeMax: '',
-      revenueMin: '',
-      revenueMax: '',
-      assignmentPriority: '1',
-    });
+    setFormData({ ...EMPTY_FORM });
     setEditingTerritory(null);
   };
 
@@ -251,16 +234,20 @@ export default function PlatformTerritories() {
       setEditingTerritory(territory);
       setFormData({
         name: territory.name,
+        code: territory.code || '',
         description: territory.description || '',
-        status: territory.status,
-        assignedManagerId: territory.assignedManagerId || '',
-        regions: territory.regions?.join(', ') || '',
+        territoryType: territory.territoryType || 'geographic',
+        isActive: territory.isActive,
+        countries: territory.countries?.join(', ') || '',
+        states: territory.states?.join(', ') || '',
         industries: territory.industries?.join(', ') || '',
         companySizeMin: territory.companySizeMin?.toString() || '',
         companySizeMax: territory.companySizeMax?.toString() || '',
         revenueMin: territory.revenueMin || '',
         revenueMax: territory.revenueMax || '',
-        assignmentPriority: territory.assignmentPriority?.toString() || '1',
+        ownerId: territory.ownerId || '',
+        managerId: territory.managerId || '',
+        annualQuota: territory.annualQuota || '',
       });
     } else {
       resetForm();
@@ -271,28 +258,30 @@ export default function PlatformTerritories() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const list = (value: string) =>
+      value
+        ? value
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean)
+        : [];
+
     const territoryData: Partial<Territory> = {
       name: formData.name,
+      code: formData.code || undefined,
       description: formData.description || undefined,
-      status: formData.status,
-      assignedManagerId: formData.assignedManagerId || undefined,
-      regions: formData.regions
-        ? formData.regions
-            .split(',')
-            .map((r) => r.trim())
-            .filter(Boolean)
-        : [],
-      industries: formData.industries
-        ? formData.industries
-            .split(',')
-            .map((i) => i.trim())
-            .filter(Boolean)
-        : [],
-      companySizeMin: formData.companySizeMin ? parseInt(formData.companySizeMin) : undefined,
-      companySizeMax: formData.companySizeMax ? parseInt(formData.companySizeMax) : undefined,
+      territoryType: formData.territoryType || undefined,
+      isActive: formData.isActive,
+      countries: list(formData.countries),
+      states: list(formData.states),
+      industries: list(formData.industries),
+      companySizeMin: formData.companySizeMin ? parseInt(formData.companySizeMin, 10) : undefined,
+      companySizeMax: formData.companySizeMax ? parseInt(formData.companySizeMax, 10) : undefined,
       revenueMin: formData.revenueMin || undefined,
       revenueMax: formData.revenueMax || undefined,
-      assignmentPriority: parseInt(formData.assignmentPriority) || 1,
+      ownerId: formData.ownerId || undefined,
+      managerId: formData.managerId || undefined,
+      annualQuota: formData.annualQuota || undefined,
     };
 
     if (editingTerritory) {
@@ -308,26 +297,35 @@ export default function PlatformTerritories() {
     }
   };
 
+  const managerName = (id: string) => managers.find((m) => m.id === id)?.name ?? id;
+
+  // The old shape had one free-text `regions` list; the table matches on four
+  // separate levels, so the card counts the rules rather than inventing a region.
+  const geographyCount = (t: Territory) =>
+    (t.countries?.length ?? 0) +
+    (t.states?.length ?? 0) +
+    (t.cities?.length ?? 0) +
+    (t.postalCodes?.length ?? 0);
+
   // Filter territories
   const filteredTerritories = territories.filter((territory) => {
     const matchesSearch =
       territory.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       territory.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTab = selectedTab === 'all' || territory.status === selectedTab;
+    const matchesTab = selectedTab === 'all' || territory.isActive === (selectedTab === 'active');
     return matchesSearch && matchesTab;
   });
 
   // Calculate stats
+  // activeProspectsCount and activeDealsCount are real columns the platform
+  // maintains, so those two roll up. totalTenants and conversionRate were summed
+  // from fields no table records and are gone rather than shown as zero.
   const stats = {
     total: territories.length,
-    active: territories.filter((t) => t.status === 'active').length,
-    inactive: territories.filter((t) => t.status === 'inactive').length,
-    totalProspects: territories.reduce((sum, t) => sum + (t.totalProspects || 0), 0),
-    totalTenants: territories.reduce((sum, t) => sum + (t.totalTenants || 0), 0),
-    avgConversion:
-      territories.length > 0
-        ? territories.reduce((sum, t) => sum + (t.conversionRate || 0), 0) / territories.length
-        : 0,
+    active: territories.filter((t) => t.isActive).length,
+    inactive: territories.filter((t) => !t.isActive).length,
+    activeProspects: territories.reduce((sum, t) => sum + (t.activeProspectsCount || 0), 0),
+    activeDeals: territories.reduce((sum, t) => sum + (t.activeDealsCount || 0), 0),
   };
 
   if (isLoading) {
@@ -384,12 +382,12 @@ export default function PlatformTerritories() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Prospects
+              Active Prospects
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <span className="text-3xl font-bold">{stats.totalProspects.toLocaleString()}</span>
+              <span className="text-3xl font-bold">{stats.activeProspects.toLocaleString()}</span>
               <Building2 className="h-8 w-8 text-muted-foreground opacity-50" />
             </div>
             <p className="text-sm text-muted-foreground mt-1">Across all territories</p>
@@ -399,32 +397,21 @@ export default function PlatformTerritories() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Tenants
+              Active Deals
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <span className="text-3xl font-bold">{stats.totalTenants.toLocaleString()}</span>
+              <span className="text-3xl font-bold">{stats.activeDeals.toLocaleString()}</span>
               <Users className="h-8 w-8 text-muted-foreground opacity-50" />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">Active customers</p>
+            <p className="text-sm text-muted-foreground mt-1">Open across all territories</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Avg Conversion Rate
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-3xl font-bold">{stats.avgConversion.toFixed(1)}%</span>
-              <TrendingUp className="h-8 w-8 text-muted-foreground opacity-50" />
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">Prospect to tenant</p>
-          </CardContent>
-        </Card>
+        {/* An "Avg Conversion Rate" card stood here, averaged from a
+            conversionRate field no table records. Nothing measures
+            prospect-to-tenant conversion per territory. */}
       </div>
 
       {/* Search and Filters */}
@@ -488,16 +475,18 @@ export default function PlatformTerritories() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {territory.assignedManagerName || (
+                          {territory.managerId ? (
+                            managerName(territory.managerId)
+                          ) : (
                             <span className="text-muted-foreground">Unassigned</span>
                           )}
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
-                            {territory.regions && territory.regions.length > 0 && (
+                            {geographyCount(territory) > 0 && (
                               <div className="flex items-center gap-1 text-sm">
                                 <MapPin className="h-3 w-3" />
-                                <span>{territory.regions.length} region(s)</span>
+                                <span>{geographyCount(territory)} geographic rule(s)</span>
                               </div>
                             )}
                             {territory.industries && territory.industries.length > 0 && (
@@ -509,24 +498,14 @@ export default function PlatformTerritories() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={territory.status === 'active' ? 'default' : 'secondary'}>
-                            {territory.status}
+                          <Badge variant={territory.isActive ? 'default' : 'secondary'}>
+                            {territory.isActive ? 'Active' : 'Inactive'}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{territory.assignmentPriority}</Badge>
+                          {territory.activeProspectsCount?.toLocaleString() ?? 0}
                         </TableCell>
-                        <TableCell>{territory.totalProspects?.toLocaleString() || 0}</TableCell>
-                        <TableCell>{territory.totalTenants?.toLocaleString() || 0}</TableCell>
-                        <TableCell>
-                          {territory.conversionRate ? (
-                            <span className="font-medium">
-                              {territory.conversionRate.toFixed(1)}%
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
+                        <TableCell>{territory.activeDealsCount?.toLocaleString() ?? 0}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
@@ -581,21 +560,14 @@ export default function PlatformTerritories() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value: 'active' | 'inactive') =>
-                      setFormData({ ...formData, status: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="code">Code</Label>
+                  <Input
+                    id="code"
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                    placeholder="e.g., NA-ENT"
+                  />
+                  <p className="text-xs text-muted-foreground">Must be unique across territories</p>
                 </div>
               </div>
 
@@ -612,12 +584,32 @@ export default function PlatformTerritories() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="assignedManagerId">Territory Manager</Label>
+                  <Label htmlFor="ownerId">Primary Rep (owner)</Label>
                   <Select
-                    value={formData.assignedManagerId}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, assignedManagerId: value })
-                    }
+                    value={formData.ownerId}
+                    onValueChange={(value) => setFormData({ ...formData, ownerId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Defaults to you" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {managers.map((manager) => (
+                        <SelectItem key={manager.id} value={manager.id}>
+                          {manager.name} ({manager.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Required by the table; left blank, the territory is owned by you.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="managerId">Territory Manager</Label>
+                  <Select
+                    value={formData.managerId}
+                    onValueChange={(value) => setFormData({ ...formData, managerId: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select manager..." />
@@ -633,19 +625,44 @@ export default function PlatformTerritories() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="assignmentPriority">Assignment Priority</Label>
-                  <Input
-                    id="assignmentPriority"
-                    type="number"
-                    min="1"
-                    value={formData.assignmentPriority}
-                    onChange={(e) =>
-                      setFormData({ ...formData, assignmentPriority: e.target.value })
-                    }
-                    placeholder="1 (highest)"
-                  />
-                  <p className="text-xs text-muted-foreground">Lower numbers = higher priority</p>
+                  <Label htmlFor="territoryType">Territory Type</Label>
+                  <Select
+                    value={formData.territoryType}
+                    onValueChange={(value) => setFormData({ ...formData, territoryType: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="geographic">Geographic</SelectItem>
+                      <SelectItem value="industry">Industry</SelectItem>
+                      <SelectItem value="company_size">Company Size</SelectItem>
+                      <SelectItem value="named_accounts">Named Accounts</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="annualQuota">Annual Quota</Label>
+                  <Input
+                    id="annualQuota"
+                    value={formData.annualQuota}
+                    onChange={(e) => setFormData({ ...formData, annualQuota: e.target.value })}
+                    placeholder="e.g., 2400000"
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="isActive"
+                    checked={formData.isActive}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+                  />
+                  <Label htmlFor="isActive">Active</Label>
+                </div>
+
+                {/* An "Assignment Priority" field stood here. Priority is a
+                    column on the assignment RULES table, not on a territory. */}
               </div>
             </div>
 
@@ -653,15 +670,29 @@ export default function PlatformTerritories() {
             <div className="space-y-4">
               <h4 className="font-semibold">Coverage Criteria</h4>
 
-              <div className="space-y-2">
-                <Label htmlFor="regions">Regions (comma-separated)</Label>
-                <Input
-                  id="regions"
-                  value={formData.regions}
-                  onChange={(e) => setFormData({ ...formData, regions: e.target.value })}
-                  placeholder="e.g., North America - East, Europe - West"
-                />
-                <p className="text-xs text-muted-foreground">Available: {REGIONS.join(', ')}</p>
+              {/* One free-text "Regions" field stood here. The table matches
+                  geography on countries, states, cities and postal codes as
+                  separate lists, so a region name matched nothing. */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="countries">Countries (comma-separated)</Label>
+                  <Input
+                    id="countries"
+                    value={formData.countries}
+                    onChange={(e) => setFormData({ ...formData, countries: e.target.value })}
+                    placeholder="e.g., US, CA"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="states">States (comma-separated)</Label>
+                  <Input
+                    id="states"
+                    value={formData.states}
+                    onChange={(e) => setFormData({ ...formData, states: e.target.value })}
+                    placeholder="e.g., IA, NE, MN"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

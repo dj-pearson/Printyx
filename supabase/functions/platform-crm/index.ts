@@ -51,6 +51,40 @@ const ASSIGNMENT_RULE_COLUMNS = new Set([
   'is_active',
 ]);
 
+// Columns a caller may write on platform_sales_territories.
+const TERRITORY_COLUMNS = new Set([
+  'name',
+  'code',
+  'description',
+  'territory_type',
+  'countries',
+  'states',
+  'cities',
+  'postal_codes',
+  'industries',
+  'company_size_min',
+  'company_size_max',
+  'revenue_min',
+  'revenue_max',
+  'account_tiers',
+  'owner_id',
+  'team_members',
+  'manager_id',
+  'monthly_quota',
+  'quarterly_quota',
+  'annual_quota',
+  'is_active',
+]);
+
+function territoryWrite(body: Row): Row {
+  const out: Row = {};
+  for (const [k, v] of Object.entries(body)) {
+    const column = toSnake(k);
+    if (TERRITORY_COLUMNS.has(column)) out[column] = v;
+  }
+  return out;
+}
+
 function assignmentRuleWrite(body: Row): Row {
   const out: Row = {};
   for (const [k, v] of Object.entries(body)) {
@@ -401,6 +435,175 @@ export default async function handler(req: Request) {
     }
 
     // Method/endpoint not found
+    // ─── Sales territories (PA-052) ─────────────────────────────────────────
+    //
+    // PlatformTerritories.tsx and PlatformAssignmentRules.tsx both call this and
+    // nothing served it on either host, while platform_sales_territories has
+    // been in the schema all along. Platform-level table, no tenant_id; the
+    // root-admin gate above is the control.
+    if (endpoint === 'territories') {
+      if (req.method === 'GET' && !resourceId) {
+        const { data, error } = await admin
+          .from('platform_sales_territories')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching territories:', error);
+          return createCorsResponse({ error: 'Failed to fetch territories' }, 500, req);
+        }
+
+        return createCorsResponse(camelRows(data), 200, req);
+      }
+
+      if (req.method === 'GET' && resourceId) {
+        const { data, error } = await admin
+          .from('platform_sales_territories')
+          .select('*')
+          .eq('id', resourceId)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching territory:', error);
+          return createCorsResponse({ error: 'Failed to fetch territory' }, 500, req);
+        }
+        if (!data) return createCorsResponse({ error: 'Territory not found' }, 404, req);
+
+        return createCorsResponse(camelRow(data), 200, req);
+      }
+
+      if (req.method === 'POST' && !resourceId) {
+        const body = await req.json().catch(() => ({}));
+        const row = territoryWrite(body);
+
+        // name and owner_id are NOT NULL. owner_id is the territory's primary
+        // rep; the caller who creates one owns it unless they name someone else,
+        // which beats a 23502 nobody can read.
+        if (!row.name) return createCorsResponse({ error: 'name is required' }, 400, req);
+        if (!row.owner_id) row.owner_id = user.id;
+
+        const { data, error } = await admin
+          .from('platform_sales_territories')
+          .insert(row)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating territory:', error);
+          // `code` is UNIQUE, and a duplicate is the caller's mistake, not a fault.
+          if ((error as any).code === '23505') {
+            return createCorsResponse(
+              { error: 'A territory with that code already exists' },
+              409,
+              req,
+            );
+          }
+          return createCorsResponse({ error: 'Failed to create territory' }, 500, req);
+        }
+
+        return createCorsResponse(camelRow(data), 201, req);
+      }
+
+      if ((req.method === 'PUT' || req.method === 'PATCH') && resourceId) {
+        const body = await req.json().catch(() => ({}));
+        const row = territoryWrite(body);
+
+        const { data, error } = await admin
+          .from('platform_sales_territories')
+          .update({ ...row, updated_at: new Date().toISOString() })
+          .eq('id', resourceId)
+          .select()
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error updating territory:', error);
+          if ((error as any).code === '23505') {
+            return createCorsResponse(
+              { error: 'A territory with that code already exists' },
+              409,
+              req,
+            );
+          }
+          return createCorsResponse({ error: 'Failed to update territory' }, 500, req);
+        }
+        if (!data) return createCorsResponse({ error: 'Territory not found' }, 404, req);
+
+        return createCorsResponse(camelRow(data), 200, req);
+      }
+
+      if (req.method === 'DELETE' && resourceId) {
+        // platform_lead_assignment_rules.assign_to_territory_id references this
+        // row, so a blind delete is a 23503. Say which rules hold it instead.
+        const { data: referencing } = await admin
+          .from('platform_lead_assignment_rules')
+          .select('id, rule_name')
+          .eq('assign_to_territory_id', resourceId);
+
+        if (referencing && referencing.length) {
+          return createCorsResponse(
+            {
+              error: 'Territory is still assigned by rules',
+              rules: referencing.map((r: Row) => r.rule_name),
+            },
+            409,
+            req,
+          );
+        }
+
+        const { error } = await admin
+          .from('platform_sales_territories')
+          .delete()
+          .eq('id', resourceId);
+
+        if (error) {
+          console.error('Error deleting territory:', error);
+          return createCorsResponse({ error: 'Failed to delete territory' }, 500, req);
+        }
+
+        return createCorsResponse({ success: true, message: 'Territory deleted' }, 200, req);
+      }
+
+      return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    }
+
+    // GET /platform-crm/managers - Users a territory or rule can be assigned to
+    //
+    // PA-052: called by both platform CRM admin pages and served by nothing.
+    // These are PLATFORM users (tenant_id null) at manager level or above -
+    // level 4 in the roles table - plus anyone who can access all tenants.
+    // NOTE users has first_name/last_name, NOT name (check:phantom-cols records
+    // this as a repeat offender), so the display name is assembled here.
+    if (req.method === 'GET' && endpoint === 'managers') {
+      const { data, error } = await admin
+        .from('users')
+        .select(
+          'id, email, first_name, last_name, roles!inner(name, level, can_access_all_tenants)',
+        )
+        .is('tenant_id', null)
+        .order('first_name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching platform managers:', error);
+        return createCorsResponse({ error: 'Failed to fetch managers' }, 500, req);
+      }
+
+      const managers = (data || [])
+        .filter((u: Row) => {
+          const role = u.roles as Row | undefined;
+          return (role?.level ?? 0) >= 4 || role?.can_access_all_tenants === true;
+        })
+        .map((u: Row) => ({
+          id: u.id,
+          // An account with neither name set is shown by email rather than as a
+          // blank row nobody can pick.
+          name: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email,
+          email: u.email,
+          role: (u.roles as Row | undefined)?.name ?? null,
+        }));
+
+      return createCorsResponse(managers, 200, req);
+    }
+
     // ─── Lead assignment rules (PA-052) ─────────────────────────────────────
     //
     // /platform-crm/assignment-rules and its /test and /toggle actions are

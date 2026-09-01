@@ -66,13 +66,7 @@
     "mobile": ["dashboard", "jobs", "route-optimization", "service-report"],
     "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"],
     "onboarding": ["checklists/:id/generate-pdf", "export", "getting-started", "wizard-state"],
-    "platform-crm": [
-      "business-records/:id/convert-to-tenant",
-      "managers",
-      "scoring-models",
-      "scoring-rules",
-      "territories"
-    ],
+    "platform-crm": ["business-records/:id/convert-to-tenant", "scoring-models", "scoring-rules"],
     "seo": [
       "content",
       "images",
