@@ -1,7 +1,6 @@
 {
   "note": "Sub-paths a reachable client file calls whose literal segment appears nowhere in that domain's edge function. An entry is either a bare segment (/api/<domain>/<seg>) or, since PA-025, a normalized shape with ids collapsed to :id (/api/<domain>/:id/<seg>). Likely prod-only 404s, or worse - a request that falls through to a generic :id branch and answers 200 with the PARENT OBJECT, which a component maps over and renders as empty. Do not grow this list; see scripts/check-edge-path-coverage.mjs.",
   "gaps": {
-    "address-books": [":id/export", ":id/import", "exports", "exports/:id/download", "import"],
     "admin": [
       "audit-logs",
       "disposable-emails",

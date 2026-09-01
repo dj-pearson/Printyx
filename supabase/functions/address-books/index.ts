@@ -120,6 +120,51 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Method not allowed' }, 405, req);
     }
 
+    // Import / export / download — served by Express only.
+    //
+    // PA-052: all five of these paths are called by the address-book UI and none
+    // of them had a branch here, so in production they fell to the generic 404 at
+    // the bottom - or, for the download, into getBook() looking up an address
+    // book whose id is the literal string "exports", which answers
+    // "Address book not found". Both are misleading: the book exists, the host
+    // does not serve the feature.
+    //
+    // ABK-014 is recorded as passing and its own closure note says the edge
+    // parity "remains a follow-up"; PA-055 is that follow-up. Three things have
+    // to move before these can be real branches: ~1,350 lines of vendor
+    // parsers/serializers under server/services/address-book/vendors, multipart
+    // upload handling, and the generated export bytes, which today live in an
+    // in-process Map with a 15-minute TTL - a design that cannot exist in a
+    // stateless runtime and is already wrong behind more than one Node process.
+    //
+    // Until then, say so. A 501 naming the reason is worth more to whoever is
+    // reading a production log than a 404 that reads like a missing record.
+    const UNSERVED_HERE =
+      'Address book import and export run in the Node service; this host does not serve them. ' +
+      'No file was read and nothing was written.';
+
+    if (bookId === 'import' || sub === 'import' || sub === 'export') {
+      return createCorsResponse(
+        { error: 'Not implemented on this host', message: UNSERVED_HERE, code: 'NOT_IMPLEMENTED' },
+        501,
+        req,
+      );
+    }
+
+    if (bookId === 'exports' && entryId === 'download') {
+      return createCorsResponse(
+        {
+          error: 'Not implemented on this host',
+          message:
+            'Generated export files are held in the Node service and cannot be downloaded from ' +
+            'this host. Re-run the export where it was generated.',
+          code: 'NOT_IMPLEMENTED',
+        },
+        501,
+        req,
+      );
+    }
+
     // /address-books/:id/entries[/:entryId]
     if (sub === 'entries') {
       // Verify the book belongs to this tenant before any entry operation.
