@@ -123,7 +123,10 @@ export default async function handler(req: Request) {
         );
       }
 
-      const bucket = Deno.env.get('ONBOARDING_PDF_BUCKET') || 'onboarding-checklists';
+      // Named for the artefact, not the feature: a bucket called
+      // 'onboarding-checklists' reads as a reference to the edge function
+      // directory of that name, which PA-057 deleted.
+      const bucket = Deno.env.get('ONBOARDING_PDF_BUCKET') || 'onboarding-checklist-pdfs';
       const path = `${tenantId}/${checklistId}.pdf`;
 
       const { error: uploadError } = await admin.storage.from(bucket).upload(path, pdfBytes, {
