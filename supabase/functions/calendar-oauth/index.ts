@@ -64,8 +64,33 @@ type ProviderKey = keyof typeof PROVIDERS;
 
 const REDIRECT_URI = `${FUNCTIONS_URL}/calendar-oauth/callback`;
 
+/**
+ * Where the callback lands when the caller names nowhere useful.
+ *
+ * `/integrations` is a registered route in App.tsx. `/settings/integrations`,
+ * which this used to default to, is not - it renders NotFound, so a successful
+ * connection ended on a 404 page.
+ */
+const DEFAULT_RETURN_PATH = '/integrations';
+
+/**
+ * Reduce a caller-supplied return target to a same-origin path.
+ *
+ * `new URL(path, FRONTEND_URL)` resolves an absolute URL as itself, so an
+ * unchecked value here is an open redirect: the provider's callback would 302 a
+ * signed-in user anywhere. The state is signed, which means only an
+ * authenticated caller can set it, and that is not the same as safe.
+ */
+function safeReturnPath(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  // One leading slash, and no scheme or protocol-relative form.
+  if (!/^\/(?!\/)/.test(raw)) return DEFAULT_RETURN_PATH;
+  if (/[\r\n]/.test(raw)) return DEFAULT_RETURN_PATH;
+  return raw;
+}
+
 function frontendRedirect(path: string, params: Record<string, string>): Response {
-  const url = new URL(path, FRONTEND_URL);
+  const url = new URL(safeReturnPath(path), FRONTEND_URL);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   return new Response(null, { status: 302, headers: { Location: url.toString() } });
 }
@@ -84,7 +109,7 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && action === 'callback') {
       const error = url.searchParams.get('error');
       if (error) {
-        return frontendRedirect('/settings/integrations', {
+        return frontendRedirect(DEFAULT_RETURN_PATH, {
           calendar: 'error',
           reason: url.searchParams.get('error_description') || error,
         });
@@ -97,7 +122,7 @@ export default async function handler(req: Request) {
         // An unsigned, tampered, or expired state is indistinguishable from an
         // attempt to attach a calendar to someone else's tenant. Say nothing
         // more specific than that.
-        return frontendRedirect('/settings/integrations', {
+        return frontendRedirect(DEFAULT_RETURN_PATH, {
           calendar: 'error',
           reason: 'The consent link was invalid or has expired. Please try again.',
         });
@@ -108,7 +133,7 @@ export default async function handler(req: Request) {
       const clientSecret = Deno.env.get(provider.clientSecretEnv);
 
       if (!clientId || !clientSecret) {
-        return frontendRedirect('/settings/integrations', {
+        return frontendRedirect(DEFAULT_RETURN_PATH, {
           calendar: 'error',
           reason: `${state.provider} calendar OAuth is not configured on this server.`,
         });
@@ -128,7 +153,7 @@ export default async function handler(req: Request) {
 
       if (!tokenResponse.ok) {
         console.error('Calendar token exchange failed:', await tokenResponse.text());
-        return frontendRedirect('/settings/integrations', {
+        return frontendRedirect(DEFAULT_RETURN_PATH, {
           calendar: 'error',
           reason: 'The provider rejected the authorization code.',
         });
@@ -141,7 +166,7 @@ export default async function handler(req: Request) {
       // access_type=offline, which the authorize step sets; say so rather than
       // storing a connection that will stop working silently.
       if (!tokens.refresh_token) {
-        return frontendRedirect('/settings/integrations', {
+        return frontendRedirect(DEFAULT_RETURN_PATH, {
           calendar: 'error',
           reason:
             'The provider did not return a refresh token, so the connection could not be kept alive. Revoke the app and try again.',
@@ -175,13 +200,13 @@ export default async function handler(req: Request) {
 
       if (upsertError) {
         console.error('Failed to store calendar connection:', upsertError);
-        return frontendRedirect('/settings/integrations', {
+        return frontendRedirect(DEFAULT_RETURN_PATH, {
           calendar: 'error',
           reason: 'The calendar was authorized but the connection could not be saved.',
         });
       }
 
-      return frontendRedirect(state.redirectTo || '/settings/integrations', {
+      return frontendRedirect(state.redirectTo || DEFAULT_RETURN_PATH, {
         calendar: 'connected',
         provider: state.provider,
       });
@@ -247,7 +272,7 @@ export default async function handler(req: Request) {
         tenantId,
         userId: user.id,
         provider: providerKey,
-        redirectTo: String(body.redirectTo ?? '/settings/integrations'),
+        redirectTo: safeReturnPath(body.redirectTo),
       });
 
       const authUrl = new URL(provider.authUrl);

@@ -87,3 +87,28 @@ describe('the callback is deliberately unauthenticated, and only the callback', 
     expect(fnSrc).toMatch(/prompt', 'consent'/);
   });
 });
+
+describe('the callback cannot be pointed off-site (PA-056 follow-up)', () => {
+  const src = readFileSync(
+    join(__dirname, '../../../supabase/functions/calendar-oauth/index.ts'),
+    'utf8',
+  );
+
+  it('reduces every caller-supplied return target to a same-origin path', () => {
+    // `new URL(path, FRONTEND_URL)` resolves an absolute URL as itself, so an
+    // unchecked redirectTo turns the provider callback into an open redirect.
+    expect(src).toMatch(/function safeReturnPath\(/);
+    expect(src).toMatch(
+      /frontendRedirect\(safeReturnPath\(path\), FRONTEND_URL\)|new URL\(safeReturnPath\(path\), FRONTEND_URL\)/,
+    );
+    expect(src).toMatch(/redirectTo: safeReturnPath\(body\.redirectTo\)/);
+  });
+
+  it('defaults to a route that actually exists', () => {
+    // /settings/integrations is not registered in App.tsx - it renders NotFound,
+    // so a successful connection used to end on a 404 page.
+    expect(src).toMatch(/DEFAULT_RETURN_PATH = '\/integrations'/);
+    const code = src.replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(code).not.toMatch(/'\/settings\/integrations'/);
+  });
+});

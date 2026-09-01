@@ -110,7 +110,11 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
         method: 'POST',
         body: {
           provider: type === 'outlook' ? 'microsoft' : type,
-          redirectTo: '/settings/integrations',
+          // Come back to the page the user started on. A hardcoded settings
+          // path was wrong twice over: it is not a registered route, so a
+          // successful connection landed on NotFound, and this component is
+          // mounted from DemoScheduling, not from settings.
+          redirectTo: window.location.pathname,
         },
       });
 
