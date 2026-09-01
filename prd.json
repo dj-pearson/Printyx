@@ -5256,9 +5256,12 @@
         "Append-only — no UPDATE or DELETE permission on audit_log via RLS"
       ],
       "priority": 45,
-      "passes": true,
+      "passes": false,
       "notes": "Consider periodic export to immutable storage (S3 with object lock) for tamper-evidence.",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-platform-api, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-012",
@@ -5354,9 +5357,12 @@
         "Configurable seed list per workspace (subreddits, Quora topics, SE sites)"
       ],
       "priority": 51,
-      "passes": true,
+      "passes": false,
       "notes": "Always store source URL — citations from real questions strengthen E-E-A-T. [IMPLEMENTED 2026-06-20: supabase/functions/blog-topic-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Forum/community question miner+theme clustering (017); embedding pillar-cluster model+manual override+graph (019); internal-link finder+anchor suggestions+backfill PR view (020); topical authority 0-100+90d trend+heatmap (022); source aggregator+citation capture+references render+schema.org Citation (025); Flesch-Kincaid+LLM persona match+sentence simplify+pre-publish gate (026). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_community_seeds, blog_community_questions, blog_cluster_extensions, blog_keyword_embeddings, blog_post_embeddings, blog_internal_link_suggestions, blog_cluster_authority_scores, blog_citation_sources, blog_readability_snapshots.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-topic-intel, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-018",
@@ -5420,9 +5426,12 @@
         "Email/Slack notification (configurable) when a post crosses decay threshold"
       ],
       "priority": 55,
-      "passes": true,
+      "passes": false,
       "notes": "Tune thresholds per workspace — high-volume sites need different sensitivity than long-tail blogs. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-distribution-engine, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-022",
@@ -5519,9 +5528,12 @@
         "Preview pane shows the JSON-LD that will be emitted"
       ],
       "priority": 61,
-      "passes": true,
+      "passes": false,
       "notes": "DONE 2026-05-17. Pure generator client/src/lib/blog/schema-jsonld.ts: buildJsonLd(post, org) → {graph[], errors[], warnings[], faqDetected, howToDetected}. Per-post schema_type column added to blog_posts (varchar(20), NULL = BlogPosting); workspace Organization data (organization_name/url/logo_url) added to blog_agent_settings. Idempotent hand-run migration drizzle/migrations/_backfill_blog_schema_markup.sql (US-BLOG-024 precedent — no DB needed at build). blog-posts edge fn: schema_type added to create/patch zod + insert mapping (patch flows via existing spread). blog-agents settings edge fn: 3 org fields added to settingsPatchSchema (persist/return via existing spread + select('*')). Generator supports all 9 AC types: Article/BlogPosting/NewsArticle fully modeled (headline, mainEntityOfPage, datePublished/dateModified, author, publisher from org); FAQPage built from '### Question?' + answer pairs; HowTo from numbered steps. FAQ blocks auto-emit FAQPage and step+image blocks auto-emit HowTo even when not the primary type (AC). Review/Product/Recipe/Event emit a minimal honest object + a warning that type-specific fields aren't modeled yet — deliberately does NOT fabricate aggregateRating/review per the PRD note. Validator: errors block publish (FAQPage with no Q/A, HowTo <2 steps, missing title), warnings allowed (no image/description/publisher, draft datePublished). Editor: Structured data sidebar card — type select, FAQ/HowTo detection badges, error/warning lists, collapsible JSON-LD preview pane; publish gate blocks status=published when schema_type set and errors>0. BlogSettings: new Organization card (name/url/logo) editing blog_agent_settings via the existing settings PATCH. Closed the loop on US-BLOG-033: seo-score.ts schema-valid check now accepts {errors,warnings} and becomes a real pass/warn/fail (was 'na') when a schema type is set. tsc: no new errors (the 3 pre-existing apiRequest<T> TS2558 in BlogPostEditor are unrelated, line-shifted only; other BlogSettings* file errors are pre-existing and in untouched files). vite build green. SCOPE: per-post schema_type persisted; type-specific fields for Review/Product/Recipe/Event modeled minimally (documented warning) rather than faked.",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-prepublish-qa, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-028",
@@ -5535,9 +5547,12 @@
         "Reviewed-by field: optional second author who reviewed for accuracy"
       ],
       "priority": 62,
-      "passes": true,
+      "passes": false,
       "notes": "The original_research_signal field is a forcing function — it surfaces shallow content during planning, not after publish. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-authors/index.ts (435 lines) — authors table w/ slug/bio/headshot/credentials/expertise/social/schema.org Person, per-post original_research_signal, reviewed-by; blog_authors table in shared/blog-schema.ts; merged PR #176.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-authors, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-029",
@@ -5551,9 +5566,12 @@
         "Re-render on data refresh (e.g., monthly survey) without changing post URL"
       ],
       "priority": 63,
-      "passes": true,
+      "passes": false,
       "notes": "Recharts (interactive) + a server-side renderer like resvg or @napi-rs/canvas (static fallback) covers both needs. [IMPLEMENTED 2026-06-20: supabase/functions/blog-authoring-tools/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Data integration+chart builder+re-render (029); inline rewrite toolbar 9 actions+diff (032); plagiarism+AI detection+gate+cost log (034); image gen+stock+auto alt+breakpoints+hero gate (035); inline fact-checker+verdict/confidence pollable job (037); mermaid/excalidraw/chart diagrams (038). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_data_assets, blog_chart_specs, blog_content_scans, blog_factcheck_runs (reuses blog_assets/blog_citations/blog_brand_voices/blog_ai_costs).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-authoring-tools, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-030",
@@ -5567,9 +5585,12 @@
         "A/B test mode: write two posts on the same keyword cluster targeting different intents"
       ],
       "priority": 64,
-      "passes": true,
+      "passes": false,
       "notes": "Differentiation score is more important than fit score after a topic is saturated. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-outline-variants/index.ts (455 lines) — SERP-scored A/B outline variants; blog_outline_variants table; merged PR #176.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-outline-variants, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-031",
@@ -5599,9 +5620,12 @@
         "Diff view before applying: original vs proposed, accept/reject per-paragraph"
       ],
       "priority": 66,
-      "passes": true,
+      "passes": false,
       "notes": "Per-paragraph diff acceptance prevents big regenerations from clobbering edits the writer just made. [IMPLEMENTED 2026-06-20: supabase/functions/blog-authoring-tools/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Data integration+chart builder+re-render (029); inline rewrite toolbar 9 actions+diff (032); plagiarism+AI detection+gate+cost log (034); image gen+stock+auto alt+breakpoints+hero gate (035); inline fact-checker+verdict/confidence pollable job (037); mermaid/excalidraw/chart diagrams (038). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_data_assets, blog_chart_specs, blog_content_scans, blog_factcheck_runs (reuses blog_assets/blog_citations/blog_brand_voices/blog_ai_costs).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-authoring-tools, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-033",
@@ -5729,9 +5753,12 @@
         "All checks must pass (or be explicitly overridden) before publish button enables"
       ],
       "priority": 74,
-      "passes": true,
+      "passes": false,
       "notes": "Cache link-check results for 1h to avoid hammering the same URLs on every save. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-prepublish-qa/index.ts (487 lines) — link/OG/a11y/schema checks; blog_qa_reports table; merged PR #176.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-prepublish-qa, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-041",
@@ -5745,9 +5772,12 @@
         "Stored on post; updated post-publish with actuals"
       ],
       "priority": 75,
-      "passes": true,
+      "passes": false,
       "notes": "Predictions get reliable only after 50+ published posts feed the calibration model. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-rank-forecast/index.ts (515 lines) — pre-publish rank+traffic forecast w/ calibration; blog_rank_forecasts table; merged PR #176.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-rank-forecast, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-042",
@@ -5762,9 +5792,12 @@
         "Webhook fires on successful publish for downstream consumers"
       ],
       "priority": 76,
-      "passes": true,
+      "passes": false,
       "notes": "Idempotency on the adapter calls — retries shouldn't create duplicates. [IMPLEMENTED 2026-06-20: supabase/functions/blog-content-platform/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). CMS publish flow via adapter registry w/ status workflow + idempotent create/update + image-first URL rewrite + canonical store + partial-publish tracking + publish webhook (042); programmatic SEO templated pages from blog_data_assets w/ SEO quality gate + rate-limited bulk publish/unpublish (074); interactive blocks (calculator/quiz/comparison/ROI) w/ SAFE non-eval formula evaluator + lead capture + engagement metrics (075); multimodal podcast TTS+RSS / video script / social clips w/ voice-license gate (076); localization pipeline w/ translation adapter + per-locale brand voice + glossary + hreflang/sitemap + review-required publish (077). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_publish_attempts, blog_pseo_templates, blog_pseo_jobs, blog_pseo_rows, blog_interactive_blocks, blog_interactive_events, blog_media_outputs, blog_locales, blog_glossary_terms, blog_post_translations.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-content-platform, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-043",
@@ -5778,9 +5811,12 @@
         "UTM params auto-applied to all links pointing back to the post"
       ],
       "priority": 77,
-      "passes": true,
+      "passes": false,
       "notes": "Subject line and preheader carry 80% of open-rate weight — generate 3 variants and let the editor pick. [IMPLEMENTED 2026-06-20: supabase/functions/blog-syndication/index.ts — single clustered edge fn covering all per-platform generators; blog_syndication_pieces table (shared/blog-syndication-schema.ts) + backfill migration + RLS registration. LLM generation via _shared/anthropic, deterministic UTM application + canonical handling + char counts; manual-only platforms (reddit/HN) land in status=ready; tenant-scoped, gated to blog.distribution.publish, audit-logged.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-syndication, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-044",
@@ -5920,9 +5956,12 @@
         "Manual override always available"
       ],
       "priority": 86,
-      "passes": true,
+      "passes": false,
       "notes": "Don't trust generic 'best time to post' charts — your audience's optimal times will diverge from averages. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-distribution-engine, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-053",
@@ -5936,9 +5975,12 @@
         "Verifier: GA4 integration confirms UTM-tagged sessions are arriving"
       ],
       "priority": 87,
-      "passes": true,
+      "passes": false,
       "notes": "Lowercase everything in UTM values to avoid GA4 splitting Twitter and twitter into two sources. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-distribution-engine, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-054",
@@ -5952,9 +5994,12 @@
         "Distribution timeline view per post shows past + scheduled future shares"
       ],
       "priority": 88,
-      "passes": true,
+      "passes": false,
       "notes": "Re-shares fail when they're identical to the original — variation is mandatory, not optional. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-distribution-engine, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-055",
@@ -5968,9 +6013,12 @@
         "Backlink count surfaced on the new pillar's stats card"
       ],
       "priority": 89,
-      "passes": true,
+      "passes": false,
       "notes": "Keep human-in-the-loop on auto-injection — silent edits to published posts are a trust killer. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-distribution-engine, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-056",
@@ -5984,9 +6032,12 @@
         "Backlink trend chart per post"
       ],
       "priority": 90,
-      "passes": true,
+      "passes": false,
       "notes": "Lost-link recovery converts ~15-25% on a good day — well worth the automation. [IMPLEMENTED 2026-06-20: supabase/functions/blog-outreach/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Backlink monitor+lost-link recovery (056); unlinked brand-mention monitor+status tracker+recrawl (057); outreach list from competitor backlinks+relevance scoring (058); HARO pitch generator matched to author expertise (059); outreach agent research+draft+reply-classify+cadence (060). Creds encrypted via _shared/credential-vault, never returned. Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_backlinks, blog_backlink_events, blog_brand_mentions, blog_outreach_prospects, blog_haro_queries, blog_haro_pitches, blog_outreach_threads, blog_outreach_messages.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-outreach, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-057",
@@ -6065,9 +6116,12 @@
         "Trend charts (28-day, 90-day, all-time) per post"
       ],
       "priority": 95,
-      "passes": true,
+      "passes": false,
       "notes": "Search Console rate limits are tight — batch requests by date range, not by URL. [IMPLEMENTED 2026-06-20: supabase/functions/blog-analytics-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). GA4+GSC integration+OAuth+backfill+per-post trends (061); cohort analysis cluster->revenue/signups+attribution+ROI (065); LLM citation graph SOV+opportunity diff (067); AEO score+Quick-answers+QAPage/FAQPage JSON-LD (068); knowledge graph NER+co-occurrence edges+gap detector (069). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_analytics_connections, blog_conversion_config, blog_cohort_metrics, blog_llm_citations, blog_aeo_scores, blog_kg_entities, blog_kg_edges (writes GA4/GSC into existing blog_performance_metrics).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-analytics-intel, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-062",
@@ -6081,9 +6135,12 @@
         "Export CSV per view"
       ],
       "priority": 96,
-      "passes": true,
+      "passes": false,
       "notes": "Default the dashboard to 'last 28 days vs prior 28' — that's the comparison most editors want. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-performance-dashboard/index.ts (443 lines) — unified posts/clusters/channels dashboard over metrics; merged PR #176.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-performance-dashboard, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-063",
@@ -6097,9 +6154,12 @@
         "After refresh, monitor for ranking recovery; auto-close queue item on recovery"
       ],
       "priority": 97,
-      "passes": true,
+      "passes": false,
       "notes": "Refreshing the title + intro + adding new sections recovers most decay; full rewrites are rarely needed. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-distribution-engine, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-064",
@@ -6113,9 +6173,12 @@
         "Winner auto-promoted (with editor approval) after threshold reached"
       ],
       "priority": 98,
-      "passes": true,
+      "passes": false,
       "notes": "Search Console attribution lags 2-3 days — bake that into significance calc. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-experiments/index.ts (568 lines) — on-page A/B for title/meta/CTA w/ two-proportion z-test; blog_experiments table; merged PR #176.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-experiments, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-065",
@@ -6129,9 +6192,12 @@
         "ROI per cluster: cost (writing + tools) vs revenue"
       ],
       "priority": 99,
-      "passes": true,
+      "passes": false,
       "notes": "Most teams discover ~20% of clusters drive ~80% of revenue — cohort analysis makes the cut decision obvious. [IMPLEMENTED 2026-06-20: supabase/functions/blog-analytics-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). GA4+GSC integration+OAuth+backfill+per-post trends (061); cohort analysis cluster->revenue/signups+attribution+ROI (065); LLM citation graph SOV+opportunity diff (067); AEO score+Quick-answers+QAPage/FAQPage JSON-LD (068); knowledge graph NER+co-occurrence edges+gap detector (069). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_analytics_connections, blog_conversion_config, blog_cohort_metrics, blog_llm_citations, blog_aeo_scores, blog_kg_entities, blog_kg_edges (writes GA4/GSC into existing blog_performance_metrics).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-analytics-intel, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-066",
@@ -6148,9 +6214,12 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 100,
-      "passes": true,
+      "passes": false,
       "notes": "Source PRD: blog-system-prd.json US-BLOG-066 (elevated from \"proposed edits\" to \"autonomous re-editing\" per scope decision 5D). Full autonomy in production requires the kill switch in US-BLOG-086 to land first. [IMPLEMENTED 2026-06-20: supabase/functions/blog-serp-monitor/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Real-time SERP monitor: tier-1 hourly poll, volatility detection (rank>3/new feature/new competitor), alerts, high-priority refresh-queue auto-trigger, per-keyword timeline (070); competitor RSS/sitemap monitor + LLM summary/cluster-tag + response brief -> blog_briefs (071); fully-autonomous SERP-decay auto-refresh AGENT gated by assertAgentsActive kill switch, default no-review, guardrails (max body-change %, SEO-drop, brand-voice) park to review queue, commits blog_post_revisions(source=auto_refresh_agent)+CMS republish+audit+AI-cost (066). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_serp_monitor_config, blog_serp_volatility_events, blog_serp_alerts, blog_competitor_feeds, blog_competitor_posts, blog_auto_refresh_config, blog_auto_refresh_runs, blog_auto_refresh_reviews.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-serp-monitor, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is a JOB_TYPES entry in blog-jobs AND an admin surface: this stage calls assertAgentsActive, so it is meant to run unattended, and blog-jobs registers only noop and retention_cleanup. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-067",
@@ -6164,9 +6233,12 @@
         "Per-post AI citation count surfaced alongside organic metrics"
       ],
       "priority": 101,
-      "passes": true,
+      "passes": false,
       "notes": "Probing has cost — sample queries, don't probe every keyword every day. Weekly per cluster is plenty. [IMPLEMENTED 2026-06-20: supabase/functions/blog-analytics-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). GA4+GSC integration+OAuth+backfill+per-post trends (061); cohort analysis cluster->revenue/signups+attribution+ROI (065); LLM citation graph SOV+opportunity diff (067); AEO score+Quick-answers+QAPage/FAQPage JSON-LD (068); knowledge graph NER+co-occurrence edges+gap detector (069). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_analytics_connections, blog_conversion_config, blog_cohort_metrics, blog_llm_citations, blog_aeo_scores, blog_kg_entities, blog_kg_edges (writes GA4/GSC into existing blog_performance_metrics).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-analytics-intel, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-068",
@@ -6180,9 +6252,12 @@
         "AEO score visible alongside SEO score"
       ],
       "priority": 102,
-      "passes": true,
+      "passes": false,
       "notes": "AI Overviews citations correlate with self-contained, well-attributed paragraphs. Optimize for chunk-level quality, not just article-level. [IMPLEMENTED 2026-06-20: supabase/functions/blog-analytics-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). GA4+GSC integration+OAuth+backfill+per-post trends (061); cohort analysis cluster->revenue/signups+attribution+ROI (065); LLM citation graph SOV+opportunity diff (067); AEO score+Quick-answers+QAPage/FAQPage JSON-LD (068); knowledge graph NER+co-occurrence edges+gap detector (069). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_analytics_connections, blog_conversion_config, blog_cohort_metrics, blog_llm_citations, blog_aeo_scores, blog_kg_entities, blog_kg_edges (writes GA4/GSC into existing blog_performance_metrics).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-analytics-intel, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-069",
@@ -6196,9 +6271,12 @@
         "Gap detector: entities competitors cover that we don't — added to keyword cluster planning"
       ],
       "priority": 103,
-      "passes": true,
+      "passes": false,
       "notes": "Use a small NER model (spaCy or a fine-tuned small LLM) — calling GPT-4 for NER on every post is overkill and expensive. [IMPLEMENTED 2026-06-20: supabase/functions/blog-analytics-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). GA4+GSC integration+OAuth+backfill+per-post trends (061); cohort analysis cluster->revenue/signups+attribution+ROI (065); LLM citation graph SOV+opportunity diff (067); AEO score+Quick-answers+QAPage/FAQPage JSON-LD (068); knowledge graph NER+co-occurrence edges+gap detector (069). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_analytics_connections, blog_conversion_config, blog_cohort_metrics, blog_llm_citations, blog_aeo_scores, blog_kg_entities, blog_kg_edges (writes GA4/GSC into existing blog_performance_metrics).]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-analytics-intel, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-070",
@@ -6212,9 +6290,12 @@
         "Volatility timeline per keyword for retrospective analysis"
       ],
       "priority": 104,
-      "passes": true,
+      "passes": false,
       "notes": "Hourly polling is expensive — limit to tier-1 keywords. Daily for everything else. [IMPLEMENTED 2026-06-20: supabase/functions/blog-serp-monitor/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Real-time SERP monitor: tier-1 hourly poll, volatility detection (rank>3/new feature/new competitor), alerts, high-priority refresh-queue auto-trigger, per-keyword timeline (070); competitor RSS/sitemap monitor + LLM summary/cluster-tag + response brief -> blog_briefs (071); fully-autonomous SERP-decay auto-refresh AGENT gated by assertAgentsActive kill switch, default no-review, guardrails (max body-change %, SEO-drop, brand-voice) park to review queue, commits blog_post_revisions(source=auto_refresh_agent)+CMS republish+audit+AI-cost (066). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_serp_monitor_config, blog_serp_volatility_events, blog_serp_alerts, blog_competitor_feeds, blog_competitor_posts, blog_auto_refresh_config, blog_auto_refresh_runs, blog_auto_refresh_reviews.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-serp-monitor, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is a JOB_TYPES entry in blog-jobs AND an admin surface: this stage calls assertAgentsActive, so it is meant to run unattended, and blog-jobs registers only noop and retention_cleanup. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-071",
@@ -6228,9 +6309,12 @@
         "One-click 'Create brief from response' adds to brief queue"
       ],
       "priority": 105,
-      "passes": true,
+      "passes": false,
       "notes": "Most competitors update their sitemap.xml in real time — that's faster and lower-friction than scraping. [IMPLEMENTED 2026-06-20: supabase/functions/blog-serp-monitor/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Real-time SERP monitor: tier-1 hourly poll, volatility detection (rank>3/new feature/new competitor), alerts, high-priority refresh-queue auto-trigger, per-keyword timeline (070); competitor RSS/sitemap monitor + LLM summary/cluster-tag + response brief -> blog_briefs (071); fully-autonomous SERP-decay auto-refresh AGENT gated by assertAgentsActive kill switch, default no-review, guardrails (max body-change %, SEO-drop, brand-voice) park to review queue, commits blog_post_revisions(source=auto_refresh_agent)+CMS republish+audit+AI-cost (066). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_serp_monitor_config, blog_serp_volatility_events, blog_serp_alerts, blog_competitor_feeds, blog_competitor_posts, blog_auto_refresh_config, blog_auto_refresh_runs, blog_auto_refresh_reviews.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-serp-monitor, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is a JOB_TYPES entry in blog-jobs AND an admin surface: this stage calls assertAgentsActive, so it is meant to run unattended, and blog-jobs registers only noop and retention_cleanup. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-072",
@@ -6244,9 +6328,12 @@
         "Performance per variant tracked separately"
       ],
       "priority": 106,
-      "passes": true,
+      "passes": false,
       "notes": "Server-side rendering with edge personalization (Cloudflare Workers, Vercel edge) is the right delivery mechanism. Don't index variant URLs. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-audience-variants/index.ts (499 lines) — audience-personalized variants over master doc, canonical-URL safe; blog_post_variants table; merged PR #176.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-audience-variants, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-073",
@@ -6260,9 +6347,12 @@
         "Per-workspace toggle: which stages to run (cost vs quality tradeoff)"
       ],
       "priority": 107,
-      "passes": true,
+      "passes": false,
       "notes": "Pipeline output should always be reviewable as artifacts — opaque agent chains are debugging nightmares. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-pipeline/index.ts (784 lines) — researcher→outliner→drafter→fact-check→critic→polish, per-stage artifacts/cost/latency, resume; blog_pipeline_runs/stages; merged PR #176.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-pipeline, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is a JOB_TYPES entry in blog-jobs AND an admin surface: this stage calls assertAgentsActive, so it is meant to run unattended, and blog-jobs registers only noop and retention_cleanup. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-074",
@@ -6277,9 +6367,12 @@
         "Bulk update / unpublish workflows when data changes"
       ],
       "priority": 108,
-      "passes": true,
+      "passes": false,
       "notes": "Programmatic SEO without quality gates = doorway pages = manual penalty. Always gate on uniqueness + value per page. [IMPLEMENTED 2026-06-20: supabase/functions/blog-content-platform/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). CMS publish flow via adapter registry w/ status workflow + idempotent create/update + image-first URL rewrite + canonical store + partial-publish tracking + publish webhook (042); programmatic SEO templated pages from blog_data_assets w/ SEO quality gate + rate-limited bulk publish/unpublish (074); interactive blocks (calculator/quiz/comparison/ROI) w/ SAFE non-eval formula evaluator + lead capture + engagement metrics (075); multimodal podcast TTS+RSS / video script / social clips w/ voice-license gate (076); localization pipeline w/ translation adapter + per-locale brand voice + glossary + hreflang/sitemap + review-required publish (077). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_publish_attempts, blog_pseo_templates, blog_pseo_jobs, blog_pseo_rows, blog_interactive_blocks, blog_interactive_events, blog_media_outputs, blog_locales, blog_glossary_terms, blog_post_translations.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-content-platform, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-075",
@@ -6293,9 +6386,12 @@
         "Engagement metrics: completion rate, share rate, conversion rate per tool"
       ],
       "priority": 109,
-      "passes": true,
+      "passes": false,
       "notes": "Calculators are the highest-ROI interactive content for B2B — they earn backlinks for years. [IMPLEMENTED 2026-06-20: supabase/functions/blog-content-platform/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). CMS publish flow via adapter registry w/ status workflow + idempotent create/update + image-first URL rewrite + canonical store + partial-publish tracking + publish webhook (042); programmatic SEO templated pages from blog_data_assets w/ SEO quality gate + rate-limited bulk publish/unpublish (074); interactive blocks (calculator/quiz/comparison/ROI) w/ SAFE non-eval formula evaluator + lead capture + engagement metrics (075); multimodal podcast TTS+RSS / video script / social clips w/ voice-license gate (076); localization pipeline w/ translation adapter + per-locale brand voice + glossary + hreflang/sitemap + review-required publish (077). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_publish_attempts, blog_pseo_templates, blog_pseo_jobs, blog_pseo_rows, blog_interactive_blocks, blog_interactive_events, blog_media_outputs, blog_locales, blog_glossary_terms, blog_post_translations.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-content-platform, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-076",
@@ -6309,9 +6405,12 @@
         "Each output stored as asset linked to source post"
       ],
       "priority": 110,
-      "passes": true,
+      "passes": false,
       "notes": "Voice cloning requires explicit consent + license — gate behind a 'voice license uploaded' flag per author. [IMPLEMENTED 2026-06-20: supabase/functions/blog-content-platform/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). CMS publish flow via adapter registry w/ status workflow + idempotent create/update + image-first URL rewrite + canonical store + partial-publish tracking + publish webhook (042); programmatic SEO templated pages from blog_data_assets w/ SEO quality gate + rate-limited bulk publish/unpublish (074); interactive blocks (calculator/quiz/comparison/ROI) w/ SAFE non-eval formula evaluator + lead capture + engagement metrics (075); multimodal podcast TTS+RSS / video script / social clips w/ voice-license gate (076); localization pipeline w/ translation adapter + per-locale brand voice + glossary + hreflang/sitemap + review-required publish (077). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_publish_attempts, blog_pseo_templates, blog_pseo_jobs, blog_pseo_rows, blog_interactive_blocks, blog_interactive_events, blog_media_outputs, blog_locales, blog_glossary_terms, blog_post_translations.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-content-platform, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-077",
@@ -6326,9 +6425,12 @@
         "Locale-specific publish flow: each translation has its own status, reviewer, publish_date"
       ],
       "priority": 111,
-      "passes": true,
+      "passes": false,
       "notes": "Don't auto-publish translations without native review — machine translation is good for v1 drafts, never for ship. [IMPLEMENTED 2026-06-20: supabase/functions/blog-content-platform/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). CMS publish flow via adapter registry w/ status workflow + idempotent create/update + image-first URL rewrite + canonical store + partial-publish tracking + publish webhook (042); programmatic SEO templated pages from blog_data_assets w/ SEO quality gate + rate-limited bulk publish/unpublish (074); interactive blocks (calculator/quiz/comparison/ROI) w/ SAFE non-eval formula evaluator + lead capture + engagement metrics (075); multimodal podcast TTS+RSS / video script / social clips w/ voice-license gate (076); localization pipeline w/ translation adapter + per-locale brand voice + glossary + hreflang/sitemap + review-required publish (077). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_publish_attempts, blog_pseo_templates, blog_pseo_jobs, blog_pseo_rows, blog_interactive_blocks, blog_interactive_events, blog_media_outputs, blog_locales, blog_glossary_terms, blog_post_translations.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-content-platform, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-078",
@@ -6342,9 +6444,12 @@
         "Alerts: anomaly detection (sudden 3x spike) → email/Slack"
       ],
       "priority": 112,
-      "passes": true,
+      "passes": false,
       "notes": "Anomaly detection catches infinite-loop bugs and rogue jobs before they consume the monthly budget. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-ai-costs/index.ts (528 lines) — AI cost ledger/dashboard + per-workspace quotas; blog_ai_costs/blog_ai_quotas; merged PR #176.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as edge functions blog-ai-costs, blog-pipeline, and nothing reaches them - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is a JOB_TYPES entry in blog-jobs AND an admin surface: this stage calls assertAgentsActive, so it is meant to run unattended, and blog-jobs registers only noop and retention_cleanup. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-079",
@@ -6358,9 +6463,12 @@
         "HMAC signature verification documented for consumers"
       ],
       "priority": 113,
-      "passes": true,
+      "passes": false,
       "notes": "Always sign webhook payloads — unsigned webhooks are an attack surface. [IMPLEMENTED 2026-06-20: supabase/functions/blog-platform-api/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Webhook event bus (8 event types) w/ HMAC-signed at-least-once delivery, exponential backoff, dead-letter, log viewer (079); public REST API w/ hashed scoped API keys + rate limits + OpenAPI 3.1 spec (supabase/functions/blog-platform-api/openapi.json) (080); per-workspace backup/export (Markdown+frontmatter) + import w/ collision resolution + scheduled backups + retention + right-to-delete (081); white-label embeddable widget config + signed-token SSO verify + CSS-var theming (083); GDPR/CCPA compliance — DSAR export + right-to-erasure anonymization preserving append-only audit + docs/BLOG_COMPLIANCE.md PII inventory/DPA/security overview (084). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_webhooks, blog_webhook_deliveries, blog_api_keys, blog_api_usage, blog_backups, blog_backup_config, blog_widget_config, blog_dsar_requests.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-platform-api, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-080",
@@ -6375,9 +6483,12 @@
         "API docs site (Scalar / Redocly) auto-deployed"
       ],
       "priority": 114,
-      "passes": true,
+      "passes": false,
       "notes": "OpenAPI-first means SDKs and docs stay in sync — never hand-write either. [IMPLEMENTED 2026-06-20: supabase/functions/blog-platform-api/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Webhook event bus (8 event types) w/ HMAC-signed at-least-once delivery, exponential backoff, dead-letter, log viewer (079); public REST API w/ hashed scoped API keys + rate limits + OpenAPI 3.1 spec (supabase/functions/blog-platform-api/openapi.json) (080); per-workspace backup/export (Markdown+frontmatter) + import w/ collision resolution + scheduled backups + retention + right-to-delete (081); white-label embeddable widget config + signed-token SSO verify + CSS-var theming (083); GDPR/CCPA compliance — DSAR export + right-to-erasure anonymization preserving append-only audit + docs/BLOG_COMPLIANCE.md PII inventory/DPA/security overview (084). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_webhooks, blog_webhook_deliveries, blog_api_keys, blog_api_usage, blog_backups, blog_backup_config, blog_widget_config, blog_dsar_requests.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-platform-api, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-081",
@@ -6391,9 +6502,12 @@
         "Right-to-delete: full workspace purge job (audit_log preserved with anonymized actor IDs)"
       ],
       "priority": 115,
-      "passes": true,
+      "passes": false,
       "notes": "Markdown + frontmatter as the canonical export means consumers can fork to any system without lock-in. [IMPLEMENTED 2026-06-20: supabase/functions/blog-platform-api/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Webhook event bus (8 event types) w/ HMAC-signed at-least-once delivery, exponential backoff, dead-letter, log viewer (079); public REST API w/ hashed scoped API keys + rate limits + OpenAPI 3.1 spec (supabase/functions/blog-platform-api/openapi.json) (080); per-workspace backup/export (Markdown+frontmatter) + import w/ collision resolution + scheduled backups + retention + right-to-delete (081); white-label embeddable widget config + signed-token SSO verify + CSS-var theming (083); GDPR/CCPA compliance — DSAR export + right-to-erasure anonymization preserving append-only audit + docs/BLOG_COMPLIANCE.md PII inventory/DPA/security overview (084). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_webhooks, blog_webhook_deliveries, blog_api_keys, blog_api_usage, blog_backups, blog_backup_config, blog_widget_config, blog_dsar_requests.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-platform-api, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-082",
@@ -6423,9 +6537,12 @@
         "Documentation for host app integration"
       ],
       "priority": 117,
-      "passes": true,
+      "passes": false,
       "notes": "This is what makes the system reusable across your platforms — without it, every host needs to swap in its own admin. [IMPLEMENTED 2026-06-20: supabase/functions/blog-platform-api/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Webhook event bus (8 event types) w/ HMAC-signed at-least-once delivery, exponential backoff, dead-letter, log viewer (079); public REST API w/ hashed scoped API keys + rate limits + OpenAPI 3.1 spec (supabase/functions/blog-platform-api/openapi.json) (080); per-workspace backup/export (Markdown+frontmatter) + import w/ collision resolution + scheduled backups + retention + right-to-delete (081); white-label embeddable widget config + signed-token SSO verify + CSS-var theming (083); GDPR/CCPA compliance — DSAR export + right-to-erasure anonymization preserving append-only audit + docs/BLOG_COMPLIANCE.md PII inventory/DPA/security overview (084). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_webhooks, blog_webhook_deliveries, blog_api_keys, blog_api_usage, blog_backups, blog_backup_config, blog_widget_config, blog_dsar_requests.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-platform-api, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-084",
@@ -6440,9 +6557,12 @@
         "Security overview doc for prospects"
       ],
       "priority": 118,
-      "passes": true,
+      "passes": false,
       "notes": "Don't promise SOC2 without an actual audit — but build the foundations now so the audit is cheap later. [IMPLEMENTED 2026-06-20: supabase/functions/blog-platform-api/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Webhook event bus (8 event types) w/ HMAC-signed at-least-once delivery, exponential backoff, dead-letter, log viewer (079); public REST API w/ hashed scoped API keys + rate limits + OpenAPI 3.1 spec (supabase/functions/blog-platform-api/openapi.json) (080); per-workspace backup/export (Markdown+frontmatter) + import w/ collision resolution + scheduled backups + retention + right-to-delete (081); white-label embeddable widget config + signed-token SSO verify + CSS-var theming (083); GDPR/CCPA compliance — DSAR export + right-to-erasure anonymization preserving append-only audit + docs/BLOG_COMPLIANCE.md PII inventory/DPA/security overview (084). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_webhooks, blog_webhook_deliveries, blog_api_keys, blog_api_usage, blog_backups, blog_backup_config, blog_widget_config, blog_dsar_requests.]",
-      "category": "blog"
+      "category": "blog",
+      "reopened_at": "2026-09-01",
+      "reopened_by": "AUDIT-025",
+      "reopen_reason": "REOPENED: the deliverable cannot be invoked. It ships as the edge function blog-platform-api, and nothing reaches it - no client tree names the path, no crmProxies alias targets it, server.ts maps no segment onto it, and no drizzle/cron/*.sql posts to it. What is missing is an admin surface under client/src/pages/platform-admin/blog/, beside the eighteen prefixes that page already calls. It was NOT meant to be a blog_jobs handler - a handler takes (admin, job, req) and does no routing, while this is a multi-method REST surface. Closing it again needs a caller, a schedule, or a decision to delete the stage; see docs/blog-unreachable-stages.md."
     },
     {
       "id": "US-BLOG-085",
@@ -11026,7 +11146,7 @@
       ],
       "priority": 3,
       "passes": false,
-      "notes": "Found 2026-08-29 triaging the largest cluster in AUDIT-024's baseline. THE SPLIT IS THE EVIDENCE: 37 blog-* edge functions exist. Eighteen are called by client/src/pages/platform-admin/blog/ - blog-agents, blog-assets, blog-audit-log, blog-brand-voices, blog-briefs, blog-cms-targets, blog-competitor-gap, blog-draft, blog-jobs, blog-keyword-targets, blog-keywords, blog-meta-suggest, blog-onboarding, blog-paa-miner, blog-post-revisions, blog-posts, blog-serp, blog-style-guides. NINETEEN ARE CALLED BY NOTHING. FOUR INVOCATION PATHS WERE CHECKED AND ALL COME BACK EMPTY: no file in any of the seven client trees names /api/<the directory name>; no crmProxies {fn,pathPrefix} alias or server.ts override maps a segment onto them; no pg_cron job in drizzle/cron/*.sql posts to them (those seven SQL files reach billing, contracts, customer-success, email-marketing, leases, field-service and reports); and no blog function fetches another - blog-jobs, which is the queue, runs its handlers IN-PROCESS and names no other blog function anywhere in its source. THEY ARE NOT STUBS: blog-pipeline (US-BLOG-073) chains six specialist stages with per-stage artifacts in blog_pipeline_stages, cost and latency mirrored to blog_ai_costs, a kill-switch check and a per-workspace AI quota gate, and documents POST /run and POST /resume gated to platform admin OR blog.post.edit. It reads as finished work with no door. WHAT THIS SAYS ABOUT THE STORIES: all 86 US-BLOG stories are marked passes:true. Nineteen closed deliverables cannot be reached, which means the closure criteria never included 'something invokes this'. That is the finding worth acting on, more than any individual function. WHAT I DID NOT DO: I read two of the nineteen headers (blog-pipeline, blog-jobs) and did not assess whether each of the other seventeen is individually complete or correct - only that nothing can call it. Do not read this story as a claim that all nineteen work. THE NINETEEN: blog, blog-ai-costs, blog-analytics-intel, blog-audience-variants, blog-authoring-tools, blog-authors, blog-content-platform, blog-distribution-engine, blog-experiments, blog-outline-variants, blog-outreach, blog-performance-dashboard, blog-pipeline, blog-platform-api, blog-prepublish-qa, blog-rank-forecast, blog-serp-monitor, blog-syndication, blog-topic-intel."
+      "notes": "Found 2026-08-29 triaging the largest cluster in AUDIT-024's baseline. THE SPLIT IS THE EVIDENCE: 37 blog-* edge functions exist. Eighteen are called by client/src/pages/platform-admin/blog/ - blog-agents, blog-assets, blog-audit-log, blog-brand-voices, blog-briefs, blog-cms-targets, blog-competitor-gap, blog-draft, blog-jobs, blog-keyword-targets, blog-keywords, blog-meta-suggest, blog-onboarding, blog-paa-miner, blog-post-revisions, blog-posts, blog-serp, blog-style-guides. NINETEEN ARE CALLED BY NOTHING. FOUR INVOCATION PATHS WERE CHECKED AND ALL COME BACK EMPTY: no file in any of the seven client trees names /api/<the directory name>; no crmProxies {fn,pathPrefix} alias or server.ts override maps a segment onto them; no pg_cron job in drizzle/cron/*.sql posts to them (those seven SQL files reach billing, contracts, customer-success, email-marketing, leases, field-service and reports); and no blog function fetches another - blog-jobs, which is the queue, runs its handlers IN-PROCESS and names no other blog function anywhere in its source. THEY ARE NOT STUBS: blog-pipeline (US-BLOG-073) chains six specialist stages with per-stage artifacts in blog_pipeline_stages, cost and latency mirrored to blog_ai_costs, a kill-switch check and a per-workspace AI quota gate, and documents POST /run and POST /resume gated to platform admin OR blog.post.edit. It reads as finished work with no door. WHAT THIS SAYS ABOUT THE STORIES: all 86 US-BLOG stories are marked passes:true. Nineteen closed deliverables cannot be reached, which means the closure criteria never included 'something invokes this'. That is the finding worth acting on, more than any individual function. WHAT I DID NOT DO: I read two of the nineteen headers (blog-pipeline, blog-jobs) and did not assess whether each of the other seventeen is individually complete or correct - only that nothing can call it. Do not read this story as a claim that all nineteen work. THE NINETEEN: blog, blog-ai-costs, blog-analytics-intel, blog-audience-variants, blog-authoring-tools, blog-authors, blog-content-platform, blog-distribution-engine, blog-experiments, blog-outline-variants, blog-outreach, blog-performance-dashboard, blog-pipeline, blog-platform-api, blog-prepublish-qa, blog-rank-forecast, blog-serp-monitor, blog-syndication, blog-topic-intel.\n\n--- 2026-09-01: AC1, AC2 and AC4 done; AC3 and AC5 remain ---\n\nAC1 is answered in docs/blog-unreachable-stages.md, a row per function with what\nis missing, its size and the US-BLOG stories behind it. The count is EIGHTEEN,\nnot nineteen: the baseline holds 18 blog entries today.\n\nAC2's hypothesis is REFUTED, and that is the useful part. These were not meant\nto be blog_jobs handlers. A handler is `(admin, job, req) => Promise<unknown>`\nwith no routing, and JOB_TYPES names exactly two - `noop`, a smoke test, and\n`retention_cleanup`. All eighteen are multi-method HTTP surfaces\n(GET/POST/PATCH/PUT/DELETE, several with sub-resources) that authenticate a\nuser, gate on a role and write an audit row per mutation. They are admin\nconsoles; converting one into a Handler would mean discarding its API. So AC3,\nthe screens, is the answer for sixteen of them rather than a registration.\n\nThe job runner still matters, for a different reason: with two registered types,\nNOTHING in this subsystem is scheduled beyond a cleanup sweep. Two of the\neighteen - blog-pipeline and blog-serp-monitor - call assertAgentsActive, which\nis the agent entry-point convention, so they are meant to run unattended and\nneed a JOB_TYPES entry AS WELL AS a console. A screen alone would leave them\nnever running.\n\nONE OVERSTATEMENT CORRECTED. blog-platform-api is only partly unreachable: its\n`/public/*` branch sits BEFORE the auth gate and answers GET only, and\n`/webhooks` is an inbound receiver, so neither is supposed to have a caller in a\nclient tree - that half is reachable by anyone with the URL. Its authenticated\nbranches (api-keys, backup, compliance, widget) are in the same position as the\nother seventeen. It stays in the unreferenced baseline, because the guard looks\nfor a caller and there genuinely is none in the repo; the distinction belongs in\nthe doc.\n\nAC4 done: 40 US-BLOG stories are reopened, each carrying a reason that names the\nfunction, states that nothing reaches it and by which of the four invocation\npaths, says which way in is missing, and points at the doc. They were all\npassing. None of the 86 stories' acceptance criteria included \"something invokes\nthis\", which is the mechanism the story identifies and the reason a per-story\nnote beats a single summary here.\n\nAC3 and AC5 remain and are large: roughly 21,000 lines behind eighteen doors\nwith no handle. The doc says plainly that deletion is one of the three valid\nresolutions - the subsystem shipped fast and some of these may never have had a\ncustomer - and that adding a crmProxies entry is NOT one, since forwarding a\nprefix no page calls changes nothing about whether the feature exists."
     },
     {
       "id": "SUPA-000",
