@@ -76,6 +76,54 @@ const TERRITORY_COLUMNS = new Set([
   'is_active',
 ]);
 
+// Columns a caller may write on platform_lead_scoring_rules.
+const SCORING_RULE_COLUMNS = new Set([
+  'rule_name',
+  'category',
+  'description',
+  'field_name',
+  'operator',
+  'value',
+  'points',
+  'max_points',
+  'priority',
+  'weight',
+  'is_active',
+]);
+
+// The column comments' own vocabularies. The page offered 'technographic' and
+// camelCase operators (greaterThan/lessThan/between), none of which any scorer
+// reads, so a rule saved with one would never fire (PA-052).
+const SCORING_CATEGORIES = ['demographic', 'firmographic', 'behavioral', 'engagement', 'bant'];
+const SCORING_OPERATORS = [
+  'equals',
+  'not_equals',
+  'greater_than',
+  'less_than',
+  'contains',
+  'in_list',
+];
+
+/** Returns an error message when a rule names a category or operator no scorer reads. */
+function validateScoringVocabulary(row: Row): string | null {
+  if (row.category !== undefined && !SCORING_CATEGORIES.includes(String(row.category))) {
+    return `category must be one of: ${SCORING_CATEGORIES.join(', ')}`;
+  }
+  if (row.operator !== undefined && !SCORING_OPERATORS.includes(String(row.operator))) {
+    return `operator must be one of: ${SCORING_OPERATORS.join(', ')}`;
+  }
+  return null;
+}
+
+function scoringRuleWrite(body: Row): Row {
+  const out: Row = {};
+  for (const [k, v] of Object.entries(body)) {
+    const column = toSnake(k);
+    if (SCORING_RULE_COLUMNS.has(column)) out[column] = v;
+  }
+  return out;
+}
+
 function territoryWrite(body: Row): Row {
   const out: Row = {};
   for (const [k, v] of Object.entries(body)) {
@@ -435,6 +483,129 @@ export default async function handler(req: Request) {
     }
 
     // Method/endpoint not found
+    // ─── Lead scoring rules (PA-052) ────────────────────────────────────────
+    //
+    // PlatformLeadScoring.tsx calls this and nothing served it, while
+    // platform_lead_scoring_rules has been in the schema all along. There is NO
+    // scoring-models table and no branch for one - see the page for why the
+    // model concept was removed rather than invented.
+    if (endpoint === 'scoring-rules') {
+      if (req.method === 'GET' && !resourceId) {
+        const category = url.searchParams.get('category');
+
+        let query = admin
+          .from('platform_lead_scoring_rules')
+          .select('*')
+          .order('priority', { ascending: false })
+          .order('rule_name', { ascending: true });
+
+        if (category) query = query.eq('category', category);
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('Error fetching scoring rules:', error);
+          return createCorsResponse({ error: 'Failed to fetch scoring rules' }, 500, req);
+        }
+
+        return createCorsResponse(camelRows(data), 200, req);
+      }
+
+      if (req.method === 'GET' && resourceId) {
+        const { data, error } = await admin
+          .from('platform_lead_scoring_rules')
+          .select('*')
+          .eq('id', resourceId)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching scoring rule:', error);
+          return createCorsResponse({ error: 'Failed to fetch scoring rule' }, 500, req);
+        }
+        if (!data) return createCorsResponse({ error: 'Scoring rule not found' }, 404, req);
+
+        return createCorsResponse(camelRow(data), 200, req);
+      }
+
+      if (req.method === 'POST' && !resourceId) {
+        const body = await req.json().catch(() => ({}));
+        const row = scoringRuleWrite(body);
+
+        // rule_name, category, field_name, operator, value and points are all
+        // NOT NULL. Note points may legitimately be 0 or negative, so it is
+        // tested for presence rather than truthiness.
+        const missing: string[] = [];
+        if (!row.rule_name) missing.push('ruleName');
+        if (!row.category) missing.push('category');
+        if (!row.field_name) missing.push('fieldName');
+        if (!row.operator) missing.push('operator');
+        if (row.value === undefined || row.value === null) missing.push('value');
+        if (row.points === undefined || row.points === null) missing.push('points');
+        if (missing.length) {
+          return createCorsResponse(
+            { error: `Missing required field(s): ${missing.join(', ')}` },
+            400,
+            req,
+          );
+        }
+
+        const invalid = validateScoringVocabulary(row);
+        if (invalid) return createCorsResponse({ error: invalid }, 400, req);
+
+        const { data, error } = await admin
+          .from('platform_lead_scoring_rules')
+          .insert({ ...row, created_by: user.id })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating scoring rule:', error);
+          return createCorsResponse({ error: 'Failed to create scoring rule' }, 500, req);
+        }
+
+        return createCorsResponse(camelRow(data), 201, req);
+      }
+
+      if ((req.method === 'PUT' || req.method === 'PATCH') && resourceId) {
+        const body = await req.json().catch(() => ({}));
+        const row = scoringRuleWrite(body);
+
+        const invalid = validateScoringVocabulary(row);
+        if (invalid) return createCorsResponse({ error: invalid }, 400, req);
+
+        const { data, error } = await admin
+          .from('platform_lead_scoring_rules')
+          .update({ ...row, updated_at: new Date().toISOString() })
+          .eq('id', resourceId)
+          .select()
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error updating scoring rule:', error);
+          return createCorsResponse({ error: 'Failed to update scoring rule' }, 500, req);
+        }
+        if (!data) return createCorsResponse({ error: 'Scoring rule not found' }, 404, req);
+
+        return createCorsResponse(camelRow(data), 200, req);
+      }
+
+      if (req.method === 'DELETE' && resourceId) {
+        const { error } = await admin
+          .from('platform_lead_scoring_rules')
+          .delete()
+          .eq('id', resourceId);
+
+        if (error) {
+          console.error('Error deleting scoring rule:', error);
+          return createCorsResponse({ error: 'Failed to delete scoring rule' }, 500, req);
+        }
+
+        return createCorsResponse({ success: true, message: 'Scoring rule deleted' }, 200, req);
+      }
+
+      return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    }
+
     // ─── Sales territories (PA-052) ─────────────────────────────────────────
     //
     // PlatformTerritories.tsx and PlatformAssignmentRules.tsx both call this and

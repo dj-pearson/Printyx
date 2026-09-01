@@ -27,8 +27,6 @@
     "client/src/pages/PlatformBusinessRecordDetail.tsx:/api/platform-crm/business-records/__DYN__/convert-to-tenant",
     "client/src/pages/PlatformBusinessRecords.tsx:/api/platform-crm/business-records/bulk/assign",
     "client/src/pages/PlatformBusinessRecords.tsx:/api/platform-crm/business-records/export?__DYN__&format=__DYN__",
-    "client/src/pages/PlatformLeadScoring.tsx:/api/platform-crm/scoring-rules",
-    "client/src/pages/PlatformLeadScoring.tsx:/api/platform-crm/scoring-rules/__DYN__",
     "client/src/pages/ProposalBuilder.tsx:/api/validate/proposal-to-contract/__DYN__",
     "client/src/pages/QuoteProposalGeneration.tsx:/api/validate/quote-to-proposal/__DYN__",
     "client/src/pages/RoleManagement.tsx:/api/rbac/organizational-units",

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Dialog,
   DialogContent,
@@ -38,59 +39,48 @@ import {
   Edit,
   Trash2,
   TrendingUp,
-  Users,
   Building2,
   Sparkles,
   Activity,
-  AlertCircle,
 } from 'lucide-react';
 
+// Mirrors platform_lead_scoring_rules (shared/platform-crm-schema.ts) in the
+// camelCase the platform-crm function returns. PA-052: the previous shape used
+// name/criteriaField/criteriaValue/scorePoints, none of which is a column.
 interface ScoringRule {
   id: string;
-  name: string;
-  description?: string;
-  category: 'firmographic' | 'behavioral' | 'engagement' | 'demographic' | 'technographic';
-  criteriaField: string;
-  operator: 'equals' | 'contains' | 'greaterThan' | 'lessThan' | 'between' | 'in';
-  criteriaValue: string;
-  scorePoints: number;
-  isActive: boolean;
+  ruleName: string;
+  description?: string | null;
+  category: 'demographic' | 'firmographic' | 'behavioral' | 'engagement' | 'bant';
+  fieldName: string;
+  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'in_list';
+  value: unknown;
+  points: number;
+  maxPoints?: number | null;
   priority: number;
+  weight?: string | null;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-interface ScoringModel {
-  id: string;
-  name: string;
-  description?: string;
-  isActive: boolean;
-  isDefault: boolean;
-  totalRules: number;
-  maxPossibleScore: number;
-  gradeThresholds: {
-    A: number;
-    B: number;
-    C: number;
-    D: number;
-  };
-  tierThresholds: {
-    hot: number;
-    warm: number;
-    cold: number;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
+// A ScoringModel interface stood here - grade thresholds A/B/C/D, tier
+// thresholds hot/warm/cold, isDefault, maxPossibleScore - against a
+// scoring-models endpoint and a table that exist nowhere. Grades and tiers are
+// pgEnums on platform_business_records; nothing stores a threshold that maps a
+// score onto one, so the whole model concept is gone rather than mocked. It also
+// GATED this page: the rules query was `enabled: !!selectedModelId` and a model
+// id could never be set, so the rule list never fetched at all.
 
 interface RuleFormData {
-  name: string;
+  ruleName: string;
   description: string;
   category: string;
-  criteriaField: string;
+  fieldName: string;
   operator: string;
-  criteriaValue: string;
-  scorePoints: string;
+  value: string;
+  points: string;
+  maxPoints: string;
   isActive: boolean;
   priority: string;
 }
@@ -140,84 +130,69 @@ const CATEGORIES = {
       { value: 'decisionMaker', label: 'Decision Maker' },
     ],
   },
-  technographic: {
-    label: 'Technographic',
-    description: 'Technology stack',
+  bant: {
+    label: 'BANT',
+    description: 'Budget, authority, need, timeline',
     fields: [
-      { value: 'currentPrintSolution', label: 'Current Print Solution' },
-      { value: 'techStack', label: 'Technology Stack' },
-      { value: 'integrationNeeds', label: 'Integration Needs' },
+      { value: 'budgetIdentified', label: 'Budget Identified' },
+      { value: 'decisionMakerIdentified', label: 'Decision Maker Identified' },
+      { value: 'needIdentified', label: 'Need Identified' },
+      { value: 'decisionTimeline', label: 'Decision Timeline' },
     ],
   },
+  // A 'technographic' category stood here. The column's vocabulary is
+  // demographic | firmographic | behavioral | engagement | bant, so a rule saved
+  // under it would never be read by any scorer.
 };
 
+// The column's own operator vocabulary. camelCase greaterThan/lessThan and a
+// 'between' that the table cannot express were all invented.
 const OPERATORS = [
   { value: 'equals', label: 'Equals' },
+  { value: 'not_equals', label: 'Not Equals' },
   { value: 'contains', label: 'Contains' },
-  { value: 'greaterThan', label: 'Greater Than' },
-  { value: 'lessThan', label: 'Less Than' },
-  { value: 'between', label: 'Between' },
-  { value: 'in', label: 'In List' },
+  { value: 'greater_than', label: 'Greater Than' },
+  { value: 'less_than', label: 'Less Than' },
+  { value: 'in_list', label: 'In List' },
 ];
+
+const EMPTY_RULE_FORM: RuleFormData = {
+  ruleName: '',
+  description: '',
+  category: 'firmographic',
+  fieldName: '',
+  operator: 'equals',
+  value: '',
+  points: '10',
+  maxPoints: '',
+  isActive: true,
+  priority: '1',
+};
 
 export default function PlatformLeadScoring() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false);
-  const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ScoringRule | null>(null);
-  const [editingModel, setEditingModel] = useState<ScoringModel | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedModelId, setSelectedModelId] = useState<string>('');
 
-  const [ruleFormData, setRuleFormData] = useState<RuleFormData>({
-    name: '',
-    description: '',
-    category: 'firmographic',
-    criteriaField: '',
-    operator: 'equals',
-    criteriaValue: '',
-    scorePoints: '10',
-    isActive: true,
-    priority: '1',
-  });
+  const [ruleFormData, setRuleFormData] = useState<RuleFormData>({ ...EMPTY_RULE_FORM });
 
-  const [modelFormData, setModelFormData] = useState({
-    name: '',
-    description: '',
-    isActive: true,
-    isDefault: false,
-    gradeA: '80',
-    gradeB: '60',
-    gradeC: '40',
-    gradeD: '20',
-    tierHot: '70',
-    tierWarm: '40',
-    tierCold: '0',
-  });
-
-  // Fetch scoring models
-  const { data: models = [], isLoading: modelsLoading } = useQuery<ScoringModel[]>({
-    queryKey: ['/api/platform-crm/scoring-models'],
-  });
-
-  // Fetch scoring rules
+  // PA-052: the rules query key used to be
+  // ['/api/platform-crm/scoring-rules', selectedModelId], and getQueryFn joins a
+  // query key with '/', so it requested /scoring-rules/<modelId> - a single-rule
+  // lookup by a model id. It never ran anyway, being gated on a model id nothing
+  // could set. Only path segments belong in a query key.
   const { data: rules = [], isLoading: rulesLoading } = useQuery<ScoringRule[]>({
-    queryKey: ['/api/platform-crm/scoring-rules', selectedModelId],
-    enabled: !!selectedModelId,
+    queryKey: ['/api/platform-crm/scoring-rules'],
   });
 
   // Create rule mutation
+  // PA-052: raw fetch() carries no Authorization header and would 401 against
+  // the platform-crm edge function that now serves these.
   const createRuleMutation = useMutation({
-    mutationFn: async (data: Partial<ScoringRule>) => {
-      const response = await fetch('/api/platform-crm/scoring-rules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, modelId: selectedModelId }),
-      });
-      if (!response.ok) throw new Error('Failed to create scoring rule');
-      return response.json();
-    },
+    mutationFn: async (data: Partial<ScoringRule>) =>
+      apiRequest('/api/platform-crm/scoring-rules', { method: 'POST', body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/scoring-rules'] });
       toast({
@@ -231,15 +206,8 @@ export default function PlatformLeadScoring() {
 
   // Update rule mutation
   const updateRuleMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<ScoringRule> }) => {
-      const response = await fetch(`/api/platform-crm/scoring-rules/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to update scoring rule');
-      return response.json();
-    },
+    mutationFn: async ({ id, data }: { id: string; data: Partial<ScoringRule> }) =>
+      apiRequest(`/api/platform-crm/scoring-rules/${id}`, { method: 'PUT', body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/scoring-rules'] });
       toast({
@@ -253,13 +221,8 @@ export default function PlatformLeadScoring() {
 
   // Delete rule mutation
   const deleteRuleMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`/api/platform-crm/scoring-rules/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete scoring rule');
-      return response.json();
-    },
+    mutationFn: async (id: string) =>
+      apiRequest(`/api/platform-crm/scoring-rules/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/scoring-rules'] });
       toast({
@@ -269,78 +232,26 @@ export default function PlatformLeadScoring() {
     },
   });
 
-  // Create/Update model mutation
-  const saveModelMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const url = editingModel
-        ? `/api/platform-crm/scoring-models/${editingModel.id}`
-        : '/api/platform-crm/scoring-models';
-      const method = editingModel ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to save scoring model');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/scoring-models'] });
-      toast({
-        title: 'Success',
-        description: `Scoring model ${editingModel ? 'updated' : 'created'} successfully`,
-      });
-      setIsModelDialogOpen(false);
-      resetModelForm();
-    },
-  });
-
   const resetRuleForm = () => {
-    setRuleFormData({
-      name: '',
-      description: '',
-      category: 'firmographic',
-      criteriaField: '',
-      operator: 'equals',
-      criteriaValue: '',
-      scorePoints: '10',
-      isActive: true,
-      priority: '1',
-    });
+    setRuleFormData({ ...EMPTY_RULE_FORM });
     setEditingRule(null);
-  };
-
-  const resetModelForm = () => {
-    setModelFormData({
-      name: '',
-      description: '',
-      isActive: true,
-      isDefault: false,
-      gradeA: '80',
-      gradeB: '60',
-      gradeC: '40',
-      gradeD: '20',
-      tierHot: '70',
-      tierWarm: '40',
-      tierCold: '0',
-    });
-    setEditingModel(null);
   };
 
   const handleOpenRuleDialog = (rule?: ScoringRule) => {
     if (rule) {
       setEditingRule(rule);
       setRuleFormData({
-        name: rule.name,
+        ruleName: rule.ruleName,
         description: rule.description || '',
         category: rule.category,
-        criteriaField: rule.criteriaField,
+        fieldName: rule.fieldName,
         operator: rule.operator,
-        criteriaValue: rule.criteriaValue,
-        scorePoints: rule.scorePoints.toString(),
+        // `value` is jsonb; the form edits it as text and the submit re-parses.
+        value: typeof rule.value === 'string' ? rule.value : JSON.stringify(rule.value ?? ''),
+        points: rule.points?.toString() ?? '0',
+        maxPoints: rule.maxPoints?.toString() ?? '',
         isActive: rule.isActive,
-        priority: rule.priority.toString(),
+        priority: rule.priority?.toString() ?? '0',
       });
     } else {
       resetRuleForm();
@@ -348,41 +259,29 @@ export default function PlatformLeadScoring() {
     setIsRuleDialogOpen(true);
   };
 
-  const handleOpenModelDialog = (model?: ScoringModel) => {
-    if (model) {
-      setEditingModel(model);
-      setModelFormData({
-        name: model.name,
-        description: model.description || '',
-        isActive: model.isActive,
-        isDefault: model.isDefault,
-        gradeA: model.gradeThresholds.A.toString(),
-        gradeB: model.gradeThresholds.B.toString(),
-        gradeC: model.gradeThresholds.C.toString(),
-        gradeD: model.gradeThresholds.D.toString(),
-        tierHot: model.tierThresholds.hot.toString(),
-        tierWarm: model.tierThresholds.warm.toString(),
-        tierCold: model.tierThresholds.cold.toString(),
-      });
-    } else {
-      resetModelForm();
-    }
-    setIsModelDialogOpen(true);
-  };
-
   const handleSubmitRule = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // `value` is a jsonb column, so a number or a JSON list is stored as such
+    // and anything else as the string the user typed.
+    let parsedValue: unknown = ruleFormData.value;
+    try {
+      parsedValue = JSON.parse(ruleFormData.value);
+    } catch {
+      parsedValue = ruleFormData.value;
+    }
+
     const ruleData: Partial<ScoringRule> = {
-      name: ruleFormData.name,
+      ruleName: ruleFormData.ruleName,
       description: ruleFormData.description || undefined,
-      category: ruleFormData.category as any,
-      criteriaField: ruleFormData.criteriaField,
-      operator: ruleFormData.operator as any,
-      criteriaValue: ruleFormData.criteriaValue,
-      scorePoints: parseInt(ruleFormData.scorePoints),
+      category: ruleFormData.category as ScoringRule['category'],
+      fieldName: ruleFormData.fieldName,
+      operator: ruleFormData.operator as ScoringRule['operator'],
+      value: parsedValue,
+      points: parseInt(ruleFormData.points, 10) || 0,
+      maxPoints: ruleFormData.maxPoints ? parseInt(ruleFormData.maxPoints, 10) : undefined,
       isActive: ruleFormData.isActive,
-      priority: parseInt(ruleFormData.priority),
+      priority: parseInt(ruleFormData.priority, 10) || 0,
     };
 
     if (editingRule) {
@@ -390,30 +289,6 @@ export default function PlatformLeadScoring() {
     } else {
       createRuleMutation.mutate(ruleData);
     }
-  };
-
-  const handleSubmitModel = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const modelData = {
-      name: modelFormData.name,
-      description: modelFormData.description || undefined,
-      isActive: modelFormData.isActive,
-      isDefault: modelFormData.isDefault,
-      gradeThresholds: {
-        A: parseInt(modelFormData.gradeA),
-        B: parseInt(modelFormData.gradeB),
-        C: parseInt(modelFormData.gradeC),
-        D: parseInt(modelFormData.gradeD),
-      },
-      tierThresholds: {
-        hot: parseInt(modelFormData.tierHot),
-        warm: parseInt(modelFormData.tierWarm),
-        cold: parseInt(modelFormData.tierCold),
-      },
-    };
-
-    saveModelMutation.mutate(modelData);
   };
 
   const handleDeleteRule = (id: string) => {
@@ -431,21 +306,19 @@ export default function PlatformLeadScoring() {
     totalRules: rules.length,
     activeRules: rules.filter((r) => r.isActive).length,
     inactiveRules: rules.filter((r) => !r.isActive).length,
-    maxScore: rules.reduce((sum, r) => sum + (r.isActive ? r.scorePoints : 0), 0),
+    // maxPoints caps what a rule can contribute, so the ceiling uses it where
+    // it is set rather than summing raw points past the cap.
+    maxScore: rules.reduce((sum, r) => sum + (r.isActive ? (r.maxPoints ?? r.points ?? 0) : 0), 0),
     avgPointsPerRule:
-      rules.length > 0 ? rules.reduce((sum, r) => sum + r.scorePoints, 0) / rules.length : 0,
+      rules.length > 0 ? rules.reduce((sum, r) => sum + (r.points ?? 0), 0) / rules.length : 0,
   };
 
-  // Get current model
-  const currentModel =
-    models.find((m) => m.id === selectedModelId) || models.find((m) => m.isDefault);
-
-  if (modelsLoading) {
+  if (rulesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading scoring models...</p>
+          <p className="mt-4 text-muted-foreground">Loading scoring rules...</p>
         </div>
       </div>
     );
@@ -462,15 +335,11 @@ export default function PlatformLeadScoring() {
               Lead Scoring Rules
             </h1>
             <p className="text-muted-foreground mt-2">
-              Configure automated lead scoring criteria and grading thresholds
+              Configure the criteria that award points to a lead score
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => handleOpenModelDialog()}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Model
-            </Button>
-            <Button onClick={() => handleOpenRuleDialog()} disabled={!selectedModelId}>
+            <Button onClick={() => handleOpenRuleDialog()}>
               <Plus className="h-4 w-4 mr-2" />
               New Rule
             </Button>
@@ -478,315 +347,198 @@ export default function PlatformLeadScoring() {
         </div>
       </div>
 
-      {/* Model Selector */}
-      <Card className="mb-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Scoring Model</CardTitle>
-              <CardDescription>Select a scoring model to configure rules</CardDescription>
-            </div>
-            {currentModel && (
-              <Button variant="ghost" size="sm" onClick={() => handleOpenModelDialog(currentModel)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Model
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Select value={selectedModelId} onValueChange={setSelectedModelId}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a scoring model..." />
-            </SelectTrigger>
-            <SelectContent>
-              {models.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  <div className="flex items-center gap-2">
-                    <span>{model.name}</span>
-                    {model.isDefault && (
-                      <Badge variant="secondary" className="ml-2">
-                        Default
-                      </Badge>
-                    )}
-                    {model.isActive && (
-                      <Badge variant="outline" className="ml-2">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* A "Scoring Model" selector card stood here - a model dropdown, grade
+          thresholds A/B/C/D, tier thresholds hot/warm/cold and model stats. No
+          scoring-models table or endpoint exists on either host, so none of it
+          could be stored, and the empty dropdown gated the rule list below it:
+          the query was `enabled: !!selectedModelId`. Grades and tiers are pgEnums
+          on platform_business_records; nothing maps a score onto one. */}
 
-          {currentModel && (
-            <div className="mt-4 grid grid-cols-3 gap-4">
-              <div className="p-4 border rounded-lg">
-                <div className="text-sm font-medium text-muted-foreground mb-2">
-                  Grade Thresholds
-                </div>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>Grade A:</span>
-                    <span className="font-medium">{currentModel.gradeThresholds.A}+</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Grade B:</span>
-                    <span className="font-medium">{currentModel.gradeThresholds.B}+</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Grade C:</span>
-                    <span className="font-medium">{currentModel.gradeThresholds.C}+</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Grade D:</span>
-                    <span className="font-medium">{currentModel.gradeThresholds.D}+</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 border rounded-lg">
-                <div className="text-sm font-medium text-muted-foreground mb-2">
-                  Tier Thresholds
-                </div>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>Hot:</span>
-                    <span className="font-medium">{currentModel.tierThresholds.hot}+</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Warm:</span>
-                    <span className="font-medium">{currentModel.tierThresholds.warm}+</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Cold:</span>
-                    <span className="font-medium">{currentModel.tierThresholds.cold}+</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 border rounded-lg">
-                <div className="text-sm font-medium text-muted-foreground mb-2">Model Stats</div>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>Total Rules:</span>
-                    <span className="font-medium">{currentModel.totalRules}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Max Score:</span>
-                    <span className="font-medium">{currentModel.maxPossibleScore}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {selectedModelId ? (
-        <>
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Rules
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="text-3xl font-bold">{stats.totalRules}</span>
-                  <Activity className="h-8 w-8 text-muted-foreground opacity-50" />
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {stats.activeRules} active, {stats.inactiveRules} inactive
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Max Possible Score
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="text-3xl font-bold">{stats.maxScore}</span>
-                  <TrendingUp className="h-8 w-8 text-muted-foreground opacity-50" />
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">From active rules</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Avg Points/Rule
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="text-3xl font-bold">{stats.avgPointsPerRule.toFixed(0)}</span>
-                  <Sparkles className="h-8 w-8 text-muted-foreground opacity-50" />
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Average scoring weight</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Rule Categories
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="text-3xl font-bold">{Object.keys(CATEGORIES).length}</span>
-                  <Building2 className="h-8 w-8 text-muted-foreground opacity-50" />
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Available categories</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Rules Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Scoring Rules</CardTitle>
-              <CardDescription>
-                Configure criteria and point values for lead scoring
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-                <TabsList className="mb-4">
-                  <TabsTrigger value="all">All ({stats.totalRules})</TabsTrigger>
-                  {Object.entries(CATEGORIES).map(([key, config]) => {
-                    const count = rules.filter((r) => r.category === key).length;
-                    return (
-                      <TabsTrigger key={key} value={key}>
-                        {config.label} ({count})
-                      </TabsTrigger>
-                    );
-                  })}
-                </TabsList>
-
-                <TabsContent value={selectedCategory}>
-                  {rulesLoading ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                      <p className="mt-4 text-muted-foreground">Loading rules...</p>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Rule Name</TableHead>
-                          <TableHead>Category</TableHead>
-                          <TableHead>Criteria</TableHead>
-                          <TableHead>Points</TableHead>
-                          <TableHead>Priority</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredRules.length === 0 ? (
-                          <TableRow>
-                            <TableCell
-                              colSpan={7}
-                              className="text-center py-8 text-muted-foreground"
-                            >
-                              No scoring rules found. Create your first rule to get started.
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          filteredRules.map((rule) => (
-                            <TableRow key={rule.id}>
-                              <TableCell>
-                                <div>
-                                  <div className="font-medium">{rule.name}</div>
-                                  {rule.description && (
-                                    <div className="text-sm text-muted-foreground line-clamp-1">
-                                      {rule.description}
-                                    </div>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline">
-                                  {CATEGORIES[rule.category as keyof typeof CATEGORIES]?.label}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
-                                  <span className="font-medium">{rule.criteriaField}</span>{' '}
-                                  {rule.operator}{' '}
-                                  <span className="text-muted-foreground">
-                                    {rule.criteriaValue}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <span className="font-bold text-primary">+{rule.scorePoints}</span>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="secondary">{rule.priority}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={rule.isActive ? 'default' : 'secondary'}>
-                                  {rule.isActive ? 'Active' : 'Inactive'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleOpenRuleDialog(rule)}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteRule(rule.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </>
-      ) : (
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Scoring Model Selected</h3>
-              <p className="text-muted-foreground mb-4">
-                Select a scoring model above to view and manage rules, or create a new model.
-              </p>
-              <Button onClick={() => handleOpenModelDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Scoring Model
-              </Button>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Rules</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <span className="text-3xl font-bold">{stats.totalRules}</span>
+              <Activity className="h-8 w-8 text-muted-foreground opacity-50" />
             </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {stats.activeRules} active, {stats.inactiveRules} inactive
+            </p>
           </CardContent>
         </Card>
-      )}
 
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Max Possible Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <span className="text-3xl font-bold">{stats.maxScore}</span>
+              <TrendingUp className="h-8 w-8 text-muted-foreground opacity-50" />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">From active rules</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Avg Points/Rule
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <span className="text-3xl font-bold">{stats.avgPointsPerRule.toFixed(0)}</span>
+              <Sparkles className="h-8 w-8 text-muted-foreground opacity-50" />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">Average scoring weight</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Rule Categories
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <span className="text-3xl font-bold">{Object.keys(CATEGORIES).length}</span>
+              <Building2 className="h-8 w-8 text-muted-foreground opacity-50" />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">Available categories</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Rules Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Scoring Rules</CardTitle>
+          <CardDescription>Configure criteria and point values for lead scoring</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="all">All ({stats.totalRules})</TabsTrigger>
+              {Object.entries(CATEGORIES).map(([key, config]) => {
+                const count = rules.filter((r) => r.category === key).length;
+                return (
+                  <TabsTrigger key={key} value={key}>
+                    {config.label} ({count})
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+
+            <TabsContent value={selectedCategory}>
+              {rulesLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-4 text-muted-foreground">Loading rules...</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Rule Name</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Criteria</TableHead>
+                      <TableHead>Points</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRules.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          No scoring rules found. Create your first rule to get started.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredRules.map((rule) => (
+                        <TableRow key={rule.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{rule.ruleName}</div>
+                              {rule.description && (
+                                <div className="text-sm text-muted-foreground line-clamp-1">
+                                  {rule.description}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {CATEGORIES[rule.category as keyof typeof CATEGORIES]?.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <span className="font-medium">{rule.fieldName}</span>{' '}
+                              {OPERATORS.find((o) => o.value === rule.operator)?.label ??
+                                rule.operator}{' '}
+                              <span className="text-muted-foreground">
+                                {typeof rule.value === 'string'
+                                  ? rule.value
+                                  : JSON.stringify(rule.value)}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-bold text-primary">
+                              {rule.points >= 0 ? `+${rule.points}` : rule.points}
+                              {rule.maxPoints != null && (
+                                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                  (max {rule.maxPoints})
+                                </span>
+                              )}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{rule.priority}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={rule.isActive ? 'default' : 'secondary'}>
+                              {rule.isActive ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenRuleDialog(rule)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteRule(rule.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
       {/* Rule Dialog */}
       <Dialog open={isRuleDialogOpen} onOpenChange={setIsRuleDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -804,8 +556,8 @@ export default function PlatformLeadScoring() {
                   <Label htmlFor="name">Rule Name *</Label>
                   <Input
                     id="name"
-                    value={ruleFormData.name}
-                    onChange={(e) => setRuleFormData({ ...ruleFormData, name: e.target.value })}
+                    value={ruleFormData.ruleName}
+                    onChange={(e) => setRuleFormData({ ...ruleFormData, ruleName: e.target.value })}
                     placeholder="e.g., Enterprise Company Size"
                     required
                   />
@@ -829,7 +581,7 @@ export default function PlatformLeadScoring() {
                   <Select
                     value={ruleFormData.category}
                     onValueChange={(value) =>
-                      setRuleFormData({ ...ruleFormData, category: value, criteriaField: '' })
+                      setRuleFormData({ ...ruleFormData, category: value, fieldName: '' })
                     }
                   >
                     <SelectTrigger>
@@ -848,9 +600,9 @@ export default function PlatformLeadScoring() {
                 <div className="space-y-2">
                   <Label htmlFor="criteriaField">Field *</Label>
                   <Select
-                    value={ruleFormData.criteriaField}
+                    value={ruleFormData.fieldName}
                     onValueChange={(value) =>
-                      setRuleFormData({ ...ruleFormData, criteriaField: value })
+                      setRuleFormData({ ...ruleFormData, fieldName: value })
                     }
                   >
                     <SelectTrigger>
@@ -891,10 +643,8 @@ export default function PlatformLeadScoring() {
                   <Label htmlFor="criteriaValue">Value *</Label>
                   <Input
                     id="criteriaValue"
-                    value={ruleFormData.criteriaValue}
-                    onChange={(e) =>
-                      setRuleFormData({ ...ruleFormData, criteriaValue: e.target.value })
-                    }
+                    value={ruleFormData.value}
+                    onChange={(e) => setRuleFormData({ ...ruleFormData, value: e.target.value })}
                     placeholder="e.g., 1000 or Enterprise"
                     required
                   />
@@ -906,10 +656,8 @@ export default function PlatformLeadScoring() {
                     id="scorePoints"
                     type="number"
                     min="0"
-                    value={ruleFormData.scorePoints}
-                    onChange={(e) =>
-                      setRuleFormData({ ...ruleFormData, scorePoints: e.target.value })
-                    }
+                    value={ruleFormData.points}
+                    onChange={(e) => setRuleFormData({ ...ruleFormData, points: e.target.value })}
                     required
                   />
                 </div>
@@ -954,180 +702,9 @@ export default function PlatformLeadScoring() {
         </DialogContent>
       </Dialog>
 
-      {/* Model Dialog */}
-      <Dialog open={isModelDialogOpen} onOpenChange={setIsModelDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingModel ? 'Edit Scoring Model' : 'Create New Scoring Model'}
-            </DialogTitle>
-            <DialogDescription>Configure scoring model and threshold settings</DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmitModel} className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="modelName">Model Name *</Label>
-                <Input
-                  id="modelName"
-                  value={modelFormData.name}
-                  onChange={(e) => setModelFormData({ ...modelFormData, name: e.target.value })}
-                  placeholder="e.g., Default Scoring Model"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="modelDescription">Description</Label>
-                <Textarea
-                  id="modelDescription"
-                  value={modelFormData.description}
-                  onChange={(e) =>
-                    setModelFormData({ ...modelFormData, description: e.target.value })
-                  }
-                  placeholder="Brief description..."
-                  rows={2}
-                />
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="modelActive"
-                    checked={modelFormData.isActive}
-                    onCheckedChange={(checked) =>
-                      setModelFormData({ ...modelFormData, isActive: checked })
-                    }
-                  />
-                  <Label htmlFor="modelActive">Active</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="modelDefault"
-                    checked={modelFormData.isDefault}
-                    onCheckedChange={(checked) =>
-                      setModelFormData({ ...modelFormData, isDefault: checked })
-                    }
-                  />
-                  <Label htmlFor="modelDefault">Default Model</Label>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-base">Grade Thresholds</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="gradeA">Grade A (min score)</Label>
-                    <Input
-                      id="gradeA"
-                      type="number"
-                      min="0"
-                      value={modelFormData.gradeA}
-                      onChange={(e) =>
-                        setModelFormData({ ...modelFormData, gradeA: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gradeB">Grade B (min score)</Label>
-                    <Input
-                      id="gradeB"
-                      type="number"
-                      min="0"
-                      value={modelFormData.gradeB}
-                      onChange={(e) =>
-                        setModelFormData({ ...modelFormData, gradeB: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gradeC">Grade C (min score)</Label>
-                    <Input
-                      id="gradeC"
-                      type="number"
-                      min="0"
-                      value={modelFormData.gradeC}
-                      onChange={(e) =>
-                        setModelFormData({ ...modelFormData, gradeC: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gradeD">Grade D (min score)</Label>
-                    <Input
-                      id="gradeD"
-                      type="number"
-                      min="0"
-                      value={modelFormData.gradeD}
-                      onChange={(e) =>
-                        setModelFormData({ ...modelFormData, gradeD: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-base">Tier Thresholds</Label>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="tierHot">Hot (min score)</Label>
-                    <Input
-                      id="tierHot"
-                      type="number"
-                      min="0"
-                      value={modelFormData.tierHot}
-                      onChange={(e) =>
-                        setModelFormData({ ...modelFormData, tierHot: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tierWarm">Warm (min score)</Label>
-                    <Input
-                      id="tierWarm"
-                      type="number"
-                      min="0"
-                      value={modelFormData.tierWarm}
-                      onChange={(e) =>
-                        setModelFormData({ ...modelFormData, tierWarm: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tierCold">Cold (min score)</Label>
-                    <Input
-                      id="tierCold"
-                      type="number"
-                      min="0"
-                      value={modelFormData.tierCold}
-                      onChange={(e) =>
-                        setModelFormData({ ...modelFormData, tierCold: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsModelDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saveModelMutation.isPending}>
-                {editingModel ? 'Update Model' : 'Create Model'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* A model dialog stood here - name, description, default flag, and
+          grade A/B/C/D plus tier hot/warm/cold thresholds. Nothing stores
+          any of it; see the note where the selector card was. */}
     </div>
   );
 }
