@@ -864,6 +864,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // entry would take the scheduling and transcription handlers from
     // working-in-dev to 404-in-dev.
     '/api/meetings/calendar': { fn: 'meetings', pathPrefix: '/calendar' },
+    // PA-056. The calendar CONSENT flow, distinct from oauth-proxy (which asks
+    // for sign-in scopes) and from server/integrations/routes.ts (Express-only,
+    // and it writes system_integrations while the events code reads
+    // calendar_connections). Only /authorize goes through here; the provider's
+    // redirect lands on the functions host directly, because it carries no JWT
+    // and dev has no public URL for a provider to call back to.
+    '/api/calendar-oauth': 'calendar-oauth',
     '/api/sales-pipeline/rep-metrics': { fn: 'sales-pipeline', pathPrefix: '/rep-metrics' },
     '/api/sales-pipeline/summary': { fn: 'sales-pipeline', pathPrefix: '/summary' },
     '/api/sales-pipeline/stages': { fn: 'sales-pipeline', pathPrefix: '/stages' },

@@ -100,19 +100,44 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
   const { toast } = useToast();
 
   const connectProvider = async (type: 'microsoft' | 'google' | 'outlook') => {
-    // Connecting needs an OAuth authorize round trip for CALENDAR scopes, and
-    // there is no production implementation of one: the only authorize flow in
-    // the edge tree is supabase/functions/oauth-proxy, which requests
-    // openid/email/profile for sign-in, and the calendar OAuth init in
-    // server/integrations/routes.ts is Express-only, which the browser cannot
-    // reach in production. /api/meetings/calendar/connections takes tokens; it
-    // does not obtain them. PA-056 carries that gap.
+    // PA-056: this used to toast "not available yet", because no authorize flow
+    // for CALENDAR scopes existed that production could reach. calendar-oauth
+    // is that flow; it hands back a provider consent URL and its callback writes
+    // calendar_connections, the table the events code reads.
     const providerName = PROVIDER_LABEL[type] ?? type;
-    toast({
-      title: `${providerName} not connected`,
-      description:
-        'Calendar sign-in is not available yet. An administrator can add a connection once OAuth is configured.',
-    });
+    try {
+      const data = await apiRequest<{ authUrl?: string }>('/api/calendar-oauth/authorize', {
+        method: 'POST',
+        body: {
+          provider: type === 'outlook' ? 'microsoft' : type,
+          redirectTo: '/settings/integrations',
+        },
+      });
+
+      if (data?.authUrl) {
+        window.location.href = data.authUrl;
+        return;
+      }
+
+      // A 200 with no URL should not happen; treating it as success would leave
+      // the user on a page that never changes.
+      toast({
+        title: `${providerName} not connected`,
+        description: 'The provider did not return a consent link.',
+        variant: 'destructive',
+      });
+    } catch (error) {
+      // The function answers 501 with `not_configured` when the client id is
+      // absent. That is a different thing from a failure and reads differently.
+      const message = error instanceof Error ? error.message : '';
+      toast({
+        title: `${providerName} not connected`,
+        description: message.includes('not configured')
+          ? `${providerName} OAuth is not configured on this server yet.`
+          : message || 'The consent flow could not be started.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const disconnectProvider = async (id: string) => {
