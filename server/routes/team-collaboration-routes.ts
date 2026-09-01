@@ -266,146 +266,19 @@ router.get('/teams/:teamId/insights', async (req, res) => {
   }
 });
 
-/**
- * POST /api/projects
- * Create a new project
- */
-router.post('/projects', async (req, res) => {
-  try {
-    const projectData = {
-      ...req.body,
-      tenantId: req.user!.tenantId,
-      createdBy: req.user!.id,
-    };
-
-    const project = await TeamCollaborationService.createProject(projectData);
-    res.status(201).json(project);
-  } catch (error) {
-    log.error('Error creating project:', error);
-    res.status(500).json({ error: 'Failed to create project' });
-  }
-});
-
-/**
- * GET /api/projects
- * Get projects for current tenant
- */
-router.get('/projects', async (req, res) => {
-  try {
-    const { status, teamId, priority } = req.query;
-
-    // Mock projects data
-    const projects = [
-      {
-        id: 'project-1',
-        tenantId: req.user!.tenantId,
-        parentProjectId: null,
-        teamId: 'team-1',
-        teamName: 'Sales Team',
-        name: 'Q4 Enterprise Sales Campaign',
-        description: 'Large enterprise client acquisition campaign for Q4',
-        projectType: 'sales',
-        status: 'active',
-        priority: 'high',
-        startDate: new Date('2025-09-01'),
-        dueDate: new Date('2025-12-31'),
-        estimatedHours: 320,
-        actualHours: 180,
-        completionPercentage: 56,
-        aiComplexityScore: 8.2,
-        aiRiskScore: 4.1,
-        aiTimelineConfidence: 0.78,
-        clientId: 'client-enterprise-1',
-        budget: 150000,
-        revenuePotential: 2500000,
-        milestones: [
-          { name: 'Market Research', status: 'completed', dueDate: '2025-09-15' },
-          { name: 'Lead Generation', status: 'in_progress', dueDate: '2025-10-15' },
-          { name: 'Proposal Phase', status: 'pending', dueDate: '2025-11-15' },
-          { name: 'Contract Negotiation', status: 'pending', dueDate: '2025-12-15' },
-        ],
-        assignedMembers: 5,
-        createdAt: new Date('2025-08-15'),
-        updatedAt: new Date(),
-      },
-      {
-        id: 'project-2',
-        tenantId: req.user!.tenantId,
-        parentProjectId: null,
-        teamId: 'team-2',
-        teamName: 'Technical Services',
-        name: 'Copier Fleet Modernization',
-        description: 'Upgrade client copier fleet to latest models with advanced features',
-        projectType: 'service',
-        status: 'active',
-        priority: 'medium',
-        startDate: new Date('2025-09-10'),
-        dueDate: new Date('2025-11-30'),
-        estimatedHours: 240,
-        actualHours: 95,
-        completionPercentage: 40,
-        aiComplexityScore: 6.8,
-        aiRiskScore: 3.5,
-        aiTimelineConfidence: 0.85,
-        clientId: 'client-corp-2',
-        budget: 85000,
-        revenuePotential: 180000,
-        milestones: [
-          { name: 'Site Assessment', status: 'completed', dueDate: '2025-09-20' },
-          { name: 'Equipment Ordering', status: 'in_progress', dueDate: '2025-10-05' },
-          { name: 'Installation Phase 1', status: 'pending', dueDate: '2025-10-25' },
-          { name: 'Installation Phase 2', status: 'pending', dueDate: '2025-11-15' },
-          { name: 'Training & Handover', status: 'pending', dueDate: '2025-11-30' },
-        ],
-        assignedMembers: 8,
-        createdAt: new Date('2025-08-25'),
-        updatedAt: new Date(),
-      },
-      {
-        id: 'project-3',
-        tenantId: req.user!.tenantId,
-        parentProjectId: null,
-        teamId: 'team-3',
-        teamName: 'Customer Success',
-        name: 'New Client Onboarding Program',
-        description: 'Streamlined onboarding process for new enterprise clients',
-        projectType: 'service',
-        status: 'planning',
-        priority: 'medium',
-        startDate: new Date('2025-10-01'),
-        dueDate: new Date('2025-12-01'),
-        estimatedHours: 160,
-        actualHours: 12,
-        completionPercentage: 8,
-        aiComplexityScore: 5.5,
-        aiRiskScore: 2.8,
-        aiTimelineConfidence: 0.92,
-        clientId: null, // Internal project
-        budget: 45000,
-        revenuePotential: 0, // Internal efficiency project
-        milestones: [
-          { name: 'Process Design', status: 'in_progress', dueDate: '2025-10-15' },
-          { name: 'Documentation', status: 'pending', dueDate: '2025-10-30' },
-          { name: 'Team Training', status: 'pending', dueDate: '2025-11-15' },
-          { name: 'Pilot Program', status: 'pending', dueDate: '2025-11-30' },
-        ],
-        assignedMembers: 4,
-        createdAt: new Date('2025-09-20'),
-        updatedAt: new Date(),
-      },
-    ].filter((p) => {
-      if (status && p.status !== status) return false;
-      if (teamId && p.teamId !== teamId) return false;
-      if (priority && p.priority !== priority) return false;
-      return true;
-    });
-
-    res.json(projects);
-  } catch (error) {
-    log.error('Error fetching projects:', error);
-    res.status(500).json({ error: 'Failed to fetch projects' });
-  }
-});
+// GET and POST /api/projects REMOVED (AUDIT-021 follow-up).
+//
+// Both were mocks - a hardcoded 'Q4 Enterprise Sales Campaign' - and both
+// were dead: server/routes-tasks.ts registers the same two paths over the real
+// projects table at routes-registry:400, and this router mounts at :620, so
+// Express matched routes-tasks and never reached these. check:dup-routes could
+// not see the collision because this router is mounted at the /api ROOT and
+// declares router.get('/projects'), with no /api prefix for the guard to
+// anchor on. It resolves mount prefixes now.
+//
+// The remaining /projects/:projectId, /teams and /collaboration handlers in
+// this file are still mocks. They have no caller and no real counterpart, so
+// they are a separate decision rather than a deletion.
 
 /**
  * GET /api/projects/:projectId

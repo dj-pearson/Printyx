@@ -17,6 +17,14 @@
 //     registers first, so deleting the "obvious" copy would have left the
 //     fabricated handler live.
 //
+// A THIRD WAY, and the reason this script now resolves mount prefixes: a router
+// mounted under a prefix declares its paths WITHOUT it. server/routes/
+// team-collaboration-routes.ts is mounted at the /api root and writes
+// router.get('/projects'), so the old /api/-anchored pattern could not see it -
+// and it registered GET /api/projects a second time, behind the real handler in
+// routes-tasks.ts, with a hardcoded "Q4 Enterprise Sales Campaign". Nine
+// routers mount that way and every route in all of them was invisible.
+//
 // Shrink the baseline, never grow it:
 //   node scripts/check-duplicate-routes.mjs --update-baseline
 
@@ -75,22 +83,92 @@ function registrationOrder() {
   return order;
 }
 
+// Where each router file is mounted.
+//
+// `app.use('/api', teamCollaborationRoutes)` means the router's own
+// router.get('/projects') answers /api/projects, and nothing in the router file
+// says so. Three registry forms carry that information:
+//   - the asyncApiMounts table of [mountPath, modulePath] pairs
+//   - the asyncRootApiMounts list, every entry mounted at '/api'
+//   - a direct app.use('<prefix>', <identifier>), resolved through the file's
+//     static and dynamic imports
+function mountPrefixes() {
+  const prefixes = new Map();
+  if (!existsSync(registryPath)) return prefixes;
+  const registry = stripComments(readFileSync(registryPath, 'utf8'));
+
+  const resolve = (spec) => {
+    if (!spec.startsWith('.')) return null;
+    const rel = spec.replace(/^\.\//, '');
+    for (const ext of ['.ts', '.tsx', '/index.ts']) {
+      const full = join(serverDir, rel + ext);
+      if (existsSync(full)) return full;
+    }
+    return null;
+  };
+
+  // [mountPath, modulePath] pairs, in any *Mounts table.
+  for (const m of registry.matchAll(/\[\s*['"`](\/api[^'"`]*)['"`]\s*,\s*['"`](\.[^'"`]+)['"`]\s*\]/g)) {
+    const file = resolve(m[2]);
+    if (file) prefixes.set(file, m[1]);
+  }
+
+  // The root-mount list: a bare specifier inside asyncRootApiMounts.
+  const rootBlock = registry.match(/asyncRootApiMounts[^=]*=\s*\[([\s\S]*?)\]/);
+  if (rootBlock) {
+    for (const m of rootBlock[1].matchAll(/['"`](\.[^'"`]+)['"`]/g)) {
+      const file = resolve(m[1]);
+      if (file) prefixes.set(file, '/api');
+    }
+  }
+
+  // app.use('<prefix>', <ident>) — map the identifier back through imports.
+  const identToSpec = new Map();
+  for (const m of registry.matchAll(/import\s+(\w+)\s+from\s+['"`](\.[^'"`]+)['"`]/g)) {
+    identToSpec.set(m[1], m[2]);
+  }
+  for (const m of registry.matchAll(/(?:const|let)\s+(\w+)\s*=\s*await\s+import\(\s*['"`](\.[^'"`]+)['"`]\s*\)/g)) {
+    identToSpec.set(m[1], m[2]);
+  }
+  for (const m of registry.matchAll(/app\.use\(\s*['"`](\/api[^'"`]*)['"`]\s*,\s*(\w+)(?:\.default)?\s*\)/g)) {
+    const spec = identToSpec.get(m[2]);
+    const file = spec && resolve(spec);
+    if (file && !prefixes.has(file)) prefixes.set(file, m[1]);
+  }
+
+  return prefixes;
+}
+
+// Two patterns, because a mounted router's literal has no /api prefix to anchor
+// on. The unanchored one only applies to a file we know the mount point of -
+// otherwise every router.get('/x') in the tree would collide with every other.
 const ROUTE_RE = /\b(?:app|router)\.(get|post|put|patch|delete)\(\s*['"`](\/api\/[^'"`]*)['"`]/g;
+const MOUNTED_ROUTE_RE = /\b(?:app|router)\.(get|post|put|patch|delete)\(\s*['"`](\/[^'"`]*)['"`]/g;
 
 const order = registrationOrder();
+const prefixes = mountPrefixes();
 const byKey = new Map();
 
 for (const file of walk(serverDir)) {
   const src = stripComments(readFileSync(file, 'utf8'));
+  const prefix = prefixes.get(file);
+  const re = prefix ? MOUNTED_ROUTE_RE : ROUTE_RE;
   let m;
-  while ((m = ROUTE_RE.exec(src)) !== null) {
-    const key = `${m[1].toUpperCase()} ${m[2]}`;
+  while ((m = re.exec(src)) !== null) {
+    // A mounted router may still write the full path (some do), so only add the
+    // prefix when the literal does not already carry it.
+    let path = m[2];
+    if (prefix && !path.startsWith('/api/') && path !== '/api') {
+      path = (prefix + path).replace(/\/+$/, '') || prefix;
+    }
+    if (!path.startsWith('/api')) continue;
+    const key = `${m[1].toUpperCase()} ${path}`;
     const rel = file.slice(repo.length + 1).replace(/\\/g, '/');
     const line = src.slice(0, m.index).split('\n').length;
     if (!byKey.has(key)) byKey.set(key, []);
     byKey.get(key).push({ file, rel, line });
   }
-  ROUTE_RE.lastIndex = 0;
+  re.lastIndex = 0;
 }
 
 // SAME-FILE duplicates count too.
