@@ -63,10 +63,13 @@ describe('the migration restores them without breaking a database that has some'
     expect(sql).toMatch(/table_name = 'proposal_line_items'/);
   });
 
-  it('is journaled as the last entry', () => {
+  it('is journaled', () => {
+    // Not "is the last entry": that was an assertion about being the newest
+    // migration, which the next one falsifies. What matters is that a
+    // hand-edited file is in the journal at all - an unjournaled .sql is never
+    // applied (SUPA-005).
     const journal = JSON.parse(read('drizzle/migrations/meta/_journal.json'));
-    const last = [...journal.entries].sort((a: any, b: any) => a.idx - b.idx).pop();
-    expect(last.tag).toBe('0064_warm_longshot');
+    expect(journal.entries.map((e: any) => e.tag)).toContain('0064_warm_longshot');
   });
 });
 

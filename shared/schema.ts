@@ -6796,6 +6796,22 @@ export const purchaseOrders = pgTable(
     deliveryAddress: text('delivery_address'),
     specialInstructions: text('special_instructions'),
 
+    // Submit / approve / reject / receive.
+    //
+    // AUDIT-037: the purchase-orders edge function has written these since it
+    // shipped and none of them was a column, so submit, approve, reject and
+    // receive each answered a 42703. They are audit trail for a workflow the
+    // function already implements end to end, and dropping them would mean a
+    // rejection with no reason and a receipt with no receiver.
+    submittedAt: timestamp('submitted_at'),
+    approvalNotes: text('approval_notes'),
+    rejectedAt: timestamp('rejected_at'),
+    rejectedBy: varchar('rejected_by'),
+    rejectionReason: text('rejection_reason'),
+    receivedBy: varchar('received_by'),
+    lastReceiptDate: timestamp('last_receipt_date'),
+    receiptNotes: text('receipt_notes'),
+
     // Approval
     approvedBy: varchar('approved_by'),
     approvedDate: timestamp('approved_date'),

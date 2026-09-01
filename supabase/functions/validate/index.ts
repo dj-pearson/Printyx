@@ -261,7 +261,7 @@ async function validatePoToWarehouse(
 
   const { data: po } = await admin
     .from('purchase_orders')
-    .select('id, po_number, status, supplier_id, expected_date, approved_date, total_amount')
+    .select('id, po_number, status, vendor_id, expected_date, approved_date, total_amount')
     .eq('id', poId)
     .eq('tenant_id', tenantId)
     .maybeSingle();

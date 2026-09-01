@@ -429,7 +429,8 @@ export default async function handler(req: Request) {
         .from('purchase_orders')
         .update({
           status: 'approved',
-          approved_at: new Date().toISOString(),
+          // approved_date, not approved_at - AUDIT-037.
+          approved_date: new Date().toISOString(),
           approved_by: user.id,
           approval_notes: body.notes || body.approvalNotes || body.approval_notes || null,
           updated_at: new Date().toISOString(),
@@ -689,9 +690,10 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(
-          `po_number.ilike.%${search}%,reference_number.ilike.%${search}%,notes.ilike.%${search}%`,
-        );
+        // AUDIT-037: reference_number and notes are not columns on this table -
+        // the searchable free text is `description`, and the reference is the
+        // PO number itself. Naming them made every search a 42703.
+        query = query.or(`po_number.ilike.%${search}%,description.ilike.%${search}%`);
       }
 
       const { data: purchaseOrders, error, count } = await query;
