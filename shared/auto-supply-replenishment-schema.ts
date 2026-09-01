@@ -64,7 +64,7 @@ export const supplyMonitoring = pgTable('supply_monitoring', {
   tenantId: varchar('tenant_id').notNull(),
 
   // Equipment Reference
-  equipmentId: integer('equipment_id').notNull(),
+  equipmentId: varchar('equipment_id').notNull(),
   serialNumber: text('serial_number').notNull(),
   model: text('model').notNull(),
   location: text('location'),
@@ -118,7 +118,7 @@ export const autoSupplyOrders = pgTable('auto_supply_orders', {
 
   // Reference
   supplyMonitoringId: integer('supply_monitoring_id').notNull(),
-  equipmentId: integer('equipment_id').notNull(),
+  equipmentId: varchar('equipment_id').notNull(),
   serialNumber: text('serial_number').notNull(),
 
   // Order Details
@@ -129,7 +129,7 @@ export const autoSupplyOrders = pgTable('auto_supply_orders', {
   quantity: integer('quantity').notNull().default(1),
 
   // Supplier Information
-  supplierId: integer('supplier_id'),
+  supplierId: varchar('supplier_id'),
   supplierName: text('supplier_name'),
   supplierOrderId: text('supplier_order_id'), // External order ID
 
@@ -178,7 +178,7 @@ export const supplyUsageHistory = pgTable('supply_usage_history', {
 
   // Reference
   supplyMonitoringId: integer('supply_monitoring_id').notNull(),
-  equipmentId: integer('equipment_id').notNull(),
+  equipmentId: varchar('equipment_id').notNull(),
   serialNumber: text('serial_number').notNull(),
 
   // Supply Info
@@ -225,7 +225,7 @@ export const supplyReplenishmentRules = pgTable('supply_replenishment_rules', {
   bufferDays: integer('buffer_days').default(7), // Safety buffer for predictions
 
   // Supplier Preferences
-  preferredSupplierId: integer('preferred_supplier_id'),
+  preferredSupplierId: varchar('preferred_supplier_id'),
   alternateSupplierIds: jsonb('alternate_supplier_ids'), // Array of supplier IDs
 
   // Notifications

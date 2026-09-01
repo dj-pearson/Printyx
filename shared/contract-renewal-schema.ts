@@ -70,10 +70,10 @@ export const contractRenewalTracking = pgTable('contract_renewal_tracking', {
   tenantId: varchar('tenant_id').notNull(),
 
   // Contract Details
-  contractId: integer('contract_id').notNull(),
+  contractId: varchar('contract_id').notNull(),
   contractNumber: text('contract_number').notNull(),
   contractType: contractTypeEnum('contract_type').notNull(),
-  customerId: integer('customer_id').notNull(),
+  customerId: varchar('customer_id').notNull(),
   customerName: text('customer_name').notNull(),
 
   // Dates
@@ -136,7 +136,7 @@ export const contractRenewalTracking = pgTable('contract_renewal_tracking', {
   lastReminderSentAt: timestamp('last_reminder_sent_at'),
 
   // Sales Assignment
-  assignedSalesRep: integer('assigned_sales_rep_id'),
+  assignedSalesRep: varchar('assigned_sales_rep_id'),
   assignedSalesRepName: text('assigned_sales_rep_name'),
   salesRepNotified: boolean('sales_rep_notified').default(false),
   salesRepNotifiedAt: timestamp('sales_rep_notified_at'),
@@ -168,8 +168,8 @@ export const renewalProposals = pgTable('renewal_proposals', {
 
   // Reference
   contractRenewalTrackingId: integer('contract_renewal_tracking_id').notNull(),
-  contractId: integer('contract_id').notNull(),
-  customerId: integer('customer_id').notNull(),
+  contractId: varchar('contract_id').notNull(),
+  customerId: varchar('customer_id').notNull(),
   customerName: text('customer_name').notNull(),
 
   // Proposal Details
@@ -390,7 +390,7 @@ export const renewalCommunicationLog = pgTable('renewal_communication_log', {
   // Reference
   contractRenewalTrackingId: integer('contract_renewal_tracking_id').notNull(),
   renewalProposalId: integer('renewal_proposal_id'),
-  customerId: integer('customer_id').notNull(),
+  customerId: varchar('customer_id').notNull(),
 
   // Communication Details
   communicationType: text('communication_type').notNull(), // 'email', 'phone', 'meeting', 'portal_message'
@@ -413,7 +413,7 @@ export const renewalCommunicationLog = pgTable('renewal_communication_log', {
   replyContent: text('reply_content'),
 
   // Metadata
-  sentBy: integer('sent_by_user_id'),
+  sentBy: varchar('sent_by_user_id'),
   sentByName: text('sent_by_name'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });

@@ -31,7 +31,18 @@
  * with an explicit map for the irregular plurals. That is deliberately narrow:
  * a name-based rule reports nothing it cannot explain, where a looser one would
  * bury the real cases. It means a differently-named FK is invisible, which is
- * the same blind spot the tenant_id guard documents.
+ * the same blind spot the tenant_id guard documents - `assigned_sales_rep_id`,
+ * `sent_by_user_id`, `reviewed_by`, `uploaded_by` and `supplier_id` all point at
+ * a uuid-keyed table and none of them is named for it. AUDIT-036 converted those
+ * by reading the three schema files by hand; this guard would not have found
+ * them.
+ *
+ * A POLYMORPHIC REFERENCE IS SKIPPED BY RULE, not baselined. When a table holds
+ * `<x>_id` beside `<x>_type` the id names no single table, so the column name
+ * cannot resolve a target and reporting one is a guess:
+ * `document_notifications.document_id` is integer and correct, because its
+ * `document_type` selects between two integer-keyed tables. A baseline holding a
+ * known non-defect is where a real one hides.
  *
  * TWO SIDES, because either alone can be wrong: the Drizzle declarations, which
  * are what db:generate diffs, and the migration chain replayed in journal
@@ -93,12 +104,17 @@ const targetFor = new Map();
 for (const table of textualPk) targetFor.set(columnNameFor(table), table);
 
 // ─── Pass 2: integer FK declarations ────────────────────────────────────────
+/** `<x>_id` beside `<x>_type` names no single table. */
+const isPolymorphic = (body, column) =>
+  new RegExp(`'${column.replace(/_id$/, '_type')}'`).test(body);
+
 const failures = [];
 for (const seg of segments) {
   for (const m of seg.body.matchAll(/(\w+):\s*([a-zA-Z]+)\(\s*'([a-z_0-9]+_id)'/g)) {
     const [, , helper, column] = m;
     const target = targetFor.get(column);
     if (!target || TEXTUAL_HELPERS.has(helper)) continue;
+    if (isPolymorphic(seg.body, column)) continue;
     failures.push(
       `shared/${seg.file}  ${seg.table}.${column} is ${helper}, ${target}.id is textual`,
     );
@@ -153,6 +169,9 @@ if (existsSync(journalPath)) {
     const column = key.slice(key.indexOf('.') + 1);
     const target = sqlTargetFor.get(column);
     if (!target || TEXTUAL_SQL.test(type)) continue;
+    // Same polymorphic rule, read off the schema declaration for that table.
+    const seg = segments.find((s) => s.table === key.slice(0, key.indexOf('.')));
+    if (seg && isPolymorphic(seg.body, column)) continue;
     failures.push(`drizzle/migrations (replayed)  ${key} is ${type}, ${target}.id is textual`);
   }
 }

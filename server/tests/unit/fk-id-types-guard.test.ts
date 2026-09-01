@@ -36,24 +36,46 @@ describe('the guard runs and is wired in', () => {
   });
 });
 
-describe('it reads both sides, because either alone can be wrong', () => {
-  it('finds the same columns in the schemas and in the replayed migrations', () => {
-    // The schema scan is what db:generate diffs; the replay is the half that
-    // sees a hand-written .sql. Agreement across both is the confirmation -
-    // a finding in only one of them means one side has drifted.
-    const fromSchema = baseline.offenders
-      .filter((o: string) => o.startsWith('shared/'))
-      .map((o: string) => o.split(/\s+/).slice(1, 2)[0]);
-    const fromMigrations = baseline.offenders
-      .filter((o: string) => o.startsWith('drizzle/'))
-      .map((o: string) => o.split(/\s+/).slice(2, 3)[0]);
-    expect(fromSchema.length).toBeGreaterThan(0);
-    expect([...fromSchema].sort()).toEqual([...fromMigrations].sort());
+describe('the conversion landed, and the gate is at zero', () => {
+  it('has an empty baseline', () => {
+    // This used to assert that the schemas and the replayed migrations reported
+    // the SAME 17 columns - a cross-check that was worth having while the debt
+    // existed, and an assertion about debt once 0063 cleared it. What has to
+    // hold now is that neither side finds anything.
+    expect(baseline.total).toBe(0);
+    expect(baseline.offenders).toEqual([]);
   });
 
-  it('names the contract renewal column that motivated it', () => {
-    expect(baseline.offenders.join('\n')).toMatch(
-      /contract_renewal_tracking\.contract_id is integer, contracts\.id is textual/,
+  it('converts the columns in a migration, not just in the schema', () => {
+    // A schema edit with no migration is drift: db:generate diffs the snapshot,
+    // and a column that only changed in TypeScript stays integer in every
+    // database. Both sides of the guard exist for exactly this.
+    const sql = read('drizzle/migrations/0063_abandoned_the_phantom.sql');
+    const alters = sql.match(/ALTER COLUMN "[a-z_]+" SET DATA TYPE varchar/g) ?? [];
+    expect(alters.length).toBe(31);
+    for (const column of [
+      '"contract_renewal_tracking" ALTER COLUMN "contract_id"',
+      '"generated_documents" ALTER COLUMN "deal_id"',
+      '"supply_monitoring" ALTER COLUMN "equipment_id"',
+      // Found by hand, not by the guard: none of these is named for its target.
+      '"contract_renewal_tracking" ALTER COLUMN "assigned_sales_rep_id"',
+      '"renewal_communication_log" ALTER COLUMN "sent_by_user_id"',
+      '"document_uploads" ALTER COLUMN "reviewed_by"',
+      '"auto_supply_orders" ALTER COLUMN "supplier_id"',
+    ]) {
+      expect(sql, column).toContain(column);
+    }
+  });
+
+  it('leaves the polymorphic reference alone', () => {
+    // document_notifications.document_id is integer and CORRECT: its
+    // document_type selects between two integer-keyed tables. The guard
+    // reported it by name and was wrong, which is why the rule now skips
+    // <x>_id beside <x>_type rather than baselining it.
+    const sql = read('drizzle/migrations/0063_abandoned_the_phantom.sql');
+    expect(sql).not.toContain('"document_notifications" ALTER COLUMN "document_id"');
+    expect(read('shared/document-automation-schema.ts')).toMatch(
+      /documentId: integer\('document_id'\)/,
     );
   });
 });
