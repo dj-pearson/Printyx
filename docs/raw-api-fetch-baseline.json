@@ -24,7 +24,6 @@
     "client/src/pages/OidManagement.tsx:/api/oid-mappings/import",
     "client/src/pages/OidManagement.tsx:/api/oid-mappings/test",
     "client/src/pages/OidManagement.tsx:/api/oid-mappings?__DYN__",
-    "client/src/pages/PlatformBusinessRecordDetail.tsx:/api/platform-crm/business-records/__DYN__/convert-to-tenant",
     "client/src/pages/PlatformBusinessRecords.tsx:/api/platform-crm/business-records/bulk/assign",
     "client/src/pages/PlatformBusinessRecords.tsx:/api/platform-crm/business-records/export?__DYN__&format=__DYN__",
     "client/src/pages/ProposalBuilder.tsx:/api/validate/proposal-to-contract/__DYN__",

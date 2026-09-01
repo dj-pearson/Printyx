@@ -182,20 +182,29 @@ export default function PlatformBusinessRecordDetail() {
 
   // Convert to tenant mutation
   const convertToTenantMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/platform-crm/business-records/${id}/convert-to-tenant`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId: 'new-tenant-id' }), // Would be generated
-      });
-      if (!response.ok) throw new Error('Failed to convert');
-      return response.json();
-    },
-    onSuccess: () => {
+    // PA-052: this used to post { tenantId: 'new-tenant-id' } with a comment
+    // saying it "would be generated". That literal is not a uuid and would have
+    // failed the tenant FK; the server generates the id now. conversionSource is
+    // a real column and 'sales' is what a conversion from this page is.
+    mutationFn: async () =>
+      apiRequest<{ tenantId?: string }>(
+        `/api/platform-crm/business-records/${id}/convert-to-tenant`,
+        { method: 'POST', body: { conversionSource: 'sales' } },
+      ),
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: [`/api/platform-crm/business-records/${id}`] });
       toast({
-        title: 'Success',
-        description: 'Prospect converted to tenant successfully!',
+        title: 'Converted to tenant',
+        description: result?.tenantId
+          ? `Tenant ${result.tenantId} created and linked to this record.`
+          : 'The record is now a tenant.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Conversion failed',
+        description: error?.message ?? 'The record could not be converted.',
+        variant: 'destructive',
       });
     },
   });

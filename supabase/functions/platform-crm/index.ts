@@ -483,6 +483,149 @@ export default async function handler(req: Request) {
     }
 
     // Method/endpoint not found
+    // POST /platform-crm/business-records/:id/convert-to-tenant
+    //
+    // PA-052: PlatformBusinessRecordDetail.tsx has always called this and
+    // nothing served it. Every column the conversion needs already exists on
+    // platform_business_records - record_type ('prospect' | 'tenant'), a
+    // tenant_id FK, converted_from_prospect_at, converted_by and
+    // conversion_source - so this creates the tenant and records the link.
+    //
+    // The caller used to post { tenantId: 'new-tenant-id' } with a comment
+    // saying it "would be generated". That literal is not a uuid and would have
+    // failed the FK, so the id is generated HERE and a client-supplied one is
+    // only honoured when it names a tenant that actually exists.
+    if (
+      req.method === 'POST' &&
+      endpoint === 'business-records' &&
+      resourceId &&
+      parts[2] === 'convert-to-tenant'
+    ) {
+      const body = await req.json().catch(() => ({}));
+
+      const { data: record, error: findError } = await admin
+        .from('platform_business_records')
+        .select('id, company_name, record_type, tenant_id, website, industry, company_size')
+        .eq('id', resourceId)
+        .maybeSingle();
+
+      if (findError) {
+        console.error('Error loading business record:', findError);
+        return createCorsResponse({ error: 'Failed to load business record' }, 500, req);
+      }
+      if (!record) return createCorsResponse({ error: 'Business record not found' }, 404, req);
+
+      // Converting twice would orphan the first tenant, so it is a 409 naming
+      // the tenant this record already points at.
+      if (record.record_type === 'tenant' || record.tenant_id) {
+        return createCorsResponse(
+          {
+            error: 'This record has already been converted',
+            tenantId: record.tenant_id ?? null,
+          },
+          409,
+          req,
+        );
+      }
+
+      let tenantId: string | null = null;
+      const requestedTenantId = body.tenantId ?? body.tenant_id;
+
+      // Link to an EXISTING tenant only if it really exists; otherwise create one.
+      if (requestedTenantId) {
+        const { data: existing } = await admin
+          .from('tenants')
+          .select('id')
+          .eq('id', requestedTenantId)
+          .maybeSingle();
+        if (existing) tenantId = existing.id;
+      }
+
+      if (!tenantId) {
+        // Slug is UNIQUE and NOT NULL. Derive it from the company name the same
+        // way supabase/functions/signup does, then suffix on collision rather
+        // than failing the conversion on a name someone else already took.
+        const base =
+          String(record.company_name || 'tenant')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '') || 'tenant';
+
+        let slug = base;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const { data: clash } = await admin
+            .from('tenants')
+            .select('id')
+            .eq('slug', slug)
+            .maybeSingle();
+          if (!clash) break;
+          slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
+        }
+
+        const newTenantId = crypto.randomUUID();
+        // Columns only: tenants has no industry/website/company_size, which is
+        // the insert COP-M01 found failing in signup. Those go in metadata.
+        const { error: tenantError } = await admin.from('tenants').insert({
+          id: newTenantId,
+          name: record.company_name,
+          slug,
+          is_active: true,
+          billing_status: 'pending',
+          metadata: {
+            industry: record.industry ?? null,
+            companySize: record.company_size ?? null,
+            website: record.website ?? null,
+            source: 'platform-crm-conversion',
+            convertedFromRecordId: record.id,
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+        if (tenantError) {
+          console.error('Error creating tenant:', tenantError);
+          return createCorsResponse(
+            { error: 'Failed to create tenant', details: tenantError },
+            500,
+            req,
+          );
+        }
+
+        tenantId = newTenantId;
+      }
+
+      const { data: updated, error: updateError } = await admin
+        .from('platform_business_records')
+        .update({
+          record_type: 'tenant',
+          tenant_id: tenantId,
+          converted_from_prospect_at: new Date().toISOString(),
+          converted_by: user.id,
+          conversion_source: body.conversionSource ?? body.conversion_source ?? 'sales',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', resourceId)
+        .select()
+        .single();
+
+      if (updateError) {
+        // The tenant exists but the record does not point at it. Say so - a bare
+        // 500 here reads as "nothing happened", and a retry would make a second.
+        console.error('Error linking record to tenant:', updateError);
+        return createCorsResponse(
+          {
+            error: 'Tenant was created but the record could not be linked to it',
+            tenantId,
+            details: updateError,
+          },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse({ ...camelRow(updated), tenantId }, 200, req);
+    }
+
     // ─── Lead scoring rules (PA-052) ────────────────────────────────────────
     //
     // PlatformLeadScoring.tsx calls this and nothing served it, while
