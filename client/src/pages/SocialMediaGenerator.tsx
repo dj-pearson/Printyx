@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
+import { apiRequest } from '@/lib/queryClient';
 
 interface SocialMediaPost {
   id: string;
@@ -113,15 +114,11 @@ export default function SocialMediaGenerator() {
 
   // Generate post mutation
   const generatePostMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await fetch('/api/social-media/posts/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to generate post');
-      return response.json();
-    },
+    // PA-052: all four of these were raw fetch(), so they carried no
+    // Authorization header and 401'd against the edge functions production
+    // serves this prefix from.
+    mutationFn: async (data: any) =>
+      apiRequest('/api/social-media/posts/generate', { method: 'POST', body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/social-media/posts'] });
       toast({ title: 'Post generated successfully!' });
@@ -141,15 +138,8 @@ export default function SocialMediaGenerator() {
 
   // Create cron job mutation
   const createCronMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await fetch('/api/social-media/cron-jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to create cron job');
-      return response.json();
-    },
+    mutationFn: async (data: any) =>
+      apiRequest('/api/social-media/cron-jobs', { method: 'POST', body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/social-media/cron-jobs'] });
       toast({ title: 'Cron job created successfully!' });
@@ -175,17 +165,16 @@ export default function SocialMediaGenerator() {
 
   // Execute cron job mutation
   const executeCronMutation = useMutation({
-    mutationFn: async (cronId: string) => {
-      const response = await fetch(`/api/social-media/cron-jobs/${cronId}/execute`, {
-        method: 'POST',
-      });
-      if (!response.ok) throw new Error('Failed to execute cron job');
-      return response.json();
-    },
-    onSuccess: () => {
+    mutationFn: async (cronId: string) =>
+      apiRequest(`/api/social-media/cron-jobs/${cronId}/execute`, { method: 'POST' }),
+    onSuccess: (result: { success?: boolean; message?: string; webhookError?: string | null }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/social-media/posts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/social-media/cron-jobs'] });
-      toast({ title: 'Cron job executed successfully!' });
+      toast({
+        title: result?.success === false ? 'Executed with a delivery failure' : 'Cron job executed',
+        description: result?.webhookError ?? result?.message,
+        variant: result?.success === false ? 'destructive' : 'default',
+      });
     },
     onError: (error: any) => {
       toast({ title: 'Execution failed', description: error.message, variant: 'destructive' });
@@ -194,18 +183,20 @@ export default function SocialMediaGenerator() {
 
   // Broadcast post mutation
   const broadcastMutation = useMutation({
-    mutationFn: async ({ postId, webhookUrl }: { postId: string; webhookUrl: string }) => {
-      const response = await fetch(`/api/social-media/posts/${postId}/broadcast`, {
+    mutationFn: async ({ postId, webhookUrl }: { postId: string; webhookUrl: string }) =>
+      apiRequest(`/api/social-media/posts/${postId}/broadcast`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ webhookUrl }),
-      });
-      if (!response.ok) throw new Error('Failed to broadcast post');
-      return response.json();
-    },
-    onSuccess: () => {
+        body: { webhookUrl },
+      }),
+    // The webhook can fail while the request succeeds, so read the result
+    // rather than announcing a delivery that did not happen.
+    onSuccess: (result: { success?: boolean; message?: string; error?: string | null }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/social-media/posts'] });
-      toast({ title: 'Post broadcasted successfully!' });
+      toast({
+        title: result?.success === false ? 'Broadcast failed' : 'Post broadcasted',
+        description: result?.error ?? result?.message,
+        variant: result?.success === false ? 'destructive' : 'default',
+      });
     },
     onError: (error: any) => {
       toast({ title: 'Broadcast failed', description: error.message, variant: 'destructive' });

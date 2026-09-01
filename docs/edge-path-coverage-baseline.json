@@ -89,7 +89,6 @@
       "semantic",
       "structured-data"
     ],
-    "social-media": ["cron-jobs/:id/execute", "posts/:id/broadcast"],
     "subscriptions": ["checkout", "portal", "preview-upgrade", "setup-intent", "stripe"],
     "technician-management": ["dashboard"]
   }
