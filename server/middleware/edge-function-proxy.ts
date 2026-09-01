@@ -855,6 +855,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // Express handlers are deleted; the edge function covers both reads, and
     // the POST it does not cover has no caller in any client tree.
     '/api/sales-forecasts': 'sales-forecasts',
+    // PA-052. CalendarProvider now calls /api/meetings/calendar/* - the surface
+    // supabase/functions/meetings/ already serves over calendar_connections and
+    // calendar_events, with the real Google and Microsoft clients. Express owns
+    // the REST of /api/meetings (meeting-scheduling-routes and
+    // meeting-transcription-routes, both mounted at the /api root), and serves
+    // nothing under /calendar, so this is scoped to that sub-path: a whole-prefix
+    // entry would take the scheduling and transcription handlers from
+    // working-in-dev to 404-in-dev.
+    '/api/meetings/calendar': { fn: 'meetings', pathPrefix: '/calendar' },
     '/api/sales-pipeline/rep-metrics': { fn: 'sales-pipeline', pathPrefix: '/rep-metrics' },
     '/api/sales-pipeline/summary': { fn: 'sales-pipeline', pathPrefix: '/summary' },
     '/api/sales-pipeline/stages': { fn: 'sales-pipeline', pathPrefix: '/stages' },
