@@ -234,8 +234,13 @@ router.post('/teams/:teamId/members', async (req, res) => {
 router.get('/teams/:teamId/capacity', async (req, res) => {
   try {
     const { teamId } = req.params;
+    const tenantId = getTenantId(req);
+    if (!tenantId) return res.status(400).json({ error: 'Tenant ID is required' });
 
-    const capacityAnalysis = await TeamCollaborationService.analyzeTeamCapacity(teamId);
+    // AUDIT-021: teamId comes straight off the URL, so the tenant has to reach
+    // the query. Before this the analysis read no table at all, which is the
+    // only reason an unscoped teamId was not already a cross-tenant read.
+    const capacityAnalysis = await TeamCollaborationService.analyzeTeamCapacity(tenantId, teamId);
     res.json(capacityAnalysis);
   } catch (error) {
     log.error('Error analyzing team capacity:', error);
@@ -250,8 +255,10 @@ router.get('/teams/:teamId/capacity', async (req, res) => {
 router.get('/teams/:teamId/insights', async (req, res) => {
   try {
     const { teamId } = req.params;
+    const tenantId = getTenantId(req);
+    if (!tenantId) return res.status(400).json({ error: 'Tenant ID is required' });
 
-    const insights = await TeamCollaborationService.generateCollaborationInsights(teamId);
+    const insights = await TeamCollaborationService.generateCollaborationInsights(tenantId, teamId);
     res.json(insights);
   } catch (error) {
     log.error('Error generating collaboration insights:', error);
@@ -584,8 +591,16 @@ router.post('/projects/:projectId/assignments/optimize', async (req, res) => {
       return res.status(400).json({ error: 'Tasks array is required' });
     }
 
+    const tenantId = getTenantId(req);
+    if (!tenantId) return res.status(400).json({ error: 'Tenant ID is required' });
+    if (!teamId) return res.status(400).json({ error: 'teamId is required' });
+
+    // The default used to be the literal 'team-1', which matched the hardcoded
+    // members getTeamMembers returned. With a real membership read that default
+    // silently analyses a team nobody belongs to, so it is a 400 instead.
     const assignments = await TeamCollaborationService.optimizeTaskAssignments(
-      teamId || 'team-1',
+      tenantId,
+      teamId,
       tasks,
     );
     res.json(assignments);
