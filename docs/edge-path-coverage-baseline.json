@@ -67,9 +67,6 @@
     "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"],
     "onboarding": ["checklists/:id/generate-pdf", "export", "getting-started", "wizard-state"],
     "platform-crm": [
-      "assignment-rules",
-      "assignment-rules/:id/test",
-      "assignment-rules/:id/toggle",
       "business-records/:id/convert-to-tenant",
       "managers",
       "scoring-models",
