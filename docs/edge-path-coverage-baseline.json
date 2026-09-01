@@ -40,7 +40,6 @@
     "document-management": ["library", "upload", "workflows"],
     "equipment-lifecycle": ["assets", "deliveries", "installations", "metrics", "purchase-orders"],
     "financial": ["kpis", "profitability"],
-    "import": ["jobs/:id/duplicates/:id/resolve"],
     "integrations": ["bulk-sync", "connect", "eautomate", "oauth", "quickbooks", "salesforce"],
     "leads": ["import-eda"],
     "maintenance": ["analytics", "auto-generate", "predictions", "templates"],
