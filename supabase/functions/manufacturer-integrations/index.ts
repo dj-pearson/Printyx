@@ -4,6 +4,32 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolve parts[0], which is EITHER an integration id or a manufacturer name.
+ *
+ * PA-052: every per-integration branch here looked the row up by
+ * `.eq('manufacturer', parts[0])`, and the only caller in any client tree -
+ * ManufacturerIntegration.tsx - passes `integration.id`. `manufacturer` is a
+ * pgEnum, so a uuid in that filter is 22P02: not "no row", a 500. Express keys
+ * the same paths by id, so the page worked in dev and failed in prod on every
+ * per-integration action.
+ *
+ * The id form is checked first and only against `id`, so a uuid never reaches
+ * the enum column.
+ */
+async function resolveIntegration(admin: any, tenantId: string, ref: string) {
+  const column = UUID_RE.test(ref) ? 'id' : 'manufacturer';
+  const { data, error } = await admin
+    .from('manufacturer_integrations')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq(column, ref)
+    .maybeSingle();
+  return { integration: data ?? null, error: error ?? null };
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -161,12 +187,7 @@ export default async function handler(req: Request) {
 
     // GET /manufacturer-integrations/:manufacturer - Get specific integration
     if (req.method === 'GET' && manufacturer && !endpoint) {
-      const { data: integration } = await admin
-        .from('manufacturer_integrations')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('manufacturer', manufacturer)
-        .single();
+      const { integration } = await resolveIntegration(admin, tenantId, manufacturer);
 
       if (!integration) {
         return createCorsResponse(
@@ -339,32 +360,83 @@ export default async function handler(req: Request) {
 
     // POST /manufacturer-integrations/:manufacturer/test - Test connection
     if (req.method === 'POST' && manufacturer && endpoint === 'test') {
-      const { data: integration } = await admin
-        .from('manufacturer_integrations')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('manufacturer', manufacturer)
-        .single();
+      const { integration, error } = await resolveIntegration(admin, tenantId, manufacturer);
 
-      if (!integration || !integration.is_active) {
+      if (error) {
+        console.error('Error loading integration for test:', error);
+        return createCorsResponse({ error: 'Failed to load integration' }, 500, req);
+      }
+
+      if (!integration) {
+        return createCorsResponse({ success: false, message: 'Integration not found' }, 404, req);
+      }
+
+      if (!integration.is_active) {
         return createCorsResponse(
-          {
-            success: false,
-            message: 'Integration not configured or inactive',
-          },
+          { success: false, connectivityVerified: false, message: 'Integration is inactive' },
           200,
           req,
         );
       }
 
-      // In production, this would test the actual API connection
+      // PA-052: this used to answer `success: true, "Connection to X is
+      // working"` unconditionally, under a comment saying a real test would go
+      // here - so a misconfigured integration reported a working connection.
+      // There is no manufacturer API client in this function, so what it can
+      // honestly report is what is stored. connectivityVerified stays false.
+      const credentials = (integration.credentials ?? {}) as Record<string, unknown>;
+      const hasCredentials = Object.values(credentials).some(
+        (v) => v !== null && v !== undefined && String(v).trim() !== '',
+      );
+      const problems: string[] = [];
+      if (!hasCredentials) problems.push('no credentials are stored');
+      if (!integration.api_endpoint) problems.push('no API endpoint is configured');
+
       return createCorsResponse(
         {
-          success: true,
-          message: `Connection to ${manufacturer} is working`,
+          success: problems.length === 0,
+          connectivityVerified: false,
+          lastSync: integration.last_sync ?? null,
+          message:
+            problems.length === 0
+              ? `${integration.manufacturer} is configured (credentials and endpoint present). The connection itself was not tested.`
+              : `Configuration incomplete: ${problems.join(', ')}.`,
           timestamp: new Date().toISOString(),
         },
         200,
+        req,
+      );
+    }
+
+    // POST /manufacturer-integrations/:id/discover - Discover and register devices
+    //
+    // PA-052: the page has always called this and there was no branch, so it
+    // 404'd in production. It cannot be served here either, and saying so is the
+    // point: discovery runs the per-manufacturer adapters in
+    // server/manufacturer-integration-service.ts, which fetch the vendor API and
+    // insert device_registrations. Those adapters are Node-only and the browser
+    // cannot reach Express in production, because getApiUrl sends /api/* to the
+    // functions host. 501 names the gap; PA-054 is the port.
+    if (req.method === 'POST' && manufacturer && endpoint === 'discover') {
+      const { integration, error } = await resolveIntegration(admin, tenantId, manufacturer);
+
+      if (error) {
+        console.error('Error loading integration for discovery:', error);
+        return createCorsResponse({ error: 'Failed to load integration' }, 500, req);
+      }
+
+      if (!integration) {
+        return createCorsResponse({ error: 'Integration not found' }, 404, req);
+      }
+
+      return createCorsResponse(
+        {
+          error: 'Device discovery is not available on this host',
+          message:
+            'Device discovery runs the manufacturer adapters, which exist only in the Node service. No devices were registered.',
+          manufacturer: integration.manufacturer,
+        },
+        501,
         req,
       );
     }

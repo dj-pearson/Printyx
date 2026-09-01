@@ -23,7 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { queryClient } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import {
@@ -82,15 +82,13 @@ export default function ManufacturerIntegration() {
   });
 
   const createIntegrationMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await fetch('/api/manufacturer-integrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to create integration');
-      return response.json();
-    },
+    // PA-052: these three were raw fetch(), so they carried no Authorization
+    // header and 401'd against the edge functions production serves this prefix
+    // from. Both baselines already recorded it - docs/raw-api-fetch-baseline.json
+    // for the fetch, docs/edge-path-coverage-baseline.json for the missing
+    // /discover branch - and neither entry pointed at the other.
+    mutationFn: async (data: any) =>
+      apiRequest('/api/manufacturer-integrations', { method: 'POST', body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/manufacturer-integrations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/manufacturer-integrations/stats'] });
@@ -103,13 +101,8 @@ export default function ManufacturerIntegration() {
   });
 
   const testConnectionMutation = useMutation({
-    mutationFn: async (integrationId: string) => {
-      const response = await fetch(`/api/manufacturer-integrations/${integrationId}/test`, {
-        method: 'POST',
-      });
-      if (!response.ok) throw new Error('Failed to test connection');
-      return response.json();
-    },
+    mutationFn: async (integrationId: string) =>
+      apiRequest(`/api/manufacturer-integrations/${integrationId}/test`, { method: 'POST' }),
     onSuccess: (data) => {
       toast({
         title: data.success ? 'Connection successful' : 'Connection failed',
@@ -119,15 +112,17 @@ export default function ManufacturerIntegration() {
   });
 
   const discoverDevicesMutation = useMutation({
-    mutationFn: async (integrationId: string) => {
-      const response = await fetch(`/api/manufacturer-integrations/${integrationId}/discover`, {
-        method: 'POST',
-      });
-      if (!response.ok) throw new Error('Failed to discover devices');
-      return response.json();
+    mutationFn: async (integrationId: string) =>
+      apiRequest(`/api/manufacturer-integrations/${integrationId}/discover`, { method: 'POST' }),
+    onSuccess: (data: { message?: string }) => {
+      toast({ title: data?.message ?? 'Device discovery finished' });
     },
-    onSuccess: (data) => {
-      toast({ title: data.message });
+    onError: (error: Error) => {
+      toast({
+        title: 'Device discovery unavailable',
+        description: error?.message ?? 'Discovery could not be run.',
+        variant: 'destructive',
+      });
     },
   });
 
