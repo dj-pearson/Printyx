@@ -275,6 +275,14 @@ export function registerEdgeFunctionProxy(app: any) {
     // production runs, for the list, the single record, POST/PATCH/DELETE and
     // every sub-resource.
     '/api/customers': 'customers',
+    // PA-052: /demo-scheduling calls exactly three paths - /api/demos,
+    // /api/demos/customers and /api/demos/:id/status - and the demos edge
+    // function now serves all three off demo_schedules. Dev was answering the
+    // first from a one-row "ABC Corporation" fixture in routes-sample-data.ts
+    // and 404ing the other two, so the whole page disagreed with production.
+    // Safe as a whole-prefix entry because nothing else in any client tree
+    // calls /api/demos.
+    '/api/demos': 'demos',
     '/api/deals': 'deals',
     '/api/contacts': 'contacts',
     '/api/opportunities': 'opportunities',

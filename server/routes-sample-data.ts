@@ -4,8 +4,8 @@
  */
 import type { Express } from 'express';
 import { db } from './db';
-import { eq, sql, asc, and } from 'drizzle-orm';
-import { businessRecords, locations, regions, tenants } from '@shared/schema';
+import { eq, sql } from 'drizzle-orm';
+import { locations, regions, tenants } from '@shared/schema';
 import { storage } from './storage';
 import { getUserId } from './utils/auth-helpers';
 import { requireAuth } from './replitAuth';
@@ -167,85 +167,11 @@ export function registerSampleDataRoutes(app: Express) {
   // Demo Scheduling Routes
   // ──────────────────────────────────────────────
 
-  app.get('/api/demos', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // For now, return sample demo data structure until schema is updated
-      const sampleDemos = [
-        {
-          id: 'demo-1',
-          businessRecordId: 'customer-1',
-          customerName: 'ABC Corporation',
-          contactPerson: 'John Smith',
-          scheduledDate: new Date('2025-01-10'),
-          scheduledTime: '10:00 AM',
-          duration: 60,
-          demoType: 'equipment',
-          equipmentModels: ['Canon imageRUNNER ADVANCE C3330i'],
-          demoLocation: 'customer_site',
-          assignedSalesRep: 'Sales Rep Name',
-          status: 'scheduled',
-          confirmationStatus: 'pending',
-          preparationCompleted: false,
-          demoObjectives: 'Demonstrate color printing capabilities and scan-to-email features',
-          proposalAmount: 15000,
-          createdAt: new Date('2025-01-05'),
-        },
-      ];
-
-      res.json(sampleDemos);
-    } catch (error) {
-      log.error('Error fetching demos:', error);
-      res.status(500).json({ message: 'Failed to fetch demos' });
-    }
-  });
-
-  app.get('/api/demos/customers', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Get real customers from business records
-      const customers = await db
-        .select({
-          id: businessRecords.id,
-          companyName: businessRecords.companyName,
-          primaryContactName: businessRecords.primaryContactName,
-          phone: businessRecords.phone,
-          email: businessRecords.primaryContactEmail,
-          addressLine1: businessRecords.addressLine1,
-          city: businessRecords.city,
-          state: businessRecords.state,
-          postalCode: businessRecords.postalCode,
-        })
-        .from(businessRecords)
-        .where(
-          and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
-        )
-        .orderBy(asc(businessRecords.companyName));
-
-      res.json(customers);
-    } catch (error) {
-      log.error('Error fetching customers for demo:', error);
-      res.status(500).json({ message: 'Failed to fetch customers' });
-    }
-  });
-
-  // SALES TRENDS: removed (AUDIT-021). GET /api/sales-trends built six months of
-  // revenue, deal counts, unit counts, pipeline value, conversion rate and
-  // average deal size entirely from Math.random(), so every refresh produced a
-  // different history. No client tree named the path, the prefix is not proxied
-  // and no edge function serves it, so nothing lost a caller.
-
-  // ──────────────────────────────────────────────
-  // E-signature Integration Routes (Sample Data)
-  // ──────────────────────────────────────────────
+  // PA-052: the two /api/demos handlers that sat here are gone. The first
+  // returned one invented demo for "ABC Corporation" and the second duplicated
+  // a customer lookup; /api/demos is proxied to the demos edge function now,
+  // which serves the list, the customer picker, create and the status update
+  // off demo_schedules.
 
   app.get('/api/signature-requests', async (req: any, res) => {
     try {

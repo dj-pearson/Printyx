@@ -114,10 +114,16 @@ export default async function handler(req: Request) {
     } else if (parts.length >= 3 && parts[1] === 'timer') {
       // /:id/timer/start and /:id/timer/stop. Neither existed here, so the
       // whole timer was dead while Express's working copy sat shadowed.
-      result = await handleTimeEntries(req, {
-        ...ctx,
-        pathParts: [`timer-${parts[2]}`, parts[0]],
-      });
+      //
+      // PA-052: the accepted verbs are enumerated rather than interpolated
+      // straight into the op name. `timer-${parts[2]}` forwarded any third
+      // segment and relied on handleTimeEntries returning null for the ones it
+      // did not know, and it named neither verb anywhere a reader - or
+      // check:edge-coverage, which reported both as unserved - could see them.
+      const verb = parts[2] === 'start' ? 'start' : parts[2] === 'stop' ? 'stop' : null;
+      result = verb
+        ? await handleTimeEntries(req, { ...ctx, pathParts: [`timer-${verb}`, parts[0]] })
+        : null;
     } else {
       result = await handleTasks(req, ctx);
     }

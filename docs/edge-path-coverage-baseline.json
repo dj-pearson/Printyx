@@ -38,7 +38,6 @@
       "widgets"
     ],
     "deal-desk": ["dashboard"],
-    "demos": [":id/status"],
     "document-management": ["library", "upload", "workflows"],
     "equipment-lifecycle": [
       ":id/available-transitions",
@@ -93,7 +92,6 @@
     ],
     "social-media": ["cron-jobs/:id/execute", "posts/:id/broadcast"],
     "subscriptions": ["checkout", "portal", "preview-upgrade", "setup-intent", "stripe"],
-    "tasks": [":id/timer/start", ":id/timer/stop"],
     "technician-management": ["dashboard"]
   }
 }
