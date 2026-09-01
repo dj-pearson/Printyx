@@ -119,62 +119,112 @@ function round2(n: number): number {
 
 // ─── Proposal template helpers (PROP-001) ──────────────────────────────────────
 
-// camelCase (what the UI sends) OR snake_case → real snake_case columns. Anything
-// not in this map is dropped, so a stray UI-only field can never break the insert
-// and a caller can never write tenant_id / created_by / id from the body.
+// camelCase or snake_case from the UI -> the columns proposal_templates ACTUALLY
+// has: name, description, category, template_content, styling, access_level,
+// team_id, is_active, is_default.
+//
+// CORRECTED: this map used to name template_name, template_type,
+// header_content, cover_page_template, executive_summary_template,
+// proposal_body_template, terms_conditions_template, footer_template,
+// branding_colors and font_settings - ten columns the table does not have. Its
+// own comment said dropping unmapped fields meant "a stray UI-only field can
+// never break the insert", which was exactly backwards: every mapped field was
+// the stray one. POST returned 500 every time, GET with ?templateType= was a
+// 42703, and GenerateProposalDialog rendered {t.template_name} as blank for
+// every row.
+//
+// The shape came from shared/quote-proposal-schema.ts, which declares this
+// table and is SKIPPED by shared/drizzle-schema.ts in favour of schema.ts - so
+// no migration was ever generated for it. See docs/duplicate-tables-baseline.json.
 const TEMPLATE_FIELD_MAP: Record<string, string> = {
-  templateName: 'template_name',
-  template_name: 'template_name',
-  templateType: 'template_type',
-  template_type: 'template_type',
+  templateName: 'name',
+  template_name: 'name',
+  name: 'name',
+  templateType: 'category',
+  template_type: 'category',
+  category: 'category',
   description: 'description',
-  headerContent: 'header_content',
-  header_content: 'header_content',
-  coverPageTemplate: 'cover_page_template',
-  cover_page_template: 'cover_page_template',
-  executiveSummaryTemplate: 'executive_summary_template',
-  executive_summary_template: 'executive_summary_template',
-  proposalBodyTemplate: 'proposal_body_template',
-  proposal_body_template: 'proposal_body_template',
-  termsAndConditionsTemplate: 'terms_conditions_template',
-  termsConditionsTemplate: 'terms_conditions_template',
-  terms_conditions_template: 'terms_conditions_template',
-  footerTemplate: 'footer_template',
-  footer_template: 'footer_template',
-  brandingColors: 'branding_colors',
-  branding_colors: 'branding_colors',
-  fontSettings: 'font_settings',
-  font_settings: 'font_settings',
   templateContent: 'template_content',
   template_content: 'template_content',
+  styling: 'styling',
+  accessLevel: 'access_level',
+  access_level: 'access_level',
+  teamId: 'team_id',
+  team_id: 'team_id',
   isActive: 'is_active',
   is_active: 'is_active',
   isDefault: 'is_default',
   is_default: 'is_default',
 };
 
+// The five body sections and the two styling blocks have no columns of their
+// own. They are folded into the two jsonb columns that do exist rather than
+// dropped, so a caller that sends the richer shape keeps its content.
+const CONTENT_SECTIONS: Record<string, string> = {
+  headerContent: 'header',
+  header_content: 'header',
+  coverPageTemplate: 'cover_page',
+  cover_page_template: 'cover_page',
+  executiveSummaryTemplate: 'executive_summary',
+  executive_summary_template: 'executive_summary',
+  proposalBodyTemplate: 'body',
+  proposal_body_template: 'body',
+  termsAndConditionsTemplate: 'terms_conditions',
+  termsConditionsTemplate: 'terms_conditions',
+  terms_conditions_template: 'terms_conditions',
+  footerTemplate: 'footer',
+  footer_template: 'footer',
+};
+
+const STYLING_SECTIONS: Record<string, string> = {
+  brandingColors: 'branding_colors',
+  branding_colors: 'branding_colors',
+  fontSettings: 'font_settings',
+  font_settings: 'font_settings',
+};
+
 function normalizeTemplate(raw: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
+  const content: Record<string, unknown> = {};
+  const styling: Record<string, unknown> = {};
+
   for (const [k, v] of Object.entries(raw ?? {})) {
     const col = TEMPLATE_FIELD_MAP[k];
-    if (col && !(col in out)) out[col] = v;
+    if (col && !(col in out)) {
+      out[col] = v;
+      continue;
+    }
+    const section = CONTENT_SECTIONS[k];
+    if (section && !(section in content)) {
+      content[section] = v;
+      continue;
+    }
+    const style = STYLING_SECTIONS[k];
+    if (style && !(style in styling)) styling[style] = v;
+  }
+
+  // Fold, do not overwrite: an explicit template_content or styling in the body
+  // wins, and the section fields fill in whatever it did not set.
+  if (Object.keys(content).length > 0) {
+    out.template_content = { ...content, ...((out.template_content as object) ?? {}) };
+  }
+  if (Object.keys(styling).length > 0) {
+    out.styling = { ...styling, ...((out.styling as object) ?? {}) };
   }
   return out;
 }
 
+// Validated AFTER normalizeTemplate, so these are real column names. `name` and
+// `category` are what the table calls what the UI sends as templateName and
+// templateType.
 const templateCreateSchema = z.object({
-  template_name: z.string().trim().min(1, 'template_name is required'),
-  template_type: z.string().trim().min(1, 'template_type is required'),
+  name: z.string().trim().min(1, 'name is required'),
+  category: z.string().trim().min(1, 'category is required'),
   description: z.string().nullish(),
-  header_content: z.record(z.unknown()).nullish(),
-  cover_page_template: z.string().nullish(),
-  executive_summary_template: z.string().nullish(),
-  proposal_body_template: z.string().nullish(),
-  terms_conditions_template: z.string().nullish(),
-  footer_template: z.string().nullish(),
-  branding_colors: z.record(z.unknown()).nullish(),
-  font_settings: z.record(z.unknown()).nullish(),
   template_content: z.record(z.unknown()).nullish(),
+  styling: z.record(z.unknown()).nullish(),
+  access_level: z.string().trim().nullish(),
+  team_id: z.string().trim().nullish(),
   is_active: z.boolean().optional(),
   is_default: z.boolean().optional(),
 });
@@ -183,7 +233,7 @@ const templateCreateSchema = z.object({
 const templateUpdateSchema = templateCreateSchema.partial();
 
 // Clear is_default on every OTHER template of the same type in this tenant, so at
-// most one default per (tenant, template_type). Mirrors the blog default-row pattern.
+// most one default per (tenant, category). Mirrors the blog default-row pattern.
 async function clearOtherDefaultTemplates(
   db: SB,
   tenantId: string,
@@ -194,7 +244,7 @@ async function clearOtherDefaultTemplates(
     .from('proposal_templates')
     .update({ is_default: false, updated_at: new Date().toISOString() })
     .eq('tenant_id', tenantId)
-    .eq('template_type', templateType)
+    .eq('category', templateType)
     .eq('is_default', true);
   if (exceptId) q = q.neq('id', exceptId);
   await q;
@@ -1007,7 +1057,8 @@ export default async function handler(req: Request) {
 
       let query = db.from('proposal_templates').select('*').eq('tenant_id', ctx.tenantId);
       if (!includeInactive) query = query.eq('is_active', true);
-      if (templateType) query = query.eq('template_type', templateType);
+      // ?templateType= filters on the real column, which is `category`.
+      if (templateType) query = query.eq('category', templateType);
       // Default first, then newest.
       query = query
         .order('is_default', { ascending: false })
@@ -1042,7 +1093,7 @@ export default async function handler(req: Request) {
 
       // At most one default per (tenant, type).
       if (fields.is_default) {
-        await clearOtherDefaultTemplates(db, ctx.tenantId, fields.template_type);
+        await clearOtherDefaultTemplates(db, ctx.tenantId, fields.category);
       }
 
       const { data, error } = await db
@@ -1101,7 +1152,7 @@ export default async function handler(req: Request) {
         .from('proposal_templates')
         .insert({
           ...rest,
-          template_name: `${source.template_name} (Copy)`,
+          name: `${source.name} (Copy)`,
           is_default: false,
           is_active: true,
           tenant_id: ctx.tenantId,
@@ -1140,17 +1191,17 @@ export default async function handler(req: Request) {
       }
       const fields = parsed.data;
 
-      // Resolve the template_type to scope default-clearing (body may omit it).
+      // Resolve the category to scope default-clearing (body may omit it).
       if (fields.is_default) {
-        let templateType = fields.template_type;
+        let templateType = fields.category;
         if (!templateType) {
           const { data: existing } = await db
             .from('proposal_templates')
-            .select('template_type')
+            .select('category')
             .eq('id', id)
             .eq('tenant_id', ctx.tenantId)
             .maybeSingle();
-          templateType = existing?.template_type;
+          templateType = existing?.category;
         }
         if (templateType) {
           await clearOtherDefaultTemplates(db, ctx.tenantId, templateType, id);

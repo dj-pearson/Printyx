@@ -30,8 +30,8 @@ import { Loader2, Sparkles, AlertTriangle } from 'lucide-react';
 
 interface TemplateRow {
   id: string;
-  template_name: string;
-  template_type: string;
+  name: string;
+  category: string;
   is_default?: boolean;
   template_content?: { sections?: Array<{ id?: string; title?: string; type?: string }> } | null;
 }
@@ -103,8 +103,8 @@ export default function GenerateProposalDialog({
   useEffect(() => {
     if (!open || touchedTemplate || !templates.length) return;
     const byType = inferredType
-      ? (templates.find((t) => t.template_type === inferredType && t.is_default) ??
-        templates.find((t) => t.template_type === inferredType))
+      ? (templates.find((t) => t.category === inferredType && t.is_default) ??
+        templates.find((t) => t.category === inferredType))
       : undefined;
     const pick = byType ?? templates.find((t) => t.is_default) ?? templates[0];
     if (pick) setTemplateId(pick.id);
@@ -213,7 +213,7 @@ export default function GenerateProposalDialog({
                 <SelectContent>
                   {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.template_name}
+                      {t.name}
                       {t.is_default ? ' ★' : ''}
                     </SelectItem>
                   ))}
