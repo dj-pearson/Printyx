@@ -5,9 +5,15 @@
  * Provides: service-tickets list/stats, equipment CRUD, time tracking, ticket status updates.
  */
 
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { db } from './db';
-import { serviceTickets, equipment, businessRecords, technicians } from '@shared/schema';
+import {
+  serviceTickets,
+  equipment,
+  businessRecords,
+  technicians,
+  meterReadings,
+} from '@shared/schema';
 import { eq, and, sql, desc, or, ilike, count } from 'drizzle-orm';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
@@ -292,6 +298,37 @@ router.get('/api/equipment/:id/service-history', async (req: any, res) => {
   } catch (error: any) {
     log.error('Error fetching equipment service history:', error);
     res.status(500).json({ message: 'Failed to fetch service history' });
+  }
+});
+
+/**
+ * GET /api/equipment/:id/meter-readings
+ * Meter readings for one machine, newest first.
+ *
+ * PA-052: /api/equipment is not proxied, so dev is Express and prod is the
+ * equipment edge function. This mirrors the branch added there — without it
+ * the tab 404s in dev and answers 200 with the equipment ROW in prod.
+ */
+router.get('/api/equipment/:id/meter-readings', async (req: Request, res: Response) => {
+  try {
+    const tenantId = getTenantId(req);
+    if (!tenantId) return res.status(400).json({ message: 'Tenant ID required' });
+
+    const limitNum = Math.min(parseInt(String(req.query.limit ?? '')) || 50, 200);
+
+    const readings = await db
+      .select()
+      .from(meterReadings)
+      .where(
+        and(eq(meterReadings.tenantId, tenantId), eq(meterReadings.equipmentId, req.params.id)),
+      )
+      .orderBy(desc(meterReadings.readingDate))
+      .limit(limitNum);
+
+    res.json(readings);
+  } catch (error) {
+    log.error('Error fetching equipment meter readings:', error);
+    res.status(500).json({ message: 'Failed to fetch meter readings' });
   }
 });
 

@@ -94,11 +94,11 @@ describe('the findings are recorded as findings', () => {
   );
 
   it('holds the deep shapes the extension found', () => {
-    // equipment/:id/meter-readings was verified by hand: CustomerEquipment.tsx
-    // calls it, and the equipment function's only GET-with-id branch returns
-    // the equipment row.
-    expect(flat).toContain('equipment/:id/meter-readings');
-    expect(flat.filter((p) => p.includes('/:id/')).length).toBeGreaterThanOrEqual(20);
+    // equipment/:id/meter-readings was the worked example here until PA-052
+    // closed it (a real branch in the equipment fn + the Express mirror), so
+    // it is deliberately gone from the list. The shape entries remain.
+    expect(flat).not.toContain('equipment/:id/meter-readings');
+    expect(flat.filter((p) => p.includes('/:id/')).length).toBeGreaterThanOrEqual(19);
   });
 
   it('keeps the depth-1 entries alongside them in one list', () => {

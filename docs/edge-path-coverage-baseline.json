@@ -40,7 +40,6 @@
     "deal-desk": ["dashboard"],
     "demos": [":id/status"],
     "document-management": ["library", "upload", "workflows"],
-    "equipment": [":id/meter-readings"],
     "equipment-lifecycle": [
       ":id/available-transitions",
       ":id/can-transition/:id",
@@ -82,7 +81,6 @@
       "scoring-rules",
       "territories"
     ],
-    "platform-deals": [":id/bant"],
     "seo": [
       "content",
       "images",

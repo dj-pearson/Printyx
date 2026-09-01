@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toCamel } from '../_shared/case.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -55,6 +56,7 @@ export default async function handler(req: Request) {
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'equipment');
     const equipmentId = parts[0];
+    const subResource = parts[1];
 
     // GET /equipment - List equipment
     if (req.method === 'GET' && !equipmentId) {
@@ -103,6 +105,39 @@ export default async function handler(req: Request) {
           limit,
         },
         200,
+        req,
+      );
+    }
+
+    // GET /equipment/:id/meter-readings - Readings for one machine
+    // PA-052: this used to fall through to the single-equipment branch below, which
+    // ignores parts[1] entirely and answered 200 with the equipment ROW. The caller
+    // (CustomerEquipment.tsx) reads `.length` off it, gets undefined, and renders nothing.
+    if (req.method === 'GET' && equipmentId && subResource === 'meter-readings') {
+      const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 200);
+
+      const { data: readings, error } = await admin
+        .from('meter_readings')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('equipment_id', equipmentId)
+        .order('reading_date', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching meter readings:', error);
+        return createCorsResponse({ error: 'Failed to fetch meter readings' }, 500, req);
+      }
+
+      return createCorsResponse(toCamel(readings || []), 200, req);
+    }
+
+    // An unknown sub-resource is a 404, not the parent record. Falling through is
+    // what made the defect above invisible.
+    if (equipmentId && subResource) {
+      return createCorsResponse(
+        { error: `Unknown equipment sub-resource: ${subResource}` },
+        404,
         req,
       );
     }
