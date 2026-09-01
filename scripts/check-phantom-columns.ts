@@ -52,14 +52,23 @@ const triage = process.argv.includes('--triage');
 
 // ─── 1. Physical columns, per physical table name ──────────────────────────
 //
-// Every shared/*.ts is loaded separately rather than through
-// shared/drizzle-schema.ts, because that entry point re-exports and so shows
-// only ONE definition per table name. Four table names are declared twice with
-// different shapes (see check:dup-tables) — blog_posts most consequentially —
-// and for those there is no way to know from the code which one is live. Those
-// tables are marked AMBIGUOUS and skipped: reporting them would be reporting a
-// schema collision as a query bug, which is a different story with a different
-// fix.
+// Every shared/*.ts is loaded separately, which is how a table declared twice
+// with two different shapes is DETECTED. It used to also be the end of the
+// story: such a table was marked AMBIGUOUS and skipped, on the reasoning that
+// there is no way to know from the code which shape is live.
+//
+// There is. shared/drizzle-schema.ts is the single entry point drizzle-kit
+// reads, and it resolves every collision by hand — picking one declaration and
+// SKIPPING the other by name, with a comment saying so. Whatever it exports is
+// therefore the shape every migration was generated against, which makes it the
+// shape the database has. So an ambiguous table is RESOLVED against that entry
+// point, and only a table it does not export stays skipped.
+//
+// This was not academic. AUDIT-035 found two live defects inside the skip:
+// proposal_line_items lost QUOTE-017's recurring columns, so a monthly charge
+// saved as a one-time amount, and proposal_templates named ten columns the table
+// does not have, so a template could never be created. Both were invisible here
+// for as long as the ambiguity was treated as unanswerable.
 const tableColumns = new Map<string, Set<string>>();
 const ambiguousTables = new Set<string>();
 const signatures = new Map<string, Set<string>>();
@@ -90,7 +99,30 @@ for (const file of schemaFiles) {
     tableColumns.set(cfg.name, existing);
   }
 }
-for (const name of ambiguousTables) tableColumns.delete(name);
+// Resolve the ambiguity against the entry point drizzle-kit actually reads.
+const resolvedTables = new Set<string>();
+try {
+  const entry = (await import(join(repo, 'shared', 'drizzle-schema.ts'))) as Record<
+    string,
+    unknown
+  >;
+  for (const value of Object.values(entry)) {
+    if (!is(value as any, PgTable)) continue;
+    const cfg = getTableConfig(value as any);
+    if (!ambiguousTables.has(cfg.name)) continue;
+    // The entry point's shape wins outright - the merged union collected above
+    // would still contain the losing declaration's columns.
+    tableColumns.set(cfg.name, new Set(cfg.columns.map((c) => c.name)));
+    resolvedTables.add(cfg.name);
+  }
+} catch {
+  // If the entry point will not load, fall back to skipping every ambiguous
+  // table rather than checking against a half-built map.
+}
+for (const name of ambiguousTables) {
+  if (!resolvedTables.has(name)) tableColumns.delete(name);
+}
+for (const name of resolvedTables) ambiguousTables.delete(name);
 
 // ─── 2. Column literals an edge function hands to PostgREST ────────────────
 const FILTER_METHODS = [
