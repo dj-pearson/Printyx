@@ -70,7 +70,6 @@
     "mps_covered_devices (supabase/functions/managed-services/index.ts)",
     "mps_meter_readings (supabase/functions/managed-services/index.ts)",
     "oid_presets (supabase/functions/printer-monitoring/index.ts)",
-    "onboarding_sections (supabase/functions/onboarding-checklists/index.ts)",
     "order_items (supabase/functions/warehouse-operations/index.ts)",
     "part_equipment_compatibility (supabase/functions/parts-inventory/index.ts)",
     "parts (supabase/functions/parts-inventory/index.ts)",

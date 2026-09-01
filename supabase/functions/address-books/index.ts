@@ -20,6 +20,7 @@ import { z } from 'https://esm.sh/zod@3.22.4';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { handleImportExistingBook, handleImportNewBook } from './_import-export.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -143,6 +144,19 @@ export default async function handler(req: Request) {
       'Address book import and export run in the Node service; this host does not serve them. ' +
       'No file was read and nothing was written.';
 
+    // POST /address-books/import - create a new book from an uploaded file
+    if (req.method === 'POST' && bookId === 'import') {
+      return await handleImportNewBook(req, admin, tenantId, user.id, url);
+    }
+
+    // POST /address-books/:id/import - import into an existing book
+    if (req.method === 'POST' && bookId && sub === 'import') {
+      return await handleImportExistingBook(req, admin, tenantId, user.id, bookId, url);
+    }
+
+    // Export is still Express-only: its device-override merge (a device book
+    // layered over the customer master) has real semantics that have not been
+    // ported yet. PA-055 carries it.
     if (bookId === 'import' || sub === 'import' || sub === 'export') {
       return createCorsResponse(
         { error: 'Not implemented on this host', message: UNSERVED_HERE, code: 'NOT_IMPLEMENTED' },

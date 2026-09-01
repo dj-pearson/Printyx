@@ -157,3 +157,62 @@ describe('no Node built-in survived the port', () => {
     }
   });
 });
+
+describe('the credential vault writes what the table holds', () => {
+  const nodeVault = read(join(nodeDir, 'credential-vault.ts'));
+  const edgeVault = read(join(edgeDir, 'credential-columns.ts'));
+
+  it('uses AES-256-GCM with a 12-byte IV on both', () => {
+    expect(nodeVault).toMatch(/aes-256-gcm/i);
+    expect(edgeVault).toMatch(/ALGORITHM = 'AES-GCM'/);
+    expect(nodeVault).toMatch(/IV_LENGTH_BYTES = 12/);
+    expect(edgeVault).toMatch(/IV_LENGTH_BYTES = 12/);
+    expect(edgeVault).toMatch(/KEY_LENGTH_BYTES = 32/);
+  });
+
+  it('reads the same env var, so one key serves both hosts', () => {
+    expect(nodeVault).toMatch(/ADDRESS_BOOK_MASTER_KEY/);
+    expect(edgeVault).toMatch(/ENV_VAR = 'ADDRESS_BOOK_MASTER_KEY'/);
+  });
+
+  it('splits the auth tag out, because the columns are separate', () => {
+    // Web Crypto appends the tag to the ciphertext; node:crypto exposes it via
+    // getAuthTag(). Without the split the two formats differ on disk and a
+    // credential written by one fails auth-tag verification on the other -
+    // which surfaces as "wrong password" on an SMB entry, not as a format error.
+    expect(edgeVault).toMatch(/AUTH_TAG_BYTES = 16/);
+    expect(edgeVault).toMatch(/sealed\.subarray\(0, sealed\.length - AUTH_TAG_BYTES\)/);
+    expect(edgeVault).toMatch(/sealed\.subarray\(sealed\.length - AUTH_TAG_BYTES\)/);
+  });
+
+  it('does NOT use the single-blob shared vault, which targets a jsonb column', () => {
+    const importer = read(join(repo, 'supabase/functions/address-books/_import-export.ts'));
+    expect(importer).toMatch(/encryptCredentialColumns/);
+    expect(importer).not.toMatch(/from '\.\.\/_shared\/credential-vault\.ts'/);
+  });
+});
+
+describe('a source password never leaves memory', () => {
+  const importer = read(join(repo, 'supabase/functions/address-books/_import-export.ts'));
+
+  it('strips _password from every metadata payload it returns or stores', () => {
+    // ABK-014's standing requirement, carried across the port.
+    expect(importer).toMatch(/delete clone\._password/);
+    const responses = importer.match(/source_metadata: sanitizeMetadata\(/g) ?? [];
+    expect(responses.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('never logs the upload fields or a credential', () => {
+    const code = stripComments(importer);
+    expect(code).not.toMatch(/console\.(log|error)\([^)]*password/i);
+    expect(code).not.toMatch(/console\.(log|error)\([^)]*fields/);
+  });
+
+  it('caps the upload before reading the body into memory', () => {
+    expect(importer).toMatch(/MAX_UPLOAD_BYTES = 25 \* 1024 \* 1024/);
+    const capAt = importer.indexOf('file.size > MAX_UPLOAD_BYTES');
+    const readAt = importer.indexOf('file.arrayBuffer()');
+    expect(capAt).toBeGreaterThan(-1);
+    expect(capAt).toBeLessThan(readAt);
+  });
+});
