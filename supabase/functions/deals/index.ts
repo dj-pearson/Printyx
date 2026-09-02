@@ -19,6 +19,7 @@ import {
   resolveStageId,
   type DealStageRow,
 } from '../_shared/deal-stage.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 /** The tenant's pipeline stages. Small table; read once per request. */
 async function loadStages(admin: any, tenantId: string): Promise<DealStageRow[]> {
@@ -240,8 +241,13 @@ export default async function handler(req: Request) {
       (user.user_metadata?.tenantId as string) ||
       (user.user_metadata?.tenant_id as string);
     const headerTenantId = req.headers.get('x-tenant-id') || undefined;
+    // WF-R-03: the role claim carries the uppercase role CODE, so comparing it to
+    // a lowercase string could never fire and this rested on a flag nothing wrote.
+    const platformRoleCode = String(user.app_metadata?.role ?? '').toUpperCase();
     const isPlatformAdmin =
-      user.app_metadata?.isPlatformAdmin === true || user.app_metadata?.role === 'platform_admin';
+      user.app_metadata?.isPlatformAdmin === true ||
+      platformRoleCode === 'PLATFORM_ADMIN' ||
+      platformRoleCode === 'ROOT_ADMIN';
     if (headerTenantId && jwtTenantId && headerTenantId !== jwtTenantId && !isPlatformAdmin) {
       return createCorsResponse(
         { error: 'Tenant access denied', code: 'TENANT_ACCESS_DENIED' },
@@ -703,6 +709,16 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order(q.sortColumn, { ascending: q.ascending })
         .range(q.offset, q.offset + q.limit - 1);
+
+      // WF-R-04: the board showed every deal in the tenant to every rep. The
+      // `ownerId` filter below is a caller-supplied preference and never was a
+      // control - it is applied on top of this, not instead of it.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      query = applyUserScope(query, ['owner_id', 'created_by_id'], scope);
 
       const stages = await loadStages(admin, tenantId);
 

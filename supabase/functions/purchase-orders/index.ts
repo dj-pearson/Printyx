@@ -20,6 +20,7 @@ import {
   serialCaptureRequired,
   statusAfterReceipt,
 } from './_receiving.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 // Valid PO statuses
 const PO_STATUSES = [
@@ -702,6 +703,16 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('order_date', { ascending: false })
         .range(offset, offset + limit - 1);
+
+      // WF-R-04. `purchase_orders` names one user, whoever raised it, so that is
+      // the only ownership this table can express. Approval routing is a
+      // different question and is not what this filter answers.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      query = applyUserScope(query, 'created_by', scope);
 
       if (vendorId) {
         query = query.eq('vendor_id', vendorId);

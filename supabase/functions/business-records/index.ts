@@ -4,6 +4,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 // Convert camelCase request body keys to snake_case for DB compatibility
 function camelToSnake(str: string): string {
@@ -292,6 +293,16 @@ export default async function handler(req: Request) {
           .select('*, company_contacts(*)', { count: 'exact' })
           .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false });
+
+        // WF-R-04: until this, a level-1 rep listing accounts got EVERY account in
+        // the tenant. `companies` carries three ways to own a row and any of them
+        // counts - a rep assigned to an account they do not own must still see it.
+        const scope = await resolveScope(admin, {
+          userId: user.id,
+          tenantId,
+          appMetadata: user.app_metadata,
+        });
+        query = applyUserScope(query, ['owner_id', 'assigned_sales_rep', 'created_by'], scope);
 
         if (recordType) {
           // Map common recordType values to business_record_type

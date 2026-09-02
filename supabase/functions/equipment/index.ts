@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
+import { accessibleCustomerIds, applyCustomerScope, resolveScope } from '../_shared/scope.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -73,6 +74,18 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('install_date', { ascending: false })
         .range(offset, offset + limit - 1);
+
+      // WF-R-04, scoped through the CUSTOMER. `equipment` has no owner column at
+      // all - it is a customer's asset - so the account's owner is the only
+      // ownership this table can express, and there is no user-id column to fall
+      // back to when the accessible-customer set overflows one filter.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      const customers = await accessibleCustomerIds(admin, tenantId, scope);
+      query = applyCustomerScope(query, 'customer_id', customers, scope, null);
 
       if (customerId) {
         query = query.eq('customer_id', customerId);

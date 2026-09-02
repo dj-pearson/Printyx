@@ -62,6 +62,7 @@ import { sendEmail } from '../email-marketing/_sendgrid.ts';
 import { renderTemplate, type MergeData } from '../_shared/proposal-merge.ts';
 
 import { effectiveDiscountPct, lineNetTotal, toDiscountedLine } from '../_shared/quote-math.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 const log = createLogger('proposals');
 
@@ -1532,6 +1533,15 @@ export default async function handler(req: Request) {
         .eq('tenant_id', ctx.tenantId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
+
+      // WF-R-04: a quote is the rep's own work, and this list showed every rep's
+      // pricing - including the dealer cost and margin on each - to everyone.
+      const scope = await resolveScope(db, {
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
+        appMetadata: ctx.supabaseUser.app_metadata,
+      });
+      query = applyUserScope(query, ['assigned_to', 'created_by'], scope);
 
       if (status) query = query.eq('status', status);
       if (businessRecordId) query = query.eq('business_record_id', businessRecordId);

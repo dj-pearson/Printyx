@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { enrichTickets } from './_enrich.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 export default async function handler(req: Request) {
@@ -99,6 +100,16 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
+
+      // WF-R-04: a technician's queue is their own tickets, not the tenant's.
+      // Unassigned tickets stay visible above `own` scope - a dispatch queue that
+      // hides the work nobody has picked up yet is worse than no filter at all.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      query = applyUserScope(query, ['assigned_technician_id', 'created_by'], scope);
 
       if (status) {
         query = query.eq('status', status);

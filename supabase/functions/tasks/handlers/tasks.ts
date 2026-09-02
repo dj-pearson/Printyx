@@ -18,6 +18,7 @@
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import { toCamel } from '../../_shared/case.ts';
 import type { HandlerCtx } from '../_context.ts';
+import { applyUserScope, resolveScope } from '../../_shared/scope.ts';
 
 export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   const { method, pathParts, auth, db, requestId, url } = ctx;
@@ -41,6 +42,16 @@ export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Respon
     const limit = Math.min(500, parseInt(url.searchParams.get('limit') ?? '100', 10) || 100);
     const offset = (page - 1) * limit;
     q = q.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+
+    // WF-R-04: a task list filtered on tenant_id alone is every task in the
+    // company. The `assignedTo` query param above is a caller preference, not a
+    // control; this is applied on top of it.
+    const scope = await resolveScope(db, {
+      userId: auth.userId,
+      tenantId: auth.tenantId,
+      appMetadata: auth.supabaseUser.app_metadata,
+    });
+    q = applyUserScope(q, ['assigned_to', 'created_by'], scope);
 
     const { data, error, count } = await q;
     if (error) return dbErr(req, requestId, 'Failed to fetch tasks', error);

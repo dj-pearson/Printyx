@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -84,6 +85,17 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('reading_date', { ascending: false })
         .range(offset, offset + limit - 1);
+
+      // WF-R-04. A reading names a user twice - the technician who took it and
+      // whoever entered it - and either makes it theirs. Readings with neither
+      // set stay visible above `own` scope: an import fills this table and its
+      // rows carry no person at all.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      query = applyUserScope(query, ['technician_id', 'created_by'], scope);
 
       if (equipmentId) {
         query = query.eq('equipment_id', equipmentId);
