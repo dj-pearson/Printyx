@@ -78,6 +78,11 @@ const BASELINE_NOTE = [
   '',
   'AUDIT-037 carries the backlog. Shrink this list by fixing the code or settling a table collision -',
   'never by re-widening a skip, which would look like progress.',
+  '',
+  'DO NOT WORK THIS LIST TOP-DOWN. Roughly half of it sits in edge functions that nothing calls (cross',
+  'it against docs/unreferenced-edge-fns-baseline.json), where a phantom column cannot hurt anyone and',
+  'fixing it is building for a caller that does not exist. The entries worth fixing are the ones in a',
+  'REACHABLE function: those are live 42703s under a screen somebody opens.',
 ].join(' ');
 const triage = process.argv.includes('--triage');
 
