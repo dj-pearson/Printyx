@@ -80,6 +80,13 @@ export default async function handler(req: Request) {
         query = query.eq('status', status);
       }
 
+      // WF-C-09: "which contract did this deal become". DealDetail.tsx asks it
+      // per deal; WF-P-04's Needs Ordering queue asks it across a tenant.
+      const dealId = url.searchParams.get('dealId') || url.searchParams.get('deal_id');
+      const proposalId = url.searchParams.get('proposalId') || url.searchParams.get('proposal_id');
+      if (dealId) query = query.eq('deal_id', dealId);
+      if (proposalId) query = query.eq('proposal_id', proposalId);
+
       const { data: contracts, error, count } = await query;
 
       if (error) {

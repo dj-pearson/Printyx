@@ -372,6 +372,13 @@
       "when": 1788326131759,
       "tag": "0069_normal_leech",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1788328247738,
+      "tag": "0070_groovy_imperial_guard",
+      "breakpoints": true
     }
   ]
 }

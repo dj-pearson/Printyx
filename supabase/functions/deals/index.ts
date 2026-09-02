@@ -767,7 +767,35 @@ export default async function handler(req: Request) {
       }
 
       const stageNames = buildStageNameMap(await loadStages(admin, tenantId));
-      return createCorsResponse(toDealResponse(deal, stageNames), 200, req);
+
+      // WF-C-09: the contract this deal became. Read by contract_id when the
+      // deal carries the back-link, and by deal_id otherwise - the two sides are
+      // written together but a back-fill can leave one of them behind, and a
+      // detail page that shows nothing because only one direction was populated
+      // is the kind of gap nobody reports. Best-effort: a deal that has no
+      // contract is the normal case and must not 500 here.
+      let contract = null;
+      try {
+        const linked = deal.contract_id
+          ? await admin
+              .from('contracts')
+              .select('id, contract_number, status, start_date, end_date, acquisition_type')
+              .eq('id', deal.contract_id)
+              .eq('tenant_id', tenantId)
+              .maybeSingle()
+          : await admin
+              .from('contracts')
+              .select('id, contract_number, status, start_date, end_date, acquisition_type')
+              .eq('deal_id', dealId)
+              .eq('tenant_id', tenantId)
+              .limit(1)
+              .maybeSingle();
+        contract = linked?.data ?? null;
+      } catch (err) {
+        console.error('Error loading the deal contract:', err);
+      }
+
+      return createCorsResponse({ ...toDealResponse(deal, stageNames), contract }, 200, req);
     }
 
     // POST /deals - Create deal

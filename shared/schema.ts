@@ -2524,6 +2524,11 @@ export const deals = pgTable(
     description: text('description'),
     amount: decimal('amount', { precision: 12, scale: 2 }),
 
+    // WF-C-09: the contract this deal produced, so the link is navigable from
+    // either end. Null until the proposal is accepted, and null forever on a
+    // deal that closes lost.
+    contractId: varchar('contract_id'),
+
     // Deal Assignment
     ownerId: varchar('owner_id').notNull(), // sales rep responsible
     customerId: varchar('customer_id'), // references customers.id
@@ -2646,9 +2651,32 @@ export const contracts = pgTable(
     customerId: varchar('customer_id').notNull(),
     contractNumber: varchar('contract_number').notNull(),
 
-    // Contract Dates
-    startDate: timestamp('start_date').notNull(),
-    endDate: timestamp('end_date').notNull(),
+    // Where this contract came from (WF-C-09).
+    //
+    // The table knew its customer and its rates and nothing about the sale, so
+    // the spine from deal to installed unit broke at its first link. All
+    // nullable: a contract keyed in by hand has no proposal, and a cash sale has
+    // no lease. acquisitionType (cash | lease | finance) is declared here and
+    // filled by WF-C-05, which is the story that captures how a deal is paid -
+    // defaulting it to a guess would be inventing the commercial terms.
+    dealId: varchar('deal_id'),
+    proposalId: varchar('proposal_id'),
+    leaseId: varchar('lease_id'),
+    acquisitionType: varchar('acquisition_type'),
+
+    // Contract Dates.
+    //
+    // WF-C-09: both are NULLABLE now and neither is set when a proposal is
+    // accepted. A contract's term starts when the equipment is accepted
+    // (WF-L-08), not when sales marked a proposal accepted, and the old code
+    // wrote today's date plus a 36-month term that nobody had agreed to. A
+    // fabricated end date is the worse half: contracts.tsx drives its
+    // "expiring soon" badge off it, and contract-renewal builds its queue by
+    // filtering on it, so an invented term produced invented renewals. A null
+    // end_date simply does not match those filters, which is the right answer
+    // for a contract whose term is not yet agreed.
+    startDate: timestamp('start_date'),
+    endDate: timestamp('end_date'),
 
     // Base Rates
     blackRate: decimal('black_rate', { precision: 10, scale: 4 }),

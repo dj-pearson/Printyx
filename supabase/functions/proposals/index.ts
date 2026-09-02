@@ -823,15 +823,25 @@ async function createContractFromProposal(
   db: SB,
   proposal: any,
   tenantId: string,
+  dealId?: string | null,
 ): Promise<string | null> {
   // Deleted Express code wrote fields (contract_type, auto_renewal,
   // billing_frequency, assigned_salesperson_id, notes) that don't exist in the
   // actual contracts table (verified against migration 0000). We only insert
   // the columns that exist.
+  //
+  // WF-C-09: NO start_date OR end_date. This used to write today plus a
+  // 36-month term nobody had agreed to. The end date is the damaging one -
+  // contracts.tsx drives its "expiring soon" badge off it and
+  // supabase/functions/contract-renewal builds its entire queue by filtering on
+  // it, so an invented term produced invented renewals for every accepted
+  // proposal. The term is set when the equipment is accepted (WF-L-08); until
+  // then both are null, which those filters correctly skip.
+  //
+  // acquisition_type is left null too: WF-C-05 is the story that captures how
+  // the deal is paid, and guessing between cash, lease and finance would be
+  // inventing the commercial terms.
   const contractNumber = await generateContractNumber(db, tenantId);
-  const startDate = new Date();
-  const endDate = new Date();
-  endDate.setMonth(endDate.getMonth() + 36); // default 36-month term
 
   const { data: created } = await db
     .from('contracts')
@@ -839,14 +849,26 @@ async function createContractFromProposal(
       tenant_id: tenantId,
       customer_id: proposal.business_record_id,
       contract_number: contractNumber,
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString(),
+      deal_id: dealId ?? null,
+      proposal_id: proposal.id ?? null,
       status: 'active',
     })
     .select('id')
     .maybeSingle();
 
-  return created?.id ?? null;
+  const contractId = created?.id ?? null;
+
+  // The back-link, so the join works from either end. Best-effort for the same
+  // reason the whole sync is: a missed link must not fail the acceptance.
+  if (contractId && dealId) {
+    await db
+      .from('deals')
+      .update({ contract_id: contractId, updated_at: new Date().toISOString() })
+      .eq('id', dealId)
+      .eq('tenant_id', tenantId);
+  }
+
+  return contractId;
 }
 
 // Field map for PATCH/PUT proposal update — matches Express
@@ -956,10 +978,14 @@ export default async function handler(req: Request) {
             .eq('id', proposal.id)
             .eq('tenant_id', tenantId);
           try {
-            await upsertDealForProposal(db, proposal, proposal.created_by ?? 'public', tenantId, {
-              forceWon: true,
-            });
-            await createContractFromProposal(db, proposal, tenantId);
+            const acceptedDealId = await upsertDealForProposal(
+              db,
+              proposal,
+              proposal.created_by ?? 'public',
+              tenantId,
+              { forceWon: true },
+            );
+            await createContractFromProposal(db, proposal, tenantId, acceptedDealId);
           } catch (syncErr) {
             log.warn({ requestId, err: String(syncErr) }, 'public_accept_sync_failed');
           }
@@ -1999,13 +2025,19 @@ export default async function handler(req: Request) {
         }
       }
       if (status === 'accepted') {
+        // WF-C-09: the deal id is threaded into the contract, so the contract
+        // records which deal produced it. The upsert is still best-effort, so a
+        // failure there leaves dealId null rather than skipping the contract.
+        let acceptedDealId: string | null = null;
         try {
-          await upsertDealForProposal(db, proposal, ctx.userId, ctx.tenantId, { forceWon: true });
+          acceptedDealId = await upsertDealForProposal(db, proposal, ctx.userId, ctx.tenantId, {
+            forceWon: true,
+          });
         } catch (syncError) {
           log.warn({ requestId, err: syncError }, 'Deal upsert failed (status=accepted)');
         }
         try {
-          await createContractFromProposal(db, proposal, ctx.tenantId);
+          await createContractFromProposal(db, proposal, ctx.tenantId, acceptedDealId);
         } catch (syncError) {
           log.warn({ requestId, err: syncError }, 'Contract create failed (status=accepted)');
         }

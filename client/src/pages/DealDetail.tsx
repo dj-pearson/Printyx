@@ -86,6 +86,16 @@ interface DealData {
   nextFollowUpDate?: string | null;
   lastActivityDate?: string | null;
   createdAt?: string | null;
+  // WF-C-09: the contract this deal became, returned by GET /api/deals/:id.
+  // Absent on every deal that has not been accepted, which is most of them.
+  contract?: {
+    id: string;
+    contract_number?: string | null;
+    status?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    acquisition_type?: string | null;
+  } | null;
   updatedAt?: string | null;
   // COP-M04: the copier-deal fields. The deals edge function returns each one in
   // camelCase alongside the raw snake row.
@@ -605,6 +615,18 @@ export default function DealDetail() {
               <CardContent className="space-y-3">
                 <Field icon={Building2} label="Account" value={deal.companyName} />
                 <Field icon={Target} label="Deal type" value={deal.dealType} />
+                {/* WF-C-09. Rendered only when the deal produced one, so an open
+                    deal does not grow an empty row. The term is deliberately not
+                    shown here: start and end date are null until acceptance sets
+                    them (WF-L-08), and rendering "N/A" for a date nobody has
+                    agreed to reads as missing data rather than as not-yet. */}
+                {deal.contract && (
+                  <Field
+                    icon={FileText}
+                    label="Contract"
+                    value={deal.contract.contract_number ?? deal.contract.id}
+                  />
+                )}
                 <Field icon={FileText} label="Products" value={deal.productsInterested} />
                 <Field
                   icon={Calendar}
