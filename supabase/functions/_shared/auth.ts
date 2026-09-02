@@ -27,6 +27,7 @@ import {
   type User,
 } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { cachedGetUser, type GetUserCapable } from './auth-cache.ts';
+import { ensureRoleClaims, hasRoleClaims, type ClaimsClient } from './role-claims.ts';
 
 export interface AuthContext {
   userId: string;
@@ -84,6 +85,14 @@ function getServiceClient(): SupabaseClient {
   });
   return _serviceClient;
 }
+
+/**
+ * Users this instance has already tried to backfill role claims for (WF-R-03).
+ * Per-instance and unbounded only by the number of DISTINCT users an instance
+ * serves, which is what an edge instance's lifetime bounds anyway. It exists to
+ * stop a user with no role_id from paying two `users` lookups on every request.
+ */
+const claimBackfillAttempted = new Set<string>();
 
 function extractJwt(req: Request): string | null {
   const header = req.headers.get('Authorization') || req.headers.get('authorization');
@@ -188,6 +197,23 @@ export async function requireAuth(
   }
 
   const user = data.user as User;
+
+  // WF-R-03: backfill app_metadata.roleLevel for a user whose bag predates the
+  // claim. Web and OAuth sign-in go straight from the browser to GoTrue, so there
+  // is no login hook to write it from - this is the only place guaranteed to run.
+  // It fires at most once per user (GoTrue then answers with the claim), and the
+  // attempted-set below stops a user with no role_id from retrying on every
+  // request. Failures are swallowed inside ensureRoleClaims: a user who cannot be
+  // enriched is left at the level they would have had anyway, never denied auth.
+  if (!hasRoleClaims(user.app_metadata) && !claimBackfillAttempted.has(user.id)) {
+    claimBackfillAttempted.add(user.id);
+    try {
+      await ensureRoleClaims(getServiceClient() as unknown as ClaimsClient, user);
+    } catch {
+      /* auth must not fail because a claim could not be written */
+    }
+  }
+
   const tenantId = await resolveTenantId(req, user, opts?.log);
 
   if (!tenantId) {
@@ -224,14 +250,24 @@ export async function optionalAuth(
 
 /**
  * Platform-admin check — for root-admin routes.
- * Assumes platform admins have a specific role claim or are in a known role table.
- * Tune the check once you know the canonical way.
+ *
+ * WF-R-03 corrected the predicate. It compared `app_metadata.role` against the
+ * lowercase string 'platform_admin' while the claim carries the role CODE, which
+ * is uppercase — so that half of the check could never fire, and the whole thing
+ * rested on an `isPlatformAdmin` flag nothing wrote. It now matches the codes
+ * case-insensitively and accepts the seeded level 8, which is the same predicate
+ * `_shared/rbac.ts`'s isPlatformAdmin() applies.
  */
 export async function requirePlatformAdmin(req: Request): Promise<AuthContext> {
   const ctx = await requireAuth(req);
+  const appMeta = ctx.supabaseUser.app_metadata ?? {};
+  const roleCode = String(appMeta.role ?? appMeta.roleCode ?? '').toUpperCase();
+  const level = appMeta.roleLevel ?? appMeta.role_level;
   const isPlatformAdmin =
-    ctx.supabaseUser.app_metadata?.isPlatformAdmin === true ||
-    ctx.supabaseUser.app_metadata?.role === 'platform_admin';
+    appMeta.isPlatformAdmin === true ||
+    roleCode === 'PLATFORM_ADMIN' ||
+    roleCode === 'ROOT_ADMIN' ||
+    (typeof level === 'number' && level >= 8);
   if (!isPlatformAdmin) {
     throw new AuthError(403, 'forbidden', 'Platform admin access required');
   }

@@ -9,6 +9,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { buildRoleClaims, claimsPatch, syncRoleClaims } from '../_shared/role-claims.ts';
 
 // Helper to check if user has admin permissions
 async function checkAdminPermission(
@@ -427,6 +428,24 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create user record' }, 500, req);
       }
 
+      // WF-R-03: the invite above puts everything in user_metadata, so an invited
+      // user reaches the gates with an EMPTY app_metadata - no tenantId and, more
+      // damagingly, no roleLevel, which _shared/rbac.ts reads as level 1. Write
+      // both now that the role is known. Not fatal if it fails: requireAuth's
+      // backfill will do it on the user's first request instead.
+      {
+        const inviteClaims = await buildRoleClaims(admin, newUser.role_id);
+        const { error: claimError } = await admin.auth.admin.updateUserById(authUser.user.id, {
+          app_metadata: {
+            tenantId,
+            ...(inviteClaims ? claimsPatch(inviteClaims) : {}),
+          },
+        });
+        if (claimError) {
+          console.error('Error writing role claims for invited user:', claimError.message);
+        }
+      }
+
       // The profile fields `users` does not carry. user_settings.tenant_id is
       // NOT NULL, so it goes in the row. A failure here does not undo the
       // invitation - the account exists and works; only the optional profile is
@@ -563,6 +582,19 @@ export default async function handler(req: Request) {
       // Update Supabase Auth user metadata if email changed
       if (body.email && body.email !== existingUser.email) {
         await admin.auth.admin.updateUserById(resourceId, { email: body.email });
+      }
+
+      // WF-R-03: a role change has to reach app_metadata or the gates keep
+      // enforcing the old level. The gates re-read the user from GoTrue on every
+      // request, so this takes effect on the user's NEXT request without a new
+      // sign-in - bounded by the AUDIT-005 auth cache TTL. What it does not do is
+      // revoke the access token already in their hands: a consumer that decodes
+      // the JWT payload directly keeps seeing the old level until it refreshes.
+      if (body.roleId !== undefined && body.roleId !== existingUser.role_id) {
+        const synced = await syncRoleClaims(admin, resourceId, updatedUser.role_id);
+        if (!synced) {
+          console.error('Role claims not written for user', resourceId, 'role', body.roleId);
+        }
       }
 
       // Log audit event

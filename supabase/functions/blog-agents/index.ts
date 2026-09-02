@@ -58,8 +58,13 @@ function isPlatformAdmin(user: { app_metadata?: Record<string, unknown> }): bool
   // Prefer JWT permission claim when present (no DB roundtrip)
   const perms = meta.permissions;
   if (Array.isArray(perms) && perms.includes('blog.agent.toggle')) return true;
-  const role = String(meta.role ?? '').toLowerCase();
-  return role === 'platform_admin' || role === 'super_admin';
+  // WF-R-03: the role claim carries the role CODE, which is uppercase, so the
+  // lowercase comparison this used to make could never fire. Compare
+  // case-insensitively and accept the seeded level 8 outright.
+  const role = String(meta.role ?? meta.roleCode ?? '').toUpperCase();
+  if (role === 'PLATFORM_ADMIN' || role === 'ROOT_ADMIN' || role === 'SUPER_ADMIN') return true;
+  const level = meta.roleLevel ?? meta.role_level;
+  return typeof level === 'number' && level >= 8;
 }
 
 export default async function handler(req: Request) {
