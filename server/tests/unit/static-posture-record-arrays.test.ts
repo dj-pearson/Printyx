@@ -18,7 +18,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repo = join(__dirname, '../../..');
@@ -44,15 +44,17 @@ describe('AC1: the rule finds the pages both other guards miss', () => {
     expect(code).toBe(0);
   });
 
-  it('both known pages are recorded, all four arrays', () => {
+  it('the seed findings are GONE, not baselined - WF-L-12 deleted both pages', () => {
+    // WF-G-04 baselined four entries (AssetManagement x2, VehicleManagement x2)
+    // at introduction, exactly as its AC said, and WF-L-12 removed them the same
+    // day by deleting the two pages: 1,399 lines of fabricated VINs, serial
+    // numbers, purchase prices and lease payments, with no query anywhere and no
+    // backend to give them one - supabase/functions/fleet reads three tables
+    // that exist in no schema and no migration, and has no caller either.
     const baseline = readFileSync(join(repo, 'docs/static-posture-baseline.json'), 'utf8');
-    for (const entry of [
-      'AssetManagement.tsx  const assets = [ 5 records x 17 fields ]',
-      'AssetManagement.tsx  const maintenanceRecords = [ 2 records x 8 fields ]',
-      'VehicleManagement.tsx  const vehicles = [ 2 records x 17 fields ]',
-      'VehicleManagement.tsx  const maintenanceRecords = [ 2 records x 9 fields ]',
-    ]) {
-      expect(baseline).toContain(entry);
+    for (const page of ['AssetManagement.tsx', 'VehicleManagement.tsx']) {
+      expect(baseline).not.toContain(page);
+      expect(existsSync(join(repo, `client/src/pages/${page}`))).toBe(false);
     }
   });
 
@@ -82,9 +84,9 @@ describe('AC1: the conditions that make it a finding', () => {
   });
 
   it('the three-record threshold is counted per FILE', () => {
-    // VehicleManagement holds TWO arrays of TWO records. A per-array threshold
-    // of three would have missed it entirely while catching AssetManagement
-    // beside it, which is the seed finding this AC names.
+    // VehicleManagement held TWO arrays of TWO records. A per-array threshold of
+    // three would have missed it entirely while catching AssetManagement beside
+    // it - which is why the rule counts records across a file.
     expect(guard).toContain('return records >= 3 ? candidates : [];');
   });
 });
@@ -106,19 +108,13 @@ describe('AC2: lookup tables do not trip it', () => {
     }
   });
 
-  it('and the whole page tree yields no finding outside the two known pages', () => {
-    // Run with the baseline emptied would be the strict form; instead assert the
-    // baseline itself contains no record-array entry beyond the seed four, which
-    // is the same claim and does not depend on rewriting a tracked file.
+  it('the whole page tree now yields NO record-array finding at all', () => {
+    // The strongest form of AC2: not "the false positives are baselined" but
+    // "there are none". Every remaining baseline entry is a JSX literal from the
+    // older rules.
     const baseline = JSON.parse(
       readFileSync(join(repo, 'docs/static-posture-baseline.json'), 'utf8'),
     ) as { offenders: string[] };
-    const recordArrays = baseline.offenders.filter((o) => / records x \d+ fields \]$/.test(o));
-    expect(recordArrays).toHaveLength(4);
-    expect(
-      recordArrays.every(
-        (o) => o.includes('AssetManagement.tsx') || o.includes('VehicleManagement.tsx'),
-      ),
-    ).toBe(true);
+    expect(baseline.offenders.filter((o) => / records x \d+ fields \]$/.test(o))).toEqual([]);
   });
 });

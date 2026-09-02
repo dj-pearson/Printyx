@@ -120,8 +120,6 @@ const ROUTES = {
     '/tasks',
     '/workflow-automation',
     '/technician-management',
-    '/vehicle-management',
-    '/asset-management',
     '/mobile-field-service',
     '/mobile-field-operations',
     '/remote-monitoring',

@@ -315,8 +315,6 @@ const ApiKeyManagement = React.lazy(() => import('@/pages/ApiKeyManagement'));
 const GPT5Dashboard = React.lazy(() => import('@/pages/GPT5Dashboard'));
 const DocumentBuilder = React.lazy(() => import('@/pages/DocumentBuilder'));
 const TechnicianManagement = React.lazy(() => import('@/pages/TechnicianManagement'));
-const VehicleManagement = React.lazy(() => import('@/pages/VehicleManagement'));
-const AssetManagement = React.lazy(() => import('@/pages/AssetManagement'));
 
 // AI Hub Pages
 const AIHub = React.lazy(() => import('@/pages/AIHub'));
@@ -869,8 +867,6 @@ function Router() {
                   component={ServiceForecastingAnalytics}
                 />
                 <Route path="/technician-management" component={TechnicianManagement} />
-                <Route path="/vehicle-management" component={VehicleManagement} />
-                <Route path="/asset-management" component={AssetManagement} />
                 {/* WF-V-02: the ticket id is in the path. The bare route is the
                     technician's own queue, which is what makes the console
                     reachable without knowing an id. */}
