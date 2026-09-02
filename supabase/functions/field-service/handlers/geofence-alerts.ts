@@ -1,3 +1,9 @@
+// AUDIT-037: the boolean columns on geofence_alerts are is_acknowledged,
+// is_resolved and is_escalated. This file wrote and filtered on the names
+// without the prefix, so acknowledging, resolving and escalating an alert
+// each 42703'd, and the two stats counts read null and rendered as 0 through
+// `?? 0` - a dashboard reporting no unacknowledged alerts because the query
+// failed, not because there were none.
 // Geofence alert rules, alerts (with acknowledge/resolve/escalate actions),
 // subscriptions, and aggregated statistics.
 //
@@ -55,12 +61,12 @@ export async function handleGeofenceAlerts(
         .from('geofence_alerts')
         .select('id', { count: 'exact', head: true })
         .eq('tenant_id', auth.tenantId)
-        .eq('acknowledged', false),
+        .eq('is_acknowledged', false),
       db
         .from('geofence_alerts')
         .select('id', { count: 'exact', head: true })
         .eq('tenant_id', auth.tenantId)
-        .eq('resolved', true),
+        .eq('is_resolved', true),
     ]);
     return jsonResponse(
       {
@@ -197,7 +203,7 @@ async function handleAlerts(req: Request, ctx: HandlerCtx): Promise<Response | n
       .from('geofence_alerts')
       .select('*')
       .eq('tenant_id', auth.tenantId)
-      .eq('acknowledged', false)
+      .eq('is_acknowledged', false)
       .order('triggered_at', { ascending: false })
       .limit(500);
     if (error) return dbErr(req, requestId, 'Failed to fetch unacknowledged', error);
@@ -231,18 +237,18 @@ async function handleAlerts(req: Request, ctx: HandlerCtx): Promise<Response | n
     const now = new Date().toISOString();
     const update: Record<string, unknown> = { updated_at: now };
     if (action === 'acknowledge') {
-      update.acknowledged = true;
+      update.is_acknowledged = true;
       update.acknowledged_at = now;
       update.acknowledged_by = auth.userId;
     } else if (action === 'resolve') {
       const body = (await req.json().catch(() => ({}))) as { resolutionNotes?: string };
-      update.resolved = true;
+      update.is_resolved = true;
       update.resolved_at = now;
       update.resolved_by = auth.userId;
       if (body.resolutionNotes) update.resolution_notes = body.resolutionNotes;
     } else if (action === 'escalate') {
       const body = (await req.json().catch(() => ({}))) as { escalatedTo?: string };
-      update.escalated = true;
+      update.is_escalated = true;
       update.escalated_at = now;
       if (body.escalatedTo) update.escalated_to = body.escalatedTo;
     } else {
