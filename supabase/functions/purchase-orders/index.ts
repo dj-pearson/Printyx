@@ -3,6 +3,16 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import {
+  LINE_ITEM_TABLE,
+  PENDING_PO_ID,
+  RECEIPT_COLUMNS,
+  buildLineItemPatch,
+  buildLineItemRow,
+  lineItemDescription,
+  lineItemsFromBody,
+  lineItemsSubtotal,
+} from './_line-items.ts';
 
 // Valid PO statuses
 const PO_STATUSES = [
@@ -76,7 +86,7 @@ export default async function handler(req: Request) {
       }
 
       const { data: lineItems, error } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .select(
           `
           *,
@@ -123,7 +133,7 @@ export default async function handler(req: Request) {
 
       // Get the next line number
       const { data: maxLine } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .select('line_number')
         .eq('purchase_order_id', poId)
         .eq('tenant_id', tenantId)
@@ -133,33 +143,20 @@ export default async function handler(req: Request) {
 
       const nextLineNumber = (maxLine?.line_number || 0) + 1;
 
-      const quantity = parseFloat(
-        body.quantity || body.quantityOrdered || body.quantity_ordered || 1,
-      );
-      const unitCost = parseFloat(body.unitCost || body.unit_cost || 0);
-      const totalCost = quantity * unitCost;
+      // item_description is NOT NULL, so an omitted description is a 400 here
+      // rather than a 23502 the caller reads as "something went wrong".
+      if (!lineItemDescription(body)) {
+        return createCorsResponse({ error: 'Line item description is required' }, 400, req);
+      }
 
-      const lineItemData = {
-        tenant_id: tenantId,
-        purchase_order_id: poId,
-        line_number: body.lineNumber || body.line_number || nextLineNumber,
-        inventory_item_id: body.inventoryItemId || body.inventory_item_id || null,
-        item_description: body.itemDescription || body.item_description || body.description,
-        part_number: body.partNumber || body.part_number || null,
-        manufacturer_part_number:
-          body.manufacturerPartNumber || body.manufacturer_part_number || null,
-        quantity_ordered: quantity,
-        quantity_received: 0,
-        unit_of_measure: body.unitOfMeasure || body.unit_of_measure || 'EA',
-        unit_cost: unitCost,
-        total_cost: totalCost,
-        notes: body.notes || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      const lineItemData = buildLineItemRow(body, {
+        tenantId,
+        purchaseOrderId: poId,
+        lineNumber: nextLineNumber,
+      });
 
       const { data: lineItem, error } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .insert(lineItemData)
         .select()
         .single();
@@ -215,67 +212,35 @@ export default async function handler(req: Request) {
         updated_at: new Date().toISOString(),
       };
 
-      // Map updatable fields
-      if (body.lineNumber !== undefined || body.line_number !== undefined) {
-        updateData.line_number = body.lineNumber || body.line_number;
-      }
-      if (body.inventoryItemId !== undefined || body.inventory_item_id !== undefined) {
-        updateData.inventory_item_id = body.inventoryItemId || body.inventory_item_id;
-      }
-      if (
-        body.itemDescription !== undefined ||
-        body.item_description !== undefined ||
-        body.description !== undefined
-      ) {
-        updateData.item_description =
-          body.itemDescription || body.item_description || body.description;
-      }
-      if (body.partNumber !== undefined || body.part_number !== undefined) {
-        updateData.part_number = body.partNumber || body.part_number;
-      }
-      if (
-        body.manufacturerPartNumber !== undefined ||
-        body.manufacturer_part_number !== undefined
-      ) {
-        updateData.manufacturer_part_number =
-          body.manufacturerPartNumber || body.manufacturer_part_number;
-      }
-      if (
-        body.quantityOrdered !== undefined ||
-        body.quantity_ordered !== undefined ||
-        body.quantity !== undefined
-      ) {
-        updateData.quantity_ordered = parseFloat(
-          body.quantityOrdered || body.quantity_ordered || body.quantity,
-        );
-      }
-      if (body.unitOfMeasure !== undefined || body.unit_of_measure !== undefined) {
-        updateData.unit_of_measure = body.unitOfMeasure || body.unit_of_measure;
-      }
-      if (body.unitCost !== undefined || body.unit_cost !== undefined) {
-        updateData.unit_cost = parseFloat(body.unitCost || body.unit_cost);
-      }
-      if (body.notes !== undefined) {
-        updateData.notes = body.notes;
-      }
+      Object.assign(updateData, buildLineItemPatch(body));
 
-      // Recalculate total_cost if quantity or unit_cost changed
-      if (updateData.quantity_ordered !== undefined || updateData.unit_cost !== undefined) {
-        // Get current values if not being updated
-        const { data: currentItem } = await admin
-          .from('purchase_order_line_items')
-          .select('quantity_ordered, unit_cost')
+      // Recalculate total_price when quantity or unit price moved and the caller
+      // did not send a total of its own.
+      const totalSent = ['totalPrice', 'total_price', 'totalCost', 'total_cost'].some(
+        (k) => body[k] !== undefined,
+      );
+      if (
+        !totalSent &&
+        (updateData.quantity !== undefined || updateData.unit_price !== undefined)
+      ) {
+        const { data: currentItem, error: currentError } = await admin
+          .from(LINE_ITEM_TABLE)
+          .select('quantity, unit_price')
           .eq('id', subResourceId)
           .eq('tenant_id', tenantId)
           .single();
 
-        const qty = updateData.quantity_ordered ?? currentItem?.quantity_ordered ?? 0;
-        const cost = updateData.unit_cost ?? currentItem?.unit_cost ?? 0;
-        updateData.total_cost = qty * cost;
+        if (currentError || !currentItem) {
+          return createCorsResponse({ error: 'Line item not found' }, 404, req);
+        }
+
+        const qty = updateData.quantity ?? Number(currentItem.quantity ?? 0);
+        const price = updateData.unit_price ?? Number(currentItem.unit_price ?? 0);
+        updateData.total_price = qty * price;
       }
 
       const { data: lineItem, error } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .update(updateData)
         .eq('id', subResourceId)
         .eq('purchase_order_id', poId)
@@ -324,7 +289,7 @@ export default async function handler(req: Request) {
       }
 
       const { error } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .delete()
         .eq('id', subResourceId)
         .eq('purchase_order_id', poId)
@@ -368,7 +333,7 @@ export default async function handler(req: Request) {
 
       // Verify PO has line items
       const { count: lineItemCount } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .select('*', { count: 'exact', head: true })
         .eq('purchase_order_id', poId)
         .eq('tenant_id', tenantId);
@@ -543,8 +508,8 @@ export default async function handler(req: Request) {
 
         // Get current line item
         const { data: lineItem } = await admin
-          .from('purchase_order_line_items')
-          .select('quantity_ordered, quantity_received, inventory_item_id')
+          .from(LINE_ITEM_TABLE)
+          .select(RECEIPT_COLUMNS)
           .eq('id', lineItemId)
           .eq('purchase_order_id', poId)
           .eq('tenant_id', tenantId)
@@ -552,15 +517,15 @@ export default async function handler(req: Request) {
 
         if (!lineItem) continue;
 
-        const newReceivedQty = (lineItem.quantity_received || 0) + quantityReceived;
+        const newReceivedQty = (lineItem.received_quantity || 0) + quantityReceived;
 
-        // Update line item
+        // Update line item. `updated_at` is not written: migration 0001 dropped
+        // it from purchase_order_items.
         await admin
-          .from('purchase_order_line_items')
+          .from(LINE_ITEM_TABLE)
           .update({
-            quantity_received: newReceivedQty,
+            received_quantity: newReceivedQty,
             last_received_date: receiptDate,
-            updated_at: new Date().toISOString(),
           })
           .eq('id', lineItemId)
           .eq('tenant_id', tenantId);
@@ -591,17 +556,17 @@ export default async function handler(req: Request) {
 
       // Determine new PO status based on received quantities
       const { data: allLineItems } = await admin
-        .from('purchase_order_line_items')
-        .select('quantity_ordered, quantity_received')
+        .from(LINE_ITEM_TABLE)
+        .select('quantity, received_quantity')
         .eq('purchase_order_id', poId)
         .eq('tenant_id', tenantId);
 
       let newStatus: POStatus = po.status as POStatus;
       if (allLineItems && allLineItems.length > 0) {
         const allFullyReceived = allLineItems.every(
-          (li) => (li.quantity_received || 0) >= (li.quantity_ordered || 0),
+          (li) => (li.received_quantity || 0) >= (li.quantity || 0),
         );
-        const someReceived = allLineItems.some((li) => (li.quantity_received || 0) > 0);
+        const someReceived = allLineItems.some((li) => (li.received_quantity || 0) > 0);
 
         if (allFullyReceived) {
           newStatus = 'received';
@@ -626,7 +591,7 @@ export default async function handler(req: Request) {
           `
           *,
           vendor:vendors(id, vendor_name),
-          lineItems:purchase_order_line_items(*)
+          lineItems:purchase_order_items(*)
         `,
         )
         .single();
@@ -736,7 +701,7 @@ export default async function handler(req: Request) {
 
       // Get line items with inventory item details
       const { data: lineItems } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .select(
           `
           *,
@@ -757,19 +722,18 @@ export default async function handler(req: Request) {
       // Generate PO number if not provided
       const poNumber = body.poNumber || body.po_number || `PO-${Date.now()}`;
 
-      // Calculate totals from line items if provided
-      const lineItems = body.lineItems || body.line_items || [];
-      const subtotal = lineItems.reduce(
-        (sum: number, item: any) =>
-          sum +
-          parseFloat(
-            item.totalCost ||
-              item.total_cost ||
-              (item.quantity || item.quantityOrdered || item.quantity_ordered || 1) *
-                (item.unitCost || item.unit_cost || 0),
-          ),
-        0,
+      // WF-P-01: the page posts `items`, this read `lineItems`, and it priced each
+      // line off `unitCost` while the page sends `unitPrice` - so every line was
+      // dropped at 201 and the subtotal computed from them was 0. The rows are
+      // built once, up front, and both the subtotal and the insert use them.
+      const lineItemRows = lineItemsFromBody(body).map((item, index) =>
+        buildLineItemRow(item, {
+          tenantId,
+          purchaseOrderId: PENDING_PO_ID,
+          lineNumber: index + 1,
+        }),
       );
+      const subtotal = lineItemsSubtotal(lineItemRows);
       const taxAmount = parseFloat(body.taxAmount || body.tax_amount || 0);
       const shippingAmount = parseFloat(body.shippingAmount || body.shipping_amount || 0);
       const totalAmount = subtotal + taxAmount + shippingAmount;
@@ -829,34 +793,26 @@ export default async function handler(req: Request) {
         );
       }
 
-      // Insert line items if provided
-      if (lineItems.length > 0) {
-        const lineItemsData = lineItems.map((item: any, index: number) => {
-          const qty = parseFloat(
-            item.quantity || item.quantityOrdered || item.quantity_ordered || 1,
-          );
-          const cost = parseFloat(item.unitCost || item.unit_cost || 0);
-          return {
-            tenant_id: tenantId,
-            purchase_order_id: po.id,
-            line_number: item.lineNumber || item.line_number || index + 1,
-            inventory_item_id: item.inventoryItemId || item.inventory_item_id || null,
-            item_description: item.itemDescription || item.item_description || item.description,
-            part_number: item.partNumber || item.part_number || null,
-            manufacturer_part_number:
-              item.manufacturerPartNumber || item.manufacturer_part_number || null,
-            quantity_ordered: qty,
-            quantity_received: 0,
-            unit_of_measure: item.unitOfMeasure || item.unit_of_measure || 'EA',
-            unit_cost: cost,
-            total_cost: qty * cost,
-            notes: item.notes || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-        });
+      // Insert line items. A failure here is reported rather than swallowed: a PO
+      // created without the lines the buyer entered is the defect this story is
+      // about, and answering 201 would hide it again.
+      if (lineItemRows.length > 0) {
+        const { error: lineItemError } = await admin
+          .from(LINE_ITEM_TABLE)
+          .insert(lineItemRows.map((row) => ({ ...row, purchase_order_id: po.id })));
 
-        await admin.from('purchase_order_line_items').insert(lineItemsData);
+        if (lineItemError) {
+          console.error('Error creating PO line items:', lineItemError);
+          return createCorsResponse(
+            {
+              error: 'Purchase order was created but its line items were not saved',
+              purchaseOrderId: po.id,
+              details: lineItemError,
+            },
+            500,
+            req,
+          );
+        }
       }
 
       // Fetch complete PO with line items
@@ -866,7 +822,7 @@ export default async function handler(req: Request) {
           `
           *,
           vendor:vendors(id, vendor_name),
-          lineItems:purchase_order_line_items(*)
+          lineItems:purchase_order_items(*)
         `,
         )
         .eq('id', po.id)
@@ -996,44 +952,37 @@ export default async function handler(req: Request) {
       }
 
       // Update line items if provided and PO is editable
-      if ((body.lineItems || body.line_items) && editableStatuses.includes(existingPO.status)) {
-        const lineItems = body.lineItems || body.line_items;
+      const replacementLines =
+        (body.items ?? body.lineItems ?? body.line_items) ? lineItemsFromBody(body) : null;
 
+      if (replacementLines && editableStatuses.includes(existingPO.status)) {
         // Delete existing line items
         await admin
-          .from('purchase_order_line_items')
+          .from(LINE_ITEM_TABLE)
           .delete()
           .eq('purchase_order_id', poId)
           .eq('tenant_id', tenantId);
 
         // Insert new line items
-        if (lineItems.length > 0) {
-          const lineItemsData = lineItems.map((item: any, index: number) => {
-            const qty = parseFloat(
-              item.quantity || item.quantityOrdered || item.quantity_ordered || 1,
-            );
-            const cost = parseFloat(item.unitCost || item.unit_cost || 0);
-            return {
-              tenant_id: tenantId,
-              purchase_order_id: poId,
-              line_number: item.lineNumber || item.line_number || index + 1,
-              inventory_item_id: item.inventoryItemId || item.inventory_item_id || null,
-              item_description: item.itemDescription || item.item_description || item.description,
-              part_number: item.partNumber || item.part_number || null,
-              manufacturer_part_number:
-                item.manufacturerPartNumber || item.manufacturer_part_number || null,
-              quantity_ordered: qty,
-              quantity_received: item.quantityReceived || item.quantity_received || 0,
-              unit_of_measure: item.unitOfMeasure || item.unit_of_measure || 'EA',
-              unit_cost: cost,
-              total_cost: qty * cost,
-              notes: item.notes || null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            };
-          });
+        if (replacementLines.length > 0) {
+          const { error: lineItemError } = await admin.from(LINE_ITEM_TABLE).insert(
+            replacementLines.map((item, index) =>
+              buildLineItemRow(item, {
+                tenantId,
+                purchaseOrderId: poId,
+                lineNumber: index + 1,
+              }),
+            ),
+          );
 
-          await admin.from('purchase_order_line_items').insert(lineItemsData);
+          if (lineItemError) {
+            console.error('Error replacing PO line items:', lineItemError);
+            return createCorsResponse(
+              { error: 'Failed to save line items', details: lineItemError },
+              500,
+              req,
+            );
+          }
         }
 
         // Recalculate totals
@@ -1047,7 +996,7 @@ export default async function handler(req: Request) {
           `
           *,
           vendor:vendors(id, vendor_name),
-          lineItems:purchase_order_line_items(*)
+          lineItems:purchase_order_items(*)
         `,
         )
         .eq('id', poId)
@@ -1081,7 +1030,7 @@ export default async function handler(req: Request) {
 
       // Delete line items first
       await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .delete()
         .eq('purchase_order_id', poId)
         .eq('tenant_id', tenantId);
@@ -1342,15 +1291,12 @@ export default async function handler(req: Request) {
 async function recalculatePOTotals(admin: any, poId: string, tenantId: string): Promise<void> {
   // Get all line items for this PO
   const { data: lineItems } = await admin
-    .from('purchase_order_line_items')
-    .select('total_cost')
+    .from(LINE_ITEM_TABLE)
+    .select('total_price')
     .eq('purchase_order_id', poId)
     .eq('tenant_id', tenantId);
 
-  const subtotal = (lineItems || []).reduce(
-    (sum: number, item: any) => sum + parseFloat(item.total_cost || 0),
-    0,
-  );
+  const subtotal = lineItemsSubtotal(lineItems || []);
 
   // Get current tax and shipping amounts
   const { data: currentPO } = await admin

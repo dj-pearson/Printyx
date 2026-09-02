@@ -6870,6 +6870,17 @@ export const purchaseOrderItems = pgTable('purchase_order_items', {
   itemDescription: text('item_description').notNull(),
   itemCode: varchar('item_code'),
 
+  // WF-P-01: supabase/functions/purchase-orders/ has written these six since it
+  // shipped, against a `purchase_order_line_items` relation that does not exist.
+  // Repointing it at this table needed the columns to be real. inventoryItemId is
+  // what the receive path moves stock by, so it is load-bearing for WF-P-02.
+  inventoryItemId: varchar('inventory_item_id'),
+  partNumber: varchar('part_number'),
+  manufacturerPartNumber: varchar('manufacturer_part_number'),
+  unitOfMeasure: varchar('unit_of_measure').default('EA'),
+  notes: text('notes'),
+  lastReceivedDate: timestamp('last_received_date'),
+
   // Quantity & Pricing
   quantity: integer('quantity').notNull(),
   unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
@@ -6878,7 +6889,7 @@ export const purchaseOrderItems = pgTable('purchase_order_items', {
   // Status
   receivedQuantity: integer('received_quantity').default(0),
 
-  // Tracking
+  // Tracking. There is no updated_at: migration 0001 dropped it.
   createdAt: timestamp('created_at').defaultNow(),
 });
 

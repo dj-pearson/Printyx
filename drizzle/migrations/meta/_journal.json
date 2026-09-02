@@ -351,6 +351,13 @@
       "when": 1788308240834,
       "tag": "0066_puzzling_red_wolf",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1788324847217,
+      "tag": "0067_chubby_jack_flag",
+      "breakpoints": true
     }
   ]
 }

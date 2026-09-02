@@ -34,11 +34,6 @@
       "story": "WF-V-04",
       "reason": "No schema, no migration - and maintenance_records beside it is in the same state. server/routes-preventive-maintenance.ts serves dev from hard-coded fixtures (its own comments say so), so the two hosts disagree about whether preventive maintenance exists at all. WF-V-04 deletes the fixtures and decides the schema; that decision, not this guard, is what the table shape should follow.",
       "files": ["supabase/functions/maintenance/index.ts"]
-    },
-    "purchase_order_line_items": {
-      "story": "WF-P-01",
-      "reason": "No schema, no migration, and unlike the rest of these the correct relation is already known: purchase_order_items, declared in BOTH shared/schema.ts and shared/equipment-schema.ts with different shapes (which is check:dup-tables' half of the story). 16 references in purchase-orders/index.ts point at the wrong name. WF-P-01 repoints them and resolves the duplicate declaration; this entry exists so the guard does not report the same defect twice.",
-      "files": ["supabase/functions/purchase-orders/index.ts"]
     }
   },
   "unreviewed": [
