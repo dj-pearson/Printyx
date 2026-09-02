@@ -895,13 +895,23 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update deal' }, 500, req);
       }
 
-      // CRMX-008a: the deal.stage_changed trigger seam.
+      // CRMX-008a: the deal.stage_changed trigger seam, DIRECT-API PATH ONLY.
       //
       // It used to live only in server/routes-deals.ts, under a prefix this
       // edge function is proxied for, so it ran on neither host and no workflow
       // ever enrolled on a stage change. Dedupe by deal + new stage so a
       // repeated PUT does not enrol twice; Safe so automation can never fail
       // the update.
+      //
+      // WF-C-01: NO CLIENT REACHES THIS BRANCH. It fires only when a caller
+      // sends stage_id to PATCH /api/deals/:id, and nothing in any client tree
+      // does - the Kanban board and the deal page both post to
+      // POST /api/pipeline-config/deals/:id/move, which is where the UI's stage
+      // changes actually happen and which now dispatches the same event with the
+      // same `stage:<deal>:<stage>` dedupe key. Kept, not deleted, because an
+      // API client patching stage_id directly is a legitimate path and should
+      // still trigger automation; the dedupe key is what stops the two from
+      // enrolling one move twice.
       if (updateData.stage_id) {
         await dispatchWorkflowEventSafe(
           admin,
