@@ -2,8 +2,6 @@
   "note": "Duplicate route-registration ratchet. scripts/check-duplicate-routes.mjs fails CI when a METHOD + /api path is newly registered in two different server files. Express matches whichever registers first (the order of register*(app) calls in routes-registry.ts), so the other copy is dead — and if the two differ in auth, validation or data source, the difference is silent. Run with --list to see which file wins each one. Shrink this list, never grow it: node scripts/check-duplicate-routes.mjs --update-baseline",
   "allowed": [
     "DELETE /api/product-models/:id :: server/routes-product-models.ts|server/routes-products-crud.ts",
-    "GET /api/document-management/library :: server/routes-document-management.ts|server/routes-sample-data.ts",
-    "GET /api/document-management/workflows :: server/routes-document-management.ts|server/routes-sample-data.ts",
     "GET /api/import/ai/status :: server/routes-csv-import.ts|server/routes-import.ts",
     "GET /api/import/entity-types :: server/routes-csv-import.ts|server/routes-import.ts",
     "GET /api/import/jobs/:jobId :: server/routes-csv-import.ts|server/routes-import.ts",

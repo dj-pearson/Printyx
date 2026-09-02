@@ -294,7 +294,6 @@ const PreventiveMaintenanceAutomation = React.lazy(
   () => import('@/pages/PreventiveMaintenanceAutomation'),
 );
 const CustomerSuccessManagement = React.lazy(() => import('@/pages/CustomerSuccessManagement'));
-const DocumentManagement = React.lazy(() => import('@/pages/DocumentManagement'));
 const MobileServiceApp = React.lazy(() => import('@/pages/MobileServiceApp'));
 const AdvancedAnalyticsDashboard = React.lazy(() => import('@/pages/AdvancedAnalyticsDashboard'));
 const AIAnalyticsDashboard = React.lazy(() => import('@/pages/AIAnalyticsDashboard'));
@@ -1004,7 +1003,6 @@ function Router() {
                   component={PreventiveMaintenanceAutomation}
                 />
                 <Route path="/customer-success" component={CustomerSuccessManagement} />
-                <Route path="/document-management" component={DocumentManagement} />
                 <Route path="/mobile-service-app" component={MobileServiceApp} />
                 <Route
                   path="/advanced-analytics-dashboard"

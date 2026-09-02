@@ -45,10 +45,7 @@ describe('the files are gone', () => {
     expect(sample).not.toMatch(/'\/api\/business-process\/dashboard'/);
     expect(sample).not.toMatch(/'\/api\/incident-response\/dashboard'/);
     // The invented figures themselves, so a re-add under any path is caught.
-    // Keyed on names unique to these two payloads - the neighbouring
-    // /api/document-management/workflows mock (SUPA-024, out of scope here)
-    // has its own slaComplianceRate, and matching that would have asserted
-    // something this change did not do.
+    // Keyed on names unique to these two payloads.
     expect(sample).not.toMatch(/127890\.5/);
     expect(sample).not.toMatch(/totalProcesses/);
     expect(sample).not.toMatch(/iocMatches/);

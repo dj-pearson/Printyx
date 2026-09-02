@@ -481,10 +481,6 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['admin.settings.update'],
     minLevel: 4,
   },
-  '/document-management': {
-    requiredPermissions: ['admin.settings.view'],
-    minLevel: 3,
-  },
   '/deployment-readiness': {
     requiredPermissions: ['admin.settings.update'],
     minLevel: 6,

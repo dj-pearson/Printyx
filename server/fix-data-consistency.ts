@@ -19,7 +19,6 @@ export const ROUTES_TO_FIX = [
   'routes-sales-forecasting.ts',
   'routes-preventive-maintenance.ts',
   'routes-service-dispatch.ts',
-  'routes-document-management.ts',
   'routes-mobile.ts',
   'routes-analytics.ts',
   'routes-business-process-optimization.ts',

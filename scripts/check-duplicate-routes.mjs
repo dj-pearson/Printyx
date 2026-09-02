@@ -108,7 +108,9 @@ function mountPrefixes() {
   };
 
   // [mountPath, modulePath] pairs, in any *Mounts table.
-  for (const m of registry.matchAll(/\[\s*['"`](\/api[^'"`]*)['"`]\s*,\s*['"`](\.[^'"`]+)['"`]\s*\]/g)) {
+  for (const m of registry.matchAll(
+    /\[\s*['"`](\/api[^'"`]*)['"`]\s*,\s*['"`](\.[^'"`]+)['"`]\s*\]/g,
+  )) {
     const file = resolve(m[2]);
     if (file) prefixes.set(file, m[1]);
   }
@@ -127,10 +129,14 @@ function mountPrefixes() {
   for (const m of registry.matchAll(/import\s+(\w+)\s+from\s+['"`](\.[^'"`]+)['"`]/g)) {
     identToSpec.set(m[1], m[2]);
   }
-  for (const m of registry.matchAll(/(?:const|let)\s+(\w+)\s*=\s*await\s+import\(\s*['"`](\.[^'"`]+)['"`]\s*\)/g)) {
+  for (const m of registry.matchAll(
+    /(?:const|let)\s+(\w+)\s*=\s*await\s+import\(\s*['"`](\.[^'"`]+)['"`]\s*\)/g,
+  )) {
     identToSpec.set(m[1], m[2]);
   }
-  for (const m of registry.matchAll(/app\.use\(\s*['"`](\/api[^'"`]*)['"`]\s*,\s*(\w+)(?:\.default)?\s*\)/g)) {
+  for (const m of registry.matchAll(
+    /app\.use\(\s*['"`](\/api[^'"`]*)['"`]\s*,\s*(\w+)(?:\.default)?\s*\)/g,
+  )) {
     const spec = identToSpec.get(m[2]);
     const file = spec && resolve(spec);
     if (file && !prefixes.has(file)) prefixes.set(file, m[1]);
