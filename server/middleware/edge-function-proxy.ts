@@ -319,6 +319,16 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/proposals': 'proposals',
     '/api/reports': 'reports',
 
+    // WF-C-06. The Express handlers for these three were correct and had no
+    // caller; the edge functions production reaches queried a table that does
+    // not exist. The edge side now serves the real tables and the Express
+    // handlers are gone, so these entries make dev and prod one implementation.
+    // NOT /api/implementation-projects - no edge function serves it and a bare
+    // prefix entry would take it from working-in-dev to 404-in-dev.
+    '/api/sales-handoffs': 'sales-handoffs',
+    '/api/handoff-tasks': 'handoff-tasks',
+    '/api/handoff-task-templates': 'handoff-task-templates',
+
     // EDGE-002 Tier 1 SAFE batch (audit-verified 2026-05-04)
     '/api/api-keys': 'api-keys',
     '/api/company-contacts': 'company-contacts',

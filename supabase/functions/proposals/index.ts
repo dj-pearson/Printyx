@@ -61,6 +61,8 @@ import {
   normalizeAcquisitionType,
   planLeaseFromProposal,
 } from './_acquisition.ts';
+import { createHandoff } from '../_shared/handoff-create.ts';
+import { handoffTypeFor } from '../_shared/sales-handoff.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { renderProposalPDF } from './_pdf.ts';
@@ -934,6 +936,57 @@ async function createContractFromProposal(
       .update({ contract_id: contractId, updated_at: new Date().toISOString() })
       .eq('id', dealId)
       .eq('tenant_id', tenantId);
+  }
+
+  // WF-C-06: operations has to hear about the sale. Before this nothing created a
+  // handoff anywhere - the tables existed, an Express router served them with no
+  // caller, and the edge function queried a relation that does not exist. Keyed
+  // to the contract so acceptance and the closed-won move, which fire from the
+  // same sale seconds apart, cannot produce two.
+  if (contractId) {
+    try {
+      const { data: existingContracts } = await db
+        .from('contracts')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('customer_id', proposal.business_record_id);
+
+      let dealMotion: string | null = null;
+      if (dealId) {
+        const { data: deal } = await db
+          .from('deals')
+          .select('deal_motion')
+          .eq('id', dealId)
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+        dealMotion = (deal?.deal_motion as string) ?? null;
+      }
+
+      await createHandoff(db, {
+        tenantId,
+        customerId: proposal.business_record_id,
+        contractId,
+        opportunityId: dealId ?? null,
+        salesRepId: proposal.assigned_to || proposal.created_by || 'system',
+        handoffType: handoffTypeFor({
+          dealMotion,
+          // The contract this acceptance just made is in the count, so an account
+          // whose only contract is this one is a new customer.
+          existingContractCount: Math.max(0, (existingContracts?.length ?? 1) - 1),
+        }),
+        contractSummary: {
+          contractValue: Number(proposal.total_amount ?? 0),
+          acquisitionType: acquisitionType ?? null,
+          proposalNumber: proposal.proposal_number ?? null,
+        },
+        salesNotes: proposal.internal_notes ?? null,
+        createdBy: proposal.created_by ?? null,
+      });
+    } catch (handoffErr) {
+      // The sale happened. A missing handoff is a queue entry to add, not a
+      // reason to fail an acceptance the customer already made.
+      log.warn({ proposalId: proposal.id, err: String(handoffErr) }, 'handoff_create_failed');
+    }
   }
 
   return contractId;

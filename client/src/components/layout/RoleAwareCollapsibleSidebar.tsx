@@ -373,6 +373,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Managed Services', path: '/managed-services', icon: Crown },
       { title: 'Service Products', path: '/service-products', icon: Wrench },
       { title: 'Equipment Lifecycle', path: '/equipment-lifecycle', icon: Truck },
+      { title: 'Sales Handoffs', path: '/handoffs', icon: ClipboardList },
       { title: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
       { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
       { title: 'Inventory Management', path: '/inventory', icon: Package },

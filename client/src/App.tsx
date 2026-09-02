@@ -330,6 +330,7 @@ const ConversationalAIDashboard = React.lazy(() => import('@/pages/Conversationa
 const Leases = React.lazy(() => import('@/pages/Leases'));
 const LeaseDetail = React.lazy(() => import('@/pages/LeaseDetail'));
 const LeaseForm = React.lazy(() => import('@/pages/LeaseForm'));
+const SalesHandoffs = React.lazy(() => import('@/pages/SalesHandoffs'));
 
 // Knowledge Base Pages
 const KnowledgeBase = React.lazy(() => import('@/pages/KnowledgeBase'));
@@ -720,6 +721,7 @@ function Router() {
                 {/* Equipment Lifecycle */}
                 <Route path="/equipment-lifecycle" component={EquipmentLifecycleHub} />
                 <Route path="/purchase-orders" component={PurchaseOrders} />
+                <Route path="/handoffs" component={SalesHandoffs} />
                 <Route path="/warehouse-operations" component={WarehouseOperations} />
                 <Route path="/crm-goals" component={CrmGoalsDashboard} />
                 <Route path="/crm-goals-dashboard" component={CrmGoalsDashboard} />

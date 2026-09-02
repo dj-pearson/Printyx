@@ -3,11 +3,6 @@
   "contract": "WF-G-02: `allowed` is an allow-list, not a ratchet. Every entry must carry a non-empty `reason` and the `story` that owns the decision, and the guard fails without them. --update-baseline PRUNES ONLY - it never adds an entry, so a new undeclared relation cannot enter without somebody writing down why it is acceptable.",
   "unreviewedNote": "The pre-existing entries, carried over verbatim when the allow-list contract landed. They are NOT justified and NOT accepted - they are a triage queue, shrink-only. Do not add to it. Writing 73 plausible-sounding reasons in one pass would have been the same fabrication this guard exists to catch, so only the entries with an identified owning story were promoted. To triage one: run --list (it flags every file that discards the PostgREST error, which is how a missing relation renders as an empty list at 200), find or file the story that owns the feature, then move the entry into `allowed` with a reason.",
   "allowed": {
-    "sales_handoffs": {
-      "story": "WF-C-06",
-      "reason": "No schema, no migration. The handoff model that DOES exist is shared/sales-handoff-schema.ts (sales_handoff_checklists, handoff_task_templates, handoff_tasks, implementation_projects), served by server/routes-sales-handoff.ts, which has no caller; this edge function is in docs/unreferenced-edge-fns-baseline.json, so nothing reaches either. Two models, neither wired. WF-C-06 decides which survives and builds the operations queue on it; creating sales_handoffs to satisfy this guard would entrench the wrong one.",
-      "files": ["supabase/functions/sales-handoffs/index.ts"]
-    },
     "work_orders": {
       "story": "WF-V-07",
       "reason": "No schema, no migration. work-orders/ and service-contracts/ are both unreferenced by every client tree, but technician-management IS reachable and its GET /:id/schedule does `const { data: schedule } = await query` then `schedule || []` - the error is discarded, so a technician's schedule is a permanent empty list at 200 rather than an error. That handler is the live half and is what WF-V-07 owns.",

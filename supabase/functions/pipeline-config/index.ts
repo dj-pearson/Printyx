@@ -42,6 +42,8 @@ import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.
 import { createLogger } from '../_shared/logger.ts';
 import { flagsToStageType, stageTypeToFlags } from '../_shared/pipeline-stage-type.ts';
 import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
+import { createHandoff } from '../_shared/handoff-create.ts';
+import { handoffTypeFor } from '../_shared/sales-handoff.ts';
 
 const log = createLogger('pipeline-config');
 
@@ -813,7 +815,42 @@ export default async function handler(req: Request) {
         { dedupeKey: `stage:${dealId}:${toStageId}`, initiatedBy: ctx.userId },
       );
 
-      return jsonResponse({ ...updated, automations }, 200, req, requestId);
+      // WF-C-06: a deal reaching Closed Won is the other event that creates a
+      // sales handoff. Keyed to the contract when the deal has one, so this and
+      // proposal acceptance - which fire from the same sale seconds apart - do
+      // not produce two entries in operations' queue.
+      let handoffId: string | null = null;
+      // deals.customer_id is nullable (a deal can carry only a company_name)
+      // while sales_handoff_checklists.customer_id is NOT NULL, so a deal with no
+      // account is skipped rather than 23502'ing inside the try.
+      if (toStage?.is_closed_won && deal.customer_id) {
+        try {
+          const { data: contracts } = await db
+            .from('contracts')
+            .select('id')
+            .eq('tenant_id', ctx.tenantId)
+            .eq('customer_id', String(deal.customer_id ?? ''));
+          const result = await createHandoff(db, {
+            tenantId: ctx.tenantId,
+            customerId: String(deal.customer_id ?? ''),
+            contractId: (updated?.contract_id as string) ?? deal.contract_id ?? null,
+            opportunityId: dealId,
+            salesRepId: String(deal.owner_id ?? ctx.userId),
+            handoffType: handoffTypeFor({
+              dealMotion: (deal.deal_motion as string) ?? null,
+              existingContractCount: contracts?.length ?? 0,
+            }),
+            contractSummary: { contractValue: Number(updated?.amount ?? deal.amount ?? 0) },
+            createdBy: ctx.userId,
+          });
+          handoffId = result.handoff ? String(result.handoff.id) : null;
+        } catch (handoffErr) {
+          // The deal moved and that is the fact of record.
+          log.warn({ requestId, dealId, err: String(handoffErr) }, 'handoff_create_failed');
+        }
+      }
+
+      return jsonResponse({ ...updated, automations, handoffId }, 200, req, requestId);
     }
 
     // ─── POST /deals/:dealId/transition ─────────────────────────────────────

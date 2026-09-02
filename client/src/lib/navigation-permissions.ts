@@ -355,6 +355,15 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/purchase-orders': {
     requiredPermissions: ['operations.po.view', 'operations.po.create'],
   },
+  // WF-C-06: the sales-to-operations queue. Gated to the people who raise the
+  // purchase orders it leads to, at level 3+ - a rep should not be working their
+  // own handoff. WF-R-11 will add dedicated purchasing and project-management
+  // roles; until those exist, gating on a code no seeder creates would deny
+  // everyone below platform admin (SEC-EDGE-002), so this uses one that does.
+  '/handoffs': {
+    requiredPermissions: ['operations.po.view'],
+    minLevel: 3,
+  },
   '/warehouse-operations': {
     requiredPermissions: ['operations.warehouse.receive', 'operations.warehouse.manage'],
   },
