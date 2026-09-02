@@ -135,7 +135,18 @@ export async function hubMetrics(db: Db, tenantId: string) {
 export async function hubLifecycle(
   db: Db,
   tenantId: string,
-  filters: { stage?: string | null; status?: string | null },
+  filters: {
+    stage?: string | null;
+    status?: string | null;
+    /**
+     * WF-R-06: the customers this caller may see, or null for no restriction.
+     * `equipment_lifecycle` names no user - a machine belongs to a CUSTOMER - and
+     * `business_records` has no location FK either (its `territory` is free text),
+     * so ownership of the account is the only scoping this table can express. AC2
+     * asked for the customer's LOCATION, which no column supports.
+     */
+    customerIds?: string[] | null;
+  },
 ) {
   let q = db
     .from('equipment_lifecycle')
@@ -144,6 +155,7 @@ export async function hubLifecycle(
     .order('updated_at', { ascending: false })
     .limit(200);
 
+  if (filters.customerIds) q = q.in('customer_id', filters.customerIds);
   if (filters.stage && filters.stage !== 'all') q = q.eq('current_stage', filters.stage);
   const { data: rows } = await q;
   const list = Array.isArray(rows) ? rows : [];

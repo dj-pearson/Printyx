@@ -20,7 +20,13 @@ import {
   serialCaptureRequired,
   statusAfterReceipt,
 } from './_receiving.ts';
-import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import {
+  applyUserScope,
+  resolveScope,
+  rowInScope,
+  scopeRoleLevel,
+  unscopedAtLevel,
+} from '../_shared/scope.ts';
 
 // Valid PO statuses
 const PO_STATUSES = [
@@ -80,6 +86,33 @@ export default async function handler(req: Request) {
     // ============================================================
 
     // GET /purchase-orders/:id/line-items - Get line items for a PO
+    // WF-R-06. One scope for the whole function: the list narrows with it and the
+    // write branches below check individual rows against it.
+    //
+    // UNSCOPED FROM LEVEL 4, not from 7 like every other list. An approver has to
+    // see every order waiting on them, including ones raised outside their team,
+    // and an approval queue that hides half its rows is worse than no queue.
+    const poScope = unscopedAtLevel(
+      await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      }),
+      4,
+    );
+
+    /** 403 for a write aimed at a row outside the caller's scope. */
+    const outOfScope = () =>
+      createCorsResponse(
+        {
+          error: 'This purchase order is outside your scope',
+          code: 'ROW_OUT_OF_SCOPE',
+        },
+        403,
+        req,
+      );
+
     if (req.method === 'GET' && poId && subResource === 'line-items' && !subResourceId) {
       // Verify PO exists and belongs to tenant
       const { data: po, error: poError } = await admin
@@ -322,7 +355,7 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && poId && subResource === 'submit') {
       const { data: po, error: poError } = await admin
         .from('purchase_orders')
-        .select('id, status')
+        .select('id, status, created_by')
         .eq('id', poId)
         .eq('tenant_id', tenantId)
         .single();
@@ -330,6 +363,10 @@ export default async function handler(req: Request) {
       if (poError || !po) {
         return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
       }
+
+      // WF-R-06: submitting somebody else's draft puts their name on an approval
+      // request they did not make.
+      if (!rowInScope(po, 'created_by', poScope)) return outOfScope();
 
       if (po.status !== 'draft') {
         return createCorsResponse(
@@ -377,6 +414,22 @@ export default async function handler(req: Request) {
 
     // POST /purchase-orders/:id/approve - Approve PO
     if (req.method === 'POST' && poId && subResource === 'approve') {
+      // WF-R-06: NOTHING gated this. Any authenticated member of the tenant could
+      // approve any purchase order in it, whatever their role. Level 4 is where the
+      // approval ladder starts (WF-R-05's tier table: L3-4 team and location), and
+      // it is also why the scope above stops applying at 4 - an approver sees the
+      // whole queue precisely because they are allowed to act on it.
+      if (scopeRoleLevel(user.app_metadata) < 4) {
+        return createCorsResponse(
+          {
+            error: 'Approving or rejecting a purchase order requires role level 4 or higher',
+            code: 'INSUFFICIENT_ROLE',
+          },
+          403,
+          req,
+        );
+      }
+
       const body = await req.json().catch(() => ({}));
 
       const { data: po, error: poError } = await admin
@@ -423,6 +476,22 @@ export default async function handler(req: Request) {
 
     // POST /purchase-orders/:id/reject - Reject PO
     if (req.method === 'POST' && poId && subResource === 'reject') {
+      // WF-R-06: NOTHING gated this. Any authenticated member of the tenant could
+      // reject any purchase order in it, whatever their role. Level 4 is where the
+      // approval ladder starts (WF-R-05's tier table: L3-4 team and location), and
+      // it is also why the scope above stops applying at 4 - an approver sees the
+      // whole queue precisely because they are allowed to act on it.
+      if (scopeRoleLevel(user.app_metadata) < 4) {
+        return createCorsResponse(
+          {
+            error: 'Approving or rejecting a purchase order requires role level 4 or higher',
+            code: 'INSUFFICIENT_ROLE',
+          },
+          403,
+          req,
+        );
+      }
+
       const body = await req.json().catch(() => ({}));
 
       const { data: po, error: poError } = await admin
@@ -472,7 +541,9 @@ export default async function handler(req: Request) {
 
       const { data: po, error: poError } = await admin
         .from('purchase_orders')
-        .select('id, tenant_id, status, vendor_id, po_number, subtotal, tax_amount, total_amount')
+        .select(
+          'id, tenant_id, status, vendor_id, po_number, subtotal, tax_amount, total_amount, created_by',
+        )
         .eq('id', poId)
         .eq('tenant_id', tenantId)
         .single();
@@ -480,6 +551,11 @@ export default async function handler(req: Request) {
       if (poError || !po) {
         return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
       }
+
+      // WF-R-06: a list filter narrows what a caller can BROWSE and does nothing
+      // about a write aimed straight at an id. Receiving stock against somebody
+      // else's order moves real inventory.
+      if (!rowInScope(po, 'created_by', poScope)) return outOfScope();
 
       if (!['approved', 'ordered', 'partially_received'].includes(po.status)) {
         return createCorsResponse(
@@ -704,16 +780,10 @@ export default async function handler(req: Request) {
         .order('order_date', { ascending: false })
         .range(offset, offset + limit - 1);
 
-      // WF-R-04. `purchase_orders` names one user, whoever raised it, so that is
-      // the only ownership this table can express. Approval routing is a
-      // different question and is not what this filter answers.
-      const scope = await resolveScope(admin, {
-        userId: user.id,
-        tenantId,
-        appMetadata: user.app_metadata,
-        requestedScope: url.searchParams.get('scope'),
-      });
-      query = applyUserScope(query, 'created_by', scope);
+      // WF-R-04/WF-R-06. `purchase_orders` names one user, whoever raised it, so
+      // that is the only ownership this table can express. Above level 4 poScope
+      // carries no user filter and this is a no-op - see where it is built.
+      query = applyUserScope(query, 'created_by', poScope);
 
       if (vendorId) {
         query = query.eq('vendor_id', vendorId);
@@ -940,7 +1010,7 @@ export default async function handler(req: Request) {
       // Check if PO exists and is editable
       const { data: existingPO, error: checkError } = await admin
         .from('purchase_orders')
-        .select('id, status')
+        .select('id, status, created_by')
         .eq('id', poId)
         .eq('tenant_id', tenantId)
         .single();
@@ -948,6 +1018,10 @@ export default async function handler(req: Request) {
       if (checkError || !existingPO) {
         return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
       }
+
+      // WF-R-06: editing an order someone else raised, including its vendor and
+      // its totals, was open to every authenticated member of the tenant.
+      if (!rowInScope(existingPO, 'created_by', poScope)) return outOfScope();
 
       // Only allow updates to draft or pending_approval POs (except for certain fields)
       const editableStatuses = ['draft', 'pending_approval'];

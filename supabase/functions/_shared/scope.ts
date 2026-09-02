@@ -397,3 +397,61 @@ export function applyCustomerScope<Q>(
   }
   return (query as any).in(customerColumn, customers.ids);
 }
+
+/**
+ * Is one already-fetched row inside the caller's scope? (WF-R-06)
+ *
+ * A list filter narrows what a caller can BROWSE. It does nothing about a write
+ * addressed straight at an id: before this, a level-1 associate who knew a
+ * purchase-order id could approve it, and a technician could close a colleague's
+ * ticket, because every write handler checked the tenant and the level and never
+ * asked whether the ROW was theirs.
+ *
+ * It is a pure predicate over a row the handler has already fetched - these
+ * handlers all read the row to check its tenant first - so it costs no extra
+ * round trip.
+ *
+ * The null rule matches applyUserScope, and for the same reason: unowned work is
+ * shared work above `own` scope, and a queue whose unassigned rows nobody may act
+ * on is a queue that never moves. Pass `includeUnowned: false` where an unowned
+ * row is a broken row rather than shared work.
+ */
+export function rowInScope(
+  row: Record<string, unknown> | null | undefined,
+  columns: string | string[],
+  scope: ResolvedScope,
+  opts: UserScopeOptions = {},
+): boolean {
+  if (!row) return false;
+  if (scope.userIds === null) return true;
+
+  const cols = Array.isArray(columns) ? columns : [columns];
+  const allowed = new Set(scope.userIds);
+  const includeUnowned = opts.includeUnowned ?? scope.tier !== 'own';
+
+  let sawOwner = false;
+  for (const col of cols) {
+    const value = row[col];
+    if (value === null || value === undefined || value === '') continue;
+    sawOwner = true;
+    if (typeof value === 'string' && allowed.has(value)) return true;
+  }
+
+  // Every owner column was empty: the row belongs to nobody.
+  return !sawOwner && includeUnowned;
+}
+
+/**
+ * The level at or above which a scope stops applying, for endpoints whose ladder
+ * is not the default one.
+ *
+ * A purchase-order APPROVAL QUEUE is the worked example: an approver has to see
+ * every order waiting on them, including ones raised by people outside their team,
+ * so purchase-orders is unscoped from level 4 rather than from level 7. Widening
+ * the ladder is a per-endpoint decision and has to be written where a reader will
+ * see it, not buried in the resolver.
+ */
+export function unscopedAtLevel(scope: ResolvedScope, level: number): ResolvedScope {
+  if (scope.roleLevel < level) return scope;
+  return { ...scope, tier: 'company', userIds: null, locationIds: null };
+}

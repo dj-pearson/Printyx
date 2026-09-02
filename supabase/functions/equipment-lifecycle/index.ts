@@ -24,6 +24,7 @@ import {
   hubMetrics,
   hubPurchaseOrders,
 } from './_hub.ts';
+import { accessibleCustomerIds, resolveScope } from '../_shared/scope.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -81,10 +82,20 @@ export default async function handler(req: Request) {
     // expecting equipment rows, so its board mapped {key, value, name} objects
     // into equipment records.
     if (req.method === 'GET' && firstPart === 'lifecycle') {
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      const customers = await accessibleCustomerIds(admin, tenantId, scope);
       return createCorsResponse(
         await hubLifecycle(admin, tenantId, {
           stage: url.searchParams.get('stage'),
           status: url.searchParams.get('status'),
+          // On overflow the set cannot be named in one filter; matching nothing is
+          // the narrowing choice, and there is no user column to fall back to.
+          customerIds: customers.overflow ? [] : customers.ids,
         }),
         200,
         req,
@@ -626,6 +637,36 @@ export default async function handler(req: Request) {
       if (lifecycleError && lifecycleError.code !== 'PGRST116') {
         console.error('Error fetching lifecycle:', lifecycleError);
         return createCorsResponse({ error: 'Failed to fetch lifecycle status' }, 500, req);
+      }
+
+      // WF-R-06: a stage transition is a claim about physical equipment - delivered,
+      // installed, returned - and before this any authenticated member of the
+      // tenant could make it for any machine. An existing record is checked
+      // against the caller's customers; a machine with no lifecycle record yet has
+      // no customer to check, and the equipment fetch below still pins the tenant.
+      if (existingLifecycle) {
+        const scope = await resolveScope(admin, {
+          userId: user.id,
+          tenantId,
+          appMetadata: user.app_metadata,
+        });
+        const customers = await accessibleCustomerIds(admin, tenantId, scope);
+        const allowed =
+          customers.ids === null && !customers.overflow
+            ? true
+            : !customers.overflow &&
+              typeof existingLifecycle.customer_id === 'string' &&
+              (customers.ids ?? []).includes(existingLifecycle.customer_id);
+        // A machine not yet attached to a customer is unowned, and unowned work is
+        // shared work above `own` scope - the same rule rowInScope applies.
+        const unattached = !existingLifecycle.customer_id && scope.tier !== 'own';
+        if (!allowed && !unattached) {
+          return createCorsResponse(
+            { error: 'This equipment is outside your scope', code: 'ROW_OUT_OF_SCOPE' },
+            403,
+            req,
+          );
+        }
       }
 
       let fromStage: string | null = null;

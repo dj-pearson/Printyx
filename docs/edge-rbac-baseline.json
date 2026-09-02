@@ -65,7 +65,6 @@
     "email-sequences",
     "enabled-products",
     "enrichment",
-    "equipment-lifecycle",
     "expansion-opportunities",
     "exports",
     "field-service",
@@ -182,7 +181,6 @@
     "vendors",
     "voice-agent",
     "voice-ticket-close",
-    "warehouse-operations",
     "web-forms",
     "webhooks",
     "white-label",
@@ -197,6 +195,7 @@
     "contracts",
     "deals",
     "equipment",
+    "equipment-lifecycle",
     "invoices",
     "leads",
     "leases",
@@ -204,6 +203,7 @@
     "purchase-orders",
     "quotes",
     "service-tickets",
-    "tasks"
+    "tasks",
+    "warehouse-operations"
   ]
 }

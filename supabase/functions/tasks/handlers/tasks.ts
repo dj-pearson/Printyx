@@ -18,7 +18,7 @@
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import { toCamel } from '../../_shared/case.ts';
 import type { HandlerCtx } from '../_context.ts';
-import { applyUserScope, resolveScope } from '../../_shared/scope.ts';
+import { applyUserScope, resolveScope, rowInScope } from '../../_shared/scope.ts';
 
 export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   const { method, pathParts, auth, db, requestId, url } = ctx;
@@ -96,6 +96,12 @@ export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Respon
   if ((method === 'PATCH' || method === 'PUT') && id) {
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body) return errorResponse(400, 'Invalid JSON', req, { code: 'INVALID_JSON', requestId });
+
+    // WF-R-06: the list filter narrows what a caller can BROWSE. Reassigning or
+    // closing somebody else's task is a write aimed straight at an id, and nothing
+    // checked whose task it was.
+    const denied = await denyIfOutOfScope(ctx, req, id);
+    if (denied) return denied;
     const row = mapTask(body);
     row.updated_at = new Date().toISOString();
     // Auto-stamp completed_at when status flips to 'completed'
@@ -115,12 +121,47 @@ export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Respon
   }
 
   if (method === 'DELETE' && id) {
+    const denied = await denyIfOutOfScope(ctx, req, id);
+    if (denied) return denied;
+
     const { error } = await db.from('tasks').delete().eq('id', id).eq('tenant_id', auth.tenantId);
     if (error) return dbErr(req, requestId, 'Failed to delete task', error);
     return jsonResponse({ success: true }, 200, req, requestId);
   }
 
   return null;
+}
+
+/**
+ * 403 when the task exists but belongs to somebody outside the caller's scope,
+ * null when the write may proceed. A missing task returns null so the handler
+ * keeps answering its own 404 rather than leaking existence through the 403.
+ */
+async function denyIfOutOfScope(
+  ctx: HandlerCtx,
+  req: Request,
+  id: string,
+): Promise<Response | null> {
+  const { auth, db, requestId } = ctx;
+  const { data: existing } = await db
+    .from('tasks')
+    .select('id, assigned_to, created_by')
+    .eq('id', id)
+    .eq('tenant_id', auth.tenantId)
+    .maybeSingle();
+  if (!existing) return null;
+
+  const scope = await resolveScope(db, {
+    userId: auth.userId,
+    tenantId: auth.tenantId,
+    appMetadata: auth.supabaseUser.app_metadata,
+  });
+  if (rowInScope(existing, ['assigned_to', 'created_by'], scope)) return null;
+
+  return errorResponse(403, 'This task is outside your scope', req, {
+    code: 'ROW_OUT_OF_SCOPE',
+    requestId,
+  });
 }
 
 function mapTask(body: Record<string, unknown>): Record<string, unknown> {

@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { applyUserScope, resolveScope, rowInScope } from '../_shared/scope.ts';
 
 /**
  * The named sub-paths, so the single-operation GET below cannot swallow one.
@@ -455,6 +456,19 @@ export default async function handler(req: Request) {
         .order('created_at', { ascending: false })
         .limit(200);
 
+      // WF-R-06. `assigned_to` is the only person this table names - there is no
+      // location or warehouse column, so AC1's "location of the operation" is not
+      // expressible here and is not faked. An operation assigned to nobody stays
+      // visible above `own` scope: the create branch below defaults it to the
+      // caller, so an unassigned row means an import, not private work.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      query = applyUserScope(query, 'assigned_to', scope);
+
       if (status) query = query.eq('status', status);
       if (operationType) query = query.eq('operation_type', operationType);
 
@@ -536,6 +550,30 @@ export default async function handler(req: Request) {
       // stored. completed_date is the one that exists.
       const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
       if (status === 'completed') patch.completed_date = new Date().toISOString();
+
+      // WF-R-06: a list filter says nothing about a write aimed at an id. Marking
+      // somebody else's operation complete is a claim that work was done.
+      const { data: existing } = await admin
+        .from('warehouse_operations')
+        .select('id, assigned_to')
+        .eq('id', endpoint)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (!existing) {
+        return createCorsResponse({ error: 'Warehouse operation not found' }, 404, req);
+      }
+      const patchScope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      if (!rowInScope(existing, 'assigned_to', patchScope)) {
+        return createCorsResponse(
+          { error: 'This operation is outside your scope', code: 'ROW_OUT_OF_SCOPE' },
+          403,
+          req,
+        );
+      }
 
       const { data, error } = await admin
         .from('warehouse_operations')

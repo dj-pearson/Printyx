@@ -29,6 +29,8 @@ const state: { tables: Record<string, Row[]>; lastInsert: Row | null; lastPatch:
 
 function tableApi(name: string) {
   const eqs: Array<[string, unknown]> = [];
+  const ors: string[] = [];
+  const ins: Array<[string, unknown[]]> = [];
   let mode: 'select' | 'insert' | 'update' = 'select';
   let pending: Row[] = [];
   let patch: Row = {};
@@ -39,6 +41,16 @@ function tableApi(name: string) {
     limit: () => api,
     eq(col: string, val: unknown) {
       eqs.push([col, val]);
+      return api;
+    },
+    // WF-R-06 scope filter: `col.in.("a"),col.is.null`. Only the shapes
+    // _shared/scope.ts builds are understood.
+    or(expr: string) {
+      ors.push(expr);
+      return api;
+    },
+    in(col: string, vals: unknown[]) {
+      ins.push([col, vals]);
       return api;
     },
     insert(rows: Row | Row[]) {
@@ -64,8 +76,23 @@ function tableApi(name: string) {
       state.tables[name].push(...stored);
       return { data: single ? { ...stored[0] } : stored, error: null };
     }
-    const hits = state.tables[name].filter((r) =>
-      eqs.every(([c, v]) => String(r[c]) === String(v)),
+    const matchesOr = (r: Row, expr: string): boolean =>
+      expr.split(/,(?=[a-z_]+\.(?:in|is)\.)/).some((clause) => {
+        const col = clause.slice(0, clause.indexOf('.'));
+        const op = clause.split('.')[1];
+        if (op === 'is') return r[col] === null || r[col] === undefined;
+        const vals = clause
+          .slice(clause.indexOf('(') + 1, clause.lastIndexOf(')'))
+          .split(',')
+          .map((v) => v.replace(/^"|"$/g, ''));
+        return vals.includes(String(r[col]));
+      });
+
+    const hits = state.tables[name].filter(
+      (r) =>
+        eqs.every(([c, v]) => String(r[c]) === String(v)) &&
+        ins.every(([c, vals]) => vals.map(String).includes(String(r[c]))) &&
+        ors.every((expr) => matchesOr(r, expr)),
     );
     if (mode === 'update') {
       state.lastPatch = patch;
@@ -116,6 +143,10 @@ describe('WF-L-03: the board list, create and status change', () => {
           equipment_id: 'eq-1',
           operation_type: 'receiving',
           status: 'pending',
+          // WF-R-06: the create branch defaults an unassigned operation to the
+          // caller, so a row with no assignee is not a shape this code produces -
+          // and a level-1 caller is correctly refused one.
+          assigned_to: 'user-1',
           created_at: '2026-09-01T00:00:00.000Z',
         },
       ],
@@ -168,6 +199,39 @@ describe('WF-L-03: the board list, create and status change', () => {
     // handler, which is why nobody noticed it was never stored.
     expect(state.lastPatch).not.toHaveProperty('completed_by');
     expect((await res.json()).status).toBe('completed');
+  });
+
+  it('refuses a level-1 caller the status of somebody else operation (WF-R-06)', async () => {
+    state.tables.warehouse_operations.push({
+      id: 'op-theirs',
+      tenant_id: 'tenant-1',
+      equipment_id: 'eq-9',
+      operation_type: 'receiving',
+      status: 'pending',
+      assigned_to: 'user-2',
+      created_at: '2026-09-01T00:00:00.000Z',
+    });
+    const res = await (await handler())(req('/op-theirs/status', 'PATCH', { status: 'completed' }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('ROW_OUT_OF_SCOPE');
+    // And nothing was written.
+    expect(state.lastPatch).toBeNull();
+  });
+
+  it('keeps that operation out of the level-1 list as well (WF-R-06)', async () => {
+    state.tables.warehouse_operations.push({
+      id: 'op-theirs',
+      tenant_id: 'tenant-1',
+      equipment_id: 'eq-9',
+      operation_type: 'receiving',
+      status: 'pending',
+      assigned_to: 'user-2',
+      created_at: '2026-09-01T00:00:00.000Z',
+    });
+    const res = await (await handler())(req('/'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.map((o: { id: string }) => o.id)).toEqual(['op-1']);
   });
 
   it('404s a status change on an operation from another tenant', async () => {
