@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -149,6 +150,29 @@ export default function SalesHandoffs() {
     onError: (error: Error) =>
       toast({
         title: 'Could not update the task',
+        description: error.message,
+        variant: 'destructive',
+      }),
+  });
+
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+
+  const addHandoffTask = useMutation({
+    mutationFn: ({ handoff, title }: { handoff: HandoffDetail; title: string }) =>
+      apiRequest('/api/tasks', 'POST', {
+        title,
+        handoffId: handoff.id,
+        customerId: handoff.customer_id,
+        status: 'todo',
+        priority: 'medium',
+      }),
+    onSuccess: () => {
+      setNewTaskTitle('');
+      toast({ title: 'Task added' });
+    },
+    onError: (error: Error) =>
+      toast({
+        title: 'Could not add the task',
         description: error.message,
         variant: 'destructive',
       }),
@@ -321,6 +345,29 @@ export default function SalesHandoffs() {
                       })
                     )}
                   </div>
+
+                  {/* WF-P-08: a handoff's own work, beyond its checklist. tasks
+                      gained handoff_id in migration 0079; a task created here
+                      carries the handoff AND its customer, so it shows on both. */}
+                  <form
+                    className="flex flex-wrap gap-2 border-t pt-4"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!newTaskTitle.trim()) return;
+                      addHandoffTask.mutate({ handoff: detail, title: newTaskTitle.trim() });
+                    }}
+                  >
+                    <Input
+                      aria-label="New task for this handoff"
+                      placeholder="Add a task for this handoff"
+                      value={newTaskTitle}
+                      onChange={(e) => setNewTaskTitle(e.target.value)}
+                      className="flex-1 min-w-[12rem]"
+                    />
+                    <Button type="submit" variant="outline" disabled={addHandoffTask.isPending}>
+                      Add task
+                    </Button>
+                  </form>
 
                   <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
                     {/* WF-P-04: the same pre-filled create the Needs Ordering tab

@@ -21,7 +21,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useRoute } from 'wouter';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -299,6 +300,43 @@ export default function DealDetail() {
     [deal],
   );
 
+  // WF-P-08: the deal's own work. tasks gained deal_id in migration 0079; before
+  // it, a task carried an assignee and no subject, so this panel had nothing to
+  // list and said so.
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+
+  const dealTasksQuery = useQuery<
+    Array<{ id: string; title: string; status?: string; priority?: string; dueDate?: string }>
+  >({
+    queryKey: ['/api/tasks', { dealId }],
+    enabled: Boolean(dealId),
+    queryFn: async () => extractRecords(await apiRequest(`/api/tasks?dealId=${dealId}`, 'GET')),
+  });
+  const dealTasks = dealTasksQuery.data ?? [];
+
+  const addDealTask = useMutation({
+    mutationFn: (title: string) =>
+      apiRequest('/api/tasks', 'POST', {
+        title,
+        dealId,
+        // The account too, so the customer's task list shows the deal's work.
+        customerId: deal?.customerId ?? null,
+        status: 'todo',
+        priority: 'medium',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks', { dealId }] });
+      setNewTaskTitle('');
+      toast({ title: 'Task added' });
+    },
+    onError: (error: Error) =>
+      toast({
+        title: 'Could not add the task',
+        description: error.message,
+        variant: 'destructive',
+      }),
+  });
+
   const moveStage = useMutation({
     // The endpoint expects `toStageId` (the legacy deal_stages.id the board also
     // sends), not `stageId` — sending the wrong key silently 400s.
@@ -556,14 +594,55 @@ export default function DealDetail() {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm">Tasks</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    {/* Tasks have no dealId column; they attach through
-                        crm_associations. Wiring that UI is its own slice, so
-                        say so rather than render a fake list. */}
-                    <EmptyState
-                      title="Task links are not wired yet"
-                      description="Tasks attach to a deal through the CRM association layer. This panel lands with the task-association slice."
-                    />
+                  <CardContent className="space-y-3">
+                    {/* WF-P-08: real now. tasks gained deal_id in migration
+                        0079, and the note that stood here - "tasks attach
+                        through crm_associations" - was a guess: nothing ever
+                        associated a task that way either. */}
+                    {dealTasksQuery.isLoading ? (
+                      <p className="text-sm text-muted-foreground">Loading…</p>
+                    ) : dealTasks.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No tasks on this deal yet.</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {dealTasks.map((task) => (
+                          <li
+                            key={task.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                          >
+                            <span className="min-w-0">
+                              <span className="font-medium">{task.title}</span>
+                              <span className="block text-xs text-muted-foreground">
+                                {humanize(task.status)}
+                                {task.dueDate
+                                  ? ` · due ${format(new Date(task.dueDate), 'PP')}`
+                                  : ''}
+                              </span>
+                            </span>
+                            <Badge variant="outline">{humanize(task.priority)}</Badge>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <form
+                      className="flex flex-wrap gap-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!newTaskTitle.trim()) return;
+                        addDealTask.mutate(newTaskTitle.trim());
+                      }}
+                    >
+                      <Input
+                        aria-label="New task for this deal"
+                        placeholder="Add a task for this deal"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        className="flex-1 min-w-[12rem]"
+                      />
+                      <Button type="submit" disabled={addDealTask.isPending}>
+                        Add task
+                      </Button>
+                    </form>
                   </CardContent>
                 </Card>
               </TabsContent>

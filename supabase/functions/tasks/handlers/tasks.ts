@@ -19,6 +19,7 @@ import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import { toCamel } from '../../_shared/case.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { applyUserScope, resolveScope, rowInScope } from '../../_shared/scope.ts';
+import { mapTask, unpersistedTaskFields } from './_task-mapper.ts';
 
 export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   const { method, pathParts, auth, db, requestId, url } = ctx;
@@ -29,14 +30,22 @@ export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Respon
     const status = url.searchParams.get('status');
     const priority = url.searchParams.get('priority');
     const assignedTo = url.searchParams.get('assignedTo') ?? url.searchParams.get('assigned_to');
-    const projectId = url.searchParams.get('projectId') ?? url.searchParams.get('project_id');
-    const parentTaskId =
-      url.searchParams.get('parentTaskId') ?? url.searchParams.get('parent_task_id');
+    // WF-P-08: filter by what the task is ABOUT. Only projectId was offered,
+    // and parentTaskId filtered on a column migration 0002 dropped - so that
+    // filter was a 42703 rather than an empty result.
+    const param = (camel: string, snake: string) =>
+      url.searchParams.get(camel) ?? url.searchParams.get(snake);
+    const projectId = param('projectId', 'project_id');
+    const customerId = param('customerId', 'customer_id');
+    const dealId = param('dealId', 'deal_id');
+    const handoffId = param('handoffId', 'handoff_id');
     if (status) q = q.eq('status', status);
     if (priority) q = q.eq('priority', priority);
     if (assignedTo) q = q.eq('assigned_to', assignedTo);
     if (projectId) q = q.eq('project_id', projectId);
-    if (parentTaskId) q = q.eq('parent_task_id', parentTaskId);
+    if (customerId) q = q.eq('customer_id', customerId);
+    if (dealId) q = q.eq('deal_id', dealId);
+    if (handoffId) q = q.eq('handoff_id', handoffId);
 
     const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
     const limit = Math.min(500, parseInt(url.searchParams.get('limit') ?? '100', 10) || 100);
@@ -90,7 +99,14 @@ export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Respon
     }
     const { data, error } = await db.from('tasks').insert(row).select().maybeSingle();
     if (error) return dbErr(req, requestId, 'Failed to create task', error);
-    return jsonResponse(toCamel(data), 201, req, requestId);
+    // Fields the table no longer has are named rather than silently dropped.
+    const unpersisted = unpersistedTaskFields(body);
+    return jsonResponse(
+      unpersisted.length > 0 ? { ...toCamel(data), unpersisted } : toCamel(data),
+      201,
+      req,
+      requestId,
+    );
   }
 
   if ((method === 'PATCH' || method === 'PUT') && id) {
@@ -117,7 +133,15 @@ export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Respon
       .maybeSingle();
     if (error) return dbErr(req, requestId, 'Failed to update task', error);
     if (!data) return errorResponse(404, 'Task not found', req, { code: 'NOT_FOUND', requestId });
-    return jsonResponse(toCamel(data), 200, req, requestId);
+    const unpersistedUpdate = unpersistedTaskFields(body);
+    return jsonResponse(
+      unpersistedUpdate.length > 0
+        ? { ...toCamel(data), unpersisted: unpersistedUpdate }
+        : toCamel(data),
+      200,
+      req,
+      requestId,
+    );
   }
 
   if (method === 'DELETE' && id) {
@@ -162,33 +186,6 @@ async function denyIfOutOfScope(
     code: 'ROW_OUT_OF_SCOPE',
     requestId,
   });
-}
-
-function mapTask(body: Record<string, unknown>): Record<string, unknown> {
-  const r: Record<string, unknown> = {};
-  const src = (c: string, s: string) => body[c] ?? body[s];
-  const set = (col: string, camel: string, snake: string) => {
-    const v = src(camel, snake);
-    if (v !== undefined) r[col] = v;
-  };
-  if (body.title !== undefined) r.title = body.title;
-  if (body.description !== undefined) r.description = body.description;
-  if (body.status !== undefined) r.status = body.status;
-  if (body.priority !== undefined) r.priority = body.priority;
-  set('assigned_to', 'assignedTo', 'assigned_to');
-  set('project_id', 'projectId', 'project_id');
-  set('parent_task_id', 'parentTaskId', 'parent_task_id');
-  set('due_date', 'dueDate', 'due_date');
-  set('start_date', 'startDate', 'start_date');
-  set('estimated_hours', 'estimatedHours', 'estimated_hours');
-  set('actual_hours', 'actualHours', 'actual_hours');
-  set('completion_percentage', 'completionPercentage', 'completion_percentage');
-  if (body.dependencies !== undefined) r.dependencies = body.dependencies;
-  if (body.watchers !== undefined) r.watchers = body.watchers;
-  if (body.tags !== undefined) r.tags = body.tags;
-  set('custom_fields', 'customFields', 'custom_fields');
-  set('completed_at', 'completedAt', 'completed_at');
-  return r;
 }
 
 function dbErr(req: Request, requestId: string, msg: string, err: unknown): Response {

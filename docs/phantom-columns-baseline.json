@@ -188,7 +188,6 @@
     "supabase/functions/sso/index.ts:sso_sessions.access_token_hash",
     "supabase/functions/sso/index.ts:sso_sessions.metadata",
     "supabase/functions/sso/index.ts:sso_sessions.user_identifier",
-    "supabase/functions/tasks/handlers/tasks.ts:tasks.parent_task_id",
     "supabase/functions/tasks/handlers/time-entries.ts:tasks.time_tracked",
     "supabase/functions/teams/handlers/projects.ts:tasks.dependencies",
     "supabase/functions/templates/index.ts:projects.template_id",

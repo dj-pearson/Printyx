@@ -65,6 +65,31 @@ export default function TaskHub() {
     queryFn: async () => extractRecords(await apiRequest('/api/users')),
   });
 
+  // WF-P-08: what a task can be about. Before this a task carried an assignee
+  // and no subject, so nothing on a record page could list its work.
+  const { data: customerOptions = [] } = useQuery({
+    queryKey: ['/api/customers', 'task-picker'],
+    queryFn: async () => {
+      const rows = extractRecords<Record<string, unknown>>(
+        await apiRequest('/api/customers?limit=200'),
+      );
+      return rows.map((r) => ({
+        id: String(r.id),
+        label: String(r.companyName ?? r.company_name ?? r.id),
+      }));
+    },
+  });
+
+  const { data: dealOptions = [] } = useQuery({
+    queryKey: ['/api/deals', 'task-picker'],
+    queryFn: async () => {
+      const rows = extractRecords<Record<string, unknown>>(
+        await apiRequest('/api/deals?limit=200'),
+      );
+      return rows.map((r) => ({ id: String(r.id), label: String(r.title ?? r.id) }));
+    },
+  });
+
   // Create task mutation
   const createTaskMutation = useMutation({
     mutationFn: async (data: any) => apiRequest('/api/tasks', 'POST', data),
@@ -244,6 +269,8 @@ export default function TaskHub() {
             teamMembers={teamMembers}
             onSubmit={(data) => createTaskMutation.mutate(data)}
             isLoading={createTaskMutation.isPending}
+            customers={customerOptions}
+            deals={dealOptions}
           />
 
           {/* Create Project Dialog */}

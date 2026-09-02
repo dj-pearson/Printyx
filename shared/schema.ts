@@ -5722,7 +5722,21 @@ export const tasks = pgTable(
     priority: varchar('priority').notNull().default('medium'), // low, medium, high, urgent
     assignedTo: varchar('assigned_to'), // user id
     projectId: varchar('project_id'),
+
+    // WF-P-08: what the task is ABOUT.
+    //
+    // customer_id has existed since migration 0002 and the tasks handler's
+    // mapper never read or wrote it, so a task could not be attached to the
+    // account it concerned - and there was no deal or handoff link at all.
+    // Every task in the system was a floating to-do with an assignee and no
+    // subject, which is why nothing on a record page could list its work.
+    //
+    // All nullable: a personal to-do belongs to nothing, and that is a real
+    // task rather than an incomplete one.
     customerId: varchar('customer_id'),
+    dealId: varchar('deal_id'),
+    handoffId: varchar('handoff_id'),
+
     dueDate: timestamp('due_date'),
     estimatedHours: integer('estimated_hours'),
     actualHours: integer('actual_hours'),
