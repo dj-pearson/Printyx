@@ -30,7 +30,6 @@
     "device_readings (supabase/functions/remote-monitoring/index.ts)",
     "devices (supabase/functions/devices/index.ts)",
     "devices (supabase/functions/order-toner/index.ts)",
-    "discovered_devices (supabase/functions/client-metrics/index.ts)",
     "discovered_devices (supabase/functions/printer-monitoring/index.ts)",
     "email_campaign_sends (supabase/functions/email-campaigns/index.ts)",
     "enrichment_campaigns (supabase/functions/data-enrichment/index.ts)",
