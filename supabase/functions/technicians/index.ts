@@ -58,7 +58,8 @@ export default async function handler(req: Request) {
         .range(offset, offset + limit - 1);
 
       if (status) {
-        query = query.eq('employment_status', status);
+        // ?status=active|inactive maps onto the boolean the table has.
+        query = query.eq('is_active', status === 'active');
       }
 
       if (search) {
@@ -68,7 +69,7 @@ export default async function handler(req: Request) {
       }
 
       if (skillSet) {
-        query = query.contains('skill_set', [skillSet]);
+        query = query.contains('skills', [skillSet]);
       }
 
       const { data: technicians, error, count } = await query;
@@ -142,16 +143,34 @@ export default async function handler(req: Request) {
       // Fetch service tickets assigned to this technician
       const { data: tickets } = await admin
         .from('service_tickets')
-        .select('id, status, priority, created_at, completed_at, first_response_time')
+        // service_tickets has resolved_at, and records no first-response time at
+        // all - so the average below was computed over a column that does not
+        // exist and was always 0.
+        .select('id, status, priority, created_at, resolved_at')
         .eq('assigned_technician_id', technicianId)
         .eq('tenant_id', tenantId);
 
       const totalTickets = tickets?.length || 0;
       const completedTickets = tickets?.filter((t) => t.status === 'completed').length || 0;
-      const avgResponseTime =
-        tickets
-          ?.filter((t) => t.first_response_time)
-          .reduce((sum, t) => sum + (t.first_response_time || 0), 0) / (tickets?.length || 1) || 0;
+      // AUDIT-037: this averaged first_response_time, which service_tickets does
+      // not record, so it was always 0 - a figure the technician performance
+      // panel printed as a response time. What the table DOES carry is
+      // created_at and resolved_at, which is a resolution time, not a response
+      // time; reporting one as the other would be a different wrong number.
+      // So the field is null and named, and the resolution time is reported
+      // under its own name.
+      const resolved = tickets?.filter((t) => t.resolved_at) ?? [];
+      const avgResolutionHours =
+        resolved.length > 0
+          ? resolved.reduce(
+              (sum, t) =>
+                sum +
+                (new Date(t.resolved_at as string).getTime() -
+                  new Date(t.created_at as string).getTime()) /
+                  3_600_000,
+              0,
+            ) / resolved.length
+          : null;
 
       return createCorsResponse(
         {
@@ -159,7 +178,8 @@ export default async function handler(req: Request) {
           totalTickets,
           completedTickets,
           completionRate: totalTickets > 0 ? (completedTickets / totalTickets) * 100 : 0,
-          avgResponseTime,
+          avgResolutionHours,
+          unbacked: ['avgResponseTime: service_tickets records no first-response time'],
           periodStart: url.searchParams.get('startDate') || null,
           periodEnd: url.searchParams.get('endDate') || null,
         },
@@ -214,10 +234,21 @@ export default async function handler(req: Request) {
         last_name: body.lastName || body.last_name,
         email: body.email,
         phone: body.phone || null,
-        skill_set: body.skillSet || body.skill_set || [],
-        certification_level: body.certificationLevel || body.certification_level || null,
-        employment_status: body.employmentStatus || body.employment_status || 'active',
-        hire_date: body.hireDate || body.hire_date || null,
+        // AUDIT-037: the columns are skills, certifications and is_active.
+        // skill_set, certification_level, employment_status and hire_date are
+        // not columns, so creating a technician 42703'd every time.
+        //
+        // certification_level was a single string; certifications is a list, so
+        // one level becomes a one-element list rather than being dropped.
+        // hire_date has no home at all and is not written - the table records
+        // what a technician can do, not their employment history.
+        skills: body.skillSet || body.skill_set || body.skills || [],
+        certifications:
+          body.certifications ??
+          (body.certificationLevel || body.certification_level
+            ? [body.certificationLevel || body.certification_level]
+            : []),
+        is_active: (body.employmentStatus || body.employment_status || 'active') === 'active',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -250,13 +281,13 @@ export default async function handler(req: Request) {
         date: body.date,
         start_time: body.startTime || body.start_time,
         end_time: body.endTime || body.end_time,
-        is_available:
-          body.isAvailable !== undefined
-            ? body.isAvailable
-            : body.is_available !== undefined
-              ? body.is_available
-              : true,
-        notes: body.notes || null,
+        // AUDIT-037: the column is is_booked, and it is the INVERSE of what this
+        // sent. So a slot posted as available would have been stored as booked
+        // and vice versa - except that neither is_available nor notes is a
+        // column, so the insert 42703'd and no availability was ever recorded.
+        // `notes` has no home and is dropped.
+        is_booked:
+          body.isBooked ?? body.is_booked ?? !(body.isAvailable ?? body.is_available ?? true),
       };
 
       const { data: availability, error } = await admin
@@ -286,10 +317,10 @@ export default async function handler(req: Request) {
         lastName: 'last_name',
         email: 'email',
         phone: 'phone',
-        skillSet: 'skill_set',
-        certificationLevel: 'certification_level',
-        employmentStatus: 'employment_status',
-        hireDate: 'hire_date',
+        skillSet: 'skills',
+        skills: 'skills',
+        certifications: 'certifications',
+        isActive: 'is_active',
       };
 
       for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
