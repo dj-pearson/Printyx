@@ -13,21 +13,24 @@
  *
  * WHICH OF THE SEVEN PREFIXES MATTER, checked across all seven client trees:
  *
- *   /email-campaigns is the only one anything calls - useEmailSequences, from
- *   the routed /marketing/sequences page. It is served: the prefix is proxied to
+ *   NONE of the seven, as of AUDIT-037. /email-campaigns used to be the one -
+ *   useEmailSequences, from the routed /marketing/sequences page - and it was
+ *   never served from here either: the prefix was proxied to
  *   supabase/functions/email-campaigns/, and the proxy registers at
- *   routes-registry:297 while this router mounts at :620, so these handlers are
- *   shadowed as well as dead. The live page has never depended on them.
+ *   routes-registry:297 while this router mounts at :620, so these handlers were
+ *   shadowed as well as dead. That hook now calls
+ *   /api/email-marketing/email-campaigns, so this prefix has no caller at all.
  *
  *   The other six - email-templates, email-lists, email-list-members,
- *   email-sends, email-events, email-unsubscribes - have NO caller in any client
- *   tree. Only email-templates has an edge function; the rest have neither a
- *   caller nor a counterpart.
+ *   email-sends, email-events, email-unsubscribes - never had one in any client
+ *   tree. supabase/functions/email-marketing/ covers all seven and is the
+ *   canonical implementation; the standalone email-templates and email-campaigns
+ *   edge functions it absorbed are deleted.
  *
- * The shadowed-express baseline describes retiring this file as a per-prefix
- * job because the edge coverage is uneven. That is true, and the reading above
- * narrows it: with no caller on six prefixes and a proxy on the seventh, the
- * per-prefix question is whether anyone wants the feature, not how to port it.
+ * The shadowed-express baseline described retiring this file as a per-prefix job
+ * because the edge coverage was uneven. It is even now - the canonical edge
+ * function covers all seven - and with no caller on any of them the question is
+ * whether anyone wants the feature, not how to port it.
  *
  * The fix is one of three, and it is a product call rather than cleanup:
  * migrate the handlers to getUserId/getTenantId from utils/auth-helpers and

@@ -4,17 +4,17 @@
 
 **Architecture:** prod frontend → `functions.printyx.net/<route>` (edge) for ALL `/api/*` via `getApiUrl`. The Express proxy map (98 prefixes) only affects **dev**. Express stays canonical for `/api/client-metrics/*` (agent) and `/install/*`.
 
-**Totals:** 359 domains · 273 edge fns · 166 Express-served · 184 frontend-called · 98 proxied
+**Totals:** 359 domains · 271 edge fns · 166 Express-served · 184 frontend-called · 98 proxied
 
 ## Summary by class
 
 | Class | Count | Meaning |
 |---|---|---|
 | `both-divergent` | 53 | Express + edge both exist, not proxied → dev ≠ prod (maintenance trap) |
-| `express-only` | 72 | Express handler, no edge function → not yet migrated |
-| `dead-express` | 21 | Express + edge exist, no frontend ref → Express likely dead |
+| `express-only` | 74 | Express handler, no edge function → not yet migrated |
+| `dead-express` | 20 | Express + edge exist, no frontend ref → Express likely dead |
 | `proxied` | 97 | In proxy map → dev forwards to edge (aligned) |
-| `edge-only` | 106 | Edge function only, no Express handler → fully migrated |
+| `edge-only` | 105 | Edge function only, no Express handler → fully migrated |
 | `express-canonical` | 10 | Express is canonical by design (agent ingest) |
 
 ## Action-needed first
@@ -112,11 +112,13 @@ backlog, and it does not gate CI.
 | `document-field-mappings` | · | · | ✅ | · | `express-only` |
 | `document-templates` | · | · | ✅ | · | `express-only` |
 | `document-types` | · | · | ✅ | · | `express-only` |
+| `email-campaigns` | · | · | ✅ | · | `express-only` |
 | `email-events` | · | · | ✅ | · | `express-only` |
 | `email-list-members` | · | · | ✅ | · | `express-only` |
 | `email-lists` | · | · | ✅ | · | `express-only` |
 | `email-parser` | · | · | ✅ | · | `express-only` |
 | `email-sends` | · | · | ✅ | · | `express-only` |
+| `email-templates` | · | · | ✅ | · | `express-only` |
 | `email-unsubscribes` | · | · | ✅ | · | `express-only` |
 | `equipment-disposal` | · | · | ✅ | · | `express-only` |
 | `executions` | · | · | ✅ | · | `express-only` |
@@ -167,7 +169,6 @@ backlog, and it does not gate CI.
 | `contract-renewals` | · | ✅ | ✅ | · | `dead-express` |
 | `csrf-token` | · | ✅ | ✅ | · | `dead-express` |
 | `devices` | · | ✅ | ✅ | · | `dead-express` |
-| `email-templates` | · | ✅ | ✅ | · | `dead-express` |
 | `expansion-opportunities` | · | ✅ | ✅ | · | `dead-express` |
 | `handoff-task-templates` | · | ✅ | ✅ | · | `dead-express` |
 | `handoff-tasks` | · | ✅ | ✅ | · | `dead-express` |
@@ -219,7 +220,7 @@ backlog, and it does not gate CI.
 | `deployment` | ✅ | · | · | ✅ | `proxied` |
 | `documents` | ✅ | ✅ | ✅ | ✅ | `proxied` |
 | `email-autopilot` | ✅ | ✅ | · | ✅ | `proxied` |
-| `email-campaigns` | ✅ | ✅ | ✅ | ✅ | `proxied` |
+| `email-marketing` | ✅ | ✅ | · | ✅ | `proxied` |
 | `email-sequences` | ✅ | ✅ | · | ✅ | `proxied` |
 | `erp-integration` | ✅ | ✅ | · | ✅ | `proxied` |
 | `feature-flags` | ✅ | ✅ | · | ✅ | `proxied` |
@@ -341,7 +342,6 @@ backlog, and it does not gate CI.
 | `deal-desk` | ✅ | ✅ | · | · | `edge-only` |
 | `dedup-companies` | · | ✅ | · | · | `edge-only` |
 | `deployment-readiness` | · | ✅ | · | · | `edge-only` |
-| `email-marketing` | · | ✅ | · | · | `edge-only` |
 | `exports` | · | ✅ | · | · | `edge-only` |
 | `field-service` | · | ✅ | · | · | `edge-only` |
 | `file-storage` | · | ✅ | · | · | `edge-only` |

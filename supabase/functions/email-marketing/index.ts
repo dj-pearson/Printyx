@@ -5,10 +5,18 @@
  *   server/routes/email-marketing-routes.ts (35 endpoints)
  *   server/services/email-service.ts       (SendGrid → _sendgrid.ts fetch wrapper)
  *
- * Absorbs the existing standalone edge functions:
- *   supabase/functions/email-templates/
- *   supabase/functions/email-campaigns/
- * (they get deleted in PR 2 after 48h soak — same pattern as lead-assignment)
+ * Absorbs the standalone edge functions email-templates/ and email-campaigns/.
+ * Both are DELETED as of AUDIT-037. This header used to say they would go "in
+ * PR 2 after 48h soak"; that PR never landed, and the standalone email-campaigns
+ * that survived for months was the broken copy - it wrote name, from_name,
+ * from_email, reply_to, html_content, text_content and scheduled_at, none of
+ * which is a column on email_campaigns, and its /send and /:id/stats used
+ * email_campaign_sends and customer_segment_members, neither of which is a
+ * table in any schema or migration. The handlers here use the real columns.
+ *
+ * The lesson, since it is the fourth instance in this repo: a superseding file
+ * that names its predecessor is only half the job. Grep for the predecessor
+ * before assuming the swap completed.
  *
  * URL prefixes handled (frontend paths preserved):
  *   /email-marketing/email-templates/*       → handlers/templates.ts

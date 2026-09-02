@@ -384,9 +384,22 @@ export function registerEdgeFunctionProxy(app: any) {
     // request got a 401 while the edge functions behind the same prefixes
     // worked fine in production. Proxying is the fix rather than repairing the
     // routers, because the edge functions already cover what the frontend
-    // calls: /api/email-campaigns (useEmailSequences) and
-    // /api/lead-scoring/bant/:id (BANTAssessment).
-    '/api/email-campaigns': 'email-campaigns',
+    // calls: the campaigns list (useEmailSequences) and /api/lead-scoring/bant/:id
+    // (BANTAssessment).
+    //
+    // AUDIT-037 moved the campaigns half. The prefix used to be
+    // /api/email-campaigns -> supabase/functions/email-campaigns/, a function
+    // supabase/functions/email-marketing/'s own header records as absorbed
+    // ("they get deleted in PR 2 after 48h soak"). PR 2 never landed and the
+    // surviving standalone was the broken copy - it wrote name/from_name/
+    // from_email/reply_to/html_content/text_content/scheduled_at, none of which
+    // is a column, and its /send and /stats used email_campaign_sends and
+    // customer_segment_members, neither of which is a table. It is deleted, and
+    // /api/email-marketing reaches the canonical dispatcher instead. Nothing is
+    // shadowed by this entry: routes/email-marketing-routes.ts mounts at the
+    // /api ROOT and owns /api/email-templates, /api/email-campaigns and five
+    // more, not this prefix.
+    '/api/email-marketing': 'email-marketing',
     '/api/lead-scoring': 'lead-scoring',
 
     // AUDIT-021: /api/performance. supabase/functions/performance/ answers

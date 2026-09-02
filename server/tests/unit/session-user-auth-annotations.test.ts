@@ -12,11 +12,22 @@
  * more than once. This test is what keeps the headers on.
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 const repo = join(__dirname, '../../..');
 const read = (p: string) => readFileSync(join(repo, p), 'utf8');
+
+/** Source files only - a path named in a SECURITY.md is documentation. */
+function sourceFiles(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules' || entry === 'dist' || entry === 'build') continue;
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) sourceFiles(full, out);
+    else if (/\.(ts|tsx|js|jsx|swift|kt|java|vue)$/.test(entry)) out.push(full);
+  }
+  return out;
+}
 const baseline = JSON.parse(read('docs/session-user-auth-baseline.json'));
 
 describe('the baselined files are annotated, not just listed', () => {
@@ -56,20 +67,58 @@ describe('the guard recognises a fallback written through a cast', () => {
   });
 });
 
-describe('the email-marketing header records what was actually checked', () => {
-  const src = read('server/routes/email-marketing-routes.ts');
+describe('the email-marketing router has no caller on any of its seven prefixes', () => {
+  // These used to assert the header's exact wording - that /email-campaigns was
+  // "the only one anything calls" and was proxied to
+  // supabase/functions/email-campaigns/. Both went red the hour AUDIT-037 made
+  // them false, which is the fourth time a test pinned to a description of
+  // current debt has failed on its own story's success. They assert the fact
+  // instead: nothing calls these prefixes, so the file's dead-ness does not
+  // depend on how the header phrases it.
+  const CLIENT_TREES = [
+    'client/src',
+    'printyx-client/src',
+    'mobile-app',
+    'mobile',
+    'printyx-desktop',
+    'browser-extensions',
+    'printyx-extension',
+    'ios',
+  ];
+  const PREFIXES = [
+    'email-templates',
+    'email-campaigns',
+    'email-lists',
+    'email-list-members',
+    'email-sends',
+    'email-events',
+    'email-unsubscribes',
+  ];
 
-  it('names the one prefix with a caller, and where it is really served', () => {
-    expect(src).toMatch(/email-campaigns is the only one anything calls/);
-    expect(src).toMatch(/supabase\/functions\/email-campaigns\//);
+  it.each(PREFIXES)('nothing calls /api/%s', (prefix) => {
+    // Stop at any character outside [a-z0-9-] so /api/email-list does not match
+    // /api/email-list-members, and so a longer sibling cannot mask a real hit.
+    const pattern = new RegExp(`/api/${prefix}(?![a-z0-9-])`);
+    const hits: string[] = [];
+    for (const tree of CLIENT_TREES) {
+      const abs = join(repo, tree);
+      if (!existsSync(abs)) continue;
+      for (const file of sourceFiles(abs)) {
+        // Comments first, then blocks. useEmailSequences.ts explains in prose
+        // that it used to call /api/email-campaigns, and without this the test
+        // reads that explanation as the caller it is asserting is gone - the
+        // trap this repo keeps walking into.
+        const src = readFileSync(file, 'utf8')
+          .replace(/^\s*\/\/.*$/gm, '')
+          .replace(/\/\*[\s\S]*?\*\//g, '');
+        if (pattern.test(src)) hits.push(relative(repo, file));
+      }
+    }
+    expect(hits).toEqual([]);
   });
 
-  it('says the other six have no caller in any client tree', () => {
-    // The shadowed-express baseline called retiring this a per-prefix job on
-    // uneven edge coverage. That is true and this narrows it: with no caller,
-    // the question is whether anyone wants the feature, not how to port it.
-    // Flattened: the sentence wraps across comment lines.
-    const flat = src.replace(/\s*\n\s*\*\s*/g, ' ');
-    expect(flat).toMatch(/have NO caller in any client tree/);
+  it('the canonical implementation serves all seven', () => {
+    const index = read('supabase/functions/email-marketing/index.ts');
+    for (const prefix of PREFIXES) expect(index).toContain(`case '${prefix}':`);
   });
 });
