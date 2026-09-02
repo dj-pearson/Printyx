@@ -22,7 +22,15 @@ That installs the `apply_tenant_rls()` function. You only need to do this once.
 
 ```bash
 psql "$DATABASE_URL" -f drizzle/rls/outreach.sql
+psql "$DATABASE_URL" -f drizzle/rls/crm-core.sql
 ```
+
+`crm-core.sql` (WF-S-07) covers `companies`, `business_records`,
+`company_contacts`, `deals` and `users` — the CRM tables a browser could reach.
+Note what that does NOT mean: every edge function uses the service-role client,
+which holds `BYPASSRLS`, so these policies constrain direct client reads only. They
+are a backstop against a missing tenant filter reached through PostgREST, not a
+second check on the API.
 
 The function is idempotent — it drops existing policies with matching names before creating, so you can re-run this any time (after a schema change, for example).
 

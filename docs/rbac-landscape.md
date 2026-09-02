@@ -84,6 +84,22 @@ The last two are JSONB blobs in System A with different internal shapes again;
 Tenant isolation is intact throughout — every function filters by `tenant_id`.
 What is missing is intra-tenant privilege separation.
 
+### What RLS does and does not cover (WF-S-07)
+
+**Every edge function uses the service-role client**, and `service_role` holds
+`BYPASSRLS` (`drizzle/rls/service-role.sql`). So row-level security constrains
+**direct client reads only** — a browser or a script talking to PostgREST with an
+anon/authenticated JWT. It is not a second check on the API: the API's isolation is
+still the `tenant_id` filter each handler writes, and CR-010 tracks the
+`x-tenant-id` header override separately. Reading the policy coverage as "the API
+is now protected twice" is the mistake this note exists to prevent.
+
+`companies`, `business_records`, `company_contacts`, `deals` and `users` had no
+policy at all until `drizzle/rls/crm-core.sql`. That mattered because
+`Contacts.tsx` read three of them straight from the browser, isolated by an
+`.eq('tenant_id', …)` in that file — a filter the caller supplies. That page now
+goes through the server, and `grep supabase.from( client/src/pages` returns zero.
+
 ### Progress against that (updated 2026-09-02)
 
 The third bullet no longer describes the sales and core surfaces. WF-R-03 put
