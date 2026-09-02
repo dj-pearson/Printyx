@@ -1,21 +1,36 @@
-// AUDIT-037. THE COLUMN IS project_manager, NOT project_manager_id - that one
-// rename is the only defect this file had, and the other three names
-// check:phantom-cols reported here were FALSE. estimated_budget, actual_budget
-// and tags all exist on the physical table, and estimated_budget really is an
-// integer of cents, so the `* 100` below is correct.
+// AUDIT-037 / AUDIT-039. projects has estimated_hours, actual_hours and budget,
+// and NOT project_manager, estimated_budget, actual_budget or tags. Migration
+// 0000 created task-schema.ts's shape; migration 0002 CONVERTED the table to
+// schema.ts's, adding the first three and dropping the other four along with
+// color, template, workflow, custom_fields and contract_id. So all four names
+// this handler used were 42703s and shared/drizzle-schema.ts resolves the
+// collision correctly.
 //
-// The guard was wrong because shared/drizzle-schema.ts resolves the `projects`
-// collision the wrong way: it SKIPS task-schema.ts's declaration in favour of
-// schema.ts's, and migration 0000 built task-schema's shape - project_manager,
-// estimated_budget, actual_budget, color, template, workflow, tags,
-// custom_fields, contract_id. schema.ts's version has estimated_hours,
-// actual_hours and budget, none of which the table has. See AUDIT-039: the
-// snapshot drizzle-kit diffs against is the wrong shape for this table, which
-// is a db:generate hazard, not just a reporting one.
+// I briefly concluded the opposite from migration 0000 alone and filed
+// AUDIT-039 on it. check:declared-cols disagreed, because it replays the whole
+// journal, and it was right. Read the chain, not the first file that mentions
+// the table.
+//
+// budget is numeric(10,2) in DOLLARS, so the old "store in cents" multiply is
+// gone with the column name it belonged to.
 // Projects Edge Function
 // Handles CRUD operations for projects
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+
+/** budget is numeric(10,2) in DOLLARS. Never multiply by 100 into it. */
+function toMoney(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? Number(n.toFixed(2)) : null;
+}
+
+/** estimated_hours and actual_hours are integers. */
+function toWholeNumber(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
 
 // Export handler for use by the main server router
 export default async function handler(req: Request) {
@@ -140,21 +155,20 @@ export default async function handler(req: Request) {
             name: project.name,
             description: project.description,
             status: project.status,
-            projectManager: project.project_manager,
-            projectManagerName: project.project_manager
-              ? `${project.project_manager.first_name || ''} ${project.project_manager.last_name || ''}`.trim()
-              : null,
+            projectManager: null,
+            projectManagerName: null,
             customerId: project.customer_id,
             customerName: project.customer?.company_name,
             startDate: project.start_date,
             endDate: project.end_date,
-            estimatedBudget: project.estimated_budget,
-            actualBudget: project.actual_budget,
+            budget: project.budget ?? null,
+            estimatedHours: project.estimated_hours ?? null,
+            actualHours: project.actual_hours ?? null,
             taskCount,
             completedTaskCount,
             completionPercentage:
               taskCount > 0 ? Math.round((completedTaskCount / taskCount) * 100) : 0,
-            tags: project.tags || [],
+            tags: [],
             createdAt: project.created_at,
           };
         });
@@ -174,12 +188,11 @@ export default async function handler(req: Request) {
           name: body.name,
           description: body.description || null,
           status: body.status || 'planning',
-          project_manager: body.projectManager || null,
           customer_id: body.customerId || null,
           start_date: body.startDate || null,
           end_date: body.endDate || null,
-          estimated_budget: body.estimatedBudget ? parseInt(body.estimatedBudget) * 100 : null, // Store in cents
-          tags: body.tags || [],
+          budget: toMoney(body.budget ?? body.estimatedBudget),
+          estimated_hours: toWholeNumber(body.estimatedHours),
           created_by: user.id,
         };
 
@@ -211,15 +224,16 @@ export default async function handler(req: Request) {
         if (body.name !== undefined) updateData.name = body.name;
         if (body.description !== undefined) updateData.description = body.description;
         if (body.status !== undefined) updateData.status = body.status;
-        if (body.projectManager !== undefined) updateData.project_manager = body.projectManager;
         if (body.customerId !== undefined) updateData.customer_id = body.customerId;
         if (body.startDate !== undefined) updateData.start_date = body.startDate;
         if (body.endDate !== undefined) updateData.end_date = body.endDate;
-        if (body.estimatedBudget !== undefined)
-          updateData.estimated_budget = parseInt(body.estimatedBudget) * 100;
-        if (body.actualBudget !== undefined)
-          updateData.actual_budget = parseInt(body.actualBudget) * 100;
-        if (body.tags !== undefined) updateData.tags = body.tags;
+        if (body.budget !== undefined) updateData.budget = toMoney(body.budget);
+        else if (body.estimatedBudget !== undefined)
+          updateData.budget = toMoney(body.estimatedBudget);
+        if (body.estimatedHours !== undefined)
+          updateData.estimated_hours = toWholeNumber(body.estimatedHours);
+        if (body.actualHours !== undefined)
+          updateData.actual_hours = toWholeNumber(body.actualHours);
 
         const { data: updatedProject, error } = await admin
           .from('projects')

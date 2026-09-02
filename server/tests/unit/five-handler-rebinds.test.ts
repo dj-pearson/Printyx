@@ -122,32 +122,37 @@ describe('activities', () => {
   });
 });
 
-describe('projects — one real rename, three false accusations', () => {
+describe('projects — read the whole migration chain, not the first file', () => {
   const fn = strip(read('supabase/functions/projects/index.ts'));
-  const body = ddl('projects');
 
-  it('the physical table is task-schema shape, not schema.ts shape', () => {
-    // This is the AUDIT-039 collision: drizzle-schema.ts skips task-schema's
-    // `projects` in favour of schema.ts's, and migration 0000 built
-    // task-schema's. So estimated_budget, actual_budget and tags are REAL and
-    // check:phantom-cols reporting them is the guard trusting a wrong
-    // resolution - the fourth variant of accused-correct-code in this story.
+  it('migration 0002 converted the table, so 0000 alone is misleading', () => {
+    // This is the correction to AUDIT-039, which I filed on the strength of
+    // migration 0000 and had to withdraw. 0000 built task-schema.ts's shape;
+    // 0002 added estimated_hours, actual_hours and budget and DROPPED
+    // project_manager, estimated_budget, actual_budget, tags and five more.
+    // check:declared-cols replays the whole journal and said so; I had not.
+    const m2 = read('drizzle/migrations/0002_nebulous_ender_wiggin.sql');
+    for (const col of ['estimated_hours', 'actual_hours', 'budget']) {
+      expect(m2).toContain(`ALTER TABLE "projects" ADD COLUMN "${col}"`);
+    }
     for (const col of ['project_manager', 'estimated_budget', 'actual_budget', 'tags']) {
-      expect(body).toContain(`"${col}"`);
-    }
-    for (const col of ['budget', 'estimated_hours', 'actual_hours']) {
-      expect(body).not.toMatch(new RegExp(`\\n\\t"${col}"`));
+      expect(m2).toContain(`ALTER TABLE "projects" DROP COLUMN "${col}"`);
     }
   });
 
-  it('estimated_budget is an integer, so the cents convention is correct', () => {
-    expect(body).toContain('"estimated_budget" integer');
-    expect(fn).toMatch(/\*\s*100/);
+  it('the handler writes the surviving columns and none of the dropped ones', () => {
+    for (const col of ['budget:', 'estimated_hours:']) expect(fn).toContain(col);
+    for (const col of ['project_manager', 'estimated_budget', 'actual_budget']) {
+      expect(fn).not.toContain(`${col}:`);
+      expect(fn).not.toContain(`updateData.${col}`);
+    }
   });
 
-  it('the one real defect is fixed: project_manager, not project_manager_id', () => {
-    expect(body).not.toContain('"project_manager_id"');
-    expect(fn).not.toContain('project_manager_id');
-    expect(fn).toContain('project_manager:');
+  it('budget is dollars, so nothing multiplies a budget into it', () => {
+    // Scoped to a budget expression. A bare ban on `* 100` also matched the two
+    // completion-percentage calculations, which are correct - the over-broad
+    // assertion mistake, twice in one story now.
+    expect(fn).not.toMatch(/[Bb]udget[^;\n]*\*\s*100/);
+    expect(fn).toContain('function toMoney(');
   });
 });
