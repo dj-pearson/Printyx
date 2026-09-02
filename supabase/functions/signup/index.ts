@@ -160,7 +160,7 @@ export default async function handler(req: Request) {
       return createCorsResponse(
         {
           error:
-            'The COMPANY_ADMIN role is not present in this environment, so a tenant administrator cannot be assigned. Run the RBAC seed and retry.',
+            'The COMPANY_ADMIN role is not present in this environment, so a tenant administrator cannot be assigned. The catalogue is seeded by migration 0072_seed_role_catalogue.sql - apply the migration chain and retry.',
           code: 'MISSING_ADMIN_ROLE',
         },
         500,

@@ -386,6 +386,13 @@
       "when": 1788330442862,
       "tag": "0071_good_goblin_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1788330443862,
+      "tag": "0072_seed_role_catalogue",
+      "breakpoints": true
     }
   ]
 }
