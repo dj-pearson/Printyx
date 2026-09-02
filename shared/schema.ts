@@ -1736,10 +1736,30 @@ export const equipment = pgTable(
     assetTag: varchar('asset_tag'), // E-Automate AssetTag
 
     // Location & Installation
-    customerId: varchar('customer_id').notNull(), // References business_records.id
+    //
+    // WF-L-04: customer_id is NULLABLE now. A unit received against a purchase
+    // order is sitting in the warehouse and belongs to nobody yet - it gets a
+    // customer when it is delivered - and NOT NULL made "receiving creates
+    // equipment rows" impossible for exactly the commonest kind of order, the
+    // stock PO that WF-P-03 says carries no contract, deal or customer. Nothing
+    // reads it expecting a value: every customer surface filters ON customer_id,
+    // so an unassigned unit simply does not appear on a customer's tab, which is
+    // the right answer for a machine nobody has bought yet.
+    customerId: varchar('customer_id'), // References business_records.id
     locationDescription: text('location_description'), // E-Automate LocationDescription
     installDate: timestamp('install_date'), // E-Automate InstallDate
     ipAddress: varchar('ip_address'), // E-Automate NetworkAddress
+
+    // WF-L-04: where this unit came from.
+    //
+    // POST /purchase-orders/:id/receive moved inventory counts and nothing else,
+    // POST /equipment had no caller in any client tree, and the Add Equipment
+    // dialog on the customer page rendered "Equipment registration form would go
+    // here". So a purchase order could be fully received and no equipment row
+    // would exist for meter billing, service or the lifecycle - the spine from
+    // order to installed unit had no link at all.
+    purchaseOrderId: varchar('purchase_order_id'),
+    purchaseOrderItemId: varchar('purchase_order_item_id'),
 
     // Equipment Specifications
     meterType: varchar('meter_type'), // E-Automate MeterType: bw_only, color, scan, fax
@@ -2524,6 +2544,11 @@ export const deals = pgTable(
     description: text('description'),
     amount: decimal('amount', { precision: 12, scale: 2 }),
 
+    // WF-C-09: the contract this deal produced, so the link is navigable from
+    // either end. Null until the proposal is accepted, and null forever on a
+    // deal that closes lost.
+    contractId: varchar('contract_id'),
+
     // Deal Assignment
     ownerId: varchar('owner_id').notNull(), // sales rep responsible
     customerId: varchar('customer_id'), // references customers.id
@@ -2646,9 +2671,32 @@ export const contracts = pgTable(
     customerId: varchar('customer_id').notNull(),
     contractNumber: varchar('contract_number').notNull(),
 
-    // Contract Dates
-    startDate: timestamp('start_date').notNull(),
-    endDate: timestamp('end_date').notNull(),
+    // Where this contract came from (WF-C-09).
+    //
+    // The table knew its customer and its rates and nothing about the sale, so
+    // the spine from deal to installed unit broke at its first link. All
+    // nullable: a contract keyed in by hand has no proposal, and a cash sale has
+    // no lease. acquisitionType (cash | lease | finance) is declared here and
+    // filled by WF-C-05, which is the story that captures how a deal is paid -
+    // defaulting it to a guess would be inventing the commercial terms.
+    dealId: varchar('deal_id'),
+    proposalId: varchar('proposal_id'),
+    leaseId: varchar('lease_id'),
+    acquisitionType: varchar('acquisition_type'),
+
+    // Contract Dates.
+    //
+    // WF-C-09: both are NULLABLE now and neither is set when a proposal is
+    // accepted. A contract's term starts when the equipment is accepted
+    // (WF-L-08), not when sales marked a proposal accepted, and the old code
+    // wrote today's date plus a 36-month term that nobody had agreed to. A
+    // fabricated end date is the worse half: contracts.tsx drives its
+    // "expiring soon" badge off it, and contract-renewal builds its queue by
+    // filtering on it, so an invented term produced invented renewals. A null
+    // end_date simply does not match those filters, which is the right answer
+    // for a contract whose term is not yet agreed.
+    startDate: timestamp('start_date'),
+    endDate: timestamp('end_date'),
 
     // Base Rates
     blackRate: decimal('black_rate', { precision: 10, scale: 4 }),
@@ -5655,6 +5703,9 @@ export const prospectingCampaignsRelations = relations(prospectingCampaigns, ({ 
 // Re-export equipment lifecycle types
 export * from './equipment-schema';
 
+// WF-V-04: preventive maintenance schedules and records.
+export * from './maintenance-schema';
+
 // ============= TASK MANAGEMENT SYSTEM =============
 
 // Tasks table
@@ -5671,7 +5722,21 @@ export const tasks = pgTable(
     priority: varchar('priority').notNull().default('medium'), // low, medium, high, urgent
     assignedTo: varchar('assigned_to'), // user id
     projectId: varchar('project_id'),
+
+    // WF-P-08: what the task is ABOUT.
+    //
+    // customer_id has existed since migration 0002 and the tasks handler's
+    // mapper never read or wrote it, so a task could not be attached to the
+    // account it concerned - and there was no deal or handoff link at all.
+    // Every task in the system was a floating to-do with an assignee and no
+    // subject, which is why nothing on a record page could list its work.
+    //
+    // All nullable: a personal to-do belongs to nothing, and that is a real
+    // task rather than an incomplete one.
     customerId: varchar('customer_id'),
+    dealId: varchar('deal_id'),
+    handoffId: varchar('handoff_id'),
+
     dueDate: timestamp('due_date'),
     estimatedHours: integer('estimated_hours'),
     actualHours: integer('actual_hours'),
@@ -5689,25 +5754,56 @@ export const tasks = pgTable(
 );
 
 // Projects table
-export const projects = pgTable('projects', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  name: varchar('name').notNull(),
-  description: text('description'),
-  status: varchar('status').notNull().default('active'), // active, completed, on_hold, cancelled
-  customerId: varchar('customer_id'),
-  startDate: timestamp('start_date'),
-  endDate: timestamp('end_date'),
-  estimatedHours: integer('estimated_hours'),
-  actualHours: integer('actual_hours'),
-  budget: decimal('budget', { precision: 10, scale: 2 }),
-  completionPercentage: integer('completion_percentage').default(0),
-  createdBy: varchar('created_by').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+// WF-P-07 recorded the decision between the two project models this repo had:
+// `projects` survives and `implementation_projects` is dropped. `projects` is
+// the one anything can reach - TaskHub's Projects tab reads it, tasks.project_id
+// points at it - while implementation_projects had no caller in any client tree,
+// no edge function anyone routed to and an Express router nobody imported. The
+// three things it could do that projects could not are added here: the contract
+// and handoff a project came out of, and its milestones.
+//
+// docs/WF-P-07-project-model-decision.md carries the full comparison.
+export const projects = pgTable(
+  'projects',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
+    name: varchar('name').notNull(),
+    description: text('description'),
+    status: varchar('status').notNull().default('active'), // active, completed, on_hold, cancelled
+    customerId: varchar('customer_id'),
+    // WF-P-07: what this project came out of. Migration 0002 dropped an earlier
+    // contract_id from this table; these are the links the handoff screen writes.
+    contractId: varchar('contract_id'),
+    handoffId: varchar('handoff_id'),
+    projectType: varchar('project_type'), // installation, migration, expansion, training
+    // Phases with a due date and a status. The losing model held the same shape.
+    milestones: jsonb('milestones').$type<
+      Array<{
+        name: string;
+        description?: string;
+        dueDate?: string | null;
+        completedDate?: string | null;
+        status: string;
+      }>
+    >(),
+    startDate: timestamp('start_date'),
+    endDate: timestamp('end_date'),
+    estimatedHours: integer('estimated_hours'),
+    actualHours: integer('actual_hours'),
+    budget: decimal('budget', { precision: 10, scale: 2 }),
+    completionPercentage: integer('completion_percentage').default(0),
+    createdBy: varchar('created_by').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    tenantHandoffIdx: index('projects_tenant_handoff_idx').on(table.tenantId, table.handoffId),
+    tenantContractIdx: index('projects_tenant_contract_idx').on(table.tenantId, table.contractId),
+  }),
+);
 
 // System Alerts table
 export const systemAlerts = pgTable('system_alerts', {
@@ -6018,6 +6114,13 @@ export const proposals = pgTable(
 
     // Timestamps for status tracking
     sentAt: timestamp('sent_at'),
+
+    // WF-C-04: `proposals` is declared TWICE - here with 46 columns and in
+    // shared/quote-proposal-schema.ts with 52 - and check:phantom-cols resolves
+    // the ambiguity to whichever it sees, so a column added to one of them reads
+    // as phantom. One table in the database; both declarations carry it.
+    pricingApprovalId: varchar('pricing_approval_id'),
+    pricingApprovedAt: timestamp('pricing_approved_at'),
     viewedAt: timestamp('viewed_at'),
     acceptedAt: timestamp('accepted_at'),
     rejectedAt: timestamp('rejected_at'),
@@ -6041,6 +6144,27 @@ export const proposals = pgTable(
     shareToken: varchar('share_token'),
     shareExpiresAt: timestamp('share_expires_at'),
     customerFeedback: text('customer_feedback'),
+
+    // WF-C-05: how the deal is paid.
+    //
+    // Acceptance always called createContractFromProposal and never created a
+    // lease, whatever the proposal said, and `payment_terms` - the only nearby
+    // field - was written by nothing and read by nothing. So `leases` sat with
+    // proposal_id, business_record_id and contract_id columns that no code
+    // filled, and a leased fleet was indistinguishable from a cash sale the
+    // moment the customer clicked Accept.
+    //
+    // `payment_terms` is KEPT and is a different fact: net_30 is when an invoice
+    // is due, not whether the customer owns the machine. Nothing reads it yet.
+    //
+    // All nullable. An existing proposal has no acquisition type and must stay
+    // valid; a proposal with no type creates the contract and no lease, which is
+    // what happens today, rather than a guess at the commercial terms.
+    acquisitionType: varchar('acquisition_type', { length: 20 }), // cash | lease | finance
+    fundingPartner: varchar('funding_partner'), // the lessor or lender, when not cash
+    financeTermMonths: integer('finance_term_months'),
+    financeMonthlyPayment: decimal('finance_monthly_payment', { precision: 10, scale: 2 }),
+    firstPaymentDate: timestamp('first_payment_date'),
 
     internalNotes: text('internal_notes'),
 
@@ -6638,6 +6762,11 @@ export const accountsPayable = pgTable(
     // Reference Information
     vendorId: varchar('vendor_id').notNull(),
     billNumber: varchar('bill_number').notNull(),
+    // WF-P-02: purchaseOrderNumber is free text and always was, so nothing could
+    // join a bill back to the order that caused it. Receiving now raises the
+    // payable, so the link is a real one. Nullable: a bill for rent or a service
+    // has no purchase order.
+    purchaseOrderId: varchar('purchase_order_id'),
     purchaseOrderNumber: varchar('purchase_order_number'),
     referenceNumber: varchar('reference_number'),
 
@@ -6796,6 +6925,17 @@ export const purchaseOrders = pgTable(
     vendorId: varchar('vendor_id').notNull(),
     requestedBy: varchar('requested_by').notNull(),
 
+    // What this order is FOR (WF-P-03).
+    //
+    // The table knew its vendor and its status and nothing about the sale that
+    // caused it, so the Book Order button on contracts.tsx passed ?contractId=
+    // and the PO page rendered it as a blue hint and dropped it. All three are
+    // nullable: a PO for warehouse stock has no contract, deal or customer, and
+    // the low-stock suggestion path creates exactly those.
+    sourceContractId: varchar('source_contract_id'),
+    sourceDealId: varchar('source_deal_id'),
+    customerId: varchar('customer_id'),
+
     // Order Details
     orderDate: timestamp('order_date').notNull(),
     expectedDate: timestamp('expected_date'),
@@ -6870,6 +7010,17 @@ export const purchaseOrderItems = pgTable('purchase_order_items', {
   itemDescription: text('item_description').notNull(),
   itemCode: varchar('item_code'),
 
+  // WF-P-01: supabase/functions/purchase-orders/ has written these six since it
+  // shipped, against a `purchase_order_line_items` relation that does not exist.
+  // Repointing it at this table needed the columns to be real. inventoryItemId is
+  // what the receive path moves stock by, so it is load-bearing for WF-P-02.
+  inventoryItemId: varchar('inventory_item_id'),
+  partNumber: varchar('part_number'),
+  manufacturerPartNumber: varchar('manufacturer_part_number'),
+  unitOfMeasure: varchar('unit_of_measure').default('EA'),
+  notes: text('notes'),
+  lastReceivedDate: timestamp('last_received_date'),
+
   // Quantity & Pricing
   quantity: integer('quantity').notNull(),
   unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
@@ -6878,7 +7029,7 @@ export const purchaseOrderItems = pgTable('purchase_order_items', {
   // Status
   receivedQuantity: integer('received_quantity').default(0),
 
-  // Tracking
+  // Tracking. There is no updated_at: migration 0001 dropped it.
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -8939,11 +9090,9 @@ export {
   salesHandoffChecklists,
   handoffTaskTemplates,
   handoffTasks,
-  implementationProjects,
   insertSalesHandoffChecklistSchema,
   insertHandoffTaskTemplateSchema,
   insertHandoffTaskSchema,
-  insertImplementationProjectSchema,
 } from './sales-handoff-schema';
 
 export type {
@@ -8953,8 +9102,6 @@ export type {
   InsertHandoffTaskTemplate,
   HandoffTask,
   InsertHandoffTask,
-  ImplementationProject,
-  InsertImplementationProject,
 } from './sales-handoff-schema';
 
 // Re-export Renewal Management schemas

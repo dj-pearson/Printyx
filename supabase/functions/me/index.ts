@@ -6,18 +6,39 @@ import { resolveTenantId } from '../_shared/tenant.ts';
 
 type PermissionsObject = Record<string, boolean>;
 
+const MODULES = [
+  'sales',
+  'service',
+  'products',
+  'inventory',
+  'purchasing',
+  'billing',
+  'finance',
+  'reports',
+  'system',
+] as const;
+
 function allModulePermissions(): PermissionsObject {
-  return {
-    sales: true,
-    service: true,
-    products: true,
-    inventory: true,
-    purchasing: true,
-    billing: true,
-    finance: true,
-    reports: true,
-    system: true,
-  };
+  return Object.fromEntries(MODULES.map((m) => [m, true]));
+}
+
+/**
+ * What a user with NO resolvable role gets (WF-R-09).
+ *
+ * This used to be allModulePermissions(), so an account whose role_id was unset -
+ * or whose roles row had been deleted - received every module at level 1, which is
+ * the L1 tier of sales, service, finance and reports. A missing role was the most
+ * permissive state the system had. It now matches defaultRolePermissions() in
+ * client/src/hooks/useSupabaseAuth.ts, which has always been all-false: the two
+ * disagreed, and the server was the one failing open.
+ *
+ * Every module false expands to an empty permission set in
+ * navigation-permissions.ts, so the sidebar shows only its alwaysVisible sections
+ * - dashboard, tasks, knowledge base, settings - which is the right amount of
+ * product for somebody an administrator has not placed yet.
+ */
+function defaultRolePermissions(): PermissionsObject {
+  return Object.fromEntries(MODULES.map((m) => [m, false]));
 }
 
 function normalizePermissions(input: unknown): PermissionsObject {
@@ -91,9 +112,10 @@ export default async function handler(req: Request) {
           isPlatformUser: Boolean((user.app_metadata as any)?.isPlatformUser),
           role: {
             id: (user.app_metadata as any)?.roleId || 'default',
+            code: null,
             name: 'User',
             level: 1,
-            permissions: allModulePermissions(),
+            permissions: defaultRolePermissions(),
             canAccessAllTenants: Boolean((user.app_metadata as any)?.isPlatformUser),
           },
         },
@@ -112,6 +134,11 @@ export default async function handler(req: Request) {
       if (roleData) {
         role = {
           id: roleData.id,
+          // WF-R-09: the CODE, which nothing here returned. It is what
+          // dashboard-widget-registry.ts keys a layout on and what the sidebar
+          // reads, so both were falling back to their DEFAULT layout for every
+          // user regardless of role.
+          code: roleData.code ?? null,
           name: roleData.name,
           level: roleData.level ?? 1,
           permissions: normalizePermissions(roleData.permissions),
@@ -125,9 +152,10 @@ export default async function handler(req: Request) {
     if (!role) {
       role = {
         id: roleId || 'default',
+        code: null,
         name: 'User',
         level: 1,
-        permissions: allModulePermissions(),
+        permissions: defaultRolePermissions(),
         canAccessAllTenants: Boolean(profile.is_platform_user ?? profile.isPlatformUser),
       };
     }

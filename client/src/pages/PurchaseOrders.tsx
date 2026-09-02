@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -80,6 +81,152 @@ import PageAlerts from '@/components/contextual/PageAlerts';
 import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
 import MobileFAB from '@/components/layout/MobileFAB';
 
+// WF-P-02: the receive dialog's view of a line, normalized from whichever host
+// answered - Express returns snake_case Drizzle rows under `items`, the edge
+// function returns them under `lineItems`.
+interface ReceivableLine {
+  id: string;
+  description: string;
+  ordered: number;
+  received: number;
+}
+
+interface ReceiptResponse {
+  overReceipts?: Array<{ lineItemId: string }>;
+  requiresSerialCapture?: Array<{
+    lineItemId: string;
+    quantity: number;
+    description?: string | null;
+  }>;
+  payableError?: string | null;
+}
+
+// WF-L-04: one row per physical machine, because equipment.serial_number is the
+// key meter billing, service and the lifecycle all join on.
+interface SerialSlot {
+  lineItemId: string;
+  description: string | null;
+  index: number;
+  serialNumber: string;
+  assetTag: string;
+}
+
+interface SerialCaptureResponse {
+  created?: Array<{ id: string; serial_number?: string | null }>;
+  problems?: Array<{ lineItemId: string; reason: string; serialNumber?: string }>;
+  failed?: Array<{ serialNumber: string; reason: string }>;
+  outstanding?: Array<{ lineItemId: string; quantity: number }>;
+}
+
+// WF-P-04: a sold contract with no purchase order against it.
+interface NeedsOrderingLine {
+  proposalLineId: string;
+  lineNumber: number;
+  itemDescription: string;
+  itemCode: string | null;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  vendorId: string | null;
+  vendorName: string | null;
+}
+
+interface NeedsOrderingRow {
+  contractId: string;
+  contractNumber: string | null;
+  customerId: string;
+  customerName: string | null;
+  status: string | null;
+  startDate: string | null;
+  proposalId: string | null;
+  acquisitionType: string | null;
+  lines: NeedsOrderingLine[];
+  notOrderable: Array<{ proposalLineId: string; productName: string; reason: string }>;
+  estimatedCost: number;
+  suggestedVendorId: string | null;
+}
+
+function NeedsOrderingList({
+  rows,
+  isLoading,
+  onOrder,
+}: {
+  rows: NeedsOrderingRow[];
+  isLoading: boolean;
+  onOrder: (row: NeedsOrderingRow) => void;
+}) {
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
+  }
+  if (rows.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-sm text-muted-foreground">
+            Nothing is waiting to be ordered. A contract appears here once it is signed or active
+            and no purchase order references it.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {rows.map((row) => (
+        <Card key={row.contractId}>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium">{row.customerName ?? row.customerId}</p>
+                <p className="text-sm text-muted-foreground">
+                  {row.contractNumber ?? row.contractId}
+                  {row.acquisitionType ? ` · ${row.acquisitionType}` : ''}
+                  {row.startDate
+                    ? ` · started ${new Date(row.startDate).toLocaleDateString()}`
+                    : ''}
+                </p>
+              </div>
+              <Button size="sm" onClick={() => onOrder(row)}>
+                <FileText className="h-4 w-4 mr-2" />
+                Create purchase order
+              </Button>
+            </div>
+
+            {row.lines.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {row.proposalId
+                  ? 'The accepted proposal has no line a vendor supplies.'
+                  : 'This contract has no proposal, so there are no lines to pre-fill.'}
+              </p>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {row.lines.map((line) => (
+                  <li key={line.proposalLineId} className="flex justify-between gap-3">
+                    <span className="truncate">
+                      {line.quantity} x {line.itemDescription}
+                    </span>
+                    <span className="shrink-0 text-muted-foreground">
+                      {line.vendorName ?? 'no vendor on file'} · ${line.totalPrice.toFixed(2)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Named rather than dropped: a service or a monthly charge is not a
+                thing a vendor ships, and a buyer needs to know it was excluded. */}
+            {row.notOrderable.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Not ordered: {row.notOrderable.map((n) => n.productName).join(', ')}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 // Enhanced form schema with line items
 const purchaseOrderFormSchema = z.object({
   poNumber: z.string().min(1, 'PO number is required'),
@@ -137,18 +284,29 @@ export default function PurchaseOrders() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState('orders');
+  const [prefilledContractId, setPrefilledContractId] = useState<string | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [receivingPO, setReceivingPO] = useState<PurchaseOrder | null>(null);
+  const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
+
+  // WF-P-03: the Book Order item on contracts.tsx navigates here with
+  // ?contractId=<id>. The page used to render that id as a hint above the form
+  // and never send it, so the order was never linked to the contract that
+  // caused it. Read once - three separate window.location.search reads is how it
+  // stayed decorative.
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+  const contractIdParam = new URLSearchParams(search).get('contractId') || '';
 
   // Fetch purchase orders
   const { data: purchaseOrders = [], isLoading } = useQuery<PurchaseOrder[]>({
-    queryKey: ['/api/purchase-orders', typeof window !== 'undefined' ? window.location.search : ''],
+    queryKey: ['/api/purchase-orders', search],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (typeof window !== 'undefined') {
-        const url = new URLSearchParams(window.location.search);
-        const filter = url.get('filter');
-        if (filter) params.append('filter', filter);
-      }
+      const url = new URLSearchParams(search);
+      const filter = url.get('filter');
+      if (filter) params.append('filter', filter);
+      if (contractIdParam) params.append('contractId', contractIdParam);
       const path = `/api/purchase-orders${params.toString() ? `?${params.toString()}` : ''}`;
       const response = await apiRequest(path, 'GET');
       return extractRecords(response).map((po: any) => ({
@@ -159,6 +317,9 @@ export default function PurchaseOrders() {
         orderDate: po.order_date || po.orderDate || '',
         expectedDate: po.expected_date || po.expectedDate || null,
         receivedDate: po.received_date || po.receivedDate || null,
+        sourceContractId: po.source_contract_id ?? po.sourceContractId ?? null,
+        sourceDealId: po.source_deal_id ?? po.sourceDealId ?? null,
+        customerId: po.customer_id ?? po.customerId ?? null,
         createdAt: po.created_at || po.createdAt || '',
         updatedAt: po.updated_at || po.updatedAt || '',
       }));
@@ -202,7 +363,7 @@ export default function PurchaseOrders() {
 
   // Create purchase order mutation
   const createPOMutation = useMutation({
-    mutationFn: async (data: PurchaseOrderFormData) =>
+    mutationFn: async (data: PurchaseOrderFormData & { sourceContractId?: string }) =>
       apiRequest('/api/purchase-orders', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
@@ -219,6 +380,151 @@ export default function PurchaseOrders() {
       toast({
         title: 'Error',
         description: 'Failed to create purchase order',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // WF-P-02: receiving. The endpoint has existed on both hosts since this story
+  // and no screen called it - the only action offered on an approved PO was
+  // Release to Warehouse, which navigates away and records nothing.
+  const { data: receiveLines = [], isLoading: receiveLinesLoading } = useQuery<ReceivableLine[]>({
+    queryKey: ['/api/purchase-orders', receivingPO?.id, 'line-items'],
+    enabled: !!receivingPO,
+    queryFn: async () => {
+      const response = await apiRequest(`/api/purchase-orders/${receivingPO!.id}`, 'GET');
+      // The two hosts disagree about the key: Express returns { ...po, items },
+      // the edge function { ...po, lineItems }. Both are read rather than one
+      // being picked, because picking one breaks the other environment silently.
+      const raw = response?.lineItems ?? response?.items ?? [];
+      return (Array.isArray(raw) ? raw : []).map((line: Record<string, unknown>) => ({
+        id: String(line.id),
+        description: String(line.item_description ?? line.itemDescription ?? ''),
+        ordered: Number(line.quantity ?? 0),
+        received: Number(line.received_quantity ?? line.receivedQuantity ?? 0),
+      }));
+    },
+  });
+
+  // WF-L-04: after a receipt lands, the serialized lines are still outstanding -
+  // WF-P-02 records their quantity and deliberately does not move bulk inventory,
+  // because the units are supposed to become equipment rows. Nothing created
+  // them, so the receipt ended with a toast and a machine that did not exist.
+  const [serialPO, setSerialPO] = useState<{ id: string; poNumber: string } | null>(null);
+  const [serialSlots, setSerialSlots] = useState<SerialSlot[]>([]);
+
+  const serialMutation = useMutation({
+    mutationFn: async ({ id, slots }: { id: string; slots: SerialSlot[] }) =>
+      apiRequest(`/api/purchase-orders/${id}/serials`, 'POST', {
+        units: slots.map((slot) => ({
+          lineItemId: slot.lineItemId,
+          serialNumber: slot.serialNumber.trim(),
+          assetTag: slot.assetTag.trim() || null,
+        })),
+      }),
+    onSuccess: (response: SerialCaptureResponse) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment'] });
+
+      const created = response?.created?.length ?? 0;
+      // Every one of these is a machine that is physically here and still not in
+      // the system, so none of them is folded into a success message.
+      const notes: string[] = [];
+      for (const problem of response?.problems ?? []) notes.push(problem.reason);
+      for (const failure of response?.failed ?? []) {
+        notes.push(`${failure.serialNumber}: ${failure.reason}`);
+      }
+      const stillOwed = (response?.outstanding ?? []).reduce((sum, l) => sum + l.quantity, 0);
+      if (stillOwed > 0) notes.push(`${stillOwed} unit(s) still need a serial number.`);
+
+      toast({
+        title: `${created} unit(s) registered`,
+        description: notes.length > 0 ? notes.join(' ') : 'Each unit is now an equipment record.',
+        variant: notes.length > 0 ? 'destructive' : 'default',
+      });
+
+      if (notes.length === 0) {
+        setSerialPO(null);
+        setSerialSlots([]);
+      }
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to register the units',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // WF-P-04: what has been sold and not ordered. Computed server-side from
+  // contracts with no purchase order referencing them, with the lines from the
+  // accepted proposal.
+  const needsOrderingQuery = useQuery<{ data: NeedsOrderingRow[] }>({
+    queryKey: ['/api/purchase-orders/needs-ordering'],
+    queryFn: () => apiRequest('/api/purchase-orders/needs-ordering', 'GET'),
+  });
+  const needsOrdering = useMemo(
+    () => needsOrderingQuery.data?.data ?? [],
+    [needsOrderingQuery.data],
+  );
+
+  const receiveMutation = useMutation({
+    mutationFn: async ({
+      id,
+      items,
+    }: {
+      id: string;
+      items: Array<{ lineItemId: string; quantity: number }>;
+    }) => apiRequest(`/api/purchase-orders/${id}/receive`, 'POST', { items }),
+    onSuccess: (response: ReceiptResponse) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/purchase-orders/stats/summary'],
+      });
+      const receivedFor = receivingPO
+        ? { id: receivingPO.id, poNumber: receivingPO.poNumber }
+        : null;
+      setReceivingPO(null);
+      setReceiptQuantities({});
+
+      // Each of these is a real outcome the receipt does not fully cover, so the
+      // toast says so rather than reporting a clean success.
+      const notes: string[] = [];
+      if (response?.overReceipts?.length) {
+        notes.push(`${response.overReceipts.length} line(s) received above the ordered quantity.`);
+      }
+      // WF-L-04: rather than only saying so, open the capture step. A serialized
+      // line's units are physically on the dock; leaving the buyer to find
+      // another screen is how they end up unregistered.
+      if (response?.requiresSerialCapture?.length) {
+        const slots: SerialSlot[] = [];
+        for (const line of response.requiresSerialCapture) {
+          for (let i = 0; i < Math.max(1, Number(line.quantity ?? 1)); i++) {
+            slots.push({
+              lineItemId: line.lineItemId,
+              description: line.description ?? null,
+              index: i + 1,
+              serialNumber: '',
+              assetTag: '',
+            });
+          }
+        }
+        setSerialSlots(slots);
+        if (receivedFor) setSerialPO(receivedFor);
+        notes.push(`${slots.length} unit(s) need serial numbers.`);
+      }
+      if (response?.payableError) notes.push(response.payableError);
+
+      toast({
+        title: 'Receipt recorded',
+        description: notes.length > 0 ? notes.join(' ') : 'Quantities and inventory updated.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to record the receipt',
         variant: 'destructive',
       });
     },
@@ -299,7 +605,8 @@ export default function PurchaseOrders() {
 
   // Handle form submission
   const onSubmit = (data: PurchaseOrderFormData) => {
-    createPOMutation.mutate(data);
+    const sourceContractId = prefilledContractId || contractIdParam;
+    createPOMutation.mutate(sourceContractId ? { ...data, sourceContractId } : data);
   };
 
   // Generate PO number
@@ -313,6 +620,51 @@ export default function PurchaseOrders() {
       .padStart(3, '0');
     return `PO-${year}${month}${day}-${random}`;
   };
+
+  /**
+   * Open the create dialog pre-filled from a row. This is the same entry point
+   * WF-C-06's handoff page deep-links to with ?contractId=, which is why the
+   * effect below runs it from the URL as well - one pre-fill, two doors.
+   */
+  const startOrderFromContract = useCallback(
+    (row: NeedsOrderingRow) => {
+      form.reset({
+        poNumber: generatePONumber(),
+        vendorId: row.suggestedVendorId ?? '',
+        requestedBy: user?.id ?? '',
+        orderDate: new Date(),
+        description: `Equipment for ${row.customerName ?? row.customerId} (${row.contractNumber ?? row.contractId})`,
+        subtotal: row.estimatedCost,
+        taxAmount: 0,
+        shippingAmount: 0,
+        totalAmount: row.estimatedCost,
+        status: 'draft',
+        items:
+          row.lines.length > 0
+            ? row.lines.map((line) => ({
+                itemDescription: line.itemDescription,
+                itemCode: line.itemCode ?? '',
+                quantity: line.quantity,
+                unitPrice: line.unitPrice,
+                totalPrice: line.totalPrice,
+              }))
+            : [{ itemDescription: '', itemCode: '', quantity: 1, unitPrice: 0, totalPrice: 0 }],
+      });
+      setPrefilledContractId(row.contractId);
+      setActiveTab('orders');
+      setShowCreateDialog(true);
+    },
+    [form, user?.id],
+  );
+
+  // The handoff page and the Book Order button both arrive with ?contractId=.
+  // Pre-fill from the queue row when one matches, so the two doors give the same
+  // dialog rather than an empty form beside a blue hint.
+  useEffect(() => {
+    if (!contractIdParam || showCreateDialog || needsOrdering.length === 0) return;
+    const row = needsOrdering.find((r) => r.contractId === contractIdParam);
+    if (row) startOrderFromContract(row);
+  }, [contractIdParam, needsOrdering, showCreateDialog, startOrderFromContract]);
 
   // Calculate item total
   const calculateItemTotal = (index: number, field: 'quantity' | 'unitPrice', value: number) => {
@@ -479,14 +831,11 @@ export default function PurchaseOrders() {
                         </FormItem>
                       )}
                     />
-                    {/* If navigated with contractId in query, show hint */}
-                    {typeof window !== 'undefined' &&
-                      new URLSearchParams(window.location.search).get('contractId') && (
-                        <div className="md:col-span-2 text-sm text-blue-700 bg-blue-50 p-2 rounded">
-                          Creating PO for Contract ID:{' '}
-                          {new URLSearchParams(window.location.search).get('contractId')}
-                        </div>
-                      )}
+                    {contractIdParam && (
+                      <div className="md:col-span-2 rounded bg-blue-50 p-2 text-sm text-blue-700">
+                        This order will be linked to contract {contractIdParam}.
+                      </div>
+                    )}
 
                     <FormField
                       control={form.control}
@@ -821,228 +1170,489 @@ export default function PurchaseOrders() {
           </Dialog>
         </div>
 
-        {/* Statistics Cards */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-2">
-                  <FileText className="h-8 w-8 text-blue-600" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.total}</p>
-                    <p className="text-sm text-muted-foreground">Total Orders</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {/* WF-P-04: two views of the same buying job - the orders that exist,
+            and the sold contracts nobody has ordered against yet. No page
+            answered the second question; a buyer hunted through Contracts. */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="orders">Purchase orders</TabsTrigger>
+            <TabsTrigger value="needs-ordering">
+              Needs ordering
+              {needsOrdering.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {needsOrdering.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-8 w-8 text-yellow-600" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.pending + stats.approved}</p>
-                    <p className="text-sm text-muted-foreground">Pending</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="orders" className="space-y-6">
+            {/* Statistics Cards */}
+            {stats && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="h-8 w-8 text-blue-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{stats.total}</p>
+                        <p className="text-sm text-muted-foreground">Total Orders</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.received}</p>
-                    <p className="text-sm text-muted-foreground">Received</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-8 w-8 text-yellow-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{stats.pending + stats.approved}</p>
+                        <p className="text-sm text-muted-foreground">Pending</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-2">
-                  <DollarSign className="h-8 w-8 text-purple-600" />
-                  <div>
-                    <p className="text-2xl font-bold">${stats.totalValue?.toFixed(0) || '0'}</p>
-                    <p className="text-sm text-muted-foreground">Total Value</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-8 w-8 text-green-600" />
+                      <div>
+                        <p className="text-2xl font-bold">{stats.received}</p>
+                        <p className="text-sm text-muted-foreground">Received</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-        {/* Filters and Search */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4 items-center">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    aria-label="Search purchase orders"
-                    placeholder="Search purchase orders..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="h-8 w-8 text-purple-600" />
+                      <div>
+                        <p className="text-2xl font-bold">${stats.totalValue?.toFixed(0) || '0'}</p>
+                        <p className="text-sm text-muted-foreground">Total Value</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
+            )}
 
-              <div className="flex items-center space-x-2">
-                <Filter className="h-4 w-4 text-gray-400" />
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="ordered">Ordered</SelectItem>
-                    <SelectItem value="received">Received</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Filters and Search */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row gap-4 items-center">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        aria-label="Search purchase orders"
+                        placeholder="Search purchase orders..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
+                  </div>
 
-        {/* Filter Banner */}
-        {typeof window !== 'undefined' &&
-          new URLSearchParams(window.location.search).get('filter') === 'variance_gt_2x' && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
-              <span>Showing POs with lead time variance &gt; 2× plan</span>
-              <Button variant="outline" size="sm" onClick={() => setLocation('/purchase-orders')}>
-                Clear Filter
-              </Button>
-            </div>
-          )}
+                  <div className="flex items-center space-x-2">
+                    <Filter className="h-4 w-4 text-gray-400" />
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="ordered">Ordered</SelectItem>
+                        <SelectItem value="received">Received</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Purchase Orders Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Purchase Orders</CardTitle>
-            <CardDescription>
-              {filteredPOs.length} of {purchaseOrders.length} purchase orders
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-              </div>
-            ) : (
+            {/* Filter Banner */}
+            {typeof window !== 'undefined' &&
+              new URLSearchParams(window.location.search).get('filter') === 'variance_gt_2x' && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
+                  <span>Showing POs with lead time variance &gt; 2× plan</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLocation('/purchase-orders')}
+                  >
+                    Clear Filter
+                  </Button>
+                </div>
+              )}
+
+            {/* Purchase Orders Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Purchase Orders</CardTitle>
+                <CardDescription>
+                  {filteredPOs.length} of {purchaseOrders.length} purchase orders
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>PO Number</TableHead>
+                        <TableHead>Vendor</TableHead>
+                        <TableHead>Order Date</TableHead>
+                        <TableHead>Expected Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Total Amount</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPOs.map((po: PurchaseOrder) => {
+                        const StatusIcon =
+                          statusIcons[po.status as keyof typeof statusIcons] || Clock;
+                        const vendor = vendors.find((v) => v.id === po.vendorId);
+
+                        return (
+                          <TableRow key={po.id}>
+                            <TableCell className="font-medium">{po.poNumber}</TableCell>
+                            <TableCell>{vendor?.vendorName || 'Unknown Vendor'}</TableCell>
+                            <TableCell>
+                              {po.orderDate
+                                ? format(new Date(po.orderDate), 'MMM dd, yyyy')
+                                : 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              {po.expectedDate
+                                ? format(new Date(po.expectedDate), 'MMM dd, yyyy')
+                                : 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                className={statusColors[po.status as keyof typeof statusColors]}
+                              >
+                                <StatusIcon className="h-3 w-3 mr-1" />
+                                {po.status?.charAt(0).toUpperCase() + po.status?.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-semibold">
+                              ${parseFloat(po.totalAmount || '0').toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedPO(po);
+                                    setShowDetailsDialog(true);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+
+                                {po.status === 'draft' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      updateStatusMutation.mutate({
+                                        id: po.id,
+                                        status: 'pending',
+                                      })
+                                    }
+                                  >
+                                    Submit
+                                  </Button>
+                                )}
+
+                                {po.status === 'pending' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      updateStatusMutation.mutate({
+                                        id: po.id,
+                                        status: 'approved',
+                                      })
+                                    }
+                                  >
+                                    Approve
+                                  </Button>
+                                )}
+
+                                {po.status === 'approved' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      setLocation(`/warehouse-operations?orderId=${po.id}`)
+                                    }
+                                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  >
+                                    <Truck className="h-4 w-4 mr-1" />
+                                    Release to Warehouse
+                                  </Button>
+                                )}
+
+                                {['approved', 'ordered', 'partially_received'].includes(
+                                  po.status,
+                                ) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setReceiptQuantities({});
+                                      setReceivingPO(po);
+                                    }}
+                                  >
+                                    <Package className="mr-1 h-4 w-4" />
+                                    Receive
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="needs-ordering" className="space-y-4">
+            <NeedsOrderingList
+              rows={needsOrdering}
+              isLoading={needsOrderingQuery.isLoading}
+              onOrder={startOrderFromContract}
+            />
+          </TabsContent>
+        </Tabs>
+
+        {/* WF-L-04: one serial per unit, because equipment.serial_number is the key
+            meter billing, service and the lifecycle all join on. No placeholder is
+            offered: a generated serial is indistinguishable from a real one the
+            moment it is written. */}
+        <Dialog
+          open={!!serialPO}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSerialPO(null);
+              setSerialSlots([]);
+            }
+          }}
+        >
+          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Serial numbers for {serialPO?.poNumber}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Each unit becomes an equipment record. A unit left blank stays outstanding on the
+                order rather than being registered without a serial.
+              </p>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>PO Number</TableHead>
-                    <TableHead>Vendor</TableHead>
-                    <TableHead>Order Date</TableHead>
-                    <TableHead>Expected Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Total Amount</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Serial number</TableHead>
+                    <TableHead>Asset tag</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPOs.map((po: PurchaseOrder) => {
-                    const StatusIcon = statusIcons[po.status as keyof typeof statusIcons] || Clock;
-                    const vendor = vendors.find((v) => v.id === po.vendorId);
-
-                    return (
-                      <TableRow key={po.id}>
-                        <TableCell className="font-medium">{po.poNumber}</TableCell>
-                        <TableCell>{vendor?.vendorName || 'Unknown Vendor'}</TableCell>
-                        <TableCell>
-                          {po.orderDate ? format(new Date(po.orderDate), 'MMM dd, yyyy') : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          {po.expectedDate
-                            ? format(new Date(po.expectedDate), 'MMM dd, yyyy')
-                            : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={statusColors[po.status as keyof typeof statusColors]}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {po.status?.charAt(0).toUpperCase() + po.status?.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-semibold">
-                          ${parseFloat(po.totalAmount || '0').toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedPO(po);
-                                setShowDetailsDialog(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-
-                            {po.status === 'draft' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  updateStatusMutation.mutate({
-                                    id: po.id,
-                                    status: 'pending',
-                                  })
-                                }
-                              >
-                                Submit
-                              </Button>
-                            )}
-
-                            {po.status === 'pending' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  updateStatusMutation.mutate({
-                                    id: po.id,
-                                    status: 'approved',
-                                  })
-                                }
-                              >
-                                Approve
-                              </Button>
-                            )}
-
-                            {po.status === 'approved' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  setLocation(`/warehouse-operations?orderId=${po.id}`)
-                                }
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                              >
-                                <Truck className="h-4 w-4 mr-1" />
-                                Release to Warehouse
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {serialSlots.map((slot, idx) => (
+                    <TableRow key={`${slot.lineItemId}-${slot.index}`}>
+                      <TableCell className="font-medium">{slot.description ?? 'Item'}</TableCell>
+                      <TableCell>{slot.index}</TableCell>
+                      <TableCell>
+                        <Input
+                          aria-label={`Serial number for unit ${slot.index} of ${slot.description ?? 'item'}`}
+                          value={slot.serialNumber}
+                          onChange={(e) =>
+                            setSerialSlots((prev) =>
+                              prev.map((s2, i) =>
+                                i === idx ? { ...s2, serialNumber: e.target.value } : s2,
+                              ),
+                            )
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          aria-label={`Asset tag for unit ${slot.index} of ${slot.description ?? 'item'}`}
+                          value={slot.assetTag}
+                          onChange={(e) =>
+                            setSerialSlots((prev) =>
+                              prev.map((s2, i) =>
+                                i === idx ? { ...s2, assetTag: e.target.value } : s2,
+                              ),
+                            )
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
-            )}
-          </CardContent>
-        </Card>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSerialPO(null);
+                    setSerialSlots([]);
+                  }}
+                >
+                  Later
+                </Button>
+                <Button
+                  disabled={
+                    serialMutation.isPending ||
+                    serialSlots.every((slot) => !slot.serialNumber.trim())
+                  }
+                  onClick={() => {
+                    if (!serialPO) return;
+                    const filled = serialSlots.filter((slot) => slot.serialNumber.trim());
+                    serialMutation.mutate({ id: serialPO.id, slots: filled });
+                  }}
+                >
+                  Register units
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Purchase Order Details Dialog */}
+        {/* WF-P-02: record a shipment against the order. Partial receipts are the
+            normal case, so each line defaults to what is still outstanding and
+            the buyer edits down. */}
+        <Dialog
+          open={!!receivingPO}
+          onOpenChange={(open) => {
+            if (!open) {
+              setReceivingPO(null);
+              setReceiptQuantities({});
+            }
+          }}
+        >
+          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Receive {receivingPO?.poNumber}</DialogTitle>
+            </DialogHeader>
+
+            {receiveLinesLoading ? (
+              <p className="py-6 text-sm text-muted-foreground">Loading line items...</p>
+            ) : receiveLines.length === 0 ? (
+              <p className="py-6 text-sm text-muted-foreground">
+                This purchase order has no line items to receive.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Ordered</TableHead>
+                      <TableHead className="text-right">Already received</TableHead>
+                      <TableHead className="text-right">Receiving now</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {receiveLines.map((line) => {
+                      const outstanding = Math.max(0, line.ordered - line.received);
+                      const value = receiptQuantities[line.id] ?? String(outstanding);
+                      return (
+                        <TableRow key={line.id}>
+                          <TableCell className="font-medium">{line.description}</TableCell>
+                          <TableCell className="text-right">{line.ordered}</TableCell>
+                          <TableCell className="text-right">{line.received}</TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              min={0}
+                              className="ml-auto w-24 text-right"
+                              aria-label={`Quantity receiving for ${line.description}`}
+                              value={value}
+                              onChange={(e) =>
+                                setReceiptQuantities((prev) => ({
+                                  ...prev,
+                                  [line.id]: e.target.value,
+                                }))
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+
+                {/* No client-side cap on the quantity. A vendor really does ship
+                    11 when you ordered 10, and refusing the receipt leaves the
+                    warehouse holding stock the system says does not exist; the
+                    server applies the excess and names it back. */}
+                <p className="text-sm text-muted-foreground">
+                  Receiving more than was ordered is allowed and reported back.
+                </p>
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setReceivingPO(null);
+                      setReceiptQuantities({});
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    disabled={receiveMutation.isPending}
+                    onClick={() => {
+                      if (!receivingPO) return;
+                      const items = receiveLines
+                        .map((line) => ({
+                          lineItemId: line.id,
+                          quantity: Number(
+                            receiptQuantities[line.id] ??
+                              String(Math.max(0, line.ordered - line.received)),
+                          ),
+                        }))
+                        .filter((item) => Number.isFinite(item.quantity) && item.quantity > 0);
+
+                      if (items.length === 0) {
+                        toast({
+                          title: 'Nothing to receive',
+                          description: 'Enter a quantity greater than zero on at least one line.',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+                      receiveMutation.mutate({ id: receivingPO.id, items });
+                    }}
+                  >
+                    Record receipt
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -1089,6 +1699,26 @@ export default function PurchaseOrders() {
                             : 'N/A'}
                         </span>
                       </div>
+                      {/* WF-P-03. Absent on a stock-replenishment order, which is
+                          the normal case for the low-stock suggestion path, so
+                          the row is omitted rather than showing "N/A". */}
+                      {selectedPO.sourceContractId && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">For Contract:</span>
+                          {/* Text, not a link: there is no contract detail route
+                              to open. contracts.tsx has a "View Details" button
+                              with no onClick and no target page, and linking to
+                              /contracts?contractId= would send a parameter
+                              nothing reads. */}
+                          <span className="font-medium">{selectedPO.sourceContractId}</span>
+                        </div>
+                      )}
+                      {selectedPO.sourceDealId && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">For Deal:</span>
+                          <span className="font-medium">{selectedPO.sourceDealId}</span>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 

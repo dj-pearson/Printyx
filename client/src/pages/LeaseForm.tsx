@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useRoute, useLocation } from 'wouter';
 import { useForm } from 'react-hook-form';
@@ -25,6 +26,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { ArrowLeft, Save } from 'lucide-react';
+import { planLeaseFromProposal } from '@shared/lease-draft';
 
 const leaseFormSchema = z.object({
   leaseName: z.string().min(1, 'Lease name is required'),
@@ -66,6 +68,7 @@ export default function LeaseForm() {
   const { toast } = useToast();
   const leaseId = params?.id;
   const isEditMode = !!leaseId;
+  const [prefillNote, setPrefillNote] = useState<string | null>(null);
 
   const { data: customers = [] } = useQuery<Customer[]>({
     queryKey: ['/api/business-records'],
@@ -74,6 +77,20 @@ export default function LeaseForm() {
   const { data: lease } = useQuery({
     queryKey: [`/api/leases/${leaseId}`],
     enabled: isEditMode,
+  });
+
+  // WF-C-05 AC3: open pre-filled from an accepted lease proposal, for manual
+  // correction. The accept handler drafts the lease itself when the terms are
+  // complete; this is the path for the ones it declined to draft, and for a rep
+  // who wants to see the numbers before they exist as a row. It derives the
+  // draft with planLeaseFromProposal - the same function the server runs - so
+  // the two cannot disagree about the end date or the total.
+  const proposalId = new URLSearchParams(
+    typeof window === 'undefined' ? '' : window.location.search,
+  ).get('proposalId');
+  const { data: sourceProposal } = useQuery({
+    queryKey: [`/api/proposals/${proposalId}`],
+    enabled: !isEditMode && Boolean(proposalId),
   });
 
   const form = useForm<LeaseFormData>({
@@ -95,6 +112,47 @@ export default function LeaseForm() {
       notes: '',
     },
   });
+
+  useEffect(() => {
+    if (!sourceProposal || isEditMode) return;
+    const p = sourceProposal as Record<string, unknown>;
+    const snake = (camel: string, snakeKey: string) => p[camel] ?? p[snakeKey] ?? null;
+    const plan = planLeaseFromProposal(
+      {
+        id: String(p.id ?? ''),
+        title: (snake('title', 'title') as string) ?? null,
+        proposal_number: (snake('proposalNumber', 'proposal_number') as string) ?? null,
+        business_record_id: (snake('businessRecordId', 'business_record_id') as string) ?? null,
+        acquisition_type: snake('acquisitionType', 'acquisition_type'),
+        funding_partner: snake('fundingPartner', 'funding_partner'),
+        finance_term_months: snake('financeTermMonths', 'finance_term_months'),
+        finance_monthly_payment: snake('financeMonthlyPayment', 'finance_monthly_payment'),
+        first_payment_date: snake('firstPaymentDate', 'first_payment_date'),
+      },
+      { tenantId: '', contractId: null, createdBy: '', leaseNumber: '' },
+    );
+
+    // No row means the proposal does not state complete terms. The rep still gets
+    // the account and the name; inventing a term and a payment schedule here is
+    // exactly what the server refuses to do.
+    const day = (value: unknown) => (value ? String(value).split('T')[0] : '');
+    form.reset({
+      ...form.getValues(),
+      leaseName: String(plan.row?.lease_name ?? p.title ?? ''),
+      customerId: String(
+        plan.row?.customer_id ?? snake('businessRecordId', 'business_record_id') ?? '',
+      ),
+      status: 'pending',
+      totalAmount: String(plan.row?.total_amount ?? ''),
+      monthlyPayment: String(plan.row?.monthly_payment ?? ''),
+      term: Number(plan.row?.term ?? 36),
+      startDate: day(plan.row?.start_date),
+      endDate: day(plan.row?.end_date),
+      firstPaymentDate: day(plan.row?.first_payment_date),
+      lastPaymentDate: day(plan.row?.last_payment_date),
+    });
+    setPrefillNote(plan.row ? null : (plan.reason ?? null));
+  }, [sourceProposal, isEditMode, form]);
 
   const createMutation = useMutation({
     mutationFn: async (data: LeaseFormData) => {
@@ -175,6 +233,13 @@ export default function LeaseForm() {
           </p>
         </div>
       </div>
+
+      {prefillNote && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          Pre-filled from the proposal as far as it goes: {prefillNote}. Fill in the missing terms
+          below before saving.
+        </div>
+      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

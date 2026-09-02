@@ -37,7 +37,6 @@
       "widgets"
     ],
     "deal-desk": ["dashboard"],
-    "equipment-lifecycle": ["assets", "deliveries", "installations", "metrics", "purchase-orders"],
     "financial": ["kpis", "profitability"],
     "integrations": ["bulk-sync", "eautomate", "oauth", "quickbooks", "salesforce"],
     "leads": ["import-eda"],

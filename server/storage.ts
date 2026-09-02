@@ -694,7 +694,10 @@ export interface IStorage {
   createDealActivity(activity: any): Promise<any>;
 
   // Purchase Order operations
-  getPurchaseOrders(tenantId: string): Promise<PurchaseOrder[]>;
+  getPurchaseOrders(
+    tenantId: string,
+    filters?: { sourceContractId?: string; sourceDealId?: string; customerId?: string },
+  ): Promise<PurchaseOrder[]>;
   getPurchaseOrder(id: string, tenantId: string): Promise<PurchaseOrder | undefined>;
   createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder>;
   updatePurchaseOrder(
@@ -706,6 +709,11 @@ export interface IStorage {
 
   // Purchase Order Items operations
   getPurchaseOrderItems(purchaseOrderId: string, tenantId: string): Promise<PurchaseOrderItem[]>;
+  getInventoryItem(id: string, tenantId: string): Promise<InventoryItem | undefined>;
+  getAccountsPayableByPurchaseOrder(
+    purchaseOrderId: string,
+    tenantId: string,
+  ): Promise<AccountsPayable | undefined>;
   createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem>;
   updatePurchaseOrderItem(
     id: string,
@@ -2874,6 +2882,14 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(inventoryItems).where(eq(inventoryItems.tenantId, tenantId));
   }
 
+  async getInventoryItem(id: string, tenantId: string): Promise<InventoryItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(inventoryItems)
+      .where(and(eq(inventoryItems.id, id), eq(inventoryItems.tenantId, tenantId)));
+    return item;
+  }
+
   async createInventoryItem(
     item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<InventoryItem> {
@@ -4191,6 +4207,25 @@ export class DatabaseStorage implements IStorage {
     return ap;
   }
 
+  // WF-P-02: receiving raises the expected bill once per order, not once per
+  // partial receipt, so it has to be able to ask whether one already exists.
+  async getAccountsPayableByPurchaseOrder(
+    purchaseOrderId: string,
+    tenantId: string,
+  ): Promise<AccountsPayable | undefined> {
+    const [row] = await db
+      .select()
+      .from(accountsPayable)
+      .where(
+        and(
+          eq(accountsPayable.purchaseOrderId, purchaseOrderId),
+          eq(accountsPayable.tenantId, tenantId),
+        ),
+      )
+      .limit(1);
+    return row;
+  }
+
   async createAccountsPayable(ap: InsertAccountsPayable): Promise<AccountsPayable> {
     const [newAP] = await db.insert(accountsPayable).values(ap).returning();
     return newAP;
@@ -4278,8 +4313,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Purchase Order operations
-  async getPurchaseOrders(tenantId: string): Promise<PurchaseOrder[]> {
-    return await db.select().from(purchaseOrders).where(eq(purchaseOrders.tenantId, tenantId));
+  async getPurchaseOrders(
+    tenantId: string,
+    filters?: { sourceContractId?: string; sourceDealId?: string; customerId?: string },
+  ): Promise<PurchaseOrder[]> {
+    // WF-P-03: the same ?contractId= filter the edge function serves, so the
+    // contract detail lists its POs in dev as well as in production.
+    const conditions = [eq(purchaseOrders.tenantId, tenantId)];
+    if (filters?.sourceContractId) {
+      conditions.push(eq(purchaseOrders.sourceContractId, filters.sourceContractId));
+    }
+    if (filters?.sourceDealId) {
+      conditions.push(eq(purchaseOrders.sourceDealId, filters.sourceDealId));
+    }
+    if (filters?.customerId) {
+      conditions.push(eq(purchaseOrders.customerId, filters.customerId));
+    }
+    return await db
+      .select()
+      .from(purchaseOrders)
+      .where(and(...conditions));
   }
 
   async getPurchaseOrder(id: string, tenantId: string): Promise<PurchaseOrder | undefined> {

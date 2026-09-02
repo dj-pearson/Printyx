@@ -250,13 +250,6 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['service.schedule.manage', 'service.ticket.assign'],
     minLevel: 3,
   },
-  '/vehicle-management': {
-    requiredPermissions: ['service.equipment.view'],
-    minLevel: 3,
-  },
-  '/asset-management': {
-    requiredPermissions: ['service.equipment.view'],
-  },
   // AUDIT-030: /remote-monitoring redirects to /fleet-monitoring. The entry
   // stays because both sidebars and old bookmarks still name the path, and it
   // MIRRORS the target's gate exactly - a redirect that advertises a page the
@@ -281,6 +274,11 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     minLevel: 3,
   },
   '/mobile-field-service': {
+    requiredPermissions: ['service.ticket.view_own', 'service.schedule.view_own'],
+  },
+  // WF-V-02: same gate on the per-ticket path. A route reachable on looser terms
+  // than the one leading to it is the AUDIT-019 mistake.
+  '/mobile-field-service/:ticketId': {
     requiredPermissions: ['service.ticket.view_own', 'service.schedule.view_own'],
   },
   '/mobile-field-operations': {
@@ -349,6 +347,15 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   },
   '/purchase-orders': {
     requiredPermissions: ['operations.po.view', 'operations.po.create'],
+  },
+  // WF-C-06: the sales-to-operations queue. Gated to the people who raise the
+  // purchase orders it leads to, at level 3+ - a rep should not be working their
+  // own handoff. WF-R-11 will add dedicated purchasing and project-management
+  // roles; until those exist, gating on a code no seeder creates would deny
+  // everyone below platform admin (SEC-EDGE-002), so this uses one that does.
+  '/handoffs': {
+    requiredPermissions: ['operations.po.view'],
+    minLevel: 3,
   },
   '/warehouse-operations': {
     requiredPermissions: ['operations.warehouse.receive', 'operations.warehouse.manage'],
@@ -737,6 +744,9 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['finance.reports.view'],
     minLevel: 4,
   },
+  // WF-C-04: retired, redirects to /deal-desk. The entry stays because the path
+  // is still reachable - a redirect target with no gate of its own would be
+  // reachable on looser terms than the path forwarding to it (AUDIT-019's rule).
   '/pricing/approvals': {
     requiredPermissions: ['sales.quote.approve_standard'],
     minLevel: 3,
@@ -951,6 +961,13 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/admin/user-management': {
     requiredPermissions: ['admin.user.view'],
     minLevel: 4,
+  },
+  // WF-R-08. Level 5, one rung above the user list: placing people under a
+  // manager, a location and a region is what decides what everyone else can see,
+  // so it is a director's call rather than a supervisor's.
+  '/admin/org-structure': {
+    requiredPermissions: ['admin.user.view'],
+    minLevel: 5,
   },
   '/admin/system-settings': { minLevel: 7 },
   '/admin/platform-analytics': { minLevel: 7 },

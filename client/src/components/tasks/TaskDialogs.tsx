@@ -37,6 +37,16 @@ import {
 import { TaskTimeTracker } from './TaskTimeTracker';
 import { format } from 'date-fns';
 
+/**
+ * WF-P-08. This interface used to carry parentTaskId, startDate, customFields
+ * and dependencies, and the create dialog sent all four. Migration 0002 DROPPED
+ * every one of those columns from `tasks`, and PostgREST rejects an unknown
+ * column with PGRST204 - so the whole write failed and this dialog could not
+ * create a task at all.
+ *
+ * customerId, dealId and handoffId replace them: what the task is ABOUT, which
+ * is the thing tasks never recorded.
+ */
 interface Task {
   id: string;
   title: string;
@@ -45,13 +55,18 @@ interface Task {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   assignedTo?: string;
   projectId?: string;
-  parentTaskId?: string;
+  customerId?: string;
+  dealId?: string;
+  handoffId?: string;
   dueDate?: string;
-  startDate?: string;
   estimatedHours?: number;
   tags: string[];
-  customFields: Record<string, any>;
-  dependencies: string[];
+}
+
+/** A record a task can be about, for the related-record picker. */
+export interface RelatedRecord {
+  id: string;
+  label: string;
 }
 
 interface Project {
@@ -68,7 +83,9 @@ export function CreateTaskDialog({
   teamMembers,
   onSubmit,
   isLoading,
-  parentTask,
+  customers = [],
+  deals = [],
+  relatedTo,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -76,50 +93,42 @@ export function CreateTaskDialog({
   teamMembers: any[];
   onSubmit: (data: Partial<Task>) => void;
   isLoading: boolean;
-  parentTask?: Task;
+  /** WF-P-08: accounts and deals the task can be attached to. */
+  customers?: RelatedRecord[];
+  deals?: RelatedRecord[];
+  /** Pre-linked when the dialog is opened from a record page. */
+  relatedTo?: Pick<Task, 'customerId' | 'dealId' | 'handoffId'>;
 }) {
-  const [formData, setFormData] = useState<Partial<Task>>({
+  const EMPTY: Partial<Task> = {
     title: '',
     description: '',
     status: 'todo',
     priority: 'medium',
     assignedTo: '',
     projectId: '',
-    parentTaskId: parentTask?.id,
+    customerId: relatedTo?.customerId ?? '',
+    dealId: relatedTo?.dealId ?? '',
+    handoffId: relatedTo?.handoffId ?? '',
     dueDate: '',
-    startDate: '',
     estimatedHours: 0,
     tags: [],
-    customFields: {},
-    dependencies: [],
-  });
+  };
+  const [formData, setFormData] = useState<Partial<Task>>(EMPTY);
 
   const [newTag, setNewTag] = useState('');
-  const [selectedDependencies, setSelectedDependencies] = useState<string[]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // 'none' is the select's way of saying unset; the column takes null.
+    const unset = (v?: string) => (!v || v === 'none' ? null : v);
     onSubmit({
       ...formData,
-      dependencies: selectedDependencies,
+      projectId: unset(formData.projectId) ?? undefined,
+      customerId: unset(formData.customerId) ?? undefined,
+      dealId: unset(formData.dealId) ?? undefined,
+      handoffId: unset(formData.handoffId) ?? undefined,
     });
-    // Reset form
-    setFormData({
-      title: '',
-      description: '',
-      status: 'todo',
-      priority: 'medium',
-      assignedTo: '',
-      projectId: '',
-      parentTaskId: parentTask?.id,
-      dueDate: '',
-      startDate: '',
-      estimatedHours: 0,
-      tags: [],
-      customFields: {},
-      dependencies: [],
-    });
-    setSelectedDependencies([]);
+    setFormData(EMPTY);
   };
 
   const addTag = () => {
@@ -143,19 +152,20 @@ export function CreateTaskDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="text-lg sm:text-xl">
-            {parentTask ? `Create Subtask for "${parentTask.title}"` : 'Create New Task'}
-          </DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl">Create New Task</DialogTitle>
           <DialogDescription className="text-sm">
-            {parentTask
-              ? 'Add a subtask to break down the work into smaller, manageable pieces.'
-              : 'Create a new task and configure all the details needed for successful completion.'}
+            Create a task and say what it is about, so the record it concerns can list it.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+            {/* WF-P-08: the Workflow and Custom tabs are gone. Workflow held a
+                dependency picker over tasks.dependencies and Custom said
+                "Custom fields will be available in future updates" - both
+                columns were DROPPED by migration 0002, so neither could ever
+                have been stored. */}
+            <TabsList className="grid w-full grid-cols-2 h-auto">
               <TabsTrigger
                 value="details"
                 className="text-xs sm:text-sm min-h-[44px] touch-manipulation"
@@ -167,18 +177,6 @@ export function CreateTaskDialog({
                 className="text-xs sm:text-sm min-h-[44px] touch-manipulation"
               >
                 Schedule
-              </TabsTrigger>
-              <TabsTrigger
-                value="workflow"
-                className="text-xs sm:text-sm min-h-[44px] touch-manipulation"
-              >
-                Workflow
-              </TabsTrigger>
-              <TabsTrigger
-                value="custom"
-                className="text-xs sm:text-sm min-h-[44px] touch-manipulation"
-              >
-                Custom
               </TabsTrigger>
             </TabsList>
 
@@ -391,41 +389,61 @@ export function CreateTaskDialog({
                   </Button>
                 </div>
               </div>
+              {/* WF-P-08: what the task is ABOUT. tasks.customer_id has existed
+                  since migration 0002 and nothing read or wrote it, so every
+                  task was a floating to-do with an assignee and no subject. */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm sm:text-base">Customer</Label>
+                  <Select
+                    value={formData.customerId || 'none'}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({ ...prev, customerId: value }))
+                    }
+                  >
+                    <SelectTrigger className="h-11 touch-manipulation">
+                      <SelectValue placeholder="Not about a customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="min-h-[44px]">
+                        Not about a customer
+                      </SelectItem>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id} className="min-h-[44px]">
+                          {customer.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm sm:text-base">Deal</Label>
+                  <Select
+                    value={formData.dealId || 'none'}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, dealId: value }))}
+                  >
+                    <SelectTrigger className="h-11 touch-manipulation">
+                      <SelectValue placeholder="Not about a deal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="min-h-[44px]">
+                        Not about a deal
+                      </SelectItem>
+                      {deals.map((deal) => (
+                        <SelectItem key={deal.id} value={deal.id} className="min-h-[44px]">
+                          {deal.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="scheduling" className="space-y-4 mt-4">
               {/* Dates */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm sm:text-base">Start Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left h-11 touch-manipulation"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.startDate
-                          ? format(new Date(formData.startDate), 'PPP')
-                          : 'Pick start date'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={formData.startDate ? new Date(formData.startDate) : undefined}
-                        onSelect={(date) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            startDate: date ? date.toISOString().split('T')[0] : '',
-                          }))
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
                 <div className="space-y-2">
                   <Label className="text-sm sm:text-base">Due Date</Label>
                   <Popover>
@@ -479,42 +497,6 @@ export function CreateTaskDialog({
                 />
               </div>
             </TabsContent>
-
-            <TabsContent value="workflow" className="space-y-4 mt-4">
-              {/* Dependencies */}
-              <div className="space-y-2">
-                <Label>Dependencies</Label>
-                <p className="text-sm text-gray-600">
-                  Select tasks that must be completed before this task can start.
-                </p>
-                {/* This would be populated with existing tasks */}
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  <p className="text-sm text-gray-500">
-                    No dependencies selected. Dependencies help establish task order and workflow.
-                  </p>
-                </div>
-              </div>
-
-              {/* Subtask Creation Helper */}
-              {!parentTask && (
-                <div className="space-y-2">
-                  <Label>Task Breakdown</Label>
-                  <p className="text-sm text-gray-600">
-                    After creating this task, you can break it down into smaller subtasks for better
-                    organization.
-                  </p>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="custom" className="space-y-4 mt-4">
-              <div className="space-y-4">
-                <div className="text-center py-8 text-gray-500">
-                  <p>Custom fields will be available in future updates.</p>
-                  <p className="text-sm">Add custom properties specific to your workflow.</p>
-                </div>
-              </div>
-            </TabsContent>
           </Tabs>
 
           <DialogFooter className="mt-6 flex-col sm:flex-row gap-2">
@@ -531,7 +513,7 @@ export function CreateTaskDialog({
               disabled={isLoading || !formData.title}
               className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
             >
-              {isLoading ? 'Creating...' : parentTask ? 'Create Subtask' : 'Create Task'}
+              {isLoading ? 'Creating...' : 'Create Task'}
             </Button>
           </DialogFooter>
         </form>

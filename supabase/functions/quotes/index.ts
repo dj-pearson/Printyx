@@ -8,6 +8,7 @@
 // nothing depends on it.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 /**
  * The company's primary contact, or its first, from an embedded
@@ -103,6 +104,16 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
+
+      // WF-R-05: a quote carries pricing, so this list showed every rep's margin
+      // to everyone. `created_by` is the only user this table names.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      query = applyUserScope(query, 'created_by', scope);
 
       if (status) {
         query = query.eq('status', status);

@@ -13,8 +13,19 @@ import { priceChangeApprovals, enhancedQuotePricing } from '@shared/schema';
 const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf-8');
 const edge = read('supabase/functions/pricing/index.ts');
 const express = read('server/routes-product-pricing.ts');
-const badge = read('client/src/components/pricing/PricingNotificationBadge.tsx');
-const widgets = read('client/src/components/dashboards/PricingDashboardWidgets.tsx');
+// WF-C-04 deleted the two consumers. `price_change_approvals` is read here and
+// written NOWHERE in the tree, so the badge and the widget rendered a queue that
+// could never have a row - and both were already orphans with no importer. What
+// survives below is the assertion about the EDGE FUNCTION's shape, which is what
+// this file is for; the consumer half is replaced by a check that they are gone.
+const existsFile = (p: string) => {
+  try {
+    readFileSync(join(process.cwd(), p), 'utf-8');
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const cols = (t: unknown) =>
   new Set(
@@ -100,19 +111,27 @@ describe('every column named exists', () => {
 });
 
 describe('the shape the widgets destructure', () => {
-  it('approvals come back as { approval, requestedBy } in camelCase', () => {
-    // The badge reads approval.requestedDate and requestedBy.firstName off the
-    // row; PostgREST rows are snake_case, so raw rows render blank.
-    expect(badge).toContain('approval:');
-    expect(widgets).toContain('requestedBy');
+  it('the price-change approvals UI is retired (WF-C-04)', () => {
+    for (const f of [
+      'client/src/components/pricing/PricingNotificationBadge.tsx',
+      'client/src/components/dashboards/PricingDashboardWidgets.tsx',
+      'client/src/pages/PriceApprovals.tsx',
+    ]) {
+      expect(existsFile(f), f).toBe(false);
+    }
+  });
+
+  it('approvals still come back as { approval, requestedBy } in camelCase', () => {
+    // The endpoint is kept - the pricing function has live endpoints beside it -
+    // and a PostgREST row is snake_case, so the mapping still matters to whoever
+    // calls it next.
     const body = branch("resource === 'approvals' && resourceId === 'pending'", 'margin-report');
     expect(body).toContain('requestedDate:');
     expect(body).toContain('firstName:');
     expect(body).toContain('discountPercentage:');
   });
 
-  it('the margin report is { count, report } with the widget"s keys', () => {
-    expect(widgets).toContain('report: Array<');
+  it('the margin report is { count, report } with the keys its caller reads', () => {
     const body = branch("resource === 'margin-report'", 'GET /pricing/company-settings');
     expect(body).toContain('count: report.length');
     for (const key of [

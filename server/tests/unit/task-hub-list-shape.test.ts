@@ -68,8 +68,14 @@ describe('tasks edge function read shape', () => {
   });
 
   it('still accepts camelCase on writes, so the round trip is symmetric', () => {
-    expect(tasksHandler).toMatch(
-      /const src = \(c: string, s: string\) => body\[c\] \?\? body\[s\]/,
+    // WF-P-08 moved the mapper into handlers/_task-mapper.ts, because tasks.ts
+    // imports _shared/http.ts, which reads Deno.env at module load and cannot be
+    // loaded by vitest - so the mapper could not be tested where it stood.
+    const mapper = readFileSync(
+      join(repo, 'supabase/functions/tasks/handlers/_task-mapper.ts'),
+      'utf8',
     );
+    expect(mapper).toMatch(/const src = \(c: string, s: string\) => body\[c\] \?\? body\[s\]/);
+    expect(tasksHandler).toMatch(/from '\.\/_task-mapper\.ts'/);
   });
 });

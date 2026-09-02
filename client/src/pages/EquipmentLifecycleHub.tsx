@@ -71,80 +71,97 @@ import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TableSkeleton, ListSkeleton, LoadingSpinner } from '@/components/ui/skeletons';
 import { useActionParam } from '@/hooks/use-action-param';
+import { useToast } from '@/hooks/use-toast';
 
-// Types
-type EquipmentLifecycleStage = {
+// WF-L-02: these types are the shape the edge function returns, which is the
+// shape the real tables have. They used to name fields that exist on no table -
+// po_number's line_items_count, a delivery driver_name, current_bw_count as an
+// equipment column - and every list on this page was empty anyway, because none
+// of the five endpoints existed on either host.
+type EquipmentLifecycleRow = {
   id: string;
-  equipment_id: string;
-  equipment_serial_number: string;
-  equipment_model: string;
-  equipment_brand: string;
-  current_stage: string;
-  stage_status: string;
-  stage_started_at: string;
-  estimated_completion_date: string;
-  customer_name?: string;
-  progress_percentage: number;
-  next_action_required: string;
-  assigned_to_name?: string;
-  created_at: string;
+  equipmentId: string | null;
+  serialNumber: string | null;
+  manufacturer: string | null;
+  model: string | null;
+  currentStage: string | null;
+  currentLocation: string | null;
+  customerId: string | null;
+  customerName: string | null;
+  purchaseOrderId: string | null;
+  lastServiceDate: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 };
 
 type PurchaseOrder = {
   id: string;
-  po_number: string;
-  vendor_name: string;
-  order_date: string;
-  requested_delivery_date: string;
-  total_amount: number;
-  status: string;
-  customer_name?: string;
-  tracking_number?: string;
-  line_items_count: number;
-  created_at: string;
+  poNumber: string | null;
+  vendorId: string | null;
+  vendorName: string | null;
+  orderDate: string | null;
+  expectedDate: string | null;
+  totalAmount: string | number | null;
+  status: string | null;
+  sourceContractId: string | null;
+  /** Derived: PostgREST has no COUNT per group, so the lines are tallied server-side. */
+  lineItemsCount: number;
+  createdAt: string | null;
 };
 
 type DeliverySchedule = {
   id: string;
-  delivery_id: string;
-  scheduled_date: string;
-  time_window_start: string;
-  time_window_end: string;
-  delivery_type: string;
-  contact_person: string;
-  contact_phone: string;
-  status: string;
-  driver_name?: string;
-  created_at: string;
+  equipmentId: string | null;
+  equipmentModel: string | null;
+  customerId: string | null;
+  customerName: string | null;
+  scheduledDate: string | null;
+  /** ONE free-text window. The table has no start/end pair. */
+  timeWindow: string | null;
+  deliveryType: string | null;
+  contactPerson: string | null;
+  contactPhone: string | null;
+  status: string | null;
+  /** An id: delivery_schedules stores driver_id and there is no drivers table. */
+  driverId: string | null;
+  actualDeliveryTime: string | null;
+  createdAt: string | null;
 };
 
 type Installation = {
   id: string;
-  equipment_model: string;
-  equipment_brand: string;
-  scheduled_date: string;
-  installation_location: string;
-  lead_technician_name?: string;
-  status: string;
-  estimated_duration_hours: number;
-  customer_satisfaction_rating?: number;
-  created_at: string;
+  equipmentId: string | null;
+  equipmentModel: string | null;
+  equipmentBrand: string | null;
+  customerId: string | null;
+  customerName: string | null;
+  technicianId: string | null;
+  leadTechnicianName: string | null;
+  scheduledDate: string | null;
+  /** MINUTES. The old type called the same column hours. */
+  estimatedDurationMinutes: number | null;
+  installationType: string | null;
+  status: string | null;
+  customerSatisfactionRating: number | null;
+  createdAt: string | null;
 };
 
 type AssetTracking = {
   id: string;
-  asset_tag: string;
-  serial_number: string;
-  brand: string;
-  model: string;
-  equipment_type: string;
-  current_status: string;
-  current_location_details: string;
-  customer_name?: string;
-  next_maintenance_due: string;
-  current_bw_count: number;
-  current_color_count: number;
-  created_at: string;
+  assetTag: string | null;
+  serialNumber: string | null;
+  model: string | null;
+  manufacturer: string | null;
+  customerId: string | null;
+  customerName: string | null;
+  status: string | null;
+  locationDescription: string | null;
+  installDate: string | null;
+  /** Null, not 0: a machine that has never been read has produced no count. */
+  latestReadingDate: string | null;
+  bwMeterReading: number | null;
+  colorMeterReading: number | null;
+  createdAt: string | null;
 };
 
 type LifecycleMetrics = {
@@ -152,8 +169,11 @@ type LifecycleMetrics = {
   pendingDeliveries: number;
   scheduledInstallations: number;
   activeAssets: number;
-  averageInstallationTime: number;
-  customerSatisfactionRating: number;
+  /** Null until an installation has recorded a start and an end. */
+  averageInstallationTime: number | null;
+  /** Null until a completed installation has been rated. */
+  customerSatisfactionRating: number | null;
+  unbacked?: string[];
 };
 
 interface StageCard {
@@ -292,6 +312,7 @@ export default function EquipmentLifecycleHub() {
   );
 
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch lifecycle metrics
   const { data: metrics } = useQuery<LifecycleMetrics>({
@@ -303,14 +324,16 @@ export default function EquipmentLifecycleHub() {
 
   // Fetch lifecycle stages
   const { data: lifecycleStages = [], isLoading: stagesLoading } = useQuery<
-    EquipmentLifecycleStage[]
+    EquipmentLifecycleRow[]
   >({
-    queryKey: ['/api/equipment-lifecycle/stages', selectedStage, selectedStatus],
+    queryKey: ['/api/equipment-lifecycle/lifecycle', selectedStage, selectedStatus],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedStage !== 'all') params.append('stage', selectedStage);
       if (selectedStatus !== 'all') params.append('status', selectedStatus);
-      return await apiRequest(`/api/equipment-lifecycle/stages?${params.toString()}`);
+      // /lifecycle, not /stages: /stages is the stage vocabulary and this board
+      // wants equipment rows.
+      return await apiRequest(`/api/equipment-lifecycle/lifecycle?${params.toString()}`);
     },
   });
 
@@ -394,6 +417,12 @@ export default function EquipmentLifecycleHub() {
       queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/metrics'] });
       setIsPODialogOpen(false);
     },
+    onError: (err) =>
+      toast({
+        title: 'Could not save the purchase order',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      }),
   });
 
   const scheduleDeliveryMutation = useMutation({
@@ -407,6 +436,12 @@ export default function EquipmentLifecycleHub() {
       queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/metrics'] });
       setIsDeliveryDialogOpen(false);
     },
+    onError: (err) =>
+      toast({
+        title: 'Could not save the delivery',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      }),
   });
 
   const scheduleInstallationMutation = useMutation({
@@ -420,6 +455,12 @@ export default function EquipmentLifecycleHub() {
       queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/metrics'] });
       setIsInstallationDialogOpen(false);
     },
+    onError: (err) =>
+      toast({
+        title: 'Could not save the installation',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      }),
   });
 
   // Form setup
@@ -506,24 +547,26 @@ export default function EquipmentLifecycleHub() {
   };
 
   const getStageCount = (stage: string) => {
-    return lifecycleStages.filter((s) => s.current_stage === stage).length;
+    return lifecycleStages.filter((s) => s.currentStage === stage).length;
   };
 
   const getStageEquipment = (stage: string) => {
-    return lifecycleStages.filter((s) => s.current_stage === stage);
+    return lifecycleStages.filter((s) => s.currentStage === stage);
   };
 
-  // Calculate average completion for stage cards
-  const getStageCompletion = (stage: string) => {
-    const stageEquipment = getStageEquipment(stage);
-    if (stageEquipment.length === 0) return 0;
-    const total = stageEquipment.reduce((sum, eq) => sum + eq.progress_percentage, 0);
-    return Math.round(total / stageEquipment.length);
+  // WF-L-02: there is no progress_percentage and nothing computes one -
+  // equipment_lifecycle records WHICH stage a machine is at, not how far through
+  // it is. The share of the fleet sitting at a stage is a real number over the
+  // same rows, so that is what the cards show.
+  const getStageShare = (stage: string) => {
+    if (lifecycleStages.length === 0) return 0;
+    return Math.round((getStageCount(stage) / lifecycleStages.length) * 100);
   };
 
-  // Recent activity (derived from lifecycle stages - most recent 5)
-  const recentActivity = lifecycleStages
-    .sort((a, b) => new Date(b.stage_started_at).getTime() - new Date(a.stage_started_at).getTime())
+  // Recent activity, by when the row last moved. There is no stage_started_at
+  // column; updated_at is what actually changes on a transition.
+  const recentActivity = [...lifecycleStages]
+    .sort((a, b) => new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime())
     .slice(0, 5);
 
   // Render functions for different tabs would go here
@@ -773,7 +816,7 @@ export default function EquipmentLifecycleHub() {
                             <SelectContent>
                               {purchaseOrders.map((po) => (
                                 <SelectItem key={po.id} value={po.id}>
-                                  {po.po_number} - {po.vendor_name}
+                                  {po.poNumber} - {po.vendorName}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1130,7 +1173,7 @@ export default function EquipmentLifecycleHub() {
             {lifecycleStageCards.map((stageCard) => {
               const IconComponent = stageCard.icon;
               const count = getStageCount(stageCard.stage);
-              const completion = getStageCompletion(stageCard.stage);
+              const completion = getStageShare(stageCard.stage);
               const isExpanded = expandedStages.has(stageCard.id);
               const stageEquipment = getStageEquipment(stageCard.stage);
 
@@ -1186,15 +1229,17 @@ export default function EquipmentLifecycleHub() {
                             <div className="flex justify-between items-start gap-2">
                               <div className="flex-1">
                                 <p className="font-medium">
-                                  {equipment.equipment_brand} {equipment.equipment_model}
+                                  {equipment.manufacturer} {equipment.model}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {equipment.customer_name} • {equipment.progress_percentage}%
-                                  complete
+                                  {equipment.customerName ?? 'Unassigned'}
+                                  {equipment.serialNumber ? ` • ${equipment.serialNumber}` : ''}
                                 </p>
                               </div>
                               <div className="flex items-center gap-2">
-                                {getStatusIcon(equipment.stage_status)}
+                                {/* current_stage IS the status. There is no separate
+                                    stage_status column and never was. */}
+                                {getStatusIcon(equipment.currentStage ?? '')}
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -1202,8 +1247,8 @@ export default function EquipmentLifecycleHub() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedEquipment({
-                                      id: equipment.equipment_id,
-                                      stage: equipment.current_stage,
+                                      id: equipment.equipmentId ?? '',
+                                      stage: equipment.currentStage ?? '',
                                     });
                                     setTransitionDialogOpen(true);
                                   }}
@@ -1284,26 +1329,29 @@ export default function EquipmentLifecycleHub() {
                             key={activity.id}
                             className="flex items-start space-x-3 p-3 border rounded-lg"
                           >
-                            {getStatusIcon(activity.stage_status)}
+                            {getStatusIcon(activity.currentStage ?? '')}
                             <div className="flex-1 space-y-1 min-w-0">
                               <p className="text-sm font-medium leading-none">
-                                {activity.equipment_brand} {activity.equipment_model}
+                                {activity.manufacturer} {activity.model}
+                              </p>
+                              {/* next_action_required has no column and nothing
+                                  derives one, so the line carries where the machine
+                                  is instead of a next step nobody recorded. */}
+                              <p className="text-xs text-muted-foreground">
+                                {activity.customerName ?? 'Unassigned'}
+                                {activity.currentLocation ? ` • ${activity.currentLocation}` : ''}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {activity.customer_name} • {activity.next_action_required}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(
-                                  new Date(activity.stage_started_at),
-                                  'MMM dd, yyyy • h:mm a',
-                                )}
+                                {activity.updatedAt
+                                  ? format(new Date(activity.updatedAt), 'MMM dd, yyyy • h:mm a')
+                                  : '—'}
                               </p>
                             </div>
                             <Badge
-                              variant={getStageColor(activity.current_stage)}
+                              variant={getStageColor(activity.currentStage ?? '')}
                               className="text-xs flex-shrink-0"
                             >
-                              {activity.current_stage.replace('_', ' ')}
+                              {(activity.currentStage ?? 'unknown').replace('_', ' ')}
                             </Badge>
                           </div>
                         ))}
@@ -1458,30 +1506,34 @@ export default function EquipmentLifecycleHub() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <h3 className="font-medium">
-                                {stage.equipment_brand} {stage.equipment_model}
+                                {stage.manufacturer} {stage.model}
                               </h3>
-                              <Badge variant={getStageColor(stage.current_stage)}>
-                                {stage.current_stage.replace('_', ' ')}
+                              <Badge variant={getStageColor(stage.currentStage ?? '')}>
+                                {(stage.currentStage ?? 'unknown').replace('_', ' ')}
                               </Badge>
-                              {getStatusIcon(stage.stage_status)}
+                              {getStatusIcon(stage.currentStage ?? '')}
                             </div>
+                            {/* WF-L-02: estimated_completion_date, next_action_required
+                                and assigned_to_name were all invented - equipment_lifecycle
+                                has none of them, and nothing anywhere derives them. What
+                                the table does record is where the machine is, when it last
+                                moved, and which order it came from. */}
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <p>Serial: {stage.equipment_serial_number}</p>
-                              <p>Customer: {stage.customer_name || 'Not assigned'}</p>
+                              <p>Serial: {stage.serialNumber ?? '—'}</p>
+                              <p>Customer: {stage.customerName || 'Not assigned'}</p>
                               <p>
-                                Started: {format(new Date(stage.stage_started_at), 'MMM dd, yyyy')}
+                                Last moved:{' '}
+                                {stage.updatedAt
+                                  ? format(new Date(stage.updatedAt), 'MMM dd, yyyy')
+                                  : '—'}
                               </p>
-                              {stage.estimated_completion_date && (
+                              {stage.currentLocation && <p>Location: {stage.currentLocation}</p>}
+                              {stage.lastServiceDate && (
                                 <p>
-                                  Est. Completion:{' '}
-                                  {format(
-                                    new Date(stage.estimated_completion_date),
-                                    'MMM dd, yyyy',
-                                  )}
+                                  Last service:{' '}
+                                  {format(new Date(stage.lastServiceDate), 'MMM dd, yyyy')}
                                 </p>
                               )}
-                              <p>Next Action: {stage.next_action_required}</p>
-                              {stage.assigned_to_name && <p>Assigned: {stage.assigned_to_name}</p>}
                             </div>
                             <div className="mt-3 flex gap-2">
                               <Button
@@ -1489,8 +1541,8 @@ export default function EquipmentLifecycleHub() {
                                 variant="outline"
                                 onClick={() => {
                                   setSelectedEquipment({
-                                    id: stage.equipment_id,
-                                    stage: stage.current_stage,
+                                    id: stage.equipmentId ?? '',
+                                    stage: stage.currentStage ?? '',
                                   });
                                   setTransitionDialogOpen(true);
                                 }}
@@ -1503,8 +1555,8 @@ export default function EquipmentLifecycleHub() {
                                 variant="ghost"
                                 onClick={() => {
                                   setSelectedEquipment({
-                                    id: stage.equipment_id,
-                                    stage: stage.current_stage,
+                                    id: stage.equipmentId ?? '',
+                                    stage: stage.currentStage ?? '',
                                   });
                                   setHistoryDialogOpen(true);
                                 }}
@@ -1514,11 +1566,11 @@ export default function EquipmentLifecycleHub() {
                               </Button>
                             </div>
                           </div>
-                          <div className="text-right flex-shrink-0">
-                            <div className="text-2xl font-bold">{stage.progress_percentage}%</div>
-                            <p className="text-xs text-muted-foreground">Progress</p>
-                            <Progress value={stage.progress_percentage} className="h-2 w-20 mt-2" />
-                          </div>
+                          {/* The progress readout is gone with the column it read.
+                              A percentage through a stage is not something this
+                              data supports, and a Progress bar asserts a
+                              measurement. The stage badge above says where the
+                              machine is, which is what is actually known. */}
                         </div>
                       </div>
                     ))}
@@ -1569,23 +1621,37 @@ export default function EquipmentLifecycleHub() {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <h3 className="font-medium">{po.po_number}</h3>
-                              <Badge variant={getStageColor(po.status)}>{po.status}</Badge>
+                              <h3 className="font-medium">{po.poNumber ?? po.id}</h3>
+                              <Badge variant={getStageColor(po.status ?? '')}>{po.status}</Badge>
                             </div>
+                            {/* customer_name and tracking_number are not columns on
+                                purchase_orders. WF-P-03 gave the table the sale it is
+                                for, so the contract is shown where the invented
+                                customer used to be. */}
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <p>Vendor: {po.vendor_name}</p>
-                              <p>Customer: {po.customer_name || 'Not assigned'}</p>
-                              <p>Order Date: {format(new Date(po.order_date), 'MMM dd, yyyy')}</p>
+                              <p>Vendor: {po.vendorName ?? 'Unknown'}</p>
+                              {po.sourceContractId && <p>Contract: {po.sourceContractId}</p>}
                               <p>
-                                Delivery:{' '}
-                                {format(new Date(po.requested_delivery_date), 'MMM dd, yyyy')}
+                                Order date:{' '}
+                                {po.orderDate
+                                  ? format(new Date(po.orderDate), 'MMM dd, yyyy')
+                                  : '—'}
                               </p>
-                              <p>Items: {po.line_items_count}</p>
-                              {po.tracking_number && <p>Tracking: {po.tracking_number}</p>}
+                              <p>
+                                Expected:{' '}
+                                {po.expectedDate
+                                  ? format(new Date(po.expectedDate), 'MMM dd, yyyy')
+                                  : '—'}
+                              </p>
+                              <p>Items: {po.lineItemsCount}</p>
                             </div>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-xl font-bold">${po.total_amount.toLocaleString()}</p>
+                            <p className="text-xl font-bold">
+                              {po.totalAmount == null
+                                ? '—'
+                                : `$${Number(po.totalAmount).toLocaleString()}`}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -1637,28 +1703,37 @@ export default function EquipmentLifecycleHub() {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <h3 className="font-medium">{delivery.delivery_id}</h3>
-                              <Badge variant={getStageColor(delivery.status)}>
+                              <h3 className="font-medium">
+                                {delivery.customerName ?? 'Unassigned'}
+                                {delivery.equipmentModel ? ` — ${delivery.equipmentModel}` : ''}
+                              </h3>
+                              <Badge variant={getStageColor(delivery.status ?? '')}>
                                 {delivery.status}
                               </Badge>
-                              <Badge variant="outline">{delivery.delivery_type}</Badge>
+                              <Badge variant="outline">{delivery.deliveryType}</Badge>
                             </div>
+                            {/* ONE window: delivery_schedules.time_window is a single
+                                free-text column ("morning"), not a start/end pair. */}
                             <div className="text-sm text-muted-foreground space-y-1">
                               <p>
-                                Date: {format(new Date(delivery.scheduled_date), 'MMM dd, yyyy')}
+                                Date:{' '}
+                                {delivery.scheduledDate
+                                  ? format(new Date(delivery.scheduledDate), 'MMM dd, yyyy')
+                                  : '—'}
                               </p>
+                              {delivery.timeWindow && <p>Window: {delivery.timeWindow}</p>}
                               <p>
-                                Time: {delivery.time_window_start} - {delivery.time_window_end}
+                                Contact: {delivery.contactPerson ?? '—'}
+                                {delivery.contactPhone ? ` (${delivery.contactPhone})` : ''}
                               </p>
-                              <p>
-                                Contact: {delivery.contact_person} ({delivery.contact_phone})
-                              </p>
-                              {delivery.driver_name && <p>Driver: {delivery.driver_name}</p>}
+                              {/* An id, not a name: there is no drivers table to
+                                  resolve driver_id against. */}
+                              {delivery.driverId && <p>Driver id: {delivery.driverId}</p>}
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <Truck className="h-6 w-6 text-muted-foreground" />
-                            {getStatusIcon(delivery.status)}
+                            {getStatusIcon(delivery.status ?? '')}
                           </div>
                         </div>
                       </div>
@@ -1711,23 +1786,29 @@ export default function EquipmentLifecycleHub() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <h3 className="font-medium">
-                                {installation.equipment_brand} {installation.equipment_model}
+                                {installation.equipmentBrand} {installation.equipmentModel}
                               </h3>
-                              <Badge variant={getStageColor(installation.status)}>
+                              <Badge variant={getStageColor(installation.status ?? '')}>
                                 {installation.status}
                               </Badge>
                             </div>
+                            {/* The location lives in site_requirements (jsonb) and is
+                                not surfaced as a column, so it is not shown as one.
+                                estimated_duration is MINUTES - the old type read the
+                                same column and called it hours. */}
                             <div className="text-sm text-muted-foreground space-y-1">
+                              <p>Customer: {installation.customerName ?? 'Unassigned'}</p>
                               <p>
                                 Date:{' '}
-                                {format(new Date(installation.scheduled_date), 'MMM dd, yyyy')}
+                                {installation.scheduledDate
+                                  ? format(new Date(installation.scheduledDate), 'MMM dd, yyyy')
+                                  : '—'}
                               </p>
-                              <p>Location: {installation.installation_location}</p>
-                              <p>Duration: {installation.estimated_duration_hours} hours</p>
-                              <p>
-                                Technician: {installation.lead_technician_name || 'Not assigned'}
-                              </p>
-                              {installation.customer_satisfaction_rating && (
+                              {installation.estimatedDurationMinutes != null && (
+                                <p>Duration: {installation.estimatedDurationMinutes} minutes</p>
+                              )}
+                              <p>Technician: {installation.leadTechnicianName || 'Not assigned'}</p>
+                              {installation.customerSatisfactionRating && (
                                 <div className="flex items-center gap-1">
                                   <span>Rating:</span>
                                   <div className="flex">
@@ -1735,7 +1816,7 @@ export default function EquipmentLifecycleHub() {
                                       <Star
                                         key={i}
                                         className={`h-3 w-3 ${
-                                          i < installation.customer_satisfaction_rating!
+                                          i < installation.customerSatisfactionRating!
                                             ? 'fill-yellow-400 text-yellow-400'
                                             : 'text-gray-300'
                                         }`}
@@ -1748,7 +1829,7 @@ export default function EquipmentLifecycleHub() {
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <Wrench className="h-6 w-6 text-muted-foreground" />
-                            {getStatusIcon(installation.status)}
+                            {getStatusIcon(installation.status ?? '')}
                           </div>
                         </div>
                       </div>
@@ -1788,26 +1869,39 @@ export default function EquipmentLifecycleHub() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <h3 className="font-medium">
-                                {asset.brand} {asset.model}
+                                {asset.manufacturer} {asset.model}
                               </h3>
-                              <Badge variant={getStageColor(asset.current_status)}>
-                                {asset.current_status}
+                              <Badge variant={getStageColor(asset.status ?? '')}>
+                                {asset.status}
                               </Badge>
-                              <Badge variant="outline">{asset.equipment_type}</Badge>
+                              {asset.assetTag && <Badge variant="outline">{asset.assetTag}</Badge>}
                             </div>
+                            {/* next_maintenance_due is not a column and nothing
+                                schedules one, so the install date is shown instead of
+                                a maintenance date nobody set. The meter line reports
+                                the LATEST reading and its date: a machine that has
+                                never been read has no count, and rendering 0 there
+                                would claim it printed nothing. */}
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <p>Asset Tag: {asset.asset_tag}</p>
-                              <p>Serial: {asset.serial_number}</p>
-                              <p>Customer: {asset.customer_name || 'Not assigned'}</p>
-                              <p>Location: {asset.current_location_details}</p>
-                              <p>
-                                Next Maintenance:{' '}
-                                {format(new Date(asset.next_maintenance_due), 'MMM dd, yyyy')}
-                              </p>
-                              <p>
-                                B&W: {asset.current_bw_count.toLocaleString()} • Color:{' '}
-                                {asset.current_color_count.toLocaleString()}
-                              </p>
+                              <p>Serial: {asset.serialNumber ?? '—'}</p>
+                              <p>Customer: {asset.customerName || 'Not assigned'}</p>
+                              {asset.locationDescription && (
+                                <p>Location: {asset.locationDescription}</p>
+                              )}
+                              {asset.installDate && (
+                                <p>
+                                  Installed: {format(new Date(asset.installDate), 'MMM dd, yyyy')}
+                                </p>
+                              )}
+                              {asset.latestReadingDate ? (
+                                <p>
+                                  Meters on {format(new Date(asset.latestReadingDate), 'MMM dd')}:{' '}
+                                  B&amp;W {(asset.bwMeterReading ?? 0).toLocaleString()} • Color{' '}
+                                  {(asset.colorMeterReading ?? 0).toLocaleString()}
+                                </p>
+                              ) : (
+                                <p>No meter reading recorded</p>
+                              )}
                             </div>
                           </div>
                           <div className="text-center flex-shrink-0">

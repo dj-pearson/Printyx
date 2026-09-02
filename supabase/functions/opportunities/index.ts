@@ -191,7 +191,15 @@ export default async function handler(req: Request) {
       let query = admin
         .from('deals')
         .select(
-          '*, deal_stage:deal_stages!stage_id(id, name, color, is_won_stage, is_closing_stage)',
+          // COP-M07: the embed reads NAME AND COLOUR ONLY, which is identity, not
+          // stage configuration. It used to pull is_won_stage and is_closing_stage
+          // as well and nothing read either - mapDealToOpportunity uses
+          // deal_stage?.name and nothing else - so two legacy CONFIG flags were
+          // being carried into a response that never mentioned them. Whether a
+          // stage is won or closing is answered by pipeline_stages
+          // (is_closed_won / is_final_stage); reading the legacy copy here would
+          // have been a second source of truth for a value nobody wanted.
+          '*, deal_stage:deal_stages!stage_id(id, name, color)',
           { count: 'exact' },
         )
         .eq('tenant_id', tenantId)
@@ -243,9 +251,7 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && opportunityId) {
       const { data: deal, error } = await admin
         .from('deals')
-        .select(
-          '*, deal_stage:deal_stages!stage_id(id, name, color, is_won_stage, is_closing_stage)',
-        )
+        .select('*, deal_stage:deal_stages!stage_id(id, name, color)')
         .eq('id', opportunityId)
         .eq('tenant_id', tenantId)
         .single();

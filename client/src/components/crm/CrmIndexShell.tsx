@@ -108,6 +108,15 @@ export interface CrmViewRenderProps {
   onColumnConfigChange: (config: NonNullable<SavedViewData['columnConfig']>) => void;
   /** CRMX-012: whether column changes persist (an active view exists). */
   columnsPersist: boolean;
+  /**
+   * COP-M04: the board's card fields and column totals, from the active view's
+   * board_config. That column has existed since migration 0003 and the
+   * saved-views edge function has always read and written it; nothing in the UI
+   * ever did, so every board card showed the same fixed five fields.
+   */
+  boardConfig: SavedViewData['boardConfig'];
+  onBoardConfigChange: (config: NonNullable<SavedViewData['boardConfig']>) => void;
+  boardConfigPersists: boolean;
   /** COP-M01: selection state, owned by the shell so the bulk toolbar can live in the toolbar. */
   selectedIds: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;
@@ -155,6 +164,7 @@ export function CrmIndexShell({
   } | null>(null);
   // CRMX-012: session-local column override (until saved / view switch).
   const [localColumnConfig, setLocalColumnConfig] = useState<SavedViewData['columnConfig']>(null);
+  const [localBoardConfig, setLocalBoardConfig] = useState<SavedViewData['boardConfig']>(null);
   const [isModified, setIsModified] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveViewName, setSaveViewName] = useState('');
@@ -193,6 +203,7 @@ export function CrmIndexShell({
       );
       setActiveSortConfig(activeView.sortConfig ?? null);
       setLocalColumnConfig(null); // adopt the view's own column set
+      setLocalBoardConfig(null); // and its own board layout
       setIsModified(false);
     }
   }, [activeView?.id]);
@@ -210,6 +221,26 @@ export function CrmIndexShell({
           toast({
             title: 'Could not save columns',
             description: 'Your column changes are applied for this session only.',
+            variant: 'destructive',
+          });
+        }
+      }
+    },
+    [activeView, updateView, toast],
+  );
+
+  // COP-M04: the same resolve-then-persist shape as columns above.
+  const resolvedBoardConfig = localBoardConfig ?? activeView?.boardConfig ?? null;
+  const handleBoardConfigChange = useCallback(
+    async (config: NonNullable<SavedViewData['boardConfig']>) => {
+      setLocalBoardConfig(config);
+      if (activeView) {
+        try {
+          await updateView.mutateAsync({ id: activeView.id, boardConfig: config });
+        } catch {
+          toast({
+            title: 'Could not save the board layout',
+            description: 'Your changes are applied for this session only.',
             variant: 'destructive',
           });
         }
@@ -271,12 +302,15 @@ export function CrmIndexShell({
       sortConfig: activeSortConfig ?? undefined,
       // CRMX-012: carry the current column customization into the new view.
       columnConfig: localColumnConfig ?? activeView?.columnConfig ?? undefined,
+      // COP-M04: carry the current board layout into the new view too.
+      boardConfig: localBoardConfig ?? activeView?.boardConfig ?? undefined,
       visibility: saveVisibility,
     });
     setActiveViewId(result.id);
     setShowSaveDialog(false);
     setSaveViewName('');
     setLocalColumnConfig(null);
+    setLocalBoardConfig(null);
     setIsModified(false);
     toast({ title: 'View created', description: `"${saveViewName}" has been saved.` });
   }, [
@@ -285,6 +319,7 @@ export function CrmIndexShell({
     activeFilters,
     activeSortConfig,
     localColumnConfig,
+    localBoardConfig,
     activeView,
     saveVisibility,
     createView,
@@ -467,6 +502,9 @@ export function CrmIndexShell({
     columnConfig: resolvedColumnConfig,
     onColumnConfigChange: handleColumnConfigChange,
     columnsPersist: Boolean(activeView),
+    boardConfig: resolvedBoardConfig,
+    onBoardConfigChange: handleBoardConfigChange,
+    boardConfigPersists: Boolean(activeView),
     selectedIds,
     onSelectionChange: setSelectedIds,
     onTotalCountChange: setTotalCount,

@@ -120,6 +120,8 @@ jobs:
 
       - name: Edge path-coverage ratchet (PROD-014)
         run: npm run check:edge-coverage
+      - name: Edge boot-load guard (WF-G-01)
+        run: npm run check:edge-boot
       - name: Proxy-override parity (PA-019)
         run: npm run check:proxy-overrides
       - name: Telemetry consent gate (LEGAL-001)

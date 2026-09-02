@@ -40,6 +40,16 @@ import { z } from 'zod';
 import { getCrmObjectConfig } from '@/lib/crm-object-registry';
 import { CustomFieldsSection } from '@/components/custom-fields/CustomFieldsSection';
 
+// WF-C-02: the board's stage shape, as GET /api/pipeline-config/board returns it.
+// `id` is the LEGACY deal_stages.id, which is what the move endpoint expects and
+// what deals group by - COP-E02's two vocabularies, so the type says which one.
+interface PipelineBoardStage {
+  id: string;
+  name?: string;
+  isClosedWon?: boolean;
+  isClosedLost?: boolean;
+}
+
 const createDealSchema = z.object({
   title: z.string().min(1, 'Deal name is required'),
   value: z.string().optional(),
@@ -127,10 +137,51 @@ export default function CrmDealsPage() {
   // These reach parity with what the legacy index pages offered, so the shell
   // is a strict upgrade rather than a trade-off.
 
-  const patchDeal = useCallback(
-    async (id: string, body: Record<string, unknown>) =>
-      apiRequest(`/api/deals/${id}`, 'PUT', body),
-    [],
+  // WF-C-02: Mark Won used to PUT status + actualCloseDate and nothing else, so
+  // the table said Won while the board - which groups strictly by stageId - kept
+  // the deal in whatever column it was already in. The two views of the same deal
+  // disagreed, and the one a manager forecasts from was the wrong one.
+  //
+  // Same key as DealDetail.tsx so the two pages share one cached board.
+  const { data: board } = useQuery<{ stages?: PipelineBoardStage[] }>({
+    queryKey: ['/api/pipeline-config/board'],
+    queryFn: () => apiRequest('/api/pipeline-config/board'),
+  });
+
+  const closingStageId = useCallback(
+    (outcome: 'won' | 'lost'): string | null => {
+      const stages = board?.stages ?? [];
+      const match = stages.find((s) => (outcome === 'won' ? s.isClosedWon : s.isClosedLost));
+      return match?.id ?? null;
+    },
+    [board],
+  );
+
+  // The move endpoint sets status, probability and actual_close_date from the
+  // stage's own flags and fires deal.stage_changed (WF-C-01), so this is one call,
+  // not a patch plus a move.
+  const closeDeal = useCallback(
+    async (id: string, outcome: 'won' | 'lost') => {
+      const toStageId = closingStageId(outcome);
+      if (!toStageId) {
+        // Refusing beats writing a status the board cannot show. A pipeline with
+        // no closed-won stage is a configuration problem, and silently patching
+        // status is what produced the disagreement in the first place.
+        throw new Error(
+          `This pipeline has no Closed ${outcome === 'won' ? 'Won' : 'Lost'} stage. ` +
+            'Add one in Pipeline Configuration first.',
+        );
+      }
+      return apiRequest(`/api/pipeline-config/deals/${id}/move`, 'POST', { toStageId });
+    },
+    [closingStageId],
+  );
+
+  const closeDeals = useCallback(
+    async (ids: string[], outcome: 'won' | 'lost') => {
+      await Promise.all(ids.map((id) => closeDeal(id, outcome)));
+    },
+    [closeDeal],
   );
 
   const afterMutate = useCallback(
@@ -173,7 +224,16 @@ export default function CrmDealsPage() {
         icon: CheckCircle2,
         isAvailable: (record) => record.status === 'open' || !record.status,
         onClick: async (record) => {
-          await patchDeal(record.id, { status: 'won', actualCloseDate: new Date().toISOString() });
+          try {
+            await closeDeal(record.id, 'won');
+          } catch (err) {
+            toast({
+              title: 'Could not mark the deal won',
+              description: err instanceof Error ? err.message : undefined,
+              variant: 'destructive',
+            });
+            return;
+          }
           afterMutate('Deal marked won');
         },
       },
@@ -183,7 +243,16 @@ export default function CrmDealsPage() {
         icon: XCircle,
         isAvailable: (record) => record.status === 'open' || !record.status,
         onClick: async (record) => {
-          await patchDeal(record.id, { status: 'lost', actualCloseDate: new Date().toISOString() });
+          try {
+            await closeDeal(record.id, 'lost');
+          } catch (err) {
+            toast({
+              title: 'Could not mark the deal lost',
+              description: err instanceof Error ? err.message : undefined,
+              variant: 'destructive',
+            });
+            return;
+          }
           afterMutate('Deal marked lost');
         },
       },
@@ -198,7 +267,7 @@ export default function CrmDealsPage() {
         },
       },
     ],
-    [patchDeal, afterMutate, toast],
+    [closeDeal, afterMutate, toast],
   );
 
   const bulkActions = useMemo<BulkAction[]>(
@@ -208,11 +277,16 @@ export default function CrmDealsPage() {
         label: 'Mark Won',
         icon: CheckCircle2,
         onClick: async (ids) => {
-          await Promise.all(
-            ids.map((id) =>
-              patchDeal(id, { status: 'won', actualCloseDate: new Date().toISOString() }),
-            ),
-          );
+          try {
+            await closeDeals(ids, 'won');
+          } catch (err) {
+            toast({
+              title: 'Could not mark the deals won',
+              description: err instanceof Error ? err.message : undefined,
+              variant: 'destructive',
+            });
+            return;
+          }
           afterMutate(`${ids.length} deal(s) marked won`);
         },
       },
@@ -221,11 +295,16 @@ export default function CrmDealsPage() {
         label: 'Mark Lost',
         icon: XCircle,
         onClick: async (ids) => {
-          await Promise.all(
-            ids.map((id) =>
-              patchDeal(id, { status: 'lost', actualCloseDate: new Date().toISOString() }),
-            ),
-          );
+          try {
+            await closeDeals(ids, 'lost');
+          } catch (err) {
+            toast({
+              title: 'Could not mark the deals lost',
+              description: err instanceof Error ? err.message : undefined,
+              variant: 'destructive',
+            });
+            return;
+          }
           afterMutate(`${ids.length} deal(s) marked lost`);
         },
       },
@@ -241,7 +320,7 @@ export default function CrmDealsPage() {
         },
       },
     ],
-    [patchDeal, afterMutate],
+    [closeDeals, afterMutate, toast],
   );
 
   const renderTable = useCallback(
@@ -273,6 +352,9 @@ export default function CrmDealsPage() {
         pipelineId={selectedPipelineId}
         search={props.search}
         activeFilters={props.activeFilters}
+        boardConfig={props.boardConfig}
+        onBoardConfigChange={props.onBoardConfigChange}
+        boardConfigPersists={props.boardConfigPersists}
       />
     ),
     [selectedPipelineId],

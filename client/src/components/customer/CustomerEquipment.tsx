@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -119,6 +121,88 @@ export function CustomerEquipment({ customerId, customerName }: CustomerEquipmen
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // WF-L-09: the other direction. A machine that is already an equipment row can
+  // start an onboarding checklist from here, and the device is added with its
+  // equipment_id set, so the checklist and the machine are the same thing from
+  // the first click rather than two records somebody reconciles later.
+  const startOnboarding = useMutation({
+    mutationFn: async (item: Equipment) => {
+      const checklist = await apiRequest('/api/onboarding/checklists', 'POST', {
+        customerId,
+        checklistTitle:
+          `${item.manufacturer ?? 'Equipment'} ${item.modelNumber ?? ''} - ${customerName}`.trim(),
+        installationType: 'new_installation',
+        status: 'draft',
+      });
+      const checklistId = checklist?.id;
+      if (!checklistId) throw new Error('The checklist was created without an id');
+
+      await apiRequest(`/api/onboarding/checklists/${checklistId}/equipment`, 'POST', {
+        equipmentId: item.id,
+        manufacturer: item.manufacturer,
+        model: item.modelNumber,
+        serialNumber: item.serialNumber,
+        assetTag: item.assetTag,
+        targetIpAddress: item.ipAddress,
+        specificLocation: item.locationDescription,
+      });
+      return checklistId as string;
+    },
+    onSuccess: (checklistId) => setLocation(`/onboarding/${checklistId}`),
+    onError: (error: Error) =>
+      toast({
+        title: 'Could not start onboarding',
+        description: error.message,
+        variant: 'destructive',
+      }),
+  });
+
+  const [addOpen, setAddOpen] = useState(false);
+  const EMPTY_EQUIPMENT = {
+    serialNumber: '',
+    assetTag: '',
+    manufacturer: '',
+    modelNumber: '',
+    locationDescription: '',
+    ipAddress: '',
+    installDate: '',
+    meterType: '',
+  };
+  const [addForm, setAddForm] = useState(EMPTY_EQUIPMENT);
+
+  const addEquipment = useMutation({
+    mutationFn: (values: typeof EMPTY_EQUIPMENT) =>
+      apiRequest('/api/equipment', 'POST', {
+        customerId,
+        serialNumber: values.serialNumber.trim(),
+        assetTag: values.assetTag.trim() || null,
+        manufacturer: values.manufacturer.trim() || null,
+        modelNumber: values.modelNumber.trim() || null,
+        locationDescription: values.locationDescription.trim() || null,
+        ipAddress: values.ipAddress.trim() || null,
+        installDate: values.installDate || null,
+        meterType: values.meterType || null,
+      }),
+    onSuccess: () => {
+      // The list is a query, so it refreshes here rather than on a reload.
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/equipment`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment'] });
+      setAddOpen(false);
+      setAddForm(EMPTY_EQUIPMENT);
+      toast({ title: 'Equipment added' });
+    },
+    onError: (error: Error) =>
+      toast({
+        title: 'Could not add the equipment',
+        // A duplicate serial is the commonest one and is a real answer.
+        description: error.message,
+        variant: 'destructive',
+      }),
+  });
 
   // Fetch equipment for this customer
   const { data: equipment = [], isLoading } = useQuery<Equipment[]>({
@@ -292,7 +376,12 @@ export function CustomerEquipment({ customerId, customerName }: CustomerEquipmen
                   <SelectItem value="retired">Retired</SelectItem>
                 </SelectContent>
               </Select>
-              <Dialog>
+              {/* WF-L-04: this rendered "Equipment registration form would go
+                  here..." while POST /equipment sat there with no caller in any
+                  client tree. The fields are the ones that endpoint actually
+                  accepts, checked against the real columns - nothing here is a
+                  field the table cannot hold. */}
+              <Dialog open={addOpen} onOpenChange={setAddOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Plus className="h-4 w-4 mr-2" />
@@ -301,11 +390,135 @@ export function CustomerEquipment({ customerId, customerName }: CustomerEquipmen
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Add New Equipment</DialogTitle>
+                    <DialogTitle>Add equipment for {customerName}</DialogTitle>
                   </DialogHeader>
-                  <div className="p-4">
-                    <p className="text-gray-600">Equipment registration form would go here...</p>
-                  </div>
+                  <form
+                    className="space-y-4"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!addForm.serialNumber.trim()) {
+                        toast({
+                          title: 'Serial number required',
+                          description:
+                            'It is the key meter readings, service and contracts all join on.',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+                      addEquipment.mutate(addForm);
+                    }}
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium" htmlFor="add-serial">
+                          Serial number
+                        </label>
+                        <Input
+                          id="add-serial"
+                          value={addForm.serialNumber}
+                          onChange={(e) =>
+                            setAddForm((f) => ({ ...f, serialNumber: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium" htmlFor="add-asset-tag">
+                          Asset tag
+                        </label>
+                        <Input
+                          id="add-asset-tag"
+                          value={addForm.assetTag}
+                          onChange={(e) => setAddForm((f) => ({ ...f, assetTag: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium" htmlFor="add-manufacturer">
+                          Manufacturer
+                        </label>
+                        <Input
+                          id="add-manufacturer"
+                          value={addForm.manufacturer}
+                          onChange={(e) =>
+                            setAddForm((f) => ({ ...f, manufacturer: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium" htmlFor="add-model">
+                          Model number
+                        </label>
+                        <Input
+                          id="add-model"
+                          value={addForm.modelNumber}
+                          onChange={(e) =>
+                            setAddForm((f) => ({ ...f, modelNumber: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium" htmlFor="add-location">
+                          Location
+                        </label>
+                        <Input
+                          id="add-location"
+                          value={addForm.locationDescription}
+                          onChange={(e) =>
+                            setAddForm((f) => ({ ...f, locationDescription: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium" htmlFor="add-ip">
+                          IP address
+                        </label>
+                        <Input
+                          id="add-ip"
+                          value={addForm.ipAddress}
+                          onChange={(e) => setAddForm((f) => ({ ...f, ipAddress: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium" htmlFor="add-install-date">
+                          Install date
+                        </label>
+                        <Input
+                          id="add-install-date"
+                          type="date"
+                          value={addForm.installDate}
+                          onChange={(e) =>
+                            setAddForm((f) => ({ ...f, installDate: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium" htmlFor="add-meter-type">
+                          Meter type
+                        </label>
+                        <Select
+                          value={addForm.meterType}
+                          onValueChange={(value) => setAddForm((f) => ({ ...f, meterType: value }))}
+                        >
+                          <SelectTrigger id="add-meter-type">
+                            <SelectValue placeholder="Not set" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bw_only">Black and white only</SelectItem>
+                            <SelectItem value="color">Colour</SelectItem>
+                            <SelectItem value="scan">Scan</SelectItem>
+                            <SelectItem value="fax">Fax</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={addEquipment.isPending}>
+                        {addEquipment.isPending ? 'Saving…' : 'Add equipment'}
+                      </Button>
+                    </div>
+                  </form>
                 </DialogContent>
               </Dialog>
             </div>
@@ -598,6 +811,16 @@ export function CustomerEquipment({ customerId, customerName }: CustomerEquipmen
                 </div>
               </div>
             )}
+            <div className="flex justify-end border-t pt-4">
+              <Button
+                variant="outline"
+                disabled={startOnboarding.isPending}
+                onClick={() => startOnboarding.mutate(selectedEquipment)}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                {startOnboarding.isPending ? 'Starting…' : 'Start onboarding checklist'}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       )}

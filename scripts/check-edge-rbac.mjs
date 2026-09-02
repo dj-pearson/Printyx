@@ -61,20 +61,31 @@ function hasRoleOnlyPlatformAdminCheck(source) {
 }
 
 const SIGNALS = [
-  // 1. The shared helper: JWT level check, or a DB permission lookup.
+  // 1. The shared helper: JWT level check, or a permission code off the claim.
+  //
+  // WF-P-05 added _shared/permission-claim.ts, which answers the claim-only
+  // question rather than falling through to the DB lookup _shared/rbac.ts wants a
+  // hook for. It is a gate; a function using it was being reported as ungated.
   {
     kind: 'shared-rbac',
-    test: (s) => /_shared\/rbac(\.ts)?['"]|requireRoleLevel|requirePermission/.test(s),
+    test: (s) =>
+      /_shared\/(rbac|permission-claim)(\.ts)?['"]|requireRoleLevel|requirePermission|hasPermissionClaim/.test(
+        s,
+      ),
   },
   // 2. Platform-admin only, excluding the cross-tenant override above.
   { kind: 'platform-admin', test: hasRoleOnlyPlatformAdminCheck },
   // 3. The blog functions' hybrid: a permission string off app_metadata.
+  //
+  // It must be TESTED, not merely mentioned. A bare `app_metadata?.permissions`
+  // used to count, so mobile-auth - which WRITES the claim as part of WF-R-03 and
+  // gates on nothing - was reported as restricted. Reading a claim is not
+  // enforcing it, and this check exists to find the ones that enforce.
   {
     kind: 'permission-string',
     test: (s) =>
-      /app_metadata\??\.\s*permissions|permissions\s*\)?\s*\.includes\(\s*['"][a-z_]+\.[a-z_]+/.test(
-        s,
-      ),
+      /permissions\s*\)?\s*\.includes\(\s*['"][a-z_]+\.[a-z_]+/.test(s) ||
+      /app_metadata\??\.\s*permissions[\s\S]{0,200}?\.(includes|some|indexOf)\(/.test(s),
   },
   // 4. A rejection message that names a role or a permission. Several functions
   // gate through a local helper (supabase/functions/admin has its own
@@ -90,6 +101,16 @@ const SIGNALS = [
   },
 ];
 
+// WF-R-04 added a third answer to "what restricts this function". A list
+// endpoint every role must be able to REACH - a rep has to open /deals - cannot be
+// closed with a level gate without exporting the lockout SEC-EDGE-002 warns about.
+// What it can do is narrow the ROWS: _shared/scope.ts resolves the caller's tier
+// from the WF-R-03 level claim and filters the query to the users they own or
+// manage. That is a real restriction and reporting it as "open to every role"
+// understates it, so it is classified separately rather than folded into `gated`
+// (it gates no ENDPOINT) or left in `openToAllRoles` (it is not unrestricted).
+const ROW_SCOPED = /_shared\/scope(\.ts)?['"]|applyUserScope|applyCustomerScope/;
+
 const skip = new Set(['_shared', 'tests', '__tests__']);
 const dirs = fs
   .readdirSync(ROOT, { withFileTypes: true })
@@ -97,33 +118,68 @@ const dirs = fs
   .map((e) => e.name)
   .sort();
 
+/**
+ * COMMENTS ARE STRIPPED FIRST, and that is load-bearing. Signal 4 matches a
+ * rejection MESSAGE, and prose describing a gate reads exactly like one: a note
+ * saying a row is "required for downstream tenant/role resolution" classified
+ * supabase/functions/signup - a sign-in path with no gate and no possible gate -
+ * as restricted. Signal 3 has the same problem in the other direction: a function
+ * that WRITES app_metadata.permissions is not one that TESTS it. This is the same
+ * lesson check:edge-coverage carries in its header, applied a layer down.
+ */
+function stripComments(src) {
+  // LINE-ORIENTED on purpose, twice over. A `/* ... */` scan over the whole file
+  // matches the first `/*` inside a STRING or a regex literal and then blanks
+  // everything up to the next `*/` - in monitoring-clients that swallowed the real
+  // platform-admin gate and reported a correctly gated function as open. And the
+  // stripping has to preserve line COUNT, because hasRoleOnlyPlatformAdminCheck
+  // decides from a +/-3 line window. So: only comment lines are removed, and each
+  // becomes an empty line.
+  return src
+    .split('\n')
+    .map((line) => {
+      const t = line.trim();
+      if (t.startsWith('//') || t.startsWith('/*') || t.startsWith('*')) return '';
+      return line;
+    })
+    .join('\n');
+}
+
 function readAll(dir) {
   const out = [];
   (function walk(d) {
     for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, entry.name);
       if (entry.isDirectory()) walk(p);
-      else if (/\.(ts|tsx|js)$/.test(entry.name)) out.push(fs.readFileSync(p, 'utf8'));
+      else if (/\.(ts|tsx|js)$/.test(entry.name))
+        out.push(stripComments(fs.readFileSync(p, 'utf8')));
     }
   })(path.join(ROOT, dir));
   return out.join('\n');
 }
 
 const gated = [];
+const rowScoped = [];
 const ungated = [];
 for (const dir of dirs) {
   const source = readAll(dir);
   const kinds = SIGNALS.filter((s) => s.test(source)).map((s) => s.kind);
   if (kinds.length > 0) gated.push({ fn: dir, kinds });
+  else if (ROW_SCOPED.test(source)) rowScoped.push(dir);
   else ungated.push(dir);
 }
 
 const args = process.argv.slice(2);
 
 if (args.includes('--list')) {
-  console.log(`${dirs.length} edge function(s): ${gated.length} gated, ${ungated.length} not.\n`);
+  console.log(
+    `${dirs.length} edge function(s): ${gated.length} gated, ${rowScoped.length} row-scoped, ` +
+      `${ungated.length} neither.\n`,
+  );
   console.log('GATED');
   for (const g of gated) console.log(`    ${g.fn}  (${g.kinds.join(', ')})`);
+  console.log('\nROW-SCOPED (reachable by every role, rows narrowed to the caller)');
+  for (const r of rowScoped) console.log(`    ${r}`);
   console.log('\nOPEN TO EVERY ROLE IN THE TENANT');
   for (const u of ungated) console.log(`    ${u}`);
   process.exit(0);
@@ -144,14 +200,20 @@ if (args.includes('--update-baseline')) {
           'member of the tenant may call every endpoint they serve. Tenant isolation is ' +
           'separate and holds. This list only shrinks — gate one and tighten it. A NEW edge ' +
           'function may not be added here without saying why in its review; the point of the ' +
-          'ratchet is that shipping one ungated is a decision, not an oversight.',
+          'ratchet is that shipping one ungated is a decision, not an oversight. ' +
+          'rowScoped is the third class WF-R-04 added: reachable by every role, but the ' +
+          'ROWS are narrowed to the caller tier by _shared/scope.ts. Moving an entry ' +
+          'from openToAllRoles to rowScoped is progress; moving one back is not.',
         openToAllRoles: ungated,
+        rowScoped,
       },
       null,
       2,
     ) + '\n',
   );
-  console.log(`✓ Baseline updated: ${ungated.length} ungated edge function(s) recorded.`);
+  console.log(
+    `✓ Baseline updated: ${ungated.length} ungated, ${rowScoped.length} row-scoped edge function(s).`,
+  );
   process.exit(0);
 }
 

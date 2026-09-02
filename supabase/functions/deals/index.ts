@@ -19,6 +19,7 @@ import {
   resolveStageId,
   type DealStageRow,
 } from '../_shared/deal-stage.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 /** The tenant's pipeline stages. Small table; read once per request. */
 async function loadStages(admin: any, tenantId: string): Promise<DealStageRow[]> {
@@ -240,8 +241,13 @@ export default async function handler(req: Request) {
       (user.user_metadata?.tenantId as string) ||
       (user.user_metadata?.tenant_id as string);
     const headerTenantId = req.headers.get('x-tenant-id') || undefined;
+    // WF-R-03: the role claim carries the uppercase role CODE, so comparing it to
+    // a lowercase string could never fire and this rested on a flag nothing wrote.
+    const platformRoleCode = String(user.app_metadata?.role ?? '').toUpperCase();
     const isPlatformAdmin =
-      user.app_metadata?.isPlatformAdmin === true || user.app_metadata?.role === 'platform_admin';
+      user.app_metadata?.isPlatformAdmin === true ||
+      platformRoleCode === 'PLATFORM_ADMIN' ||
+      platformRoleCode === 'ROOT_ADMIN';
     if (headerTenantId && jwtTenantId && headerTenantId !== jwtTenantId && !isPlatformAdmin) {
       return createCorsResponse(
         { error: 'Tenant access denied', code: 'TENANT_ACCESS_DENIED' },
@@ -704,6 +710,17 @@ export default async function handler(req: Request) {
         .order(q.sortColumn, { ascending: q.ascending })
         .range(q.offset, q.offset + q.limit - 1);
 
+      // WF-R-04: the board showed every deal in the tenant to every rep. The
+      // `ownerId` filter below is a caller-supplied preference and never was a
+      // control - it is applied on top of this, not instead of it.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      query = applyUserScope(query, ['owner_id', 'created_by_id'], scope);
+
       const stages = await loadStages(admin, tenantId);
 
       // `stage` carries a slug from the hardcoded picker, so match it against the
@@ -767,7 +784,60 @@ export default async function handler(req: Request) {
       }
 
       const stageNames = buildStageNameMap(await loadStages(admin, tenantId));
-      return createCorsResponse(toDealResponse(deal, stageNames), 200, req);
+
+      // WF-C-09: the contract this deal became. Read by contract_id when the
+      // deal carries the back-link, and by deal_id otherwise - the two sides are
+      // written together but a back-fill can leave one of them behind, and a
+      // detail page that shows nothing because only one direction was populated
+      // is the kind of gap nobody reports. Best-effort: a deal that has no
+      // contract is the normal case and must not 500 here.
+      let contract = null;
+      try {
+        const linked = deal.contract_id
+          ? await admin
+              .from('contracts')
+              .select(
+                'id, contract_number, status, start_date, end_date, acquisition_type, lease_id',
+              )
+              .eq('id', deal.contract_id)
+              .eq('tenant_id', tenantId)
+              .maybeSingle()
+          : await admin
+              .from('contracts')
+              .select(
+                'id, contract_number, status, start_date, end_date, acquisition_type, lease_id',
+              )
+              .eq('deal_id', dealId)
+              .eq('tenant_id', tenantId)
+              .limit(1)
+              .maybeSingle();
+        contract = linked?.data ?? null;
+      } catch (err) {
+        console.error('Error loading the deal contract:', err);
+      }
+
+      // WF-C-05: the lease, when the deal was paid for on somebody else's paper.
+      // Read through the contract's lease_id rather than by proposal, because a
+      // contract is what a lease attaches to and one deal can produce only one.
+      // Best-effort for the same reason the contract read is.
+      let lease = null;
+      try {
+        if (contract?.lease_id) {
+          const { data } = await admin
+            .from('leases')
+            .select(
+              'id, lease_number, lease_name, status, lease_type, monthly_payment, term, total_amount, start_date, end_date, first_payment_date, lessor_name',
+            )
+            .eq('id', contract.lease_id)
+            .eq('tenant_id', tenantId)
+            .maybeSingle();
+          lease = data ?? null;
+        }
+      } catch (err) {
+        console.error('Error loading the deal lease:', err);
+      }
+
+      return createCorsResponse({ ...toDealResponse(deal, stageNames), contract, lease }, 200, req);
     }
 
     // POST /deals - Create deal
@@ -895,13 +965,23 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update deal' }, 500, req);
       }
 
-      // CRMX-008a: the deal.stage_changed trigger seam.
+      // CRMX-008a: the deal.stage_changed trigger seam, DIRECT-API PATH ONLY.
       //
       // It used to live only in server/routes-deals.ts, under a prefix this
       // edge function is proxied for, so it ran on neither host and no workflow
       // ever enrolled on a stage change. Dedupe by deal + new stage so a
       // repeated PUT does not enrol twice; Safe so automation can never fail
       // the update.
+      //
+      // WF-C-01: NO CLIENT REACHES THIS BRANCH. It fires only when a caller
+      // sends stage_id to PATCH /api/deals/:id, and nothing in any client tree
+      // does - the Kanban board and the deal page both post to
+      // POST /api/pipeline-config/deals/:id/move, which is where the UI's stage
+      // changes actually happen and which now dispatches the same event with the
+      // same `stage:<deal>:<stage>` dedupe key. Kept, not deleted, because an
+      // API client patching stage_id directly is a legitimate path and should
+      // still trigger automation; the dedupe key is what stops the two from
+      // enrolling one move twice.
       if (updateData.stage_id) {
         await dispatchWorkflowEventSafe(
           admin,

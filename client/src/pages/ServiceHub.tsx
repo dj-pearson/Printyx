@@ -23,25 +23,26 @@ import PhoneInTicketCreator from '@/components/service/PhoneInTicketCreator';
 import TechnicianTicketWorkflow from '@/components/service/TechnicianTicketWorkflow';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Phone,
-  MapPin,
-  Clock,
-  Users,
-  AlertTriangle,
-  CheckCircle,
-  Wrench,
-  Plus,
-  Search,
-  Filter,
-  RefreshCw,
   Activity,
-  TrendingUp,
-  Calendar,
-  User,
+  AlertTriangle,
   Building,
-  Timer,
-  Printer,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Filter,
+  MapPin,
   Monitor,
+  Phone,
+  Plus,
+  Printer,
+  RefreshCw,
+  Search,
+  Smartphone,
+  Timer,
+  TrendingUp,
+  User,
+  Users,
+  Wrench,
 } from 'lucide-react';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 // KpiSummaryBar removed - using inline KPI cards
@@ -55,6 +56,14 @@ import { useMobileDetection } from '@/hooks/useExternalIntegrations';
 import { MobileServiceDispatch } from '@/components/mobile/MobileServiceDispatch';
 import { CustomerEquipmentProfile } from '@/components/CustomerEquipmentProfile';
 import { useActionParam } from '@/hooks/use-action-param';
+import {
+  PRIORITY_LABELS,
+  SERVICE_TICKET_PRIORITIES,
+  SERVICE_TICKET_STATUSES,
+  STATUS_LABELS,
+  normalizeTicketPriority,
+  normalizeTicketStatus,
+} from '@shared/service-ticket-vocabulary';
 
 /**
  * AUDIT-013: the `service_tickets` table stores FKs (customer_id, equipment_id,
@@ -86,7 +95,6 @@ export default function ServiceHub() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [technicianFilter, setTechnicianFilter] = useState('all');
-  const [showIntelligentRouting, setShowIntelligentRouting] = useState(false);
   const [showEquipmentProfile, setShowEquipmentProfile] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
@@ -219,38 +227,32 @@ export default function ServiceHub() {
       ticket.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.equipmentModel?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
+    // WF-V-05: compare NORMALIZED values. A row written before the backfill
+    // carries 'in-progress', and comparing the raw strings makes it invisible to
+    // the filter that is meant to find it.
+    const matchesStatus =
+      statusFilter === 'all' || normalizeTicketStatus(ticket.status) === statusFilter;
+    const matchesPriority =
+      priorityFilter === 'all' || normalizeTicketPriority(ticket.priority) === priorityFilter;
     const matchesTechnician =
       technicianFilter === 'all' || ticket.technicianId === technicianFilter;
     return matchesSearch && matchesStatus && matchesPriority && matchesTechnician;
   });
 
-  // Intelligent routing suggestions
-  const getIntelligentRoutingSuggestions = (ticket: ServiceHubTicket) => {
-    // Simulate AI-powered routing based on technician skills, location, and workload
-    const suggestions = [
-      {
-        technicianId: 'tech-1',
-        name: 'John Smith',
-        score: 95,
-        reason: 'Expert in this equipment type, 5 min away',
-        skills: ['Canon', 'Color Printers'],
-        estimatedArrival: '30 min',
-        currentWorkload: 'Light',
-      },
-      {
-        technicianId: 'tech-2',
-        name: 'Sarah Johnson',
-        score: 87,
-        reason: 'Available immediately, nearby location',
-        skills: ['General Repair', 'Maintenance'],
-        estimatedArrival: '45 min',
-        currentWorkload: 'Medium',
-      },
-    ];
-    return suggestions.sort((a, b) => b.score - a.score);
-  };
+  // WF-V-03: the options are the technicians who actually hold tickets here. This
+  // select used to list tech-1/tech-2/tech-3 - John Smith, Sarah Johnson, Mike
+  // Wilson - ids belonging to no row, so picking one filtered the board to nothing.
+  const technicianOptions = Array.from(
+    filteredTickets
+      .filter((t) => t.technicianId)
+      .reduce(
+        (acc, t) => acc.set(t.technicianId as string, t.assignedTechnician || 'Unnamed technician'),
+        new Map<string, string>(),
+      )
+      .entries(),
+  )
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const filteredPhoneInTickets = phoneInTickets.filter((ticket: any) => {
     const matchesSearch =
@@ -348,6 +350,21 @@ export default function ServiceHub() {
               </Button>
             </div>
           )}
+
+        {/* WF-V-02: the way to the check-in console. It used to be reachable only
+            by typing /mobile-field-service, where it was wired to a hard-coded
+            'ticket-123'; the bare path is the caller's own assigned queue now. */}
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            className="min-h-[44px]"
+            onClick={() => setLocation('/mobile-field-service')}
+          >
+            <Smartphone className="mr-2 h-4 w-4" />
+            My service calls
+          </Button>
+        </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -656,7 +673,6 @@ export default function ServiceHub() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4 mb-6">
-                  {/* Enhanced Search and Smart Routing */}
                   <div className="flex flex-col sm:flex-row gap-3">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -670,11 +686,11 @@ export default function ServiceHub() {
                     </div>
                     <Button
                       variant="outline"
-                      onClick={() => setShowIntelligentRouting(true)}
+                      onClick={() => setLocation('/service-dispatch')}
                       className="w-full sm:w-auto"
                     >
                       <Activity className="h-4 w-4 mr-2" />
-                      Smart Routing
+                      Dispatch board
                     </Button>
                   </div>
 
@@ -685,14 +701,16 @@ export default function ServiceHub() {
                         <SelectValue placeholder="Filter by status" />
                       </SelectTrigger>
                       <SelectContent>
+                        {/* WF-V-05: the one vocabulary, served by
+                            GET /service-tickets/vocabulary. This list used to be
+                            written out here and offered `new`, which nothing
+                            writes - so filtering by it always came back empty. */}
                         <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="new">New</SelectItem>
-                        <SelectItem value="assigned">Assigned</SelectItem>
-                        <SelectItem value="en_route">En Route</SelectItem>
-                        <SelectItem value="on_site">On Site</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                        {SERVICE_TICKET_STATUSES.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {STATUS_LABELS[status]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
 
@@ -701,12 +719,14 @@ export default function ServiceHub() {
                         <SelectValue placeholder="Filter by priority" />
                       </SelectTrigger>
                       <SelectContent>
+                        {/* `emergency` was offered here and matched nothing:
+                            it is an alias of urgent, not a level of its own. */}
                         <SelectItem value="all">All Priorities</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="urgent">Urgent</SelectItem>
-                        <SelectItem value="emergency">Emergency</SelectItem>
+                        {SERVICE_TICKET_PRIORITIES.map((priority) => (
+                          <SelectItem key={priority} value={priority}>
+                            {PRIORITY_LABELS[priority]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
 
@@ -716,9 +736,11 @@ export default function ServiceHub() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Technicians</SelectItem>
-                        <SelectItem value="tech-1">John Smith</SelectItem>
-                        <SelectItem value="tech-2">Sarah Johnson</SelectItem>
-                        <SelectItem value="tech-3">Mike Wilson</SelectItem>
+                        {technicianOptions.map((tech) => (
+                          <SelectItem key={tech.id} value={tech.id}>
+                            {tech.name}
+                          </SelectItem>
+                        ))}
                         <SelectItem value="unassigned">Unassigned</SelectItem>
                       </SelectContent>
                     </Select>
@@ -929,111 +951,6 @@ export default function ServiceHub() {
                   onClose={() => setShowTechWorkflow(false)}
                 />
               )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Intelligent Routing Modal */}
-        <Dialog open={showIntelligentRouting} onOpenChange={setShowIntelligentRouting}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold flex items-center gap-2">
-                <Activity className="h-5 w-5 text-blue-600" />
-                Smart Routing - AI-Powered Technician Assignment
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Service Intelligence:</strong> Our AI analyzes technician skills,
-                  location, workload, and customer history to suggest optimal assignments.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900">
-                  Unassigned Tickets Requiring Attention
-                </h3>
-                {filteredTickets
-                  .filter((t) => !t.technicianId || t.technicianId === 'unassigned')
-                  .slice(0, 3)
-                  .map((ticket) => {
-                    const suggestions = getIntelligentRoutingSuggestions(ticket);
-                    return (
-                      <Card key={ticket.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-4">
-                            <div>
-                              <h4 className="font-medium">
-                                #{ticket.id.slice(0, 8)} - {ticket.customerName}
-                              </h4>
-                              <p className="text-sm text-gray-600">{ticket.description}</p>
-                              <div className="flex gap-2 mt-2">
-                                <Badge
-                                  variant={getPriorityBadgeVariant(ticket.priority || 'medium')}
-                                >
-                                  {ticket.priority || 'medium'}
-                                </Badge>
-                                <Badge variant="outline">
-                                  {ticket.equipmentModel || 'General'}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-3">
-                            <h5 className="font-medium text-sm text-gray-700">
-                              Recommended Technicians
-                            </h5>
-                            {suggestions.map((suggestion, index) => (
-                              <div
-                                key={suggestion.technicianId}
-                                className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
-                              >
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                      <div
-                                        className={`w-3 h-3 rounded-full ${
-                                          index === 0
-                                            ? 'bg-green-500'
-                                            : index === 1
-                                              ? 'bg-yellow-500'
-                                              : 'bg-gray-500'
-                                        }`}
-                                      />
-                                      <span className="font-medium">{suggestion.name}</span>
-                                      <Badge variant="secondary" className="text-xs">
-                                        {suggestion.score}% match
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                  <p className="text-sm text-gray-600 mt-1">{suggestion.reason}</p>
-                                  <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                                    <span>⏱️ ETA: {suggestion.estimatedArrival}</span>
-                                    <span>💼 Workload: {suggestion.currentWorkload}</span>
-                                    <span>🔧 Skills: {suggestion.skills.join(', ')}</span>
-                                  </div>
-                                </div>
-                                <Button size="sm" variant={index === 0 ? 'default' : 'outline'}>
-                                  Assign
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-
-                {filteredTickets.filter((t) => !t.technicianId || t.technicianId === 'unassigned')
-                  .length === 0 && (
-                  <div className="text-center py-8">
-                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                    <p className="text-gray-600">All tickets are currently assigned!</p>
-                  </div>
-                )}
-              </div>
             </div>
           </DialogContent>
         </Dialog>

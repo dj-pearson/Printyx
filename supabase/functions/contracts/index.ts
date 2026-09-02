@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { accessibleCustomerIds, applyCustomerScope, resolveScope } from '../_shared/scope.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -72,6 +73,18 @@ export default async function handler(req: Request) {
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
+      // WF-R-05, through the CUSTOMER: `contracts` names no user at all, so the
+      // account's owner is the only ownership it can express. There is no
+      // row-level column to narrow to when that set overflows one filter.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      const customers = await accessibleCustomerIds(admin, tenantId, scope);
+      query = applyCustomerScope(query, 'customer_id', customers, scope, null);
+
       if (customerId) {
         query = query.eq('customer_id', customerId);
       }
@@ -79,6 +92,13 @@ export default async function handler(req: Request) {
       if (status) {
         query = query.eq('status', status);
       }
+
+      // WF-C-09: "which contract did this deal become". DealDetail.tsx asks it
+      // per deal; WF-P-04's Needs Ordering queue asks it across a tenant.
+      const dealId = url.searchParams.get('dealId') || url.searchParams.get('deal_id');
+      const proposalId = url.searchParams.get('proposalId') || url.searchParams.get('proposal_id');
+      if (dealId) query = query.eq('deal_id', dealId);
+      if (proposalId) query = query.eq('proposal_id', proposalId);
 
       const { data: contracts, error, count } = await query;
 

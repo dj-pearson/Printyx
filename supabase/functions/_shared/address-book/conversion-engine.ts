@@ -15,7 +15,7 @@ import type {
   SerializeResult,
 } from './types.ts';
 import { getVendorAdapter } from './vendors.ts';
-import type { SerializeOptions } from './vendors/_shared/options';
+import type { SerializeOptions } from './options.ts';
 
 export interface ConvertResult {
   file: SerializeResult;

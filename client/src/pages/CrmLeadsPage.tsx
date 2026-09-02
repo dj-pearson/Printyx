@@ -106,6 +106,9 @@ export default function CrmLeadsPage() {
         objectType="leads"
         search={props.search}
         activeFilters={props.activeFilters}
+        boardConfig={props.boardConfig}
+        onBoardConfigChange={props.onBoardConfigChange}
+        boardConfigPersists={props.boardConfigPersists}
       />
     ),
     [],

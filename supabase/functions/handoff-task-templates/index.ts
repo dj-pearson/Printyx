@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { normalizeHandoffType } from '../_shared/sales-handoff.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -43,15 +44,22 @@ export default async function handler(req: Request) {
 
     // GET /handoff-task-templates - List templates
     if (req.method === 'GET' && !templateId) {
-      const category = url.searchParams.get('category');
+      // WF-C-06: the real columns are template_name and handoff_type. This
+      // ordered by `name` and filtered on `category`, neither of which exists, so
+      // the list was a 42703 on every request and the two writes below dropped
+      // four keys each - name, description, category and default_assignee_role -
+      // while never setting template_name or handoff_type, both NOT NULL. Nothing
+      // caught it because nothing called it.
+      const handoffType =
+        url.searchParams.get('handoffType') || url.searchParams.get('handoff_type');
 
       let query = admin
         .from('handoff_task_templates')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('name', { ascending: true });
+        .order('template_name', { ascending: true });
 
-      if (category) query = query.eq('category', category);
+      if (handoffType) query = query.eq('handoff_type', handoffType);
 
       const { data: templates, error } = await query;
 
@@ -82,16 +90,33 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && !templateId) {
       const body = await req.json();
 
+      // Both are NOT NULL, so a 400 naming the field beats a 23502 the caller
+      // reads as a server fault.
+      const missing: string[] = [];
+      if (!(body.templateName || body.template_name || body.name)) missing.push('templateName');
+      if (!normalizeHandoffType(body.handoffType ?? body.handoff_type ?? body.category)) {
+        missing.push('handoffType');
+      }
+      if (missing.length > 0) {
+        return createCorsResponse(
+          { error: `Missing required field(s): ${missing.join(', ')}`, missing },
+          400,
+          req,
+        );
+      }
+
       const { data: template, error } = await admin
         .from('handoff_task_templates')
         .insert({
           tenant_id: tenantId,
-          name: body.name,
-          description: body.description,
-          category: body.category,
+          template_name: body.templateName || body.template_name || body.name,
+          handoff_type: normalizeHandoffType(
+            body.handoffType ?? body.handoff_type ?? body.category,
+          ),
+          description: body.description ?? null,
           tasks: body.tasks || [],
-          default_assignee_role: body.defaultAssigneeRole || body.default_assignee_role,
           is_active: body.isActive !== false,
+          is_default: body.isDefault === true,
           created_by: user.id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -113,11 +138,10 @@ export default async function handler(req: Request) {
       const { data: template, error } = await admin
         .from('handoff_task_templates')
         .update({
-          name: body.name,
+          template_name: body.templateName ?? body.template_name ?? body.name,
+          handoff_type: normalizeHandoffType(body.handoffType ?? body.handoff_type),
           description: body.description,
-          category: body.category,
           tasks: body.tasks,
-          default_assignee_role: body.defaultAssigneeRole || body.default_assignee_role,
           is_active: body.isActive ?? body.is_active,
           updated_at: new Date().toISOString(),
         })

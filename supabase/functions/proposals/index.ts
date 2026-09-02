@@ -55,6 +55,20 @@ import { z } from 'https://esm.sh/zod@3.22.4';
 import { handleCors } from '../_shared/cors.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
+import { hasPricingApproval, needsPricingApproval } from './_send-gate.ts';
+import {
+  FINANCED_ACQUISITION_TYPES,
+  normalizeAcquisitionType,
+  planLeaseFromProposal,
+} from './_acquisition.ts';
+import { createHandoff } from '../_shared/handoff-create.ts';
+import { handoffTypeFor } from '../_shared/sales-handoff.ts';
+import {
+  PROPOSAL_SENT_STAGE_NAMES,
+  resolveProposalSentStageId,
+  resolveWonStageId,
+  type CanonicalStage,
+} from '../_shared/canonical-stage.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { renderProposalPDF } from './_pdf.ts';
@@ -62,6 +76,7 @@ import { sendEmail } from '../email-marketing/_sendgrid.ts';
 import { renderTemplate, type MergeData } from '../_shared/proposal-merge.ts';
 
 import { effectiveDiscountPct, lineNetTotal, toDiscountedLine } from '../_shared/quote-math.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 const log = createLogger('proposals');
 
@@ -569,14 +584,9 @@ function isShareExpired(p: { share_expires_at?: string | null }): boolean {
 // (pricing_settings.require_approval_below_margin) — that needs manager approval.
 // Managers (anything not sales-only) bypass.
 
+/** WF-C-04: the decision lives in _send-gate.ts, where a test can drive it. */
 function isSalesOnlyRole(ctx: SB): boolean {
-  const rawRole = String(
-    (ctx.supabaseUser as any)?.app_metadata?.role ??
-      (ctx.supabaseUser as any)?.user_metadata?.role ??
-      '',
-  ).toLowerCase();
-  const salesOnly = ['sales_rep', 'salesperson', 'sales'];
-  return salesOnly.some((r) => rawRole === r || rawRole.endsWith(r));
+  return needsPricingApproval((ctx as any)?.supabaseUser);
 }
 
 async function getMinMarginPolicy(db: SB, tenantId: string): Promise<number> {
@@ -699,23 +709,42 @@ async function getFirstStageId(db: SB, tenantId: string): Promise<string | null>
   return data?.id ?? null;
 }
 
-async function getWonStageId(db: SB, tenantId: string): Promise<string | null> {
+async function loadCanonicalStages(db: SB, tenantId: string): Promise<CanonicalStage[]> {
   const { data } = await db
-    .from('deal_stages')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .eq('is_won_stage', true)
-    .limit(1)
-    .maybeSingle();
-  if (data?.id) return data.id;
-  const byName = await getStageIdByName(db, tenantId, 'Closed Won');
-  if (byName) return byName;
-  return await getFirstStageId(db, tenantId);
+    .from('pipeline_stages')
+    .select(
+      'id, legacy_stage_id, name, display_name, "order", is_closed_won, is_closed_lost, is_active',
+    )
+    .eq('tenant_id', tenantId);
+  return (data ?? []) as CanonicalStage[];
+}
+
+async function getWonStageId(db: SB, tenantId: string): Promise<string | null> {
+  // WF-C-08. This used to read deal_stages.is_won_stage, then match the NAME
+  // 'Closed Won', then fall back to the FIRST stage. The pipeline configuration
+  // UI edits pipeline_stages only and never mirrors back, so a tenant that
+  // renamed its closed-won stage - or added a second one - had every accepted
+  // proposal land at the front of the pipeline. A won deal in "Prospecting" is
+  // counted as open pipeline by the forecast, which is worse than not moving it.
+  //
+  // Same resolution as pipeline-config's /deals/:id/move, via
+  // _shared/canonical-stage.ts, and a fixture test asserts the two agree.
+  const canonical = resolveWonStageId(await loadCanonicalStages(db, tenantId));
+  if (canonical) return canonical;
+
+  // A tenant whose stages predate the bridge has no canonical rows at all.
+  return await getStageIdByName(db, tenantId, 'Closed Won');
 }
 
 async function getProposalSentStageId(db: SB, tenantId: string): Promise<string | null> {
-  // "Presentation Scheduled" is a safe mid-pipeline fallback.
-  for (const name of ['Contract Sent', 'Proposal Sent', 'Presentation Scheduled']) {
+  // WF-C-08, and the asymmetry with getWonStageId is deliberate: a proposal has
+  // genuinely been sent, so the deal has to sit somewhere, and the front of the
+  // pipeline is where a deal with no better stage belongs. A WON deal has no
+  // such excuse.
+  const canonical = resolveProposalSentStageId(await loadCanonicalStages(db, tenantId));
+  if (canonical) return canonical;
+
+  for (const name of PROPOSAL_SENT_STAGE_NAMES) {
     const id = await getStageIdByName(db, tenantId, name);
     if (id) return id;
   }
@@ -819,19 +848,52 @@ async function generateContractNumber(db: SB, tenantId: string): Promise<string>
   return `${prefix}${String(next).padStart(4, '0')}`;
 }
 
+async function generateLeaseNumber(db: SB, tenantId: string): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `LS-${year}-`;
+  const { data } = await db
+    .from('leases')
+    .select('lease_number')
+    .eq('tenant_id', tenantId)
+    .like('lease_number', `${prefix}%`)
+    .order('lease_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let next = 1;
+  if (data?.lease_number) {
+    const n = parseInt(String(data.lease_number).replace(prefix, ''), 10);
+    if (!isNaN(n)) next = n + 1;
+  }
+  return `${prefix}${String(next).padStart(4, '0')}`;
+}
+
 async function createContractFromProposal(
   db: SB,
   proposal: any,
   tenantId: string,
+  dealId?: string | null,
 ): Promise<string | null> {
   // Deleted Express code wrote fields (contract_type, auto_renewal,
   // billing_frequency, assigned_salesperson_id, notes) that don't exist in the
   // actual contracts table (verified against migration 0000). We only insert
   // the columns that exist.
+  //
+  // WF-C-09: NO start_date OR end_date. This used to write today plus a
+  // 36-month term nobody had agreed to. The end date is the damaging one -
+  // contracts.tsx drives its "expiring soon" badge off it and
+  // supabase/functions/contract-renewal builds its entire queue by filtering on
+  // it, so an invented term produced invented renewals for every accepted
+  // proposal. The term is set when the equipment is accepted (WF-L-08); until
+  // then both are null, which those filters correctly skip.
+  //
+  // WF-C-05: acquisition_type is now carried from the proposal, and a lease or
+  // finance proposal drafts the leases row below. A proposal that states nothing
+  // still gets a contract and no lease - that is the honest default, not a guess
+  // between cash, lease and finance.
   const contractNumber = await generateContractNumber(db, tenantId);
-  const startDate = new Date();
-  const endDate = new Date();
-  endDate.setMonth(endDate.getMonth() + 36); // default 36-month term
+
+  const acquisitionType = normalizeAcquisitionType(proposal.acquisition_type);
 
   const { data: created } = await db
     .from('contracts')
@@ -839,14 +901,120 @@ async function createContractFromProposal(
       tenant_id: tenantId,
       customer_id: proposal.business_record_id,
       contract_number: contractNumber,
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString(),
+      deal_id: dealId ?? null,
+      proposal_id: proposal.id ?? null,
+      acquisition_type: acquisitionType,
       status: 'active',
     })
     .select('id')
     .maybeSingle();
 
-  return created?.id ?? null;
+  const contractId = created?.id ?? null;
+
+  // WF-C-05: a lease or finance proposal puts the machine on somebody else's
+  // paper, and until now acceptance created a contract and nothing else - so a
+  // leased fleet looked exactly like a cash sale. The lease lands as a 'pending'
+  // draft for the rep to correct in LeaseForm, and only when the proposal states
+  // a term, a monthly payment and a first payment date; short of that the reason
+  // is logged rather than the terms invented. See _acquisition.ts.
+  if (contractId && acquisitionType && FINANCED_ACQUISITION_TYPES.includes(acquisitionType)) {
+    try {
+      const plan = planLeaseFromProposal(proposal, {
+        tenantId,
+        contractId,
+        createdBy: proposal.created_by ?? 'system',
+        leaseNumber: await generateLeaseNumber(db, tenantId),
+      });
+      if (plan.row) {
+        const { data: lease, error: leaseError } = await db
+          .from('leases')
+          .insert(plan.row)
+          .select('id')
+          .maybeSingle();
+        if (leaseError) throw leaseError;
+        if (lease?.id) {
+          await db
+            .from('contracts')
+            .update({ lease_id: lease.id, updated_at: new Date().toISOString() })
+            .eq('id', contractId)
+            .eq('tenant_id', tenantId);
+        }
+      } else {
+        log.info(
+          { proposalId: proposal.id, acquisitionType, reason: plan.reason },
+          'lease_not_created',
+        );
+      }
+    } catch (leaseErr) {
+      // The contract is real and the sale happened. A lease that could not be
+      // drafted is a gap the rep fills in LeaseForm, not a reason to fail the
+      // acceptance the customer already made.
+      log.warn({ proposalId: proposal.id, err: String(leaseErr) }, 'lease_create_failed');
+    }
+  }
+
+  // The back-link, so the join works from either end. Best-effort for the same
+  // reason the whole sync is: a missed link must not fail the acceptance.
+  if (contractId && dealId) {
+    await db
+      .from('deals')
+      .update({ contract_id: contractId, updated_at: new Date().toISOString() })
+      .eq('id', dealId)
+      .eq('tenant_id', tenantId);
+  }
+
+  // WF-C-06: operations has to hear about the sale. Before this nothing created a
+  // handoff anywhere - the tables existed, an Express router served them with no
+  // caller, and the edge function queried a relation that does not exist. Keyed
+  // to the contract so acceptance and the closed-won move, which fire from the
+  // same sale seconds apart, cannot produce two.
+  if (contractId) {
+    try {
+      const { data: existingContracts } = await db
+        .from('contracts')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('customer_id', proposal.business_record_id);
+
+      let dealMotion: string | null = null;
+      if (dealId) {
+        const { data: deal } = await db
+          .from('deals')
+          .select('deal_motion')
+          .eq('id', dealId)
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+        dealMotion = (deal?.deal_motion as string) ?? null;
+      }
+
+      await createHandoff(db, {
+        tenantId,
+        customerId: proposal.business_record_id,
+        contractId,
+        opportunityId: dealId ?? null,
+        salesRepId: proposal.assigned_to || proposal.created_by || 'system',
+        handoffType: handoffTypeFor({
+          dealMotion,
+          // The contract this acceptance just made is in the count, so an account
+          // whose only contract is this one is a new customer.
+          existingContractCount: Math.max(0, (existingContracts?.length ?? 1) - 1),
+        }),
+        contractSummary: {
+          contractValue: Number(proposal.total_amount ?? 0),
+          acquisitionType: acquisitionType ?? null,
+          proposalNumber: proposal.proposal_number ?? null,
+        },
+        salesNotes: proposal.internal_notes ?? null,
+        createdBy: proposal.created_by ?? null,
+      });
+    } catch (handoffErr) {
+      // The sale happened. A missing handoff is a queue entry to add, not a
+      // reason to fail an acceptance the customer already made.
+      log.warn({ proposalId: proposal.id, err: String(handoffErr) }, 'handoff_create_failed');
+    }
+  }
+
+  return contractId;
 }
 
 // Field map for PATCH/PUT proposal update — matches Express
@@ -872,6 +1040,12 @@ const PROPOSAL_FIELD_MAP: Record<string, string> = {
   estimatedEndDate: 'estimated_end_date',
   executiveSummary: 'executive_summary',
   assignedTo: 'assigned_to',
+  // WF-C-05
+  acquisitionType: 'acquisition_type',
+  fundingPartner: 'funding_partner',
+  financeTermMonths: 'finance_term_months',
+  financeMonthlyPayment: 'finance_monthly_payment',
+  firstPaymentDate: 'first_payment_date',
 };
 
 function buildProposalUpdate(body: Record<string, unknown>): Record<string, unknown> {
@@ -956,10 +1130,14 @@ export default async function handler(req: Request) {
             .eq('id', proposal.id)
             .eq('tenant_id', tenantId);
           try {
-            await upsertDealForProposal(db, proposal, proposal.created_by ?? 'public', tenantId, {
-              forceWon: true,
-            });
-            await createContractFromProposal(db, proposal, tenantId);
+            const acceptedDealId = await upsertDealForProposal(
+              db,
+              proposal,
+              proposal.created_by ?? 'public',
+              tenantId,
+              { forceWon: true },
+            );
+            await createContractFromProposal(db, proposal, tenantId, acceptedDealId);
           } catch (syncErr) {
             log.warn({ requestId, err: String(syncErr) }, 'public_accept_sync_failed');
           }
@@ -1507,6 +1685,16 @@ export default async function handler(req: Request) {
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
+      // WF-R-04: a quote is the rep's own work, and this list showed every rep's
+      // pricing - including the dealer cost and margin on each - to everyone.
+      const scope = await resolveScope(db, {
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
+        appMetadata: ctx.supabaseUser.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      query = applyUserScope(query, ['assigned_to', 'created_by'], scope);
+
       if (status) query = query.eq('status', status);
       if (businessRecordId) query = query.eq('business_record_id', businessRecordId);
       if (search) {
@@ -1608,6 +1796,14 @@ export default async function handler(req: Request) {
         tax_amount: body.taxAmount || body.tax_amount || 0,
         total_amount: body.totalAmount || body.total_amount || 0,
         valid_until: body.validUntil || body.valid_until || null,
+        // WF-C-05. ?? not ||, because a zero-month term is a mistake worth
+        // storing as it was entered rather than silently becoming null.
+        acquisition_type:
+          normalizeAcquisitionType(body.acquisitionType ?? body.acquisition_type) ?? null,
+        funding_partner: body.fundingPartner ?? body.funding_partner ?? null,
+        finance_term_months: body.financeTermMonths ?? body.finance_term_months ?? null,
+        finance_monthly_payment: body.financeMonthlyPayment ?? body.finance_monthly_payment ?? null,
+        first_payment_date: body.firstPaymentDate ?? body.first_payment_date ?? null,
         internal_notes: body.notes || body.internalNotes || body.internal_notes || null,
         assigned_to: body.assignedTo || body.assigned_to || ctx.userId,
         created_by: ctx.userId,
@@ -1896,20 +2092,27 @@ export default async function handler(req: Request) {
       const status = String(body.status);
 
       // QUOTE-006/016: a sales-only rep cannot send a quote that violates the
-      // pricing policy without manager approval (body.approved bypasses, for an
-      // approval flow). Margin is computed on the discounted subtotal (which is
-      // already net of per-line discounts), and the max-discount gate evaluates
-      // the EFFECTIVE discount — per-line discounts plus the quote-level one,
-      // relative to the gross subtotal — so spreading a discount across lines
-      // cannot dodge the policy.
-      if (status === 'sent' && isSalesOnlyRole(ctx) && !body.approved) {
+      // pricing policy without manager approval. Margin is computed on the
+      // discounted subtotal (which is already net of per-line discounts), and the
+      // max-discount gate evaluates the EFFECTIVE discount — per-line discounts
+      // plus the quote-level one, relative to the gross subtotal — so spreading a
+      // discount across lines cannot dodge the policy.
+      //
+      // WF-C-04: `body.approved` NO LONGER BYPASSES ANYTHING. It was set by
+      // QuoteBuilder from the sender's own isManager flag, so the check asked the
+      // caller whether the caller was allowed - anyone able to post JSON could
+      // send any quote, and a rep whose deal-desk exception had actually been
+      // approved still could not, because approval only moved
+      // approval_requests.status. The bypass is now the stamp the deal-desk
+      // function writes on final approve, read from the row itself.
+      if (status === 'sent' && isSalesOnlyRole(ctx)) {
         const { data: cur } = await db
           .from('proposals')
-          .select('subtotal, discount_amount, total_dealer_cost')
+          .select('subtotal, discount_amount, total_dealer_cost, pricing_approval_id')
           .eq('id', subMatch[1])
           .eq('tenant_id', ctx.tenantId)
           .maybeSingle();
-        if (cur) {
+        if (cur && !hasPricingApproval(cur)) {
           const revenue = toNum(cur.subtotal) - toNum(cur.discount_amount);
           const cost = toNum(cur.total_dealer_cost);
           const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
@@ -1999,13 +2202,19 @@ export default async function handler(req: Request) {
         }
       }
       if (status === 'accepted') {
+        // WF-C-09: the deal id is threaded into the contract, so the contract
+        // records which deal produced it. The upsert is still best-effort, so a
+        // failure there leaves dealId null rather than skipping the contract.
+        let acceptedDealId: string | null = null;
         try {
-          await upsertDealForProposal(db, proposal, ctx.userId, ctx.tenantId, { forceWon: true });
+          acceptedDealId = await upsertDealForProposal(db, proposal, ctx.userId, ctx.tenantId, {
+            forceWon: true,
+          });
         } catch (syncError) {
           log.warn({ requestId, err: syncError }, 'Deal upsert failed (status=accepted)');
         }
         try {
-          await createContractFromProposal(db, proposal, ctx.tenantId);
+          await createContractFromProposal(db, proposal, ctx.tenantId, acceptedDealId);
         } catch (syncError) {
           log.warn({ requestId, err: syncError }, 'Contract create failed (status=accepted)');
         }

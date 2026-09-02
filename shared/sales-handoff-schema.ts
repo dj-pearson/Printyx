@@ -292,95 +292,18 @@ export const handoffTasks = pgTable(
   }),
 );
 
-// ==================== Implementation Projects ====================
-
-export const implementationProjects = pgTable(
-  'implementation_projects',
-  {
-    id: varchar('id')
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    tenantId: varchar('tenant_id').notNull(),
-    customerId: varchar('customer_id').notNull(),
-    handoffId: varchar('handoff_id'),
-
-    // Project Details
-    projectName: varchar('project_name', { length: 255 }).notNull(),
-    projectType: varchar('project_type', { length: 50 }).notNull(), // installation, migration, expansion, training
-    status: varchar('status', { length: 50 }).notNull().default('planning'), // planning, scheduled, in_progress, completed, on_hold, cancelled
-
-    // Timeline
-    plannedStartDate: timestamp('planned_start_date'),
-    plannedEndDate: timestamp('planned_end_date'),
-    actualStartDate: timestamp('actual_start_date'),
-    actualEndDate: timestamp('actual_end_date'),
-    goLiveDate: timestamp('go_live_date'),
-
-    // Team
-    projectManagerId: varchar('project_manager_id'),
-    teamMembers: text('team_members').array(),
-
-    // Milestones
-    milestones: jsonb('milestones').$type<
-      Array<{
-        name: string;
-        description: string;
-        dueDate: string;
-        completedDate?: string;
-        status: string;
-        deliverables?: string[];
-      }>
-    >(),
-
-    // Progress Tracking
-    completionPercentage: integer('completion_percentage').default(0),
-    currentPhase: varchar('current_phase', { length: 100 }),
-
-    // Risk Management
-    risks: jsonb('risks').$type<
-      Array<{
-        description: string;
-        severity: string;
-        probability: string;
-        mitigation: string;
-        status: string;
-      }>
-    >(),
-
-    issues: jsonb('issues').$type<
-      Array<{
-        description: string;
-        priority: string;
-        assignedTo: string;
-        status: string;
-        resolution?: string;
-      }>
-    >(),
-
-    // Customer Communication
-    lastCustomerUpdate: timestamp('last_customer_update'),
-    nextCustomerUpdate: timestamp('next_customer_update'),
-    customerSatisfaction: integer('customer_satisfaction'), // 1-5 scale
-
-    // Budget (if applicable)
-    budgetedHours: decimal('budgeted_hours', { precision: 8, scale: 2 }),
-    actualHours: decimal('actual_hours', { precision: 8, scale: 2 }),
-
-    // Notes
-    projectNotes: text('project_notes'),
-    lessonsLearned: text('lessons_learned'),
-
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  },
-  (table) => ({
-    tenantIdx: index('implementation_projects_tenant_idx').on(table.tenantId),
-    customerIdx: index('implementation_projects_customer_idx').on(table.customerId),
-    statusIdx: index('implementation_projects_status_idx').on(table.status),
-    pmIdx: index('implementation_projects_pm_idx').on(table.projectManagerId),
-    goLiveDateIdx: index('implementation_projects_go_live_idx').on(table.goLiveDate),
-  }),
-);
+// ==================== Implementation Projects: RETIRED (WF-P-07) ====================
+//
+// `implementation_projects` used to be declared here. It was one of two project
+// models in this repo and it was the one nothing could reach: no client tree
+// named /api/implementation-projects, supabase/functions/implementation-projects
+// was in docs/unreferenced-edge-fns-baseline.json, and the Express router that
+// served it (server/routes-sales-handoff.ts) had no importer either. `projects`
+// in shared/schema.ts survives and now carries contract_id, handoff_id,
+// project_type and milestones - the three things this model had that it did not.
+//
+// Migration 0080 drops the table, keeping it under a retired name if it somehow
+// holds rows. docs/WF-P-07-project-model-decision.md has the comparison.
 
 // ==================== Zod Schemas ====================
 
@@ -402,12 +325,6 @@ export const insertHandoffTaskSchema = createInsertSchema(handoffTasks).omit({
   updatedAt: true,
 });
 
-export const insertImplementationProjectSchema = createInsertSchema(implementationProjects).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
 // ==================== Type Exports ====================
 
 export type SalesHandoffChecklist = typeof salesHandoffChecklists.$inferSelect;
@@ -418,6 +335,3 @@ export type InsertHandoffTaskTemplate = z.infer<typeof insertHandoffTaskTemplate
 
 export type HandoffTask = typeof handoffTasks.$inferSelect;
 export type InsertHandoffTask = z.infer<typeof insertHandoffTaskSchema>;
-
-export type ImplementationProject = typeof implementationProjects.$inferSelect;
-export type InsertImplementationProject = z.infer<typeof insertImplementationProjectSchema>;

@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { buildSearchOr, COMPANY_LIST_SPEC, parseCrmListQuery } from '../_shared/crm-list-query.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 /**
  * camelCase aliases for the companies columns the CRM surfaces read.
@@ -173,6 +174,20 @@ export default async function handler(req: Request) {
         .select(selectQuery, { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order(q.sortColumn, { ascending: q.ascending });
+
+      // WF-R-05. `companies` records no account owner - 37 columns, and the only
+      // user among them is `created_by` (`business_owner` is free text naming the
+      // CUSTOMER's proprietor). owner_id and assigned_sales_rep belong to
+      // `business_records`, the canonical table this one duplicates, so this is the
+      // creator and is a weaker control than ownership. Rows with no creator stay
+      // visible at every tier because these lists arrive by import.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      query = applyUserScope(query, 'created_by', scope, { includeUnowned: true });
 
       const searchOr = buildSearchOr(COMPANY_LIST_SPEC, q.search);
       if (searchOr) {

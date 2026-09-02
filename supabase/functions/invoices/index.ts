@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { parseBulkIds, parseBulkUpdate } from '../_shared/bulk-ops.ts';
+import { accessibleCustomerIds, applyCustomerScope, resolveScope } from '../_shared/scope.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -74,6 +75,19 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
+
+      // WF-R-04, scoped through the CUSTOMER because this table carries no owner
+      // of its own: `sales_rep` holds an E-Automate name string, not a user id, so
+      // filtering on it would compare a person's name to a uuid and return
+      // nothing. The account's owner is the real answer to "whose invoice is this".
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      const customers = await accessibleCustomerIds(admin, tenantId, scope);
+      query = applyCustomerScope(query, 'customer_id', customers, scope, 'created_by');
 
       if (customerId) {
         query = query.eq('customer_id', customerId);

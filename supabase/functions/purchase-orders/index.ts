@@ -3,6 +3,43 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import {
+  LINE_ITEM_TABLE,
+  PENDING_PO_ID,
+  RECEIPT_COLUMNS,
+  buildLineItemPatch,
+  buildLineItemRow,
+  lineItemDescription,
+  lineItemsFromBody,
+  lineItemsSubtotal,
+} from './_line-items.ts';
+import {
+  buildPayableFromReceipt,
+  inventoryMovements,
+  planReceipt,
+  serialCaptureRequired,
+  statusAfterReceipt,
+} from './_receiving.ts';
+import {
+  lifecycleRowForReceivedUnit,
+  outstandingSerialUnits,
+  planSerialCapture,
+} from './_serialization.ts';
+import {
+  ORDERABLE_CONTRACT_STATUSES,
+  buildNeedsOrderingRow,
+  contractsNeedingOrders,
+  orderableLines,
+} from './_needs-ordering.ts';
+import { isUniqueViolation } from '../_shared/postgrest-errors.ts';
+import {
+  applyUserScope,
+  resolveScope,
+  rowInScope,
+  scopeRoleLevel,
+  unscopedAtLevel,
+} from '../_shared/scope.ts';
+import { hasPermissionClaim } from '../_shared/permission-claim.ts';
 
 // Valid PO statuses
 const PO_STATUSES = [
@@ -62,6 +99,57 @@ export default async function handler(req: Request) {
     // ============================================================
 
     // GET /purchase-orders/:id/line-items - Get line items for a PO
+    // WF-R-06. One scope for the whole function: the list narrows with it and the
+    // write branches below check individual rows against it.
+    //
+    // UNSCOPED FROM LEVEL 4, not from 7 like every other list. An approver has to
+    // see every order waiting on them, including ones raised outside their team,
+    // and an approval queue that hides half its rows is worse than no queue.
+    const poScope = unscopedAtLevel(
+      await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      }),
+      4,
+    );
+
+    /**
+     * WF-P-05: one permission vocabulary, on both hosts.
+     *
+     * Three competed before this. The sidebar reads operations.po.* (which
+     * navigation-permissions.ts derives from the module blob and the level, and
+     * which a seeded OPERATIONS_MANAGER therefore holds); dev Express checked
+     * inventory.po.*, held by NO seeded role, so dev denied every non-admin; and
+     * this function checked nothing at all, so production allowed everyone. The
+     * codes below are the sidebar's, which is the set the WF-R-03 claim now
+     * carries - see _shared/permission-expansion.ts for why it did not before.
+     */
+    const denyWithoutPermission = (code: string) => {
+      if (hasPermissionClaim(user.app_metadata, code)) return null;
+      return createCorsResponse(
+        {
+          error: `This action requires ${code}`,
+          code: 'MISSING_PERMISSION',
+          details: { required: code },
+        },
+        403,
+        req,
+      );
+    };
+
+    /** 403 for a write aimed at a row outside the caller's scope. */
+    const outOfScope = () =>
+      createCorsResponse(
+        {
+          error: 'This purchase order is outside your scope',
+          code: 'ROW_OUT_OF_SCOPE',
+        },
+        403,
+        req,
+      );
+
     if (req.method === 'GET' && poId && subResource === 'line-items' && !subResourceId) {
       // Verify PO exists and belongs to tenant
       const { data: po, error: poError } = await admin
@@ -76,7 +164,7 @@ export default async function handler(req: Request) {
       }
 
       const { data: lineItems, error } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .select(
           `
           *,
@@ -123,7 +211,7 @@ export default async function handler(req: Request) {
 
       // Get the next line number
       const { data: maxLine } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .select('line_number')
         .eq('purchase_order_id', poId)
         .eq('tenant_id', tenantId)
@@ -133,33 +221,20 @@ export default async function handler(req: Request) {
 
       const nextLineNumber = (maxLine?.line_number || 0) + 1;
 
-      const quantity = parseFloat(
-        body.quantity || body.quantityOrdered || body.quantity_ordered || 1,
-      );
-      const unitCost = parseFloat(body.unitCost || body.unit_cost || 0);
-      const totalCost = quantity * unitCost;
+      // item_description is NOT NULL, so an omitted description is a 400 here
+      // rather than a 23502 the caller reads as "something went wrong".
+      if (!lineItemDescription(body)) {
+        return createCorsResponse({ error: 'Line item description is required' }, 400, req);
+      }
 
-      const lineItemData = {
-        tenant_id: tenantId,
-        purchase_order_id: poId,
-        line_number: body.lineNumber || body.line_number || nextLineNumber,
-        inventory_item_id: body.inventoryItemId || body.inventory_item_id || null,
-        item_description: body.itemDescription || body.item_description || body.description,
-        part_number: body.partNumber || body.part_number || null,
-        manufacturer_part_number:
-          body.manufacturerPartNumber || body.manufacturer_part_number || null,
-        quantity_ordered: quantity,
-        quantity_received: 0,
-        unit_of_measure: body.unitOfMeasure || body.unit_of_measure || 'EA',
-        unit_cost: unitCost,
-        total_cost: totalCost,
-        notes: body.notes || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      const lineItemData = buildLineItemRow(body, {
+        tenantId,
+        purchaseOrderId: poId,
+        lineNumber: nextLineNumber,
+      });
 
       const { data: lineItem, error } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .insert(lineItemData)
         .select()
         .single();
@@ -215,67 +290,35 @@ export default async function handler(req: Request) {
         updated_at: new Date().toISOString(),
       };
 
-      // Map updatable fields
-      if (body.lineNumber !== undefined || body.line_number !== undefined) {
-        updateData.line_number = body.lineNumber || body.line_number;
-      }
-      if (body.inventoryItemId !== undefined || body.inventory_item_id !== undefined) {
-        updateData.inventory_item_id = body.inventoryItemId || body.inventory_item_id;
-      }
-      if (
-        body.itemDescription !== undefined ||
-        body.item_description !== undefined ||
-        body.description !== undefined
-      ) {
-        updateData.item_description =
-          body.itemDescription || body.item_description || body.description;
-      }
-      if (body.partNumber !== undefined || body.part_number !== undefined) {
-        updateData.part_number = body.partNumber || body.part_number;
-      }
-      if (
-        body.manufacturerPartNumber !== undefined ||
-        body.manufacturer_part_number !== undefined
-      ) {
-        updateData.manufacturer_part_number =
-          body.manufacturerPartNumber || body.manufacturer_part_number;
-      }
-      if (
-        body.quantityOrdered !== undefined ||
-        body.quantity_ordered !== undefined ||
-        body.quantity !== undefined
-      ) {
-        updateData.quantity_ordered = parseFloat(
-          body.quantityOrdered || body.quantity_ordered || body.quantity,
-        );
-      }
-      if (body.unitOfMeasure !== undefined || body.unit_of_measure !== undefined) {
-        updateData.unit_of_measure = body.unitOfMeasure || body.unit_of_measure;
-      }
-      if (body.unitCost !== undefined || body.unit_cost !== undefined) {
-        updateData.unit_cost = parseFloat(body.unitCost || body.unit_cost);
-      }
-      if (body.notes !== undefined) {
-        updateData.notes = body.notes;
-      }
+      Object.assign(updateData, buildLineItemPatch(body));
 
-      // Recalculate total_cost if quantity or unit_cost changed
-      if (updateData.quantity_ordered !== undefined || updateData.unit_cost !== undefined) {
-        // Get current values if not being updated
-        const { data: currentItem } = await admin
-          .from('purchase_order_line_items')
-          .select('quantity_ordered, unit_cost')
+      // Recalculate total_price when quantity or unit price moved and the caller
+      // did not send a total of its own.
+      const totalSent = ['totalPrice', 'total_price', 'totalCost', 'total_cost'].some(
+        (k) => body[k] !== undefined,
+      );
+      if (
+        !totalSent &&
+        (updateData.quantity !== undefined || updateData.unit_price !== undefined)
+      ) {
+        const { data: currentItem, error: currentError } = await admin
+          .from(LINE_ITEM_TABLE)
+          .select('quantity, unit_price')
           .eq('id', subResourceId)
           .eq('tenant_id', tenantId)
           .single();
 
-        const qty = updateData.quantity_ordered ?? currentItem?.quantity_ordered ?? 0;
-        const cost = updateData.unit_cost ?? currentItem?.unit_cost ?? 0;
-        updateData.total_cost = qty * cost;
+        if (currentError || !currentItem) {
+          return createCorsResponse({ error: 'Line item not found' }, 404, req);
+        }
+
+        const qty = updateData.quantity ?? Number(currentItem.quantity ?? 0);
+        const price = updateData.unit_price ?? Number(currentItem.unit_price ?? 0);
+        updateData.total_price = qty * price;
       }
 
       const { data: lineItem, error } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .update(updateData)
         .eq('id', subResourceId)
         .eq('purchase_order_id', poId)
@@ -324,7 +367,7 @@ export default async function handler(req: Request) {
       }
 
       const { error } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .delete()
         .eq('id', subResourceId)
         .eq('purchase_order_id', poId)
@@ -345,11 +388,81 @@ export default async function handler(req: Request) {
     // WORKFLOW ACTION ENDPOINTS
     // ============================================================
 
+    // PATCH|PUT /purchase-orders/:id/status - set the status directly
+    //
+    // WF-P-05: PurchaseOrders.tsx has always called this and this function had no
+    // branch for it, so the status control worked in dev (Express) and 404'd in
+    // production. Porting it is what lets the Express router go.
+    //
+    // 'approved' through here carries the same permission as /approve, because the
+    // two do the same thing - a status control that skips the approval gate is the
+    // gate not existing.
+    if ((req.method === 'PATCH' || req.method === 'PUT') && poId && subResource === 'status') {
+      const body = await req.json().catch(() => ({}));
+      const status = String(body.status ?? '');
+      const ALLOWED = [
+        'draft',
+        'pending',
+        'pending_approval',
+        'approved',
+        'ordered',
+        'received',
+        'partially_received',
+        'cancelled',
+        'rejected',
+      ];
+      if (!ALLOWED.includes(status)) {
+        return createCorsResponse(
+          { error: 'Invalid status value', details: { allowed: ALLOWED } },
+          400,
+          req,
+        );
+      }
+
+      if (status === 'approved' || status === 'rejected') {
+        const denied = denyWithoutPermission('operations.po.approve');
+        if (denied) return denied;
+      }
+
+      const { data: existing } = await admin
+        .from('purchase_orders')
+        .select('id, created_by')
+        .eq('id', poId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (!existing) {
+        return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
+      }
+      if (!rowInScope(existing, 'created_by', poScope)) return outOfScope();
+
+      const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+      if (status === 'approved') {
+        // approved_date, not approved_at - AUDIT-037.
+        patch.approved_by = user.id;
+        patch.approved_date = new Date().toISOString();
+      }
+
+      const { data: updated, error } = await admin
+        .from('purchase_orders')
+        .update(patch)
+        .eq('id', poId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error updating purchase order status:', error);
+        return createCorsResponse({ error: 'Failed to update purchase order status' }, 500, req);
+      }
+      if (!updated) return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
+      return createCorsResponse(updated, 200, req);
+    }
+
     // POST /purchase-orders/:id/submit - Submit PO for approval
     if (req.method === 'POST' && poId && subResource === 'submit') {
       const { data: po, error: poError } = await admin
         .from('purchase_orders')
-        .select('id, status')
+        .select('id, status, created_by')
         .eq('id', poId)
         .eq('tenant_id', tenantId)
         .single();
@@ -357,6 +470,15 @@ export default async function handler(req: Request) {
       if (poError || !po) {
         return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
       }
+
+      // WF-R-06: submitting somebody else's draft puts their name on an approval
+      // request they did not make. WF-P-05: and submitting at all is
+      // operations.po.create.
+      {
+        const denied = denyWithoutPermission('operations.po.create');
+        if (denied) return denied;
+      }
+      if (!rowInScope(po, 'created_by', poScope)) return outOfScope();
 
       if (po.status !== 'draft') {
         return createCorsResponse(
@@ -368,7 +490,7 @@ export default async function handler(req: Request) {
 
       // Verify PO has line items
       const { count: lineItemCount } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .select('*', { count: 'exact', head: true })
         .eq('purchase_order_id', poId)
         .eq('tenant_id', tenantId);
@@ -404,6 +526,18 @@ export default async function handler(req: Request) {
 
     // POST /purchase-orders/:id/approve - Approve PO
     if (req.method === 'POST' && poId && subResource === 'approve') {
+      // WF-R-06/WF-P-05: NOTHING gated this. Any authenticated member of the
+      // tenant could approve any purchase order in it, whatever their role. The
+      // permission is operations.po.approve, which the expansion grants at level 4
+      // with the inventory or purchasing module - so an OPERATIONS_MANAGER holds
+      // it and a WAREHOUSE_ASSOCIATE does not. That level is also why the scope
+      // above stops applying at 4: an approver sees the whole queue precisely
+      // because they are allowed to act on it.
+      {
+        const denied = denyWithoutPermission('operations.po.approve');
+        if (denied) return denied;
+      }
+
       const body = await req.json().catch(() => ({}));
 
       const { data: po, error: poError } = await admin
@@ -450,6 +584,18 @@ export default async function handler(req: Request) {
 
     // POST /purchase-orders/:id/reject - Reject PO
     if (req.method === 'POST' && poId && subResource === 'reject') {
+      // WF-R-06/WF-P-05: NOTHING gated this. Any authenticated member of the
+      // tenant could reject any purchase order in it, whatever their role. The
+      // permission is operations.po.approve, which the expansion grants at level 4
+      // with the inventory or purchasing module - so an OPERATIONS_MANAGER holds
+      // it and a WAREHOUSE_ASSOCIATE does not. That level is also why the scope
+      // above stops applying at 4: an approver sees the whole queue precisely
+      // because they are allowed to act on it.
+      {
+        const denied = denyWithoutPermission('operations.po.approve');
+        if (denied) return denied;
+      }
+
       const body = await req.json().catch(() => ({}));
 
       const { data: po, error: poError } = await admin
@@ -493,13 +639,131 @@ export default async function handler(req: Request) {
       return createCorsResponse(updatedPO, 200, req);
     }
 
-    // POST /purchase-orders/:id/receive - Mark items as received
-    if (req.method === 'POST' && poId && subResource === 'receive') {
+    // GET /purchase-orders/needs-ordering - sold, and nobody has ordered it
+    //
+    // WF-P-04. No page answered "which deals closed and need equipment"; a buyer
+    // hunted through Contracts. The decisions - which contracts count, which
+    // lines a vendor can supply, which vendor - are in ./_needs-ordering.ts.
+    if (req.method === 'GET' && poId === 'needs-ordering' && !subResource) {
+      const [{ data: contractRows }, { data: orders }] = await Promise.all([
+        admin
+          .from('contracts')
+          .select(
+            'id, contract_number, customer_id, status, start_date, proposal_id, deal_id, acquisition_type',
+          )
+          .eq('tenant_id', tenantId)
+          .in('status', ORDERABLE_CONTRACT_STATUSES)
+          .order('start_date', { ascending: true })
+          .limit(500),
+        admin
+          .from('purchase_orders')
+          .select('id, po_number, status, source_contract_id')
+          .eq('tenant_id', tenantId)
+          .not('source_contract_id', 'is', null),
+      ]);
+
+      const { needing } = contractsNeedingOrders(contractRows ?? [], orders ?? []);
+      if (needing.length === 0) {
+        return createCorsResponse({ data: [], total: 0 }, 200, req);
+      }
+
+      const proposalIds = [...new Set(needing.map((c) => c.proposal_id).filter(Boolean))];
+      const customerIds = [...new Set(needing.map((c) => c.customer_id))];
+
+      const [{ data: lineRows }, { data: customers }, { data: vendors }] = await Promise.all([
+        proposalIds.length > 0
+          ? admin
+              .from('proposal_line_items')
+              .select(
+                'id, proposal_id, line_number, item_type, product_id, product_code, product_name, description, quantity, unit_cost, unit_price, is_recurring',
+              )
+              .eq('tenant_id', tenantId)
+              .in('proposal_id', proposalIds)
+          : Promise.resolve({ data: [] }),
+        admin
+          .from('business_records')
+          .select('id, company_name')
+          .eq('tenant_id', tenantId)
+          .in('id', customerIds),
+        admin.from('vendors').select('id, vendor_name').eq('tenant_id', tenantId),
+      ]);
+
+      // Inventory is looked up by the codes the proposal actually carries, so a
+      // tenant with thousands of items does not have its whole catalogue read.
+      const codes = [
+        ...new Set(
+          (lineRows ?? [])
+            .flatMap((l: Record<string, unknown>) => [l.product_code, l.product_id])
+            .filter(Boolean),
+        ),
+      ] as string[];
+      let inventory: Record<string, unknown>[] = [];
+      if (codes.length > 0) {
+        const { data } = await admin
+          .from('inventory_items')
+          .select('id, part_number, manufacturer_part_number, primary_vendor, unit_of_measure')
+          .eq('tenant_id', tenantId)
+          .or(
+            [
+              `part_number.in.(${codes.map((c) => JSON.stringify(c)).join(',')})`,
+              `manufacturer_part_number.in.(${codes.map((c) => JSON.stringify(c)).join(',')})`,
+              `id.in.(${codes.map((c) => JSON.stringify(c)).join(',')})`,
+            ].join(','),
+          );
+        inventory = data ?? [];
+      }
+
+      const nameById = new Map<string, string>(
+        (customers ?? []).map((c: Record<string, unknown>) => [
+          String(c.id),
+          String(c.company_name ?? ''),
+        ]),
+      );
+      const linesByProposal = new Map<string, Record<string, unknown>[]>();
+      for (const line of lineRows ?? []) {
+        const key = String(line.proposal_id);
+        linesByProposal.set(key, [...(linesByProposal.get(key) ?? []), line]);
+      }
+
+      const rows = needing.map((contract) => {
+        const proposalLines = contract.proposal_id
+          ? (linesByProposal.get(String(contract.proposal_id)) ?? [])
+          : [];
+        const { lines, notOrderable } = orderableLines(
+          proposalLines as never,
+          inventory as never,
+          (vendors ?? []) as never,
+        );
+        return buildNeedsOrderingRow(
+          contract,
+          nameById.get(String(contract.customer_id)) ?? null,
+          lines,
+          notOrderable,
+        );
+      });
+
+      return createCorsResponse({ data: rows, total: rows.length }, 200, req);
+    }
+
+    // POST /purchase-orders/:id/serials - record the serials for a receipt
+    //
+    // WF-L-04. WF-P-02 already established that a serialized line records its
+    // quantity and does NOT move bulk inventory, because its units become
+    // equipment rows - and then nothing created them. This is the endpoint the
+    // receive dialog calls once it has one serial per unit.
+    //
+    // ONE CALL, NOT N. The AC's shape was "post each unit to POST /equipment",
+    // and that endpoint does now accept the links and write the lifecycle row
+    // (it is what the customer-page dialog uses). But N independent posts cannot
+    // report which units were refused or how many a line is still short, and a
+    // partial failure halfway through leaves the buyer guessing. Both are real
+    // outcomes here, so they are answered together.
+    if (req.method === 'POST' && poId && subResource === 'serials') {
       const body = await req.json();
 
       const { data: po, error: poError } = await admin
         .from('purchase_orders')
-        .select('id, status')
+        .select('id, tenant_id, status, po_number, customer_id, created_by')
         .eq('id', poId)
         .eq('tenant_id', tenantId)
         .single();
@@ -507,6 +771,148 @@ export default async function handler(req: Request) {
       if (poError || !po) {
         return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
       }
+      // WF-R-06: recording units against somebody else's order creates real assets.
+      if (!rowInScope(po, 'created_by', poScope)) return outOfScope();
+
+      const units = Array.isArray(body.units) ? body.units : [];
+      if (units.length === 0) {
+        return createCorsResponse({ error: 'At least one unit must be supplied' }, 400, req);
+      }
+
+      // Which lines are actually awaiting serials, recomputed from the order
+      // rather than trusted from the request - a caller could otherwise attach a
+      // serial to a line that was never serialized.
+      const { data: lines, error: linesError } = await admin
+        .from(LINE_ITEM_TABLE)
+        .select('id, quantity, received_quantity, inventory_item_id, item_description')
+        .eq('purchase_order_id', poId)
+        .eq('tenant_id', tenantId);
+
+      if (linesError || !lines) {
+        console.error('Error reading PO line items for serial capture:', linesError);
+        return createCorsResponse({ error: 'Failed to read purchase order lines' }, 500, req);
+      }
+
+      const inventoryItemIds = [
+        ...new Set(lines.map((l: Record<string, unknown>) => l.inventory_item_id).filter(Boolean)),
+      ] as string[];
+      const serializedIds = new Set<string>();
+      if (inventoryItemIds.length > 0) {
+        const { data: invItems } = await admin
+          .from('inventory_items')
+          .select('id, is_serialized')
+          .eq('tenant_id', tenantId)
+          .in('id', inventoryItemIds);
+        for (const item of invItems || []) {
+          if (item.is_serialized) serializedIds.add(String(item.id));
+        }
+      }
+
+      // A line awaits serials for every unit already received against it, less
+      // the equipment rows this order has already produced for that line.
+      const { data: alreadyCaptured } = await admin
+        .from('equipment')
+        .select('purchase_order_item_id')
+        .eq('tenant_id', tenantId)
+        .eq('purchase_order_id', poId);
+      const capturedByLine = new Map<string, number>();
+      for (const row of alreadyCaptured || []) {
+        const key = String(row.purchase_order_item_id ?? '');
+        if (key) capturedByLine.set(key, (capturedByLine.get(key) ?? 0) + 1);
+      }
+
+      const pending = lines
+        .filter(
+          (l: Record<string, unknown>) =>
+            l.inventory_item_id && serializedIds.has(String(l.inventory_item_id)),
+        )
+        .map((l: Record<string, unknown>) => ({
+          lineItemId: String(l.id),
+          quantity:
+            Math.max(0, Number(l.received_quantity ?? 0)) - (capturedByLine.get(String(l.id)) ?? 0),
+          description: (l.item_description as string) ?? null,
+        }))
+        .filter((l: { quantity: number }) => l.quantity > 0);
+
+      const plan = planSerialCapture(pending, units, {
+        tenantId,
+        purchaseOrderId: poId,
+        customerId: po.customer_id ?? null,
+      });
+
+      const created: Record<string, unknown>[] = [];
+      const failed: Array<{ serialNumber: string; reason: string }> = [];
+      for (const row of plan.equipment) {
+        const { data: unit, error: insertError } = await admin
+          .from('equipment')
+          .insert(row)
+          .select('id, serial_number, purchase_order_item_id')
+          .single();
+
+        if (insertError || !unit) {
+          // The commonest one is a serial already in the table - it is UNIQUE
+          // across the whole tenant set - and that is a real answer, not a fault.
+          console.error('Error creating equipment from receipt:', insertError);
+          failed.push({
+            serialNumber: String(row.serial_number),
+            reason: isUniqueViolation(insertError)
+              ? 'that serial number is already registered'
+              : 'the equipment row could not be created',
+          });
+          continue;
+        }
+        created.push(unit);
+
+        const { error: lifecycleError } = await admin
+          .from('equipment_lifecycle')
+          .insert(lifecycleRowForReceivedUnit(row, String(unit.id)));
+        if (lifecycleError) {
+          console.error('Error creating equipment lifecycle row:', lifecycleError);
+        }
+      }
+
+      // What is still outstanding is computed from what actually LANDED, not from
+      // the plan: a serial refused as a duplicate leaves its unit still to
+      // capture, and reporting the line as done would lose a machine.
+      const landed = created.map((unit) => ({
+        lineItemId: String(unit.purchase_order_item_id ?? ''),
+        serialNumber: String(unit.serial_number ?? ''),
+      }));
+
+      return createCorsResponse(
+        {
+          purchaseOrderId: poId,
+          created,
+          problems: plan.problems,
+          failed,
+          outstanding: outstandingSerialUnits(pending, landed),
+        },
+        201,
+        req,
+      );
+    }
+
+    // POST /purchase-orders/:id/receive - Mark items as received
+    if (req.method === 'POST' && poId && subResource === 'receive') {
+      const body = await req.json();
+
+      const { data: po, error: poError } = await admin
+        .from('purchase_orders')
+        .select(
+          'id, tenant_id, status, vendor_id, po_number, subtotal, tax_amount, total_amount, created_by',
+        )
+        .eq('id', poId)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (poError || !po) {
+        return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
+      }
+
+      // WF-R-06: a list filter narrows what a caller can BROWSE and does nothing
+      // about a write aimed straight at an id. Receiving stock against somebody
+      // else's order moves real inventory.
+      if (!rowInScope(po, 'created_by', poScope)) return outOfScope();
 
       if (!['approved', 'ordered', 'partially_received'].includes(po.status)) {
         return createCorsResponse(
@@ -532,83 +938,99 @@ export default async function handler(req: Request) {
         );
       }
 
-      // Update each line item's received quantity
-      for (const item of receivedItems) {
-        const lineItemId = item.lineItemId || item.line_item_id || item.id;
-        const quantityReceived = parseFloat(
-          item.quantityReceived || item.quantity_received || item.quantity || 0,
-        );
-
-        if (!lineItemId || quantityReceived <= 0) continue;
-
-        // Get current line item
-        const { data: lineItem } = await admin
-          .from('purchase_order_line_items')
-          .select('quantity_ordered, quantity_received, inventory_item_id')
-          .eq('id', lineItemId)
-          .eq('purchase_order_id', poId)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (!lineItem) continue;
-
-        const newReceivedQty = (lineItem.quantity_received || 0) + quantityReceived;
-
-        // Update line item
-        await admin
-          .from('purchase_order_line_items')
-          .update({
-            quantity_received: newReceivedQty,
-            last_received_date: receiptDate,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', lineItemId)
-          .eq('tenant_id', tenantId);
-
-        // Update inventory if linked to an inventory item
-        if (lineItem.inventory_item_id) {
-          const { data: invItem } = await admin
-            .from('inventory_items')
-            .select('quantity_on_hand, quantity_available, quantity_on_order')
-            .eq('id', lineItem.inventory_item_id)
-            .eq('tenant_id', tenantId)
-            .single();
-
-          if (invItem) {
-            await admin
-              .from('inventory_items')
-              .update({
-                quantity_on_hand: (invItem.quantity_on_hand || 0) + quantityReceived,
-                quantity_available: (invItem.quantity_available || 0) + quantityReceived,
-                quantity_on_order: Math.max(0, (invItem.quantity_on_order || 0) - quantityReceived),
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', lineItem.inventory_item_id)
-              .eq('tenant_id', tenantId);
-          }
-        }
-      }
-
-      // Determine new PO status based on received quantities
-      const { data: allLineItems } = await admin
-        .from('purchase_order_line_items')
-        .select('quantity_ordered, quantity_received')
+      // WF-P-02: the arithmetic lives in ./_receiving.ts so it can be tested and
+      // so the Express handler on the other host cannot drift from it.
+      const { data: lines, error: linesError } = await admin
+        .from(LINE_ITEM_TABLE)
+        .select('id, quantity, received_quantity, inventory_item_id, item_description')
         .eq('purchase_order_id', poId)
         .eq('tenant_id', tenantId);
 
-      let newStatus: POStatus = po.status as POStatus;
-      if (allLineItems && allLineItems.length > 0) {
-        const allFullyReceived = allLineItems.every(
-          (li) => (li.quantity_received || 0) >= (li.quantity_ordered || 0),
-        );
-        const someReceived = allLineItems.some((li) => (li.quantity_received || 0) > 0);
+      if (linesError || !lines) {
+        console.error('Error reading PO line items for receipt:', linesError);
+        return createCorsResponse({ error: 'Failed to read purchase order lines' }, 500, req);
+      }
 
-        if (allFullyReceived) {
-          newStatus = 'received';
-        } else if (someReceived) {
-          newStatus = 'partially_received';
+      const plan = planReceipt(lines, receivedItems);
+
+      if (plan.receipts.length === 0) {
+        return createCorsResponse(
+          {
+            error: 'No line item on this purchase order matched the receipt',
+            unknownLineItemIds: plan.unknownLineItemIds,
+          },
+          400,
+          req,
+        );
+      }
+
+      // Which of these are tracked one unit at a time. A serialized line records
+      // its receipt but does NOT move bulk inventory - those units become
+      // equipment rows with serial numbers (WF-L-04), and adding them to
+      // quantity_on_hand as well would count them twice.
+      const inventoryItemIds = [
+        ...new Set(plan.receipts.map((r) => r.inventoryItemId).filter(Boolean)),
+      ] as string[];
+      const serialized = new Set<string>();
+      if (inventoryItemIds.length > 0) {
+        const { data: invItems } = await admin
+          .from('inventory_items')
+          .select('id, is_serialized')
+          .eq('tenant_id', tenantId)
+          .in('id', inventoryItemIds);
+        for (const item of invItems || []) {
+          if (item.is_serialized) serialized.add(String(item.id));
         }
       }
+
+      for (const receipt of plan.receipts) {
+        // `updated_at` is not written: migration 0001 dropped it from
+        // purchase_order_items.
+        const { error: lineError } = await admin
+          .from(LINE_ITEM_TABLE)
+          .update({
+            received_quantity: receipt.newReceivedQuantity,
+            last_received_date: receiptDate,
+          })
+          .eq('id', receipt.lineItemId)
+          .eq('purchase_order_id', poId)
+          .eq('tenant_id', tenantId);
+
+        if (lineError) {
+          console.error('Error recording receipt on line item:', lineError);
+          return createCorsResponse(
+            { error: 'Failed to record the receipt', details: lineError },
+            500,
+            req,
+          );
+        }
+      }
+
+      for (const movement of inventoryMovements(plan.receipts, serialized)) {
+        const { data: invItem } = await admin
+          .from('inventory_items')
+          .select('quantity_on_hand, quantity_available, quantity_on_order')
+          .eq('id', movement.inventoryItemId)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (!invItem) continue;
+
+        await admin
+          .from('inventory_items')
+          .update({
+            quantity_on_hand: (invItem.quantity_on_hand || 0) + movement.quantity,
+            quantity_available: (invItem.quantity_available || 0) + movement.quantity,
+            quantity_on_order: Math.max(0, (invItem.quantity_on_order || 0) - movement.quantity),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', movement.inventoryItemId)
+          .eq('tenant_id', tenantId);
+      }
+
+      const derivedStatus = statusAfterReceipt(lines, plan.receipts);
+      const newStatus: POStatus = (derivedStatus ?? po.status) as POStatus;
+      const pendingSerials = serialCaptureRequired(lines, plan.receipts, serialized);
 
       // Update PO status and receipt info
       const { data: updatedPO, error } = await admin
@@ -626,7 +1048,7 @@ export default async function handler(req: Request) {
           `
           *,
           vendor:vendors(id, vendor_name),
-          lineItems:purchase_order_line_items(*)
+          lineItems:purchase_order_items(*)
         `,
         )
         .single();
@@ -636,7 +1058,55 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to record receipt' }, 500, req);
       }
 
-      return createCorsResponse(updatedPO, 200, req);
+      // WF-P-02: goods in means a liability, so the expected bill is raised here
+      // rather than waiting for someone to key it in. Once per order, not once
+      // per partial receipt - hence the lookup first. A failure is reported
+      // alongside the receipt rather than failing it: the stock has physically
+      // arrived and the line quantities are already committed, so answering 500
+      // would leave the caller believing none of it happened.
+      let payableError: string | null = null;
+      let payableId: string | null = null;
+      const { data: existingPayable } = await admin
+        .from('accounts_payable')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('purchase_order_id', poId)
+        .limit(1);
+
+      if (existingPayable && existingPayable.length > 0) {
+        payableId = String(existingPayable[0].id);
+      } else {
+        const { data: payable, error: apError } = await admin
+          .from('accounts_payable')
+          .insert(buildPayableFromReceipt(po, { receiptDate, createdBy: user.id }))
+          .select('id')
+          .single();
+
+        if (apError) {
+          console.error('Error raising payable for PO receipt:', apError);
+          payableError = 'The receipt was recorded but no payable was raised for it';
+        } else {
+          payableId = String(payable.id);
+        }
+      }
+
+      return createCorsResponse(
+        {
+          ...updatedPO,
+          // Named rather than swallowed, each for a reason a caller must see:
+          // an over-receipt is stock the warehouse is holding beyond the order,
+          // a serialized line is a receipt that is NOT finished until WF-L-04
+          // captures its serial numbers, and an unmatched id means part of the
+          // request did nothing.
+          overReceipts: plan.overReceipts,
+          requiresSerialCapture: pendingSerials,
+          unknownLineItemIds: plan.unknownLineItemIds,
+          payableId,
+          payableError,
+        },
+        200,
+        req,
+      );
     }
 
     // ============================================================
@@ -667,6 +1137,11 @@ export default async function handler(req: Request) {
         .order('order_date', { ascending: false })
         .range(offset, offset + limit - 1);
 
+      // WF-R-04/WF-R-06. `purchase_orders` names one user, whoever raised it, so
+      // that is the only ownership this table can express. Above level 4 poScope
+      // carries no user filter and this is a no-op - see where it is built.
+      query = applyUserScope(query, 'created_by', poScope);
+
       if (vendorId) {
         query = query.eq('vendor_id', vendorId);
       }
@@ -688,6 +1163,17 @@ export default async function handler(req: Request) {
       if (endDate) {
         query = query.lte('order_date', endDate);
       }
+
+      // WF-P-03: the contract detail and the Needs Ordering queue both ask
+      // "which POs are for this contract".
+      const contractId =
+        url.searchParams.get('contractId') || url.searchParams.get('source_contract_id');
+      const dealId = url.searchParams.get('dealId') || url.searchParams.get('source_deal_id');
+      const customerId = url.searchParams.get('customerId') || url.searchParams.get('customer_id');
+
+      if (contractId) query = query.eq('source_contract_id', contractId);
+      if (dealId) query = query.eq('source_deal_id', dealId);
+      if (customerId) query = query.eq('customer_id', customerId);
 
       if (search) {
         // AUDIT-037: reference_number and notes are not columns on this table -
@@ -722,7 +1208,9 @@ export default async function handler(req: Request) {
         .select(
           `
           *,
-          vendor:vendors(id, vendor_name, primary_contact_name, email, phone, address_line_1, address_line_2, city, state, zip_code)
+          vendor:vendors(id, vendor_name, primary_contact_name, email, phone, address_line_1, address_line_2, city, state, zip_code),
+          sourceContract:contracts!purchase_orders_source_contract_id_fkey(id, contract_number, customer_id, status),
+          customer:business_records!purchase_orders_customer_id_fkey(id, company_name)
         `,
         )
         .eq('id', poId)
@@ -736,7 +1224,7 @@ export default async function handler(req: Request) {
 
       // Get line items with inventory item details
       const { data: lineItems } = await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .select(
           `
           *,
@@ -757,19 +1245,18 @@ export default async function handler(req: Request) {
       // Generate PO number if not provided
       const poNumber = body.poNumber || body.po_number || `PO-${Date.now()}`;
 
-      // Calculate totals from line items if provided
-      const lineItems = body.lineItems || body.line_items || [];
-      const subtotal = lineItems.reduce(
-        (sum: number, item: any) =>
-          sum +
-          parseFloat(
-            item.totalCost ||
-              item.total_cost ||
-              (item.quantity || item.quantityOrdered || item.quantity_ordered || 1) *
-                (item.unitCost || item.unit_cost || 0),
-          ),
-        0,
+      // WF-P-01: the page posts `items`, this read `lineItems`, and it priced each
+      // line off `unitCost` while the page sends `unitPrice` - so every line was
+      // dropped at 201 and the subtotal computed from them was 0. The rows are
+      // built once, up front, and both the subtotal and the insert use them.
+      const lineItemRows = lineItemsFromBody(body).map((item, index) =>
+        buildLineItemRow(item, {
+          tenantId,
+          purchaseOrderId: PENDING_PO_ID,
+          lineNumber: index + 1,
+        }),
       );
+      const subtotal = lineItemsSubtotal(lineItemRows);
       const taxAmount = parseFloat(body.taxAmount || body.tax_amount || 0);
       const shippingAmount = parseFloat(body.shippingAmount || body.shipping_amount || 0);
       const totalAmount = subtotal + taxAmount + shippingAmount;
@@ -804,6 +1291,13 @@ export default async function handler(req: Request) {
         delivery_address: body.deliveryAddress || body.delivery_address || null,
         special_instructions:
           body.specialInstructions || body.special_instructions || body.internalNotes || null,
+        // WF-P-03: what this order is for. `contractId` is the name the Book
+        // Order link uses; the others follow the column names. All optional - a
+        // stock-replenishment PO has none of them.
+        source_contract_id:
+          body.sourceContractId || body.source_contract_id || body.contractId || null,
+        source_deal_id: body.sourceDealId || body.source_deal_id || body.dealId || null,
+        customer_id: body.customerId || body.customer_id || null,
         created_by: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -829,34 +1323,26 @@ export default async function handler(req: Request) {
         );
       }
 
-      // Insert line items if provided
-      if (lineItems.length > 0) {
-        const lineItemsData = lineItems.map((item: any, index: number) => {
-          const qty = parseFloat(
-            item.quantity || item.quantityOrdered || item.quantity_ordered || 1,
-          );
-          const cost = parseFloat(item.unitCost || item.unit_cost || 0);
-          return {
-            tenant_id: tenantId,
-            purchase_order_id: po.id,
-            line_number: item.lineNumber || item.line_number || index + 1,
-            inventory_item_id: item.inventoryItemId || item.inventory_item_id || null,
-            item_description: item.itemDescription || item.item_description || item.description,
-            part_number: item.partNumber || item.part_number || null,
-            manufacturer_part_number:
-              item.manufacturerPartNumber || item.manufacturer_part_number || null,
-            quantity_ordered: qty,
-            quantity_received: 0,
-            unit_of_measure: item.unitOfMeasure || item.unit_of_measure || 'EA',
-            unit_cost: cost,
-            total_cost: qty * cost,
-            notes: item.notes || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-        });
+      // Insert line items. A failure here is reported rather than swallowed: a PO
+      // created without the lines the buyer entered is the defect this story is
+      // about, and answering 201 would hide it again.
+      if (lineItemRows.length > 0) {
+        const { error: lineItemError } = await admin
+          .from(LINE_ITEM_TABLE)
+          .insert(lineItemRows.map((row) => ({ ...row, purchase_order_id: po.id })));
 
-        await admin.from('purchase_order_line_items').insert(lineItemsData);
+        if (lineItemError) {
+          console.error('Error creating PO line items:', lineItemError);
+          return createCorsResponse(
+            {
+              error: 'Purchase order was created but its line items were not saved',
+              purchaseOrderId: po.id,
+              details: lineItemError,
+            },
+            500,
+            req,
+          );
+        }
       }
 
       // Fetch complete PO with line items
@@ -866,7 +1352,7 @@ export default async function handler(req: Request) {
           `
           *,
           vendor:vendors(id, vendor_name),
-          lineItems:purchase_order_line_items(*)
+          lineItems:purchase_order_items(*)
         `,
         )
         .eq('id', po.id)
@@ -881,7 +1367,7 @@ export default async function handler(req: Request) {
       // Check if PO exists and is editable
       const { data: existingPO, error: checkError } = await admin
         .from('purchase_orders')
-        .select('id, status')
+        .select('id, status, created_by')
         .eq('id', poId)
         .eq('tenant_id', tenantId)
         .single();
@@ -889,6 +1375,10 @@ export default async function handler(req: Request) {
       if (checkError || !existingPO) {
         return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
       }
+
+      // WF-R-06: editing an order someone else raised, including its vendor and
+      // its totals, was open to every authenticated member of the tenant.
+      if (!rowInScope(existingPO, 'created_by', poScope)) return outOfScope();
 
       // Only allow updates to draft or pending_approval POs (except for certain fields)
       const editableStatuses = ['draft', 'pending_approval'];
@@ -996,44 +1486,37 @@ export default async function handler(req: Request) {
       }
 
       // Update line items if provided and PO is editable
-      if ((body.lineItems || body.line_items) && editableStatuses.includes(existingPO.status)) {
-        const lineItems = body.lineItems || body.line_items;
+      const replacementLines =
+        (body.items ?? body.lineItems ?? body.line_items) ? lineItemsFromBody(body) : null;
 
+      if (replacementLines && editableStatuses.includes(existingPO.status)) {
         // Delete existing line items
         await admin
-          .from('purchase_order_line_items')
+          .from(LINE_ITEM_TABLE)
           .delete()
           .eq('purchase_order_id', poId)
           .eq('tenant_id', tenantId);
 
         // Insert new line items
-        if (lineItems.length > 0) {
-          const lineItemsData = lineItems.map((item: any, index: number) => {
-            const qty = parseFloat(
-              item.quantity || item.quantityOrdered || item.quantity_ordered || 1,
-            );
-            const cost = parseFloat(item.unitCost || item.unit_cost || 0);
-            return {
-              tenant_id: tenantId,
-              purchase_order_id: poId,
-              line_number: item.lineNumber || item.line_number || index + 1,
-              inventory_item_id: item.inventoryItemId || item.inventory_item_id || null,
-              item_description: item.itemDescription || item.item_description || item.description,
-              part_number: item.partNumber || item.part_number || null,
-              manufacturer_part_number:
-                item.manufacturerPartNumber || item.manufacturer_part_number || null,
-              quantity_ordered: qty,
-              quantity_received: item.quantityReceived || item.quantity_received || 0,
-              unit_of_measure: item.unitOfMeasure || item.unit_of_measure || 'EA',
-              unit_cost: cost,
-              total_cost: qty * cost,
-              notes: item.notes || null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            };
-          });
+        if (replacementLines.length > 0) {
+          const { error: lineItemError } = await admin.from(LINE_ITEM_TABLE).insert(
+            replacementLines.map((item, index) =>
+              buildLineItemRow(item, {
+                tenantId,
+                purchaseOrderId: poId,
+                lineNumber: index + 1,
+              }),
+            ),
+          );
 
-          await admin.from('purchase_order_line_items').insert(lineItemsData);
+          if (lineItemError) {
+            console.error('Error replacing PO line items:', lineItemError);
+            return createCorsResponse(
+              { error: 'Failed to save line items', details: lineItemError },
+              500,
+              req,
+            );
+          }
         }
 
         // Recalculate totals
@@ -1047,7 +1530,7 @@ export default async function handler(req: Request) {
           `
           *,
           vendor:vendors(id, vendor_name),
-          lineItems:purchase_order_line_items(*)
+          lineItems:purchase_order_items(*)
         `,
         )
         .eq('id', poId)
@@ -1081,7 +1564,7 @@ export default async function handler(req: Request) {
 
       // Delete line items first
       await admin
-        .from('purchase_order_line_items')
+        .from(LINE_ITEM_TABLE)
         .delete()
         .eq('purchase_order_id', poId)
         .eq('tenant_id', tenantId);
@@ -1342,15 +1825,12 @@ export default async function handler(req: Request) {
 async function recalculatePOTotals(admin: any, poId: string, tenantId: string): Promise<void> {
   // Get all line items for this PO
   const { data: lineItems } = await admin
-    .from('purchase_order_line_items')
-    .select('total_cost')
+    .from(LINE_ITEM_TABLE)
+    .select('total_price')
     .eq('purchase_order_id', poId)
     .eq('tenant_id', tenantId);
 
-  const subtotal = (lineItems || []).reduce(
-    (sum: number, item: any) => sum + parseFloat(item.total_cost || 0),
-    0,
-  );
+  const subtotal = lineItemsSubtotal(lineItems || []);
 
   // Get current tax and shipping amounts
   const { data: currentPO } = await admin

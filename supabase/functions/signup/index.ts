@@ -2,6 +2,7 @@
 // Creates tenant, user, and sends verification email
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { buildRoleClaims, claimsPatch } from '../_shared/role-claims.ts';
 
 interface SignupRequest {
   email: string;
@@ -160,7 +161,7 @@ export default async function handler(req: Request) {
       return createCorsResponse(
         {
           error:
-            'The COMPANY_ADMIN role is not present in this environment, so a tenant administrator cannot be assigned. Run the RBAC seed and retry.',
+            'The COMPANY_ADMIN role is not present in this environment, so a tenant administrator cannot be assigned. The catalogue is seeded by migration 0072_seed_role_catalogue.sql - apply the migration chain and retry.',
           code: 'MISSING_ADMIN_ROLE',
         },
         500,
@@ -169,6 +170,13 @@ export default async function handler(req: Request) {
     }
 
     const roleId: string = adminRole.id;
+
+    // WF-R-03: the level, code and permission list the edge-function gates read.
+    // Without them _shared/rbac.ts's getRoleLevel() defaults to 1 and the tenant
+    // administrator this signup is creating is denied its own admin surfaces.
+    // A null here means the seeded row has no level, which the migration makes
+    // impossible; the claims are simply omitted rather than guessed at.
+    const roleClaims = await buildRoleClaims(supabaseAdmin, roleId);
 
     // Step 3: Create Supabase Auth user with app_metadata
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -186,6 +194,7 @@ export default async function handler(req: Request) {
         roleId,
         accessScope: 'company', // Admin gets company-wide access
         isPlatformUser: false,
+        ...(roleClaims ? claimsPatch(roleClaims) : {}),
       },
     });
 

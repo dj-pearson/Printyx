@@ -202,6 +202,28 @@ export const proposals = pgTable('proposals', {
 
   // Contract Terms
   paymentTerms: varchar('payment_terms'), // net_30, net_60, upfront, financing
+
+  // WF-C-05: how the deal is paid.
+  //
+  // Acceptance always called createContractFromProposal and never created a
+  // lease, whatever the proposal said, and `payment_terms` - the only nearby
+  // field - was written by nothing and read by nothing. So `leases` sat with
+  // proposal_id, business_record_id and contract_id columns that no code
+  // filled, and a leased fleet was indistinguishable from a cash sale the
+  // moment the customer clicked Accept.
+  //
+  // `payment_terms` is KEPT and is a different fact: net_30 is when an invoice
+  // is due, not whether the customer owns the machine. Nothing reads it yet.
+  //
+  // All nullable. An existing proposal has no acquisition type and must stay
+  // valid; a proposal with no type creates the contract and no lease, which is
+  // what happens today, rather than a guess at the commercial terms.
+  acquisitionType: varchar('acquisition_type', { length: 20 }), // cash | lease | finance
+  fundingPartner: varchar('funding_partner'), // the lessor or lender, when not cash
+  financeTermMonths: integer('finance_term_months'),
+  financeMonthlyPayment: decimal('finance_monthly_payment', { precision: 10, scale: 2 }),
+  firstPaymentDate: timestamp('first_payment_date'),
+
   deliveryTerms: varchar('delivery_terms'),
   warrantyTerms: text('warranty_terms'),
   serviceTerms: text('service_terms'),
@@ -223,6 +245,11 @@ export const proposals = pgTable('proposals', {
   eSignatureDocumentId: varchar('e_signature_document_id'),
   eSignatureStatus: varchar('e_signature_status'), // pending, signed, declined
 
+  // WF-C-04: the deal-desk request that unblocked this quote's pricing, stamped
+  // by the final approve. The send guardrail reads it instead of trusting a
+  // client-supplied `approved` flag. No FK - see migration 0074.
+  pricingApprovalId: varchar('pricing_approval_id'),
+  pricingApprovedAt: timestamp('pricing_approved_at'),
   // Tracking and Analytics
   openCount: integer('open_count').default(0), // How many times opened
   lastOpenedAt: timestamp('last_opened_at'),

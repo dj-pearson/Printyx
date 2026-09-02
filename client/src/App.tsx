@@ -183,7 +183,6 @@ const MobileFieldService = React.lazy(() => import('@/pages/MobileFieldService')
 const PricingManagement = React.lazy(() => import('@/pages/PricingManagement'));
 const PricingSettings = React.lazy(() => import('@/pages/PricingSettings'));
 const MarginAnalysisReport = React.lazy(() => import('@/pages/MarginAnalysisReport'));
-const PriceApprovals = React.lazy(() => import('@/pages/PriceApprovals'));
 const Contacts = React.lazy(() => import('@/pages/Contacts'));
 const CustomerDetail = React.lazy(() => import('@/pages/CustomerDetail'));
 const TenantSetup = React.lazy(() => import('@/pages/TenantSetup'));
@@ -316,8 +315,6 @@ const ApiKeyManagement = React.lazy(() => import('@/pages/ApiKeyManagement'));
 const GPT5Dashboard = React.lazy(() => import('@/pages/GPT5Dashboard'));
 const DocumentBuilder = React.lazy(() => import('@/pages/DocumentBuilder'));
 const TechnicianManagement = React.lazy(() => import('@/pages/TechnicianManagement'));
-const VehicleManagement = React.lazy(() => import('@/pages/VehicleManagement'));
-const AssetManagement = React.lazy(() => import('@/pages/AssetManagement'));
 
 // AI Hub Pages
 const AIHub = React.lazy(() => import('@/pages/AIHub'));
@@ -331,6 +328,7 @@ const ConversationalAIDashboard = React.lazy(() => import('@/pages/Conversationa
 const Leases = React.lazy(() => import('@/pages/Leases'));
 const LeaseDetail = React.lazy(() => import('@/pages/LeaseDetail'));
 const LeaseForm = React.lazy(() => import('@/pages/LeaseForm'));
+const SalesHandoffs = React.lazy(() => import('@/pages/SalesHandoffs'));
 
 // Knowledge Base Pages
 const KnowledgeBase = React.lazy(() => import('@/pages/KnowledgeBase'));
@@ -345,6 +343,7 @@ const SystemSecurity = React.lazy(() => import('@/pages/admin/SystemSecurity'));
 const DatabaseUpdaterPage = React.lazy(() => import('@/pages/admin/DatabaseUpdaterPage'));
 const TenantManagement = React.lazy(() => import('@/pages/admin/TenantManagement'));
 const UserManagement = React.lazy(() => import('@/pages/admin/UserManagement'));
+const OrgStructure = React.lazy(() => import('@/pages/admin/OrgStructure'));
 const MobileLogsViewer = React.lazy(() => import('@/pages/admin/MobileLogsViewer'));
 const DisposableEmailDomainsAdmin = React.lazy(
   () => import('@/pages/admin/DisposableEmailDomains'),
@@ -720,6 +719,7 @@ function Router() {
                 {/* Equipment Lifecycle */}
                 <Route path="/equipment-lifecycle" component={EquipmentLifecycleHub} />
                 <Route path="/purchase-orders" component={PurchaseOrders} />
+                <Route path="/handoffs" component={SalesHandoffs} />
                 <Route path="/warehouse-operations" component={WarehouseOperations} />
                 <Route path="/crm-goals" component={CrmGoalsDashboard} />
                 <Route path="/crm-goals-dashboard" component={CrmGoalsDashboard} />
@@ -867,8 +867,10 @@ function Router() {
                   component={ServiceForecastingAnalytics}
                 />
                 <Route path="/technician-management" component={TechnicianManagement} />
-                <Route path="/vehicle-management" component={VehicleManagement} />
-                <Route path="/asset-management" component={AssetManagement} />
+                {/* WF-V-02: the ticket id is in the path. The bare route is the
+                    technician's own queue, which is what makes the console
+                    reachable without knowing an id. */}
+                <Route path="/mobile-field-service/:ticketId" component={MobileFieldService} />
                 <Route path="/mobile-field-service" component={MobileFieldService} />
                 <Route path="/product-catalog" component={ProductHubUnified} />
                 <Route path="/product-management-hub" component={ProductHubUnified} />
@@ -877,7 +879,11 @@ function Router() {
                 <Route path="/product-models-v2" component={EnhancedProductModels} />
                 <Route path="/pricing/settings" component={PricingSettings} />
                 <Route path="/pricing/margin-report" component={MarginAnalysisReport} />
-                <Route path="/pricing/approvals" component={PriceApprovals} />
+                {/* WF-C-04: retired. PriceApprovals listed price_change_approvals,
+                    a table NOTHING writes - not a competing approval model, a
+                    permanently empty queue next to a working one. Its widget and
+                    badge were already orphans. The deal desk is the one model. */}
+                <Route path="/pricing/approvals">{() => <LegacyRedirect to="/deal-desk" />}</Route>
                 <Route path="/product-accessories" component={EnhancedProductAccessories} />
                 <Route path="/professional-services" component={ProfessionalServices} />
                 <Route path="/service-products" component={ServiceProducts} />
@@ -1217,6 +1223,15 @@ function Router() {
                 </Route>
                 <Route path="/admin/disposable-emails">
                   {() => <ProtectedRoute component={DisposableEmailDomainsAdmin} platformOnly />}
+                </Route>
+                <Route path="/admin/org-structure">
+                  {() => (
+                    <ProtectedRoute
+                      component={OrgStructure}
+                      permissions={['admin.user.view']}
+                      minLevel={5}
+                    />
+                  )}
                 </Route>
                 <Route path="/admin/user-management">
                   {() => (

@@ -9,6 +9,8 @@ import { insertTeamSchema } from '@shared/schema';
 import { createModuleLogger } from '../lib/logger';
 import { getUserId, getTenantId } from '../utils/auth-helpers';
 import { stripServerFields } from '../utils/strip-server-fields';
+// CR-023: the documented error shape, { message, code, details, requestId }.
+import { badRequest, serverError } from '../lib/error-response';
 const log = createModuleLogger('team-collaboration-routes');
 
 const router = express.Router();
@@ -31,7 +33,7 @@ router.post('/teams', async (req, res) => {
     res.status(201).json(team);
   } catch (error) {
     log.error('Error creating team:', error);
-    res.status(500).json({ error: 'Failed to create team' });
+    serverError(res, 'Failed to create team');
   }
 });
 
@@ -117,7 +119,7 @@ router.get('/teams', async (req, res) => {
     res.json(teams);
   } catch (error) {
     log.error('Error fetching teams:', error);
-    res.status(500).json({ error: 'Failed to fetch teams' });
+    serverError(res, 'Failed to fetch teams');
   }
 });
 
@@ -206,7 +208,7 @@ router.get('/teams/:teamId', async (req, res) => {
     res.json(team);
   } catch (error) {
     log.error('Error fetching team details:', error);
-    res.status(500).json({ error: 'Failed to fetch team details' });
+    serverError(res, 'Failed to fetch team details');
   }
 });
 
@@ -223,7 +225,7 @@ router.post('/teams/:teamId/members', async (req, res) => {
     res.status(201).json(member);
   } catch (error) {
     log.error('Error adding team member:', error);
-    res.status(500).json({ error: 'Failed to add team member' });
+    serverError(res, 'Failed to add team member');
   }
 });
 
@@ -235,7 +237,7 @@ router.get('/teams/:teamId/capacity', async (req, res) => {
   try {
     const { teamId } = req.params;
     const tenantId = getTenantId(req);
-    if (!tenantId) return res.status(400).json({ error: 'Tenant ID is required' });
+    if (!tenantId) return badRequest(res, 'Tenant ID is required', { code: 'VALIDATION_ERROR' });
 
     // AUDIT-021: teamId comes straight off the URL, so the tenant has to reach
     // the query. Before this the analysis read no table at all, which is the
@@ -244,7 +246,7 @@ router.get('/teams/:teamId/capacity', async (req, res) => {
     res.json(capacityAnalysis);
   } catch (error) {
     log.error('Error analyzing team capacity:', error);
-    res.status(500).json({ error: 'Failed to analyze team capacity' });
+    serverError(res, 'Failed to analyze team capacity');
   }
 });
 
@@ -256,13 +258,13 @@ router.get('/teams/:teamId/insights', async (req, res) => {
   try {
     const { teamId } = req.params;
     const tenantId = getTenantId(req);
-    if (!tenantId) return res.status(400).json({ error: 'Tenant ID is required' });
+    if (!tenantId) return badRequest(res, 'Tenant ID is required', { code: 'VALIDATION_ERROR' });
 
     const insights = await TeamCollaborationService.generateCollaborationInsights(tenantId, teamId);
     res.json(insights);
   } catch (error) {
     log.error('Error generating collaboration insights:', error);
-    res.status(500).json({ error: 'Failed to generate collaboration insights' });
+    serverError(res, 'Failed to generate collaboration insights');
   }
 });
 
@@ -280,176 +282,19 @@ router.get('/teams/:teamId/insights', async (req, res) => {
 // this file are still mocks. They have no caller and no real counterpart, so
 // they are a separate decision rather than a deletion.
 
-/**
- * GET /api/projects/:projectId
- * Get project details
- */
-router.get('/projects/:projectId', async (req, res) => {
-  try {
-    const { projectId } = req.params;
-
-    // Mock detailed project data
-    const project = {
-      id: projectId,
-      tenantId: req.user!.tenantId,
-      teamId: 'team-1',
-      teamName: 'Sales Team',
-      name: 'Q4 Enterprise Sales Campaign',
-      description: 'Large enterprise client acquisition campaign targeting Fortune 500 companies',
-      projectType: 'sales',
-      status: 'active',
-      priority: 'high',
-      startDate: new Date('2025-09-01'),
-      dueDate: new Date('2025-12-31'),
-      estimatedHours: 320,
-      actualHours: 180,
-      completionPercentage: 56,
-
-      // AI insights
-      aiComplexityScore: 8.2,
-      aiRiskScore: 4.1,
-      aiTimelineConfidence: 0.78,
-      aiResourceRequirements: {
-        salesReps: 3,
-        salesEngineers: 2,
-        marketingSupport: 1,
-        projectManager: 1,
-      },
-
-      // Business context
-      clientId: 'client-enterprise-1',
-      clientName: 'Global Manufacturing Corp',
-      budget: 150000,
-      revenuePotential: 2500000,
-
-      // Milestones with AI insights
-      milestones: [
-        {
-          id: 'milestone-1',
-          name: 'Market Research & Target Identification',
-          description: 'Research target accounts and decision makers',
-          status: 'completed',
-          completionPercentage: 100,
-          dueDate: new Date('2025-09-15'),
-          actualCompletionDate: new Date('2025-09-12'),
-          aiCriticalPath: true,
-          aiDelayRisk: 0.1,
-          tasks: 8,
-          completedTasks: 8,
-        },
-        {
-          id: 'milestone-2',
-          name: 'Lead Generation & Initial Outreach',
-          description: 'Generate qualified leads and initiate contact',
-          status: 'in_progress',
-          completionPercentage: 75,
-          dueDate: new Date('2025-10-15'),
-          aiCriticalPath: true,
-          aiDelayRisk: 0.3,
-          tasks: 12,
-          completedTasks: 9,
-        },
-        {
-          id: 'milestone-3',
-          name: 'Proposal Development',
-          description: 'Create customized proposals for qualified prospects',
-          status: 'pending',
-          completionPercentage: 0,
-          dueDate: new Date('2025-11-15'),
-          aiCriticalPath: true,
-          aiDelayRisk: 0.4,
-          tasks: 15,
-          completedTasks: 0,
-        },
-        {
-          id: 'milestone-4',
-          name: 'Contract Negotiation & Closing',
-          description: 'Negotiate terms and close deals',
-          status: 'pending',
-          completionPercentage: 0,
-          dueDate: new Date('2025-12-15'),
-          aiCriticalPath: true,
-          aiDelayRisk: 0.5,
-          tasks: 10,
-          completedTasks: 0,
-        },
-      ],
-
-      // Team assignments
-      assignments: [
-        {
-          userId: 'user-1',
-          name: 'John Smith',
-          role: 'Project Lead',
-          assignmentType: 'primary',
-          estimatedEffortHours: 80,
-          actualEffortHours: 45,
-          workloadPercentage: 25,
-          aiSkillMatchScore: 0.95,
-        },
-        {
-          userId: 'user-2',
-          name: 'Sarah Johnson',
-          role: 'Senior Sales Rep',
-          assignmentType: 'primary',
-          estimatedEffortHours: 120,
-          actualEffortHours: 68,
-          workloadPercentage: 35,
-          aiSkillMatchScore: 0.88,
-        },
-        {
-          userId: 'user-3',
-          name: 'Mike Chen',
-          role: 'Sales Engineer',
-          assignmentType: 'collaborator',
-          estimatedEffortHours: 60,
-          actualEffortHours: 32,
-          workloadPercentage: 20,
-          aiSkillMatchScore: 0.92,
-        },
-      ],
-
-      // Collaboration settings
-      collaborationSettings: {
-        dailyStandups: true,
-        weeklyReviews: true,
-        milestoneNotifications: true,
-        autoTaskAssignment: true,
-      },
-
-      // Recent activity
-      recentActivity: [
-        {
-          type: 'milestone_progress',
-          description: 'Lead Generation milestone reached 75% completion',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          userId: 'user-2',
-        },
-        {
-          type: 'task_completed',
-          description: 'Completed prospect research for 5 target accounts',
-          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-          userId: 'user-3',
-        },
-        {
-          type: 'comment',
-          description: 'Added notes from client discovery call',
-          timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
-          userId: 'user-2',
-        },
-      ],
-
-      createdBy: 'user-1',
-      createdAt: new Date('2025-08-15'),
-      updatedAt: new Date(),
-    };
-
-    res.json(project);
-  } catch (error) {
-    log.error('Error fetching project details:', error);
-    res.status(500).json({ error: 'Failed to fetch project details' });
-  }
-});
+// GET /api/projects/:projectId REMOVED (WF-P-07).
+//
+// It was a mock - the same hardcoded 'Q4 Enterprise Sales Campaign' the list
+// handlers above returned before AUDIT-021 deleted them - and it had no caller.
+// WF-P-07 gave server/routes-tasks.ts a REAL GET /api/projects/:id over the
+// projects table, and that file registers at routes-registry:401 while this
+// router mounts at :620, so Express would have matched the real one and never
+// reached this. Deleted rather than left to be found later as a live-looking
+// handler that never runs.
+//
+// /projects/:projectId/assignments/optimize and /projects/:projectId/dependencies
+// below are three-segment paths, so the new :id route does not touch them. They
+// are still mocks with no caller.
 
 /**
  * POST /api/projects/:projectId/assignments/optimize
@@ -461,12 +306,12 @@ router.post('/projects/:projectId/assignments/optimize', async (req, res) => {
     const { tasks, teamId } = req.body;
 
     if (!tasks || !Array.isArray(tasks)) {
-      return res.status(400).json({ error: 'Tasks array is required' });
+      return badRequest(res, 'Tasks array is required', { code: 'VALIDATION_ERROR' });
     }
 
     const tenantId = getTenantId(req);
-    if (!tenantId) return res.status(400).json({ error: 'Tenant ID is required' });
-    if (!teamId) return res.status(400).json({ error: 'teamId is required' });
+    if (!tenantId) return badRequest(res, 'Tenant ID is required', { code: 'VALIDATION_ERROR' });
+    if (!teamId) return badRequest(res, 'teamId is required', { code: 'VALIDATION_ERROR' });
 
     // The default used to be the literal 'team-1', which matched the hardcoded
     // members getTeamMembers returned. With a real membership read that default
@@ -479,7 +324,7 @@ router.post('/projects/:projectId/assignments/optimize', async (req, res) => {
     res.json(assignments);
   } catch (error) {
     log.error('Error optimizing task assignments:', error);
-    res.status(500).json({ error: 'Failed to optimize task assignments' });
+    serverError(res, 'Failed to optimize task assignments');
   }
 });
 
@@ -496,7 +341,7 @@ router.get('/projects/:projectId/dependencies', async (req, res) => {
     res.json(dependencyData);
   } catch (error) {
     log.error('Error fetching project dependencies:', error);
-    res.status(500).json({ error: 'Failed to fetch project dependencies' });
+    serverError(res, 'Failed to fetch project dependencies');
   }
 });
 
@@ -588,7 +433,7 @@ router.get('/collaboration/templates', async (req, res) => {
     res.json(templates);
   } catch (error) {
     log.error('Error fetching project templates:', error);
-    res.status(500).json({ error: 'Failed to fetch project templates' });
+    serverError(res, 'Failed to fetch project templates');
   }
 });
 
@@ -665,7 +510,7 @@ router.get('/collaboration/analytics', async (req, res) => {
     res.json(analytics);
   } catch (error) {
     log.error('Error fetching collaboration analytics:', error);
-    res.status(500).json({ error: 'Failed to fetch collaboration analytics' });
+    serverError(res, 'Failed to fetch collaboration analytics');
   }
 });
 

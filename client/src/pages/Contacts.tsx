@@ -79,7 +79,7 @@ import {
   UserCheck,
   UserX,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { getApiUrl } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
@@ -207,40 +207,38 @@ export default function Contacts() {
     isLoading: companiesLoading,
     error: companiesError,
   } = useQuery({
-    queryKey: ['supabase-companies', tenantId],
+    // WF-S-07: through the server, not through the browser's Supabase client.
+    // `companies` has no RLS policy, so a direct PostgREST read was isolated by
+    // the .eq('tenant_id') in this file and nothing else - a filter the caller
+    // controls is not a boundary. The edge function resolves the tenant from the
+    // JWT and, since WF-R-05, scopes the rows to the caller as well.
+    queryKey: ['/api/companies', 'contacts-picker', tenantId],
     enabled: !!tenantId,
     retry: 2,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('id, business_name, activity')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      return (data || []).map((row: any) => ({
+      const response = await apiRequest('/api/companies?limit=500', 'GET');
+      return extractRecords<Record<string, any>>(response).map((row) => ({
         id: row.id,
-        companyName: row.business_name,
-        status: row.activity || 'active',
+        companyName: row.business_name ?? row.businessName,
+        status: row.activity ?? 'active',
       }));
     },
   });
 
   // Fetch users for owner lookup
   const { data: users } = useQuery({
-    queryKey: ['supabase-users', tenantId],
+    // WF-S-07. It also fixes a live blank: the select asked for first_name and
+    // last_name and the mapper read u.firstName / u.lastName, which are undefined
+    // on a raw PostgREST row - so every owner rendered as their email or as
+    // "Unassigned". /api/users already returns camelCase.
+    queryKey: ['/api/users', tenantId],
     enabled: !!tenantId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, first_name, last_name, email')
-        .eq('tenant_id', tenantId);
-      if (error) throw error;
-      return (data || []).map((u: any) => ({
+      const response = await apiRequest('/api/users', 'GET');
+      return extractRecords<Record<string, any>>(response).map((u) => ({
         id: u.id,
-        firstName: u.firstName,
-        lastName: u.lastName,
+        firstName: u.firstName ?? u.first_name,
+        lastName: u.lastName ?? u.last_name,
         email: u.email,
       }));
     },
@@ -267,28 +265,23 @@ export default function Contacts() {
         throw new Error('Missing tenant/user context');
       }
 
-      const { data, error } = await supabase
-        .from('companies')
-        .insert({
-          tenant_id: tenantId,
-          business_name: companyName,
-          activity: 'active',
-          created_by: user.id,
-        })
-        .select('id, business_name, activity')
-        .single();
-
-      if (error) throw error;
+      // WF-S-07. tenant_id and created_by are no longer sent: the edge function
+      // takes both from the JWT, and a client-supplied tenant_id on an insert is
+      // the write half of the same hole the read had.
+      const created = await apiRequest('/api/companies', 'POST', {
+        business_name: companyName,
+        activity: 'active',
+      });
 
       return {
-        id: data.id,
-        companyName: data.business_name,
-        status: data.activity || 'active',
+        id: created.id,
+        companyName: created.business_name ?? created.businessName ?? companyName,
+        status: created.activity ?? 'active',
       };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['supabase-companies', tenantId],
+        queryKey: ['/api/companies', 'contacts-picker', tenantId],
       });
     },
   });
@@ -299,33 +292,28 @@ export default function Contacts() {
       if (!tenantId) throw new Error('Missing tenant context');
       if (!data.companyId) throw new Error('Missing companyId');
 
-      const payload: any = {
-        tenant_id: tenantId,
-        company_id: data.companyId,
+      // WF-S-07: POST /api/contacts, which takes tenant_id from the JWT and
+      // defaults owner_id to the caller. Two keys are gone with the direct insert
+      // and neither is a loss: preferred_channels and favorite_content_type were
+      // always written as null, and `owner_id: filters.contactOwner` took the
+      // OWNER FROM THE LIST FILTER - so a contact created while filtering by a
+      // colleague was assigned to that colleague, and one created with the filter
+      // on 'all' was assigned to the literal string 'all'.
+      const created = await apiRequest('/api/contacts', 'POST', {
+        companyId: data.companyId,
         salutation: data.salutation || null,
-        first_name: data.firstName || null,
-        last_name: data.lastName,
+        firstName: data.firstName || null,
+        lastName: data.lastName,
         email: data.email || null,
         phone: data.phone || null,
         mobile: data.mobile || null,
         title: data.title || null,
         department: data.department || null,
-        reports_to: data.reportsTo || null,
-        is_primary_contact: data.isPrimaryContact || false,
-        lead_status: data.leadStatus || 'new',
-        owner_id: filters.contactOwner || null,
-        // Store comm prefs in basic fields we have
-        preferred_channels: null,
-        favorite_content_type: null,
-      };
+        reportsTo: data.reportsTo || null,
+        isPrimaryContact: data.isPrimaryContact || false,
+        leadStatus: data.leadStatus || 'new',
+      });
 
-      const { data: created, error } = await supabase
-        .from('company_contacts')
-        .insert(payload)
-        .select('*')
-        .single();
-
-      if (error) throw error;
       return created;
     },
     onSuccess: () => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,10 +9,8 @@ import { Progress } from '@/components/ui/progress';
 import {
   Calendar,
   Clock,
-  Wrench,
   AlertTriangle,
   TrendingUp,
-  DollarSign,
   CheckCircle,
   Plus,
   Settings,
@@ -30,29 +28,10 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import {} from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
+import {} from 'recharts';
 
 interface MaintenanceSchedule {
   id: string;
@@ -196,55 +175,82 @@ export default function PreventiveMaintenanceAutomation() {
       })),
   });
 
-  // Fetch maintenance templates
-  const { data: templates = [] } = useQuery<MaintenanceTemplate[]>({
-    queryKey: ['/api/maintenance/templates'],
-    select: (data: any[]) =>
-      data.map((template) => ({
-        ...template,
-        lastUsed: new Date(template.lastUsed),
-        createdAt: new Date(template.createdAt),
-      })),
+  // The tenant's equipment, so auto-generate targets real machines instead of the
+  // five hard-coded ids it used to submit.
+  const { data: equipment = [] } = useQuery<Array<{ id: string }>>({
+    queryKey: ['/api/equipment'],
+    select: (data: unknown) =>
+      Array.isArray(data) ? data : ((data as { data?: Array<{ id: string }> })?.data ?? []),
   });
 
-  // Fetch maintenance analytics
+  // WF-V-04: the shape supabase/functions/maintenance/ actually returns. The old
+  // type named efficiency, equipment_health, cost_analysis and performance_trends
+  // - all four came from a fixture, and none is derivable from a schedule table
+  // and a record table. `unbacked` says which of those the endpoint deliberately
+  // does not answer.
   const { data: analytics } = useQuery<{
-    efficiency: any;
-    summary: any;
-    equipment_health: any;
-    cost_analysis: any;
-    performance_trends: any;
+    windowDays: number;
+    totalSchedules: number;
+    activeSchedules: number;
+    overdueSchedules: number;
+    completedInWindow: number;
+    totalLaborHours: number | null;
+    totalCost: number | null;
+    unbacked: string[];
   }>({
     queryKey: ['/api/maintenance/analytics'],
   });
 
-  // Fetch predictive maintenance
-  const { data: predictions = [] } = useQuery<any[]>({
-    queryKey: ['/api/maintenance/predictions'],
-  });
-
   // Auto-generate schedules mutation
   const autoGenerateMutation = useMutation({
-    mutationFn: (data: any) =>
+    mutationFn: (data: unknown) =>
       apiRequest('/api/maintenance/auto-generate', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (result: { createdCount?: number; unknownEquipmentIds?: string[] }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/maintenance/schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/maintenance/analytics'] });
+      // The count comes from the rows the server actually wrote. The old toast
+      // said "Schedules Generated" against an endpoint that persisted nothing.
+      const skipped = result?.unknownEquipmentIds?.length ?? 0;
       toast({
-        title: 'Schedules Generated',
-        description: 'Maintenance schedules have been automatically generated.',
+        title: `${result?.createdCount ?? 0} schedule(s) created`,
+        description:
+          skipped > 0 ? `${skipped} equipment id(s) did not belong to this tenant.` : undefined,
       });
     },
+    onError: (err) =>
+      toast({
+        title: 'Could not generate the schedules',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      }),
   });
 
+  // WF-V-04: this used to submit five hard-coded ids - 'eq-001'..'eq-005' - to an
+  // endpoint that persisted nothing and reported success. It now generates for the
+  // tenant's equipment that has NO active schedule yet, which is the only set the
+  // button can sensibly mean, and does nothing (with a reason) when there is none.
+  const scheduledEquipmentIds = useMemo(
+    () => new Set(schedules.map((s) => s.equipmentId)),
+    [schedules],
+  );
+  const unscheduledEquipment = useMemo(
+    () => equipment.filter((e) => !scheduledEquipmentIds.has(e.id)),
+    [equipment, scheduledEquipmentIds],
+  );
+
   const handleAutoGenerate = () => {
-    // Sample equipment IDs - in real implementation, this would come from equipment list
-    const equipmentIds = ['eq-001', 'eq-002', 'eq-003', 'eq-004', 'eq-005'];
+    if (unscheduledEquipment.length === 0) {
+      toast({
+        title: 'Nothing to generate',
+        description: 'Every piece of equipment already has a maintenance schedule.',
+      });
+      return;
+    }
     autoGenerateMutation.mutate({
-      equipmentIds,
-      templateId: 'template-1',
+      equipmentIds: unscheduledEquipment.map((e) => e.id),
       startDate: new Date(),
       frequency: 'quarterly',
     });
@@ -315,66 +321,67 @@ export default function PreventiveMaintenanceAutomation() {
           </div>
         </div>
 
+        {/* WF-V-04: four cards, four fabrications. Compliance, Cost Savings,
+            preventive-vs-reactive, Response Time and first-time-fix all came
+            from a fixture; nothing records whether a due date was MET (only
+            that work was completed), and there is no cost model to compare
+            against, so none is derivable from maintenance_schedules and
+            maintenance_records. The cards below report what those two tables
+            can answer, and the endpoint's `unbacked` array names the rest so
+            their absence reads as unmeasured rather than as zero. */}
         {analytics && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Compliance</CardTitle>
+                <CardTitle className="text-sm font-medium">Active schedules</CardTitle>
                 <CheckCircle className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {analytics.efficiency.maintenanceCompliance}%
-                </div>
-                <p className="text-xs text-muted-foreground">On-time completion rate</p>
-                <Progress value={analytics.efficiency.maintenanceCompliance} className="mt-2" />
+                <div className="text-2xl font-bold">{analytics.activeSchedules}</div>
+                <p className="text-xs text-muted-foreground">
+                  of {analytics.totalSchedules} in total
+                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Cost Savings</CardTitle>
-                <DollarSign className="h-4 w-4 text-green-500" />
+                <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-red-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  ${analytics.summary.costSavings.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">Monthly preventive savings</p>
-                <div className="text-xs text-green-600 mt-1">
-                  {analytics.summary.preventiveVsReactive}% preventive vs reactive
-                </div>
+                <div className="text-2xl font-bold">{analytics.overdueSchedules}</div>
+                <p className="text-xs text-muted-foreground">Past their next due date</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Response Time</CardTitle>
+                <CardTitle className="text-sm font-medium">Completed</CardTitle>
                 <Clock className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {analytics.efficiency.averageResponseTime}h
-                </div>
-                <p className="text-xs text-muted-foreground">Average service response</p>
-                <div className="text-xs text-gray-600 mt-1">
-                  {analytics.efficiency.firstTimeFixRate}% first-time fix rate
-                </div>
+                <div className="text-2xl font-bold">{analytics.completedInWindow}</div>
+                <p className="text-xs text-muted-foreground">
+                  In the last {analytics.windowDays} days
+                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Equipment Health</CardTitle>
+                <CardTitle className="text-sm font-medium">Labour hours</CardTitle>
                 <TrendingUp className="h-4 w-4 text-purple-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{analytics.summary.totalEquipment}</div>
-                <p className="text-xs text-muted-foreground">Total managed equipment</p>
-                <div className="flex items-center gap-2 mt-2 text-xs">
-                  <span className="text-red-600">{overdueSchedules} overdue</span>
-                  <span className="text-yellow-600">{dueSoon} due soon</span>
+                {/* Null, not 0: no completed record has logged hours, which is a
+                    different statement from "the work took no time". */}
+                <div className="text-2xl font-bold">
+                  {analytics.totalLaborHours == null
+                    ? 'Not recorded'
+                    : analytics.totalLaborHours.toLocaleString()}
                 </div>
+                <p className="text-xs text-muted-foreground">Logged on completed maintenance</p>
               </CardContent>
             </Card>
           </div>
@@ -383,8 +390,6 @@ export default function PreventiveMaintenanceAutomation() {
         <Tabs defaultValue="schedules" className="space-y-6">
           <TabsList>
             <TabsTrigger value="schedules">Maintenance Schedules</TabsTrigger>
-            <TabsTrigger value="predictive">Predictive Analysis</TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
@@ -579,292 +584,72 @@ export default function PreventiveMaintenanceAutomation() {
             )}
           </TabsContent>
 
-          <TabsContent value="predictive" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-              {predictions.map((prediction: any) => (
-                <Card key={prediction.equipmentId} className="border-l-4 border-l-red-500">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{prediction.model}</CardTitle>
-                        <CardDescription>
-                          {prediction.customer} • {prediction.location}
-                        </CardDescription>
-                      </div>
-                      <Badge className={getRiskColor(prediction.prediction.riskLevel)}>
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        {prediction.prediction.riskLevel} risk
-                      </Badge>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-sm text-gray-600">Failure Probability</div>
-                        <div className="text-xl font-bold text-red-600">
-                          {prediction.prediction.failureProbability}%
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-gray-600">Time to Failure</div>
-                        <div className="text-xl font-bold">
-                          {prediction.prediction.timeToFailure} days
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-medium mb-2">
-                        Predicted Component: {prediction.prediction.predictedComponent}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        Confidence: {prediction.prediction.confidence}%
-                      </div>
-                    </div>
-
-                    <div className="bg-yellow-50 rounded-lg p-3">
-                      <h5 className="font-medium text-yellow-800 mb-2">Cost Analysis</h5>
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <div>
-                          <div className="text-gray-600">Preventive</div>
-                          <div className="font-medium text-green-600">
-                            ${prediction.recommendation.preventiveCost}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-gray-600">Reactive</div>
-                          <div className="font-medium text-red-600">
-                            ${prediction.recommendation.reactiveCost}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-gray-600">Savings</div>
-                          <div className="font-medium text-green-600">
-                            ${prediction.recommendation.potentialSavings}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-medium mb-2">Current Metrics:</div>
-                      <div className="text-xs text-gray-600 space-y-1">
-                        <div>
-                          Meter: {prediction.dataPoints.currentMeterReading.toLocaleString()}
-                        </div>
-                        <div>
-                          Monthly Volume:{' '}
-                          {prediction.dataPoints.averageMonthlyVolume.toLocaleString()}
-                        </div>
-                        <div>
-                          Print Quality: {prediction.dataPoints.performanceMetrics.printQuality}
-                        </div>
-                        <div>
-                          Speed Reduction: {prediction.dataPoints.performanceMetrics.speedReduction}
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button
-                      className="w-full"
-                      variant={
-                        prediction.recommendation.priority === 'urgent' ? 'default' : 'outline'
-                      }
-                    >
-                      {prediction.recommendation.action === 'immediate_service'
-                        ? 'Schedule Immediate Service'
-                        : 'Schedule Service'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="templates" className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {templates.map((template) => (
-                <Card key={template.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{template.templateName}</CardTitle>
-                        <CardDescription>{template.description}</CardDescription>
-                      </div>
-                      <Badge variant={template.isActive ? 'default' : 'secondary'}>
-                        {template.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <div className="text-gray-600">Equipment Types:</div>
-                        <div className="font-medium">{template.equipmentTypes.join(', ')}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600">Duration:</div>
-                        <div className="font-medium">{template.estimatedDuration} min</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600">Frequency:</div>
-                        <div className="font-medium">{template.frequency}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600">Usage Count:</div>
-                        <div className="font-medium">{template.usageCount}</div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-medium mb-2">
-                        Checklist Items ({template.checklist.length})
-                      </div>
-                      <div className="text-xs text-gray-600 max-h-20 overflow-y-auto">
-                        {template.checklist.slice(0, 3).map((item, idx) => (
-                          <div key={idx} className="flex items-start gap-1 mb-1">
-                            <span className="text-blue-600 mt-0.5">•</span>
-                            <span>
-                              {item.item} ({item.estimatedTime}m)
-                            </span>
-                          </div>
-                        ))}
-                        {template.checklist.length > 3 && (
-                          <div className="text-gray-500">
-                            + {template.checklist.length - 3} more items
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-medium mb-1">Required Skills:</div>
-                      <div className="flex flex-wrap gap-1">
-                        {template.requiredSkills.map((skill, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {skill.replace('_', ' ')}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1">
-                        Edit Template
-                      </Button>
-                      <Button size="sm" className="flex-1">
-                        Use Template
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
+          {/* WF-V-04: the Predictive Analysis and Templates tabs are gone.
+              Both read endpoints that answered from hard-coded samples - named
+              machines at named customers, a failure prediction with a confidence
+              score - and neither has a table or an engine behind it here.
+              Predictive maintenance IS real elsewhere: /service/predictions runs
+              supabase/functions/predictive-failure/ over stored signals, so this
+              tab was a fixture twin of a working page (AUDIT-019's shape) and
+              repointing it would have meant two surfaces for one engine.
+              maintenance_templates does not exist in any schema or migration. */}
 
           <TabsContent value="analytics" className="space-y-6">
+            {/* WF-V-04: Equipment Health Distribution, Cost Analysis and
+                Performance Trends all read fixture keys - equipment_health,
+                cost_analysis, performance_trends - and none is derivable from
+                maintenance_schedules and maintenance_records. A LineChart of
+                compliance and satisfaction over months is the sharpest case: it
+                asserts a measured trend, and neither series is recorded anywhere.
+                The panel below reports what the two tables can answer and prints
+                the endpoint's own list of what it will not claim. */}
             {analytics && (
-              <>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Equipment Health Distribution</CardTitle>
-                      <CardDescription>
-                        Current health status across equipment categories
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {analytics.equipment_health.map((category: any) => (
-                          <div key={category.category}>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="font-medium">{category.category}</span>
-                              <span className="text-sm text-gray-600">
-                                {category.totalUnits} units
-                              </span>
-                            </div>
-                            <div className="flex rounded-full overflow-hidden h-2">
-                              <div
-                                className="bg-green-500"
-                                style={{
-                                  width: `${(category.healthyUnits / category.totalUnits) * 100}%`,
-                                }}
-                              ></div>
-                              <div
-                                className="bg-yellow-500"
-                                style={{
-                                  width: `${(category.warningUnits / category.totalUnits) * 100}%`,
-                                }}
-                              ></div>
-                              <div
-                                className="bg-red-500"
-                                style={{
-                                  width: `${(category.criticalUnits / category.totalUnits) * 100}%`,
-                                }}
-                              ></div>
-                            </div>
-                            <div className="flex justify-between text-xs text-gray-600 mt-1">
-                              <span>{category.healthyUnits} healthy</span>
-                              <span>{category.warningUnits} warning</span>
-                              <span>{category.criticalUnits} critical</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Cost Trends</CardTitle>
-                      <CardDescription>Maintenance costs over time</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={analytics.cost_analysis.costTrends}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <Tooltip formatter={(value) => [`$${value}`, '']} />
-                          <Bar dataKey="preventive" fill="#82ca9d" name="Preventive" />
-                          <Bar dataKey="reactive" fill="#ff7c7c" name="Reactive" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                </div>
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Maintenance in the last {analytics.windowDays} days</CardTitle>
+                    <CardDescription>Derived from completed maintenance records</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Completed</span>
+                      <span className="font-medium">{analytics.completedInWindow}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Labour hours logged</span>
+                      <span className="font-medium">
+                        {analytics.totalLaborHours == null
+                          ? 'Not recorded'
+                          : analytics.totalLaborHours.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Cost logged</span>
+                      <span className="font-medium">
+                        {analytics.totalCost == null
+                          ? 'Not recorded'
+                          : `$${analytics.totalCost.toLocaleString()}`}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Performance Trends</CardTitle>
-                    <CardDescription>Key maintenance metrics over time</CardDescription>
+                    <CardTitle>Not measured</CardTitle>
+                    <CardDescription>
+                      What this page deliberately does not report, and why
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={400}>
-                      <LineChart data={analytics.performance_trends}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip />
-                        <Line
-                          type="monotone"
-                          dataKey="compliance"
-                          stroke="#8884d8"
-                          name="Compliance %"
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="satisfaction"
-                          stroke="#82ca9d"
-                          name="Satisfaction"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                      {(analytics.unbacked ?? []).map((reason) => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
                   </CardContent>
                 </Card>
-              </>
+              </div>
             )}
           </TabsContent>
         </Tabs>

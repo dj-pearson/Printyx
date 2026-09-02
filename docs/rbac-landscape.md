@@ -84,7 +84,75 @@ The last two are JSONB blobs in System A with different internal shapes again;
 Tenant isolation is intact throughout — every function filters by `tenant_id`.
 What is missing is intra-tenant privilege separation.
 
-## What has to be decided before any code changes
+### What RLS does and does not cover (WF-S-07)
+
+**Every edge function uses the service-role client**, and `service_role` holds
+`BYPASSRLS` (`drizzle/rls/service-role.sql`). So row-level security constrains
+**direct client reads only** — a browser or a script talking to PostgREST with an
+anon/authenticated JWT. It is not a second check on the API: the API's isolation is
+still the `tenant_id` filter each handler writes, and CR-010 tracks the
+`x-tenant-id` header override separately. Reading the policy coverage as "the API
+is now protected twice" is the mistake this note exists to prevent.
+
+`companies`, `business_records`, `company_contacts`, `deals` and `users` had no
+policy at all until `drizzle/rls/crm-core.sql`. That mattered because
+`Contacts.tsx` read three of them straight from the browser, isolated by an
+`.eq('tenant_id', …)` in that file — a filter the caller supplies. That page now
+goes through the server, and `grep supabase.from( client/src/pages` returns zero.
+
+### Progress against that (updated 2026-09-02)
+
+The third bullet no longer describes the sales and core surfaces. WF-R-03 put
+`roleLevel`, the role code and the permission list into `app_metadata` at every
+point that assigns a role, plus a backfill on the next authenticated request — so
+`getRoleLevel()` stops answering 1 for everybody. WF-R-04 and WF-R-05 then narrowed
+the ROWS on fifteen list handlers through `supabase/functions/_shared/scope.ts`:
+
+| Function                             | Scoped on                                                 |
+| ------------------------------------ | --------------------------------------------------------- |
+| `business-records`, `companies`      | `created_by` — see the caveat below                       |
+| `leads`                              | `owner_id`, `assigned_sales_rep`                          |
+| `deals`                              | `owner_id`, `created_by_id`                               |
+| `proposals`, `quotes`                | `assigned_to` / `created_by`                              |
+| `service-tickets`                    | `assigned_technician_id`, `created_by`                    |
+| `tasks`                              | `assigned_to`, `created_by`                               |
+| `meter-readings`                     | `technician_id`, `created_by`                             |
+| `purchase-orders`, `leases`          | `created_by`                                              |
+| `commission`                         | `employee_id`, and an unowned row is never shown          |
+| `invoices`, `equipment`, `contracts` | the customer's owner, resolved through `business_records` |
+
+`check:edge-rbac` gained a `rowScoped` class for these, because they are neither
+gated (every role must be able to open /deals) nor unrestricted.
+
+**Two caveats worth carrying forward.** `companies` records no account owner — 37
+columns, one user (`created_by`), and a free-text `business_owner` naming the
+CUSTOMER's proprietor. `owner_id` and `assigned_sales_rep` belong to
+`business_records`, the canonical table it duplicates, so the two handlers serving
+`companies` scope on the creator, which is weaker than ownership; the real fix is
+CRMX-002's migration. And until WF-R-08 nothing in the tree wrote
+`users.primary_location_id`, `users.region_id`, `users.manager_id` or
+`users.team_id` outside an orphaned file, so location and region scope degraded to
+team for everybody. `/admin/org-structure` (level 5+) now fills that tree - it
+invites a user, assigns a role, and places them under a manager, at a location, in
+a region and on a team, over `/api/admin/{users,locations,regions,teams}`. The
+degradation path stays in `_shared/scope.ts` on purpose: a tenant that has not
+populated its tree still gets team scope rather than an empty list.
+
+## Decision
+
+**Settled 2026-09-02 (WF-R-01): see `docs/rbac-decision.md`.** In short: the `roles`
+table (System A) survives because it is the one signup, the JWT and
+`_shared/rbac.ts` already use and the only one anything populates; the canonical
+vocabulary is the three-segment `module.resource.action` form stored nested in
+`roles.permissions`, because `flattenPermissions` and `navigation-permissions.ts`
+already speak it; and `roles.level` is the enforcement primitive until WF-R-03 puts
+the claims in the token. The migration order is WF-R-02 through WF-R-09, in that
+order, and the record explains why each step cannot move earlier.
+
+The section below is the question as it stood before that decision, kept because it
+records why the question was hard.
+
+## What had to be decided before any code changes
 
 1. **Which role system survives.** System A is what production uses and what
    signup depends on. System B is richer and better documented and is what every

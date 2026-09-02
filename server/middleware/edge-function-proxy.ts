@@ -262,6 +262,35 @@ export function registerEdgeFunctionProxy(app: any) {
   const crmProxies: Record<string, ProxyTarget> = {
     // Core CRM (EDGE-001 baseline)
     '/api/business-records': 'business-records',
+    // WF-V-01. server/routes-mobile-api.ts served the list and /stats in dev and
+    // joined equipment + technicians with Drizzle, so the dispatcher queue looked
+    // correct locally while production - which reaches this function directly -
+    // showed a blank machine and a blank technician on every ticket. AUDIT-013
+    // fixed the dev half only.
+    //
+    // ORDERING MATTERS HERE, not un-proxying: routes-service-analysis.ts owns
+    // /api/service-tickets/:id/analysis, which this function does not serve, so
+    // that router is registered BEFORE the proxy in routes-registry.ts. The proxy
+    // forwards the whole prefix and falls through only on a network error, never
+    // a 404, so without that ordering the analysis panel would go from
+    // working-in-dev to 404-in-dev.
+    '/api/service-tickets': 'service-tickets',
+    // WF-L-03. The board's three calls - the bare list, POST and
+    // PATCH /:id/status - fell to the edge function's terminal 404, so
+    // WarehouseOperations.tsx worked only in dev, where server/routes-warehouse.ts
+    // served them. EDGE-002h missed it because that check compares NAMED
+    // sub-paths and the bare list has no name. The whole prefix is safe to proxy:
+    // the edge function now covers every path the Express router had, and the
+    // router's other prefixes (/api/build-processes, /api/delivery-schedules,
+    // /api/serial-numbers, /api/equipment) are untouched by this entry.
+    '/api/warehouse-operations': 'warehouse-operations',
+    // WF-V-04. server/routes-preventive-maintenance.ts answered this prefix from
+    // hard-coded fixtures whose own comments said "until schema is updated", AND
+    // was never registered - so /api/maintenance/* 404'd in dev and hit the edge
+    // function in production. The function reads maintenance_schedules and
+    // maintenance_records, which migration 0071 finally declares, and now serves
+    // the /analytics and /auto-generate paths the page calls too.
+    '/api/maintenance': 'maintenance',
     '/api/companies': 'companies',
     // PA-021. /api/customers used to be special-cased below to the `companies`
     // function for the bare list, with only /:id/:sub forwarded to `customers`.
@@ -289,6 +318,16 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/quotes': 'quotes',
     '/api/proposals': 'proposals',
     '/api/reports': 'reports',
+
+    // WF-C-06. The Express handlers for these three were correct and had no
+    // caller; the edge functions production reaches queried a table that does
+    // not exist. The edge side now serves the real tables and the Express
+    // handlers are gone, so these entries make dev and prod one implementation.
+    // NOT /api/implementation-projects - no edge function serves it and a bare
+    // prefix entry would take it from working-in-dev to 404-in-dev.
+    '/api/sales-handoffs': 'sales-handoffs',
+    '/api/handoff-tasks': 'handoff-tasks',
+    '/api/handoff-task-templates': 'handoff-task-templates',
 
     // EDGE-002 Tier 1 SAFE batch (audit-verified 2026-05-04)
     '/api/api-keys': 'api-keys',
@@ -834,6 +873,27 @@ export function registerEdgeFunctionProxy(app: any) {
     // registers at line ~297 of routes-registry, ahead of the /api/admin mount,
     // so this wins for this one path and nothing else changes.
     '/api/admin/system-health': { fn: 'admin', pathPrefix: '/system-health' },
+
+    // WF-R-08. Same reasoning, four more paths, and they close a DEV-ONLY 404
+    // rather than opening one: /admin/user-management is a routed page calling
+    // /api/admin/users, and no Express router owns that prefix - routes-registry
+    // mounts /api/admin/knowledge-base, /subscriptions and /seed and nothing else
+    // (routes-admin-workflows was deleted by QUALITY-002). So the page worked in
+    // production and 404'd in dev. Scoped per path for exactly that reason: a bare
+    // '/api/admin' entry would swallow the three prefixes Express does own.
+    // WF-P-05. /api/purchase-orders was served by Express in dev and by the edge
+    // function in production - the both-divergent class - and the two disagreed
+    // about who may approve: Express required inventory.po.*, which NO seeded role
+    // holds, so dev denied every non-admin; the edge function checked nothing, so
+    // production allowed everyone. The Express router is deleted and the prefix is
+    // proxied, after porting the /:id/status branch it had and the edge function
+    // did not (PurchaseOrders.tsx calls it, so that control 404'd in production).
+    '/api/purchase-orders': 'purchase-orders',
+
+    '/api/admin/users': { fn: 'admin', pathPrefix: '/users' },
+    '/api/admin/locations': { fn: 'admin', pathPrefix: '/locations' },
+    '/api/admin/regions': { fn: 'admin', pathPrefix: '/regions' },
+    '/api/admin/teams': { fn: 'admin', pathPrefix: '/teams' },
 
     // AUDIT-019. MeetingTranscription.tsx now calls this instead of rendering
     // three hardcoded recordings. The meeting-transcription edge fn was fully

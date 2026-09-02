@@ -21,7 +21,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useRoute } from 'wouter';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -86,6 +87,33 @@ interface DealData {
   nextFollowUpDate?: string | null;
   lastActivityDate?: string | null;
   createdAt?: string | null;
+  // WF-C-09: the contract this deal became, returned by GET /api/deals/:id.
+  // Absent on every deal that has not been accepted, which is most of them.
+  contract?: {
+    id: string;
+    contract_number?: string | null;
+    status?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    acquisition_type?: string | null;
+    lease_id?: string | null;
+  } | null;
+  // WF-C-05: the lease this deal produced, when it was paid for on somebody
+  // else's paper. Null for a cash sale and for every deal not yet accepted.
+  lease?: {
+    id: string;
+    lease_number?: string | null;
+    lease_name?: string | null;
+    status?: string | null;
+    lease_type?: string | null;
+    monthly_payment?: string | null;
+    term?: number | null;
+    total_amount?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    first_payment_date?: string | null;
+    lessor_name?: string | null;
+  } | null;
   updatedAt?: string | null;
   // COP-M04: the copier-deal fields. The deals edge function returns each one in
   // camelCase alongside the raw snake row.
@@ -102,11 +130,16 @@ interface DealData {
 }
 
 interface StageOption {
+  /** The LEGACY deal_stages.id - what the move endpoint takes and deals group by. */
   id: string;
   name: string;
   displayName?: string;
   color?: string;
   order?: number;
+  // WF-C-02: the board endpoint has always returned these; nothing read them, so
+  // Mark Won had no way to know which stage "won" meant and patched status instead.
+  isClosedWon?: boolean;
+  isClosedLost?: boolean;
 }
 
 interface BoardResponse {
@@ -267,6 +300,43 @@ export default function DealDetail() {
     [deal],
   );
 
+  // WF-P-08: the deal's own work. tasks gained deal_id in migration 0079; before
+  // it, a task carried an assignee and no subject, so this panel had nothing to
+  // list and said so.
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+
+  const dealTasksQuery = useQuery<
+    Array<{ id: string; title: string; status?: string; priority?: string; dueDate?: string }>
+  >({
+    queryKey: ['/api/tasks', { dealId }],
+    enabled: Boolean(dealId),
+    queryFn: async () => extractRecords(await apiRequest(`/api/tasks?dealId=${dealId}`, 'GET')),
+  });
+  const dealTasks = dealTasksQuery.data ?? [];
+
+  const addDealTask = useMutation({
+    mutationFn: (title: string) =>
+      apiRequest('/api/tasks', 'POST', {
+        title,
+        dealId,
+        // The account too, so the customer's task list shows the deal's work.
+        customerId: deal?.customerId ?? null,
+        status: 'todo',
+        priority: 'medium',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks', { dealId }] });
+      setNewTaskTitle('');
+      toast({ title: 'Task added' });
+    },
+    onError: (error: Error) =>
+      toast({
+        title: 'Could not add the task',
+        description: error.message,
+        variant: 'destructive',
+      }),
+  });
+
   const moveStage = useMutation({
     // The endpoint expects `toStageId` (the legacy deal_stages.id the board also
     // sends), not `stageId` — sending the wrong key silently 400s.
@@ -281,18 +351,41 @@ export default function DealDetail() {
     onError: () => toast({ title: 'Could not move stage', variant: 'destructive' }),
   });
 
+  // WF-C-02: this had the same defect as CrmDealsPage's Mark Won - it PUT status
+  // and actualCloseDate and nothing else, so the board (which groups strictly by
+  // stageId) kept the deal in its old column while this page said Won. Marking a
+  // deal closed IS a stage move, so it goes through the same endpoint the stage
+  // control above uses, which sets status, probability and actual_close_date from
+  // the stage's own flags and fires deal.stage_changed (WF-C-01).
   const setStatus = useMutation({
-    mutationFn: (status: 'won' | 'lost') =>
-      apiRequest(`/api/deals/${dealId}`, 'PUT', {
-        status,
-        actualCloseDate: new Date().toISOString(),
-      }),
+    mutationFn: (status: 'won' | 'lost') => {
+      const target = stages.find((s) => (status === 'won' ? s.isClosedWon : s.isClosedLost));
+      if (!target) {
+        // Refusing beats writing a status the board cannot show; a pipeline with
+        // no closing stage is a configuration problem, and patching status anyway
+        // is what produced the disagreement.
+        return Promise.reject(
+          new Error(
+            `This pipeline has no Closed ${status === 'won' ? 'Won' : 'Lost'} stage. ` +
+              'Add one in Pipeline Configuration first.',
+          ),
+        );
+      }
+      return apiRequest(`/api/pipeline-config/deals/${dealId}/move`, 'POST', {
+        toStageId: target.id,
+      });
+    },
     onSuccess: (_d, status) => {
       queryClient.invalidateQueries({ queryKey: [`/api/deals/${dealId}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       toast({ title: `Deal marked ${status}` });
     },
-    onError: () => toast({ title: 'Could not update the deal', variant: 'destructive' }),
+    onError: (err) =>
+      toast({
+        title: 'Could not update the deal',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      }),
   });
 
   if (isLoading) {
@@ -501,14 +594,55 @@ export default function DealDetail() {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm">Tasks</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    {/* Tasks have no dealId column; they attach through
-                        crm_associations. Wiring that UI is its own slice, so
-                        say so rather than render a fake list. */}
-                    <EmptyState
-                      title="Task links are not wired yet"
-                      description="Tasks attach to a deal through the CRM association layer. This panel lands with the task-association slice."
-                    />
+                  <CardContent className="space-y-3">
+                    {/* WF-P-08: real now. tasks gained deal_id in migration
+                        0079, and the note that stood here - "tasks attach
+                        through crm_associations" - was a guess: nothing ever
+                        associated a task that way either. */}
+                    {dealTasksQuery.isLoading ? (
+                      <p className="text-sm text-muted-foreground">Loading…</p>
+                    ) : dealTasks.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No tasks on this deal yet.</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {dealTasks.map((task) => (
+                          <li
+                            key={task.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                          >
+                            <span className="min-w-0">
+                              <span className="font-medium">{task.title}</span>
+                              <span className="block text-xs text-muted-foreground">
+                                {humanize(task.status)}
+                                {task.dueDate
+                                  ? ` · due ${format(new Date(task.dueDate), 'PP')}`
+                                  : ''}
+                              </span>
+                            </span>
+                            <Badge variant="outline">{humanize(task.priority)}</Badge>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <form
+                      className="flex flex-wrap gap-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!newTaskTitle.trim()) return;
+                        addDealTask.mutate(newTaskTitle.trim());
+                      }}
+                    >
+                      <Input
+                        aria-label="New task for this deal"
+                        placeholder="Add a task for this deal"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        className="flex-1 min-w-[12rem]"
+                      />
+                      <Button type="submit" disabled={addDealTask.isPending}>
+                        Add task
+                      </Button>
+                    </form>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -577,6 +711,50 @@ export default function DealDetail() {
               <CardContent className="space-y-3">
                 <Field icon={Building2} label="Account" value={deal.companyName} />
                 <Field icon={Target} label="Deal type" value={deal.dealType} />
+                {/* WF-C-09. Rendered only when the deal produced one, so an open
+                    deal does not grow an empty row. The term is deliberately not
+                    shown here: start and end date are null until acceptance sets
+                    them (WF-L-08), and rendering "N/A" for a date nobody has
+                    agreed to reads as missing data rather than as not-yet. */}
+                {deal.contract && (
+                  <Field
+                    icon={FileText}
+                    label="Contract"
+                    value={deal.contract.contract_number ?? deal.contract.id}
+                  />
+                )}
+                {/* WF-C-05. Acceptance used to create a contract and nothing
+                    else, whatever the proposal said, so a leased fleet looked
+                    exactly like a cash sale. Both rows appear only when the
+                    fact exists - a deal that states no acquisition type shows
+                    neither, rather than "Cash" by default. */}
+                {deal.contract?.acquisition_type && (
+                  <Field
+                    icon={DollarSign}
+                    label="Acquisition"
+                    value={humanize(deal.contract.acquisition_type)}
+                  />
+                )}
+                {deal.lease && (
+                  <>
+                    <Field
+                      icon={FileText}
+                      label="Lease"
+                      value={deal.lease.lease_number ?? deal.lease.lease_name ?? deal.lease.id}
+                    />
+                    <Field
+                      icon={DollarSign}
+                      label="Lease payment"
+                      value={
+                        deal.lease.monthly_payment
+                          ? `${money(deal.lease.monthly_payment)} x ${deal.lease.term ?? '?'} months`
+                          : null
+                      }
+                    />
+                    <Field icon={Building2} label="Lessor" value={deal.lease.lessor_name} />
+                    <Field icon={Target} label="Lease status" value={humanize(deal.lease.status)} />
+                  </>
+                )}
                 <Field icon={FileText} label="Products" value={deal.productsInterested} />
                 <Field
                   icon={Calendar}

@@ -113,7 +113,12 @@ const writerCorpus = [
 function hasWriter(table) {
   const postgrest = new RegExp(`from\\(\\s*'${table}'\\s*\\)\\s*\\.(insert|upsert)`);
   const drizzle = new RegExp(`insert\\(\\s*${camel(table)}\\s*\\)`);
-  const raw = new RegExp(`insert\\s+into\\s+"?${table}"?`, 'i');
+  // WF-C-01: the schema qualifier is optional AND it was the bug. This missed
+  // `INSERT INTO public.pipeline_automation_logs` in drizzle/functions/
+  // pipeline-config.sql, so a table with a real producer - a SQL function, which
+  // is exactly the "external system fills it" case this guard exists to ask
+  // about - was reported as unwritten the moment its TypeScript writer went away.
+  const raw = new RegExp(`insert\\s+into\\s+(?:"?public"?\\.)?"?${table}"?`, 'i');
   return writerCorpus.some((text) => postgrest.test(text) || drizzle.test(text) || raw.test(text));
 }
 

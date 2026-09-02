@@ -1,6 +1,6 @@
 {
   "note": "Values typed into a page instead of read from data, inherited when this check widened from client/src/pages/admin to the whole page tree (PA-040). Each is a claim to delete or derive. Shrink this list, never grow it. See scripts/check-no-static-posture.mjs.",
-  "total": 42,
+  "total": 41,
   "offenders": [
     "client/src/pages/AIHub.tsx  <Progress value={85} className=\"h-2\" />",
     "client/src/pages/AIHub.tsx  <Progress value={93} className=\"h-2\" />",

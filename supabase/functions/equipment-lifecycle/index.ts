@@ -4,103 +4,206 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import {
+  LIFECYCLE_STAGES,
   canTransition,
   getAvailableTransitions,
   getValidationRequirements,
 } from '../_shared/equipment-lifecycle-transitions.ts';
+import {
+  ACTIVATION_STAGE_FROM,
+  ACTIVATION_STAGE_TO,
+  RETIREMENT_STAGE_TO,
+  planActivation,
+  planRetirement,
+} from '../_shared/lifecycle-activation.ts';
+import {
+  PENDING_PO_ID,
+  buildLineItemRow,
+  lineItemsSubtotal,
+} from '../purchase-orders/_line-items.ts';
+import {
+  buildDeliveryRow,
+  buildInstallationRow,
+  hubAssets,
+  hubDeliveries,
+  hubInstallations,
+  hubLifecycle,
+  hubMetrics,
+  hubPurchaseOrders,
+} from './_hub.ts';
+import { accessibleCustomerIds, resolveScope } from '../_shared/scope.ts';
 
-// Valid lifecycle stages
-const LIFECYCLE_STAGES = {
-  ORDERED: 'ordered',
-  RECEIVED: 'received',
-  STAGED: 'staged',
-  IN_TRANSIT: 'in_transit',
-  DELIVERED: 'delivered',
-  INSTALLED: 'installed',
-  ACTIVE: 'active',
-  MAINTENANCE: 'maintenance',
-  RETIRED: 'retired',
-  DISPOSED: 'disposed',
-  TRADED_IN: 'traded_in',
-} as const;
+/**
+ * WF-L-08 side effects, PostgREST half. The DECISIONS live in
+ * _shared/lifecycle-activation.ts; this reads what that needs and writes what it
+ * returns. Each write is checked independently: one failing must not hide the
+ * others, because "monitoring registered but no baseline captured" is a real and
+ * different state from "nothing ran".
+ */
+// deno-lint-ignore no-explicit-any
+async function runActivation(
+  admin: any,
+  tenantId: string,
+  equipmentId: string,
+  lifecycle: Record<string, unknown>,
+  body: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { data: equipmentRow } = await admin
+    .from('equipment')
+    .select(
+      'id, serial_number, manufacturer, model_number, customer_id, ip_address, service_contract_number, location_description',
+    )
+    .eq('id', equipmentId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
 
-// Valid transitions between stages
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  [LIFECYCLE_STAGES.ORDERED]: [LIFECYCLE_STAGES.RECEIVED, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.RECEIVED]: [LIFECYCLE_STAGES.STAGED, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.STAGED]: [LIFECYCLE_STAGES.IN_TRANSIT, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.IN_TRANSIT]: [LIFECYCLE_STAGES.DELIVERED, LIFECYCLE_STAGES.STAGED],
-  [LIFECYCLE_STAGES.DELIVERED]: [LIFECYCLE_STAGES.INSTALLED, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.INSTALLED]: [LIFECYCLE_STAGES.ACTIVE, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.ACTIVE]: [LIFECYCLE_STAGES.MAINTENANCE, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.MAINTENANCE]: [LIFECYCLE_STAGES.ACTIVE, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.RETIRED]: [LIFECYCLE_STAGES.DISPOSED, LIFECYCLE_STAGES.TRADED_IN],
-  [LIFECYCLE_STAGES.DISPOSED]: [],
-  [LIFECYCLE_STAGES.TRADED_IN]: [],
-};
+  const customerId =
+    (lifecycle.customer_id as string | null) ??
+    (equipmentRow?.customer_id as string | null) ??
+    null;
+  const serialNumber =
+    (lifecycle.serial_number as string | null) ?? (equipmentRow?.serial_number as string | null);
 
-// Validation requirements for transitions
-const VALIDATIONS: Record<string, Record<string, string[]>> = {
-  [LIFECYCLE_STAGES.RECEIVED]: {
-    [LIFECYCLE_STAGES.STAGED]: [
-      'quality_control_passed',
-      'serial_number_verified',
-      'photo_documentation',
-    ],
-  },
-  [LIFECYCLE_STAGES.STAGED]: {
-    [LIFECYCLE_STAGES.IN_TRANSIT]: ['delivery_scheduled', 'driver_assigned', 'customer_notified'],
-  },
-  [LIFECYCLE_STAGES.IN_TRANSIT]: {
-    [LIFECYCLE_STAGES.DELIVERED]: ['delivery_signature_collected', 'equipment_condition_verified'],
-  },
-  [LIFECYCLE_STAGES.DELIVERED]: {
-    [LIFECYCLE_STAGES.INSTALLED]: [
-      'delivery_signature',
-      'equipment_unpacked',
-      'site_inspection_passed',
-    ],
-  },
-  [LIFECYCLE_STAGES.INSTALLED]: {
-    [LIFECYCLE_STAGES.ACTIVE]: [
-      'installation_completed',
-      'configuration_backed_up',
-      'customer_trained',
-      'acceptance_signed',
-    ],
-  },
-  [LIFECYCLE_STAGES.ACTIVE]: {
-    [LIFECYCLE_STAGES.RETIRED]: [
-      'maintenance_history_reviewed',
-      'customer_notification_sent',
-      'replacement_planned',
-    ],
-  },
-  [LIFECYCLE_STAGES.RETIRED]: {
-    [LIFECYCLE_STAGES.DISPOSED]: [
-      'data_wiped_confirmed',
-      'disposal_vendor_selected',
-      'certificate_of_destruction',
-    ],
-    [LIFECYCLE_STAGES.TRADED_IN]: [
-      'trade_in_evaluation_completed',
-      'trade_in_credit_approved',
-      'customer_acceptance',
-    ],
-  },
-};
+  const [{ data: integrations }, { data: existingRegistrations }] = await Promise.all([
+    admin
+      .from('manufacturer_integrations')
+      .select('id, manufacturer, is_active')
+      .eq('tenant_id', tenantId),
+    serialNumber
+      ? admin
+          .from('device_registrations')
+          .select('id, status')
+          .eq('tenant_id', tenantId)
+          .eq('serial_number', serialNumber)
+          .limit(1)
+      : Promise.resolve({ data: [] }),
+  ]);
 
-function canTransition(fromStage: string, toStage: string): boolean {
-  const allowedTransitions = VALID_TRANSITIONS[fromStage];
-  return allowedTransitions?.includes(toStage) ?? false;
+  const { data: contracts } = customerId
+    ? await admin
+        .from('contracts')
+        .select('id, contract_number, start_date, lease_id')
+        .eq('tenant_id', tenantId)
+        .eq('customer_id', customerId)
+    : { data: [] };
+
+  const plan = planActivation({
+    unit: {
+      equipmentId,
+      tenantId,
+      serialNumber,
+      manufacturer:
+        (lifecycle.manufacturer as string | null) ??
+        (equipmentRow?.manufacturer as string | null) ??
+        null,
+      model: (lifecycle.model as string | null) ?? (equipmentRow?.model_number as string | null),
+      customerId,
+      currentLocation:
+        (lifecycle.current_location as string | null) ??
+        (equipmentRow?.location_description as string | null),
+      ipAddress: (equipmentRow?.ip_address as string | null) ?? null,
+      serviceContractNumber: (equipmentRow?.service_contract_number as string | null) ?? null,
+    },
+    integrations: integrations ?? [],
+    existingRegistration: existingRegistrations?.[0] ?? null,
+    contracts: contracts ?? [],
+    lease: null,
+    reading: (body.reading ?? body.meterReading ?? null) as Record<string, unknown> | null,
+  });
+
+  const done: string[] = [];
+  const failed: string[] = [];
+
+  if (plan.deviceRegistration) {
+    const { error } = await admin.from('device_registrations').insert(plan.deviceRegistration);
+    if (error) failed.push('device registration');
+    else done.push('device registration');
+  }
+
+  let leaseStart = plan.leaseStart;
+  if (plan.contractStart) {
+    const { error } = await admin
+      .from('contracts')
+      .update(plan.contractStart.patch)
+      .eq('id', plan.contractStart.id)
+      .eq('tenant_id', tenantId);
+    if (error) failed.push('contract start date');
+    else done.push('contract start date');
+
+    // The lease hangs off the contract, so it is only knowable once the contract
+    // is: a second planning pass rather than a guess made before the pick.
+    const contract = (contracts ?? []).find(
+      (c: Record<string, unknown>) => c.id === plan.contractStart!.id,
+    );
+    if (!leaseStart && contract?.lease_id) {
+      const { data: lease } = await admin
+        .from('leases')
+        .select('id, first_payment_date')
+        .eq('id', contract.lease_id)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (lease && !lease.first_payment_date) {
+        leaseStart = {
+          id: lease.id,
+          patch: {
+            first_payment_date: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        };
+      }
+    }
+  }
+
+  if (leaseStart) {
+    const { error } = await admin
+      .from('leases')
+      .update(leaseStart.patch)
+      .eq('id', leaseStart.id)
+      .eq('tenant_id', tenantId);
+    if (error) failed.push('lease first payment date');
+    else done.push('lease first payment date');
+  }
+
+  if (plan.baselineReading) {
+    const { error } = await admin.from('meter_readings').insert(plan.baselineReading);
+    if (error) failed.push('baseline meter reading');
+    else done.push('baseline meter reading');
+  }
+
+  return { done, failed, skipped: plan.skipped };
 }
 
-function getAvailableTransitions(currentStage: string): string[] {
-  return VALID_TRANSITIONS[currentStage] || [];
-}
+// deno-lint-ignore no-explicit-any
+async function runRetirement(
+  admin: any,
+  tenantId: string,
+  lifecycle: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const serialNumber = lifecycle.serial_number as string | null;
+  const { data: registrations } = serialNumber
+    ? await admin
+        .from('device_registrations')
+        .select('id, status')
+        .eq('tenant_id', tenantId)
+        .eq('serial_number', serialNumber)
+        .limit(1)
+    : { data: [] };
 
-function getValidationRequirements(fromStage: string, toStage: string): string[] {
-  return VALIDATIONS[fromStage]?.[toStage] || [];
+  const plan = planRetirement(registrations?.[0] ?? null);
+  const done: string[] = [];
+  const failed: string[] = [];
+
+  if (plan.deviceRegistration) {
+    const { error } = await admin
+      .from('device_registrations')
+      .update(plan.deviceRegistration.patch)
+      .eq('id', plan.deviceRegistration.id)
+      .eq('tenant_id', tenantId);
+    if (error) failed.push('device deregistration');
+    else done.push('device deregistration');
+  }
+
+  return { done, failed, skipped: plan.skipped };
 }
 
 export default async function handler(req: Request) {
@@ -144,6 +247,204 @@ export default async function handler(req: Request) {
 
     const firstPart = parts[0]; // After 'equipment-lifecycle'
     const secondPart = parts[1];
+
+    // ── WF-L-02: the Equipment Lifecycle Hub's own endpoints ──────────────
+    //
+    // EquipmentLifecycleHub.tsx has called these since it was written and
+    // NEITHER host served any of them, so every list on the page was empty
+    // behind a 404 and the three create dialogs posted into nothing.
+    if (req.method === 'GET' && firstPart === 'metrics') {
+      return createCorsResponse(await hubMetrics(admin, tenantId), 200, req);
+    }
+
+    // /lifecycle, not /stages. /stages is the stage VOCABULARY below - which
+    // stages exist and what may follow them - and the page was calling it
+    // expecting equipment rows, so its board mapped {key, value, name} objects
+    // into equipment records.
+    if (req.method === 'GET' && firstPart === 'lifecycle') {
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      const customers = await accessibleCustomerIds(admin, tenantId, scope);
+      return createCorsResponse(
+        await hubLifecycle(admin, tenantId, {
+          stage: url.searchParams.get('stage'),
+          status: url.searchParams.get('status'),
+          // On overflow the set cannot be named in one filter; matching nothing is
+          // the narrowing choice, and there is no user column to fall back to.
+          customerIds: customers.overflow ? [] : customers.ids,
+        }),
+        200,
+        req,
+      );
+    }
+
+    if (req.method === 'GET' && firstPart === 'purchase-orders') {
+      return createCorsResponse(await hubPurchaseOrders(admin, tenantId), 200, req);
+    }
+
+    if (req.method === 'GET' && firstPart === 'deliveries') {
+      return createCorsResponse(await hubDeliveries(admin, tenantId), 200, req);
+    }
+
+    if (req.method === 'GET' && firstPart === 'installations') {
+      return createCorsResponse(await hubInstallations(admin, tenantId), 200, req);
+    }
+
+    if (req.method === 'GET' && firstPart === 'assets') {
+      return createCorsResponse(await hubAssets(admin, tenantId), 200, req);
+    }
+
+    if (req.method === 'POST' && firstPart === 'deliveries') {
+      const body = await req.json();
+      const row = buildDeliveryRow(body, tenantId);
+      if ('error' in row) return createCorsResponse({ error: row.error }, 400, req);
+
+      const { data, error } = await admin.from('delivery_schedules').insert(row).select().single();
+      if (error) {
+        console.error('Error scheduling delivery:', error);
+        return createCorsResponse(
+          { error: 'Failed to schedule the delivery', details: error },
+          500,
+          req,
+        );
+      }
+      return createCorsResponse(data, 201, req);
+    }
+
+    if (req.method === 'POST' && firstPart === 'installations') {
+      const body = await req.json();
+      const row = buildInstallationRow(body, tenantId);
+      if ('error' in row) return createCorsResponse({ error: row.error }, 400, req);
+
+      const { data, error } = await admin
+        .from('installation_schedules')
+        .insert(row)
+        .select()
+        .single();
+      if (error) {
+        console.error('Error scheduling installation:', error);
+        return createCorsResponse(
+          { error: 'Failed to schedule the installation', details: error },
+          500,
+          req,
+        );
+      }
+      return createCorsResponse(data, 201, req);
+    }
+
+    // POST /equipment-lifecycle/purchase-orders
+    //
+    // The hub's dialog collects a vendor NAME with no vendor picker, and
+    // purchase_orders.vendor_id is NOT NULL, so the name is resolved against the
+    // tenant's vendors. An unknown name is a 400 that says so - creating a vendor
+    // row per typed string would fill the vendor list with variants of the same
+    // company, and writing a null into a NOT NULL column is a 23502 the caller
+    // reads as "something went wrong".
+    //
+    // Line items go through the same builder as /api/purchase-orders (WF-P-01),
+    // so the two create paths cannot disagree about the column vocabulary.
+    if (req.method === 'POST' && firstPart === 'purchase-orders') {
+      const body = await req.json();
+      const vendorName = String(body.vendor_name ?? body.vendorName ?? '').trim();
+      if (!vendorName) {
+        return createCorsResponse({ error: 'vendor_name is required' }, 400, req);
+      }
+
+      const { data: vendors } = await admin
+        .from('vendors')
+        .select('id, vendor_name')
+        .eq('tenant_id', tenantId)
+        .ilike('vendor_name', vendorName)
+        .limit(2);
+
+      if (!vendors || vendors.length === 0) {
+        return createCorsResponse(
+          {
+            error: `No vendor named "${vendorName}". Add the vendor first, then raise the order.`,
+            code: 'VENDOR_NOT_FOUND',
+          },
+          400,
+          req,
+        );
+      }
+      if (vendors.length > 1) {
+        return createCorsResponse(
+          { error: `More than one vendor matches "${vendorName}".`, code: 'VENDOR_AMBIGUOUS' },
+          400,
+          req,
+        );
+      }
+
+      const items = Array.isArray(body.items) ? body.items : [];
+      const lineRows = items.map((item: Record<string, unknown>, index: number) =>
+        buildLineItemRow(
+          {
+            itemDescription: item.description ?? item.equipment_model,
+            itemCode: item.equipment_model,
+            manufacturerPartNumber: item.equipment_brand,
+            quantity: item.quantity,
+            unitPrice: item.unit_price,
+          },
+          { tenantId, purchaseOrderId: PENDING_PO_ID, lineNumber: index + 1 },
+        ),
+      );
+      const subtotal = lineItemsSubtotal(lineRows);
+
+      const { data: po, error } = await admin
+        .from('purchase_orders')
+        .insert({
+          tenant_id: tenantId,
+          po_number: `PO-${Date.now()}`,
+          vendor_id: vendors[0].id,
+          requested_by: user.id,
+          order_date: body.order_date ?? new Date().toISOString(),
+          expected_date: body.requested_delivery_date ?? null,
+          subtotal,
+          total_amount: subtotal,
+          status: 'draft',
+          delivery_address: body.delivery_address ?? null,
+          special_instructions: body.special_instructions ?? null,
+          customer_id: body.customer_id ?? null,
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating purchase order from the lifecycle hub:', error);
+        return createCorsResponse(
+          { error: 'Failed to create the purchase order', details: error },
+          500,
+          req,
+        );
+      }
+
+      if (lineRows.length > 0) {
+        const { error: lineError } = await admin
+          .from('purchase_order_items')
+          .insert(lineRows.map((row) => ({ ...row, purchase_order_id: po.id })));
+        if (lineError) {
+          console.error('Error creating purchase order lines:', lineError);
+          return createCorsResponse(
+            {
+              error: 'The purchase order was created but its line items were not saved',
+              purchaseOrderId: po.id,
+              details: lineError,
+            },
+            500,
+            req,
+          );
+        }
+      }
+
+      return createCorsResponse(po, 201, req);
+    }
 
     // GET /equipment-lifecycle/stages - Get all lifecycle stages
     if (req.method === 'GET' && firstPart === 'stages') {
@@ -518,6 +819,36 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch lifecycle status' }, 500, req);
       }
 
+      // WF-R-06: a stage transition is a claim about physical equipment - delivered,
+      // installed, returned - and before this any authenticated member of the
+      // tenant could make it for any machine. An existing record is checked
+      // against the caller's customers; a machine with no lifecycle record yet has
+      // no customer to check, and the equipment fetch below still pins the tenant.
+      if (existingLifecycle) {
+        const scope = await resolveScope(admin, {
+          userId: user.id,
+          tenantId,
+          appMetadata: user.app_metadata,
+        });
+        const customers = await accessibleCustomerIds(admin, tenantId, scope);
+        const allowed =
+          customers.ids === null && !customers.overflow
+            ? true
+            : !customers.overflow &&
+              typeof existingLifecycle.customer_id === 'string' &&
+              (customers.ids ?? []).includes(existingLifecycle.customer_id);
+        // A machine not yet attached to a customer is unowned, and unowned work is
+        // shared work above `own` scope - the same rule rowInScope applies.
+        const unattached = !existingLifecycle.customer_id && scope.tier !== 'own';
+        if (!allowed && !unattached) {
+          return createCorsResponse(
+            { error: 'This equipment is outside your scope', code: 'ROW_OUT_OF_SCOPE' },
+            403,
+            req,
+          );
+        }
+      }
+
       let fromStage: string | null = null;
 
       if (!existingLifecycle) {
@@ -604,6 +935,26 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update lifecycle stage' }, 500, req);
       }
 
+      // WF-L-08: acceptance is the moment a machine becomes a serviced, billable
+      // asset, and this handler did none of it - it set the stage, wrote the
+      // transition row and returned. Registration, contract term and baseline
+      // meter are decided by _shared/lifecycle-activation.ts so the Express state
+      // machine cannot drift from it, and every side effect NOT performed comes
+      // back named rather than being silently absent.
+      let activation: Record<string, unknown> | null = null;
+      try {
+        if (fromStage === ACTIVATION_STAGE_FROM && toStage === ACTIVATION_STAGE_TO) {
+          activation = await runActivation(admin, tenantId, equipmentId, lifecycle, body);
+        } else if (toStage === RETIREMENT_STAGE_TO) {
+          activation = await runRetirement(admin, tenantId, lifecycle);
+        }
+      } catch (activationError) {
+        // The stage moved and that is the fact of record. Failing the request
+        // here would tell the caller the transition did not happen.
+        console.error('Error running lifecycle side effects:', activationError);
+        activation = { error: 'The stage moved but its side effects did not all run' };
+      }
+
       // Record transition
       const { data: transition, error: transitionError } = await admin
         .from('equipment_lifecycle_transitions')
@@ -639,6 +990,7 @@ export default async function handler(req: Request) {
             newStage: toStage,
             transition: transition || null,
             validationsPassed,
+            activation,
           },
         },
         200,

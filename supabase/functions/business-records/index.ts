@@ -4,6 +4,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 // Convert camelCase request body keys to snake_case for DB compatibility
 function camelToSnake(str: string): string {
@@ -293,6 +294,28 @@ export default async function handler(req: Request) {
           .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false });
 
+        // WF-R-04/WF-R-05: until this, a level-1 rep listing accounts got EVERY
+        // account in the tenant.
+        //
+        // THIS HANDLER SERVES `companies`, WHICH RECORDS NO ACCOUNT OWNER. It has
+        // 37 columns and the only user among them is `created_by`; `business_owner`
+        // is free text naming the CUSTOMER's proprietor. `owner_id` and
+        // `assigned_sales_rep` are columns of `business_records`, the canonical
+        // table this one duplicates (CRMX-002) - filtering on them here is a 42703,
+        // which is what the first cut of this shipped. So the scope is the creator,
+        // which is a WEAKER control than the story asked for and is labelled as one.
+        //
+        // Rows with no creator stay visible at EVERY tier, `own` included: these
+        // lists are populated by import, and excluding them would empty the primary
+        // CRM screen for every rep rather than narrowing it.
+        const scope = await resolveScope(admin, {
+          userId: user.id,
+          tenantId,
+          appMetadata: user.app_metadata,
+          requestedScope: url.searchParams.get('scope'),
+        });
+        query = applyUserScope(query, 'created_by', scope, { includeUnowned: true });
+
         if (recordType) {
           // Map common recordType values to business_record_type
           const typeMap: Record<string, string> = {
@@ -310,6 +333,12 @@ export default async function handler(req: Request) {
         }
 
         if (ownerId) {
+          // Still `created_by`, and WF-R-05's AC2 asked for owner_id here. It
+          // cannot be: see the block above - `companies` has no owner_id. The
+          // parameter therefore means "created by", and a caller asking for a rep's
+          // BOOK gets the accounts that rep typed in, which for a tenant whose data
+          // arrived by import is none of them. Fixing it means moving this handler
+          // onto business_records, which is CRMX-002's migration, not this story.
           query = query.eq('created_by', ownerId);
         }
 

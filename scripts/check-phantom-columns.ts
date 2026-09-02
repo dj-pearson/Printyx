@@ -328,6 +328,22 @@ function scan(source: string): Ref[] {
     push(m.index ?? 0, m[2], m[1]);
   }
 
+  // applyUserScope(query, 'col' | ['a','b'], scope) and applyCustomerScope(query,
+  // 'col', ...) — WF-R-04's helpers. The column names are LITERALS at the call
+  // site but the or()/in() expression is assembled inside _shared/scope.ts at
+  // runtime, so nothing above sees them. That blind spot shipped a filter on
+  // companies.owner_id and companies.assigned_sales_rep, which are columns of
+  // business_records; `companies` has neither, so the account list would have
+  // 42703'd in production. Same resolution rule as everything else here: the
+  // table is the nearest preceding .from().
+  for (const m of source.matchAll(
+    /\bapply(?:User|Customer)Scope\(\s*[\w.]+\s*,\s*(\[[^\]]*\]|'[a-z0-9_]+')/g,
+  )) {
+    for (const lit of m[1].matchAll(/'([a-z0-9_]+)'/g)) {
+      push(m.index ?? 0, lit[1], 'scope');
+    }
+  }
+
   // .or(`a.ilike.%x%,b.eq.1`) — comma-delimited, column before the first dot.
   for (const m of source.matchAll(/\.or\(\s*[`'"]([^`'"]+)[`'"]/g)) {
     for (const clause of m[1].split(',')) {
@@ -416,6 +432,23 @@ function scan(source: string): Ref[] {
       keys: source[rhs] === '{' ? topLevelKeys(balancedBody(source, rhs)) : null,
     });
   }
+  // A DESTRUCTURED BINDING IS STILL A BINDING, and missing it is the same
+  // reach-back trap the parameter rule below fixes. service-tickets has
+  // `const updateData = { … }` in its POST /updates branch (a
+  // service_ticket_updates row) and, fifty lines later,
+  // `const { updateData, changes } = applyTicketFields(body, currentTicket)`
+  // feeding `.from('service_tickets').update(updateData)`. With the pattern
+  // form unrecognised the second resolved to the first and reported six
+  // columns of service_ticket_updates as phantom columns of service_tickets -
+  // correct code accused. Bound with no keys, so the nearest-preceding rule
+  // stops there and resolves nothing, which is the honest answer for a value
+  // that came out of a function call.
+  for (const d of source.matchAll(/(?:const|let|var)\s*([{[][^=;]*?[}\]])\s*=\s*/g)) {
+    for (const name of paramNames(d[1].slice(1, -1))) {
+      declarations.push({ name, at: d.index ?? 0, keys: null });
+    }
+  }
+
   // A later bare re-assignment invalidates the literal too.
   for (const r of source.matchAll(/^\s*([A-Za-z_$][\w$]*)\s*=\s*(?!=)/gm)) {
     declarations.push({ name: r[1], at: r.index ?? 0, keys: null });

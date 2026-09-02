@@ -21,6 +21,34 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+// COP-M04: every row goes out camelCase.
+//
+// This function answered with the raw PostgREST row - column_config,
+// board_config, filter_definition, sort_config, is_default, is_system_view -
+// while client/src/hooks/useSavedViews.ts types and CrmIndexShell reads
+// columnConfig, boardConfig, filterDefinition, sortConfig, isDefault,
+// isSystemView. So every one of those resolved to undefined: selecting a saved
+// view applied neither its filters nor its sort, a customised column set saved
+// and never came back, no view was ever marked as the default, and a system
+// view offered a delete button. The writes were correct all along; only the
+// read was mismatched, which is why it looked like nothing was being saved.
+//
+// toCamelShallow, NOT toCamel: every jsonb column here holds keys that are
+// already camelCase and must not be touched, and filterDefinition[].value is
+// arbitrary user data whose own keys are not ours to rewrite. A deep convert
+// would turn a filter on the custom field `cf_lease_end` into `cfLeaseEnd`.
+import { toCamelShallow } from '../_shared/case.ts';
+
+/** Top-level keys only, through an array of rows. */
+function camelRows<T>(rows: unknown): T {
+  return (
+    Array.isArray(rows)
+      ? rows.map((r) => toCamelShallow(r as Record<string, unknown>))
+      : rows
+        ? toCamelShallow(rows as Record<string, unknown>)
+        : rows
+  ) as T;
+}
 
 const VALID_OBJECT_TYPES = new Set(['deals', 'leads', 'contacts', 'companies', 'opportunities']);
 const VALID_VISIBILITIES = new Set(['private', 'team', 'everyone']);
@@ -170,7 +198,7 @@ async function listViews(
     pinSortOrder: pinMap.get(v.id) ?? null,
   }));
 
-  return createCorsResponse(result, 200, req);
+  return createCorsResponse(camelRows(result), 200, req);
 }
 
 async function getView(
@@ -194,7 +222,7 @@ async function getView(
   if (v.user_id !== userId && v.visibility === 'private') {
     return createCorsResponse({ error: 'Access denied' }, 403, req);
   }
-  return createCorsResponse(view, 200, req);
+  return createCorsResponse(camelRows(view), 200, req);
 }
 
 async function createView(
@@ -240,7 +268,7 @@ async function createView(
     console.error('Error creating saved view:', error);
     return createCorsResponse({ error: 'Failed to create saved view' }, 500, req);
   }
-  return createCorsResponse(created, 201, req);
+  return createCorsResponse(camelRows(created), 201, req);
 }
 
 async function updateView(
@@ -300,7 +328,7 @@ async function updateView(
   if (error) {
     return createCorsResponse({ error: 'Failed to update saved view' }, 500, req);
   }
-  return createCorsResponse(updated, 200, req);
+  return createCorsResponse(camelRows(updated), 200, req);
 }
 
 async function deleteView(
@@ -391,7 +419,7 @@ async function cloneView(
   if (error) {
     return createCorsResponse({ error: 'Failed to clone saved view' }, 500, req);
   }
-  return createCorsResponse(cloned, 201, req);
+  return createCorsResponse(camelRows(cloned), 201, req);
 }
 
 async function pinView(
@@ -409,7 +437,11 @@ async function pinView(
     .maybeSingle();
 
   if (existingPin) {
-    return createCorsResponse({ message: 'View already pinned', pin: existingPin }, 200, req);
+    return createCorsResponse(
+      { message: 'View already pinned', pin: camelRows(existingPin) },
+      200,
+      req,
+    );
   }
 
   // Compute next sort order in JS (Supabase JS doesn't have MAX aggregation
@@ -437,7 +469,7 @@ async function pinView(
   if (error) {
     return createCorsResponse({ error: 'Failed to pin view' }, 500, req);
   }
-  return createCorsResponse(pin, 200, req);
+  return createCorsResponse(camelRows(pin), 200, req);
 }
 
 async function unpinView(

@@ -240,6 +240,9 @@ const dealsConfig: CrmObjectConfig = {
       field: 'targetCpcBlack',
       label: 'Target CPC B/W',
       type: 'number',
+      // COP-M04: four decimals. toLocaleString defaults to three, so 0.0085
+      // renders as 0.009 - and the deal turns on that number.
+      format: 'cpc',
       sortable: true,
       editable: true,
       width: 'min-w-[140px]',
@@ -248,6 +251,7 @@ const dealsConfig: CrmObjectConfig = {
       field: 'targetCpcColor',
       label: 'Target CPC Color',
       type: 'number',
+      format: 'cpc',
       sortable: true,
       editable: true,
       width: 'min-w-[150px]',

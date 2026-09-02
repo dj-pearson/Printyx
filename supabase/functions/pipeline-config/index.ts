@@ -41,6 +41,10 @@ import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { flagsToStageType, stageTypeToFlags } from '../_shared/pipeline-stage-type.ts';
+import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
+import { createHandoff } from '../_shared/handoff-create.ts';
+import { handoffTypeFor } from '../_shared/sales-handoff.ts';
+import { resolveStage, type CanonicalStage } from '../_shared/canonical-stage.ts';
 
 const log = createLogger('pipeline-config');
 
@@ -681,8 +685,9 @@ export default async function handler(req: Request) {
 
     // ─── POST /deals/:dealId/move — CRMX-005 persistent stage move ───────────
     // toStageId is the legacy deal_stages.id (the board's stage id). Persists to the
-    // REAL deal.stage_id column, writes deal_stage_history, and logs on_enter
-    // automation triggers to pipeline_automation_logs (executed once CRMX-008 lands).
+    // REAL deal.stage_id column, writes deal_stage_history, and dispatches
+    // deal.stage_changed to the workflow runtime (WF-C-01). This is the endpoint
+    // the Kanban board and the deal page actually post to.
     const dealMove = path.match(/^\/deals\/([^/]+)\/move$/);
     if (dealMove && method === 'POST') {
       const dealId = dealMove[1];
@@ -696,9 +701,10 @@ export default async function handler(req: Request) {
       }
 
       const { template, stages } = await ensureCanonicalPipeline(db, ctx.tenantId, ctx.userId);
-      // deno-lint-ignore no-explicit-any
+      // WF-C-08: the same rule proposals now uses, in one place, so the two
+      // cannot answer differently for the same tenant.
       const resolve = (legacyId: string | null | undefined) =>
-        (stages as any[]).find((s) => (s.legacy_stage_id ?? s.id) === legacyId);
+        resolveStage(stages as CanonicalStage[], legacyId);
       const toStage = resolve(toStageId);
 
       const { data: deal } = await db
@@ -710,7 +716,11 @@ export default async function handler(req: Request) {
       if (!deal) {
         return errorResponse(404, 'Deal not found', req, { code: 'NOT_FOUND', requestId });
       }
-      const fromStage = resolve(deal.stage_id);
+      // Captured BEFORE the update: reading deal.stage_id afterwards works only
+      // because PostgREST hands back a fresh object, which is a property of the
+      // client rather than of this code.
+      const fromStageId: string | null = deal.stage_id ?? null;
+      const fromStage = resolve(fromStageId);
 
       // deno-lint-ignore no-explicit-any
       const patch: Record<string, any> = {
@@ -757,11 +767,11 @@ export default async function handler(req: Request) {
         was_automatic: false,
       });
 
-      // CRMX-005: record on_exit + on_enter stage automation triggers AND evaluate
-      // the stageTransitions rules (conditions / actions / approvals) for this
-      // from→to move. All are written to pipeline_automation_logs behind the clean
-      // interface the CRMX-008 runtime consumes — nothing is executed here.
-      const automations = await recordStageMoveAutomations(db, {
+      // WF-C-01: evaluate the stage's on_exit/on_enter triggers and the
+      // stage_transitions rules for this from→to pair. Counts only - see the
+      // function's header for why nothing is written to pipeline_automation_logs
+      // from this path any more.
+      const automations = await evaluateStageMoveAutomations(db, {
         tenantId: ctx.tenantId,
         dealId,
         deal,
@@ -772,7 +782,77 @@ export default async function handler(req: Request) {
         requestId,
       });
 
-      return jsonResponse({ ...updated, automations }, 200, req, requestId);
+      // WF-C-01: THIS is the endpoint the UI moves a deal with. Both the Kanban
+      // board (EnhancedPipelineBoard.tsx) and the deal page (DealDetail.tsx) post
+      // here, and neither ever sends stage_id to PATCH /api/deals/:id, which was
+      // the only place deal.stage_changed was dispatched from. So reaching Closed
+      // Won fired nothing, on either host, for every user.
+      //
+      // Same dedupe-key shape as the deals function (`stage:<deal>:<stage>`) so
+      // the two paths cannot enrol the same move twice, and Safe so automation
+      // can never fail the move the user just made.
+      await dispatchWorkflowEventSafe(
+        db,
+        ctx.tenantId,
+        'deal.stage_changed',
+        {
+          dealId,
+          recordId: dealId,
+          // The legacy deal_stages.id the board speaks, plus the canonical
+          // pipeline_stages.id - COP-E02's two vocabularies, both named rather
+          // than one silently chosen.
+          stageId: toStageId,
+          canonicalStageId: toStage?.id ?? null,
+          fromStageId,
+          fromCanonicalStageId: fromStage?.id ?? null,
+          stageName: toStage?.name ?? null,
+          isClosedWon: toStage?.is_closed_won ?? false,
+          isClosedLost: toStage?.is_closed_lost ?? false,
+          status: updated?.status ?? null,
+          amount: updated?.amount ?? null,
+          // A configured transition rule that requires approval is carried on the
+          // event rather than written to a log nobody reads.
+          requiresApproval: automations.approvalRequired,
+        },
+        { dedupeKey: `stage:${dealId}:${toStageId}`, initiatedBy: ctx.userId },
+      );
+
+      // WF-C-06: a deal reaching Closed Won is the other event that creates a
+      // sales handoff. Keyed to the contract when the deal has one, so this and
+      // proposal acceptance - which fire from the same sale seconds apart - do
+      // not produce two entries in operations' queue.
+      let handoffId: string | null = null;
+      // deals.customer_id is nullable (a deal can carry only a company_name)
+      // while sales_handoff_checklists.customer_id is NOT NULL, so a deal with no
+      // account is skipped rather than 23502'ing inside the try.
+      if (toStage?.is_closed_won && deal.customer_id) {
+        try {
+          const { data: contracts } = await db
+            .from('contracts')
+            .select('id')
+            .eq('tenant_id', ctx.tenantId)
+            .eq('customer_id', String(deal.customer_id ?? ''));
+          const result = await createHandoff(db, {
+            tenantId: ctx.tenantId,
+            customerId: String(deal.customer_id ?? ''),
+            contractId: (updated?.contract_id as string) ?? deal.contract_id ?? null,
+            opportunityId: dealId,
+            salesRepId: String(deal.owner_id ?? ctx.userId),
+            handoffType: handoffTypeFor({
+              dealMotion: (deal.deal_motion as string) ?? null,
+              existingContractCount: contracts?.length ?? 0,
+            }),
+            contractSummary: { contractValue: Number(updated?.amount ?? deal.amount ?? 0) },
+            createdBy: ctx.userId,
+          });
+          handoffId = result.handoff ? String(result.handoff.id) : null;
+        } catch (handoffErr) {
+          // The deal moved and that is the fact of record.
+          log.warn({ requestId, dealId, err: String(handoffErr) }, 'handoff_create_failed');
+        }
+      }
+
+      return jsonResponse({ ...updated, automations, handoffId }, 200, req, requestId);
     }
 
     // ─── POST /deals/:dealId/transition ─────────────────────────────────────
@@ -825,6 +905,19 @@ export default async function handler(req: Request) {
         log,
         requestId,
       });
+
+      // WF-C-01: /transition moves a stage too, so it fires the same event. It
+      // has no caller in any client tree today - /move is what the board and the
+      // deal page post to - but a stage-mover that does not dispatch is exactly
+      // the defect this story is about, and leaving one behind would recreate it
+      // the day something calls this.
+      await dispatchWorkflowEventSafe(
+        db,
+        ctx.tenantId,
+        'deal.stage_changed',
+        { dealId, recordId: dealId, stageId: toStageId, via: 'transition' },
+        { dedupeKey: `stage:${dealId}:${toStageId}`, initiatedBy: ctx.userId },
+      );
 
       return jsonResponse(
         {
@@ -1056,7 +1149,7 @@ async function markAutomation(
     .eq('id', id);
 }
 
-// ─── CRMX-005: stage-move automation recorder ──────────────────────────────────
+// ─── CRMX-005 / WF-C-01: stage-move automation evaluator ──────────────────────
 //
 // When a deal moves from→to, three kinds of configured automation apply:
 //   1. on_exit triggers on the stage being LEFT (fromStage.automation_triggers)
@@ -1068,11 +1161,32 @@ async function markAutomation(
 // on_sla_breach is intentionally NOT handled here: it is time-based (a stage
 // dwelling past its SLA), so it belongs to a scheduled sweep, not the move path.
 //
-// Everything is written to pipeline_automation_logs with status='skipped' and a
+// WF-C-01: NOTHING IS WRITTEN TO pipeline_automation_logs FROM HERE ANY MORE.
+//
+// Every row this used to insert carried status='skipped' and a note saying
+// "Queued for workflow runtime (CRMX-008); not yet executed". The only reader of
+// that table is executePendingAutomations, which selects status='pending', so
+// those rows were write-only - and the approval one was worse than write-only,
+// because a row reading "recorded for the approval workflow" looks like the
+// approval was handled when nothing had happened at all.
+//
+// The runtime that arrived is dispatchWorkflowEvent (workflow_executions), not
+// this table, so /move now fires deal.stage_changed and carries approvalRequired
+// on the event. The evaluation stays because its counts are real and go back in
+// the response; only the inserts are gone.
+//
+// What is STILL NOT ENFORCED anywhere, said plainly rather than logged: a
+// stage_transitions rule with requires_approval does not block the move. It never
+// did - the old code recorded the requirement and moved the deal regardless.
+//
+// The remaining rows in this table come from the pipeline_deal_transition rpc via
+// /transition, and those ARE executed.
+//
+// Historical note on what this used to do:
 // note — the clean interface the CRMX-008 workflow runtime drains and executes.
 // Recording never fails the move: individual insert errors are swallowed.
 
-interface RecordStageMoveInput {
+interface StageMoveEvaluationInput {
   tenantId: string;
   dealId: string;
   // deno-lint-ignore no-explicit-any
@@ -1087,7 +1201,7 @@ interface RecordStageMoveInput {
   requestId: string;
 }
 
-interface RecordStageMoveResult {
+interface StageMoveEvaluationResult {
   onExit: number;
   onEnter: number;
   transitionsMatched: number;
@@ -1095,13 +1209,11 @@ interface RecordStageMoveResult {
   approvalRequired: boolean;
 }
 
-const QUEUED_NOTE = 'Queued for workflow runtime (CRMX-008); not yet executed';
-
-async function recordStageMoveAutomations(
+async function evaluateStageMoveAutomations(
   db: DB,
-  input: RecordStageMoveInput,
-): Promise<RecordStageMoveResult> {
-  const result: RecordStageMoveResult = {
+  input: StageMoveEvaluationInput,
+): Promise<StageMoveEvaluationResult> {
+  const result: StageMoveEvaluationResult = {
     onExit: 0,
     onEnter: 0,
     transitionsMatched: 0,
@@ -1110,53 +1222,21 @@ async function recordStageMoveAutomations(
   };
 
   // deno-lint-ignore no-explicit-any
-  const recordLog = async (row: Record<string, any>) => {
-    try {
-      const { error } = await db.from('pipeline_automation_logs').insert(row);
-      if (error) throw error;
-      return true;
-    } catch (err) {
-      input.log.warn({ requestId: input.requestId, err: String(err) }, 'automation_record_failed');
-      return false;
-    }
-  };
-
-  // deno-lint-ignore no-explicit-any
   const triggersOf = (stage: any): any[] =>
     Array.isArray(stage?.automation_triggers) ? stage.automation_triggers : [];
 
   // 1. on_exit triggers on the stage being left.
-  for (const t of triggersOf(input.fromStage).filter(
+  for (const _t of triggersOf(input.fromStage).filter(
     (t) => t?.triggerType === 'on_exit' && t?.isActive !== false,
   )) {
-    const ok = await recordLog({
-      tenant_id: input.tenantId,
-      deal_id: input.dealId,
-      stage_id: input.fromStage?.id ?? null,
-      trigger_type: 'on_exit',
-      action_type: t?.actionType ?? 'unknown',
-      action_config: t,
-      status: 'skipped',
-      result_data: { note: QUEUED_NOTE },
-    });
-    if (ok) result.onExit++;
+    result.onExit++;
   }
 
   // 2. on_enter triggers on the stage being entered.
-  for (const t of triggersOf(input.toStage).filter(
+  for (const _t of triggersOf(input.toStage).filter(
     (t) => t?.triggerType === 'on_enter' && t?.isActive !== false,
   )) {
-    const ok = await recordLog({
-      tenant_id: input.tenantId,
-      deal_id: input.dealId,
-      stage_id: input.toStage?.id ?? null,
-      trigger_type: 'on_enter',
-      action_type: t?.actionType ?? 'unknown',
-      action_config: t,
-      status: 'skipped',
-      result_data: { note: QUEUED_NOTE },
-    });
-    if (ok) result.onEnter++;
+    result.onEnter++;
   }
 
   // 3. stage_transitions rules for this from→to pair.
@@ -1186,37 +1266,15 @@ async function recordStageMoveAutomations(
 
       if (tr.requires_approval) {
         result.approvalRequired = true;
-        const ok = await recordLog({
-          tenant_id: input.tenantId,
-          deal_id: input.dealId,
-          stage_id: input.toStage?.id ?? null,
-          trigger_type: 'on_transition',
-          action_type: 'approval_required',
-          action_config: { transitionId: tr.id, approvalRoleId: tr.approval_role_id ?? null },
-          status: 'skipped',
-          result_data: {
-            note: 'Transition requires approval; recorded for the approval workflow (CRMX-008)',
-          },
-        });
-        if (ok) result.transitionActions++;
+        result.transitionActions++;
       }
 
       // deno-lint-ignore no-explicit-any
       const actions: any[] = Array.isArray(tr.on_transition_actions)
         ? tr.on_transition_actions
         : [];
-      for (const a of actions) {
-        const ok = await recordLog({
-          tenant_id: input.tenantId,
-          deal_id: input.dealId,
-          stage_id: input.toStage?.id ?? null,
-          trigger_type: 'on_transition',
-          action_type: a?.actionType ?? 'unknown',
-          action_config: a,
-          status: 'skipped',
-          result_data: { note: QUEUED_NOTE, transitionId: tr.id },
-        });
-        if (ok) result.transitionActions++;
+      for (const _a of actions) {
+        result.transitionActions++;
       }
     }
   }

@@ -82,6 +82,14 @@ const quoteSchema = z.object({
   taxAmount: z.string().optional(),
   subtotal: z.string().optional(),
   totalAmount: z.string().optional(),
+  // WF-C-05: how the deal is paid. Acceptance created a contract and never a
+  // lease, whatever the quote said, so a leased fleet was indistinguishable from
+  // a cash sale. Blank means not stated, which still creates the contract only.
+  acquisitionType: z.enum(['', 'cash', 'lease', 'finance']).optional(),
+  fundingPartner: z.string().optional(),
+  financeTermMonths: z.string().optional(),
+  financeMonthlyPayment: z.string().optional(),
+  firstPaymentDate: z.string().optional(),
 });
 
 type QuoteFormData = z.infer<typeof quoteSchema>;
@@ -129,6 +137,21 @@ interface QuoteBuilderProps {
   onCreateProposal?: (quoteId: string) => void;
 }
 
+/**
+ * The three values `leases` cannot be inserted without. Named here so the form's
+ * warning and the server's refusal say the same thing.
+ */
+const leaseTermsComplete = (quote: Partial<QuoteFormData>) =>
+  Boolean(quote.financeTermMonths && quote.financeMonthlyPayment && quote.firstPaymentDate);
+
+/** lease and finance both put the machine on somebody else's paper. */
+const isFinanced = (type?: string | null) => type === 'lease' || type === 'finance';
+
+const toIntOrNull = (value?: string | null) => {
+  const n = parseInt(String(value ?? ''), 10);
+  return Number.isFinite(n) ? n : null;
+};
+
 // Build the draft proposal payload from form + line items. Shared by the manual
 // Save Draft mutation and the QUOTE-018 autosave so they stay in sync.
 function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
@@ -168,6 +191,19 @@ function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
     discountReasonNote: quote.discountReasonNote || null,
     taxAmount: taxAmt.toString(),
     totalAmount: totalAmount.toString(),
+    // WF-C-05. Blank is "not stated", which the accept handler treats as
+    // contract-only - a placeholder acquisition type would draft a lease nobody
+    // agreed to. The three finance fields are sent only for lease/finance, so
+    // switching back to cash does not leave a stale term behind on the row.
+    acquisitionType: quote.acquisitionType || null,
+    fundingPartner: isFinanced(quote.acquisitionType) ? quote.fundingPartner || null : null,
+    financeTermMonths: isFinanced(quote.acquisitionType)
+      ? toIntOrNull(quote.financeTermMonths)
+      : null,
+    financeMonthlyPayment: isFinanced(quote.acquisitionType)
+      ? quote.financeMonthlyPayment || null
+      : null,
+    firstPaymentDate: isFinanced(quote.acquisitionType) ? quote.firstPaymentDate || null : null,
   };
 }
 
@@ -236,6 +272,11 @@ export default function QuoteBuilder({
       taxAmount: '0',
       subtotal: '0',
       totalAmount: '0',
+      acquisitionType: '',
+      fundingPartner: '',
+      financeTermMonths: '',
+      financeMonthlyPayment: '',
+      firstPaymentDate: '',
     },
   });
 
@@ -329,6 +370,21 @@ export default function QuoteBuilder({
         discountReason: String(loadedDiscountReason || ''),
         discountReasonNote: String(loadedDiscountReasonNote || ''),
         taxAmount: String(taxAmt),
+        acquisitionType: (existingQuote.acquisitionType ?? existingQuote.acquisition_type ?? '') as
+          | ''
+          | 'cash'
+          | 'lease'
+          | 'finance',
+        fundingPartner: String(existingQuote.fundingPartner ?? existingQuote.funding_partner ?? ''),
+        financeTermMonths: String(
+          existingQuote.financeTermMonths ?? existingQuote.finance_term_months ?? '',
+        ),
+        financeMonthlyPayment: String(
+          existingQuote.financeMonthlyPayment ?? existingQuote.finance_monthly_payment ?? '',
+        ),
+        firstPaymentDate: String(
+          existingQuote.firstPaymentDate ?? existingQuote.first_payment_date ?? '',
+        ).split('T')[0],
       });
 
       // Set local state for pricing calculator
@@ -468,12 +524,80 @@ export default function QuoteBuilder({
     },
   });
 
+  /**
+   * WF-C-03: the way out of the guardrail.
+   *
+   * The send gate below tells a rep to "request manager approval" and, before
+   * this, there was nowhere to do it: DealDeskDashboard lists requests and posts
+   * decisions, and nothing in client/src ever created one. A rep who hit the
+   * block had the toast and no next step.
+   *
+   * It saves first, because a request has to name a proposal and an unsaved quote
+   * has no id. The approval CHAIN is deliberately not sent - the deal-desk
+   * function matches the active rules and builds it, since a client-supplied
+   * chain is a client-supplied answer to who may approve this, and an empty one
+   * makes the first decision final.
+   */
+  const requestApprovalMutation = useMutation({
+    mutationFn: async () => {
+      const values = form.getValues();
+      const saved = await saveQuoteMutation.mutateAsync({ quote: values, lineItems });
+      const proposalId = saved?.id ?? savedQuoteId ?? initialQuoteId;
+      if (!proposalId) throw new Error('The quote must be saved before requesting approval');
+
+      const reasons = [
+        belowMinMargin
+          ? `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum.`
+          : null,
+        overMaxDiscount
+          ? `Effective discount ${effectiveDiscount.toFixed(1)}% exceeds the ${maxDiscount}% maximum.`
+          : null,
+      ].filter(Boolean);
+
+      return await apiRequest('/api/deal-desk/requests', 'POST', {
+        requestType: overMaxDiscount ? 'discount' : 'margin',
+        quoteId: proposalId,
+        requestTitle: `Approval for ${values.title || 'quote'}`,
+        requestDescription: reasons.join(' '),
+        // The numbers the guardrail blocked on, so a reviewer sees the same ones
+        // the rep did rather than re-deriving them.
+        discountPercentage: effectiveDiscount,
+        discountAmount: Math.max(0, discountAmount),
+        proposedMargin: overallMargin,
+        originalMargin: minMargin ?? null,
+        dealValue: totals.total,
+        justification: values.discountReason || null,
+      });
+    },
+    onSuccess: () => {
+      // A mounted DealDeskDashboard picks this up immediately; it also polls at
+      // 30s, so a reviewer on another screen sees it without a reload either.
+      queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/my-approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/dashboard'] });
+      toast({
+        title: 'Approval requested',
+        description: 'The deal desk has your quote. You will be notified when it is decided.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not request approval',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Submit quote mutation (change status to sent)
   const submitQuoteMutation = useMutation({
     mutationFn: async (quoteId: string) => {
+      // WF-C-04: the `approved` flag is gone. It was this component telling the
+      // server whether this component's user was allowed - the server now reads
+      // the caller's role level from the JWT and the deal-desk stamp from the
+      // proposal row, so nothing here can grant itself a bypass.
       return await apiRequest(`/api/proposals/${quoteId}/status`, 'PATCH', {
         status: 'sent',
-        approved: isManager, // managers bypass the below-margin gate
       });
     },
     onSuccess: (_data, quoteId) => {
@@ -683,9 +807,13 @@ export default function QuoteBuilder({
     if (guardrailViolated && !isManager) {
       toast({
         title: 'Manager approval required',
+        // WF-C-03: this used to end "Save as draft and request manager approval"
+        // with nowhere to do either - nothing in client/src created a deal-desk
+        // request. Request Approval now sits on the guardrail banner and saves
+        // the quote itself, so the instruction names something that exists.
         description: belowMinMargin
-          ? `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum. Save as draft and request manager approval.`
-          : `Effective discount ${effectiveDiscount.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum. Save as draft and request manager approval.`,
+          ? `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum. Use Request approval on the pricing banner.`
+          : `Effective discount ${effectiveDiscount.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum. Use Request approval on the pricing banner.`,
         variant: 'destructive',
       });
       return;
@@ -1058,13 +1186,29 @@ export default function QuoteBuilder({
               }`}
             >
               <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-              <span>
+              <span className="flex-1">
                 {belowMinMargin &&
                   `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum. `}
                 {overMaxDiscount &&
                   `Effective discount ${effectiveDiscount.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum. `}
-                Manager approval will be required to send.
+                {isManager
+                  ? 'You may send it anyway.'
+                  : 'Manager approval will be required to send.'}
               </span>
+              {/* WF-C-03: the way out. A manager can just send, so the button is
+                  only for the rep the guardrail actually blocks. */}
+              {!isManager && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 shrink-0"
+                  disabled={requestApprovalMutation.isPending}
+                  onClick={() => requestApprovalMutation.mutate()}
+                >
+                  {requestApprovalMutation.isPending ? 'Requesting…' : 'Request approval'}
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -1175,6 +1319,128 @@ export default function QuoteBuilder({
             discountReasonNote={form.watch('discountReasonNote') || ''}
             onDiscountReasonChange={handleDiscountReasonChange}
           />
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg">How it&rsquo;s paid</CardTitle>
+              <CardDescription>
+                A lease or finance quote drafts the lease on acceptance. Leave this blank if the
+                terms are not settled yet &mdash; acceptance then creates the contract only.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 space-y-4">
+              <Form {...form}>
+                <FormField
+                  control={form.control}
+                  name="acquisitionType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Acquisition</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Not stated" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="cash">Cash purchase</SelectItem>
+                          <SelectItem value="lease">Lease</SelectItem>
+                          <SelectItem value="finance">Finance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {isFinanced(form.watch('acquisitionType')) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="fundingPartner"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Funding partner</FormLabel>
+                          <FormControl>
+                            <Input
+                              className="min-h-[44px]"
+                              placeholder="Lessor or lender"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="financeTermMonths"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Term (months)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              className="min-h-[44px]"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="financeMonthlyPayment"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Monthly payment</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min={0}
+                              className="min-h-[44px]"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="firstPaymentDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">First payment</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="date"
+                              className="min-h-[44px]"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {isFinanced(form.watch('acquisitionType')) && !leaseTermsComplete(form.watch()) && (
+                  <p className="text-sm text-muted-foreground">
+                    Term, monthly payment and first payment date are all needed before the lease can
+                    be drafted. Without them acceptance creates the contract on its own.
+                  </p>
+                )}
+              </Form>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="text-lg">Notes</CardTitle>

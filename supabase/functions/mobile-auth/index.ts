@@ -14,6 +14,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
 import { rateLimit } from '../_shared/rate-limit.ts';
+import { buildRoleClaims, claimsPatch, hasRoleClaims } from '../_shared/role-claims.ts';
 
 // Best-effort per-instance throttle on the live login/refresh path (~10 attempts
 // / 15 min). Hard, cluster-wide, per-account lockout is tracked by PA-005.
@@ -333,16 +334,20 @@ async function enrichUserWithDbProfile(
     }
 
     // Get role level if user has a role
-    let roleLevel: number | null = null;
-    if (dbUser.role_id) {
-      const { data: role } = await admin
-        .from('roles')
-        .select('level')
-        .eq('id', dbUser.role_id)
-        .limit(1)
-        .maybeSingle();
-      if (role) {
-        roleLevel = role.level;
+    const claims = await buildRoleClaims(admin, dbUser.role_id);
+    const roleLevel: number | null = claims?.roleLevel ?? null;
+
+    // WF-R-03: this function used to compute the level and put it in the JSON
+    // RESPONSE ONLY, which the iOS app reads but no gate does - `_shared/rbac.ts`
+    // reads app_metadata off the GoTrue user and defaults to 1, so every mobile
+    // request was an individual contributor's regardless of what this returned.
+    // Persist it, so the enrichment below and the server-side gates agree.
+    if (claims && !hasRoleClaims(gotrueUser.app_metadata)) {
+      const { error: claimError } = await admin.auth.admin.updateUserById(gotrueUser.id, {
+        app_metadata: claimsPatch(claims),
+      });
+      if (claimError) {
+        console.warn('[mobile-auth] Could not persist role claims:', claimError.message);
       }
     }
 
@@ -365,6 +370,10 @@ async function enrichUserWithDbProfile(
           roleLevel ?? gotrueUser.app_metadata?.roleLevel ?? gotrueUser.app_metadata?.role_level,
         teamId:
           dbUser.team_id ?? gotrueUser.app_metadata?.teamId ?? gotrueUser.app_metadata?.team_id,
+        role: claims?.role ?? gotrueUser.app_metadata?.role,
+        permissions: claims?.permissions ?? gotrueUser.app_metadata?.permissions,
+        isPlatformAdmin:
+          claims?.isPlatformAdmin ?? gotrueUser.app_metadata?.isPlatformAdmin ?? false,
         isPlatformUser: dbUser.is_platform_user ?? gotrueUser.app_metadata?.isPlatformUser ?? false,
         accessScope: dbUser.access_scope ?? gotrueUser.app_metadata?.accessScope ?? 'own',
       },

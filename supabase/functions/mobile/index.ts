@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { resolveScope, rowInScope } from '../_shared/scope.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -51,9 +52,45 @@ export default async function handler(req: Request) {
     // ========================================
 
     // GET /mobile/sessions - List active mobile sessions for technician
+    /**
+     * Whose sessions/tickets is this request about? (WF-V-02)
+     *
+     * `?technicianId=` was accepted from the caller and used unchecked, so any
+     * authenticated member of the tenant could list another technician's sessions,
+     * their assigned tickets with customer addresses and phone numbers, and their
+     * photos - and could open a session AS them. It is now honoured only when the
+     * named technician is inside the caller's WF-R-07 scope: a supervisor may look
+     * at their crew, a technician may only be themselves.
+     *
+     * Returns the resolved id, or null when the caller asked about somebody they
+     * may not see - which the branches below answer 403 for rather than quietly
+     * substituting the caller, because silently returning different data than was
+     * asked for is how a UI comes to show the wrong person's work.
+     */
+    const resolveTechnicianId = async (): Promise<string | null> => {
+      const asked = url.searchParams.get('technicianId') || url.searchParams.get('technician_id');
+      if (!asked || asked === user.id) return user.id;
+
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      // includeUnowned: false - "this row belongs to nobody" is not a reason to
+      // let someone act as a named other person.
+      return rowInScope({ id: asked }, 'id', scope, { includeUnowned: false }) ? asked : null;
+    };
+
+    const notYours = () =>
+      createCorsResponse(
+        { error: 'That technician is outside your scope', code: 'ROW_OUT_OF_SCOPE' },
+        403,
+        req,
+      );
+
     if (req.method === 'GET' && resource === 'sessions' && !resourceId) {
-      const technicianId =
-        url.searchParams.get('technicianId') || url.searchParams.get('technician_id') || user.id;
+      const technicianId = await resolveTechnicianId();
+      if (!technicianId) return notYours();
       const status = url.searchParams.get('status');
       const serviceTicketId =
         url.searchParams.get('serviceTicketId') || url.searchParams.get('service_ticket_id');
@@ -143,7 +180,9 @@ export default async function handler(req: Request) {
       const sessionData = {
         tenant_id: tenantId,
         service_ticket_id: body.serviceTicketId || body.service_ticket_id,
-        technician_id: body.technicianId || body.technician_id || user.id,
+        // WF-V-02: the SESSION's technician is the caller. A body-supplied id let
+        // one technician open a check-in against another's name.
+        technician_id: user.id,
         check_in_latitude: body.checkInLatitude || body.check_in_latitude || body.latitude,
         check_in_longitude: body.checkInLongitude || body.check_in_longitude || body.longitude,
         check_in_address: body.checkInAddress || body.check_in_address || body.address,
@@ -446,8 +485,8 @@ export default async function handler(req: Request) {
 
     // GET /mobile/sync - Get data to sync to mobile device
     if (req.method === 'GET' && resource === 'sync') {
-      const technicianId =
-        url.searchParams.get('technicianId') || url.searchParams.get('technician_id') || user.id;
+      const technicianId = await resolveTechnicianId();
+      if (!technicianId) return notYours();
       const lastSyncAt = url.searchParams.get('lastSyncAt') || url.searchParams.get('last_sync_at');
       const includeCompleted = url.searchParams.get('includeCompleted') === 'true';
 

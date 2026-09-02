@@ -33,14 +33,109 @@ import {
   ArrowRight,
   Sparkles,
   Timer,
+  Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+
+interface RoutingRule {
+  id: string;
+  name?: string | null;
+  priority?: number | null;
+  assignmentMethod?: string | null;
+  assignToUserId?: string | null;
+  isActive?: boolean | null;
+  criteria?: {
+    leadSource?: string[];
+    industry?: string[];
+    leadScore?: { min?: number; max?: number };
+  } | null;
+}
+
+/** What a rule actually requires, in words. An empty criteria object matches everything. */
+function describeCriteria(criteria: RoutingRule['criteria']): string {
+  const parts: string[] = [];
+  if (criteria?.leadSource?.length) parts.push(`source ${criteria.leadSource.join('/')}`);
+  if (criteria?.industry?.length) parts.push(`industry ${criteria.industry.join('/')}`);
+  if (criteria?.leadScore?.min !== undefined) parts.push(`score >= ${criteria.leadScore.min}`);
+  if (criteria?.leadScore?.max !== undefined) parts.push(`score <= ${criteria.leadScore.max}`);
+  return parts.length > 0 ? parts.join(', ') : 'matches any lead';
+}
 
 export default function AutoLeadRoutingDashboard() {
   const [selectedLeadId, setSelectedLeadId] = useState<string>('');
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
+
+  // WF-S-02: the rule editor's draft. Kept as strings because these are inputs;
+  // the payload below converts, and an empty string means "do not constrain"
+  // rather than zero - a minimum score of 0 and no minimum are different rules.
+  const EMPTY_RULE = {
+    name: '',
+    priority: '100',
+    leadSource: '',
+    industry: '',
+    minScore: '',
+    assignToUserId: '',
+  };
+  const [newRule, setNewRule] = useState(EMPTY_RULE);
+
+  const rulesQuery = useQuery<RoutingRule[]>({
+    queryKey: ['/api/auto-lead-routing/rules'],
+    queryFn: async () =>
+      extractRecords<RoutingRule>(await apiRequest('/api/auto-lead-routing/rules')),
+  });
+  const rules = rulesQuery.data ?? [];
+
+  const createRule = useMutation({
+    mutationFn: (draft: typeof EMPTY_RULE) => {
+      const list = (value: string) =>
+        value
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean);
+      const criteria: Record<string, unknown> = {};
+      if (list(draft.leadSource).length > 0) criteria.leadSource = list(draft.leadSource);
+      if (list(draft.industry).length > 0) criteria.industry = list(draft.industry);
+      if (draft.minScore.trim()) criteria.leadScore = { min: Number(draft.minScore) };
+
+      return apiRequest('/api/auto-lead-routing/rules', 'POST', {
+        name: draft.name.trim(),
+        // The table's assignment_type is NOT NULL; a rule naming a user is a
+        // direct assignment, and one without is left to the round-robin pool.
+        assignmentMethod: draft.assignToUserId.trim() ? 'manual' : 'round_robin',
+        criteria,
+        assignToUserId: draft.assignToUserId.trim() || null,
+        priority: Number(draft.priority) || 0,
+        isActive: true,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auto-lead-routing/rules'] });
+      setNewRule(EMPTY_RULE);
+      toast({ title: 'Rule created' });
+    },
+    onError: (error: Error) =>
+      toast({
+        title: 'Could not create the rule',
+        description: error.message,
+        variant: 'destructive',
+      }),
+  });
+
+  const deleteRule = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/auto-lead-routing/rules/${id}`, 'DELETE'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auto-lead-routing/rules'] });
+      toast({ title: 'Rule deleted' });
+    },
+    onError: (error: Error) =>
+      toast({
+        title: 'Could not delete the rule',
+        description: error.message,
+        variant: 'destructive',
+      }),
+  });
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -290,7 +385,159 @@ export default function AutoLeadRoutingDashboard() {
               <Play className="h-4 w-4 mr-2" />
               Manual Routing
             </TabsTrigger>
+            <TabsTrigger value="rules">
+              <Settings className="h-4 w-4 mr-2" />
+              Rules
+              {rules.length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {rules.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
+
+          {/* WF-S-02: the rule editor. Every rule endpoint answered 503 before
+              this - the function read `lead_routing_rules`, a table that exists
+              nowhere - so the page looked alive while no rule could exist. */}
+          <TabsContent value="rules">
+            <Card>
+              <CardHeader>
+                <CardTitle>Routing rules</CardTitle>
+                <CardDescription>
+                  The highest-priority active rule whose criteria all match wins. A criterion left
+                  empty does not constrain.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!newRule.name.trim()) {
+                      toast({
+                        title: 'A rule needs a name',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+                    createRule.mutate(newRule);
+                  }}
+                >
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor="rule-name">
+                      Name
+                    </label>
+                    <Input
+                      id="rule-name"
+                      value={newRule.name}
+                      onChange={(e) => setNewRule((r) => ({ ...r, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor="rule-priority">
+                      Priority (higher wins)
+                    </label>
+                    <Input
+                      id="rule-priority"
+                      type="number"
+                      value={newRule.priority}
+                      onChange={(e) => setNewRule((r) => ({ ...r, priority: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor="rule-source">
+                      Lead source (blank = any)
+                    </label>
+                    <Input
+                      id="rule-source"
+                      placeholder="website, referral"
+                      value={newRule.leadSource}
+                      onChange={(e) => setNewRule((r) => ({ ...r, leadSource: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor="rule-industry">
+                      Industry (blank = any)
+                    </label>
+                    <Input
+                      id="rule-industry"
+                      placeholder="legal, healthcare"
+                      value={newRule.industry}
+                      onChange={(e) => setNewRule((r) => ({ ...r, industry: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor="rule-min-score">
+                      Minimum lead score
+                    </label>
+                    <Input
+                      id="rule-min-score"
+                      type="number"
+                      value={newRule.minScore}
+                      onChange={(e) => setNewRule((r) => ({ ...r, minScore: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor="rule-assignee">
+                      Assign to (user id)
+                    </label>
+                    <Input
+                      id="rule-assignee"
+                      value={newRule.assignToUserId}
+                      onChange={(e) =>
+                        setNewRule((r) => ({ ...r, assignToUserId: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="sm:col-span-2 flex justify-end">
+                    <Button type="submit" disabled={createRule.isPending}>
+                      {createRule.isPending ? 'Saving…' : 'Add rule'}
+                    </Button>
+                  </div>
+                </form>
+
+                {rulesQuery.isLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                ) : rules.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No rules yet. Without one, routing a lead reports that none is configured rather
+                    than assigning it to whoever happens to be first.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {rules.map((rule) => (
+                      <li
+                        key={rule.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                      >
+                        <span className="min-w-0">
+                          <span className="font-medium">{rule.name}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            priority {rule.priority ?? 0} · {rule.assignmentMethod ?? 'unset'} ·{' '}
+                            {rule.assignToUserId ? `to ${rule.assignToUserId}` : 'no assignee'} ·{' '}
+                            {describeCriteria(rule.criteria)}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <Badge variant={rule.isActive === false ? 'outline' : 'default'}>
+                            {rule.isActive === false ? 'Inactive' : 'Active'}
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label={`Delete rule ${rule.name}`}
+                            onClick={() => deleteRule.mutate(rule.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Recent Activity */}
           <TabsContent value="activity">

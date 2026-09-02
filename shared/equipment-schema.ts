@@ -13,37 +13,19 @@ import { relations } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
-// Purchase Orders table
-export const purchaseOrders = pgTable('purchase_orders', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id').notNull(),
-  poNumber: varchar('po_number', { length: 50 }).notNull(),
-  vendorId: uuid('vendor_id').notNull(),
-  orderDate: timestamp('order_date').defaultNow(),
-  expectedDeliveryDate: timestamp('expected_delivery_date'),
-  status: varchar('status').notNull().default('pending'), // pending, approved, ordered, received, cancelled
-  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }),
-  notes: text('notes'),
-  createdBy: uuid('created_by').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-// Purchase Order Line Items
-export const purchaseOrderItems = pgTable('purchase_order_items', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id').notNull(),
-  purchaseOrderId: uuid('purchase_order_id').notNull(),
-  productId: uuid('product_id'),
-  description: text('description').notNull(),
-  quantity: integer('quantity').notNull(),
-  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }),
-  totalPrice: decimal('total_price', { precision: 10, scale: 2 }),
-  serialNumber: varchar('serial_number', { length: 100 }),
-  receivedQuantity: integer('received_quantity').default(0),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+// purchase_orders and purchase_order_items are NOT declared here (WF-P-01).
+//
+// This file used to carry both, in the shape migration 0000 created. 0001
+// reshaped them - uuid columns to varchar, product_id/description/serial_number/
+// updated_at dropped from the items, line_number/item_description/item_code added,
+// and eleven more columns onto the orders - and shared/schema.ts is what tracked
+// that. Two declarations of one physical table, and only one shape can exist in
+// the database.
+//
+// shared/drizzle-schema.ts, the single entry point drizzle-kit reads, already
+// resolved it in schema.ts's favour by SKIPPING these two by name, so the shapes
+// here had no migration behind them and anything written against them was writing
+// to columns that do not exist. Import them from '@shared/schema'.
 
 // Warehouse Operations table
 export const warehouseOperations = pgTable('warehouse_operations', {
@@ -169,17 +151,6 @@ export const technicianCertifications = pgTable('technician_certifications', {
 });
 
 // Relations
-export const purchaseOrdersRelations = relations(purchaseOrders, ({ many }) => ({
-  items: many(purchaseOrderItems),
-}));
-
-export const purchaseOrderItemsRelations = relations(purchaseOrderItems, ({ one }) => ({
-  purchaseOrder: one(purchaseOrders, {
-    fields: [purchaseOrderItems.purchaseOrderId],
-    references: [purchaseOrders.id],
-  }),
-}));
-
 export const equipmentLifecycleRelations = relations(equipmentLifecycle, ({ one, many }) => ({
   warehouseOperations: many(warehouseOperations),
   deliverySchedule: one(deliverySchedules),
@@ -188,12 +159,6 @@ export const equipmentLifecycleRelations = relations(equipmentLifecycle, ({ one,
 }));
 
 // Insert schemas
-export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
 export const insertWarehouseOperationSchema = createInsertSchema(warehouseOperations).omit({
   id: true,
   createdAt: true,
@@ -233,9 +198,6 @@ export const insertTechnicianCertificationSchema = createInsertSchema(
 });
 
 // Types
-export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
-export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
-export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
 export type WarehouseOperation = typeof warehouseOperations.$inferSelect;
 export type InsertWarehouseOperation = z.infer<typeof insertWarehouseOperationSchema>;
 export type EquipmentLifecycle = typeof equipmentLifecycle.$inferSelect;

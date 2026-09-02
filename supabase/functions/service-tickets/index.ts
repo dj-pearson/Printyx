@@ -3,26 +3,21 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { enrichTickets } from './_enrich.ts';
+import { applyUserScope, resolveScope, rowInScope } from '../_shared/scope.ts';
+import { applyTicketFields, assignmentNotification, dispatchLoad } from './_dispatch.ts';
+import {
+  OPEN_TICKET_STATUSES,
+  SERVICE_TICKET_PRIORITIES,
+  SERVICE_TICKET_STATUSES,
+  normalizeTicketPriority,
+  normalizeTicketStatus,
+  PRIORITY_ALIASES,
+  STATUS_ALIASES,
+  ticketVocabulary,
+} from '../_shared/service-ticket-vocabulary.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
-async function enrichWithCustomerNames(admin: any, records: any[]) {
-  if (!records || records.length === 0) return records;
-  const customerIds = [...new Set(records.map((r: any) => r.customer_id).filter(Boolean))];
-  if (customerIds.length === 0) return records;
-
-  const { data: customers } = await admin
-    .from('business_records')
-    .select('id, company_name, primary_contact_name')
-    .in('id', customerIds);
-
-  const customerMap = new Map((customers || []).map((c: any) => [c.id, c]));
-  return records.map((r: any) => ({
-    ...r,
-    customer_name: customerMap.get(r.customer_id)?.company_name || null,
-    customer: customerMap.get(r.customer_id) || null,
-  }));
-}
-
 export default async function handler(req: Request) {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
@@ -66,18 +61,76 @@ export default async function handler(req: Request) {
 
     // GET /service-tickets/stats - status/priority counts across ALL tickets
     // (not just the current page) for the dashboard stat cards.
+    /**
+     * WF-R-07: is this ticket the caller's to act on?
+     *
+     * A list filter narrows what a technician can BROWSE and says nothing about a
+     * write aimed at an id, so before this any authenticated member of the tenant
+     * could reassign, close, void or delete anybody's ticket. Returns null when
+     * the write may proceed, and null for a ticket that does not exist so the
+     * handler keeps answering its own 404 instead of leaking which ids are real.
+     */
+    const denyIfTicketOutOfScope = async (id: string): Promise<Response | null> => {
+      const { data: existing } = await admin
+        .from('service_tickets')
+        .select('id, assigned_technician_id, created_by')
+        .eq('id', id)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (!existing) return null;
+
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      if (rowInScope(existing, ['assigned_technician_id', 'created_by'], scope)) return null;
+
+      return createCorsResponse(
+        { error: 'This ticket is outside your scope', code: 'ROW_OUT_OF_SCOPE' },
+        403,
+        req,
+      );
+    };
+
+    // GET /service-tickets/vocabulary - the one status and priority list
+    //
+    // WF-V-05. Four vocabularies were in play and no constraint enforced any, so
+    // a filter offering `new` matched nothing and one offering `emergency`
+    // matched nothing either. Served rather than duplicated into each select, so
+    // adding a status is one edit.
+    if (req.method === 'GET' && ticketId === 'vocabulary' && !subResource) {
+      return createCorsResponse(ticketVocabulary(), 200, req);
+    }
+
     if (req.method === 'GET' && ticketId === 'stats') {
       const base = () =>
         admin
           .from('service_tickets')
           .select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId);
+      // WF-V-01 counted BOTH spellings because the vocabulary was unsettled;
+      // WF-V-05 settled it, so the alias lists come from the vocabulary module
+      // instead of being written out here. They are still counted - rows written
+      // before the backfill may carry the old spelling - but from one list, so a
+      // new alias reaches the stats card without a second edit.
+      const alias = (canonical: string) => [
+        canonical,
+        ...Object.entries(STATUS_ALIASES)
+          .filter(([, v]) => v === canonical)
+          .map(([k]) => k),
+      ];
       const [total, open, inProgress, urgent, resolved] = await Promise.all([
         base(),
-        base().eq('status', 'open'),
-        base().eq('status', 'in_progress'),
-        base().in('priority', ['urgent', 'critical']),
-        base().in('status', ['resolved', 'closed']),
+        base().in('status', alias('open')),
+        base().in('status', alias('in_progress')),
+        base().in('priority', [
+          'urgent',
+          ...Object.entries(PRIORITY_ALIASES)
+            .filter(([, v]) => v === 'urgent')
+            .map(([k]) => k),
+        ]),
+        base().in('status', alias('completed')),
       ]);
       return createCorsResponse(
         {
@@ -93,6 +146,32 @@ export default async function handler(req: Request) {
     }
 
     // GET /service-tickets - List all tickets with filters
+    // GET /service-tickets/dispatch-load - open ticket counts per technician
+    //
+    // WF-V-03. The board needs "how busy is each technician" and the honest source
+    // is the tickets themselves. Counted SERVER-side rather than from the board's
+    // own ticket list, because that list is scoped to the caller and counting from
+    // it would under-report anyone whose other work the dispatcher cannot see - a
+    // number that looks precise and is quietly wrong.
+    if (req.method === 'GET' && ticketId === 'dispatch-load' && !subResource) {
+      const { data: rows, error } = await admin
+        .from('service_tickets')
+        .select('assigned_technician_id, status, scheduled_date')
+        .eq('tenant_id', tenantId)
+        .in('status', OPEN_TICKET_STATUSES)
+        .limit(2000);
+
+      if (error) {
+        console.error('Error computing dispatch load:', error);
+        return createCorsResponse({ error: 'Failed to compute dispatch load' }, 500, req);
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+      const summary = dispatchLoad(rows ?? [], today);
+
+      return createCorsResponse(summary, 200, req);
+    }
+
     if (req.method === 'GET' && !ticketId) {
       const status = url.searchParams.get('status');
       const priority = url.searchParams.get('priority');
@@ -109,6 +188,17 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
+
+      // WF-R-04: a technician's queue is their own tickets, not the tenant's.
+      // Unassigned tickets stay visible above `own` scope - a dispatch queue that
+      // hides the work nobody has picked up yet is worse than no filter at all.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      query = applyUserScope(query, ['assigned_technician_id', 'created_by'], scope);
 
       if (status) {
         query = query.eq('status', status);
@@ -139,8 +229,8 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch service tickets' }, 500, req);
       }
 
-      // Enrich with customer names
-      const enriched = await enrichWithCustomerNames(admin, tickets || []);
+      // WF-V-01: the machine and the technician, not just the customer.
+      const enriched = await enrichTickets(admin, tenantId, tickets || []);
       return createCorsResponse({ data: enriched, total: count || 0 }, 200, req);
     }
 
@@ -200,18 +290,9 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
-      // Enrich with customer name
-      let enrichedTicket = ticket;
-      if (ticket?.customer_id) {
-        const { data: customer } = await admin
-          .from('business_records')
-          .select(
-            'id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone',
-          )
-          .eq('id', ticket.customer_id)
-          .single();
-        enrichedTicket = { ...ticket, customer: customer || null };
-      }
+      // WF-V-01: the same three joins as the list, so a ticket does not gain or
+      // lose fields depending on which screen opened it.
+      const [enrichedTicket] = await enrichTickets(admin, tenantId, [ticket]);
 
       return createCorsResponse({ ...enrichedTicket, updates: updates || [] }, 200, req);
     }
@@ -219,6 +300,28 @@ export default async function handler(req: Request) {
     // POST /service-tickets - Create new ticket
     if (req.method === 'POST' && !ticketId) {
       const body = await req.json();
+
+      // WF-V-05: refuse a status or priority outside the vocabulary. Sending one
+      // used to store it, and a ticket in a status no filter offers is invisible
+      // on every board that lists by status.
+      const badStatus = body.status !== undefined && normalizeTicketStatus(body.status) === null;
+      const badPriority =
+        body.priority !== undefined && normalizeTicketPriority(body.priority) === null;
+      if (badStatus || badPriority) {
+        return createCorsResponse(
+          {
+            error: 'Unknown status or priority',
+            code: 'INVALID_TICKET_VOCABULARY',
+            rejected: [
+              ...(badStatus ? [{ field: 'status', value: body.status }] : []),
+              ...(badPriority ? [{ field: 'priority', value: body.priority }] : []),
+            ],
+            allowed: { status: SERVICE_TICKET_STATUSES, priority: SERVICE_TICKET_PRIORITIES },
+          },
+          400,
+          req,
+        );
+      }
 
       // Generate ticket number if not provided
       const ticketNumber = body.ticketNumber || body.ticket_number || `TKT-${Date.now()}`;
@@ -230,8 +333,10 @@ export default async function handler(req: Request) {
         ticket_number: ticketNumber,
         title: body.title,
         description: body.description || null,
-        priority: body.priority || 'medium',
-        status: body.status || 'open',
+        // WF-V-05: normalized, and an unknown value is refused above rather
+        // than written into a column no filter can match.
+        priority: normalizeTicketPriority(body.priority) ?? 'medium',
+        status: normalizeTicketStatus(body.status) ?? 'open',
         assigned_technician_id: body.assignedTechnicianId || body.assigned_technician_id || null,
         scheduled_date: body.scheduledDate || body.scheduled_date || null,
         estimated_duration: body.estimatedDuration || body.estimated_duration || null,
@@ -276,6 +381,11 @@ export default async function handler(req: Request) {
 
     // POST /service-tickets/:id/updates - Add update to ticket
     if (req.method === 'POST' && ticketId && subResource === 'updates') {
+      // An update is the audit trail of who did what to a ticket. Writing one on
+      // somebody else's ticket puts words in their record.
+      const denied = await denyIfTicketOutOfScope(ticketId);
+      if (denied) return denied;
+
       const body = await req.json();
 
       const updateData = {
@@ -312,6 +422,11 @@ export default async function handler(req: Request) {
 
     // PATCH /service-tickets/:id - Update ticket
     if ((req.method === 'PATCH' || req.method === 'PUT') && ticketId && !subResource) {
+      // Assign, close and void all arrive here. A technician cannot close another
+      // technician's ticket.
+      const denied = await denyIfTicketOutOfScope(ticketId);
+      if (denied) return denied;
+
       const body = await req.json();
 
       // Fetch current ticket for comparison
@@ -322,49 +437,26 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .single();
 
-      const updateData: Record<string, any> = {
-        updated_at: new Date().toISOString(),
-      };
-
-      // Map camelCase to snake_case and track changes
-      const fieldMap: Record<string, string> = {
-        customerId: 'customer_id',
-        equipmentId: 'equipment_id',
-        ticketNumber: 'ticket_number',
-        title: 'title',
-        description: 'description',
-        priority: 'priority',
-        status: 'status',
-        assignedTechnicianId: 'assigned_technician_id',
-        scheduledDate: 'scheduled_date',
-        estimatedDuration: 'estimated_duration',
-        customerAddress: 'customer_address',
-        customerPhone: 'customer_phone',
-        requiredSkills: 'required_skills',
-        requiredParts: 'required_parts',
-        workOrderNotes: 'work_order_notes',
-        resolutionNotes: 'resolution_notes',
-        customerSignature: 'customer_signature',
-        partsUsed: 'parts_used',
-        laborHours: 'labor_hours',
-      };
-
-      const changes: Array<{ field: string; oldValue: any; newValue: any }> = [];
-
-      for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
-        if (body[camelKey] !== undefined || body[snakeKey] !== undefined) {
-          const newValue = body[camelKey] || body[snakeKey];
-          updateData[snakeKey] = newValue;
-
-          if (currentTicket && currentTicket[snakeKey] !== newValue) {
-            changes.push({
-              field: snakeKey,
-              oldValue: currentTicket[snakeKey],
-              newValue,
-            });
-          }
-        }
+      const { updateData, changes, rejected } = applyTicketFields(body, currentTicket);
+      if (rejected.length > 0) {
+        // A status or priority outside the vocabulary is a 400 naming what is
+        // allowed, not a silent write that makes the ticket invisible to every
+        // filter - which is what happened before there was a vocabulary.
+        return createCorsResponse(
+          {
+            error: 'Unknown status or priority',
+            code: 'INVALID_TICKET_VOCABULARY',
+            rejected,
+            allowed: {
+              status: SERVICE_TICKET_STATUSES,
+              priority: SERVICE_TICKET_PRIORITIES,
+            },
+          },
+          400,
+          req,
+        );
       }
+      updateData.updated_at = new Date().toISOString();
 
       // If status is completed, set resolved_at
       if (updateData.status === 'completed' && !currentTicket?.resolved_at) {
@@ -400,11 +492,35 @@ export default async function handler(req: Request) {
         }
       }
 
+      // WF-V-03: tell the technician. A dispatch board that assigns silently means
+      // the technician finds out by refreshing their queue, which is how a job sits
+      // untouched for an afternoon. Never blocks the assignment: a failed
+      // notification must not roll back a real dispatch, and user_notifications may
+      // not exist on an older database (the notifications function 503s for that).
+      const notification = assignmentNotification(
+        changes,
+        ticket,
+        user.id,
+        tenantId,
+        ticketId,
+        new Date().toISOString(),
+      );
+      if (notification) {
+        try {
+          await admin.from('user_notifications').insert(notification);
+        } catch (notifyError) {
+          console.warn('Assignment notification not sent:', notifyError);
+        }
+      }
+
       return createCorsResponse(ticket, 200, req);
     }
 
     // DELETE /service-tickets/:id - Delete ticket
     if (req.method === 'DELETE' && ticketId) {
+      const denied = await denyIfTicketOutOfScope(ticketId);
+      if (denied) return denied;
+
       // First delete related updates
       await admin
         .from('service_ticket_updates')
