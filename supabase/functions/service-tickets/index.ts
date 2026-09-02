@@ -4,7 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { enrichTickets } from './_enrich.ts';
-import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { applyUserScope, resolveScope, rowInScope } from '../_shared/scope.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 export default async function handler(req: Request) {
@@ -50,6 +50,38 @@ export default async function handler(req: Request) {
 
     // GET /service-tickets/stats - status/priority counts across ALL tickets
     // (not just the current page) for the dashboard stat cards.
+    /**
+     * WF-R-07: is this ticket the caller's to act on?
+     *
+     * A list filter narrows what a technician can BROWSE and says nothing about a
+     * write aimed at an id, so before this any authenticated member of the tenant
+     * could reassign, close, void or delete anybody's ticket. Returns null when
+     * the write may proceed, and null for a ticket that does not exist so the
+     * handler keeps answering its own 404 instead of leaking which ids are real.
+     */
+    const denyIfTicketOutOfScope = async (id: string): Promise<Response | null> => {
+      const { data: existing } = await admin
+        .from('service_tickets')
+        .select('id, assigned_technician_id, created_by')
+        .eq('id', id)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (!existing) return null;
+
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      if (rowInScope(existing, ['assigned_technician_id', 'created_by'], scope)) return null;
+
+      return createCorsResponse(
+        { error: 'This ticket is outside your scope', code: 'ROW_OUT_OF_SCOPE' },
+        403,
+        req,
+      );
+    };
+
     if (req.method === 'GET' && ticketId === 'stats') {
       const base = () =>
         admin
@@ -269,6 +301,11 @@ export default async function handler(req: Request) {
 
     // POST /service-tickets/:id/updates - Add update to ticket
     if (req.method === 'POST' && ticketId && subResource === 'updates') {
+      // An update is the audit trail of who did what to a ticket. Writing one on
+      // somebody else's ticket puts words in their record.
+      const denied = await denyIfTicketOutOfScope(ticketId);
+      if (denied) return denied;
+
       const body = await req.json();
 
       const updateData = {
@@ -305,6 +342,11 @@ export default async function handler(req: Request) {
 
     // PATCH /service-tickets/:id - Update ticket
     if ((req.method === 'PATCH' || req.method === 'PUT') && ticketId && !subResource) {
+      // Assign, close and void all arrive here. A technician cannot close another
+      // technician's ticket.
+      const denied = await denyIfTicketOutOfScope(ticketId);
+      if (denied) return denied;
+
       const body = await req.json();
 
       // Fetch current ticket for comparison
@@ -398,6 +440,9 @@ export default async function handler(req: Request) {
 
     // DELETE /service-tickets/:id - Delete ticket
     if (req.method === 'DELETE' && ticketId) {
+      const denied = await denyIfTicketOutOfScope(ticketId);
+      if (denied) return denied;
+
       // First delete related updates
       await admin
         .from('service_ticket_updates')

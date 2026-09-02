@@ -74,6 +74,7 @@ import {
   type ExtractedMeter,
   type ValidationStatus,
 } from './vision.ts';
+import { accessibleCustomerIds, resolveScope } from '../_shared/scope.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -122,7 +123,8 @@ export default async function handler(req: Request) {
       return await submit(req, admin, tenantId, user.id);
     }
     if (resource === 'submissions') {
-      if (method === 'GET' && !second) return await listSubmissions(admin, tenantId, url, req);
+      if (method === 'GET' && !second)
+        return await listSubmissions(admin, tenantId, url, req, user);
       if (method === 'GET' && second && !third)
         return await getSubmission(admin, tenantId, second, req);
       if (method === 'POST' && second && third === 'approve')
@@ -515,13 +517,37 @@ async function submit(req: Request, admin: Admin, tenantId: string, userId: stri
   return createCorsResponse(result, 201, req);
 }
 
-async function listSubmissions(admin: Admin, tenantId: string, url: URL, req: Request) {
+async function listSubmissions(
+  admin: Admin,
+  tenantId: string,
+  url: URL,
+  req: Request,
+  user: { id: string; app_metadata?: Record<string, unknown> | null },
+) {
   let query = admin
     .from('meter_read_submissions')
     .select('*')
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false })
     .limit(500);
+
+  // WF-R-07, scoped through the CUSTOMER. A submission names two users and
+  // neither is an owner: `reviewed_by_user_id` is whoever triaged it, so scoping
+  // on it would show a reviewer the queue they had already cleared and nothing
+  // waiting. The account the meter belongs to is the real answer. AC3 asked for
+  // the equipment's customer LOCATION; `business_records` has no location FK, so
+  // ownership of the account is what this can express.
+  const scope = await resolveScope(admin, {
+    userId: user.id,
+    tenantId,
+    appMetadata: user.app_metadata,
+    requestedScope: url.searchParams.get('scope'),
+  });
+  const customers = await accessibleCustomerIds(admin, tenantId, scope);
+  if (customers.ids !== null || customers.overflow) {
+    // Overflow narrows to nothing: there is no user column to fall back to.
+    query = query.in('customer_id', customers.overflow ? [] : (customers.ids ?? []));
+  }
 
   const status = parseStatusFilter(url.searchParams.get('status'));
   if (status) query = query.eq('validation_status', status);

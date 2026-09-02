@@ -94,7 +94,6 @@
     "me",
     "meeting-transcription",
     "meetings",
-    "meter-reads",
     "mobile",
     "mobile-auth",
     "mobile-field",
@@ -162,9 +161,7 @@
     "tax-rates",
     "team-reports",
     "teams",
-    "technician-management",
     "technician-sessions",
-    "technicians",
     "templates",
     "tenant-settings",
     "territories",
@@ -200,10 +197,13 @@
     "leads",
     "leases",
     "meter-readings",
+    "meter-reads",
     "purchase-orders",
     "quotes",
     "service-tickets",
     "tasks",
+    "technician-management",
+    "technicians",
     "warehouse-operations"
   ]
 }

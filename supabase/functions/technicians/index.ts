@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -56,6 +57,20 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('first_name', { ascending: true })
         .range(offset, offset + limit - 1);
+
+      // WF-R-07: the roster is scoped through `technicians.user_id`, the link to
+      // `users`, so a supervisor sees their crew and a manager their location -
+      // the same tier ladder every other list uses. A technician (level 1-2) sees
+      // their own row and the contractors with no user_id, which are unowned and
+      // therefore shared; the dispatch and assignment screens that need the whole
+      // roster are level 3 and above, which is what makes this safe to narrow.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      query = applyUserScope(query, 'user_id', scope);
 
       if (status) {
         // ?status=active|inactive maps onto the boolean the table has.
