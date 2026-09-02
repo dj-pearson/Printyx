@@ -9,6 +9,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { toCamel } from '../_shared/case.ts';
 import { buildRoleClaims, claimsPatch, syncRoleClaims } from '../_shared/role-claims.ts';
 
 // Helper to check if user has admin permissions
@@ -174,6 +175,186 @@ export default async function handler(req: Request) {
         403,
         req,
       );
+    }
+
+    // =====================================================
+    // ORG STRUCTURE (WF-R-08)
+    //
+    // WF-R-04 through WF-R-07 scope every list on users.manager_id,
+    // users.team_id, users.primary_location_id and users.region_id, and NOTHING
+    // WROTE ANY OF THEM - the invite below set role_id and team_id and stopped, and
+    // the one file that ever assigned a manager (server/auth-setup.ts) is an
+    // orphan. So location and region scope degraded to team for every user in
+    // every tenant. These endpoints are what fills the tree.
+    //
+    // They live in `admin` rather than in the `locations` function because that
+    // one has no caller, no proxy entry and no gate of its own, while this
+    // function is already reachable, already proxied per-path and already behind
+    // checkAdminPermission above. `teams` was not an option at all: that edge
+    // function is about PROJECT teams (tasks, projects, time_entries) and shares
+    // only the word - the AUDIT-031 collision shape.
+    // =====================================================
+
+    /** Only columns the table has; an unknown key is a PGRST204, not a no-op. */
+    const pick = (body: Record<string, unknown>, map: Record<string, string>) => {
+      const row: Record<string, unknown> = {};
+      for (const [key, column] of Object.entries(map)) {
+        const camel = body[key];
+        const snake = body[column];
+        const value = camel !== undefined ? camel : snake;
+        if (value !== undefined) row[column] = value === '' ? null : value;
+      }
+      return row;
+    };
+
+    const LOCATION_COLUMNS = {
+      name: 'name',
+      code: 'code',
+      address: 'address',
+      city: 'city',
+      state: 'state',
+      zipCode: 'zip_code',
+      phone: 'phone',
+      email: 'email',
+      locationType: 'location_type',
+      isHeadquarters: 'is_headquarters',
+      regionId: 'region_id',
+      locationManagerId: 'location_manager_id',
+      isActive: 'is_active',
+    };
+
+    const REGION_COLUMNS = {
+      name: 'name',
+      code: 'code',
+      description: 'description',
+      regionalManagerId: 'regional_manager_id',
+      states: 'states',
+      isActive: 'is_active',
+    };
+
+    const TEAM_COLUMNS = {
+      name: 'name',
+      department: 'department',
+      locationId: 'location_id',
+      managerId: 'manager_id',
+      parentTeamId: 'parent_team_id',
+      isActive: 'is_active',
+    };
+
+    const ORG_TABLES: Record<string, { table: string; columns: Record<string, string> }> = {
+      locations: { table: 'locations', columns: LOCATION_COLUMNS },
+      regions: { table: 'regions', columns: REGION_COLUMNS },
+      teams: { table: 'teams', columns: TEAM_COLUMNS },
+    };
+
+    const org = ORG_TABLES[resource];
+    if (org) {
+      const { table, columns } = org;
+
+      if (req.method === 'GET' && !resourceId) {
+        const { data, error } = await admin
+          .from(table)
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('name', { ascending: true });
+        if (error) {
+          console.error(`Error listing ${table}:`, error.message);
+          return createCorsResponse({ error: `Failed to fetch ${table}` }, 500, req);
+        }
+        return createCorsResponse(toCamel(data ?? []), 200, req);
+      }
+
+      if (req.method === 'POST' && !resourceId) {
+        const body = await req.json().catch(() => ({}));
+        const row = pick(body, columns);
+        if (!row.name) {
+          return createCorsResponse({ error: 'name is required' }, 400, req);
+        }
+        const { data, error } = await admin
+          .from(table)
+          .insert({ ...row, tenant_id: tenantId })
+          .select()
+          .single();
+        if (error) {
+          console.error(`Error creating ${table} row:`, error.message);
+          return createCorsResponse({ error: `Failed to create ${table} row` }, 500, req);
+        }
+        await logAuditEvent(
+          admin,
+          tenantId,
+          user.id,
+          `CREATE_${table.toUpperCase()}`,
+          table,
+          data.id,
+          null,
+          row,
+          req,
+        );
+        return createCorsResponse(toCamel(data), 201, req);
+      }
+
+      if ((req.method === 'PUT' || req.method === 'PATCH') && resourceId) {
+        const body = await req.json().catch(() => ({}));
+        const row = pick(body, columns);
+        if (Object.keys(row).length === 0) {
+          return createCorsResponse({ error: 'No recognised fields to update' }, 400, req);
+        }
+        const { data, error } = await admin
+          .from(table)
+          .update({ ...row, updated_at: new Date().toISOString() })
+          .eq('id', resourceId)
+          .eq('tenant_id', tenantId)
+          .select()
+          .maybeSingle();
+        if (error) {
+          console.error(`Error updating ${table} row:`, error.message);
+          return createCorsResponse({ error: `Failed to update ${table} row` }, 500, req);
+        }
+        if (!data) return createCorsResponse({ error: 'Not found' }, 404, req);
+        await logAuditEvent(
+          admin,
+          tenantId,
+          user.id,
+          `UPDATE_${table.toUpperCase()}`,
+          table,
+          resourceId,
+          null,
+          row,
+          req,
+        );
+        return createCorsResponse(toCamel(data), 200, req);
+      }
+
+      if (req.method === 'DELETE' && resourceId) {
+        // Soft-retire rather than delete. users.primary_location_id,
+        // users.region_id and users.team_id carry no FK constraint, so a hard
+        // delete would leave every user pointing at an id that resolves to
+        // nothing and scope them to an empty set without saying why.
+        const { data, error } = await admin
+          .from(table)
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .eq('id', resourceId)
+          .eq('tenant_id', tenantId)
+          .select()
+          .maybeSingle();
+        if (error) {
+          console.error(`Error retiring ${table} row:`, error.message);
+          return createCorsResponse({ error: `Failed to retire ${table} row` }, 500, req);
+        }
+        if (!data) return createCorsResponse({ error: 'Not found' }, 404, req);
+        await logAuditEvent(
+          admin,
+          tenantId,
+          user.id,
+          `RETIRE_${table.toUpperCase()}`,
+          table,
+          resourceId,
+          null,
+          { is_active: false },
+          req,
+        );
+        return createCorsResponse({ success: true, id: resourceId }, 200, req);
+      }
     }
 
     // =====================================================
@@ -402,6 +583,10 @@ export default async function handler(req: Request) {
       // They live on user_settings, which is the same correction COP-M01 made
       // to the user and users-team functions, and they are written below once
       // the row exists.
+      // WF-R-08: the org placement. Every scope from WF-R-04 onward reads these
+      // four columns and this invite set only two of them, so a new user arrived
+      // with no manager, no location and no region - which is why location and
+      // region scope degraded to team for everybody.
       const newUserData = {
         id: authUser.user.id,
         tenant_id: tenantId,
@@ -410,6 +595,9 @@ export default async function handler(req: Request) {
         last_name: body.lastName || null,
         role_id: body.roleId || null,
         team_id: body.teamId || null,
+        manager_id: body.managerId || body.manager_id || null,
+        primary_location_id: body.primaryLocationId || body.primary_location_id || null,
+        region_id: body.regionId || body.region_id || null,
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -535,7 +723,15 @@ export default async function handler(req: Request) {
       if (body.firstName !== undefined) updateData.first_name = body.firstName;
       if (body.lastName !== undefined) updateData.last_name = body.lastName;
       if (body.roleId !== undefined) updateData.role_id = body.roleId;
-      if (body.teamId !== undefined) updateData.team_id = body.teamId;
+      if (body.teamId !== undefined) updateData.team_id = body.teamId || null;
+      // WF-R-08. An empty string is how a select clears a placement, and writing
+      // '' into these would scope the user to a location id that matches nothing
+      // rather than to no location at all.
+      if (body.managerId !== undefined) updateData.manager_id = body.managerId || null;
+      if (body.primaryLocationId !== undefined) {
+        updateData.primary_location_id = body.primaryLocationId || null;
+      }
+      if (body.regionId !== undefined) updateData.region_id = body.regionId || null;
       if (body.profileImageUrl !== undefined) updateData.profile_image_url = body.profileImageUrl;
 
       // AUDIT-037: phone, job_title, department, timezone and locale were in

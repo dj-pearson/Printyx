@@ -113,9 +113,14 @@ columns, one user (`created_by`), and a free-text `business_owner` naming the
 CUSTOMER's proprietor. `owner_id` and `assigned_sales_rep` belong to
 `business_records`, the canonical table it duplicates, so the two handlers serving
 `companies` scope on the creator, which is weaker than ownership; the real fix is
-CRMX-002's migration. And nothing in the tree writes `users.primary_location_id`,
-`users.region_id` or `users.manager_id` outside an orphaned file, so location and
-region scope degrade to team today. WF-R-08 is the story that fills them.
+CRMX-002's migration. And until WF-R-08 nothing in the tree wrote
+`users.primary_location_id`, `users.region_id`, `users.manager_id` or
+`users.team_id` outside an orphaned file, so location and region scope degraded to
+team for everybody. `/admin/org-structure` (level 5+) now fills that tree - it
+invites a user, assigns a role, and places them under a manager, at a location, in
+a region and on a team, over `/api/admin/{users,locations,regions,teams}`. The
+degradation path stays in `_shared/scope.ts` on purpose: a tenant that has not
+populated its tree still gets team scope rather than an empty list.
 
 ## Decision
 

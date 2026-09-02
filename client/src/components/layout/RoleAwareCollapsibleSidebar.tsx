@@ -524,9 +524,23 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     icon: Settings,
     path: '/settings',
     // COP-M02: config surfaces that used to sit inside Sales Hub live here now.
-    matchPatterns: ['/settings*', '/pipeline-config*', '/proposals/branding*'],
+    matchPatterns: [
+      '/settings*',
+      '/pipeline-config*',
+      '/proposals/branding*',
+      '/admin/org-structure',
+    ],
     children: [
       { title: 'General', path: '/settings', icon: Settings, group: 'Workspace' },
+      // WF-R-08. A company admin's surface, not a platform one - it decides what
+      // this tenant's own people can see. Gated to level 5 in
+      // navigation-permissions.ts.
+      {
+        title: 'Org Structure',
+        path: '/admin/org-structure',
+        icon: Users,
+        group: 'Workspace',
+      },
       {
         title: 'Custom Fields',
         path: '/settings/custom-fields',

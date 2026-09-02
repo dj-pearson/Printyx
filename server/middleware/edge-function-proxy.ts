@@ -864,6 +864,18 @@ export function registerEdgeFunctionProxy(app: any) {
     // so this wins for this one path and nothing else changes.
     '/api/admin/system-health': { fn: 'admin', pathPrefix: '/system-health' },
 
+    // WF-R-08. Same reasoning, four more paths, and they close a DEV-ONLY 404
+    // rather than opening one: /admin/user-management is a routed page calling
+    // /api/admin/users, and no Express router owns that prefix - routes-registry
+    // mounts /api/admin/knowledge-base, /subscriptions and /seed and nothing else
+    // (routes-admin-workflows was deleted by QUALITY-002). So the page worked in
+    // production and 404'd in dev. Scoped per path for exactly that reason: a bare
+    // '/api/admin' entry would swallow the three prefixes Express does own.
+    '/api/admin/users': { fn: 'admin', pathPrefix: '/users' },
+    '/api/admin/locations': { fn: 'admin', pathPrefix: '/locations' },
+    '/api/admin/regions': { fn: 'admin', pathPrefix: '/regions' },
+    '/api/admin/teams': { fn: 'admin', pathPrefix: '/teams' },
+
     // AUDIT-019. MeetingTranscription.tsx now calls this instead of rendering
     // three hardcoded recordings. The meeting-transcription edge fn was fully
     // built (upload, transcription, notes, highlights, search, analytics,

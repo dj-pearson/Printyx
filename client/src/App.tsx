@@ -345,6 +345,7 @@ const SystemSecurity = React.lazy(() => import('@/pages/admin/SystemSecurity'));
 const DatabaseUpdaterPage = React.lazy(() => import('@/pages/admin/DatabaseUpdaterPage'));
 const TenantManagement = React.lazy(() => import('@/pages/admin/TenantManagement'));
 const UserManagement = React.lazy(() => import('@/pages/admin/UserManagement'));
+const OrgStructure = React.lazy(() => import('@/pages/admin/OrgStructure'));
 const MobileLogsViewer = React.lazy(() => import('@/pages/admin/MobileLogsViewer'));
 const DisposableEmailDomainsAdmin = React.lazy(
   () => import('@/pages/admin/DisposableEmailDomains'),
@@ -1217,6 +1218,15 @@ function Router() {
                 </Route>
                 <Route path="/admin/disposable-emails">
                   {() => <ProtectedRoute component={DisposableEmailDomainsAdmin} platformOnly />}
+                </Route>
+                <Route path="/admin/org-structure">
+                  {() => (
+                    <ProtectedRoute
+                      component={OrgStructure}
+                      permissions={['admin.user.view']}
+                      minLevel={5}
+                    />
+                  )}
                 </Route>
                 <Route path="/admin/user-management">
                   {() => (

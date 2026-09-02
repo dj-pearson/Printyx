@@ -952,6 +952,13 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['admin.user.view'],
     minLevel: 4,
   },
+  // WF-R-08. Level 5, one rung above the user list: placing people under a
+  // manager, a location and a region is what decides what everyone else can see,
+  // so it is a director's call rather than a supervisor's.
+  '/admin/org-structure': {
+    requiredPermissions: ['admin.user.view'],
+    minLevel: 5,
+  },
   '/admin/system-settings': { minLevel: 7 },
   '/admin/platform-analytics': { minLevel: 7 },
   '/admin/knowledge-base': { minLevel: 7 },
