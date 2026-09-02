@@ -6027,6 +6027,21 @@ export const proposals = pgTable(
     lastOpenedAt: timestamp('last_opened_at'),
 
     // Internal Notes and Comments
+    // AUDIT-037: six columns that EXIST on every database and were missing from
+    // this declaration, so drizzle-kit did not know about them and every read of
+    // them looked like a phantom. customer_feedback ships in 0000;
+    // total_dealer_cost and total_margin_percentage came in 0042; share_token and
+    // share_expires_at in 0045; discount_reason and discount_reason_note in 0047 -
+    // each a hand-written migration added when a feature needed the column, and
+    // none of them ever came back to the schema.
+    totalDealerCost: decimal('total_dealer_cost', { precision: 10, scale: 2 }),
+    totalMarginPercentage: decimal('total_margin_percentage', { precision: 5, scale: 2 }),
+    discountReason: varchar('discount_reason'),
+    discountReasonNote: text('discount_reason_note'),
+    shareToken: varchar('share_token'),
+    shareExpiresAt: timestamp('share_expires_at'),
+    customerFeedback: text('customer_feedback'),
+
     internalNotes: text('internal_notes'),
 
     createdAt: timestamp('created_at').defaultNow(),

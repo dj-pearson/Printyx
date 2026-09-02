@@ -979,8 +979,15 @@ export default async function handler(req: Request) {
           tenant_id: tenantId,
           proposal_id: proposal.id,
           event_type: action === 'accept' ? 'accepted' : 'rejected',
-          event_details: { name: signer, via: 'public_link' },
-          visitor_id: readCookie(req, 'pxv') ?? null,
+          // AUDIT-037: proposal_analytics has no visitor_id. The anonymous
+          // visitor cookie goes in event_details, which is the jsonb the rest of
+          // this row already uses - the alternative is a column for a value that
+          // identifies nobody.
+          event_details: {
+            name: signer,
+            via: 'public_link',
+            visitorId: readCookie(req, 'pxv') ?? null,
+          },
         });
         return jsonResponse(
           { success: true, status: action === 'accept' ? 'accepted' : 'rejected' },
@@ -1010,8 +1017,7 @@ export default async function handler(req: Request) {
         tenant_id: tenantId,
         proposal_id: proposal.id,
         event_type: 'opened',
-        event_details: { via: 'public_link' },
-        visitor_id: newViewerId,
+        event_details: { via: 'public_link', visitorId: newViewerId },
       });
 
       const branding = await loadBrandingForPdf(db, tenantId);
@@ -2486,10 +2492,12 @@ export default async function handler(req: Request) {
         .insert({
           tenant_id: ctx.tenantId,
           proposal_id: proposalId,
-          user_id: ctx.userId,
+          // AUDIT-037: `comment` and `user_id` are not columns - the table has
+          // content and author_id, and author_id was already being set beside
+          // the duplicate. So posting a comment on a proposal 42703'd.
           author_id: ctx.userId,
           author_name: ctx.email ?? null,
-          comment: body.comment || body.commentText,
+          content: body.comment || body.commentText,
           is_internal: body.isInternal ?? body.is_internal ?? false,
           created_at: new Date().toISOString(),
         })
