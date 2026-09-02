@@ -414,6 +414,13 @@
       "when": 1788338339966,
       "tag": "0075_onboarding_equipment_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1788341639536,
+      "tag": "0076_wf_c05_proposal_acquisition",
+      "breakpoints": true
     }
   ]
 }

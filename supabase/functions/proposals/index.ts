@@ -56,6 +56,11 @@ import { handleCors } from '../_shared/cors.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
 import { hasPricingApproval, needsPricingApproval } from './_send-gate.ts';
+import {
+  FINANCED_ACQUISITION_TYPES,
+  normalizeAcquisitionType,
+  planLeaseFromProposal,
+} from './_acquisition.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { renderProposalPDF } from './_pdf.ts';
@@ -816,6 +821,26 @@ async function generateContractNumber(db: SB, tenantId: string): Promise<string>
   return `${prefix}${String(next).padStart(4, '0')}`;
 }
 
+async function generateLeaseNumber(db: SB, tenantId: string): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `LS-${year}-`;
+  const { data } = await db
+    .from('leases')
+    .select('lease_number')
+    .eq('tenant_id', tenantId)
+    .like('lease_number', `${prefix}%`)
+    .order('lease_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let next = 1;
+  if (data?.lease_number) {
+    const n = parseInt(String(data.lease_number).replace(prefix, ''), 10);
+    if (!isNaN(n)) next = n + 1;
+  }
+  return `${prefix}${String(next).padStart(4, '0')}`;
+}
+
 async function createContractFromProposal(
   db: SB,
   proposal: any,
@@ -835,10 +860,13 @@ async function createContractFromProposal(
   // proposal. The term is set when the equipment is accepted (WF-L-08); until
   // then both are null, which those filters correctly skip.
   //
-  // acquisition_type is left null too: WF-C-05 is the story that captures how
-  // the deal is paid, and guessing between cash, lease and finance would be
-  // inventing the commercial terms.
+  // WF-C-05: acquisition_type is now carried from the proposal, and a lease or
+  // finance proposal drafts the leases row below. A proposal that states nothing
+  // still gets a contract and no lease - that is the honest default, not a guess
+  // between cash, lease and finance.
   const contractNumber = await generateContractNumber(db, tenantId);
+
+  const acquisitionType = normalizeAcquisitionType(proposal.acquisition_type);
 
   const { data: created } = await db
     .from('contracts')
@@ -848,12 +876,55 @@ async function createContractFromProposal(
       contract_number: contractNumber,
       deal_id: dealId ?? null,
       proposal_id: proposal.id ?? null,
+      acquisition_type: acquisitionType,
       status: 'active',
     })
     .select('id')
     .maybeSingle();
 
   const contractId = created?.id ?? null;
+
+  // WF-C-05: a lease or finance proposal puts the machine on somebody else's
+  // paper, and until now acceptance created a contract and nothing else - so a
+  // leased fleet looked exactly like a cash sale. The lease lands as a 'pending'
+  // draft for the rep to correct in LeaseForm, and only when the proposal states
+  // a term, a monthly payment and a first payment date; short of that the reason
+  // is logged rather than the terms invented. See _acquisition.ts.
+  if (contractId && acquisitionType && FINANCED_ACQUISITION_TYPES.includes(acquisitionType)) {
+    try {
+      const plan = planLeaseFromProposal(proposal, {
+        tenantId,
+        contractId,
+        createdBy: proposal.created_by ?? 'system',
+        leaseNumber: await generateLeaseNumber(db, tenantId),
+      });
+      if (plan.row) {
+        const { data: lease, error: leaseError } = await db
+          .from('leases')
+          .insert(plan.row)
+          .select('id')
+          .maybeSingle();
+        if (leaseError) throw leaseError;
+        if (lease?.id) {
+          await db
+            .from('contracts')
+            .update({ lease_id: lease.id, updated_at: new Date().toISOString() })
+            .eq('id', contractId)
+            .eq('tenant_id', tenantId);
+        }
+      } else {
+        log.info(
+          { proposalId: proposal.id, acquisitionType, reason: plan.reason },
+          'lease_not_created',
+        );
+      }
+    } catch (leaseErr) {
+      // The contract is real and the sale happened. A lease that could not be
+      // drafted is a gap the rep fills in LeaseForm, not a reason to fail the
+      // acceptance the customer already made.
+      log.warn({ proposalId: proposal.id, err: String(leaseErr) }, 'lease_create_failed');
+    }
+  }
 
   // The back-link, so the join works from either end. Best-effort for the same
   // reason the whole sync is: a missed link must not fail the acceptance.
@@ -891,6 +962,12 @@ const PROPOSAL_FIELD_MAP: Record<string, string> = {
   estimatedEndDate: 'estimated_end_date',
   executiveSummary: 'executive_summary',
   assignedTo: 'assigned_to',
+  // WF-C-05
+  acquisitionType: 'acquisition_type',
+  fundingPartner: 'funding_partner',
+  financeTermMonths: 'finance_term_months',
+  financeMonthlyPayment: 'finance_monthly_payment',
+  firstPaymentDate: 'first_payment_date',
 };
 
 function buildProposalUpdate(body: Record<string, unknown>): Record<string, unknown> {
@@ -1641,6 +1718,14 @@ export default async function handler(req: Request) {
         tax_amount: body.taxAmount || body.tax_amount || 0,
         total_amount: body.totalAmount || body.total_amount || 0,
         valid_until: body.validUntil || body.valid_until || null,
+        // WF-C-05. ?? not ||, because a zero-month term is a mistake worth
+        // storing as it was entered rather than silently becoming null.
+        acquisition_type:
+          normalizeAcquisitionType(body.acquisitionType ?? body.acquisition_type) ?? null,
+        funding_partner: body.fundingPartner ?? body.funding_partner ?? null,
+        finance_term_months: body.financeTermMonths ?? body.finance_term_months ?? null,
+        finance_monthly_payment: body.financeMonthlyPayment ?? body.finance_monthly_payment ?? null,
+        first_payment_date: body.firstPaymentDate ?? body.first_payment_date ?? null,
         internal_notes: body.notes || body.internalNotes || body.internal_notes || null,
         assigned_to: body.assignedTo || body.assigned_to || ctx.userId,
         created_by: ctx.userId,

@@ -6080,6 +6080,27 @@ export const proposals = pgTable(
     shareExpiresAt: timestamp('share_expires_at'),
     customerFeedback: text('customer_feedback'),
 
+    // WF-C-05: how the deal is paid.
+    //
+    // Acceptance always called createContractFromProposal and never created a
+    // lease, whatever the proposal said, and `payment_terms` - the only nearby
+    // field - was written by nothing and read by nothing. So `leases` sat with
+    // proposal_id, business_record_id and contract_id columns that no code
+    // filled, and a leased fleet was indistinguishable from a cash sale the
+    // moment the customer clicked Accept.
+    //
+    // `payment_terms` is KEPT and is a different fact: net_30 is when an invoice
+    // is due, not whether the customer owns the machine. Nothing reads it yet.
+    //
+    // All nullable. An existing proposal has no acquisition type and must stay
+    // valid; a proposal with no type creates the contract and no lease, which is
+    // what happens today, rather than a guess at the commercial terms.
+    acquisitionType: varchar('acquisition_type', { length: 20 }), // cash | lease | finance
+    fundingPartner: varchar('funding_partner'), // the lessor or lender, when not cash
+    financeTermMonths: integer('finance_term_months'),
+    financeMonthlyPayment: decimal('finance_monthly_payment', { precision: 10, scale: 2 }),
+    firstPaymentDate: timestamp('first_payment_date'),
+
     internalNotes: text('internal_notes'),
 
     createdAt: timestamp('created_at').defaultNow(),

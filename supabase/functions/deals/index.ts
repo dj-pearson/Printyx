@@ -796,13 +796,17 @@ export default async function handler(req: Request) {
         const linked = deal.contract_id
           ? await admin
               .from('contracts')
-              .select('id, contract_number, status, start_date, end_date, acquisition_type')
+              .select(
+                'id, contract_number, status, start_date, end_date, acquisition_type, lease_id',
+              )
               .eq('id', deal.contract_id)
               .eq('tenant_id', tenantId)
               .maybeSingle()
           : await admin
               .from('contracts')
-              .select('id, contract_number, status, start_date, end_date, acquisition_type')
+              .select(
+                'id, contract_number, status, start_date, end_date, acquisition_type, lease_id',
+              )
               .eq('deal_id', dealId)
               .eq('tenant_id', tenantId)
               .limit(1)
@@ -812,7 +816,28 @@ export default async function handler(req: Request) {
         console.error('Error loading the deal contract:', err);
       }
 
-      return createCorsResponse({ ...toDealResponse(deal, stageNames), contract }, 200, req);
+      // WF-C-05: the lease, when the deal was paid for on somebody else's paper.
+      // Read through the contract's lease_id rather than by proposal, because a
+      // contract is what a lease attaches to and one deal can produce only one.
+      // Best-effort for the same reason the contract read is.
+      let lease = null;
+      try {
+        if (contract?.lease_id) {
+          const { data } = await admin
+            .from('leases')
+            .select(
+              'id, lease_number, lease_name, status, lease_type, monthly_payment, term, total_amount, start_date, end_date, first_payment_date, lessor_name',
+            )
+            .eq('id', contract.lease_id)
+            .eq('tenant_id', tenantId)
+            .maybeSingle();
+          lease = data ?? null;
+        }
+      } catch (err) {
+        console.error('Error loading the deal lease:', err);
+      }
+
+      return createCorsResponse({ ...toDealResponse(deal, stageNames), contract, lease }, 200, req);
     }
 
     // POST /deals - Create deal

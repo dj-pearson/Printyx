@@ -95,6 +95,23 @@ interface DealData {
     start_date?: string | null;
     end_date?: string | null;
     acquisition_type?: string | null;
+    lease_id?: string | null;
+  } | null;
+  // WF-C-05: the lease this deal produced, when it was paid for on somebody
+  // else's paper. Null for a cash sale and for every deal not yet accepted.
+  lease?: {
+    id: string;
+    lease_number?: string | null;
+    lease_name?: string | null;
+    status?: string | null;
+    lease_type?: string | null;
+    monthly_payment?: string | null;
+    term?: number | null;
+    total_amount?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    first_payment_date?: string | null;
+    lessor_name?: string | null;
   } | null;
   updatedAt?: string | null;
   // COP-M04: the copier-deal fields. The deals edge function returns each one in
@@ -626,6 +643,38 @@ export default function DealDetail() {
                     label="Contract"
                     value={deal.contract.contract_number ?? deal.contract.id}
                   />
+                )}
+                {/* WF-C-05. Acceptance used to create a contract and nothing
+                    else, whatever the proposal said, so a leased fleet looked
+                    exactly like a cash sale. Both rows appear only when the
+                    fact exists - a deal that states no acquisition type shows
+                    neither, rather than "Cash" by default. */}
+                {deal.contract?.acquisition_type && (
+                  <Field
+                    icon={DollarSign}
+                    label="Acquisition"
+                    value={humanize(deal.contract.acquisition_type)}
+                  />
+                )}
+                {deal.lease && (
+                  <>
+                    <Field
+                      icon={FileText}
+                      label="Lease"
+                      value={deal.lease.lease_number ?? deal.lease.lease_name ?? deal.lease.id}
+                    />
+                    <Field
+                      icon={DollarSign}
+                      label="Lease payment"
+                      value={
+                        deal.lease.monthly_payment
+                          ? `${money(deal.lease.monthly_payment)} x ${deal.lease.term ?? '?'} months`
+                          : null
+                      }
+                    />
+                    <Field icon={Building2} label="Lessor" value={deal.lease.lessor_name} />
+                    <Field icon={Target} label="Lease status" value={humanize(deal.lease.status)} />
+                  </>
                 )}
                 <Field icon={FileText} label="Products" value={deal.productsInterested} />
                 <Field

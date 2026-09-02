@@ -82,6 +82,14 @@ const quoteSchema = z.object({
   taxAmount: z.string().optional(),
   subtotal: z.string().optional(),
   totalAmount: z.string().optional(),
+  // WF-C-05: how the deal is paid. Acceptance created a contract and never a
+  // lease, whatever the quote said, so a leased fleet was indistinguishable from
+  // a cash sale. Blank means not stated, which still creates the contract only.
+  acquisitionType: z.enum(['', 'cash', 'lease', 'finance']).optional(),
+  fundingPartner: z.string().optional(),
+  financeTermMonths: z.string().optional(),
+  financeMonthlyPayment: z.string().optional(),
+  firstPaymentDate: z.string().optional(),
 });
 
 type QuoteFormData = z.infer<typeof quoteSchema>;
@@ -129,6 +137,21 @@ interface QuoteBuilderProps {
   onCreateProposal?: (quoteId: string) => void;
 }
 
+/**
+ * The three values `leases` cannot be inserted without. Named here so the form's
+ * warning and the server's refusal say the same thing.
+ */
+const leaseTermsComplete = (quote: Partial<QuoteFormData>) =>
+  Boolean(quote.financeTermMonths && quote.financeMonthlyPayment && quote.firstPaymentDate);
+
+/** lease and finance both put the machine on somebody else's paper. */
+const isFinanced = (type?: string | null) => type === 'lease' || type === 'finance';
+
+const toIntOrNull = (value?: string | null) => {
+  const n = parseInt(String(value ?? ''), 10);
+  return Number.isFinite(n) ? n : null;
+};
+
 // Build the draft proposal payload from form + line items. Shared by the manual
 // Save Draft mutation and the QUOTE-018 autosave so they stay in sync.
 function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
@@ -168,6 +191,19 @@ function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
     discountReasonNote: quote.discountReasonNote || null,
     taxAmount: taxAmt.toString(),
     totalAmount: totalAmount.toString(),
+    // WF-C-05. Blank is "not stated", which the accept handler treats as
+    // contract-only - a placeholder acquisition type would draft a lease nobody
+    // agreed to. The three finance fields are sent only for lease/finance, so
+    // switching back to cash does not leave a stale term behind on the row.
+    acquisitionType: quote.acquisitionType || null,
+    fundingPartner: isFinanced(quote.acquisitionType) ? quote.fundingPartner || null : null,
+    financeTermMonths: isFinanced(quote.acquisitionType)
+      ? toIntOrNull(quote.financeTermMonths)
+      : null,
+    financeMonthlyPayment: isFinanced(quote.acquisitionType)
+      ? quote.financeMonthlyPayment || null
+      : null,
+    firstPaymentDate: isFinanced(quote.acquisitionType) ? quote.firstPaymentDate || null : null,
   };
 }
 
@@ -236,6 +272,11 @@ export default function QuoteBuilder({
       taxAmount: '0',
       subtotal: '0',
       totalAmount: '0',
+      acquisitionType: '',
+      fundingPartner: '',
+      financeTermMonths: '',
+      financeMonthlyPayment: '',
+      firstPaymentDate: '',
     },
   });
 
@@ -329,6 +370,21 @@ export default function QuoteBuilder({
         discountReason: String(loadedDiscountReason || ''),
         discountReasonNote: String(loadedDiscountReasonNote || ''),
         taxAmount: String(taxAmt),
+        acquisitionType: (existingQuote.acquisitionType ?? existingQuote.acquisition_type ?? '') as
+          | ''
+          | 'cash'
+          | 'lease'
+          | 'finance',
+        fundingPartner: String(existingQuote.fundingPartner ?? existingQuote.funding_partner ?? ''),
+        financeTermMonths: String(
+          existingQuote.financeTermMonths ?? existingQuote.finance_term_months ?? '',
+        ),
+        financeMonthlyPayment: String(
+          existingQuote.financeMonthlyPayment ?? existingQuote.finance_monthly_payment ?? '',
+        ),
+        firstPaymentDate: String(
+          existingQuote.firstPaymentDate ?? existingQuote.first_payment_date ?? '',
+        ).split('T')[0],
       });
 
       // Set local state for pricing calculator
@@ -1263,6 +1319,128 @@ export default function QuoteBuilder({
             discountReasonNote={form.watch('discountReasonNote') || ''}
             onDiscountReasonChange={handleDiscountReasonChange}
           />
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg">How it&rsquo;s paid</CardTitle>
+              <CardDescription>
+                A lease or finance quote drafts the lease on acceptance. Leave this blank if the
+                terms are not settled yet &mdash; acceptance then creates the contract only.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 space-y-4">
+              <Form {...form}>
+                <FormField
+                  control={form.control}
+                  name="acquisitionType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium">Acquisition</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Not stated" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="cash">Cash purchase</SelectItem>
+                          <SelectItem value="lease">Lease</SelectItem>
+                          <SelectItem value="finance">Finance</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {isFinanced(form.watch('acquisitionType')) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="fundingPartner"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Funding partner</FormLabel>
+                          <FormControl>
+                            <Input
+                              className="min-h-[44px]"
+                              placeholder="Lessor or lender"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="financeTermMonths"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Term (months)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              className="min-h-[44px]"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="financeMonthlyPayment"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">Monthly payment</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min={0}
+                              className="min-h-[44px]"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="firstPaymentDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">First payment</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="date"
+                              className="min-h-[44px]"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {isFinanced(form.watch('acquisitionType')) && !leaseTermsComplete(form.watch()) && (
+                  <p className="text-sm text-muted-foreground">
+                    Term, monthly payment and first payment date are all needed before the lease can
+                    be drafted. Without them acceptance creates the contract on its own.
+                  </p>
+                )}
+              </Form>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="text-lg">Notes</CardTitle>
