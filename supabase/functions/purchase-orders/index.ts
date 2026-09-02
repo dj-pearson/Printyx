@@ -13,6 +13,13 @@ import {
   lineItemsFromBody,
   lineItemsSubtotal,
 } from './_line-items.ts';
+import {
+  buildPayableFromReceipt,
+  inventoryMovements,
+  planReceipt,
+  serialCaptureRequired,
+  statusAfterReceipt,
+} from './_receiving.ts';
 
 // Valid PO statuses
 const PO_STATUSES = [
@@ -464,7 +471,7 @@ export default async function handler(req: Request) {
 
       const { data: po, error: poError } = await admin
         .from('purchase_orders')
-        .select('id, status')
+        .select('id, tenant_id, status, vendor_id, po_number, subtotal, tax_amount, total_amount')
         .eq('id', poId)
         .eq('tenant_id', tenantId)
         .single();
@@ -497,83 +504,99 @@ export default async function handler(req: Request) {
         );
       }
 
-      // Update each line item's received quantity
-      for (const item of receivedItems) {
-        const lineItemId = item.lineItemId || item.line_item_id || item.id;
-        const quantityReceived = parseFloat(
-          item.quantityReceived || item.quantity_received || item.quantity || 0,
-        );
-
-        if (!lineItemId || quantityReceived <= 0) continue;
-
-        // Get current line item
-        const { data: lineItem } = await admin
-          .from(LINE_ITEM_TABLE)
-          .select(RECEIPT_COLUMNS)
-          .eq('id', lineItemId)
-          .eq('purchase_order_id', poId)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (!lineItem) continue;
-
-        const newReceivedQty = (lineItem.received_quantity || 0) + quantityReceived;
-
-        // Update line item. `updated_at` is not written: migration 0001 dropped
-        // it from purchase_order_items.
-        await admin
-          .from(LINE_ITEM_TABLE)
-          .update({
-            received_quantity: newReceivedQty,
-            last_received_date: receiptDate,
-          })
-          .eq('id', lineItemId)
-          .eq('tenant_id', tenantId);
-
-        // Update inventory if linked to an inventory item
-        if (lineItem.inventory_item_id) {
-          const { data: invItem } = await admin
-            .from('inventory_items')
-            .select('quantity_on_hand, quantity_available, quantity_on_order')
-            .eq('id', lineItem.inventory_item_id)
-            .eq('tenant_id', tenantId)
-            .single();
-
-          if (invItem) {
-            await admin
-              .from('inventory_items')
-              .update({
-                quantity_on_hand: (invItem.quantity_on_hand || 0) + quantityReceived,
-                quantity_available: (invItem.quantity_available || 0) + quantityReceived,
-                quantity_on_order: Math.max(0, (invItem.quantity_on_order || 0) - quantityReceived),
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', lineItem.inventory_item_id)
-              .eq('tenant_id', tenantId);
-          }
-        }
-      }
-
-      // Determine new PO status based on received quantities
-      const { data: allLineItems } = await admin
+      // WF-P-02: the arithmetic lives in ./_receiving.ts so it can be tested and
+      // so the Express handler on the other host cannot drift from it.
+      const { data: lines, error: linesError } = await admin
         .from(LINE_ITEM_TABLE)
-        .select('quantity, received_quantity')
+        .select('id, quantity, received_quantity, inventory_item_id, item_description')
         .eq('purchase_order_id', poId)
         .eq('tenant_id', tenantId);
 
-      let newStatus: POStatus = po.status as POStatus;
-      if (allLineItems && allLineItems.length > 0) {
-        const allFullyReceived = allLineItems.every(
-          (li) => (li.received_quantity || 0) >= (li.quantity || 0),
-        );
-        const someReceived = allLineItems.some((li) => (li.received_quantity || 0) > 0);
+      if (linesError || !lines) {
+        console.error('Error reading PO line items for receipt:', linesError);
+        return createCorsResponse({ error: 'Failed to read purchase order lines' }, 500, req);
+      }
 
-        if (allFullyReceived) {
-          newStatus = 'received';
-        } else if (someReceived) {
-          newStatus = 'partially_received';
+      const plan = planReceipt(lines, receivedItems);
+
+      if (plan.receipts.length === 0) {
+        return createCorsResponse(
+          {
+            error: 'No line item on this purchase order matched the receipt',
+            unknownLineItemIds: plan.unknownLineItemIds,
+          },
+          400,
+          req,
+        );
+      }
+
+      // Which of these are tracked one unit at a time. A serialized line records
+      // its receipt but does NOT move bulk inventory - those units become
+      // equipment rows with serial numbers (WF-L-04), and adding them to
+      // quantity_on_hand as well would count them twice.
+      const inventoryItemIds = [
+        ...new Set(plan.receipts.map((r) => r.inventoryItemId).filter(Boolean)),
+      ] as string[];
+      const serialized = new Set<string>();
+      if (inventoryItemIds.length > 0) {
+        const { data: invItems } = await admin
+          .from('inventory_items')
+          .select('id, is_serialized')
+          .eq('tenant_id', tenantId)
+          .in('id', inventoryItemIds);
+        for (const item of invItems || []) {
+          if (item.is_serialized) serialized.add(String(item.id));
         }
       }
+
+      for (const receipt of plan.receipts) {
+        // `updated_at` is not written: migration 0001 dropped it from
+        // purchase_order_items.
+        const { error: lineError } = await admin
+          .from(LINE_ITEM_TABLE)
+          .update({
+            received_quantity: receipt.newReceivedQuantity,
+            last_received_date: receiptDate,
+          })
+          .eq('id', receipt.lineItemId)
+          .eq('purchase_order_id', poId)
+          .eq('tenant_id', tenantId);
+
+        if (lineError) {
+          console.error('Error recording receipt on line item:', lineError);
+          return createCorsResponse(
+            { error: 'Failed to record the receipt', details: lineError },
+            500,
+            req,
+          );
+        }
+      }
+
+      for (const movement of inventoryMovements(plan.receipts, serialized)) {
+        const { data: invItem } = await admin
+          .from('inventory_items')
+          .select('quantity_on_hand, quantity_available, quantity_on_order')
+          .eq('id', movement.inventoryItemId)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (!invItem) continue;
+
+        await admin
+          .from('inventory_items')
+          .update({
+            quantity_on_hand: (invItem.quantity_on_hand || 0) + movement.quantity,
+            quantity_available: (invItem.quantity_available || 0) + movement.quantity,
+            quantity_on_order: Math.max(0, (invItem.quantity_on_order || 0) - movement.quantity),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', movement.inventoryItemId)
+          .eq('tenant_id', tenantId);
+      }
+
+      const derivedStatus = statusAfterReceipt(lines, plan.receipts);
+      const newStatus: POStatus = (derivedStatus ?? po.status) as POStatus;
+      const pendingSerials = serialCaptureRequired(lines, plan.receipts, serialized);
 
       // Update PO status and receipt info
       const { data: updatedPO, error } = await admin
@@ -601,7 +624,55 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to record receipt' }, 500, req);
       }
 
-      return createCorsResponse(updatedPO, 200, req);
+      // WF-P-02: goods in means a liability, so the expected bill is raised here
+      // rather than waiting for someone to key it in. Once per order, not once
+      // per partial receipt - hence the lookup first. A failure is reported
+      // alongside the receipt rather than failing it: the stock has physically
+      // arrived and the line quantities are already committed, so answering 500
+      // would leave the caller believing none of it happened.
+      let payableError: string | null = null;
+      let payableId: string | null = null;
+      const { data: existingPayable } = await admin
+        .from('accounts_payable')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('purchase_order_id', poId)
+        .limit(1);
+
+      if (existingPayable && existingPayable.length > 0) {
+        payableId = String(existingPayable[0].id);
+      } else {
+        const { data: payable, error: apError } = await admin
+          .from('accounts_payable')
+          .insert(buildPayableFromReceipt(po, { receiptDate, createdBy: user.id }))
+          .select('id')
+          .single();
+
+        if (apError) {
+          console.error('Error raising payable for PO receipt:', apError);
+          payableError = 'The receipt was recorded but no payable was raised for it';
+        } else {
+          payableId = String(payable.id);
+        }
+      }
+
+      return createCorsResponse(
+        {
+          ...updatedPO,
+          // Named rather than swallowed, each for a reason a caller must see:
+          // an over-receipt is stock the warehouse is holding beyond the order,
+          // a serialized line is a receipt that is NOT finished until WF-L-04
+          // captures its serial numbers, and an unmatched id means part of the
+          // request did nothing.
+          overReceipts: plan.overReceipts,
+          requiresSerialCapture: pendingSerials,
+          unknownLineItemIds: plan.unknownLineItemIds,
+          payableId,
+          payableError,
+        },
+        200,
+        req,
+      );
     }
 
     // ============================================================

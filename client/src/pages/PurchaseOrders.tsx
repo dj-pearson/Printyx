@@ -80,6 +80,22 @@ import PageAlerts from '@/components/contextual/PageAlerts';
 import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
 import MobileFAB from '@/components/layout/MobileFAB';
 
+// WF-P-02: the receive dialog's view of a line, normalized from whichever host
+// answered - Express returns snake_case Drizzle rows under `items`, the edge
+// function returns them under `lineItems`.
+interface ReceivableLine {
+  id: string;
+  description: string;
+  ordered: number;
+  received: number;
+}
+
+interface ReceiptResponse {
+  overReceipts?: Array<{ lineItemId: string }>;
+  requiresSerialCapture?: Array<{ lineItemId: string }>;
+  payableError?: string | null;
+}
+
 // Enhanced form schema with line items
 const purchaseOrderFormSchema = z.object({
   poNumber: z.string().min(1, 'PO number is required'),
@@ -138,6 +154,8 @@ export default function PurchaseOrders() {
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [receivingPO, setReceivingPO] = useState<PurchaseOrder | null>(null);
+  const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
 
   // WF-P-03: the Book Order item on contracts.tsx navigates here with
   // ?contractId=<id>. The page used to render that id as a hint above the form
@@ -229,6 +247,70 @@ export default function PurchaseOrders() {
       toast({
         title: 'Error',
         description: 'Failed to create purchase order',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // WF-P-02: receiving. The endpoint has existed on both hosts since this story
+  // and no screen called it - the only action offered on an approved PO was
+  // Release to Warehouse, which navigates away and records nothing.
+  const { data: receiveLines = [], isLoading: receiveLinesLoading } = useQuery<ReceivableLine[]>({
+    queryKey: ['/api/purchase-orders', receivingPO?.id, 'line-items'],
+    enabled: !!receivingPO,
+    queryFn: async () => {
+      const response = await apiRequest(`/api/purchase-orders/${receivingPO!.id}`, 'GET');
+      // The two hosts disagree about the key: Express returns { ...po, items },
+      // the edge function { ...po, lineItems }. Both are read rather than one
+      // being picked, because picking one breaks the other environment silently.
+      const raw = response?.lineItems ?? response?.items ?? [];
+      return (Array.isArray(raw) ? raw : []).map((line: Record<string, unknown>) => ({
+        id: String(line.id),
+        description: String(line.item_description ?? line.itemDescription ?? ''),
+        ordered: Number(line.quantity ?? 0),
+        received: Number(line.received_quantity ?? line.receivedQuantity ?? 0),
+      }));
+    },
+  });
+
+  const receiveMutation = useMutation({
+    mutationFn: async ({
+      id,
+      items,
+    }: {
+      id: string;
+      items: Array<{ lineItemId: string; quantity: number }>;
+    }) => apiRequest(`/api/purchase-orders/${id}/receive`, 'POST', { items }),
+    onSuccess: (response: ReceiptResponse) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/purchase-orders/stats/summary'],
+      });
+      setReceivingPO(null);
+      setReceiptQuantities({});
+
+      // Each of these is a real outcome the receipt does not fully cover, so the
+      // toast says so rather than reporting a clean success.
+      const notes: string[] = [];
+      if (response?.overReceipts?.length) {
+        notes.push(`${response.overReceipts.length} line(s) received above the ordered quantity.`);
+      }
+      if (response?.requiresSerialCapture?.length) {
+        notes.push(
+          `${response.requiresSerialCapture.length} serialized line(s) still need serial numbers.`,
+        );
+      }
+      if (response?.payableError) notes.push(response.payableError);
+
+      toast({
+        title: 'Receipt recorded',
+        description: notes.length > 0 ? notes.join(' ') : 'Quantities and inventory updated.',
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to record the receipt',
         variant: 'destructive',
       });
     },
@@ -1040,6 +1122,20 @@ export default function PurchaseOrders() {
                                 Release to Warehouse
                               </Button>
                             )}
+
+                            {['approved', 'ordered', 'partially_received'].includes(po.status) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setReceiptQuantities({});
+                                  setReceivingPO(po);
+                                }}
+                              >
+                                <Package className="mr-1 h-4 w-4" />
+                                Receive
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1052,6 +1148,121 @@ export default function PurchaseOrders() {
         </Card>
 
         {/* Purchase Order Details Dialog */}
+        {/* WF-P-02: record a shipment against the order. Partial receipts are the
+            normal case, so each line defaults to what is still outstanding and
+            the buyer edits down. */}
+        <Dialog
+          open={!!receivingPO}
+          onOpenChange={(open) => {
+            if (!open) {
+              setReceivingPO(null);
+              setReceiptQuantities({});
+            }
+          }}
+        >
+          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Receive {receivingPO?.poNumber}</DialogTitle>
+            </DialogHeader>
+
+            {receiveLinesLoading ? (
+              <p className="py-6 text-sm text-muted-foreground">Loading line items...</p>
+            ) : receiveLines.length === 0 ? (
+              <p className="py-6 text-sm text-muted-foreground">
+                This purchase order has no line items to receive.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Ordered</TableHead>
+                      <TableHead className="text-right">Already received</TableHead>
+                      <TableHead className="text-right">Receiving now</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {receiveLines.map((line) => {
+                      const outstanding = Math.max(0, line.ordered - line.received);
+                      const value = receiptQuantities[line.id] ?? String(outstanding);
+                      return (
+                        <TableRow key={line.id}>
+                          <TableCell className="font-medium">{line.description}</TableCell>
+                          <TableCell className="text-right">{line.ordered}</TableCell>
+                          <TableCell className="text-right">{line.received}</TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              min={0}
+                              className="ml-auto w-24 text-right"
+                              aria-label={`Quantity receiving for ${line.description}`}
+                              value={value}
+                              onChange={(e) =>
+                                setReceiptQuantities((prev) => ({
+                                  ...prev,
+                                  [line.id]: e.target.value,
+                                }))
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+
+                {/* No client-side cap on the quantity. A vendor really does ship
+                    11 when you ordered 10, and refusing the receipt leaves the
+                    warehouse holding stock the system says does not exist; the
+                    server applies the excess and names it back. */}
+                <p className="text-sm text-muted-foreground">
+                  Receiving more than was ordered is allowed and reported back.
+                </p>
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setReceivingPO(null);
+                      setReceiptQuantities({});
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    disabled={receiveMutation.isPending}
+                    onClick={() => {
+                      if (!receivingPO) return;
+                      const items = receiveLines
+                        .map((line) => ({
+                          lineItemId: line.id,
+                          quantity: Number(
+                            receiptQuantities[line.id] ??
+                              String(Math.max(0, line.ordered - line.received)),
+                          ),
+                        }))
+                        .filter((item) => Number.isFinite(item.quantity) && item.quantity > 0);
+
+                      if (items.length === 0) {
+                        toast({
+                          title: 'Nothing to receive',
+                          description: 'Enter a quantity greater than zero on at least one line.',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+                      receiveMutation.mutate({ id: receivingPO.id, items });
+                    }}
+                  >
+                    Record receipt
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>

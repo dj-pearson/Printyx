@@ -365,6 +365,13 @@
       "when": 1788325487740,
       "tag": "0068_same_whiplash",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1788326131759,
+      "tag": "0069_normal_leech",
+      "breakpoints": true
     }
   ]
 }

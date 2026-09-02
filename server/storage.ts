@@ -709,6 +709,11 @@ export interface IStorage {
 
   // Purchase Order Items operations
   getPurchaseOrderItems(purchaseOrderId: string, tenantId: string): Promise<PurchaseOrderItem[]>;
+  getInventoryItem(id: string, tenantId: string): Promise<InventoryItem | undefined>;
+  getAccountsPayableByPurchaseOrder(
+    purchaseOrderId: string,
+    tenantId: string,
+  ): Promise<AccountsPayable | undefined>;
   createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem>;
   updatePurchaseOrderItem(
     id: string,
@@ -2877,6 +2882,14 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(inventoryItems).where(eq(inventoryItems.tenantId, tenantId));
   }
 
+  async getInventoryItem(id: string, tenantId: string): Promise<InventoryItem | undefined> {
+    const [item] = await db
+      .select()
+      .from(inventoryItems)
+      .where(and(eq(inventoryItems.id, id), eq(inventoryItems.tenantId, tenantId)));
+    return item;
+  }
+
   async createInventoryItem(
     item: Omit<InventoryItem, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<InventoryItem> {
@@ -4192,6 +4205,25 @@ export class DatabaseStorage implements IStorage {
       .from(accountsPayable)
       .where(and(eq(accountsPayable.id, id), eq(accountsPayable.tenantId, tenantId)));
     return ap;
+  }
+
+  // WF-P-02: receiving raises the expected bill once per order, not once per
+  // partial receipt, so it has to be able to ask whether one already exists.
+  async getAccountsPayableByPurchaseOrder(
+    purchaseOrderId: string,
+    tenantId: string,
+  ): Promise<AccountsPayable | undefined> {
+    const [row] = await db
+      .select()
+      .from(accountsPayable)
+      .where(
+        and(
+          eq(accountsPayable.purchaseOrderId, purchaseOrderId),
+          eq(accountsPayable.tenantId, tenantId),
+        ),
+      )
+      .limit(1);
+    return row;
   }
 
   async createAccountsPayable(ap: InsertAccountsPayable): Promise<AccountsPayable> {

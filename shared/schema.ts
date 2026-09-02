@@ -6638,6 +6638,11 @@ export const accountsPayable = pgTable(
     // Reference Information
     vendorId: varchar('vendor_id').notNull(),
     billNumber: varchar('bill_number').notNull(),
+    // WF-P-02: purchaseOrderNumber is free text and always was, so nothing could
+    // join a bill back to the order that caused it. Receiving now raises the
+    // payable, so the link is a real one. Nullable: a bill for rent or a service
+    // has no purchase order.
+    purchaseOrderId: varchar('purchase_order_id'),
     purchaseOrderNumber: varchar('purchase_order_number'),
     referenceNumber: varchar('reference_number'),
 

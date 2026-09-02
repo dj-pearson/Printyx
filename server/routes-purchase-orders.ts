@@ -4,6 +4,14 @@ import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-purchase-orders');
 
 import { insertPurchaseOrderSchema, insertPurchaseOrderItemSchema } from '@shared/schema';
+import {
+  buildPayableFromReceipt,
+  inventoryMovements,
+  planReceipt,
+  serialCaptureRequired,
+  statusAfterReceipt,
+  type ReceivableLine,
+} from './services/purchase-order-receiving';
 import { storage } from './storage';
 import { isAuthenticated } from './replitAuth';
 // RBAC Integration
@@ -287,6 +295,154 @@ export function registerPurchaseOrderRoutes(app: Express) {
       } catch (error) {
         log.error('Error fetching purchase order items:', error);
         serverError(res, 'Failed to fetch purchase order items');
+      }
+    }),
+  );
+
+  // WF-P-02: receive a shipment against a purchase order.
+  //
+  // /api/purchase-orders is NOT proxied, so this is the dev half of an endpoint
+  // supabase/functions/purchase-orders/ serves in production. The arithmetic is
+  // the shared module both call, so the two hosts cannot disagree about stock
+  // levels; only the I/O differs.
+  app.post(
+    '/api/purchase-orders/:id/receive',
+    isAuthenticated,
+    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
+    authed(async (req: AuthenticatedRequest, res) => {
+      try {
+        const tenantId = getTenantId(req)!;
+        const userId = getUserId(req)!;
+        const { id } = req.params;
+
+        const po = await storage.getPurchaseOrder(id, tenantId);
+        if (!po) return notFound(res, 'Purchase order not found');
+
+        if (!['approved', 'ordered', 'partially_received'].includes(po.status)) {
+          return badRequest(
+            res,
+            'Purchase order must be approved, ordered, or partially received to record receipts',
+          );
+        }
+
+        const entries = Array.isArray(req.body?.items) ? req.body.items : [];
+        if (entries.length === 0) {
+          return badRequest(res, 'At least one line item must be specified for receiving');
+        }
+
+        const receiptDate = req.body?.receiptDate ? new Date(req.body.receiptDate) : new Date();
+
+        // The shared module reads PostgREST's snake_case row keys; Drizzle hands
+        // back camelCase, so the rows are mapped rather than the module made
+        // bilingual (which would defeat the text-comparison parity test).
+        const items = await storage.getPurchaseOrderItems(id, tenantId);
+        const lines: ReceivableLine[] = items.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+          received_quantity: item.receivedQuantity,
+          inventory_item_id: item.inventoryItemId,
+          item_description: item.itemDescription,
+        }));
+
+        const plan = planReceipt(lines, entries);
+        if (plan.receipts.length === 0) {
+          return badRequest(res, 'No line item on this purchase order matched the receipt', {
+            details: { unknownLineItemIds: plan.unknownLineItemIds },
+          });
+        }
+
+        // Which of these are tracked one unit at a time. A serialized line
+        // records its receipt but does not move bulk inventory: those units
+        // become equipment rows (WF-L-04) and counting them here would double
+        // them.
+        const serialized = new Set<string>();
+        for (const receipt of plan.receipts) {
+          if (!receipt.inventoryItemId) continue;
+          const invItem = await storage.getInventoryItem(receipt.inventoryItemId, tenantId);
+          if (invItem?.isSerialized) serialized.add(receipt.inventoryItemId);
+        }
+
+        for (const receipt of plan.receipts) {
+          await storage.updatePurchaseOrderItem(
+            receipt.lineItemId,
+            {
+              receivedQuantity: receipt.newReceivedQuantity,
+              lastReceivedDate: receiptDate,
+            },
+            tenantId,
+          );
+        }
+
+        for (const movement of inventoryMovements(plan.receipts, serialized)) {
+          const invItem = await storage.getInventoryItem(movement.inventoryItemId, tenantId);
+          if (!invItem) continue;
+          await storage.updateInventoryItem(
+            movement.inventoryItemId,
+            {
+              quantityOnHand: (invItem.quantityOnHand || 0) + movement.quantity,
+              quantityAvailable: (invItem.quantityAvailable || 0) + movement.quantity,
+              quantityOnOrder: Math.max(0, (invItem.quantityOnOrder || 0) - movement.quantity),
+            },
+            tenantId,
+          );
+        }
+
+        const derivedStatus = statusAfterReceipt(lines, plan.receipts);
+        const updated = await storage.updatePurchaseOrder(
+          id,
+          {
+            status: derivedStatus ?? po.status,
+            lastReceiptDate: receiptDate,
+            receiptNotes: req.body?.notes ?? null,
+            receivedBy: userId,
+            updatedAt: new Date(),
+          },
+          tenantId,
+        );
+
+        // The expected bill, once per order rather than once per partial
+        // receipt. A failure here is reported alongside the receipt rather than
+        // failing it: the stock has arrived and the line quantities are already
+        // committed, so a 500 would tell the caller none of it happened.
+        let payableId: string | null = null;
+        let payableError: string | null = null;
+        const existing = await storage.getAccountsPayableByPurchaseOrder(id, tenantId);
+        if (existing) {
+          payableId = existing.id;
+        } else {
+          try {
+            const payable = await storage.createAccountsPayable(
+              buildPayableFromReceipt(
+                {
+                  id: po.id,
+                  tenant_id: po.tenantId,
+                  vendor_id: po.vendorId,
+                  po_number: po.poNumber,
+                  subtotal: po.subtotal,
+                  tax_amount: po.taxAmount,
+                  total_amount: po.totalAmount,
+                },
+                { receiptDate: receiptDate.toISOString(), createdBy: userId },
+              ) as never,
+            );
+            payableId = payable.id;
+          } catch (apError) {
+            log.error('Error raising payable for PO receipt:', apError);
+            payableError = 'The receipt was recorded but no payable was raised for it';
+          }
+        }
+
+        res.json({
+          ...updated,
+          overReceipts: plan.overReceipts,
+          requiresSerialCapture: serialCaptureRequired(lines, plan.receipts, serialized),
+          unknownLineItemIds: plan.unknownLineItemIds,
+          payableId,
+          payableError,
+        });
+      } catch (error) {
+        log.error('Error recording purchase order receipt:', error);
+        serverError(res, 'Failed to record receipt');
       }
     }),
   );
