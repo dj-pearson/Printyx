@@ -13101,6 +13101,1073 @@
       "priority": 3,
       "passes": true,
       "notes": "WITHDRAWN 2026-09-02, a few hours after filing. THE PREMISE WAS WRONG AND THE\nMISTAKE IS THE USEFUL PART.\n\nI read migration 0000, saw it create task-schema.ts's shape for `projects`, and\nconcluded that drizzle-schema.ts resolved the collision backwards. It does not.\nMigration 0002 CONVERTED the table to schema.ts's shape - it adds\nestimated_hours, actual_hours and budget and drops project_manager,\ncontract_id, estimated_budget, actual_budget, color, template, workflow, tags,\ncustom_fields and completed_at. So schema.ts's declaration is correct,\ndrizzle-kit's snapshot is correct, and the four phantom-column reports on\nsupabase/functions/projects/ were TRUE POSITIVES that I reverted a correct fix\nfor.\n\nWHAT CAUGHT IT: npm run check:declared-cols, which replays the whole journal\nrather than reading one file, said the database has projects.budget,\nestimated_hours and actual_hours while the schema did not - the exact opposite\nof my claim. I had it in front of me and dismissed it. A guard that replays the\nchain outranks a human reading the first migration that mentions the table.\n\nThe handler is rebound to the post-0002 shape and\nserver/tests/unit/five-handler-rebinds.test.ts now asserts against 0002's\nALTER statements, so a future reader hits the conversion rather than the\ncreation.\n\nTWO THINGS SURVIVE THIS STORY and are worth keeping, but neither is what it was\nfiled for:\n\n1. supabase/functions/projects-enhanced/index.ts inserts projects.budget and\n   was reported by check:phantom-cols mid-pass. That is worth a look on its own\n   - it may be correct now.\n2. check:declared-cols compares the migration chain against ANY pgTable rather\n   than the resolved export. That blind spot is real even though this table was\n   not an instance of it: task-schema still declares a `projects` with the\n   pre-0002 columns, so a genuine drift on a duplicated table could still hide.\n\nLeaving the story open would mean leaving a p1 that says something false about\nthe schema, so it is marked passing with this note as the record. If either\nsurvivor above is picked up, file it fresh.\n"
+    },
+    {
+      "id": "WF-R-01",
+      "title": "Decide which role system survives, and reopen RBAC-008 / RBAC-009",
+      "description": "As the platform owner, I need one role system before any tier-scoping work starts, because docs/rbac-landscape.md records two (System A `roles` JSONB, which signup and /api/me use; System B `enhanced_roles` + `permissions`, which Express `requirePermission` reads and nothing seeds per tenant) and every scoping fix has to target one of them. Two closed stories misstate the current posture: RBAC-008 (\"role-scoped API data filtering\") is marked passing while its deliverable server/middleware/scope-middleware.ts has zero importers and sits in docs/server-orphans-baseline.json, and RBAC-009 (role-specific dashboards) is marked passing while RoleBasedDashboard never resolves a real role code (see WF-R-10).",
+      "acceptanceCriteria": [
+        "A decision record in docs/ answers the three open questions in docs/rbac-landscape.md: which role table survives, which permission vocabulary is canonical, and the migration order for existing tenants.",
+        "prd.json RBAC-008 and RBAC-009 are set to passes:false with notes citing the evidence (scope-middleware.ts has no importers; RoleBasedDashboard.tsx effectiveRoleCode short-circuits on an always-truthy string).",
+        "docs/rbac-landscape.md gains a \"Decision\" section pointing at the record, so the next reader does not re-derive the landscape a fifth time.",
+        "No handler code changes in this story; it is decision and bookkeeping only, and it unblocks WF-R-02 through WF-R-08."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: docs/rbac-landscape.md; server/middleware/scope-middleware.ts:1-116 (no importers, docs/server-orphans-baseline.json:40); server/middleware/hierarchical-query-builder.ts (only importers are themselves orphans). Owner target: L1-2 own work, L3-4 team/location, L5-6 region, L7-8 company/platform. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-R-02",
+      "title": "Give the surviving roles table an automated seed path so signup works on a fresh database",
+      "description": "As a new tenant, signup must succeed without a manual database insert. supabase/functions/signup/index.ts looks up `roles.code = COMPANY_ADMIN` and fails with MISSING_ADMIN_ROLE when the row is absent; the only files that create System A rows (server/role-seeder.ts, server/multi-location-role-seeder.ts, server/initialize-roles.ts) have no importer and no npm script, and `npm run seed:rbac` fills System B, which signup never reads. Whatever WF-R-01 picks, its seeder has to run by an automated path.",
+      "acceptanceCriteria": [
+        "A fresh scratch Postgres (the COP-M07 recipe in CLAUDE.md) can complete POST /signup end to end with no hand-run seed step.",
+        "The chosen seeder is invoked from a migration, a documented setup script wired into the deployment runbook, or a lazy create-on-first-signup path; it is no longer a file with zero callers.",
+        "The superseded seeders are deleted or given the missing importer; docs/server-orphans-baseline.json shrinks accordingly.",
+        "All 34 role codes in server/database-updater/seeders/rbac-seeder.ts (or the surviving equivalent) exist for a newly created tenant, with their numeric level populated.",
+        "A unit test asserts every seeded role has a level in 1..8 and a unique code."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": ["WF-R-01"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/signup/index.ts (roles lookup, MISSING_ADMIN_ROLE); grep for role-seeder across the tree returns only the file itself. dependsOn: WF-R-01. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-R-03",
+      "title": "Write roleLevel, role code and permissions into JWT app_metadata at every token issuance",
+      "description": "As any authenticated user, my JWT must carry the claims the gates read. supabase/functions/_shared/rbac.ts getRoleLevel() reads app_metadata.roleLevel and defaults to 1; signup writes only tenantId, roleId, accessScope and isPlatformUser:false, and the only two updateUserById calls in the repo (supabase/functions/admin/index.ts) never touch app_metadata. mobile-auth computes roleLevel but only decorates the JSON response, not the signed token. Result: every user is level 1 on every gated edge function, including real platform admins.",
+      "acceptanceCriteria": [
+        "Signup, password login (web and mobile-auth), OAuth callback and the assign-role mutation each persist roleLevel, role (code) and, if the decision in WF-R-01 says so, a permissions array into app_metadata via auth.admin.updateUserById.",
+        "Re-assigning a role refreshes the claim so the next issued token carries the new level; the limitation that a live token is not revoked is documented in the handler header.",
+        "getRoleLevel() returns the seeded level for a non-admin test account (verified with a decoded JWT in a unit test using a fixture user object, and manually against staging).",
+        "isPlatformAdmin() is true for a platform admin account without a manual dashboard edit; the code path that sets isPlatformUser is named in the story notes.",
+        "The five edge functions that already gate on level (erp-integration, monitoring-clients, device-monitoring, blog-agents, dashboard-widgets) behave correctly for a level-4 and a level-8 test user."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": ["WF-R-01"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/signup/index.ts:184-191; supabase/functions/_shared/rbac.ts:57-79; supabase/functions/mobile-auth/index.ts:314-380 (response-only enrichment). dependsOn: WF-R-01. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-R-04",
+      "title": "Build a Deno-side scope helper and apply it to the nine core list endpoints",
+      "description": "As a sales rep, technician or warehouse associate, I should see my own records by default; as a manager, my team or location; as a district or area manager, my region; as an executive, the company. Today business-records, deals, service, tasks, invoices, meter-reads, purchase-orders, equipment and proposals filter by tenant_id only, so a level-1 user gets every record in the tenant. The two purpose-built engines (server/middleware/hierarchical-query-builder.ts and server/middleware/scope-middleware.ts) are Express-only and have no live callers, and production serves every one of these endpoints from an edge function.",
+      "acceptanceCriteria": [
+        "A new shared module under supabase/functions/_shared exports a scope resolver (own / team / location / regional / company / platform) that takes the caller AuthContext and returns the user-id set or location-id set to filter on, mirroring the tier rules in scope-middleware.ts and reports/_hierarchy.ts.",
+        "Team scope resolves via users.manager_id (direct reports) and users.team_id; location scope via users.primary_location_id; regional scope via locations.region_id; company scope returns no filter; platform bypasses tenant when can_access_all_tenants is set.",
+        "The list handlers of business-records, deals, service, tasks, invoices, meter-reads, purchase-orders, equipment and proposals call the helper and apply its filter unless the caller is level 7+.",
+        "docs/edge-rbac-baseline.json openToAllRoles shrinks by those nine entries; npm run check:edge-rbac and npm run check:phantom-cols pass.",
+        "A unit test per endpoint proves a level-1 fixture caller receives a narrower query than a level-7 caller."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": ["WF-R-01", "WF-R-03"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: per-endpoint table in the audit (all nine filter on tenant_id only; deals and business-records accept an optional ownerId no caller sends); supabase/functions/reports/_hierarchy.ts already ports the rule set for reports and is the pattern to reuse. dependsOn: WF-R-01, WF-R-03. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-R-05",
+      "title": "Apply tier scoping to the sales surface: leads, companies, quotes, contracts, leases, commission",
+      "description": "As a SALES_REP I should open /leads, /crm/deals, /quotes and /commission-management and see mine; as a SALES_MANAGER my team; as a DISTRICT_MANAGER my region. The ten sales edge functions (deals, quotes, proposals, deal-desk, pricing, commission, contracts, leases, pipeline-config, sales-pipeline) plus companies and leads contain no requireRoleLevel or scope filter at all, and the list pages (LeadsPage.tsx, CrmDealsPage.tsx, ProspectsPage.tsx, CustomersPage.tsx) never send an owner filter.",
+      "acceptanceCriteria": [
+        "companies, leads, quotes, contracts, leases, commission and pipeline-config list handlers apply the WF-R-04 helper (deals and proposals are covered by WF-R-04 itself).",
+        "business-records and companies scope on owner_id / assigned_sales_rep, not created_by (the current ownerId param maps to the creator).",
+        "The list pages default to \"My records\" for level 1-2, \"My team\" for level 3-4, and expose a level-gated toggle to widen; the toggle only offers scopes the server would grant.",
+        "A level-1 fixture user receives only their own deals from GET /deals and only their own leads from GET /companies?recordType=Lead; a level-4 manager receives their direct reports’ records too.",
+        "docs/rbac-landscape.md moves these functions out of the no-role-check bucket."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": ["WF-R-04"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: grep -c requireRoleLevel across the ten sales edge fns = 0; supabase/functions/business-records/index.ts:286-314 maps ownerId to created_by; client/src/pages/LeadsPage.tsx:300 sends no owner param. dependsOn: WF-R-04. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-R-06",
+      "title": "Apply tier scoping to operations: tasks, purchase orders, warehouse operations, equipment lifecycle",
+      "description": "As a WAREHOUSE_ASSOCIATE I should see the operations assigned to me and my location; as an OPERATIONS_MANAGER my location; as a DIRECTOR_OPERATIONS the company. Today tasks, purchase-orders, warehouse-operations, equipment and equipment-lifecycle filter by tenant_id only, so a level-1 associate and a level-4 manager have byte-identical API access to approve POs and transition equipment.",
+      "acceptanceCriteria": [
+        "tasks scopes on assigned_to / created_by for level 1-2 and on team membership for level 3-4; warehouse-operations scopes on assigned_to and the location of the operation; purchase-orders scopes on created_by and location for level 1-3 and is unscoped for level 4+ (approvers must see the queue).",
+        "equipment and equipment-lifecycle scope by the location of the customer record for level 1-4 and by region for level 5-6.",
+        "Write endpoints that change status (approve, receive, transition) reject callers whose scope does not include the row, not only callers below a level.",
+        "npm run check:edge-rbac shows all five functions gated; a unit test per function proves the narrowing."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": ["WF-R-04"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/purchase-orders/index.ts, warehouse-operations/index.ts, equipment/index.ts, equipment-lifecycle/index.ts contain no role or scope check; supabase/functions/tasks/index.ts:24 documents assigned_to as an optional caller-supplied filter. dependsOn: WF-R-04. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-R-07",
+      "title": "Apply tier scoping to service: tickets, technicians, meter reads, dispatch",
+      "description": "As a FIELD_TECHNICIAN I should see only tickets assigned to me; as a SERVICE_SUPERVISOR my crew; as a SERVICE_MANAGER my location; as a REGIONAL_SERVICE_MANAGER my region. supabase/functions/service/index.ts has no technician or assignee filter anywhere (every .eq is tenant_id or id), and service-tickets, technician-management and technicians apply none either. The sidebar hides analytics from technicians, but the API does not.",
+      "acceptanceCriteria": [
+        "service and service-tickets list handlers apply the WF-R-04 helper using assigned_technician_id for level 1-2 and the technician roster of the caller’s team or location for level 3-4.",
+        "technician-management and technicians list handlers return only the caller’s team for level 3 and their location for level 4.",
+        "meter-reads and meter-readings scope by the equipment’s customer location for level 1-4.",
+        "Ticket status transitions (assign, close, void) check that the ticket is within the caller’s scope; a technician cannot close another technician’s ticket.",
+        "A seeded FIELD_TECHNICIAN JWT receives only their own tickets from GET /service/tickets in a unit test."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": ["WF-R-04"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/service/index.ts (20 .eq calls, none on an assignee column); supabase/functions/service-tickets/index.ts and technician-management/index.ts have no role check. dependsOn: WF-R-04. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-R-08",
+      "title": "Build the tenant org-structure admin: invite user, assign role, set manager, location, region and team",
+      "description": "As a COMPANY_ADMIN, I need to invite a user, give them a role, and place them under a manager, at a location, in a region and on a team, because the scoping in WF-R-04 filters on users.manager_id, users.primary_location_id, users.region_id and users.team_id and nothing populates any of them. The roles, role-management, user-management, users-team, user-assignments, locations, teams, territories, sales-territories and rep-capacity edge functions all exist and have zero callers; RoleManagement.tsx’s only mutation (POST /rbac/seed) returns 501 in production.",
+      "acceptanceCriteria": [
+        "A routed admin page (gated to level 5+ in client/src/lib/navigation-permissions.ts) lets a COMPANY_ADMIN create a user, assign an existing role, and set manager, primary location, region and team.",
+        "The same page (or a companion) creates locations rows and regions rows and assigns a region to a location; teams rows carry a manager and a location.",
+        "Each write goes through an edge function that survives WF-R-01 (user-management, locations, teams or their replacements); the functions used leave docs/unreferenced-edge-fns-baseline.json and the unused duplicates are deleted.",
+        "Assigning a role triggers the WF-R-03 claim refresh.",
+        "npm run check:edge-rbac passes for every function this story makes reachable (level 5+ gate applied)."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": ["WF-R-01", "WF-R-02", "WF-R-03"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: docs/unreferenced-edge-fns-baseline.json lists locations, teams, roles, role-management, user-management, users-team, user-assignments, territories, sales-territories, rep-capacity; supabase/functions/rbac/index.ts:300-312 returns RBAC_SEED_NOT_PORTED; shared/schema.ts users carries role_id, team_id, manager_id, primary_location_id, region_id. dependsOn: WF-R-01, WF-R-02, WF-R-03. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-R-09",
+      "title": "Close the /api/me fail-open default and return the role code",
+      "description": "As a user whose role_id is unset or whose roles row is missing, I currently receive every module permission at level 1 from supabase/functions/me/index.ts (allModulePermissions() in the fallback branch), which grants the L1 tier of sales, service, finance and reports to an unassigned account. The same function never returns role.code, which is what the dashboard layout and the sidebar need.",
+      "acceptanceCriteria": [
+        "The fallback role object in supabase/functions/me/index.ts sets every module to false, matching defaultRolePermissions() in client/src/hooks/useSupabaseAuth.ts.",
+        "The role object returned by /api/me includes code and level from the roles row.",
+        "A user with no role sees only the alwaysVisible sections (dashboard, settings) in the sidebar.",
+        "A unit test covers both the no-role and the found-role branch shapes."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/me/index.ts:95-96 and :129-138 (allModulePermissions fallback); grep -c code in that file = 0. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-R-10",
+      "title": "Make role dashboards resolve a real role code and cover every seeded role",
+      "description": "As a manager I should land on the layout built for my role. client/src/components/dashboards/RoleBasedDashboard.tsx resolves effectiveRoleCode from usePermissions().roleCode, which is `role?.code || role?.name || \"USER\"` and therefore always truthy; because /api/me never returns code, it upper-cases a display name like \"Company Administrator\", matches no DEFAULT_ROLE_LAYOUTS key, and every user falls to DEFAULT. Even with a real code, twelve of the 34 seeded roles (every L5-L7 code except COMPANY_ADMIN, plus FIELD_TECHNICIAN and SENIOR_TECHNICIAN) have no layout key.",
+      "acceptanceCriteria": [
+        "RoleBasedDashboard.tsx checks user.role.code first and reaches its level/department inference only when code is genuinely absent.",
+        "client/src/lib/dashboard-widget-registry.ts maps every seeded role code to a layout, by adding keys or by an explicit alias table (for example DISTRICT_MANAGER and AREA_MANAGER to REGIONAL_MANAGER, CEO/CFO/COO/VP_* to EXECUTIVE, FIELD_TECHNICIAN to TECHNICIAN).",
+        "A component test asserts that a seeded SALES_REP resolves to the SALES_REP layout and a DISTRICT_MANAGER to a regional layout, not DEFAULT.",
+        "A unit test asserts every code in the rbac seeder resolves to a non-DEFAULT layout."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": ["WF-R-09"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/components/dashboards/RoleBasedDashboard.tsx:26-34; client/src/hooks/usePermissions.ts:70; client/src/lib/dashboard-widget-registry.ts:661-871. dependsOn: WF-R-09. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-R-11",
+      "title": "Seed roles for purchasing, project management, delivery/install and network setup",
+      "description": "As an operations leader, I need roles for the middle of the workflow. The seeded catalogue has WAREHOUSE_ASSOCIATE, WAREHOUSE_SUPERVISOR, OPERATIONS_MANAGER and DISPATCH_COORDINATOR, and nothing for a buyer, a project coordinator, a delivery/install crew, or a network setup technician; operations.po.approve sits only on OPERATIONS_MANAGER (L4), so no L3 can approve a small order.",
+      "acceptanceCriteria": [
+        "The surviving seeder gains PURCHASING_AGENT (L1), PURCHASING_MANAGER (L4), PROJECT_COORDINATOR (L2), PROJECT_MANAGER (L4), DELIVERY_INSTALL_TECH (L1), DELIVERY_INSTALL_SUPERVISOR (L3) and NETWORK_SETUP_TECH (L2), each in the department field the tier model expects.",
+        "Each role holds the module permissions its stage needs: PO view/create for purchasing, PO approve with a capped amount for PURCHASING_MANAGER, handoff and project permissions for the project roles, equipment install and configure for delivery/install and network setup.",
+        "New permission codes follow module.resource.action_scope and are added to client/src/lib/navigation-permissions.ts for the pages those roles use (/purchase-orders, /warehouse-operations, /onboarding, /equipment-lifecycle).",
+        "Every new code is satisfiable: npm run check:permission-vocab does not grow the unsatisfiable-gate count.",
+        "client/src/lib/dashboard-widget-registry.ts gets a layout for the manager tier of each family (WF-R-10)."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": ["WF-R-01", "WF-R-10"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: role list in server/database-updater/seeders/rbac-seeder.ts:1506-2430; grep PURCHAS|PROJECT|DELIVER|INSTALL|NETWORK over role codes finds only the permission service.equipment.install. dependsOn: WF-R-01, WF-R-10. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-R-12",
+      "title": "Integration suite proving tier isolation across the nine core endpoints",
+      "description": "As the team, I need the tier model locked by a test that runs in CI, because RBAC-008 asked for exactly this (its acceptance criterion 7, a rep-A/rep-B isolation test) and closed without it. The suite seeds two level-1 users, one level-4 manager over them, one level-4 manager in another team, one level-5 regional manager and one level-7 executive in the same tenant, then exercises every endpoint scoped by WF-R-04 through WF-R-07.",
+      "acceptanceCriteria": [
+        "A new test under server/tests/integration creates the six fixture users and asserts each level sees exactly the expected subset from business-records, deals, proposals, service, tasks, invoices, meter-reads, purchase-orders and equipment.",
+        "A cross-team manager cannot read the other team’s records; the regional manager sees both teams; the executive sees the tenant.",
+        "A write from a level-1 user against another user’s row is rejected with 403.",
+        "The suite runs under npm run test:integration against the scratch-Postgres recipe and is wired into CI as blocking."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "rbac",
+      "dependsOn": ["WF-R-05", "WF-R-06", "WF-R-07"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: WF-R-05, WF-R-06, WF-R-07. Coordinates with PA-049 (gate integration tests in CI). FILED 2026-09-02."
+    },
+    {
+      "id": "WF-S-01",
+      "title": "Put lead automation and the lead list on the same table (the companies vs business_records fan-out)",
+      "description": "As a sales rep, a lead captured by a web form or added from Apollo must appear on my Leads list. It does not: LeadsPage.tsx, ProspectsPage.tsx, CustomersPage.tsx and CrmLeadsPage.tsx read `companies` (the business-records edge function itself writes companies), while the leads edge function (LeadDetail, lead map), auto-lead-routing, sales-rep-assignments, lead scoring, the Apollo add-to-CRM and server/services/web-form-processor.ts all read and write `business_records`. The two tables have independent ids, so a row click from CrmLeadsPage lands on /leads/:id and 404s, and every auto-assigned or auto-scored lead is invisible to the rep it was assigned to. COP-B00 records the root split for the business-records function; this story is the fan-out COP-B00 does not name.",
+      "acceptanceCriteria": [
+        "One table is the write target for lead creation across the leads, auto-lead-routing, sales-rep-assignments, lead-scoring, apollo and public-forms/web-forms paths and server/services/web-form-processor.ts, consistent with the COP-B00 decision.",
+        "A row opened from CrmLeadsPage.tsx and LeadsPage.tsx resolves in LeadDetail.tsx for every row (integration test creates a lead through each entry point and asserts it is visible through every list and detail path).",
+        "Auto-routing assigns a lead that then shows in the assigned rep’s default \"My leads\" view (WF-R-05).",
+        "docs/crm-canonical-model.md gains an addendum listing the seven writers and the table they now share.",
+        "npm run check:phantom-cols and npm run check:phantom-tables pass unchanged."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "sales-funnel",
+      "dependsOn": ["COP-B00"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/business-records/index.ts (.from('companies') x11, .from('business_records') x1); supabase/functions/leads/index.ts (.from('business_records') x8); client/src/pages/LeadsPage.tsx:300; client/src/lib/crm-object-registry.ts:330 (detailPath /leads); server/services/web-form-processor.ts:108. CRMX-011 is marked passing but its output is invisible to reps for this reason. dependsOn: COP-B00. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-S-02",
+      "title": "Create the lead_routing_rules table the auto-lead-routing rule editor depends on",
+      "description": "As an admin, I need to create lead-routing rules. supabase/functions/auto-lead-routing/index.ts reads and writes lead_routing_rules, a relation declared in no Drizzle schema, no migration and no RLS file; its own header says so and the rule endpoints answer 503 ROUTING_RULES_UNAVAILABLE. Dashboard and config load, so the page looks alive while rules cannot exist.",
+      "acceptanceCriteria": [
+        "A Drizzle table for lead routing rules is declared in shared/lead-assignment-schema.ts (or the file the COP-B00 decision names) with the columns the edge function already expects.",
+        "A migration generated with npm run db:generate creates it; npm run check:migrations passes.",
+        "GET/POST/PUT/DELETE /api/auto-lead-routing/rules return real rows; the 503 branch is removed.",
+        "A rule created through AutoLeadRoutingDashboard.tsx assigns the next matching lead (unit test over the matching function with a fixture rule).",
+        "docs/phantom-tables-baseline.json does not grow."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "sales-funnel",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/auto-lead-routing/index.ts:4-11 and :76-93; grep lead_routing_rules over shared/, drizzle/migrations, drizzle/rls = 0 hits. Fourth instance of the undeclared-table class after sales_handoffs, work_orders, appointments (see WF-G-02). dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-S-03",
+      "title": "Link a deal to the lead it came from, and filter the lead’s Deals tab by it",
+      "description": "As a rep creating a deal from a lead, the deal must stay attached to that lead. LeadDeals.tsx posts leadId and companyId, neither of which is a deals column, so both are dropped on insert; its list query sends ?leadId= and the deals function has no such filter, so the tab would show every deal in the tenant. The deals table carries customer_id and replaces_contract_id but no source-lead link.",
+      "acceptanceCriteria": [
+        "deals gains a nullable source_business_record_id (or the COP-B00-consistent equivalent) via a generated migration, with a unit test pinning it against getTableColumns.",
+        "POST /api/deals persists it; GET /api/deals?businessRecordId= filters on it; the leadId param is retired.",
+        "LeadDeals.tsx shows only the current lead’s deals (test tenant with deals for two leads).",
+        "Converting a lead (the LeadsPage \"Convert to Prospect\" action) offers to create the first deal with the link set and a stage resolved through supabase/functions/_shared/deal-stage.ts."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "sales-funnel",
+      "dependsOn": ["WF-S-01"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/components/lead-detail/LeadDeals.tsx:277-289; supabase/functions/deals/index.ts:818-824 (no leadId/companyId mapping); deals columns per shared/schema.ts. dependsOn: WF-S-01. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-S-04",
+      "title": "Enroll a lead in an email sequence from the lead record",
+      "description": "As a rep nurturing a lead, I need to enroll it in a sequence from the lead or company record. Email sequences (enroll, unenroll, state machine, SendGrid send via the Node scheduler) work, but EmailSequencesPage.tsx is a standalone campaign screen; no page in the lead, prospect or deal flow offers \"Enroll in sequence\", so nurturing is a separate chore rather than a step in the funnel.",
+      "acceptanceCriteria": [
+        "LeadDetail.tsx, BusinessRecordDetail.tsx and the CrmIndexShell bulk-action menu gain an \"Enroll in sequence\" action that calls the existing email-sequences enroll endpoint.",
+        "The lead’s activity timeline shows enrollment, each send, and unenrollment events.",
+        "Enrollment is idempotent per lead and sequence (existing CRMX-009 behaviour is preserved; a test asserts a second enroll returns the existing enrollment).",
+        "Sequence sends for a lead are visible on the sequence’s enrollment list with the lead’s name resolved from the table WF-S-01 settles on."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "sales-funnel",
+      "dependsOn": ["WF-S-01"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/email-sequences/index.ts:95-275 (enroll/unenroll real); no in-funnel page calls it. The 1:1 rep email send remains PA-043 / COP-B07. dependsOn: WF-S-01. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-S-05",
+      "title": "Port Apollo bulk-add and stats, or remove the buttons that call them",
+      "description": "As a rep using Apollo enrichment, bulk-adding search results and the usage stats card must not 404 in production. ApolloLeadEnrichment.tsx calls /api/apollo/leads/bulk-add and /api/apollo/stats; supabase/functions/apollo/index.ts serves only search, enrich, add-to-crm, usage and saved-searches. The prefix is not proxied, so dev is served by server/routes/apollo-routes.ts and hides the gap.",
+      "acceptanceCriteria": [
+        "The apollo edge function gains leads/bulk-add (reusing add-to-crm per row, writing the WF-S-01 table) and stats (derived from the same source as usage), or the two UI actions are removed.",
+        "A smoke test hits both endpoints against a seeded tenant.",
+        "server/routes/apollo-routes.ts handlers that the edge function now covers are deleted and the prefix is proxied, so dev and prod run the same code.",
+        "npm run check:unreferenced-edge-fns and npm run check:phantom-cols stay green."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "sales-funnel",
+      "dependsOn": ["WF-S-01"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/apollo/index.ts:50-195 branch list; server/routes-registry.ts:600 registers the Express router. dependsOn: WF-S-01. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-S-06",
+      "title": "Port the CRM Goals endpoints the crm edge function does not implement",
+      "description": "As a sales manager, every action on CRM Goals must work in production. CrmGoalsDashboard.tsx calls teams POST, teams/:id/members, manager-insights, analytics/conversion-analysis, analytics/calculate-activities and goals/bulk-assign; supabase/functions/crm/index.ts implements goals, dashboard-stats, teams GET and goal-progress only. Dev is served by server/routes-crm-goals.ts, so the six 404s are production-only. A separate crm-goals edge function exists and can never be reached, since the page calls /api/crm.",
+      "acceptanceCriteria": [
+        "The six missing branches are ported into supabase/functions/crm/index.ts against real sales_goals, sales_teams and activity report columns (no phantom column introduced).",
+        "supabase/functions/crm-goals is deleted or aliased; it leaves docs/unreferenced-edge-fns-baseline.json either way.",
+        "The /api/crm prefix is proxied and server/routes-crm-goals.ts is deleted, per the PROD-008b retirement pattern.",
+        "A smoke test exercises each of the six previously missing calls."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "sales-funnel",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/pages/CrmGoalsDashboard.tsx:134-194, :527-533, :686; supabase/functions/crm/index.ts:42-102. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-S-07",
+      "title": "Row-level security on companies and business_records, and stop reading them from the browser",
+      "description": "As a tenant, my company and lead rows must not be readable by another tenant through a direct PostgREST call. Contacts.tsx queries the companies table from the browser with the Supabase JS client, filtered by tenant_id in application code only; companies and business_records appear in none of the drizzle/rls policies. CR-012 asks for an RLS backstop on core tables generally; this story is the one surface that reads a core table without a server in between.",
+      "acceptanceCriteria": [
+        "drizzle/rls gains policies for companies and business_records using the apply_tenant_rls pattern in drizzle/rls/apply-rls.sql, and the RLS state is verified against a real database.",
+        "Contacts.tsx reads through /api/company-contacts and /api/companies instead of the browser Supabase client; grep for supabase.from( in client/src/pages returns zero hits on core tables.",
+        "A test using the anon/authenticated client (not the service role) asserts cross-tenant reads and writes are rejected.",
+        "docs/rbac-landscape.md records that edge functions use the service-role client and therefore RLS protects only direct-client reads."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "sales-funnel",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/pages/Contacts.tsx:82,210-225; grep companies drizzle/rls/*.sql hits only meeting-transcription-tables.sql. Live RLS state UNVERIFIED from the repo. Overlaps CR-012 (open) on the policy half; the browser-read half is new. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-S-08",
+      "title": "Remove the debug alert button from LeadDetail",
+      "description": "As a user I should never see a raw browser alert with debug copy. client/src/pages/LeadDetail.tsx renders a test button beside the real Add Contact action that calls alert(\"Button clicked! Check console for API test results...\").",
+      "acceptanceCriteria": [
+        "The debug button and its alert are removed; Add Contact still works.",
+        "grep for alert( across client/src/pages returns no debug strings.",
+        "A lint rule or the existing check:no-static-posture guard is extended to flag window.alert in page components."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "sales-funnel",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/pages/LeadDetail.tsx:521-529. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-S-09",
+      "title": "Give the BANT assessment a home on the lead record, or delete it",
+      "description": "As a rep qualifying a lead, I need BANT on the record if it is a feature. supabase/functions/lead-scoring serves calculate, score, grade, bant and leaderboard; no page calls the manual endpoints and client/src/components/leads/BANTAssessment.tsx is imported by nothing. Scoring runs automatically only for web-form leads on the table the UI cannot see (WF-S-01).",
+      "acceptanceCriteria": [
+        "Decision recorded: ship BANT or remove it.",
+        "If shipped: BANTAssessment.tsx renders inside LeadDetail.tsx and writes through the lead-scoring bant endpoints; the score and grade appear on the lead list as sortable columns.",
+        "If removed: the component and the unused lead-scoring branches are deleted; docs/orphan-files-baseline.json shrinks.",
+        "npm run check:orphans reflects the outcome."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "sales-funnel",
+      "dependsOn": ["WF-S-01"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: grep -rn BANTAssessment client/src = only the file itself. dependsOn: WF-S-01. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-S-10",
+      "title": "Delete the dead data-enrichment edge function; enrichment is canonical",
+      "description": "As a maintainer, one edge function per job. DataEnrichment.tsx calls /api/enrichment exclusively; supabase/functions/data-enrichment is a full duplicate with no caller in any client tree.",
+      "acceptanceCriteria": [
+        "All seven client trees confirmed to have no /api/data-enrichment caller (AUDIT-024 method).",
+        "supabase/functions/data-enrichment is deleted and its entry removed from docs/unreferenced-edge-fns-baseline.json.",
+        "The /api/enrichment prefix gains a crmProxies entry once server/routes-data-enrichment.ts is confirmed covered, and that router is deleted."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "sales-funnel",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: docs/unreferenced-edge-fns-baseline.json lists data-enrichment. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-S-11",
+      "title": "Resolve expansion-opportunities: registered Express router, uncalled edge function",
+      "description": "As a maintainer, I need to know whether /api/expansion-opportunities has a caller. server/routes-renewal-management.ts serves it in dev; supabase/functions/expansion-opportunities has no caller in any client tree; if a page ever calls it, dev and prod diverge.",
+      "acceptanceCriteria": [
+        "All seven client trees grepped for /api/expansion-opportunities; result recorded in the story notes.",
+        "If a caller exists: proxy the prefix only if the edge function covers the same endpoints, else port the gap.",
+        "If none: the Express handlers and the edge function are deleted together and docs/unreferenced-edge-fns-baseline.json shrinks.",
+        "Coordinated with AUDIT-026 (renewal management decision), which owns the sibling tables."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "sales-funnel",
+      "dependsOn": ["AUDIT-026"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: server/routes-renewal-management.ts:487-571. dependsOn: AUDIT-026. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-C-01",
+      "title": "Fire deal.stage_changed from the stage-move endpoint the UI actually calls",
+      "description": "As a sales manager, a deal reaching Closed Won must trigger automation. The only workflow dispatch for deal.stage_changed lives in the PATCH /api/deals/:id stage_id branch of supabase/functions/deals/index.ts, and no client ever sends stage_id there. Both the Kanban board (EnhancedPipelineBoard.tsx) and the deal page (DealDetail.tsx) post to POST /api/pipeline-config/deals/:id/move, which sets status won, probability 100 and writes deal_stage_history, then records an automation row with status skipped that nothing reads. Closed Won therefore fires nothing, on any host.",
+      "acceptanceCriteria": [
+        "supabase/functions/pipeline-config/index.ts move handler calls dispatchWorkflowEventSafe with deal.stage_changed, the same dedupe key shape as the deals function, wrapped in try/catch.",
+        "A unit test asserts the event fires with the target stage id on a move; the parity test for the condition evaluator still passes.",
+        "The dead branch in supabase/functions/deals/index.ts is removed or documented as the direct-API path only.",
+        "pipeline_automation_logs rows are either read by the runtime or the write is removed, so no write-only log remains."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "sales-close",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/deals/index.ts:898-919; client/src/components/crm/EnhancedPipelineBoard.tsx:431; client/src/pages/DealDetail.tsx:274; grep dispatchWorkflowEvent supabase/functions/pipeline-config/index.ts = 0 hits. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-C-02",
+      "title": "Mark Won / Mark Lost on the deals table must move the stage, not only the status",
+      "description": "As a rep, marking a deal won from the table must put it in the Closed Won column. CrmDealsPage.tsx patches status and actualCloseDate only, so the board (which groups strictly by stageId) keeps the deal in its old column while the table shows Won.",
+      "acceptanceCriteria": [
+        "CrmDealsPage.tsx resolves the tenant’s closed-won and closed-lost stage ids from /api/pipeline-config/board and calls the move endpoint.",
+        "After marking won from the table, the deal appears in the Closed Won column on the board without a refresh (query invalidation).",
+        "Because WF-C-01 landed first, the same action fires deal.stage_changed."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "sales-close",
+      "dependsOn": ["WF-C-01"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/pages/CrmDealsPage.tsx:176-231; client/src/components/crm/EnhancedPipelineBoard.tsx:392-393. dependsOn: WF-C-01. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-C-03",
+      "title": "Request Approval from the Quote Builder into Deal Desk",
+      "description": "As a rep blocked by the margin or discount guardrail, I need an in-product path to ask for an exception. DealDeskDashboard.tsx lists requests and posts decisions; nothing in client/src creates a request, and QuoteBuilder.tsx never references deal-desk. A rep who hits the 409 from the proposals send guardrail has nowhere to go.",
+      "acceptanceCriteria": [
+        "When the guardrail blocks send for a non-manager, QuoteBuilder.tsx shows Request Approval, which POSTs to /api/deal-desk/requests with the proposal id, effective discount and margin, and the matched rule chain.",
+        "DealDeskDashboard.tsx shows the new request without a manual refresh.",
+        "The request row carries the proposal id in a real column (add related_proposal_id if absent) so WF-C-04 can read it back.",
+        "grep for /api/deal-desk/requests in client/src shows a POST caller."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "sales-close",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/pages/DealDeskDashboard.tsx:127-144; supabase/functions/proposals/index.ts:1905-1957 (guardrail). dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-C-04",
+      "title": "An approved Deal Desk request unblocks the original rep’s send",
+      "description": "As a rep whose exception was approved, I must be able to send. Approval only updates approval_requests.status; the send guardrail in the proposals function trusts body.approved, which QuoteBuilder.tsx sets from the sender’s own isManager flag. A manager self-approves; a rep with an approved request still cannot send. Three approval models coexist (approval_requests, the PriceApprovals.tsx pricing approval, and the self-declared flag).",
+      "acceptanceCriteria": [
+        "On final approve, the deal-desk function stamps the proposal (pricing_approval_id and pricing_approved_at) and the send guardrail accepts that stamp for the original sender.",
+        "A manager sending their own under-margin quote is unchanged (regression test).",
+        "A unit test proves an approved request unblocks a non-manager sender and a rejected one does not.",
+        "PriceApprovals.tsx is repointed at approval_requests or retired, so one approval model remains; the decision is recorded in the story notes."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "sales-close",
+      "dependsOn": ["WF-C-03"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/deal-desk/index.ts:513-560; supabase/functions/proposals/index.ts:1905; client/src/components/quote-builder/QuoteBuilder.tsx:211,476. dependsOn: WF-C-03. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-C-05",
+      "title": "Capture how the deal is paid (cash, lease, finance) and create a lease or a contract accordingly",
+      "description": "As a rep closing a deal, the lease-or-payment check must be a step, not a memory. Proposal acceptance (the /p/:token respond flow and the internal status change) always calls createContractFromProposal and never creates a lease, regardless of proposalType; paymentTerms on the proposal schema is never read; leases has proposal_id, business_record_id and contract_id columns that nothing fills automatically; payment-processing and subscriptions have no client caller.",
+      "acceptanceCriteria": [
+        "The quote and proposal builder capture an explicit acquisition type (cash, lease, finance) and, for lease or finance, the funding partner, term and monthly payment; the field is persisted on proposals.",
+        "On acceptance, a lease-type proposal creates a leases row pre-filled from the proposal (proposal id, business record, monthly payment, term, first payment date) and links it to the contract; a cash proposal creates the contract only.",
+        "LeaseForm.tsx opens pre-filled from ?proposalId= for manual correction.",
+        "A unit test over the accept handler covers cash, lease and finance.",
+        "The deal record shows acquisition type and, when present, the lease."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "sales-close",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/proposals/index.ts:822-850, :936-965, :2001-2010; shared/quote-proposal-schema.ts:204 (paymentTerms unread); leases columns per shared/schema.ts:2817-2819. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-C-06",
+      "title": "Closed Won creates a sales handoff record, and operations has a screen to work it",
+      "description": "As an operations coordinator, I need to see every deal that closed and what it needs, in one queue, before anyone orders equipment. Nothing reachable exists: server/routes-sales-handoff.ts serves the four real tables in shared/sales-handoff-schema.ts (sales_handoff_checklists, handoff_task_templates, handoff_tasks, implementation_projects) and has no caller; supabase/functions/sales-handoffs reads sales_handoffs, a table no schema or migration creates; the Book Order button on contracts.tsx navigates to /purchase-orders?contractId= where the id is displayed as text and dropped.",
+      "acceptanceCriteria": [
+        "Proposal acceptance (WF-C-05) and the closed-won move (WF-C-01) create a sales_handoff_checklists row keyed to the contract or lease, the customer, the rep and the handoff type, with tasks instantiated from handoff_task_templates.",
+        "A routed /handoffs page lists open handoffs, lets operations claim one, complete tasks, and mark it complete; it is gated in client/src/lib/navigation-permissions.ts to the operations and project roles of WF-R-11 and to level 3+.",
+        "The page is served by one backend on both hosts: either the Express router is ported to an edge function over the real tables and proxied, or supabase/functions/sales-handoffs is repointed at sales_handoff_checklists; the phantom table reference is gone either way.",
+        "Completing a handoff exposes a \"Create purchase order\" action that opens WF-P-04’s pre-filled PO.",
+        "npm run check:unreferenced-edge-fns no longer lists sales-handoffs, handoff-tasks or handoff-task-templates."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "sales-close",
+      "dependsOn": ["WF-C-05", "WF-C-01"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/sales-handoffs/index.ts:50-180 (.from('sales_handoffs') x6); server/routes-registry.ts:66,854; client/src/pages/contracts.tsx:610-617; client/src/pages/PurchaseOrders.tsx:482-489. No prd.json story names handoff. dependsOn: WF-C-05, WF-C-01. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-C-07",
+      "title": "Build the commission calculation engine, or remove the Calculate button",
+      "description": "As a rep I need to see real earned commission, and as a manager I need to approve it. commission_plans and commission_disputes are read and written; commission_calculations is read by the list and analytics and written by nothing; POST /commission/calculate is a deliberate 501, so the Calculate button on CommissionManagement.tsx always fails; my-earnings still hardcodes a flat 5 percent (dormant, no caller).",
+      "acceptanceCriteria": [
+        "POST /commission/calculate computes from won deals against commission_plans tiers and product rates and writes commission_calculations plus commission_calculation_details, or the button is removed and the empty state says no calculation has run.",
+        "If built, a unit test asserts a won deal matched to a tiered plan produces the tier rate, not 5 percent.",
+        "my-earnings reads commission_calculations or is deleted.",
+        "Commission approval (sales.commission.approve) is enforced in the edge function for the approve action."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "sales-close",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/commission/index.ts:228-256 (5 percent), :578-589 (501). dependsOn: none. Complements CR-017. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-C-08",
+      "title": "Proposal acceptance resolves the won stage from pipeline_stages, not legacy deal_stages",
+      "description": "As a tenant that customised its pipeline, an accepted proposal must land in my Closed Won stage. getWonStageId in the proposals function reads deal_stages.is_won_stage, then a name match, then the first stage; the pipeline configuration UI edits pipeline_stages only and never mirrors back, so a renamed or second closed-won stage sends the deal to the first stage. A concrete slice of COP-M07.",
+      "acceptanceCriteria": [
+        "getWonStageId and getProposalSentStageId in supabase/functions/proposals/index.ts resolve through pipeline_stages (is_closed_won, legacy_stage_id) the way the pipeline-config move endpoint does.",
+        "A shared fixture test asserts both endpoints pick the same stage id for the same tenant.",
+        "npm run check:stage-resolution passes before and after."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "sales-close",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/proposals/index.ts:702-712; supabase/functions/pipeline-config/index.ts:581-613, :702-720. Slice of COP-M07 (open). dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-C-09",
+      "title": "The contract record carries its deal, proposal, lease and start date",
+      "description": "As anyone downstream of sales, I need the contract to know where it came from. contracts has tenant_id, customer_id, status and nine descriptive columns, and no deal_id, proposal_id, lease_id, acquisition type or start-by-acceptance date; deals has no contract_id. The spine from deal to installed unit breaks at its first link.",
+      "acceptanceCriteria": [
+        "contracts gains deal_id, proposal_id, lease_id and acquisition_type via a generated migration; deals gains contract_id.",
+        "createContractFromProposal fills all of them; existing rows are back-filled where a proposal already references the customer and a won deal exists (script under scripts/ with a dry-run flag).",
+        "GET /api/contracts?dealId= and GET /api/deals/:id return the linked contract; DealDetail.tsx shows it.",
+        "Contract start_date is set by acceptance in WF-L-08, not at creation; this story leaves it null and documents why."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "sales-close",
+      "dependsOn": ["WF-C-05"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: contracts columns from shared/schema.ts (12 columns); deals columns (no contract_id). dependsOn: WF-C-05. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-P-01",
+      "title": "Purchase-order line items are silently dropped: phantom table plus key mismatch",
+      "description": "As a buyer, the lines I enter on a PO must be saved. PurchaseOrders.tsx posts an items array; the create handler in supabase/functions/purchase-orders/index.ts reads lineItems, so every line is dropped at 201. Separately, the line-items sub-resource (19 references) reads and writes purchase_order_line_items, which no schema or migration declares; the real table is purchase_order_items, itself declared twice with different shapes (shared/schema.ts and shared/equipment-schema.ts).",
+      "acceptanceCriteria": [
+        "The create handler accepts the shape the page sends (or the page sends lineItems); a created PO round-trips at least one line (unit test on the handler payload).",
+        "grep purchase_order_line_items over supabase/functions returns 0; every reference targets purchase_order_items.",
+        "The duplicate purchase_order_items and purchase_orders declarations are resolved to one (the shape migration 0000 created, then any later conversion, read in journal order); npm run check:dup-tables shrinks by two.",
+        "Columns the receiving logic needs (inventory_item_id, part_number, unit_of_measure) are added by a generated, idempotent migration or the handler is cut to the columns that exist.",
+        "npm run check:phantom-cols and npm run check pass."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "purchasing",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/pages/PurchaseOrders.tsx:95-110 (items schema); supabase/functions/purchase-orders/index.ts:761 (lineItems), :79-1345 (purchase_order_line_items x19); shared/schema.ts:6858-6883 and shared/equipment-schema.ts both declare purchase_order_items. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-P-02",
+      "title": "Receive against a purchase order from the UI, with partial receipts and inventory movement",
+      "description": "As a warehouse associate, I need to receive a shipment against a PO. POST /purchase-orders/:id/receive exists and adjusts inventory_items quantities, but it runs over the phantom line-item table (WF-P-01) and PurchaseOrders.tsx has no Receive action; the only downstream action from approved is Release to Warehouse.",
+      "acceptanceCriteria": [
+        "PurchaseOrders.tsx gains a Receive action on approved and ordered POs that records quantity received per line, with partial receipts allowed.",
+        "The status logic (partially_received / received) in the receive handler is covered by a unit test.",
+        "Receiving a line flagged as serialized hands off to WF-L-04 to capture serial numbers; non-serialized lines move inventory_items.quantity_on_hand and quantity_on_order.",
+        "Receiving an approved PO creates an accounts_payable row linked by purchase_order_id (add the FK; today purchase_order_number is free text)."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "purchasing",
+      "dependsOn": ["WF-P-01"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/purchase-orders/index.ts:497-640; shared/schema.ts:6641 (accounts_payable.purchase_order_number varchar). dependsOn: WF-P-01. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-P-03",
+      "title": "A purchase order knows which contract, deal and customer it is for",
+      "description": "As purchasing, I need a PO to point at the contract it fulfils. purchase_orders has vendor_id and status and no contract, deal or customer column; the Book Order button on contracts.tsx passes ?contractId= and the PO page displays it as text and never sends it.",
+      "acceptanceCriteria": [
+        "purchase_orders gains nullable source_contract_id, source_deal_id and customer_id via a generated migration; insertPurchaseOrderSchema and the edge create handler accept them.",
+        "PurchaseOrders.tsx sends contractId from the query string on create and shows the contract on the PO detail.",
+        "GET /purchase-orders?contractId= filters; the contract detail lists its POs.",
+        "npm run check:phantom-cols recognises the new columns."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "purchasing",
+      "dependsOn": ["WF-C-09"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: purchase_orders columns per shared/schema.ts:6786-6856; client/src/pages/contracts.tsx:610-617; client/src/pages/PurchaseOrders.tsx:482-489. dependsOn: WF-C-09. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-P-04",
+      "title": "A \"Needs ordering\" queue of closed deals with no purchase order",
+      "description": "As purchasing, I need one list of everything sold that has not been ordered. No page answers \"which deals closed and need equipment\"; today a buyer hunts through Contracts.",
+      "acceptanceCriteria": [
+        "An endpoint returns contracts (or leases) in a signed/active status with no PO referencing them via source_contract_id, with the line items from the accepted proposal.",
+        "A Needs Ordering tab on /purchase-orders lists them, gated by operations.po.view, and each row opens PO create pre-filled with customer, contract, proposal lines and the preferred vendor per product.",
+        "Completing a handoff in WF-C-06 deep-links to the same pre-filled create.",
+        "A test asserts a contract with a linked PO leaves the queue."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "purchasing",
+      "dependsOn": ["WF-P-03", "WF-C-06"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: WF-P-03, WF-C-06. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-P-05",
+      "title": "Enforce one real permission for purchase-order approval on both hosts",
+      "description": "As an operations manager, only I (or a capped purchasing manager) may approve a PO. Three vocabularies compete: the sidebar reads operations.po.* (seeded), dev Express checks inventory.po.* (held by no seeded role, so dev denies every non-admin), and the production edge function checks nothing. npm run check:permission-vocab lists purchase-orders GET as needing platform.system.view and POST as needing platform.tenant.create.",
+      "acceptanceCriteria": [
+        "supabase/functions/purchase-orders/index.ts approve, reject, submit and status-changing PUT/PATCH require operations.po.approve (or operations.po.create for submit) through the _shared rbac helper, using the WF-R-03 claims.",
+        "server/routes-purchase-orders.ts is deleted and /api/purchase-orders is proxied, or its gates are repointed at operations.po.*, so dev and prod agree.",
+        "npm run check:edge-rbac lists purchase-orders as gated; npm run check:permission-vocab drops the purchase-orders lines.",
+        "OPERATIONS_MANAGER can approve on both hosts; WAREHOUSE_ASSOCIATE is denied on both."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "purchasing",
+      "dependsOn": ["WF-R-03"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: server/middleware/rbac-route-helper.ts:210-216; client/src/lib/navigation-permissions.ts:350-353; check:permission-vocab triage output 2026-09-02. Slice of SEC-EDGE-002. dependsOn: WF-R-03. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-P-06",
+      "title": "Place a manufacturer order from an approved PO, or retire the EDI subsystem",
+      "description": "As purchasing, once a PO is approved I should be able to place it with the manufacturer. supabase/functions/manufacturer-orders (145 lines plus handlers: connections, orders, line items, confirmations, shipments, exceptions) over six real tables with manufacturer_orders.purchase_order_id has no caller in any client tree, and its tables are in migration 0000 but shared/manufacturer-order-schema.ts is the only declaration.",
+      "acceptanceCriteria": [
+        "Decision recorded in the function header (build or retire), following the PROD-008c annotation pattern.",
+        "If built: PurchaseOrders.tsx approved status gains Place Manufacturer Order, which posts to /manufacturer-orders with the PO lines; confirmations and shipments update the PO status and expected delivery date.",
+        "If retired: the function, handlers and six tables are removed together; docs/unreferenced-edge-fns-baseline.json shrinks by one.",
+        "EDGE-008 (proxy expansion) is updated to reflect the decision."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "purchasing",
+      "dependsOn": ["WF-P-05"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/manufacturer-orders/index.ts header; grep /api/manufacturer-orders across seven client trees = 0. dependsOn: WF-P-05. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-P-07",
+      "title": "Implementation projects from a handoff: wire the project half or retire it",
+      "description": "As a project coordinator, a large install needs a project with milestones, risks and a team. implementation_projects (keyed by handoff_id, project_manager_id, team_members, milestones) and its edge function have no caller; the Projects tab on TaskHub reads the plain projects table, which migration 0002 stripped of contract_id and project_manager.",
+      "acceptanceCriteria": [
+        "Decision recorded: implementation_projects becomes the project model for installs, or projects is extended with contract_id and handoff_id and implementation_projects is dropped.",
+        "The surviving model is creatable from the handoff screen (WF-C-06) and lists milestones, tasks and the equipment serials it covers.",
+        "Tasks created for a project carry project_id and appear on the project and on the assignee’s task list.",
+        "The losing edge function and table are deleted; npm run check:unreferenced-edge-fns reflects it."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "purchasing",
+      "dependsOn": ["WF-C-06"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: shared/sales-handoff-schema.ts:297 (implementationProjects); supabase/functions/projects/index.ts header (AUDIT-037/039 shape note). dependsOn: WF-C-06. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-P-08",
+      "title": "Tasks attach to a customer, deal, handoff or project",
+      "description": "As anyone working the pipeline, a task must belong to the record it is about. tasks.customer_id exists and the mapper in supabase/functions/tasks/handlers/tasks.ts never reads or writes it; there is no deal or handoff link.",
+      "acceptanceCriteria": [
+        "mapTask reads and writes customer_id; tasks gains nullable deal_id and handoff_id via a generated migration.",
+        "GET /tasks filters by customerId, dealId, handoffId and projectId.",
+        "The create-task dialog in client/src/components/tasks offers a related-record picker; DealDetail.tsx and the handoff screen create tasks pre-linked.",
+        "A unit test pins the mapper against getTableColumns."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "purchasing",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/tasks/handlers/tasks.ts:113-134. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-P-09",
+      "title": "Gate /workflows in navigation-permissions like every sibling route",
+      "description": "As an admin, workflow pages must be visible to the right tier. /workflows, /workflows/new, /workflows/:id, /workflows/:id/edit and /workflows/:id/steps/:stepId have no entry in client/src/lib/navigation-permissions.ts.",
+      "acceptanceCriteria": [
+        "Entries exist for the five routes with the same audience as /task-hub, or a level 3+ gate if they are operations tooling.",
+        "The navigation-permissions unit test asserts the entries."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "purchasing",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-P-10",
+      "title": "One vendor page: retire the duplicate CRUD",
+      "description": "As a buyer, one vendor list. /vendors (Vendors.tsx) and /vendor-management (VendorManagement.tsx) are full CRUD pages over the same vendors table, fixed separately for the same phantom-shape defects in QUALITY-002.",
+      "acceptanceCriteria": [
+        "One page remains; the other becomes a LegacyRedirect with the same navigation-permissions gate copied to the target (AUDIT-014 rule).",
+        "Sidebar and internal links point at the survivor; npm run check:nav and npm run check:orphans stay clean."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "purchasing",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-01",
+      "title": "equipment-lifecycle edge function never loads in production: duplicate declarations",
+      "description": "As anyone using the lifecycle, /api/equipment-lifecycle/* must answer. supabase/functions/equipment-lifecycle/index.ts imports canTransition, getAvailableTransitions and getValidationRequirements from the shared transitions module and re-declares all three as local functions; that is a parse-time SyntaxError (tsc TS2440 on all three), the Coolify dispatcher in supabase/functions/server.ts swallows the import failure at boot, and every request to the function returns 404 Function not found. The prefix is not proxied, so dev is served by Express and never exercised the file. PA-052 marks two of its endpoints done.",
+      "acceptanceCriteria": [
+        "The local re-declarations and their VALID_TRANSITIONS and VALIDATIONS constants are removed; the shared import is the only source.",
+        "A regression test imports and invokes the function’s default export for GET /stages and asserts a 200 (the existing parity test reads the shared file as text and cannot see this).",
+        "A curl against a running dispatcher lists equipment-lifecycle in the available functions.",
+        "PA-052 notes are corrected to record that the endpoints were unreachable until this fix."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/equipment-lifecycle/index.ts:6-10 and :93-104; tsc TS2440 x3 reproduced 2026-09-02; supabase/functions/server.ts:82-99 (try/await import/catch) and :268-278 (404 branch). dependsOn: none. See WF-G-01 for the standing guard. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-02",
+      "title": "Equipment Lifecycle Hub: five queries and three mutations have no backend on either host",
+      "description": "As an operations manager, the lifecycle hub must show real orders, deliveries, installs and assets. EquipmentLifecycleHub.tsx calls metrics, purchase-orders, deliveries, installations and assets under /api/equipment-lifecycle; neither the edge function nor server/routes-equipment-lifecycle-state-machine.ts serves any of them, and the page’s types (po_number, driver_name, customer_satisfaction_rating, current_bw_count) match no table.",
+      "acceptanceCriteria": [
+        "Each query resolves on both hosts: metrics derived from equipment_lifecycle stage counts; purchase-orders from purchase_orders; deliveries from delivery_schedules; installations from installation_schedules; assets from equipment joined to the latest meter reading.",
+        "The three mutations (create PO, schedule delivery, schedule installation) write the real tables and the new rows appear in the lists.",
+        "The page types are rebound to real Drizzle columns; no invented field remains.",
+        "docs/edge-path-coverage-baseline.json drops the equipment-lifecycle entry."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": ["WF-L-01"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/pages/EquipmentLifecycleHub.tsx:76-148, :297-421; docs/edge-path-coverage-baseline.json:40. dependsOn: WF-L-01. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-03",
+      "title": "warehouse-operations edge function lacks the list, create and status endpoints the page uses",
+      "description": "As a warehouse associate, the operations board must work in production. WarehouseOperations.tsx lists GET /api/warehouse-operations, creates with POST and updates with PATCH /:id/status; the edge function implements warehouses, inventory, transfers, bin-locations, picking-list and stats (none called by anything) and falls through to 404 for the bare list, create and PATCH. Dev works only because server/routes-warehouse.ts serves them.",
+      "acceptanceCriteria": [
+        "GET / returns tenant-scoped warehouse_operations; POST / creates from the page’s shape; PATCH /:id/status updates and returns the row.",
+        "The uncalled branches are given a caller by a later story or deleted with their annotation; the decision is in the function header.",
+        "The prefix is proxied and the covered Express handlers in server/routes-warehouse.ts are deleted.",
+        "docs/route-ownership-baseline.json drops warehouse-operations from bothDivergent."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/warehouse-operations/index.ts:385 (terminal 404); server/routes-warehouse.ts:100-256. EDGE-002h found only /stats missing because it compares named sub-paths. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-04",
+      "title": "Receiving creates serialized equipment rows",
+      "description": "As a warehouse associate unboxing a shipment, I record each serial and the unit exists from then on. Today POST /purchase-orders/:id/receive only moves inventory counts; POST /equipment has no UI caller; the Add Equipment dialog on the customer page renders \"Equipment registration form would go here\"; equipment has no purchase_order_id. A PO can be fully received and no equipment row will exist for meter billing, service or the lifecycle.",
+      "acceptanceCriteria": [
+        "equipment gains purchase_order_id and purchase_order_item_id via a generated migration; equipment_lifecycle rows are created at stage received with the same links.",
+        "The Receive flow (WF-P-02) prompts one serial per unit for serialized lines and posts each to POST /equipment, then sets the lifecycle stage.",
+        "CustomerEquipment.tsx Add Equipment dialog collects the fields POST /equipment accepts and calls it; the new row appears without reload.",
+        "A test goes from an approved PO to N equipment rows with real serials without touching the API directly."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": ["WF-P-02"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/components/customer/CustomerEquipment.tsx:302-307; supabase/functions/equipment/index.ts:184-236 (no caller); equipment columns per shared/schema.ts. dependsOn: WF-P-02. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-05",
+      "title": "Build and QA tab wired to the kitting and first-pass-yield backend",
+      "description": "As a warehouse technician, I record the mechanical build, accessory fit and QA result before a unit can stage. WarehouseOperations.tsx has a Build tab and a Serial Numbers tab that render \"will be implemented here\" with dead useForm state; server/routes-warehouse-fpy.ts serves warehouse_kitting_operations (quality_status) and fpy_metrics with real Zod CRUD and a complete action, and nothing calls it; it would also 404 in production because no edge function exists.",
+      "acceptanceCriteria": [
+        "The kitting and FPY handlers are ported to an edge function (or the existing warehouse-operations one) and proxied so both hosts agree.",
+        "The Build tab opens a real dialog backed by buildProcessSchema, creates a kitting operation for a serial, records checklist items and QA pass/fail, and completes it.",
+        "The Serial Numbers tab lists equipment at stage received or staged with their kitting status.",
+        "FPY metrics on the warehouse widget come from fpy_metrics.",
+        "Completing QA satisfies the quality_control_passed and serial_number_verified requirements of the received to staged transition (WF-L-13)."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": ["WF-L-03", "WF-L-04"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/pages/WarehouseOperations.tsx:784,817 (placeholders); server/routes-warehouse-fpy.ts:24-181 (no caller). dependsOn: WF-L-03, WF-L-04. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-06",
+      "title": "Schedule delivery and installation, and give crews a daily view",
+      "description": "As a dispatcher, I schedule a delivery window and an install appointment for staged units and the crew sees their day. delivery_schedules has one Express writer with no caller and one reader calling a missing endpoint; installation_schedules has no reader or writer anywhere; the Delivery tab on WarehouseOperations.tsx is a placeholder; the scheduling edge function reads appointments, a table no migration creates.",
+      "acceptanceCriteria": [
+        "Create, update and list endpoints for delivery_schedules and installation_schedules exist on the edge function used by WF-L-02 and are proxied.",
+        "The Delivery tab creates a delivery schedule for staged equipment (driver, vehicle, window); an Install action creates an installation schedule (technician, type, pre-install checklist).",
+        "A crew view lists today’s deliveries and installs scoped to the caller (WF-R-06), reachable from /warehouse-operations and the technician surface.",
+        "Scheduling satisfies the delivery_scheduled and driver_assigned requirements of staged to in_transit.",
+        "supabase/functions/scheduling is deleted or repointed; the appointments phantom reference is gone."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": ["WF-L-02"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: shared/equipment-schema.ts (installation_schedules, delivery_schedules); server/routes-warehouse.ts:358-388; client/src/pages/WarehouseOperations.tsx:891. dependsOn: WF-L-02. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-07",
+      "title": "Customer acceptance: signature and checklist captured at delivery and install",
+      "description": "As a customer, I sign for the unit; as the dealer, that signature is the acceptance record. The only signature capability is supabase/functions/field-service handlers/signatures over service_signatures, and the whole function has no caller in any of the seven client trees. Nothing captures a delivery checklist or an acceptance form.",
+      "acceptanceCriteria": [
+        "A technician-facing acceptance screen (responsive web, usable on a tablet) captures signer name, title, the delivery checklist results and a signature image, and posts to field-service signatures linked to the installation schedule and the equipment.",
+        "The signature and checklist are visible on the equipment and the customer detail afterwards.",
+        "field-service leaves docs/unreferenced-edge-fns-baseline.json by gaining a caller.",
+        "Capturing acceptance satisfies delivery_signature_collected and acceptance_signed (WF-L-13) and triggers WF-L-08."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": ["WF-L-01", "WF-L-06"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/field-service/index.ts header and handlers; grep /api/field-service across seven trees = 0. dependsOn: WF-L-01, WF-L-06. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-08",
+      "title": "Acceptance starts the contract, records the baseline meter and registers monitoring, on both hosts",
+      "description": "As service and billing, an accepted unit must become a serviced, billable asset the moment it is accepted. The Express state machine’s installed to active handler logs \"monitoring activated\" and writes nothing (warranty and welcome email beside it are real), and the production edge transition handler does none of the three side effects; no step captures a baseline meter reading or sets the contract start date.",
+      "acceptanceCriteria": [
+        "A shared side-effect module under supabase/functions/_shared runs on installed to active from both the Express state machine and the edge transition handler: create or ensure a device_registrations row for the serial, set contracts.start_date (and lease first_payment_date if unset), and store a baseline meter_readings row from the acceptance form.",
+        "active to retired deactivates the registration symmetrically.",
+        "A test runs installed to active against a scratch database and asserts the registration, the contract start date and the baseline reading exist.",
+        "US-050 notes are corrected: the monitoring half was a log line and was dev-only."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": ["WF-L-01", "WF-C-09"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: server/services/equipment-lifecycle-state-machine.ts:577,693 (log only), :582-618 and :628-676 (real warranty and email); supabase/functions/equipment-lifecycle/index.ts transition handler updates current_stage and inserts the transition only. dependsOn: WF-L-01, WF-C-09. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-09",
+      "title": "Onboarded devices become equipment rows",
+      "description": "As service, a device configured during onboarding must be the same row meter reads, tickets and toner replenishment query. onboarding_equipment.equipment_id is nullable, unconstrained and set only when a caller already passes an id; the onboarding function never creates the equipment row, so a device can carry real IP, hostname and serial data and never exist in equipment.",
+      "acceptanceCriteria": [
+        "Adding equipment to an onboarding checklist creates (or matches by serial) an equipment row and back-fills onboarding_equipment.equipment_id; the column gains a foreign key.",
+        "Starting an onboarding checklist from an existing equipment row is supported from the equipment detail.",
+        "A test seeds a checklist with a device and asserts the device appears in GET /api/equipment and GET /api/customers/:id/equipment.",
+        "npm run check:phantom-cols and npm run check:spread-insert-keys stay clean."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: shared/schema.ts:3750 (onboarding_equipment.equipment_id comment); supabase/functions/onboarding/index.ts:450-524. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-10",
+      "title": "Network configuration and print management written to their own tables",
+      "description": "As IT, I need to query which devices have SNMP disabled or scan-to-email unset. EnhancedOnboardingForm.tsx collects a networkConfig step and a printManagement step; POST /onboarding/checklists stores the whole payload in equipment_details jsonb; onboarding_network_config and onboarding_print_management have no writer, and the storage methods for them in server/storage.ts are called by nothing.",
+      "acceptanceCriteria": [
+        "The onboarding edge function gains network-config and print-management endpoints (siblings of /:id/equipment) that write the two tables from the form data.",
+        "The checklist PDF and detail view read the structured rows.",
+        "docs/unwritten-tables-baseline.json drops both tables.",
+        "The pre-delivery checklist (WF-L-13) reads network_configured from onboarding_network_config."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": ["WF-L-09"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/onboarding/index.ts:347-437; server/storage.ts:5459-5501 (orphan methods); client/src/pages/EnhancedOnboardingForm.tsx:173,198. dependsOn: WF-L-09. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-11",
+      "title": "OID mapping and address-book checks in the pre-delivery configuration step",
+      "description": "As a technician finishing the network functional check, I should be told whether meter scraping (OID mapping for the model) and scan-to-email (address book) are set up, instead of two unlinked admin pages nobody is sent to.",
+      "acceptanceCriteria": [
+        "The build/config step shows whether an oid_mappings row exists for the device manufacturer and model, with a link to /oid-management to add one.",
+        "The same step shows whether an address book is associated for customers that require scan-to-email, linking to /service/address-books.",
+        "No new tables; read-only existence checks."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": ["WF-L-10"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: WF-L-10. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-12",
+      "title": "Asset Management and Vehicle Management render hard-coded mock arrays",
+      "description": "As a company admin, I must not mistake fabricated VINs, purchase prices and lease payments for records. client/src/pages/AssetManagement.tsx and client/src/pages/VehicleManagement.tsx each declare a typed array under a Mock data comment and contain no query or mutation; both are routed and gated. Neither guard catches the shape (the variables are not named mock*, and the values are not JSX text nodes).",
+      "acceptanceCriteria": [
+        "Decision recorded: build (real tables and edge functions; the fleet function and its four vehicle tables are candidates for vehicles) or delete.",
+        "If deleted: routes, sidebar entries and navigation-permissions entries are removed together; npm run check:nav and npm run check:orphans stay clean.",
+        "If built: hard-coded arrays are replaced by queries; no invented value remains."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/pages/AssetManagement.tsx:95; client/src/pages/VehicleManagement.tsx:84. See WF-G-04 for the guard. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-L-13",
+      "title": "Lifecycle transition requirements become evidence, not free-text booleans",
+      "description": "As operations, \"QA passed\", \"network configured\", \"delivery scheduled\" and \"acceptance signed\" must mean a record exists. The shared transitions module names 25 requirement strings per transition (quality_control_passed, serial_number_verified, delivery_scheduled, driver_assigned, delivery_signature_collected, acceptance_signed, customer_trained and so on) and the transition endpoint accepts whatever the caller claims. The stage list also has no explicit network-configured or accepted state between installed and active.",
+      "acceptanceCriteria": [
+        "Each requirement maps to a query: a completed kitting operation (WF-L-05), a delivery or installation schedule (WF-L-06), an onboarding_network_config row (WF-L-10), a signature (WF-L-07); the transition endpoint evaluates them server-side and rejects a transition whose evidence is missing.",
+        "A network_configured requirement is added to installed to active alongside acceptance_signed; the decision whether to add explicit qa_passed and accepted stages is recorded in the shared module header.",
+        "The available-transitions response reports which requirements are satisfied and which are missing so the UI can show the checklist.",
+        "The existing parity test and a new evaluation test cover the mapping."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "logistics",
+      "dependsOn": ["WF-L-05", "WF-L-06", "WF-L-07", "WF-L-10"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/equipment-lifecycle/index.ts:43-90 (VALIDATIONS); supabase/functions/_shared/equipment-lifecycle-transitions.ts. dependsOn: WF-L-05, WF-L-06, WF-L-07, WF-L-10. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-V-01",
+      "title": "Production ticket lists show equipment model and technician name",
+      "description": "As a dispatcher, the queue must show what machine and who. supabase/functions/service-tickets/index.ts never joins equipment or technicians, so equipmentModel and assignedTechnician are blank in production; the dev Express route joins them (AUDIT-013 fixed dev only).",
+      "acceptanceCriteria": [
+        "The list and single-ticket handlers enrich each row with equipment model and serial and the technician name, under the keys ServiceHub.tsx reads.",
+        "A unit test asserts both fields for a ticket with equipment_id and assigned_technician_id set.",
+        "/api/service-tickets is proxied and the covered Express handler is deleted."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "service",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/service-tickets/index.ts:106-144 vs server/routes-mobile-api.ts:62-104. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-V-02",
+      "title": "Mobile Field Service works a real ticket instead of ticket-123",
+      "description": "As a field technician, I check in, take photos, log parts and time, and close my ticket from my phone. client/src/pages/MobileFieldService.tsx hard-codes serviceTicketId ticket-123 and technicianId tech-456 (comment: mock for demo); the mobile edge function behind it is real and moves service_tickets.status through in_progress and completed, so the only web page with a working check-in backend cannot be used.",
+      "acceptanceCriteria": [
+        "The page takes the ticket id from the route (/m/service/:ticketId or a picker scoped to the caller’s assigned tickets) and the technician id from the session.",
+        "ServiceHub.tsx and the technician’s \"My tickets\" view link to it.",
+        "Check-in, photo, parts, time and check-out round-trip against a seeded ticket and the ticket ends completed (manual QA as a seeded FIELD_TECHNICIAN, plus a handler unit test).",
+        "AUDIT-033 and IOS-051 notes are updated to point at this page as the interim technician surface."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "service",
+      "dependsOn": ["WF-R-07"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/pages/MobileFieldService.tsx:80-82. dependsOn: WF-R-07. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-V-03",
+      "title": "Dispatch: assign a real technician to a real ticket",
+      "description": "As a dispatcher, I assign tickets. /service-dispatch is a Coming Soon gate (AUDIT-015), the Smart Routing modal on ServiceHub.tsx is hard-coded names and scores with an Assign button that has no handler, and no page writes service_tickets.assigned_technician_id except the mobile check-in side effect. There is no working assign step anywhere.",
+      "acceptanceCriteria": [
+        "A dispatch board (queue by status and priority, technicians with today’s load from service_tickets) lets a level-3+ user assign or reassign a ticket, writing assigned_technician_id and status assigned, and notifies the technician.",
+        "The fabricated Smart Routing modal is deleted from ServiceHub.tsx.",
+        "Assignment respects WF-R-07 scope (a supervisor assigns within their team).",
+        "A unit test covers assign, reassign and unassign transitions."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "service",
+      "dependsOn": ["WF-V-01"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: client/src/pages/ServiceHub.tsx:230-253, :988-1022. dependsOn: WF-V-01. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-V-04",
+      "title": "Preventive maintenance: delete the fixture routes and decide the schema",
+      "description": "As a service manager, the PM schedule and predictions must be real. server/routes-preventive-maintenance.ts returns hard-coded sample schedules, analytics, templates and predictions (comments say so), and auto-generate submits five fake equipment ids, persists nothing and invents an annual-savings figure while reporting success. Production hits supabase/functions/maintenance over maintenance_schedules and maintenance_records, which exist in no Drizzle schema and no migration.",
+      "acceptanceCriteria": [
+        "maintenance_schedules and maintenance_records are declared in a shared schema file and captured by a journaled migration (COP-M00 reconciliation pattern) after confirming against a real database, or the edge function is repointed at the tables that exist.",
+        "The four fixture handlers are deleted; /api/maintenance is proxied so dev and prod run the edge function.",
+        "Auto-generate lets the user pick real equipment, inserts real schedules and returns the persisted rows; the savings figure is removed unless backed by a cited cost model.",
+        "The Predictive tab of PreventiveMaintenanceAutomation.tsx calls the real predictive-failure engine or is removed as a fixture twin.",
+        "npm run check:no-mocks and npm run check:fabricated pass on the touched files."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "service",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: server/routes-preventive-maintenance.ts:21,239,367,582 (Sample comments), :478-552 (auto-generate); client/src/pages/PreventiveMaintenanceAutomation.tsx:242-251; grep maintenance_schedules over shared/ and drizzle/migrations = 0. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-V-05",
+      "title": "One service-ticket status and priority vocabulary, validated on write",
+      "description": "As anyone filtering tickets, a filter must be able to match. The schema comment says in-progress with a hyphen, the mobile check-in writes in_progress, ServiceHub.tsx offers new, assigned, en_route, on_site, in_progress, and the stats endpoint counts open and in_progress; priority differs likewise. No CHECK constraint or enum enforces any of it.",
+      "acceptanceCriteria": [
+        "A single vocabulary lives in a shared module, served by GET /service-tickets/vocabulary and consumed by every status and priority select in ServiceHub.tsx and TechnicianTicketWorkflow.tsx.",
+        "Every writer validates with a z.enum derived from that list; a migration adds the CHECK constraint after a data audit.",
+        "A unit test locks the vocabulary the way the sales-pipeline stage test does."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "service",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: shared/schema.ts:3234-3235; client/src/pages/ServiceHub.tsx:689-710; supabase/functions/service-tickets/index.ts:77-80. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-V-06",
+      "title": "One pending-supply-orders view across the three supply order tables",
+      "description": "As operations, I want every pending toner order in one place. supply_orders (toner-replenish), device_supply_orders (fleet ordering) and customer_supply_orders (portal) are three real tables for one job with three admin screens and no cross-reference; the older auto-supply-replenishment pipeline over supply_monitoring is a second, unwritten system.",
+      "acceptanceCriteria": [
+        "A header comment in the toner-replenish function documents which table each order type belongs to and why.",
+        "A read-only aggregate endpoint unions the three, tagged by source, and a Pending Supply Orders view on /supply-orders renders it.",
+        "The decision to retire auto-supply-replenishment (no writer since AUDIT-032) or give it a writer is recorded; if retired, its page and function are removed together."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "service",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-V-07",
+      "title": "technician-management schedule route reads a table that does not exist",
+      "description": "As a maintainer, a route that reads work_orders (no schema, no migration) and swallows the error into an empty array is a landmine. supabase/functions/technician-management/index.ts /:id/schedule does exactly that; the work-orders edge function is the same table.",
+      "acceptanceCriteria": [
+        "The schedule route reads installation_schedules, delivery_schedules and service_tickets scheduled dates for the technician, or is deleted.",
+        "supabase/functions/work-orders is deleted or repointed at service_tickets; the work_orders reference is gone from the tree.",
+        "npm run check:unreferenced-edge-fns reflects the outcome."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "service",
+      "dependsOn": ["WF-L-06"],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/technician-management/index.ts:263-280; supabase/functions/work-orders/index.ts (.from('work_orders') x9). dependsOn: WF-L-06. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-G-01",
+      "title": "Boot-load guard: every edge function must import cleanly",
+      "description": "As the team, a function that fails to parse must fail CI, not 404 forever. The dispatcher loads each function with await import inside try/catch and omits failures; equipment-lifecycle shipped unparseable and stayed invisible for the life of the file.",
+      "acceptanceCriteria": [
+        "A script under scripts/ dynamically imports every supabase/functions/*/index.ts (Deno or a tsc parse pass with the same module settings) and fails on any import-time error; wired into CI beside check:edge-coverage.",
+        "A runtime check compares the dispatcher’s available list against the on-disk directory list and fails on a missing function; runnable against the live host.",
+        "Running it before WF-L-01 reports equipment-lifecycle; after, zero."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "guards",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). Evidence: supabase/functions/server.ts:82-99. dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-G-02",
+      "title": "Hard guard: every table an edge function names must be declared or explicitly allow-listed",
+      "description": "As the team, an undeclared relation is a runtime 42P01. check:phantom-tables gates only undeclared tables behind a silent catch and fabricated fallbacks; sales_handoffs, work_orders, appointments, lead_routing_rules, maintenance_schedules and purchase_order_line_items all passed it.",
+      "acceptanceCriteria": [
+        "scripts/check-phantom-tables.mjs (or a sibling) resolves every .from(literal) in supabase/functions against pgTable declarations plus CREATE TABLE across the migration chain, and fails on any miss not in an explicit drift allow-list with a reason per entry.",
+        "The six tables above are the seed findings; each is fixed or allow-listed with its owning story id.",
+        "The guard strips comments before matching and is CI-wired."
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "guards",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-G-03",
+      "title": "A passing story may not name a deliverable that is an orphan file",
+      "description": "As the team, passes:true must be trustworthy. RBAC-008 and RBAC-009 are marked passing while their deliverables sit in docs/server-orphans-baseline.json; nothing cross-checks the two.",
+      "acceptanceCriteria": [
+        "A script under scripts/ extracts repo paths from every passing story’s acceptance criteria and notes and reports any that appear in docs/server-orphans-baseline.json, docs/orphan-files-baseline.json or docs/unreferenced-edge-fns-baseline.json.",
+        "Stories whose criteria say delete are excluded by rule; the seed findings are RBAC-008 and RBAC-009.",
+        "CI runs it as a report first and as a gate once the seed findings are resolved."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "guards",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-G-04",
+      "title": "Static-posture guard catches typed mock arrays, not only JSX literals",
+      "description": "As the team, a page-level const array of realistic records in a file with no query is fabricated data whatever the variable is called. AssetManagement.tsx and VehicleManagement.tsx evade both check:no-mocks (not named mock*) and check:no-static-posture (values are not JSX text nodes).",
+      "acceptanceCriteria": [
+        "scripts/check-no-static-posture.mjs flags a page-level array literal of three or more objects with five or more fields including a currency, date or serial-like value when the file has no useQuery, useMutation, apiRequest or fetch.",
+        "Lookup tables (status colours, labels) do not trip it; the two known pages are baselined at introduction and removed by WF-L-12."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "guards",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "WF-G-05",
+      "title": "Edge coverage compares method and bare path, not only named sub-segments",
+      "description": "As the team, a page whose list and create calls hit the bare prefix must be seen by check:edge-coverage. EDGE-002h audited warehouse-operations and found only /stats missing because bare GET, POST and PATCH /:id/status carry no named segment.",
+      "acceptanceCriteria": [
+        "scripts/check-edge-path-coverage.mjs records method plus path shape (bare list, bare create, /:id, /:id/action) per client call and checks each against the edge function’s branches.",
+        "Running it reports warehouse-operations bare list/create/PATCH as the seed finding before WF-L-03 and zero after.",
+        "docs/edge-path-coverage-baseline.json is regenerated and reviewed."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "guards",
+      "dependsOn": [],
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02."
     }
   ]
 }
