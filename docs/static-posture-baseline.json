@@ -1,6 +1,6 @@
 {
-  "note": "Values typed into a page instead of read from data, inherited when this check widened from client/src/pages/admin to the whole page tree (PA-040). Each is a claim to delete or derive. Shrink this list, never grow it. See scripts/check-no-static-posture.mjs.",
-  "total": 42,
+  "note": "Values typed into a page instead of read from data, inherited when this check widened from client/src/pages/admin to the whole page tree (PA-040). Each is a claim to delete or derive. Shrink this list, never grow it. See scripts/check-no-static-posture.mjs. WF-G-04 added the four record-array entries (AssetManagement, VehicleManagement): a page-level array of realistic records in a file that fetches nothing. Those four are seed findings and WF-L-12 removes them.",
+  "total": 45,
   "offenders": [
     "client/src/pages/AIHub.tsx  <Progress value={85} className=\"h-2\" />",
     "client/src/pages/AIHub.tsx  <Progress value={93} className=\"h-2\" />",
@@ -17,6 +17,8 @@
     "client/src/pages/AdvancedBillingEngine.tsx  <span className=\"absolute text-xl font-bold text-green-600\">94%</span>",
     "client/src/pages/AdvancedBillingEngine.tsx  <span className=\"absolute text-xl font-bold text-yellow-600\">76%</span>",
     "client/src/pages/AdvancedBillingEngine.tsx  <span className=\"text-lg font-bold text-green-600\">87%</span>",
+    "client/src/pages/AssetManagement.tsx  const assets = [ 5 records x 17 fields ]",
+    "client/src/pages/AssetManagement.tsx  const maintenanceRecords = [ 2 records x 8 fields ]",
     "client/src/pages/AutoLeadRoutingDashboard.tsx  <Progress value={96.5} className=\"mt-2\" />",
     "client/src/pages/AutoLeadRoutingDashboard.tsx  <div className=\"text-3xl font-bold\">96.5%</div>",
     "client/src/pages/AutopilotDashboard.tsx  <p className=\"text-xl font-bold text-green-600\">$300,000</p>",
@@ -40,6 +42,8 @@
     "client/src/pages/ExecutiveDashboard.tsx  <span className=\"font-bold\">62%</span>",
     "client/src/pages/ExecutiveDashboard.tsx  <span className=\"font-bold\">78%</span>",
     "client/src/pages/ExecutiveDashboard.tsx  <span className=\"font-bold\">85%</span>",
-    "client/src/pages/MobileFieldOperations.tsx  <div className=\"text-2xl font-bold\">98.5%</div>"
+    "client/src/pages/MobileFieldOperations.tsx  <div className=\"text-2xl font-bold\">98.5%</div>",
+    "client/src/pages/VehicleManagement.tsx  const maintenanceRecords = [ 2 records x 9 fields ]",
+    "client/src/pages/VehicleManagement.tsx  const vehicles = [ 2 records x 17 fields ]"
   ]
 }

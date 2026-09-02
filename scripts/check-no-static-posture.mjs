@@ -74,6 +74,101 @@ const LITERAL_GAUGE = /<Progress[^>]*\svalue=\{\s*\d/g;
 /** A certificate or licence expiry written as a string. */
 const LITERAL_EXPIRY = /Valid until\s+\d/g;
 
+/**
+ * WF-G-04: a page-level array of realistic records in a file that fetches
+ * nothing.
+ *
+ * The four rules above all work on a RENDERED slot - a JSX text node, a gauge,
+ * an expiry string. AssetManagement.tsx and VehicleManagement.tsx evade every
+ * one of them, and check:no-mocks too: their data is a typed const array
+ * (`const assets: Asset[] = [...]`), so it is not named mock*, and it reaches
+ * the screen through {asset.purchasePrice} rather than as a literal text node.
+ * A reader sees a fleet with serial numbers, purchase prices and warranty dates
+ * and has no way to tell it is typed in.
+ *
+ * THE FILE-LEVEL CONDITION IS WHAT MAKES THIS SAFE. A page that queries anything
+ * is not flagged, so a real page holding a small fixture beside live data does
+ * not trip it; the finding is specifically "this page fetches nothing and
+ * renders records anyway".
+ *
+ * THREE THINGS KEEP IT OFF LOOKUP TABLES, which is the failure mode that would
+ * make it noise. A status-colour or label map is an OBJECT, not an array, so it
+ * is not matched at all. An array of short option objects fails the five-field
+ * test. And the array must carry at least one value that is data rather than
+ * configuration - a currency amount, a date, or a serial-like string - which a
+ * list of tab definitions or filter options does not.
+ *
+ * THE THREE-RECORD THRESHOLD IS COUNTED PER FILE, NOT PER ARRAY, and that is a
+ * deliberate reading of the AC rather than a convenience. VehicleManagement.tsx
+ * holds TWO arrays of TWO records each - four fabricated vehicles and
+ * maintenance jobs with VINs, lease expiries and monthly payments - and a
+ * per-array threshold of three would have missed it entirely while catching
+ * AssetManagement.tsx beside it. The point of the threshold is to skip small
+ * option lists, and a file is the unit the finding is about.
+ */
+/**
+ * A field key inside a record object, whether the object is formatted across
+ * lines or collapsed onto one.
+ *
+ * The obvious form, /^\s*\w+:/ with the m flag, is LINE-ANCHORED, and prettier
+ * keeps a short object on a single line - so a five-field record written
+ * `{ id: '1', amount: 12500, ... }` counted as ONE field and slipped through.
+ * That is the blind spot check:no-random-metrics records in its own header, and
+ * it is avoidable here: anchor on the brace or comma that precedes the key
+ * instead of on the newline.
+ */
+const RECORD_FIELD = /(?:^|[{,])\s*\w+:\s*/;
+const DATAISH_VALUE =
+  /(?::\s*\d{3,}(?:\.\d+)?\s*[,}])|(?:new Date\(')|(?:\d{4}-\d{2}-\d{2})|(?::\s*'[A-Z]{2,}[-_]?\d{4,})/;
+
+/** Page-level `const x = [` / `const x: T[] = [` and its balanced body. */
+function recordArrays(code) {
+  const out = [];
+  const re = /(?:^|\n)(\s*)const\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n]+)?=\s*\[/g;
+  let m;
+  while ((m = re.exec(code)) !== null) {
+    const open = code.indexOf('[', m.index + m[0].length - 1);
+    let depth = 0;
+    let end = -1;
+    for (let i = open; i < code.length; i++) {
+      const c = code[i];
+      if (c === '[' || c === '{') depth++;
+      else if (c === ']' || c === '}') {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+    if (end === -1) continue;
+    out.push({ name: m[2], body: code.slice(open, end + 1), at: m.index });
+  }
+  return out;
+}
+
+function fabricatedRecordArrays(code) {
+  // A page that fetches ANYTHING is out of scope - see the header.
+  if (/\buseQuery\b|\buseMutation\b|\bapiRequest\b|\bfetch\s*\(/.test(code)) return [];
+
+  const candidates = [];
+  for (const { name, body, at } of recordArrays(code)) {
+    const objects = body.split(/\}\s*,\s*\{/);
+    const fields = (objects[0].match(new RegExp(RECORD_FIELD.source, 'gm')) ?? []).length;
+    if (fields < 5) continue;
+    if (!DATAISH_VALUE.test(body)) continue;
+    candidates.push({
+      name,
+      line: code.slice(0, at).split('\n').length,
+      count: objects.length,
+      fields,
+    });
+  }
+  // Per FILE, for the reason in the header.
+  const records = candidates.reduce((sum, c) => sum + c.count, 0);
+  return records >= 3 ? candidates : [];
+}
+
 const RULES = [
   [NUMERIC_TEXT, 'numeric value rendered as a literal, not from data'],
   [POSTURE_TEXT, 'security posture asserted as a literal'],
@@ -125,6 +220,18 @@ for (const rel of [...DIRS, ...FILES].flatMap(collect)) {
       }
     }
   });
+
+  // WF-G-04. Keyed by the variable name rather than a line of source, because
+  // the finding is the whole array and quoting its first line would churn the
+  // baseline every time a field moved.
+  for (const fabricated of fabricatedRecordArrays(code)) {
+    problems.push({
+      rel,
+      line: fabricated.line,
+      why: 'page-level array of records in a file that fetches nothing',
+      text: `const ${fabricated.name} = [ ${fabricated.count} records x ${fabricated.fields} fields ]`,
+    });
+  }
 }
 
 // Keyed by file + the offending text, not by line, so moving code does not
