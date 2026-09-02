@@ -50,15 +50,21 @@ describe('the guard resolves rather than skips', () => {
 describe('the baseline says why it grew', () => {
   const baseline = JSON.parse(read('docs/phantom-columns-baseline.json'));
 
+  it('keeps that prose in the script, so a regeneration cannot drop it', () => {
+    // It was lost twice to --update-baseline before anyone noticed.
+    expect(read('scripts/check-phantom-columns.ts')).toMatch(/const BASELINE_NOTE = \[/);
+    expect(baseline.note).toMatch(/AUDIT-037 carries the backlog/);
+  });
+
   it('records that the additions were already broken', () => {
-    expect(baseline.note).toMatch(/already broken/i);
-    expect(baseline.note).toMatch(/blog_posts/);
-    expect(baseline.note).toMatch(/purchase_orders/);
+    expect(baseline.note).toMatch(/152 -> 280/);
+    expect(baseline.note).toMatch(/tables declared twice with different shapes/);
+    expect(baseline.note).toMatch(/purchase-order cluster/);
   });
 
   it('forbids shrinking it by re-widening the skip', () => {
     // That is what hid all of this, and it would look like progress.
-    expect(baseline.note).toMatch(/never by re-widening the skip/i);
+    expect(baseline.note).toMatch(/never by re-widening a skip/i);
   });
 
   it('holds the clusters the story names', () => {

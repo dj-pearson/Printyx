@@ -21,8 +21,12 @@
  * hands to PostgREST against the table the call chain is on.
  *
  * WHAT IT CANNOT SEE, so that nobody reads a pass as proof of correctness:
- *   - insert/update payloads built as a named variable rather than an inline
- *     object literal. The deals insert was one of those.
+ *   - a payload whose keys are assembled at runtime (a spread, a camel-to-snake
+ *     field map, Object.assign). A payload built as a NAMED VARIABLE used to be
+ *     here too and no longer is - see the resolution rule at the insert/update
+ *     scan, and note that it resolves the nearest preceding BINDING, so a
+ *     variable assigned from a function call resolves to nothing rather than to
+ *     an older literal of the same name.
  *   - column names assembled at runtime, and field maps keyed camel -> snake.
  *   - tables that exist live but are in no Drizzle schema (COP-M00 counted 107
  *     of them, created by db:push). Those are reported as unknown, not failed.
@@ -48,6 +52,33 @@ import { readdirSync as readSchemaDir } from 'node:fs';
 const repo = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const BASELINE = join(repo, 'docs', 'phantom-columns-baseline.json');
 const update = process.argv.includes('--update-baseline');
+
+/**
+ * Written into the baseline on every regeneration. See the comment at the
+ * writeFileSync below for why it is a constant rather than JSON prose.
+ */
+const BASELINE_NOTE = [
+  'Column literals handed to PostgREST that are not columns on the table the call chain is on.',
+  'Each entry is a runtime 42703 waiting for the code path to run. Fix them; do not grow this list.',
+  'Regenerate with: npx tsx scripts/check-phantom-columns.ts --update-baseline',
+  '',
+  'IT HAS GROWN TWICE BY SEEING MORE, NOT BY CODE GETTING WORSE. 152 -> 280 when it stopped skipping',
+  'tables declared twice with different shapes (shared/drizzle-schema.ts resolves every collision, so',
+  'whatever it exports is the shape the migrations built), and 262 -> 383 when it stopped reading only',
+  'INLINE object literals. Most handlers build a payload as a named variable, so `const poData = { … }`',
+  'followed by `.insert(poData)` was invisible - that hid the larger half of the purchase-order cluster',
+  'and a user-creation insert writing phone, job_title and department, three columns CLAUDE.md already',
+  'records as absent from `users`.',
+  '',
+  'Named payloads resolve to the NEAREST PRECEDING BINDING, used only if that binding is an object',
+  'literal. Two looser rules were tried and both invented findings: pooling declarations by name across',
+  "a file attributed one table's payload to another table's insert (39 phantom columns on a ten-key",
+  'row), and taking the nearest preceding LITERAL reached past `const x = someFn()` to an older literal',
+  'of the same name (eighteen more).',
+  '',
+  'AUDIT-037 carries the backlog. Shrink this list by fixing the code or settling a table collision -',
+  'never by re-widening a skip, which would look like progress.',
+].join(' ');
 const triage = process.argv.includes('--triage');
 
 // ─── 1. Physical columns, per physical table name ──────────────────────────
@@ -343,30 +374,95 @@ function scan(source: string): Ref[] {
 
   // .insert({ … }) / .update({ … }) with an INLINE object literal.
   for (const m of source.matchAll(/\.(insert|update)\(\s*\{/g)) {
-    const start = (m.index ?? 0) + m[0].length - 1;
-    let depth = 0;
-    let end = start;
-    for (let i = start; i < source.length; i++) {
-      if (source[i] === '{') depth++;
-      else if (source[i] === '}') {
-        depth--;
-        if (depth === 0) {
-          end = i;
-          break;
-        }
-      }
+    const body = balancedBody(source, (m.index ?? 0) + m[0].length - 1);
+    for (const key of topLevelKeys(body)) push(m.index ?? 0, key, m[1]);
+  }
+
+  // .insert(payload) / .update(payload) where `payload` is a NAMED VARIABLE.
+  //
+  // AUDIT-037: this used to be a stated blind spot, and it hid the larger half
+  // of the purchase-order cluster - `const poData = { … }` followed by
+  // `.insert(poData)` writes nine columns that do not exist, and none was
+  // reported while the inline-literal scan was the only one.
+  //
+  // Resolution is by NEAREST PRECEDING DECLARATION, not by name across the
+  // file. `row`, `payload` and `updateData` are reused constantly - one file had
+  // four different `const row = {…}` for four different tables - and pooling
+  // them by name attributed every table's columns to every insert. That
+  // reported 39 phantom columns on a ten-key payload, which is the kind of noise
+  // a real finding hides in.
+  //
+  // Two sources of keys: the object literal the variable is declared with, and
+  // any `payload.column = …` assignment BETWEEN that declaration and the call,
+  // which is how a handler builds a partial update.
+  // EVERY binding of a name is collected, not only the object literals. The
+  // nearest preceding one decides, and it is used ONLY if it is a literal - so
+  // `const insertRow = normalizeLineItem(...)` resolves to nothing rather than
+  // reaching further back to an unrelated `const insertRow = { … }` earlier in
+  // the same file. That reach-back attributed one payload to another table's
+  // insert and reported eighteen phantom columns that were not there.
+  const declarations: { name: string; at: number; keys: string[] | null }[] = [];
+  for (const d of source.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n]+)?=\s*/g)) {
+    const at = d.index ?? 0;
+    const rhs = at + d[0].length;
+    declarations.push({
+      name: d[1],
+      at,
+      keys: source[rhs] === '{' ? topLevelKeys(balancedBody(source, rhs)) : null,
+    });
+  }
+  // A later bare re-assignment invalidates the literal too.
+  for (const r of source.matchAll(/^\s*([A-Za-z_$][\w$]*)\s*=\s*(?!=)/gm)) {
+    declarations.push({ name: r[1], at: r.index ?? 0, keys: null });
+  }
+
+  const assignments: { name: string; at: number; key: string }[] = [];
+  for (const a of source.matchAll(/\b([A-Za-z_$][\w$]*)\.([a-z][a-z0-9_]*)\s*=\s*(?!=)/g)) {
+    assignments.push({ name: a[1], at: a.index ?? 0, key: a[2] });
+  }
+
+  for (const m of source.matchAll(/\.(insert|update)\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g)) {
+    const callAt = m.index ?? 0;
+    const decl = declarations
+      .filter((d) => d.name === m[2] && d.at < callAt)
+      .sort((a, b) => b.at - a.at)[0];
+    if (!decl || !decl.keys) continue;
+    const keys = new Set(decl.keys);
+    for (const a of assignments) {
+      if (a.name === m[2] && a.at > decl.at && a.at < callAt) keys.add(a.key);
     }
-    const body = source.slice(start, end);
-    // Only top-level keys: a nested object's keys belong to a jsonb value.
-    let nest = 0;
-    for (const km of body.matchAll(/([{}]|(?:^|[,{\n])\s*([a-z][a-z0-9_]*)\s*:)/g)) {
-      if (km[1] === '{') nest++;
-      else if (km[1] === '}') nest--;
-      else if (km[2] && nest === 1) push(m.index ?? 0, km[2], m[1]);
-    }
+    for (const key of keys) push(callAt, key, m[1]);
   }
 
   return refs;
+}
+
+/**
+ * Top-level keys of a brace-balanced object body. A nested object's keys belong
+ * to a jsonb value, not to the table.
+ */
+function topLevelKeys(body: string): string[] {
+  const keys: string[] = [];
+  let nest = 0;
+  for (const km of body.matchAll(/([{}]|(?:^|[,{\n])\s*([a-z][a-z0-9_]*)\s*:)/g)) {
+    if (km[1] === '{') nest++;
+    else if (km[1] === '}') nest--;
+    else if (km[2] && nest === 1) keys.push(km[2]);
+  }
+  return keys;
+}
+
+/** The brace-balanced body starting at the `{` at `start`, inclusive of it. */
+function balancedBody(source: string, start: number): string {
+  let depth = 0;
+  for (let i = start; i < source.length; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}') {
+      depth--;
+      if (depth === 0) return source.slice(start, i);
+    }
+  }
+  return '';
 }
 
 // ─── 3. Walk the edge functions ────────────────────────────────────────────
@@ -483,10 +579,11 @@ if (update) {
     BASELINE,
     JSON.stringify(
       {
-        note:
-          'Column literals handed to PostgREST that are not columns on the table the call chain is on. ' +
-          'Each entry is a runtime 42703 waiting for the code path to run. Fix them; do not grow this list. ' +
-          'Regenerate with: npx tsx scripts/check-phantom-columns.ts --update-baseline',
+        // The note lives HERE, not in the JSON. --update-baseline rewrites the
+        // file wholesale, so prose added to the baseline by hand is silently
+        // lost on the next regeneration - which happened twice before anyone
+        // noticed, both times taking the explanation of why the list had grown.
+        note: BASELINE_NOTE,
         allowed: current,
       },
       null,
