@@ -468,6 +468,71 @@ export default function QuoteBuilder({
     },
   });
 
+  /**
+   * WF-C-03: the way out of the guardrail.
+   *
+   * The send gate below tells a rep to "request manager approval" and, before
+   * this, there was nowhere to do it: DealDeskDashboard lists requests and posts
+   * decisions, and nothing in client/src ever created one. A rep who hit the
+   * block had the toast and no next step.
+   *
+   * It saves first, because a request has to name a proposal and an unsaved quote
+   * has no id. The approval CHAIN is deliberately not sent - the deal-desk
+   * function matches the active rules and builds it, since a client-supplied
+   * chain is a client-supplied answer to who may approve this, and an empty one
+   * makes the first decision final.
+   */
+  const requestApprovalMutation = useMutation({
+    mutationFn: async () => {
+      const values = form.getValues();
+      const saved = await saveQuoteMutation.mutateAsync({ quote: values, lineItems });
+      const proposalId = saved?.id ?? savedQuoteId ?? initialQuoteId;
+      if (!proposalId) throw new Error('The quote must be saved before requesting approval');
+
+      const reasons = [
+        belowMinMargin
+          ? `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum.`
+          : null,
+        overMaxDiscount
+          ? `Effective discount ${effectiveDiscount.toFixed(1)}% exceeds the ${maxDiscount}% maximum.`
+          : null,
+      ].filter(Boolean);
+
+      return await apiRequest('/api/deal-desk/requests', 'POST', {
+        requestType: overMaxDiscount ? 'discount' : 'margin',
+        quoteId: proposalId,
+        requestTitle: `Approval for ${values.title || 'quote'}`,
+        requestDescription: reasons.join(' '),
+        // The numbers the guardrail blocked on, so a reviewer sees the same ones
+        // the rep did rather than re-deriving them.
+        discountPercentage: effectiveDiscount,
+        discountAmount: Math.max(0, discountAmount),
+        proposedMargin: overallMargin,
+        originalMargin: minMargin ?? null,
+        dealValue: totals.total,
+        justification: values.discountReason || null,
+      });
+    },
+    onSuccess: () => {
+      // A mounted DealDeskDashboard picks this up immediately; it also polls at
+      // 30s, so a reviewer on another screen sees it without a reload either.
+      queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/my-approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/dashboard'] });
+      toast({
+        title: 'Approval requested',
+        description: 'The deal desk has your quote. You will be notified when it is decided.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not request approval',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Submit quote mutation (change status to sent)
   const submitQuoteMutation = useMutation({
     mutationFn: async (quoteId: string) => {
@@ -683,9 +748,13 @@ export default function QuoteBuilder({
     if (guardrailViolated && !isManager) {
       toast({
         title: 'Manager approval required',
+        // WF-C-03: this used to end "Save as draft and request manager approval"
+        // with nowhere to do either - nothing in client/src created a deal-desk
+        // request. Request Approval now sits on the guardrail banner and saves
+        // the quote itself, so the instruction names something that exists.
         description: belowMinMargin
-          ? `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum. Save as draft and request manager approval.`
-          : `Effective discount ${effectiveDiscount.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum. Save as draft and request manager approval.`,
+          ? `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum. Use Request approval on the pricing banner.`
+          : `Effective discount ${effectiveDiscount.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum. Use Request approval on the pricing banner.`,
         variant: 'destructive',
       });
       return;
@@ -1058,13 +1127,29 @@ export default function QuoteBuilder({
               }`}
             >
               <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-              <span>
+              <span className="flex-1">
                 {belowMinMargin &&
                   `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum. `}
                 {overMaxDiscount &&
                   `Effective discount ${effectiveDiscount.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum. `}
-                Manager approval will be required to send.
+                {isManager
+                  ? 'You may send it anyway.'
+                  : 'Manager approval will be required to send.'}
               </span>
+              {/* WF-C-03: the way out. A manager can just send, so the button is
+                  only for the rep the guardrail actually blocks. */}
+              {!isManager && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 shrink-0"
+                  disabled={requestApprovalMutation.isPending}
+                  onClick={() => requestApprovalMutation.mutate()}
+                >
+                  {requestApprovalMutation.isPending ? 'Requesting…' : 'Request approval'}
+                </Button>
+              )}
             </div>
           )}
         </div>

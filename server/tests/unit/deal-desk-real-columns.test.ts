@@ -49,7 +49,11 @@ describe('approval requests use the declared column names', () => {
 
   it('tracks the step on current_approval_level and the SLA on sla_deadline', () => {
     expect(src).toMatch(/current_approval_level: 1/);
-    expect(src).toMatch(/sla_deadline: body\.slaDueAt/);
+    // WF-C-03 moved the VALUE off the body - the SLA now comes from the tightest
+    // matched rule when the caller sends none - so this pins the column name and
+    // the body alias separately rather than the whole assignment.
+    expect(src).toMatch(/sla_deadline: slaDeadline/);
+    expect(src).toMatch(/body\.slaDueAt/);
     // As COLUMN keys. Both still appear as accepted request-body aliases, which
     // is what lets an existing caller keep working.
     expect(src).not.toMatch(/current_step:/);
@@ -60,7 +64,12 @@ describe('approval requests use the declared column names', () => {
   it('keeps one copy of the chain, not a chain and a step count', () => {
     // approval_chain's length IS the step count; a second copy invites the two
     // to disagree.
-    expect(src).toMatch(/approval_chain: body\.approvalChain/);
+    //
+    // WF-C-03: the chain is built server-side from the matched rules rather than
+    // taken from the body, so the column is written from a local. The body alias
+    // is still read - to decide whether to build one - and is asserted below.
+    expect(src).toMatch(/approval_chain: approvalChain \?\? \[\]/);
+    expect(src).toMatch(/body\.approvalChain \?\? body\.approval_chain/);
     expect(src).not.toMatch(/total_steps/);
   });
 

@@ -344,6 +344,49 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && resource === 'requests' && !resourceId) {
       const body = await req.json();
 
+      // WF-C-03: build the chain HERE rather than taking one from the caller.
+      // check-approval already matches rules and its own comment says chain
+      // building "belongs in the actual request-creation flow"; this is that
+      // flow. It matters beyond tidiness: a client-supplied approval_chain is a
+      // client-supplied answer to "who may approve this", and an empty one makes
+      // the first decision final (see the decision handler's totalSteps).
+      let approvalChain = body.approvalChain ?? body.approval_chain;
+      let slaDeadline = body.slaDueAt ?? body.sla_due_at ?? null;
+      if (!Array.isArray(approvalChain) || approvalChain.length === 0) {
+        const { data: activeRules } = await admin
+          .from('approval_rules')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('priority', { ascending: false })
+          .order('order', { ascending: false });
+
+        const ctx: ApprovalCheckContext = {
+          discountPercentage: numberOrUndefined(
+            body.discountPercentage ?? body.discount_percentage,
+          ),
+          discountAmount: numberOrUndefined(body.discountAmount ?? body.discount_amount),
+          margin: numberOrUndefined(body.margin ?? body.proposedMargin ?? body.proposed_margin),
+          dealValue: numberOrUndefined(body.dealValue ?? body.deal_value),
+          totalContractValue: numberOrUndefined(
+            body.totalContractValue ?? body.total_contract_value,
+          ),
+          paymentTermsDays: numberOrUndefined(body.paymentTermsDays ?? body.payment_terms_days),
+        };
+
+        const matched = (activeRules ?? []).filter((rule) => evaluateApprovalRule(rule, ctx));
+        approvalChain = buildApprovalChain(matched);
+
+        // The SLA is the tightest matched rule's, because a request that has to
+        // clear two rules is due when the SOONER of them says it is.
+        const slaHours = matched
+          .map((r) => Number(r.sla_hours))
+          .filter((h) => Number.isFinite(h) && h > 0);
+        if (!slaDeadline && slaHours.length > 0) {
+          slaDeadline = new Date(Date.now() + Math.min(...slaHours) * 3600_000).toISOString();
+        }
+      }
+
       // Fetch user details for the request
       const { data: userData } = await admin
         .from('users')
@@ -392,9 +435,16 @@ export default async function handler(req: Request) {
         discount_percentage: body.discountPercentage || body.discount_percentage || null,
         discount_amount: body.discountAmount || body.discount_amount || null,
         business_justification: body.justification || null,
-        approval_chain: body.approvalChain || body.approval_chain || [],
+        approval_chain: approvalChain ?? [],
         current_approval_level: 1,
-        sla_deadline: body.slaDueAt || body.sla_due_at || null,
+        sla_deadline: slaDeadline,
+        // WF-C-03: the margins the guardrail actually blocked on. Both are real
+        // columns and neither was written, so a reviewer saw a discount request
+        // with no margin on it - the number the policy is about.
+        original_margin: body.originalMargin ?? body.original_margin ?? null,
+        proposed_margin: body.proposedMargin ?? body.proposed_margin ?? null,
+        request_title: body.requestTitle ?? body.request_title ?? null,
+        request_description: body.requestDescription ?? body.request_description ?? null,
         submitted_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -1072,6 +1122,30 @@ function evaluateApprovalRule(rule: any, ctx: ApprovalCheckContext): boolean {
   }
 
   return true;
+}
+
+function numberOrUndefined(value: unknown): number | undefined {
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/**
+ * One approval step per matched rule, in the order the rules were matched -
+ * which is priority then `order`, the same sequence the rules list uses.
+ *
+ * A rule with no approvers still produces a step: the rule matched, so somebody
+ * has to look at it, and dropping the step would silently shorten the chain and
+ * make an earlier decision final.
+ */
+function buildApprovalChain(matchedRules: any[]): Array<Record<string, unknown>> {
+  return matchedRules.map((rule, index) => ({
+    level: index + 1,
+    ruleId: rule.id,
+    ruleName: rule.rule_name,
+    approvers: Array.isArray(rule.approvers) ? rule.approvers : [],
+    slaHours: Number.isFinite(Number(rule.sla_hours)) ? Number(rule.sla_hours) : null,
+    status: 'pending',
+  }));
 }
 
 function compareValues(value: number, threshold: number, operator: string): boolean {
