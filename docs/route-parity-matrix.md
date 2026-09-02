@@ -4,17 +4,17 @@
 
 **Architecture:** prod frontend → `functions.printyx.net/<route>` (edge) for ALL `/api/*` via `getApiUrl`. The Express proxy map (98 prefixes) only affects **dev**. Express stays canonical for `/api/client-metrics/*` (agent) and `/install/*`.
 
-**Totals:** 359 domains · 271 edge fns · 166 Express-served · 184 frontend-called · 98 proxied
+**Totals:** 358 domains · 269 edge fns · 166 Express-served · 184 frontend-called · 98 proxied
 
 ## Summary by class
 
 | Class | Count | Meaning |
 |---|---|---|
 | `both-divergent` | 53 | Express + edge both exist, not proxied → dev ≠ prod (maintenance trap) |
-| `express-only` | 74 | Express handler, no edge function → not yet migrated |
-| `dead-express` | 20 | Express + edge exist, no frontend ref → Express likely dead |
+| `express-only` | 75 | Express handler, no edge function → not yet migrated |
+| `dead-express` | 19 | Express + edge exist, no frontend ref → Express likely dead |
 | `proxied` | 97 | In proxy map → dev forwards to edge (aligned) |
-| `edge-only` | 105 | Edge function only, no Express handler → fully migrated |
+| `edge-only` | 104 | Edge function only, no Express handler → fully migrated |
 | `express-canonical` | 10 | Express is canonical by design (agent ingest) |
 
 ## Action-needed first
@@ -107,6 +107,7 @@ backlog, and it does not gate CI.
 | `deal-tags` | · | · | ✅ | · | `express-only` |
 | `deals-management` | · | · | ✅ | · | `express-only` |
 | `delivery-schedules` | · | · | ✅ | · | `express-only` |
+| `devices` | · | · | ✅ | · | `express-only` |
 | `dispatch` | · | · | ✅ | · | `express-only` |
 | `docs` | · | · | ✅ | · | `express-only` |
 | `document-field-mappings` | · | · | ✅ | · | `express-only` |
@@ -168,7 +169,6 @@ backlog, and it does not gate CI.
 | `assign-lead` | · | ✅ | ✅ | · | `dead-express` |
 | `contract-renewals` | · | ✅ | ✅ | · | `dead-express` |
 | `csrf-token` | · | ✅ | ✅ | · | `dead-express` |
-| `devices` | · | ✅ | ✅ | · | `dead-express` |
 | `expansion-opportunities` | · | ✅ | ✅ | · | `dead-express` |
 | `handoff-task-templates` | · | ✅ | ✅ | · | `dead-express` |
 | `handoff-tasks` | · | ✅ | ✅ | · | `dead-express` |
@@ -357,7 +357,6 @@ backlog, and it does not gate CI.
 | `mobile-field` | ✅ | ✅ | · | · | `edge-only` |
 | `oauth-proxy` | · | ✅ | · | · | `edge-only` |
 | `oid-mappings` | ✅ | ✅ | · | · | `edge-only` |
-| `order-toner` | · | ✅ | · | · | `edge-only` |
 | `outreach` | ✅ | ✅ | · | · | `edge-only` |
 | `parts-inventory` | · | ✅ | · | · | `edge-only` |
 | `payment-processing` | · | ✅ | · | · | `edge-only` |

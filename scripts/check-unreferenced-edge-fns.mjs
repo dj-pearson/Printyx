@@ -100,7 +100,21 @@ const CLIENT_TREES = [
 
 const SOURCE = /\.(ts|tsx|js|jsx|mjs|cjs|swift|kt|java|dart)$/;
 
-/** Every /api/<segment> any client source names, matched exactly. */
+/**
+ * Every /api/<segment> any client source names, matched exactly.
+ *
+ * COMMENTS ARE STRIPPED, and the reason is the sharpest version of a trap this
+ * repo keeps hitting. ManufacturerIntegrationDevices.tsx carries the line
+ * "PA-054: /api/devices is proxied by neither host, so all three of this page's
+ * calls 404'd in production" - a comment recording that the page STOPPED
+ * calling that prefix. Unstripped, it was the only thing keeping `devices` off
+ * this list: the note explaining the removal faked the reference it was
+ * documenting. That is the same failure mode CLAUDE.md records for `fleet`,
+ * where a mistaken reference was the only thing making this guard pass, so the
+ * guard was wrong in both directions on the same question.
+ *
+ * The proxy and dispatcher scans below already stripped; only this one did not.
+ */
 function clientSegments() {
   const segments = new Set();
   const walk = (dir) => {
@@ -111,7 +125,8 @@ function clientSegments() {
       if (statSync(full).isDirectory()) {
         walk(full);
       } else if (SOURCE.test(entry)) {
-        for (const m of readFileSync(full, 'utf8').matchAll(/\/api\/([a-z0-9-]+)/g)) {
+        const src = stripComments(readFileSync(full, 'utf8'));
+        for (const m of src.matchAll(/\/api\/([a-z0-9-]+)/g)) {
           segments.add(m[1]);
         }
       }

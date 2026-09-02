@@ -27,8 +27,6 @@
     "dashboard_configs (supabase/functions/dashboards/index.ts)",
     "deal_desk_requests (supabase/functions/today-dashboard/index.ts)",
     "device_readings (supabase/functions/remote-monitoring/index.ts)",
-    "devices (supabase/functions/devices/index.ts)",
-    "devices (supabase/functions/order-toner/index.ts)",
     "discovered_devices (supabase/functions/printer-monitoring/index.ts)",
     "enrichment_campaigns (supabase/functions/data-enrichment/index.ts)",
     "enrichment_campaigns (supabase/functions/enrichment/index.ts)",

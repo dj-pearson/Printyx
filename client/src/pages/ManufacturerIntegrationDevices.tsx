@@ -87,9 +87,11 @@ export default function ManufacturerIntegrationDevices() {
   const { toast } = useToast();
 
   const { data: devices = [], isLoading } = useQuery<Device[]>({
-    // PA-054: /api/devices is proxied by neither host, so all three of this
-    // page's calls 404'd in production. device-monitoring is proxied and owns
-    // device_registrations and device_metrics (AUDIT-031).
+    // PA-054: this page used to call a prefix proxied by neither host, so all
+    // three of its calls 404'd in production. device-monitoring is proxied and
+    // owns device_registrations and device_metrics (AUDIT-031). AUDIT-037
+    // deleted the function behind the old prefix - it read a `devices` table
+    // that exists in no schema and no migration.
     queryKey: ['/api/device-monitoring/devices'],
     refetchInterval: 30000,
   });
