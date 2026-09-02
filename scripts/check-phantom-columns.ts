@@ -328,6 +328,22 @@ function scan(source: string): Ref[] {
     push(m.index ?? 0, m[2], m[1]);
   }
 
+  // applyUserScope(query, 'col' | ['a','b'], scope) and applyCustomerScope(query,
+  // 'col', ...) — WF-R-04's helpers. The column names are LITERALS at the call
+  // site but the or()/in() expression is assembled inside _shared/scope.ts at
+  // runtime, so nothing above sees them. That blind spot shipped a filter on
+  // companies.owner_id and companies.assigned_sales_rep, which are columns of
+  // business_records; `companies` has neither, so the account list would have
+  // 42703'd in production. Same resolution rule as everything else here: the
+  // table is the nearest preceding .from().
+  for (const m of source.matchAll(
+    /\bapply(?:User|Customer)Scope\(\s*[\w.]+\s*,\s*(\[[^\]]*\]|'[a-z0-9_]+')/g,
+  )) {
+    for (const lit of m[1].matchAll(/'([a-z0-9_]+)'/g)) {
+      push(m.index ?? 0, lit[1], 'scope');
+    }
+  }
+
   // .or(`a.ilike.%x%,b.eq.1`) — comma-delimited, column before the first dot.
   for (const m of source.matchAll(/\.or\(\s*[`'"]([^`'"]+)[`'"]/g)) {
     for (const clause of m[1].split(',')) {

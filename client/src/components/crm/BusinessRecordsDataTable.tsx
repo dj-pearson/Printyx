@@ -10,6 +10,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
+import { RecordScopeToggle } from '@/components/RecordScopeToggle';
+import { useRecordScope } from '@/hooks/use-record-scope';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -306,6 +308,11 @@ export function BusinessRecordsDataTable({
     return tab?.filter || {};
   }, [quickFilterTabs, activeTab]);
 
+  // WF-R-05: the server decides which records this caller may see and clamps
+  // `?scope=` to their role level, so this only chooses among the tiers they
+  // already hold. It is in the QUERY KEY because two scopes are two result sets.
+  const { scope, setScope } = useRecordScope();
+
   const queryKey = useMemo(
     () => [
       '/api/companies',
@@ -316,11 +323,22 @@ export function BusinessRecordsDataTable({
         search: debouncedSearch,
         sortBy,
         sortOrder,
+        scope,
         ...activeFilters,
         ...tabFilter,
       },
     ],
-    [recordType, page, pageSize, debouncedSearch, sortBy, sortOrder, activeFilters, tabFilter],
+    [
+      recordType,
+      page,
+      pageSize,
+      debouncedSearch,
+      sortBy,
+      sortOrder,
+      scope,
+      activeFilters,
+      tabFilter,
+    ],
   );
 
   const { data: response, isLoading } = useQuery({
@@ -335,6 +353,7 @@ export function BusinessRecordsDataTable({
         offset: ((page - 1) * pageSize).toString(),
         sortBy,
         sortOrder,
+        scope,
       });
 
       if (debouncedSearch.trim()) {
@@ -521,6 +540,9 @@ export function BusinessRecordsDataTable({
               </div>
 
               <div className="flex gap-2 flex-wrap sm:flex-nowrap items-center">
+                {/* Renders nothing below level 3: a rep has one tier and no choice. */}
+                <RecordScopeToggle value={scope} onChange={setScope} label={title.toLowerCase()} />
+
                 {filters.map((filter) => (
                   <Select
                     key={filter.key}

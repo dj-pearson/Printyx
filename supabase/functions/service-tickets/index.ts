@@ -108,6 +108,7 @@ export default async function handler(req: Request) {
         userId: user.id,
         tenantId,
         appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
       });
       query = applyUserScope(query, ['assigned_technician_id', 'created_by'], scope);
 

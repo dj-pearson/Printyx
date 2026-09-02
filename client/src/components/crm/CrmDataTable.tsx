@@ -7,6 +7,8 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
+import { RecordScopeToggle } from '@/components/RecordScopeToggle';
+import { useRecordScope } from '@/hooks/use-record-scope';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -150,6 +152,11 @@ export function CrmDataTable({
   const sortField = sortConfig?.field ?? localSortField;
   const sortDir = sortConfig?.direction ?? localSortDir;
 
+  // WF-R-05: the server clamps `?scope=` to the caller's role level, so this only
+  // chooses among tiers they already hold. It is in the QUERY KEY because two
+  // scopes are two result sets and one key would show the wrong rows on switch.
+  const { scope, setScope } = useRecordScope();
+
   // Build query parameters
   const queryKey = useMemo(
     () => [
@@ -160,6 +167,7 @@ export function CrmDataTable({
         search,
         sortBy: sortField,
         sortOrder: sortDir,
+        scope,
         ...activeFilters,
         recordType: config.recordType,
       },
@@ -171,6 +179,7 @@ export function CrmDataTable({
       search,
       sortField,
       sortDir,
+      scope,
       activeFilters,
       config.recordType,
     ],
@@ -184,6 +193,7 @@ export function CrmDataTable({
         offset: ((page - 1) * pageSize).toString(),
         sortBy: sortField,
         sortOrder: sortDir,
+        scope,
       });
       if (search) params.set('search', search);
       if (config.recordType) params.set('recordType', config.recordType);
@@ -363,15 +373,17 @@ export function CrmDataTable({
 
   return (
     <div className="flex flex-col h-full">
-      {onColumnConfigChange && (
-        <div className="flex items-center justify-end px-2 py-1.5 border-b bg-background">
+      <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-b bg-background">
+        {/* Renders nothing below level 3, where there is one tier and no choice. */}
+        <RecordScopeToggle value={scope} onChange={setScope} label="records" />
+        {onColumnConfigChange && (
           <ColumnPicker
             workingConfig={workingColumnConfig}
             onChange={onColumnConfigChange}
             persists={columnsPersist}
           />
-        </div>
-      )}
+        )}
+      </div>
       <div className="flex-1 overflow-auto" ref={listNavRef}>
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">

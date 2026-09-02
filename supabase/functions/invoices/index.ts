@@ -84,6 +84,7 @@ export default async function handler(req: Request) {
         userId: user.id,
         tenantId,
         appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
       });
       const customers = await accessibleCustomerIds(admin, tenantId, scope);
       query = applyCustomerScope(query, 'customer_id', customers, scope, 'created_by');

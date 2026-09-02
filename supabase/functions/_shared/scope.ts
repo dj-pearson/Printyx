@@ -42,6 +42,14 @@ export interface ScopeInput {
   userId: string;
   tenantId: string;
   appMetadata?: Record<string, unknown> | null;
+  /**
+   * A tier the CALLER asked for, from `?scope=`. It can only narrow what the
+   * level grants - the clamp is the same one applied to the metadata claim - so a
+   * hand-written URL cannot widen anything. It exists so the list pages can offer
+   * a "my records / my team / everyone" toggle without the client deciding what
+   * the server will show.
+   */
+  requestedScope?: string | null;
 }
 
 export interface ResolvedScope {
@@ -85,17 +93,37 @@ export function tierForLevel(level: number): ScopeTier {
  * configuration - but never widen it, or the claim becomes a privilege escalation
  * anyone who can write their own metadata could use.
  */
-export function requestedTier(appMetadata: Record<string, unknown> | null | undefined): ScopeTier {
+export function requestedTier(
+  appMetadata: Record<string, unknown> | null | undefined,
+  requestedScope?: string | null,
+): ScopeTier {
   const bag = appMetadata ?? {};
-  const fromLevel = tierForLevel(scopeRoleLevel(bag));
-  const raw = String(
-    bag.territoryScope ?? bag.territory_scope ?? bag.accessScope ?? bag.access_scope ?? '',
-  )
-    .toLowerCase()
-    .trim();
-  const claimed = (SCOPE_TIERS as readonly string[]).includes(raw) ? (raw as ScopeTier) : null;
-  if (!claimed) return fromLevel;
-  return tierIndex(claimed) < tierIndex(fromLevel) ? claimed : fromLevel;
+  let allowed = tierForLevel(scopeRoleLevel(bag));
+
+  const narrow = (raw: unknown): void => {
+    const value = String(raw ?? '')
+      .toLowerCase()
+      .trim();
+    if (!(SCOPE_TIERS as readonly string[]).includes(value)) return;
+    const tier = value as ScopeTier;
+    if (tierIndex(tier) < tierIndex(allowed)) allowed = tier;
+  };
+
+  narrow(bag.territoryScope ?? bag.territory_scope ?? bag.accessScope ?? bag.access_scope);
+  narrow(requestedScope);
+  return allowed;
+}
+
+/**
+ * The tiers a caller may choose between, widest last. This is what a list page's
+ * scope toggle offers; the server clamps to the same set regardless, so the list
+ * is a convenience and never the control.
+ */
+export function availableTiers(
+  appMetadata: Record<string, unknown> | null | undefined,
+): ScopeTier[] {
+  const max = tierForLevel(scopeRoleLevel(appMetadata));
+  return SCOPE_TIERS.slice(0, tierIndex(max) + 1) as ScopeTier[];
 }
 
 /**
@@ -129,7 +157,7 @@ async function usersMatching(
  */
 export async function resolveScope(db: ScopeClient, input: ScopeInput): Promise<ResolvedScope> {
   const roleLevel = scopeRoleLevel(input.appMetadata);
-  const asked = requestedTier(input.appMetadata);
+  const asked = requestedTier(input.appMetadata, input.requestedScope);
   const base: ResolvedScope = {
     tier: asked,
     roleLevel,
@@ -253,19 +281,33 @@ function quoteInValue(value: string): string {
  * user - `business_records` has both `owner_id` and `assigned_sales_rep`, and a
  * rep who is assigned to an account they do not own must still see it.
  *
- * Rows whose owner column is NULL are INCLUDED for every tier above `own`.
- * Unassigned work is not private work: a lead nobody owns yet has to remain
- * visible to the team that is meant to pick it up, and hiding it is how a queue
- * silently empties.
+ * Rows whose owner column is NULL are INCLUDED for every tier above `own` by
+ * default. Unassigned work is not private work: a lead nobody owns yet has to
+ * remain visible to the team that is meant to pick it up, and hiding it is how a
+ * queue silently empties. Two cases override that default and both are real:
+ * `includeUnowned: false` for a table where an unowned row is a broken row rather
+ * than shared work (a commission calculation belonging to nobody), and
+ * `includeUnowned: true` for a table that cannot express ownership at all, where
+ * excluding nulls would empty the list instead of narrowing it.
  */
-export function applyUserScope<Q>(query: Q, columns: string | string[], scope: ResolvedScope): Q {
+export interface UserScopeOptions {
+  includeUnowned?: boolean;
+}
+
+export function applyUserScope<Q>(
+  query: Q,
+  columns: string | string[],
+  scope: ResolvedScope,
+  opts: UserScopeOptions = {},
+): Q {
   if (scope.userIds === null) return query;
   const cols = Array.isArray(columns) ? columns : [columns];
   if (cols.length === 0) return query;
 
   const list = scope.userIds.map(quoteInValue).join(',');
   const clauses = cols.map((c) => `${c}.in.(${list})`);
-  if (scope.tier !== 'own') {
+  const includeUnowned = opts.includeUnowned ?? scope.tier !== 'own';
+  if (includeUnowned) {
     for (const c of cols) clauses.push(`${c}.is.null`);
   }
 
@@ -293,11 +335,18 @@ export interface CustomerScope {
  * Resolve the customers a caller may see, for tables that carry no user-id owner
  * column of their own.
  *
- * `invoices` and `equipment` are the two: an invoice's `sales_rep` is an
- * E-Automate NAME string rather than a user id, and `equipment` has no owner
- * column at all - both belong to a CUSTOMER, and the customer is what carries an
- * owner. PostgREST cannot join, so the ownership has to be resolved to an id list
- * first and applied as a filter.
+ * `invoices`, `equipment` and `contracts` are the three: an invoice's `sales_rep`
+ * is an E-Automate NAME string rather than a user id, and neither of the other two
+ * names a user at all - all three belong to a CUSTOMER, and the customer is what
+ * carries an owner. PostgREST cannot join, so the ownership has to be resolved to
+ * an id list first and applied as a filter.
+ *
+ * THE CUSTOMER TABLE IS `business_records`, NOT `companies`, and the difference is
+ * not cosmetic. `companies` has 37 columns and records no account owner - only
+ * `created_by` and a free-text `business_owner`, which is the CUSTOMER's
+ * proprietor, not a user - while `business_records` carries `owner_id` and
+ * `assigned_sales_rep`. Every one of these three functions resolves its
+ * `customer_id` against `business_records`, so that is what ownership means here.
  *
  * On overflow the caller must NARROW rather than widen - see applyCustomerScope.
  */
@@ -313,7 +362,7 @@ export async function accessibleCustomerIds(
   if (scope.tier !== 'own') clauses.push('owner_id.is.null', 'assigned_sales_rep.is.null');
 
   const { data, error } = await db
-    .from('companies')
+    .from('business_records')
     .select('id')
     .eq('tenant_id', tenantId)
     .or(clauses.join(','))

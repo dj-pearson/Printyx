@@ -84,6 +84,39 @@ The last two are JSONB blobs in System A with different internal shapes again;
 Tenant isolation is intact throughout — every function filters by `tenant_id`.
 What is missing is intra-tenant privilege separation.
 
+### Progress against that (updated 2026-09-02)
+
+The third bullet no longer describes the sales and core surfaces. WF-R-03 put
+`roleLevel`, the role code and the permission list into `app_metadata` at every
+point that assigns a role, plus a backfill on the next authenticated request — so
+`getRoleLevel()` stops answering 1 for everybody. WF-R-04 and WF-R-05 then narrowed
+the ROWS on fifteen list handlers through `supabase/functions/_shared/scope.ts`:
+
+| Function                             | Scoped on                                                 |
+| ------------------------------------ | --------------------------------------------------------- |
+| `business-records`, `companies`      | `created_by` — see the caveat below                       |
+| `leads`                              | `owner_id`, `assigned_sales_rep`                          |
+| `deals`                              | `owner_id`, `created_by_id`                               |
+| `proposals`, `quotes`                | `assigned_to` / `created_by`                              |
+| `service-tickets`                    | `assigned_technician_id`, `created_by`                    |
+| `tasks`                              | `assigned_to`, `created_by`                               |
+| `meter-readings`                     | `technician_id`, `created_by`                             |
+| `purchase-orders`, `leases`          | `created_by`                                              |
+| `commission`                         | `employee_id`, and an unowned row is never shown          |
+| `invoices`, `equipment`, `contracts` | the customer's owner, resolved through `business_records` |
+
+`check:edge-rbac` gained a `rowScoped` class for these, because they are neither
+gated (every role must be able to open /deals) nor unrestricted.
+
+**Two caveats worth carrying forward.** `companies` records no account owner — 37
+columns, one user (`created_by`), and a free-text `business_owner` naming the
+CUSTOMER's proprietor. `owner_id` and `assigned_sales_rep` belong to
+`business_records`, the canonical table it duplicates, so the two handlers serving
+`companies` scope on the creator, which is weaker than ownership; the real fix is
+CRMX-002's migration. And nothing in the tree writes `users.primary_location_id`,
+`users.region_id` or `users.manager_id` outside an orphaned file, so location and
+region scope degrade to team today. WF-R-08 is the story that fills them.
+
 ## Decision
 
 **Settled 2026-09-02 (WF-R-01): see `docs/rbac-decision.md`.** In short: the `roles`

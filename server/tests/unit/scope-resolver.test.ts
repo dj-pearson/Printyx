@@ -290,7 +290,12 @@ describe('WF-R-04: the filter that reaches PostgREST', () => {
 });
 
 describe('WF-R-04: tables with no owner column of their own', () => {
-  const companies = [
+  // The customer table is business_records, NOT companies: every function that
+  // resolves a customer_id resolves it there, and `companies` records no account
+  // owner at all (37 columns, created_by and a free-text business_owner naming the
+  // customer's proprietor). The first cut of this filtered companies.owner_id,
+  // which is a 42703.
+  const business_records = [
     { id: 'c1', tenant_id: TENANT, owner_id: 'rep', assigned_sales_rep: null },
     { id: 'c2', tenant_id: TENANT, owner_id: 'other', assigned_sales_rep: 'rep' },
     { id: 'c3', tenant_id: TENANT, owner_id: 'other', assigned_sales_rep: null },
@@ -305,14 +310,14 @@ describe('WF-R-04: tables with no owner column of their own', () => {
   });
 
   it('resolves the customers a rep owns or is assigned to', async () => {
-    const res = await accessibleCustomerIds(fakeDb({ companies }), TENANT, own(['rep']));
+    const res = await accessibleCustomerIds(fakeDb({ business_records }), TENANT, own(['rep']));
     expect(new Set(res.ids)).toEqual(new Set(['c1', 'c2']));
     expect(res.overflow).toBe(false);
   });
 
   it('returns no filter at all for an unscoped caller', async () => {
     const unscoped: ResolvedScope = { ...own([]), tier: 'company', userIds: null };
-    const res = await accessibleCustomerIds(fakeDb({ companies }), TENANT, unscoped);
+    const res = await accessibleCustomerIds(fakeDb({ business_records }), TENANT, unscoped);
     expect(res.ids).toBeNull();
   });
 
@@ -323,7 +328,11 @@ describe('WF-R-04: tables with no owner column of their own', () => {
       owner_id: 'rep',
       assigned_sales_rep: null,
     }));
-    const res = await accessibleCustomerIds(fakeDb({ companies: many }), TENANT, own(['rep']));
+    const res = await accessibleCustomerIds(
+      fakeDb({ business_records: many }),
+      TENANT,
+      own(['rep']),
+    );
     expect(res.overflow).toBe(true);
     expect(res.ids).toBeNull();
   });
@@ -346,11 +355,9 @@ describe('WF-R-04: every endpoint in the story applies it', () => {
   // The columns are read out of each function's own source. A handler that stops
   // calling the helper, or starts scoping the wrong column, fails here.
   const ENDPOINTS: [string, string, string[]][] = [
-    [
-      'business-records',
-      'supabase/functions/business-records/index.ts',
-      ['owner_id', 'assigned_sales_rep', 'created_by'],
-    ],
+    // `business-records` serves the `companies` table, which has no owner column
+    // at all - see WF-R-05. created_by is the only user it names.
+    ['business-records', 'supabase/functions/business-records/index.ts', ['created_by']],
     ['deals', 'supabase/functions/deals/index.ts', ['owner_id', 'created_by_id']],
     [
       'service-tickets',

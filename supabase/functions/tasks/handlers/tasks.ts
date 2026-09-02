@@ -50,6 +50,7 @@ export async function handleTasks(req: Request, ctx: HandlerCtx): Promise<Respon
       userId: auth.userId,
       tenantId: auth.tenantId,
       appMetadata: auth.supabaseUser.app_metadata,
+      requestedScope: url.searchParams.get('scope'),
     });
     q = applyUserScope(q, ['assigned_to', 'created_by'], scope);
 

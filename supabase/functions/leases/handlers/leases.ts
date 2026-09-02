@@ -25,6 +25,7 @@ import { handlePayments } from './payments.ts';
 import { handleRenewals } from './renewals.ts';
 import { handleDispositions } from './dispositions.ts';
 import { renderLeasePDF } from '../_pdf.ts';
+import { applyUserScope, resolveScope } from '../../_shared/scope.ts';
 
 export async function handleLeases(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   const { method, pathParts, auth, db, requestId, url } = ctx;
@@ -163,6 +164,17 @@ async function listLeases(
   if (filters.status) q = q.eq('status', filters.status);
   if (filters.customerId) q = q.eq('customer_id', filters.customerId);
   q = q.order('start_date', { ascending: false }).range(offset, offset + limit - 1);
+
+  // WF-R-05. `leases` names one user, whoever raised it. Leases imported from
+  // E-Automate carry no created_by, so they stay visible above `own` scope rather
+  // than vanishing from every list the day this shipped.
+  const scope = await resolveScope(db, {
+    userId: auth.userId,
+    tenantId: auth.tenantId,
+    appMetadata: auth.supabaseUser.app_metadata,
+    requestedScope: url.searchParams.get('scope'),
+  });
+  q = applyUserScope(q, 'created_by', scope);
 
   const { data, error, count } = await q;
   if (error) return dbErr(req, requestId, 'Failed to fetch leases', error);

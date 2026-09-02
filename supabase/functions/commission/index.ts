@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { toNumber } from '../_shared/quote-math.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 /**
  * A deal's amount as a number.
@@ -106,6 +107,21 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('calculation_period_start', { ascending: false })
         .limit(500);
+
+      // WF-R-05. This is somebody's PAY. Every authenticated member of the tenant
+      // could read every colleague's gross commission, quota attainment and payout
+      // date, and the only filter was an `employeeId` query param the caller
+      // chooses. employee_id is the owner here, and unlike every other table in
+      // WF-R-04 an unowned row is NOT shown above `own` scope: a calculation
+      // belonging to nobody is a broken row, not shared work. A manager still sees
+      // their reports' calculations, because the resolved user set is the tier's.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      query = applyUserScope(query, 'employee_id', scope, { includeUnowned: false });
       if (employeeId) query = query.eq('employee_id', employeeId);
 
       const { data: calcs, error } = await query;

@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import geocodeLeadsHandler from '../geocode-leads/index.ts';
 import { toCamel } from '../_shared/case.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -92,6 +93,16 @@ export default async function handler(req: Request) {
         .eq('status', 'lead')
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
+
+      // WF-R-05. Unassigned leads stay visible above `own` scope: a shared pool
+      // that only its creator can see is a pool nobody works.
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+      query = applyUserScope(query, ['owner_id', 'assigned_sales_rep'], scope);
 
       // COP-M01: assigned_to is not a column — the rep is assigned_sales_rep.
       //

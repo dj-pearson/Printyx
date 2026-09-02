@@ -1540,6 +1540,7 @@ export default async function handler(req: Request) {
         userId: ctx.userId,
         tenantId: ctx.tenantId,
         appMetadata: ctx.supabaseUser.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
       });
       query = applyUserScope(query, ['assigned_to', 'created_by'], scope);
 
