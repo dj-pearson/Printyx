@@ -432,6 +432,23 @@ function scan(source: string): Ref[] {
       keys: source[rhs] === '{' ? topLevelKeys(balancedBody(source, rhs)) : null,
     });
   }
+  // A DESTRUCTURED BINDING IS STILL A BINDING, and missing it is the same
+  // reach-back trap the parameter rule below fixes. service-tickets has
+  // `const updateData = { … }` in its POST /updates branch (a
+  // service_ticket_updates row) and, fifty lines later,
+  // `const { updateData, changes } = applyTicketFields(body, currentTicket)`
+  // feeding `.from('service_tickets').update(updateData)`. With the pattern
+  // form unrecognised the second resolved to the first and reported six
+  // columns of service_ticket_updates as phantom columns of service_tickets -
+  // correct code accused. Bound with no keys, so the nearest-preceding rule
+  // stops there and resolves nothing, which is the honest answer for a value
+  // that came out of a function call.
+  for (const d of source.matchAll(/(?:const|let|var)\s*([{[][^=;]*?[}\]])\s*=\s*/g)) {
+    for (const name of paramNames(d[1].slice(1, -1))) {
+      declarations.push({ name, at: d.index ?? 0, keys: null });
+    }
+  }
+
   // A later bare re-assignment invalidates the literal too.
   for (const r of source.matchAll(/^\s*([A-Za-z_$][\w$]*)\s*=\s*(?!=)/gm)) {
     declarations.push({ name: r[1], at: r.index ?? 0, keys: null });

@@ -5,6 +5,12 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { enrichTickets } from './_enrich.ts';
 import { applyUserScope, resolveScope, rowInScope } from '../_shared/scope.ts';
+import {
+  applyTicketFields,
+  assignmentNotification,
+  dispatchLoad,
+  OPEN_TICKET_STATUSES,
+} from './_dispatch.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 export default async function handler(req: Request) {
@@ -116,6 +122,32 @@ export default async function handler(req: Request) {
     }
 
     // GET /service-tickets - List all tickets with filters
+    // GET /service-tickets/dispatch-load - open ticket counts per technician
+    //
+    // WF-V-03. The board needs "how busy is each technician" and the honest source
+    // is the tickets themselves. Counted SERVER-side rather than from the board's
+    // own ticket list, because that list is scoped to the caller and counting from
+    // it would under-report anyone whose other work the dispatcher cannot see - a
+    // number that looks precise and is quietly wrong.
+    if (req.method === 'GET' && ticketId === 'dispatch-load' && !subResource) {
+      const { data: rows, error } = await admin
+        .from('service_tickets')
+        .select('assigned_technician_id, status, scheduled_date')
+        .eq('tenant_id', tenantId)
+        .in('status', OPEN_TICKET_STATUSES)
+        .limit(2000);
+
+      if (error) {
+        console.error('Error computing dispatch load:', error);
+        return createCorsResponse({ error: 'Failed to compute dispatch load' }, 500, req);
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+      const summary = dispatchLoad(rows ?? [], today);
+
+      return createCorsResponse(summary, 200, req);
+    }
+
     if (req.method === 'GET' && !ticketId) {
       const status = url.searchParams.get('status');
       const priority = url.searchParams.get('priority');
@@ -357,49 +389,8 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .single();
 
-      const updateData: Record<string, any> = {
-        updated_at: new Date().toISOString(),
-      };
-
-      // Map camelCase to snake_case and track changes
-      const fieldMap: Record<string, string> = {
-        customerId: 'customer_id',
-        equipmentId: 'equipment_id',
-        ticketNumber: 'ticket_number',
-        title: 'title',
-        description: 'description',
-        priority: 'priority',
-        status: 'status',
-        assignedTechnicianId: 'assigned_technician_id',
-        scheduledDate: 'scheduled_date',
-        estimatedDuration: 'estimated_duration',
-        customerAddress: 'customer_address',
-        customerPhone: 'customer_phone',
-        requiredSkills: 'required_skills',
-        requiredParts: 'required_parts',
-        workOrderNotes: 'work_order_notes',
-        resolutionNotes: 'resolution_notes',
-        customerSignature: 'customer_signature',
-        partsUsed: 'parts_used',
-        laborHours: 'labor_hours',
-      };
-
-      const changes: Array<{ field: string; oldValue: any; newValue: any }> = [];
-
-      for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
-        if (body[camelKey] !== undefined || body[snakeKey] !== undefined) {
-          const newValue = body[camelKey] || body[snakeKey];
-          updateData[snakeKey] = newValue;
-
-          if (currentTicket && currentTicket[snakeKey] !== newValue) {
-            changes.push({
-              field: snakeKey,
-              oldValue: currentTicket[snakeKey],
-              newValue,
-            });
-          }
-        }
-      }
+      const { updateData, changes } = applyTicketFields(body, currentTicket);
+      updateData.updated_at = new Date().toISOString();
 
       // If status is completed, set resolved_at
       if (updateData.status === 'completed' && !currentTicket?.resolved_at) {
@@ -432,6 +423,27 @@ export default async function handler(req: Request) {
             updated_by: user.id,
             created_at: new Date().toISOString(),
           });
+        }
+      }
+
+      // WF-V-03: tell the technician. A dispatch board that assigns silently means
+      // the technician finds out by refreshing their queue, which is how a job sits
+      // untouched for an afternoon. Never blocks the assignment: a failed
+      // notification must not roll back a real dispatch, and user_notifications may
+      // not exist on an older database (the notifications function 503s for that).
+      const notification = assignmentNotification(
+        changes,
+        ticket,
+        user.id,
+        tenantId,
+        ticketId,
+        new Date().toISOString(),
+      );
+      if (notification) {
+        try {
+          await admin.from('user_notifications').insert(notification);
+        } catch (notifyError) {
+          console.warn('Assignment notification not sent:', notifyError);
         }
       }
 
