@@ -9,6 +9,6 @@ export { registerDealTagRoutes } from '../routes-deal-tags';
 export { registerLeadAssignmentRoutes } from '../routes-lead-assignment';
 export { registerLeadMapRoutes } from '../routes-lead-map';
 export { registerAutoLeadRoutingRoutes } from '../routes-auto-lead-routing';
-export { registerSalesHandoffRoutes } from '../routes-sales-handoff';
+// registerSalesHandoffRoutes - DELETED (WF-P-07, implementation_projects retired)
 export { registerRenewalManagementRoutes } from '../routes-renewal-management';
 export { default as contractRenewalRoutes } from '../routes-contract-renewal';

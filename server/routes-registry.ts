@@ -63,7 +63,6 @@ import {
   registerLeadAssignmentRoutes,
   registerLeadMapRoutes,
   registerAutoLeadRoutingRoutes,
-  registerSalesHandoffRoutes,
   registerRenewalManagementRoutes,
   contractRenewalRoutes,
 } from './domains/sales';
@@ -131,7 +130,6 @@ import {
 
 import {
   registerTaskRoutes,
-  registerEnhancedTaskRoutes,
   registerTemplateRoutes,
   registerTaskWorkflowRoutes,
 } from './domains/tasks';
@@ -400,7 +398,16 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Task Management ──────────────────────────────────────────────
   registerTaskRoutes(app);
-  registerEnhancedTaskRoutes(app);
+  // registerEnhancedTaskRoutes was called here and is DELETED (WF-P-07).
+  //
+  // One handler was left in it, GET /api/projects/enhanced, and it could not
+  // work on either host: it selected project_manager, estimated_budget,
+  // actual_budget, color, template, workflow and tags - the columns migration
+  // 0002 DROPPED when it converted `projects` to schema.ts's shape - because it
+  // imported `projects` from shared/task-schema.js, the pre-0002 declaration.
+  // So it was a 42703 in dev, and in production /api/projects/enhanced reaches
+  // the projects edge function, which reads 'enhanced' as an id and 404s. No
+  // client tree called it.
   registerTemplateRoutes(app);
   registerTaskWorkflowRoutes(app);
 
@@ -858,7 +865,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerChatbotRoutes(app);
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
-  registerSalesHandoffRoutes(app);
+  // registerSalesHandoffRoutes was called here and is DELETED (WF-P-07).
+  //
+  // WF-C-06 moved its handoff, task and template handlers to the edge
+  // functions and left only /api/implementation-projects behind. WF-P-07
+  // retired that model: `projects` won, and nothing ever called the losing
+  // half - not this router, not its edge function, not any client tree.
   // registerCommissionRoutes was called here and is DELETED (CR-017).
   //
   // routes-commission.ts's four handlers returned a hardcoded "Sales Rep

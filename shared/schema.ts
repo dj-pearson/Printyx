@@ -5754,25 +5754,56 @@ export const tasks = pgTable(
 );
 
 // Projects table
-export const projects = pgTable('projects', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  name: varchar('name').notNull(),
-  description: text('description'),
-  status: varchar('status').notNull().default('active'), // active, completed, on_hold, cancelled
-  customerId: varchar('customer_id'),
-  startDate: timestamp('start_date'),
-  endDate: timestamp('end_date'),
-  estimatedHours: integer('estimated_hours'),
-  actualHours: integer('actual_hours'),
-  budget: decimal('budget', { precision: 10, scale: 2 }),
-  completionPercentage: integer('completion_percentage').default(0),
-  createdBy: varchar('created_by').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+// WF-P-07 recorded the decision between the two project models this repo had:
+// `projects` survives and `implementation_projects` is dropped. `projects` is
+// the one anything can reach - TaskHub's Projects tab reads it, tasks.project_id
+// points at it - while implementation_projects had no caller in any client tree,
+// no edge function anyone routed to and an Express router nobody imported. The
+// three things it could do that projects could not are added here: the contract
+// and handoff a project came out of, and its milestones.
+//
+// docs/WF-P-07-project-model-decision.md carries the full comparison.
+export const projects = pgTable(
+  'projects',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
+    name: varchar('name').notNull(),
+    description: text('description'),
+    status: varchar('status').notNull().default('active'), // active, completed, on_hold, cancelled
+    customerId: varchar('customer_id'),
+    // WF-P-07: what this project came out of. Migration 0002 dropped an earlier
+    // contract_id from this table; these are the links the handoff screen writes.
+    contractId: varchar('contract_id'),
+    handoffId: varchar('handoff_id'),
+    projectType: varchar('project_type'), // installation, migration, expansion, training
+    // Phases with a due date and a status. The losing model held the same shape.
+    milestones: jsonb('milestones').$type<
+      Array<{
+        name: string;
+        description?: string;
+        dueDate?: string | null;
+        completedDate?: string | null;
+        status: string;
+      }>
+    >(),
+    startDate: timestamp('start_date'),
+    endDate: timestamp('end_date'),
+    estimatedHours: integer('estimated_hours'),
+    actualHours: integer('actual_hours'),
+    budget: decimal('budget', { precision: 10, scale: 2 }),
+    completionPercentage: integer('completion_percentage').default(0),
+    createdBy: varchar('created_by').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    tenantHandoffIdx: index('projects_tenant_handoff_idx').on(table.tenantId, table.handoffId),
+    tenantContractIdx: index('projects_tenant_contract_idx').on(table.tenantId, table.contractId),
+  }),
+);
 
 // System Alerts table
 export const systemAlerts = pgTable('system_alerts', {
@@ -9059,11 +9090,9 @@ export {
   salesHandoffChecklists,
   handoffTaskTemplates,
   handoffTasks,
-  implementationProjects,
   insertSalesHandoffChecklistSchema,
   insertHandoffTaskTemplateSchema,
   insertHandoffTaskSchema,
-  insertImplementationProjectSchema,
 } from './sales-handoff-schema';
 
 export type {
@@ -9073,8 +9102,6 @@ export type {
   InsertHandoffTaskTemplate,
   HandoffTask,
   InsertHandoffTask,
-  ImplementationProject,
-  InsertImplementationProject,
 } from './sales-handoff-schema';
 
 // Re-export Renewal Management schemas

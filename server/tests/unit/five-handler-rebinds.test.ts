@@ -123,7 +123,15 @@ describe('activities', () => {
 });
 
 describe('projects — read the whole migration chain, not the first file', () => {
-  const fn = strip(read('supabase/functions/projects/index.ts'));
+  // WF-P-07 moved the column mapping and the money/hours coercions into
+  // supabase/functions/projects/_project-scope.ts, so Express and the edge
+  // function build the same row from one definition. The assertions below are
+  // about that row, so they read both files.
+  const fn = strip(
+    read('supabase/functions/projects/index.ts') +
+      '\n' +
+      read('supabase/functions/projects/_project-scope.ts'),
+  );
 
   it('migration 0002 converted the table, so 0000 alone is misleading', () => {
     // This is the correction to AUDIT-039, which I filed on the strength of
@@ -141,9 +149,10 @@ describe('projects — read the whole migration chain, not the first file', () =
   });
 
   it('the handler writes the surviving columns and none of the dropped ones', () => {
-    for (const col of ['budget:', 'estimated_hours:']) expect(fn).toContain(col);
+    for (const col of ['budget', 'estimated_hours']) expect(fn).toContain(`row.${col}`);
     for (const col of ['project_manager', 'estimated_budget', 'actual_budget']) {
       expect(fn).not.toContain(`${col}:`);
+      expect(fn).not.toContain(`row.${col}`);
       expect(fn).not.toContain(`updateData.${col}`);
     }
   });

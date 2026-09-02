@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { getTableColumns } from 'drizzle-orm';
 import {
   handoffTaskTemplates,
@@ -269,12 +269,12 @@ describe('the phantom table is gone and one backend serves both hosts', () => {
     ]) {
       expect(proxy).toContain(`'${prefix}'`);
     }
-    const express = strip(readFileSync('server/routes-sales-handoff.ts', 'utf8'));
-    expect(express).not.toContain("app.get('/api/sales-handoffs'");
-    expect(express).not.toContain("app.post('/api/handoff-tasks'");
-    // implementation-projects stays: no edge function serves it, and a bare
-    // prefix entry would take it from working-in-dev to 404-in-dev.
-    expect(express).toContain("app.get('/api/implementation-projects'");
+    // The Express router is GONE now, not merely emptied of these three
+    // prefixes. WF-C-06 left /api/implementation-projects behind in it, on the
+    // grounds that no edge function served that prefix; WF-P-07 retired the
+    // model instead, so the file went with it and nothing under this domain is
+    // served twice.
+    expect(existsSync('server/routes-sales-handoff.ts')).toBe(false);
     expect(readFileSync('server/middleware/edge-function-proxy.ts', 'utf8')).not.toContain(
       "'/api/implementation-projects'",
     );

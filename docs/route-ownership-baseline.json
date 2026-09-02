@@ -1,7 +1,6 @@
 {
   "note": "EDGE-018 ratchet baseline. Grandfathered route-ownership debt as of the audit date. scripts/check-route-ownership.mjs FAILS CI when a NEW both-divergent (ambiguous Express+edge, unproxied) or missing-edge (frontend calls it, no edge fn) domain appears that is not listed here. To resolve debt: fix the domain (proxy/retire/port) and remove it from the matching list, then re-run npm run audit:routes. Regenerate this file with: node scripts/check-route-ownership.mjs --update-baseline. EDGE-020 (2026-07-29): bothDivergent GREW 59 -> 69, which is a DETECTION FIX, not a regression. Express detection previously matched only app.METHOD(\"/api/x\"), missing every route declared on a Router — both the absolute form (router.get(\"/api/x\") + app.use(router)) and the prefixed form (router.get(\"/x\") + app.use(\"/api\", router)). Those 10 domains were always divergent; the tool simply could not see them, and reported several as edge-only \"fully migrated\". Each was hand-verified before baselining. PA-022 (2026-08-30): the dead-in-both class was split out of missing-edge - a domain a live page calls that NEITHER Express nor an edge function serves. It is gated at zero rather than grandfathered, so deadInBoth here should always be empty; if it is not, something was baselined that should have been fixed.",
   "bothDivergent": [
-    "admin",
     "analytics",
     "audit-logs",
     "auto-lead-routing",
@@ -26,7 +25,6 @@
     "inventory",
     "invoices",
     "leads",
-    "maintenance",
     "managed-services",
     "manufacturer-integrations",
     "meter-readings",
@@ -38,7 +36,6 @@
     "product-models",
     "professional-services",
     "projects",
-    "purchase-orders",
     "quickbooks",
     "rbac",
     "root-admin",

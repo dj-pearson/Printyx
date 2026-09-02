@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ClipboardList, Loader2, PackagePlus } from 'lucide-react';
+import { HandoffProject } from '@/components/handoffs/HandoffProject';
 
 interface Handoff {
   id: string;
@@ -233,6 +234,11 @@ export default function SalesHandoffs() {
             <CardContent className="space-y-2">
               {handoffsQuery.isLoading ? (
                 <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : handoffsQuery.isError ? (
+                <p className="text-sm text-destructive">
+                  The queue could not be loaded, so this is not an empty queue - it is an unknown
+                  one.
+                </p>
               ) : queue.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Nothing in the queue. A handoff appears here the moment a proposal is accepted or
@@ -293,6 +299,11 @@ export default function SalesHandoffs() {
                 </p>
               ) : detailQuery.isLoading ? (
                 <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : detailQuery.isError ? (
+                <p className="text-sm text-destructive">
+                  That handoff could not be loaded. Its checklist is not shown rather than shown
+                  empty.
+                </p>
               ) : !detail ? (
                 <p className="text-sm text-muted-foreground">That handoff could not be loaded.</p>
               ) : (
@@ -369,6 +380,17 @@ export default function SalesHandoffs() {
                     </Button>
                   </form>
 
+                  {/* WF-P-07: the implementation project this handoff produces.
+                      `projects` is the surviving model - it carries handoff_id,
+                      contract_id, project_type and milestones now - and this is
+                      where it becomes creatable from the work that produces it. */}
+                  <HandoffProject
+                    handoffId={detail.id}
+                    customerId={detail.customer_id}
+                    customerName={detail.customer?.company_name ?? detail.customer_id}
+                    contractId={detail.contract_id}
+                  />
+
                   <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
                     {/* WF-P-04: the same pre-filled create the Needs Ordering tab
                         opens. The purchase-order page matches ?contractId= against
@@ -423,6 +445,8 @@ export default function SalesHandoffs() {
           <CardContent>
             {templatesQuery.isLoading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : templatesQuery.isError ? (
+              <p className="text-sm text-destructive">The templates could not be loaded.</p>
             ) : templates.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No templates yet. One is created automatically with the first handoff of each type.
