@@ -27,6 +27,7 @@ import {
   scopeRoleLevel,
   unscopedAtLevel,
 } from '../_shared/scope.ts';
+import { hasPermissionClaim } from '../_shared/permission-claim.ts';
 
 // Valid PO statuses
 const PO_STATUSES = [
@@ -101,6 +102,30 @@ export default async function handler(req: Request) {
       }),
       4,
     );
+
+    /**
+     * WF-P-05: one permission vocabulary, on both hosts.
+     *
+     * Three competed before this. The sidebar reads operations.po.* (which
+     * navigation-permissions.ts derives from the module blob and the level, and
+     * which a seeded OPERATIONS_MANAGER therefore holds); dev Express checked
+     * inventory.po.*, held by NO seeded role, so dev denied every non-admin; and
+     * this function checked nothing at all, so production allowed everyone. The
+     * codes below are the sidebar's, which is the set the WF-R-03 claim now
+     * carries - see _shared/permission-expansion.ts for why it did not before.
+     */
+    const denyWithoutPermission = (code: string) => {
+      if (hasPermissionClaim(user.app_metadata, code)) return null;
+      return createCorsResponse(
+        {
+          error: `This action requires ${code}`,
+          code: 'MISSING_PERMISSION',
+          details: { required: code },
+        },
+        403,
+        req,
+      );
+    };
 
     /** 403 for a write aimed at a row outside the caller's scope. */
     const outOfScope = () =>
@@ -351,6 +376,76 @@ export default async function handler(req: Request) {
     // WORKFLOW ACTION ENDPOINTS
     // ============================================================
 
+    // PATCH|PUT /purchase-orders/:id/status - set the status directly
+    //
+    // WF-P-05: PurchaseOrders.tsx has always called this and this function had no
+    // branch for it, so the status control worked in dev (Express) and 404'd in
+    // production. Porting it is what lets the Express router go.
+    //
+    // 'approved' through here carries the same permission as /approve, because the
+    // two do the same thing - a status control that skips the approval gate is the
+    // gate not existing.
+    if ((req.method === 'PATCH' || req.method === 'PUT') && poId && subResource === 'status') {
+      const body = await req.json().catch(() => ({}));
+      const status = String(body.status ?? '');
+      const ALLOWED = [
+        'draft',
+        'pending',
+        'pending_approval',
+        'approved',
+        'ordered',
+        'received',
+        'partially_received',
+        'cancelled',
+        'rejected',
+      ];
+      if (!ALLOWED.includes(status)) {
+        return createCorsResponse(
+          { error: 'Invalid status value', details: { allowed: ALLOWED } },
+          400,
+          req,
+        );
+      }
+
+      if (status === 'approved' || status === 'rejected') {
+        const denied = denyWithoutPermission('operations.po.approve');
+        if (denied) return denied;
+      }
+
+      const { data: existing } = await admin
+        .from('purchase_orders')
+        .select('id, created_by')
+        .eq('id', poId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (!existing) {
+        return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
+      }
+      if (!rowInScope(existing, 'created_by', poScope)) return outOfScope();
+
+      const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+      if (status === 'approved') {
+        // approved_date, not approved_at - AUDIT-037.
+        patch.approved_by = user.id;
+        patch.approved_date = new Date().toISOString();
+      }
+
+      const { data: updated, error } = await admin
+        .from('purchase_orders')
+        .update(patch)
+        .eq('id', poId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error updating purchase order status:', error);
+        return createCorsResponse({ error: 'Failed to update purchase order status' }, 500, req);
+      }
+      if (!updated) return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
+      return createCorsResponse(updated, 200, req);
+    }
+
     // POST /purchase-orders/:id/submit - Submit PO for approval
     if (req.method === 'POST' && poId && subResource === 'submit') {
       const { data: po, error: poError } = await admin
@@ -365,7 +460,12 @@ export default async function handler(req: Request) {
       }
 
       // WF-R-06: submitting somebody else's draft puts their name on an approval
-      // request they did not make.
+      // request they did not make. WF-P-05: and submitting at all is
+      // operations.po.create.
+      {
+        const denied = denyWithoutPermission('operations.po.create');
+        if (denied) return denied;
+      }
       if (!rowInScope(po, 'created_by', poScope)) return outOfScope();
 
       if (po.status !== 'draft') {
@@ -414,20 +514,16 @@ export default async function handler(req: Request) {
 
     // POST /purchase-orders/:id/approve - Approve PO
     if (req.method === 'POST' && poId && subResource === 'approve') {
-      // WF-R-06: NOTHING gated this. Any authenticated member of the tenant could
-      // approve any purchase order in it, whatever their role. Level 4 is where the
-      // approval ladder starts (WF-R-05's tier table: L3-4 team and location), and
-      // it is also why the scope above stops applying at 4 - an approver sees the
-      // whole queue precisely because they are allowed to act on it.
-      if (scopeRoleLevel(user.app_metadata) < 4) {
-        return createCorsResponse(
-          {
-            error: 'Approving or rejecting a purchase order requires role level 4 or higher',
-            code: 'INSUFFICIENT_ROLE',
-          },
-          403,
-          req,
-        );
+      // WF-R-06/WF-P-05: NOTHING gated this. Any authenticated member of the
+      // tenant could approve any purchase order in it, whatever their role. The
+      // permission is operations.po.approve, which the expansion grants at level 4
+      // with the inventory or purchasing module - so an OPERATIONS_MANAGER holds
+      // it and a WAREHOUSE_ASSOCIATE does not. That level is also why the scope
+      // above stops applying at 4: an approver sees the whole queue precisely
+      // because they are allowed to act on it.
+      {
+        const denied = denyWithoutPermission('operations.po.approve');
+        if (denied) return denied;
       }
 
       const body = await req.json().catch(() => ({}));
@@ -476,20 +572,16 @@ export default async function handler(req: Request) {
 
     // POST /purchase-orders/:id/reject - Reject PO
     if (req.method === 'POST' && poId && subResource === 'reject') {
-      // WF-R-06: NOTHING gated this. Any authenticated member of the tenant could
-      // reject any purchase order in it, whatever their role. Level 4 is where the
-      // approval ladder starts (WF-R-05's tier table: L3-4 team and location), and
-      // it is also why the scope above stops applying at 4 - an approver sees the
-      // whole queue precisely because they are allowed to act on it.
-      if (scopeRoleLevel(user.app_metadata) < 4) {
-        return createCorsResponse(
-          {
-            error: 'Approving or rejecting a purchase order requires role level 4 or higher',
-            code: 'INSUFFICIENT_ROLE',
-          },
-          403,
-          req,
-        );
+      // WF-R-06/WF-P-05: NOTHING gated this. Any authenticated member of the
+      // tenant could reject any purchase order in it, whatever their role. The
+      // permission is operations.po.approve, which the expansion grants at level 4
+      // with the inventory or purchasing module - so an OPERATIONS_MANAGER holds
+      // it and a WAREHOUSE_ASSOCIATE does not. That level is also why the scope
+      // above stops applying at 4: an approver sees the whole queue precisely
+      // because they are allowed to act on it.
+      {
+        const denied = denyWithoutPermission('operations.po.approve');
+        if (denied) return denied;
       }
 
       const body = await req.json().catch(() => ({}));

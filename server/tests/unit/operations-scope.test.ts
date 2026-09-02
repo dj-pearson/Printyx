@@ -105,15 +105,20 @@ describe('WF-R-06: purchase orders', () => {
     expect(src).toMatch(/unscopedAtLevel\(\s*await resolveScope\([\s\S]{0,300}?\),\s*4,?\s*\)/);
   });
 
-  it('requires level 4 to approve or reject, which nothing did before', () => {
-    const gates = [...src.matchAll(/scopeRoleLevel\(user\.app_metadata\) < 4/g)];
-    expect(gates).toHaveLength(2);
-    expect(src).toMatch(/INSUFFICIENT_ROLE/);
+  it('requires a permission to approve or reject, which nothing did before', () => {
+    // WF-R-06 gated these on level 4. WF-P-05 replaced that with the permission
+    // the sidebar already reads - operations.po.approve, which the expansion
+    // grants at level 4 with the inventory or purchasing module, so the line is
+    // the same one and it is now named the same way on both sides.
+    const gates = [...src.matchAll(/denyWithoutPermission\('operations\.po\.approve'\)/g)];
+    // approve, reject, and a status PATCH setting approved/rejected.
+    expect(gates.length).toBeGreaterThanOrEqual(3);
+    expect(src).toMatch(/MISSING_PERMISSION/);
   });
 
   it('checks the row on every write that is not an approval', () => {
-    // submit, receive and update each address an id directly.
-    expect([...src.matchAll(/rowInScope\(\w+, 'created_by', poScope\)/g)]).toHaveLength(3);
+    // submit, receive, update and the status PATCH each address an id directly.
+    expect([...src.matchAll(/rowInScope\(\w+, 'created_by', poScope\)/g)]).toHaveLength(4);
   });
 
   it('selects created_by wherever it checks it', () => {

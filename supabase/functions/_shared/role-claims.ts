@@ -26,6 +26,8 @@
  * writing the key also means a stale non-empty list cannot outlive a role change.
  */
 
+import { expandLegacyPermissions } from './permission-expansion.ts';
+
 /** The subset of the Supabase client this module uses. */
 export interface ClaimsClient {
   from(table: string): any;
@@ -82,6 +84,35 @@ export function flattenRolePermissions(obj: unknown): string[] {
 }
 
 /**
+ * The permission codes for a role's blob (WF-P-05).
+ *
+ * `roles.permissions` holds the nine MODULE booleans - that is what migration 0073
+ * writes and what client/src/lib/navigation-permissions.ts has always derived the
+ * sidebar from. Flattening a module blob gives module NAMES ('sales', 'products'),
+ * so a gate on a three-segment code like `operations.po.approve` matched nothing
+ * for everyone. Expanding it gives the same codes the sidebar computes, so an
+ * endpoint and the menu item leading to it agree.
+ *
+ * A blob that is already NESTED three-segment (`{sales: {lead: ['view_own']}}`) is
+ * flattened instead: that is the shape docs/rbac-decision.md picks as canonical, so
+ * a tenant that has authored one keeps it.
+ */
+export function permissionCodes(blob: unknown, level: number): string[] {
+  if (!blob || typeof blob !== 'object') return [];
+
+  const entries = Object.entries(blob as Record<string, unknown>);
+  const isModuleBlob = entries.length > 0 && entries.every(([, v]) => typeof v === 'boolean');
+
+  if (isModuleBlob) {
+    const modules: Record<string, boolean> = {};
+    for (const [k, v] of entries) modules[k] = v === true;
+    return [...expandLegacyPermissions(modules, level)];
+  }
+
+  return flattenRolePermissions(blob);
+}
+
+/**
  * Build the claims for one role id. Returns null when the row is absent, which is
  * a real state - `users.role_id` is nullable and a role can be deleted out from
  * under a user - and the caller must not invent a level for it.
@@ -108,7 +139,7 @@ export async function buildRoleClaims(
     roleId: data.id,
     roleLevel: level,
     role: typeof data.code === 'string' ? data.code : null,
-    permissions: flattenRolePermissions(data.permissions),
+    permissions: permissionCodes(data.permissions, level),
     // Two independent ways to be a platform admin, and the flag is the one the
     // `roles` row states outright: `can_access_all_tenants` is what
     // supabase/functions/admin/ already reads to decide cross-tenant access.

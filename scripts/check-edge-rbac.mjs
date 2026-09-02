@@ -61,10 +61,17 @@ function hasRoleOnlyPlatformAdminCheck(source) {
 }
 
 const SIGNALS = [
-  // 1. The shared helper: JWT level check, or a DB permission lookup.
+  // 1. The shared helper: JWT level check, or a permission code off the claim.
+  //
+  // WF-P-05 added _shared/permission-claim.ts, which answers the claim-only
+  // question rather than falling through to the DB lookup _shared/rbac.ts wants a
+  // hook for. It is a gate; a function using it was being reported as ungated.
   {
     kind: 'shared-rbac',
-    test: (s) => /_shared\/rbac(\.ts)?['"]|requireRoleLevel|requirePermission/.test(s),
+    test: (s) =>
+      /_shared\/(rbac|permission-claim)(\.ts)?['"]|requireRoleLevel|requirePermission|hasPermissionClaim/.test(
+        s,
+      ),
   },
   // 2. Platform-admin only, excluding the cross-tenant override above.
   { kind: 'platform-admin', test: hasRoleOnlyPlatformAdminCheck },

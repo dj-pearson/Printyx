@@ -12,6 +12,14 @@
  * serialized line records its receipt without moving bulk inventory, because
  * those units become equipment rows (WF-L-04) and counting both would double
  * them; and status is derived from all the lines, never from the receipt.
+ *
+ * WF-P-05 UPDATE: there is no longer a second copy.
+ * server/services/purchase-order-receiving.ts existed because Express served this
+ * prefix in dev while the edge function served production, and the two had to
+ * agree - the premise of the parity test that guarded them. /api/purchase-orders
+ * is proxied now and the Express router is deleted, so the duplicate was one more
+ * thing to keep in step for no host. Both it and the parity test are gone; this
+ * file tests the surviving module.
  */
 
 import { describe, it, expect } from 'vitest';

@@ -81,7 +81,6 @@ import {
 
 import {
   registerWarehouseRoutes,
-  registerPurchaseOrderRoutes,
   autoSupplyReplenishmentRoutes,
   warehouseFpyRoutes,
 } from './domains/warehouse';
@@ -406,7 +405,8 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerTaskWorkflowRoutes(app);
 
   // ─── Warehouse & Purchase Orders ──────────────────────────────────
-  registerPurchaseOrderRoutes(app);
+  // WF-P-05: registerPurchaseOrderRoutes DELETED. /api/purchase-orders is proxied
+  // to the edge function now, which is the only host production ever used.
   registerWarehouseRoutes(app);
 
   // ─── Service & CRM ────────────────────────────────────────────────

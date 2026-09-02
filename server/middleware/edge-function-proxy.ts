@@ -871,6 +871,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // (routes-admin-workflows was deleted by QUALITY-002). So the page worked in
     // production and 404'd in dev. Scoped per path for exactly that reason: a bare
     // '/api/admin' entry would swallow the three prefixes Express does own.
+    // WF-P-05. /api/purchase-orders was served by Express in dev and by the edge
+    // function in production - the both-divergent class - and the two disagreed
+    // about who may approve: Express required inventory.po.*, which NO seeded role
+    // holds, so dev denied every non-admin; the edge function checked nothing, so
+    // production allowed everyone. The Express router is deleted and the prefix is
+    // proxied, after porting the /:id/status branch it had and the edge function
+    // did not (PurchaseOrders.tsx calls it, so that control 404'd in production).
+    '/api/purchase-orders': 'purchase-orders',
+
     '/api/admin/users': { fn: 'admin', pathPrefix: '/users' },
     '/api/admin/locations': { fn: 'admin', pathPrefix: '/locations' },
     '/api/admin/regions': { fn: 'admin', pathPrefix: '/regions' },
