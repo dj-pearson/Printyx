@@ -6206,6 +6206,12 @@ export const proposalTemplates = pgTable('proposal_templates', {
     footerContent?: string;
   }>(),
 
+  // AUDIT-037: on every database since migration 0000 and never declared, so
+  // drizzle-kit had not seen it and every read of it looked like a phantom. It
+  // is the jsonb the template body lives in - the five body-section columns the
+  // edge function used to name do not exist and fold into this one.
+  templateContent: jsonb('template_content').default('{}'),
+
   // Created by and ownership
   createdBy: varchar('created_by').notNull(),
   teamId: varchar('team_id'), // If team-specific template
