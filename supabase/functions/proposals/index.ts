@@ -63,6 +63,12 @@ import {
 } from './_acquisition.ts';
 import { createHandoff } from '../_shared/handoff-create.ts';
 import { handoffTypeFor } from '../_shared/sales-handoff.ts';
+import {
+  PROPOSAL_SENT_STAGE_NAMES,
+  resolveProposalSentStageId,
+  resolveWonStageId,
+  type CanonicalStage,
+} from '../_shared/canonical-stage.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { renderProposalPDF } from './_pdf.ts';
@@ -703,33 +709,42 @@ async function getFirstStageId(db: SB, tenantId: string): Promise<string | null>
   return data?.id ?? null;
 }
 
-async function getWonStageId(db: SB, tenantId: string): Promise<string | null> {
-  // COP-M07 AC2: WHICH stage is won is stage configuration, and it is answered
-  // by pipeline_stages.is_closed_won. The legacy ID is still what gets written -
-  // deals.stage_id lives in that id space - so this asks the canonical table the
-  // semantic question and takes the legacy id off the bridge. It used to filter
-  // deal_stages.is_won_stage directly, which is the same answer today only
-  // because the mirror copies the flag.
-  const { data: canonical } = await db
+async function loadCanonicalStages(db: SB, tenantId: string): Promise<CanonicalStage[]> {
+  const { data } = await db
     .from('pipeline_stages')
-    .select('legacy_stage_id')
-    .eq('tenant_id', tenantId)
-    .eq('is_closed_won', true)
-    .not('legacy_stage_id', 'is', null)
-    .limit(1)
-    .maybeSingle();
-  if (canonical?.legacy_stage_id) return canonical.legacy_stage_id;
+    .select(
+      'id, legacy_stage_id, name, display_name, "order", is_closed_won, is_closed_lost, is_active',
+    )
+    .eq('tenant_id', tenantId);
+  return (data ?? []) as CanonicalStage[];
+}
 
-  // A tenant whose stages predate the bridge has no mirrored row, so fall back
-  // to the name - the same shape reports/frontend-stubs.ts uses.
-  const byName = await getStageIdByName(db, tenantId, 'Closed Won');
-  if (byName) return byName;
-  return await getFirstStageId(db, tenantId);
+async function getWonStageId(db: SB, tenantId: string): Promise<string | null> {
+  // WF-C-08. This used to read deal_stages.is_won_stage, then match the NAME
+  // 'Closed Won', then fall back to the FIRST stage. The pipeline configuration
+  // UI edits pipeline_stages only and never mirrors back, so a tenant that
+  // renamed its closed-won stage - or added a second one - had every accepted
+  // proposal land at the front of the pipeline. A won deal in "Prospecting" is
+  // counted as open pipeline by the forecast, which is worse than not moving it.
+  //
+  // Same resolution as pipeline-config's /deals/:id/move, via
+  // _shared/canonical-stage.ts, and a fixture test asserts the two agree.
+  const canonical = resolveWonStageId(await loadCanonicalStages(db, tenantId));
+  if (canonical) return canonical;
+
+  // A tenant whose stages predate the bridge has no canonical rows at all.
+  return await getStageIdByName(db, tenantId, 'Closed Won');
 }
 
 async function getProposalSentStageId(db: SB, tenantId: string): Promise<string | null> {
-  // "Presentation Scheduled" is a safe mid-pipeline fallback.
-  for (const name of ['Contract Sent', 'Proposal Sent', 'Presentation Scheduled']) {
+  // WF-C-08, and the asymmetry with getWonStageId is deliberate: a proposal has
+  // genuinely been sent, so the deal has to sit somewhere, and the front of the
+  // pipeline is where a deal with no better stage belongs. A WON deal has no
+  // such excuse.
+  const canonical = resolveProposalSentStageId(await loadCanonicalStages(db, tenantId));
+  if (canonical) return canonical;
+
+  for (const name of PROPOSAL_SENT_STAGE_NAMES) {
     const id = await getStageIdByName(db, tenantId, name);
     if (id) return id;
   }

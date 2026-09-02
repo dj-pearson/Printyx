@@ -44,6 +44,7 @@ import { flagsToStageType, stageTypeToFlags } from '../_shared/pipeline-stage-ty
 import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
 import { createHandoff } from '../_shared/handoff-create.ts';
 import { handoffTypeFor } from '../_shared/sales-handoff.ts';
+import { resolveStage, type CanonicalStage } from '../_shared/canonical-stage.ts';
 
 const log = createLogger('pipeline-config');
 
@@ -700,9 +701,10 @@ export default async function handler(req: Request) {
       }
 
       const { template, stages } = await ensureCanonicalPipeline(db, ctx.tenantId, ctx.userId);
-      // deno-lint-ignore no-explicit-any
+      // WF-C-08: the same rule proposals now uses, in one place, so the two
+      // cannot answer differently for the same tenant.
       const resolve = (legacyId: string | null | undefined) =>
-        (stages as any[]).find((s) => (s.legacy_stage_id ?? s.id) === legacyId);
+        resolveStage(stages as CanonicalStage[], legacyId);
       const toStage = resolve(toStageId);
 
       const { data: deal } = await db
