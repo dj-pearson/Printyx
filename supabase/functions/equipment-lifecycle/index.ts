@@ -4,104 +4,11 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import {
+  LIFECYCLE_STAGES,
   canTransition,
   getAvailableTransitions,
   getValidationRequirements,
 } from '../_shared/equipment-lifecycle-transitions.ts';
-
-// Valid lifecycle stages
-const LIFECYCLE_STAGES = {
-  ORDERED: 'ordered',
-  RECEIVED: 'received',
-  STAGED: 'staged',
-  IN_TRANSIT: 'in_transit',
-  DELIVERED: 'delivered',
-  INSTALLED: 'installed',
-  ACTIVE: 'active',
-  MAINTENANCE: 'maintenance',
-  RETIRED: 'retired',
-  DISPOSED: 'disposed',
-  TRADED_IN: 'traded_in',
-} as const;
-
-// Valid transitions between stages
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  [LIFECYCLE_STAGES.ORDERED]: [LIFECYCLE_STAGES.RECEIVED, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.RECEIVED]: [LIFECYCLE_STAGES.STAGED, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.STAGED]: [LIFECYCLE_STAGES.IN_TRANSIT, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.IN_TRANSIT]: [LIFECYCLE_STAGES.DELIVERED, LIFECYCLE_STAGES.STAGED],
-  [LIFECYCLE_STAGES.DELIVERED]: [LIFECYCLE_STAGES.INSTALLED, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.INSTALLED]: [LIFECYCLE_STAGES.ACTIVE, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.ACTIVE]: [LIFECYCLE_STAGES.MAINTENANCE, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.MAINTENANCE]: [LIFECYCLE_STAGES.ACTIVE, LIFECYCLE_STAGES.RETIRED],
-  [LIFECYCLE_STAGES.RETIRED]: [LIFECYCLE_STAGES.DISPOSED, LIFECYCLE_STAGES.TRADED_IN],
-  [LIFECYCLE_STAGES.DISPOSED]: [],
-  [LIFECYCLE_STAGES.TRADED_IN]: [],
-};
-
-// Validation requirements for transitions
-const VALIDATIONS: Record<string, Record<string, string[]>> = {
-  [LIFECYCLE_STAGES.RECEIVED]: {
-    [LIFECYCLE_STAGES.STAGED]: [
-      'quality_control_passed',
-      'serial_number_verified',
-      'photo_documentation',
-    ],
-  },
-  [LIFECYCLE_STAGES.STAGED]: {
-    [LIFECYCLE_STAGES.IN_TRANSIT]: ['delivery_scheduled', 'driver_assigned', 'customer_notified'],
-  },
-  [LIFECYCLE_STAGES.IN_TRANSIT]: {
-    [LIFECYCLE_STAGES.DELIVERED]: ['delivery_signature_collected', 'equipment_condition_verified'],
-  },
-  [LIFECYCLE_STAGES.DELIVERED]: {
-    [LIFECYCLE_STAGES.INSTALLED]: [
-      'delivery_signature',
-      'equipment_unpacked',
-      'site_inspection_passed',
-    ],
-  },
-  [LIFECYCLE_STAGES.INSTALLED]: {
-    [LIFECYCLE_STAGES.ACTIVE]: [
-      'installation_completed',
-      'configuration_backed_up',
-      'customer_trained',
-      'acceptance_signed',
-    ],
-  },
-  [LIFECYCLE_STAGES.ACTIVE]: {
-    [LIFECYCLE_STAGES.RETIRED]: [
-      'maintenance_history_reviewed',
-      'customer_notification_sent',
-      'replacement_planned',
-    ],
-  },
-  [LIFECYCLE_STAGES.RETIRED]: {
-    [LIFECYCLE_STAGES.DISPOSED]: [
-      'data_wiped_confirmed',
-      'disposal_vendor_selected',
-      'certificate_of_destruction',
-    ],
-    [LIFECYCLE_STAGES.TRADED_IN]: [
-      'trade_in_evaluation_completed',
-      'trade_in_credit_approved',
-      'customer_acceptance',
-    ],
-  },
-};
-
-function canTransition(fromStage: string, toStage: string): boolean {
-  const allowedTransitions = VALID_TRANSITIONS[fromStage];
-  return allowedTransitions?.includes(toStage) ?? false;
-}
-
-function getAvailableTransitions(currentStage: string): string[] {
-  return VALID_TRANSITIONS[currentStage] || [];
-}
-
-function getValidationRequirements(fromStage: string, toStage: string): string[] {
-  return VALIDATIONS[fromStage]?.[toStage] || [];
-}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
