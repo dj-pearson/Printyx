@@ -53,7 +53,11 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && reportType === 'personal' && subReport === 'pipeline') {
       const { data: deals } = await admin
         .from('deals')
-        .select('id, stage, deal_value, probability, weighted_value')
+        // AUDIT-037: stage, deal_value and weighted_value are not columns.
+        // `deals` has stage_id and amount, and nothing stores a weighted value -
+        // it is amount x probability, computed below. Before this the select
+        // 42703'd and every pipeline report was empty.
+        .select('id, stage_id, amount, probability')
         .eq('tenant_id', tenantId)
         .eq('owner_id', user.id)
         .eq('status', 'open');
@@ -65,14 +69,17 @@ export default async function handler(req: Request) {
       >();
       (deals || []).forEach((deal: any) => {
         const current = stageMap.get(deal.stage) || { count: 0, totalValue: 0, weightedValue: 0 };
-        stageMap.set(deal.stage, {
+        stageMap.set(deal.stage_id, {
           count: current.count + 1,
-          totalValue: current.totalValue + (deal.deal_value || 0),
-          weightedValue: current.weightedValue + (deal.weighted_value || 0),
+          totalValue: current.totalValue + Number(deal.amount ?? 0),
+          weightedValue:
+            current.weightedValue +
+            (Number(deal.amount ?? 0) * Number(deal.probability ?? 0)) / 100,
         });
       });
 
       const pipeline = Array.from(stageMap.entries()).map(([stage, stats]) => ({
+        // The key is deals.stage_id, a legacy deal_stages.id (CRMX-005).
         stage,
         ...stats,
       }));
@@ -136,13 +143,13 @@ export default async function handler(req: Request) {
       // Get won deals
       const { data: wonDeals } = await admin
         .from('deals')
-        .select('deal_value')
+        .select('amount')
         .eq('tenant_id', tenantId)
         .eq('owner_id', user.id)
         .eq('status', 'won');
 
       const actualRevenue =
-        wonDeals?.reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0) || 0;
+        wonDeals?.reduce((sum: number, d: any) => sum + Number(d.amount ?? 0), 0) || 0;
       const quotaAmount = quota?.amount || 100000;
       const attainmentPercent = quotaAmount > 0 ? (actualRevenue / quotaAmount) * 100 : 0;
 
@@ -211,22 +218,25 @@ export default async function handler(req: Request) {
 
       const { data: wonDeals } = await admin
         .from('deals')
-        .select('deal_value')
+        .select('amount')
         .eq('tenant_id', tenantId)
         .eq('status', 'won');
 
       const { data: openDeals } = await admin
         .from('deals')
-        .select('deal_value, weighted_value')
+        .select('amount, probability')
         .eq('tenant_id', tenantId)
         .eq('status', 'open');
 
       const totalWonValue =
-        wonDeals?.reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0) || 0;
+        wonDeals?.reduce((sum: number, d: any) => sum + Number(d.amount ?? 0), 0) || 0;
       const totalPipelineValue =
-        openDeals?.reduce((sum: number, d: any) => sum + (d.deal_value || 0), 0) || 0;
+        openDeals?.reduce((sum: number, d: any) => sum + Number(d.amount ?? 0), 0) || 0;
       const totalWeightedValue =
-        openDeals?.reduce((sum: number, d: any) => sum + (d.weighted_value || 0), 0) || 0;
+        openDeals?.reduce(
+          (sum: number, d: any) => sum + (Number(d.amount ?? 0) * Number(d.probability ?? 0)) / 100,
+          0,
+        ) || 0;
 
       return createCorsResponse(
         {

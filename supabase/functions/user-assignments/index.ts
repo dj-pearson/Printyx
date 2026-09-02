@@ -54,9 +54,12 @@ export default async function handler(req: Request) {
       // Get assigned deals
       const { data: deals } = await admin
         .from('deals')
-        .select('id, name, value, stage, created_at')
+        // AUDIT-037: name, value, stage and assigned_to_id are not columns on
+        // `deals` - it has title, amount, stage_id and owner_id - so this
+        // 42703'd and the assignment page showed no deals for anyone.
+        .select('id, title, amount, stage_id, created_at')
         .eq('tenant_id', tenantId)
-        .eq('assigned_to_id', userId)
+        .eq('owner_id', userId)
         .order('created_at', { ascending: false });
 
       // Get assigned tasks

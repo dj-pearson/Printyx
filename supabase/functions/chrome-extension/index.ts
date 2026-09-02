@@ -127,17 +127,21 @@ export default async function handler(req: Request) {
           tenant_id: auth.tenantId,
           record_type: 'lead',
           status: 'new',
-          first_name: firstName ?? '',
-          last_name: lastName ?? '',
-          job_title: body.jobTitle ?? null,
+          // AUDIT-037: first_name, last_name, job_title, linkedin_url, email,
+          // lead_source and tags are not columns on business_records - a record
+          // there is a COMPANY, and the person is in the primary_contact_*
+          // fields. So importing a contact from the extension 42703'd every
+          // time. linkedin_url and tags have no home at all and are dropped
+          // rather than given columns nothing else reads.
+          primary_contact_name: [firstName, lastName].filter(Boolean).join(' ') || null,
+          primary_contact_title: body.jobTitle ?? null,
           company_name: body.company,
-          linkedin_url: body.linkedinUrl ?? null,
-          email: body.email?.toLowerCase() ?? null,
+          primary_contact_email: body.email?.toLowerCase() ?? null,
+          primary_contact_phone: body.phone ?? null,
           phone: body.phone ?? null,
-          lead_source: `Chrome Extension - ${body.source === 'linkedin' ? 'LinkedIn' : 'Salesforce'}`,
+          source: `Chrome Extension - ${body.source === 'linkedin' ? 'LinkedIn' : 'Salesforce'}`,
           created_by: auth.userId,
           owner_id: auth.userId,
-          tags: ['Chrome Extension'],
         })
         .select('*')
         .single();
@@ -181,8 +185,8 @@ export default async function handler(req: Request) {
           record: result.exists
             ? {
                 id: result.record.id,
-                name: `${result.record.first_name ?? ''} ${result.record.last_name ?? ''}`.trim(),
-                email: result.record.email,
+                name: result.record.primary_contact_name ?? '',
+                email: result.record.primary_contact_email,
                 company: result.record.company_name,
                 jobTitle: result.record.job_title,
                 status: result.record.status,
@@ -335,15 +339,15 @@ interface DuplicateResult {
   exists: boolean;
   record: {
     id: string;
-    first_name: string | null;
-    last_name: string | null;
-    email: string | null;
+    primary_contact_name: string | null;
+    primary_contact_email: string | null;
     company_name: string | null;
-    job_title: string | null;
+    primary_contact_title: string | null;
     status: string | null;
     created_at: string | null;
   } | null;
-  matchType: 'linkedinUrl' | 'email' | 'nameAndCompany' | null;
+  // linkedinUrl is gone: business_records has no linkedin_url to match on.
+  matchType: 'email' | 'nameAndCompany' | null;
 }
 
 async function checkDuplicate(
@@ -351,27 +355,16 @@ async function checkDuplicate(
   tenantId: string,
   params: DuplicateParams,
 ): Promise<DuplicateResult> {
+  // AUDIT-037: this named first_name, last_name, email, job_title and
+  // linkedin_url, none of which is a column on business_records - a record there
+  // is a company, and the person lives in primary_contact_*. So the duplicate
+  // check 42703'd on every lookup and the extension imported duplicates freely.
+  //
+  // There is no linkedin_url anywhere on the table, so that match is gone rather
+  // than pointed at something approximate: matching a LinkedIn profile against a
+  // company name would merge two different people at the same employer.
   const selectCols =
-    'id, first_name, last_name, email, company_name, job_title, status, linkedin_url, created_at';
-
-  // LinkedIn URL (most reliable)
-  if (params.linkedinUrl) {
-    const normalized = params.linkedinUrl
-      .replace(/^https?:\/\/(www\.)?/, '')
-      .replace(/\/$/, '')
-      .toLowerCase();
-    // Supabase-js has no sql-expression helper for normalized ilike; use ilike
-    // against the raw column + the trailing portion of the URL.
-    const { data } = await db
-      .from('business_records')
-      .select(selectCols)
-      .eq('tenant_id', tenantId)
-      .ilike('linkedin_url', `%${normalized.split('/').slice(-2).join('/')}%`)
-      .limit(1);
-    if (data && data.length > 0) {
-      return { exists: true, record: data[0], matchType: 'linkedinUrl' };
-    }
-  }
+    'id, primary_contact_name, primary_contact_email, company_name, primary_contact_title, status, created_at';
 
   // Email
   if (params.email) {
@@ -379,7 +372,7 @@ async function checkDuplicate(
       .from('business_records')
       .select(selectCols)
       .eq('tenant_id', tenantId)
-      .ilike('email', params.email)
+      .ilike('primary_contact_email', params.email)
       .limit(1);
     if (data && data.length > 0) {
       return { exists: true, record: data[0], matchType: 'email' };
