@@ -72,7 +72,7 @@ export default async function handler(req: Request) {
       return await aiDegraded(req, 'single-device AI analysis');
     }
     if (req.method === 'POST' && first && second === 'schedule') {
-      return await scheduleProactiveService(admin, tenantId, first, req);
+      return await scheduleProactiveService(admin, tenantId, first, user.id, req);
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
@@ -89,17 +89,44 @@ export default async function handler(req: Request) {
 // ─── /dashboard ─────────────────────────────────────────────────────────────
 
 async function dashboard(admin: Admin, tenantId: string, req: Request): Promise<Response> {
+  // AUDIT-037: this select named make, model, location, current_meter_reading
+  // and status. The columns are manufacturer, model_number,
+  // location_description and equipment_status, and there is NO meter column on
+  // equipment at all - readings live in meter_readings. PostgREST rejects the
+  // whole select on one bad name, so the error branch below fired on every
+  // request and this dashboard has never loaded.
   const { data: equipmentRows, error } = await admin
     .from('equipment')
     .select(
-      'id, serial_number, make, model, customer_id, location, current_meter_reading, last_service_date, next_service_due_date, install_date, status',
+      'id, serial_number, manufacturer, model_number, customer_id, location_description, last_service_date, next_service_due_date, install_date, equipment_status',
     )
     .eq('tenant_id', tenantId)
-    .eq('status', 'active')
+    .eq('equipment_status', 'active')
     .order('next_service_due_date', { ascending: true });
 
   if (error) {
     return createCorsResponse({ error: 'Failed to fetch equipment' }, 500, req);
+  }
+
+  // The meter term in the health score below needs a reading per device, and
+  // meter_readings is where they are. One batched pass, latest row per
+  // equipment_id; a device with no reading contributes no meter term rather
+  // than a zero, because zero pages and "never read" are different facts.
+  const equipmentIds = ((equipmentRows ?? []) as Array<{ id: string }>).map((e) => e.id);
+  const meterByEquipment = new Map<string, number>();
+  if (equipmentIds.length > 0) {
+    const { data: readings } = await admin
+      .from('meter_readings')
+      .select('equipment_id, reading_date, bw_meter_reading, color_meter_reading')
+      .eq('tenant_id', tenantId)
+      .in('equipment_id', equipmentIds)
+      .order('reading_date', { ascending: false });
+    for (const r of (readings ?? []) as Array<Record<string, unknown>>) {
+      const id = r.equipment_id as string;
+      if (meterByEquipment.has(id)) continue; // ordered desc, so first wins
+      const total = Number(r.bw_meter_reading ?? 0) + Number(r.color_meter_reading ?? 0);
+      meterByEquipment.set(id, total);
+    }
   }
 
   // Pull customer names in one batch
@@ -134,9 +161,9 @@ async function dashboard(admin: Admin, tenantId: string, req: Request): Promise<
     if (daysUntilDue < 0) healthScore -= Math.min(50, Math.abs(daysUntilDue) * 2);
     if (daysSinceService > 180) healthScore -= Math.min(30, (daysSinceService - 180) / 10);
 
-    const meterReading = (item.current_meter_reading as number) || 0;
+    const meterReading = meterByEquipment.get(item.id as string) ?? null;
     const recommendedPages = 50000;
-    if (meterReading > recommendedPages) {
+    if (meterReading !== null && meterReading > recommendedPages) {
       healthScore -= Math.min(20, ((meterReading - recommendedPages) / recommendedPages) * 20);
     }
     healthScore = Math.max(0, Math.min(100, Math.round(healthScore)));
@@ -166,11 +193,11 @@ async function dashboard(admin: Admin, tenantId: string, req: Request): Promise<
     return {
       equipmentId: item.id,
       serialNumber: (item.serial_number as string) || 'N/A',
-      make: (item.make as string) || 'Unknown',
-      model: (item.model as string) || 'Unknown',
+      make: (item.manufacturer as string) || 'Unknown',
+      model: (item.model_number as string) || 'Unknown',
       customerName: customerMap.get(item.customer_id as string) || 'Unknown Customer',
       customerId: item.customer_id,
-      location: (item.location as string) || 'Unknown',
+      location: (item.location_description as string) || 'Unknown',
       lastServiceDate: item.last_service_date,
       daysSinceService,
       nextServiceDue: nextDueRaw.toISOString(),
@@ -196,14 +223,15 @@ async function dashboard(admin: Admin, tenantId: string, req: Request): Promise<
       : 100;
 
   const devicesAtRisk = equipmentHealth.filter((i) => i.healthScore < 60).length;
-  const preventableEmergencies = Math.floor(devicesAtRisk * 0.7);
-  const downtimePreventedHours = preventableEmergencies * 4;
-  const costSavings = preventableEmergencies * 200;
-  const totalPossibleDowntime = equipmentHealth.length * 30 * 24;
-  const uptimeImprovement =
-    totalPossibleDowntime > 0
-      ? ((downtimePreventedHours / totalPossibleDowntime) * 100).toFixed(2)
-      : '0.00';
+
+  // AUDIT-037: four headline figures were removed here rather than repaired.
+  // preventableEmergencies was devicesAtRisk * 0.7, downtimePreventedHours was
+  // that * 4, costSavings was that * 200, and uptimeImprovement was built on
+  // all three over a 30-day-of-hours denominator. Every coefficient was typed
+  // in - nothing in this repo measures how often an at-risk device becomes an
+  // emergency, how long an emergency takes, or what one costs - so the numbers
+  // were a chain of constants presented as an outcome. They are named in
+  // `unbacked` instead, which is the rule PA-040 and LEGAL-010 set.
 
   return createCorsResponse(
     {
@@ -217,12 +245,15 @@ async function dashboard(admin: Admin, tenantId: string, req: Request): Promise<
         soonCount,
         scheduledCount,
         averageHealthScore,
-        preventableEmergencies,
-        downtimePreventedHours,
-        costSavings,
-        uptimeImprovement: `${uptimeImprovement}%`,
         period: '30 days',
       },
+      unbacked: [
+        'preventableEmergencies: nothing records whether an at-risk device became an emergency',
+        'downtimePreventedHours: no downtime duration is measured anywhere',
+        'costSavings: no cost is recorded against an avoided failure',
+        'uptimeImprovement: derived from the three above',
+        'meterReading is null for a device with no row in meter_readings',
+      ],
       equipment: equipmentHealth,
       degraded: {
         aiPrediction: true,
@@ -267,9 +298,9 @@ async function partsForecast(admin: Admin, tenantId: string, req: Request): Prom
 
   const { data: equipmentList } = await admin
     .from('equipment')
-    .select('id, serial_number, make, model')
+    .select('id, serial_number, manufacturer, model_number')
     .eq('tenant_id', tenantId)
-    .eq('status', 'active')
+    .eq('equipment_status', 'active')
     .limit(MAX_DEVICES + 1);
 
   const partsForecast: Record<
@@ -414,6 +445,7 @@ async function scheduleProactiveService(
   admin: Admin,
   tenantId: string,
   equipmentId: string,
+  userId: string,
   req: Request,
 ): Promise<Response> {
   let body: { scheduledDate?: string; serviceType?: string; notes?: string } = {};
@@ -423,10 +455,10 @@ async function scheduleProactiveService(
     /* empty body OK */
   }
 
-  // Verify equipment exists in tenant
+  // AUDIT-037: customer_id is pulled here because service_tickets requires it.
   const { data: eq } = await admin
     .from('equipment')
-    .select('id, serial_number')
+    .select('id, serial_number, customer_id')
     .eq('id', equipmentId)
     .eq('tenant_id', tenantId)
     .maybeSingle();
@@ -435,22 +467,43 @@ async function scheduleProactiveService(
     return createCorsResponse({ error: 'Equipment not found' }, 404, req);
   }
 
+  const equipmentRow = eq as Record<string, unknown>;
+  const customerId = equipmentRow.customer_id as string | null;
+  if (!customerId) {
+    return createCorsResponse(
+      { error: 'Equipment has no customer, so a service ticket cannot be raised for it' },
+      409,
+      req,
+    );
+  }
+
   // Create a service ticket as the scheduled-maintenance record. The Express
   // service-dispatch path also writes additional fields like priority and
   // service-window assignment; those depend on services we haven't ported.
   const scheduledDate =
     body.scheduledDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  // service_tickets has no ticket_type column, and customer_id, ticket_number
+  // and created_by are all NOT NULL - none of which this insert used to set, so
+  // scheduling maintenance from the hub was a 42703 that would have been a
+  // 23502 three times over. The ticket_number prefix follows predictive-failure's
+  // PF- convention; PM- is preventive maintenance.
+  const nowMs = Date.now();
+  const ticketNumber = `PM-${nowMs.toString(36)}-${Math.floor(Math.random() * 1e4)
+    .toString()
+    .padStart(4, '0')}`;
   const { data: ticket, error } = await admin
     .from('service_tickets')
     .insert({
       tenant_id: tenantId,
+      customer_id: customerId,
       equipment_id: equipmentId,
-      ticket_type: 'preventive_maintenance',
+      ticket_number: ticketNumber,
       status: 'scheduled',
       priority: 'medium',
-      title: `Proactive maintenance — ${(eq as Record<string, unknown>).serial_number ?? equipmentId}`,
+      title: `Proactive maintenance — ${equipmentRow.serial_number ?? equipmentId}`,
       description: body.notes ?? 'Auto-scheduled from predictive maintenance hub',
       scheduled_date: scheduledDate,
+      created_by: userId,
       created_at: new Date().toISOString(),
     })
     .select()

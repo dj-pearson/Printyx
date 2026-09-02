@@ -79,7 +79,8 @@ interface EquipmentHealth {
   nextServiceDue: string;
   daysUntilDue: number;
   healthScore: number;
-  meterReading: number;
+  /** null when the device has no row in meter_readings (AUDIT-037). */
+  meterReading: number | null;
   recommendedPages: number;
   urgency: 'overdue' | 'urgent' | 'soon' | 'scheduled';
   riskLevel: 'critical' | 'high' | 'medium' | 'low';
@@ -100,10 +101,7 @@ interface DashboardOverview {
   soonCount: number;
   scheduledCount: number;
   averageHealthScore: number;
-  preventableEmergencies: number;
-  downtimePreventedHours: number;
-  costSavings: number;
-  uptimeImprovement: string;
+
   period: string;
 }
 
@@ -377,35 +375,14 @@ export default function PredictiveMaintenanceHub() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Downtime Prevented
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">
-                {overview?.downtimePreventedHours || 0}h
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                {overview?.preventableEmergencies || 0} emergencies avoided
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Cost Savings
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">${overview?.costSavings || 0}</div>
-              <p className="text-sm text-muted-foreground mt-1">
-                {overview?.uptimeImprovement || '0.00%'} uptime improvement
-              </p>
-            </CardContent>
-          </Card>
+          {/*
+            AUDIT-037: "Downtime Prevented" and "Cost Savings" were removed.
+            Both read figures the endpoint built from typed-in coefficients -
+            devicesAtRisk * 0.7 emergencies, * 4 hours each, * $200 each - and
+            nothing in this system records whether an at-risk device became an
+            emergency, how long one lasted, or what it cost. The endpoint names
+            all four in its `unbacked` array now.
+          */}
         </div>
 
         {/* Main Content Tabs */}
