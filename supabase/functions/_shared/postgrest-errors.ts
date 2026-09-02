@@ -23,6 +23,22 @@ export function isMissingTableError(error: unknown): boolean {
   return msg.includes('could not find the table') || msg.includes('does not exist');
 }
 
+/**
+ * 23505 (unique_violation) — the row is already there under that key.
+ *
+ * WF-L-04 wants this told apart from a real failure: `equipment.serial_number` is
+ * globally unique, so a warehouse associate re-keying a serial they already
+ * entered gets a refusal that is an ANSWER, not a fault, and the receipt should
+ * say "already registered" rather than "could not be created".
+ */
+export function isUniqueViolation(error: unknown): boolean {
+  const e = error as PostgrestErrorLike;
+  if (!e) return false;
+  if (e.code === '23505') return true;
+  const msg = (e.message || '').toLowerCase();
+  return msg.includes('duplicate key value') || msg.includes('already exists');
+}
+
 /** 42703 (undefined_column) / PGRST204 — the write named a column the table does not have. */
 export function isMissingColumnError(error: unknown): boolean {
   const e = error as PostgrestErrorLike;

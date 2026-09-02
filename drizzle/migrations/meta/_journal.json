@@ -421,6 +421,13 @@
       "when": 1788341639536,
       "tag": "0076_wf_c05_proposal_acquisition",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1788342576428,
+      "tag": "0077_wf_l04_equipment_receipt_links",
+      "breakpoints": true
     }
   ]
 }

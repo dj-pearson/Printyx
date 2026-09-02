@@ -14,6 +14,8 @@ import {
   technicians,
   meterReadings,
 } from '@shared/schema';
+import { equipmentLifecycle } from '@shared/equipment-schema';
+import { lifecycleRowForReceivedUnit } from './lib/equipment-serialization';
 import { eq, and, sql, desc, or, ilike, count } from 'drizzle-orm';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
@@ -93,6 +95,86 @@ router.get('/api/equipment', async (req: any, res) => {
   } catch (error: any) {
     log.error('Error listing equipment:', error);
     res.status(500).json({ message: 'Failed to fetch equipment' });
+  }
+});
+
+/**
+ * POST /api/equipment
+ *
+ * WF-L-04. The edge function has served this since it was written and Express
+ * served only GETs, so `/api/equipment` being both-divergent meant a create would
+ * have worked in production and 404'd in dev - the usual divergence, inverted.
+ * The prefix cannot simply be proxied: the edge function 404s any sub-resource it
+ * does not know, and Express owns /:id/service-history and the QR routes.
+ *
+ * Column-for-column the same write the edge function makes, including the two
+ * links migration 0077 added. customer_id is optional now: a unit received into
+ * the warehouse belongs to nobody until it is delivered.
+ */
+router.post('/api/equipment', async (req: any, res) => {
+  try {
+    const tenantId = getTenantId(req);
+    if (!tenantId) return res.status(400).json({ message: 'Tenant ID required' });
+
+    const body = req.body ?? {};
+    const serialNumber = String(body.serialNumber ?? body.serial_number ?? '').trim();
+    if (!serialNumber) {
+      // The key meter readings, service tickets and contracts all join on.
+      return res.status(400).json({ message: 'serialNumber is required' });
+    }
+
+    const [created] = await db
+      .insert(equipment)
+      .values({
+        tenantId,
+        customerId: body.customerId ?? body.customer_id ?? null,
+        serialNumber,
+        modelNumber: body.modelNumber ?? body.model_number ?? null,
+        manufacturer: body.manufacturer ?? null,
+        description: body.description ?? null,
+        assetTag: body.assetTag ?? body.asset_tag ?? null,
+        locationDescription: body.locationDescription ?? body.location_description ?? null,
+        installDate: body.installDate ? new Date(body.installDate) : null,
+        ipAddress: body.ipAddress ?? body.ip_address ?? null,
+        meterType: body.meterType ?? body.meter_type ?? null,
+        equipmentStatus: body.equipmentStatus ?? body.equipment_status ?? 'active',
+        purchaseOrderId: body.purchaseOrderId ?? body.purchase_order_id ?? null,
+        purchaseOrderItemId: body.purchaseOrderItemId ?? body.purchase_order_item_id ?? null,
+      })
+      .returning();
+
+    // WF-L-04: a unit received against a purchase order enters the lifecycle at
+    // stage `received`. Best-effort, exactly as on the other host: the equipment
+    // row is the thing that had to exist.
+    if (created?.purchaseOrderId) {
+      try {
+        await db.insert(equipmentLifecycle).values(
+          lifecycleRowForReceivedUnit(
+            {
+              tenant_id: tenantId,
+              serial_number: created.serialNumber,
+              manufacturer: created.manufacturer,
+              model_number: created.modelNumber,
+              customer_id: created.customerId,
+              location_description: created.locationDescription,
+              purchase_order_id: created.purchaseOrderId,
+            },
+            created.id,
+          ) as any,
+        );
+      } catch (lifecycleError) {
+        log.error('Error creating equipment lifecycle row:', lifecycleError);
+      }
+    }
+
+    res.status(201).json(created);
+  } catch (error: any) {
+    // A duplicate serial is a real answer, not a fault: the column is unique.
+    if (String(error?.code) === '23505') {
+      return res.status(409).json({ message: 'That serial number is already registered' });
+    }
+    log.error('Error creating equipment:', error);
+    res.status(500).json({ message: 'Failed to create equipment' });
   }
 });
 

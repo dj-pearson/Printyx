@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
 import { accessibleCustomerIds, applyCustomerScope, resolveScope } from '../_shared/scope.ts';
+import { lifecycleRowForReceivedUnit } from '../purchase-orders/_serialization.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -227,6 +228,11 @@ export default async function handler(req: Request) {
         next_service_due_date: body.nextServiceDueDate || body.next_service_due_date || null,
         external_equipment_id: body.externalEquipmentId || body.external_equipment_id || null,
         external_customer_id: body.externalCustomerId || body.external_customer_id || null,
+        // WF-L-04: where the unit came from. Migration 0077 added both, and made
+        // customer_id nullable - a unit received into the warehouse belongs to
+        // nobody until it is delivered.
+        purchase_order_id: body.purchaseOrderId || body.purchase_order_id || null,
+        purchase_order_item_id: body.purchaseOrderItemId || body.purchase_order_item_id || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -246,7 +252,27 @@ export default async function handler(req: Request) {
         );
       }
 
-      return createCorsResponse(equipment, 201, req);
+      // WF-L-04: a unit received against a purchase order enters the lifecycle at
+      // stage `received` - `ordered` is the state the PO already represented.
+      // Best-effort and reported, never fatal: the equipment row is the thing
+      // that had to exist, and answering 500 after writing it would leave the
+      // caller believing the unit was not recorded.
+      let lifecycleError: string | null = null;
+      if (equipment?.purchase_order_id && equipment?.serial_number) {
+        const { error: lifecycleErr } = await admin
+          .from('equipment_lifecycle')
+          .insert(lifecycleRowForReceivedUnit(equipment, String(equipment.id)));
+        if (lifecycleErr) {
+          console.error('Error creating equipment lifecycle row:', lifecycleErr);
+          lifecycleError = 'The equipment was created but its lifecycle row was not';
+        }
+      }
+
+      return createCorsResponse(
+        lifecycleError ? { ...equipment, lifecycleError } : equipment,
+        201,
+        req,
+      );
     }
 
     // PATCH /equipment/:id - Update equipment
@@ -270,6 +296,8 @@ export default async function handler(req: Request) {
         meterType: 'meter_type',
         isColorCapable: 'is_color_capable',
         equipmentStatus: 'equipment_status',
+        purchaseOrderId: 'purchase_order_id',
+        purchaseOrderItemId: 'purchase_order_item_id',
         purchasePrice: 'purchase_price',
         monthlyPayment: 'monthly_payment',
         leaseExpiresDate: 'lease_expires_date',

@@ -1736,10 +1736,30 @@ export const equipment = pgTable(
     assetTag: varchar('asset_tag'), // E-Automate AssetTag
 
     // Location & Installation
-    customerId: varchar('customer_id').notNull(), // References business_records.id
+    //
+    // WF-L-04: customer_id is NULLABLE now. A unit received against a purchase
+    // order is sitting in the warehouse and belongs to nobody yet - it gets a
+    // customer when it is delivered - and NOT NULL made "receiving creates
+    // equipment rows" impossible for exactly the commonest kind of order, the
+    // stock PO that WF-P-03 says carries no contract, deal or customer. Nothing
+    // reads it expecting a value: every customer surface filters ON customer_id,
+    // so an unassigned unit simply does not appear on a customer's tab, which is
+    // the right answer for a machine nobody has bought yet.
+    customerId: varchar('customer_id'), // References business_records.id
     locationDescription: text('location_description'), // E-Automate LocationDescription
     installDate: timestamp('install_date'), // E-Automate InstallDate
     ipAddress: varchar('ip_address'), // E-Automate NetworkAddress
+
+    // WF-L-04: where this unit came from.
+    //
+    // POST /purchase-orders/:id/receive moved inventory counts and nothing else,
+    // POST /equipment had no caller in any client tree, and the Add Equipment
+    // dialog on the customer page rendered "Equipment registration form would go
+    // here". So a purchase order could be fully received and no equipment row
+    // would exist for meter billing, service or the lifecycle - the spine from
+    // order to installed unit had no link at all.
+    purchaseOrderId: varchar('purchase_order_id'),
+    purchaseOrderItemId: varchar('purchase_order_item_id'),
 
     // Equipment Specifications
     meterType: varchar('meter_type'), // E-Automate MeterType: bw_only, color, scan, fax

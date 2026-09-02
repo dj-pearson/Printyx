@@ -21,6 +21,12 @@ import {
   statusAfterReceipt,
 } from './_receiving.ts';
 import {
+  lifecycleRowForReceivedUnit,
+  outstandingSerialUnits,
+  planSerialCapture,
+} from './_serialization.ts';
+import { isUniqueViolation } from '../_shared/postgrest-errors.ts';
+import {
   applyUserScope,
   resolveScope,
   rowInScope,
@@ -625,6 +631,153 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(updatedPO, 200, req);
+    }
+
+    // POST /purchase-orders/:id/serials - record the serials for a receipt
+    //
+    // WF-L-04. WF-P-02 already established that a serialized line records its
+    // quantity and does NOT move bulk inventory, because its units become
+    // equipment rows - and then nothing created them. This is the endpoint the
+    // receive dialog calls once it has one serial per unit.
+    //
+    // ONE CALL, NOT N. The AC's shape was "post each unit to POST /equipment",
+    // and that endpoint does now accept the links and write the lifecycle row
+    // (it is what the customer-page dialog uses). But N independent posts cannot
+    // report which units were refused or how many a line is still short, and a
+    // partial failure halfway through leaves the buyer guessing. Both are real
+    // outcomes here, so they are answered together.
+    if (req.method === 'POST' && poId && subResource === 'serials') {
+      const body = await req.json();
+
+      const { data: po, error: poError } = await admin
+        .from('purchase_orders')
+        .select('id, tenant_id, status, po_number, customer_id, created_by')
+        .eq('id', poId)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (poError || !po) {
+        return createCorsResponse({ error: 'Purchase order not found' }, 404, req);
+      }
+      // WF-R-06: recording units against somebody else's order creates real assets.
+      if (!rowInScope(po, 'created_by', poScope)) return outOfScope();
+
+      const units = Array.isArray(body.units) ? body.units : [];
+      if (units.length === 0) {
+        return createCorsResponse({ error: 'At least one unit must be supplied' }, 400, req);
+      }
+
+      // Which lines are actually awaiting serials, recomputed from the order
+      // rather than trusted from the request - a caller could otherwise attach a
+      // serial to a line that was never serialized.
+      const { data: lines, error: linesError } = await admin
+        .from(LINE_ITEM_TABLE)
+        .select('id, quantity, received_quantity, inventory_item_id, item_description')
+        .eq('purchase_order_id', poId)
+        .eq('tenant_id', tenantId);
+
+      if (linesError || !lines) {
+        console.error('Error reading PO line items for serial capture:', linesError);
+        return createCorsResponse({ error: 'Failed to read purchase order lines' }, 500, req);
+      }
+
+      const inventoryItemIds = [
+        ...new Set(lines.map((l: Record<string, unknown>) => l.inventory_item_id).filter(Boolean)),
+      ] as string[];
+      const serializedIds = new Set<string>();
+      if (inventoryItemIds.length > 0) {
+        const { data: invItems } = await admin
+          .from('inventory_items')
+          .select('id, is_serialized')
+          .eq('tenant_id', tenantId)
+          .in('id', inventoryItemIds);
+        for (const item of invItems || []) {
+          if (item.is_serialized) serializedIds.add(String(item.id));
+        }
+      }
+
+      // A line awaits serials for every unit already received against it, less
+      // the equipment rows this order has already produced for that line.
+      const { data: alreadyCaptured } = await admin
+        .from('equipment')
+        .select('purchase_order_item_id')
+        .eq('tenant_id', tenantId)
+        .eq('purchase_order_id', poId);
+      const capturedByLine = new Map<string, number>();
+      for (const row of alreadyCaptured || []) {
+        const key = String(row.purchase_order_item_id ?? '');
+        if (key) capturedByLine.set(key, (capturedByLine.get(key) ?? 0) + 1);
+      }
+
+      const pending = lines
+        .filter(
+          (l: Record<string, unknown>) =>
+            l.inventory_item_id && serializedIds.has(String(l.inventory_item_id)),
+        )
+        .map((l: Record<string, unknown>) => ({
+          lineItemId: String(l.id),
+          quantity:
+            Math.max(0, Number(l.received_quantity ?? 0)) - (capturedByLine.get(String(l.id)) ?? 0),
+          description: (l.item_description as string) ?? null,
+        }))
+        .filter((l: { quantity: number }) => l.quantity > 0);
+
+      const plan = planSerialCapture(pending, units, {
+        tenantId,
+        purchaseOrderId: poId,
+        customerId: po.customer_id ?? null,
+      });
+
+      const created: Record<string, unknown>[] = [];
+      const failed: Array<{ serialNumber: string; reason: string }> = [];
+      for (const row of plan.equipment) {
+        const { data: unit, error: insertError } = await admin
+          .from('equipment')
+          .insert(row)
+          .select('id, serial_number, purchase_order_item_id')
+          .single();
+
+        if (insertError || !unit) {
+          // The commonest one is a serial already in the table - it is UNIQUE
+          // across the whole tenant set - and that is a real answer, not a fault.
+          console.error('Error creating equipment from receipt:', insertError);
+          failed.push({
+            serialNumber: String(row.serial_number),
+            reason: isUniqueViolation(insertError)
+              ? 'that serial number is already registered'
+              : 'the equipment row could not be created',
+          });
+          continue;
+        }
+        created.push(unit);
+
+        const { error: lifecycleError } = await admin
+          .from('equipment_lifecycle')
+          .insert(lifecycleRowForReceivedUnit(row, String(unit.id)));
+        if (lifecycleError) {
+          console.error('Error creating equipment lifecycle row:', lifecycleError);
+        }
+      }
+
+      // What is still outstanding is computed from what actually LANDED, not from
+      // the plan: a serial refused as a duplicate leaves its unit still to
+      // capture, and reporting the line as done would lose a machine.
+      const landed = created.map((unit) => ({
+        lineItemId: String(unit.purchase_order_item_id ?? ''),
+        serialNumber: String(unit.serial_number ?? ''),
+      }));
+
+      return createCorsResponse(
+        {
+          purchaseOrderId: poId,
+          created,
+          problems: plan.problems,
+          failed,
+          outstanding: outstandingSerialUnits(pending, landed),
+        },
+        201,
+        req,
+      );
     }
 
     // POST /purchase-orders/:id/receive - Mark items as received

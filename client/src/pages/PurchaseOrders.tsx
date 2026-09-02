@@ -92,8 +92,29 @@ interface ReceivableLine {
 
 interface ReceiptResponse {
   overReceipts?: Array<{ lineItemId: string }>;
-  requiresSerialCapture?: Array<{ lineItemId: string }>;
+  requiresSerialCapture?: Array<{
+    lineItemId: string;
+    quantity: number;
+    description?: string | null;
+  }>;
   payableError?: string | null;
+}
+
+// WF-L-04: one row per physical machine, because equipment.serial_number is the
+// key meter billing, service and the lifecycle all join on.
+interface SerialSlot {
+  lineItemId: string;
+  description: string | null;
+  index: number;
+  serialNumber: string;
+  assetTag: string;
+}
+
+interface SerialCaptureResponse {
+  created?: Array<{ id: string; serial_number?: string | null }>;
+  problems?: Array<{ lineItemId: string; reason: string; serialNumber?: string }>;
+  failed?: Array<{ serialNumber: string; reason: string }>;
+  outstanding?: Array<{ lineItemId: string; quantity: number }>;
 }
 
 // Enhanced form schema with line items
@@ -273,6 +294,57 @@ export default function PurchaseOrders() {
     },
   });
 
+  // WF-L-04: after a receipt lands, the serialized lines are still outstanding -
+  // WF-P-02 records their quantity and deliberately does not move bulk inventory,
+  // because the units are supposed to become equipment rows. Nothing created
+  // them, so the receipt ended with a toast and a machine that did not exist.
+  const [serialPO, setSerialPO] = useState<{ id: string; poNumber: string } | null>(null);
+  const [serialSlots, setSerialSlots] = useState<SerialSlot[]>([]);
+
+  const serialMutation = useMutation({
+    mutationFn: async ({ id, slots }: { id: string; slots: SerialSlot[] }) =>
+      apiRequest(`/api/purchase-orders/${id}/serials`, 'POST', {
+        units: slots.map((slot) => ({
+          lineItemId: slot.lineItemId,
+          serialNumber: slot.serialNumber.trim(),
+          assetTag: slot.assetTag.trim() || null,
+        })),
+      }),
+    onSuccess: (response: SerialCaptureResponse) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment'] });
+
+      const created = response?.created?.length ?? 0;
+      // Every one of these is a machine that is physically here and still not in
+      // the system, so none of them is folded into a success message.
+      const notes: string[] = [];
+      for (const problem of response?.problems ?? []) notes.push(problem.reason);
+      for (const failure of response?.failed ?? []) {
+        notes.push(`${failure.serialNumber}: ${failure.reason}`);
+      }
+      const stillOwed = (response?.outstanding ?? []).reduce((sum, l) => sum + l.quantity, 0);
+      if (stillOwed > 0) notes.push(`${stillOwed} unit(s) still need a serial number.`);
+
+      toast({
+        title: `${created} unit(s) registered`,
+        description: notes.length > 0 ? notes.join(' ') : 'Each unit is now an equipment record.',
+        variant: notes.length > 0 ? 'destructive' : 'default',
+      });
+
+      if (notes.length === 0) {
+        setSerialPO(null);
+        setSerialSlots([]);
+      }
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to register the units',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const receiveMutation = useMutation({
     mutationFn: async ({
       id,
@@ -286,6 +358,9 @@ export default function PurchaseOrders() {
       queryClient.invalidateQueries({
         queryKey: ['/api/purchase-orders/stats/summary'],
       });
+      const receivedFor = receivingPO
+        ? { id: receivingPO.id, poNumber: receivingPO.poNumber }
+        : null;
       setReceivingPO(null);
       setReceiptQuantities({});
 
@@ -295,10 +370,25 @@ export default function PurchaseOrders() {
       if (response?.overReceipts?.length) {
         notes.push(`${response.overReceipts.length} line(s) received above the ordered quantity.`);
       }
+      // WF-L-04: rather than only saying so, open the capture step. A serialized
+      // line's units are physically on the dock; leaving the buyer to find
+      // another screen is how they end up unregistered.
       if (response?.requiresSerialCapture?.length) {
-        notes.push(
-          `${response.requiresSerialCapture.length} serialized line(s) still need serial numbers.`,
-        );
+        const slots: SerialSlot[] = [];
+        for (const line of response.requiresSerialCapture) {
+          for (let i = 0; i < Math.max(1, Number(line.quantity ?? 1)); i++) {
+            slots.push({
+              lineItemId: line.lineItemId,
+              description: line.description ?? null,
+              index: i + 1,
+              serialNumber: '',
+              assetTag: '',
+            });
+          }
+        }
+        setSerialSlots(slots);
+        if (receivedFor) setSerialPO(receivedFor);
+        notes.push(`${slots.length} unit(s) need serial numbers.`);
       }
       if (response?.payableError) notes.push(response.payableError);
 
@@ -1146,6 +1236,100 @@ export default function PurchaseOrders() {
             )}
           </CardContent>
         </Card>
+
+        {/* WF-L-04: one serial per unit, because equipment.serial_number is the key
+            meter billing, service and the lifecycle all join on. No placeholder is
+            offered: a generated serial is indistinguishable from a real one the
+            moment it is written. */}
+        <Dialog
+          open={!!serialPO}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSerialPO(null);
+              setSerialSlots([]);
+            }
+          }}
+        >
+          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Serial numbers for {serialPO?.poNumber}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Each unit becomes an equipment record. A unit left blank stays outstanding on the
+                order rather than being registered without a serial.
+              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Serial number</TableHead>
+                    <TableHead>Asset tag</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {serialSlots.map((slot, idx) => (
+                    <TableRow key={`${slot.lineItemId}-${slot.index}`}>
+                      <TableCell className="font-medium">{slot.description ?? 'Item'}</TableCell>
+                      <TableCell>{slot.index}</TableCell>
+                      <TableCell>
+                        <Input
+                          aria-label={`Serial number for unit ${slot.index} of ${slot.description ?? 'item'}`}
+                          value={slot.serialNumber}
+                          onChange={(e) =>
+                            setSerialSlots((prev) =>
+                              prev.map((s2, i) =>
+                                i === idx ? { ...s2, serialNumber: e.target.value } : s2,
+                              ),
+                            )
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          aria-label={`Asset tag for unit ${slot.index} of ${slot.description ?? 'item'}`}
+                          value={slot.assetTag}
+                          onChange={(e) =>
+                            setSerialSlots((prev) =>
+                              prev.map((s2, i) =>
+                                i === idx ? { ...s2, assetTag: e.target.value } : s2,
+                              ),
+                            )
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSerialPO(null);
+                    setSerialSlots([]);
+                  }}
+                >
+                  Later
+                </Button>
+                <Button
+                  disabled={
+                    serialMutation.isPending ||
+                    serialSlots.every((slot) => !slot.serialNumber.trim())
+                  }
+                  onClick={() => {
+                    if (!serialPO) return;
+                    const filled = serialSlots.filter((slot) => slot.serialNumber.trim());
+                    serialMutation.mutate({ id: serialPO.id, slots: filled });
+                  }}
+                >
+                  Register units
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Purchase Order Details Dialog */}
         {/* WF-P-02: record a shipment against the order. Partial receipts are the

@@ -117,8 +117,10 @@ describe('WF-R-06: purchase orders', () => {
   });
 
   it('checks the row on every write that is not an approval', () => {
-    // submit, receive, update and the status PATCH each address an id directly.
-    expect([...src.matchAll(/rowInScope\(\w+, 'created_by', poScope\)/g)]).toHaveLength(4);
+    // submit, receive, serials, update and the status PATCH each address an id
+    // directly. WF-L-04 added the fifth: recording serial numbers against
+    // somebody else's order creates real equipment assets under it.
+    expect([...src.matchAll(/rowInScope\(\w+, 'created_by', poScope\)/g)]).toHaveLength(5);
   });
 
   it('selects created_by wherever it checks it', () => {
