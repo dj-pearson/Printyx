@@ -704,14 +704,24 @@ async function getFirstStageId(db: SB, tenantId: string): Promise<string | null>
 }
 
 async function getWonStageId(db: SB, tenantId: string): Promise<string | null> {
-  const { data } = await db
-    .from('deal_stages')
-    .select('id')
+  // COP-M07 AC2: WHICH stage is won is stage configuration, and it is answered
+  // by pipeline_stages.is_closed_won. The legacy ID is still what gets written -
+  // deals.stage_id lives in that id space - so this asks the canonical table the
+  // semantic question and takes the legacy id off the bridge. It used to filter
+  // deal_stages.is_won_stage directly, which is the same answer today only
+  // because the mirror copies the flag.
+  const { data: canonical } = await db
+    .from('pipeline_stages')
+    .select('legacy_stage_id')
     .eq('tenant_id', tenantId)
-    .eq('is_won_stage', true)
+    .eq('is_closed_won', true)
+    .not('legacy_stage_id', 'is', null)
     .limit(1)
     .maybeSingle();
-  if (data?.id) return data.id;
+  if (canonical?.legacy_stage_id) return canonical.legacy_stage_id;
+
+  // A tenant whose stages predate the bridge has no mirrored row, so fall back
+  // to the name - the same shape reports/frontend-stubs.ts uses.
   const byName = await getStageIdByName(db, tenantId, 'Closed Won');
   if (byName) return byName;
   return await getFirstStageId(db, tenantId);

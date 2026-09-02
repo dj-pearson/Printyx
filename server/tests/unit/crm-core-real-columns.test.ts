@@ -34,10 +34,14 @@ describe('deals is read as amount, stage_id, title and actual_close_date', () =>
     expect(src).not.toMatch(/closed_at/);
   });
 
-  it('the pipeline groups on stage_id, the legacy deal_stages id', () => {
-    const src = fn('supabase/functions/pipeline/index.ts');
-    expect(src).toMatch(/select\('stage_id, amount'\)/);
-    expect(src).toMatch(/d\.stage_id === stage\.id/);
+  it('the pipeline board groups on stage_id, the legacy deal_stages id', () => {
+    // COP-M07 deleted supabase/functions/pipeline/, which this used to assert
+    // against: six deal_stages reads, no caller in any of the seven client
+    // trees, and five phantom columns of its own (stage_name, order_index,
+    // probability, is_won, is_closed), so its /stages CRUD could not have
+    // worked either. pipeline-config is the canonical surface and always was.
+    const src = fn('supabase/functions/pipeline-config/index.ts');
+    expect(src).toMatch(/stage_id/);
     expect(src).not.toMatch(/deal_value/);
   });
 
