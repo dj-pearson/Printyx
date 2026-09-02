@@ -29,11 +29,6 @@
       "story": "WF-S-02",
       "reason": "No schema, no migration, no RLS file. This is the one entry of the six that is already handled honestly: EDGE-002g removed the two fabricated sample rules this function used to return at 200 and the rule endpoints now answer 503 ROUTING_RULES_UNAVAILABLE, so an admin is told the feature is unavailable rather than shown rules that do not exist. WF-S-02 creates the table.",
       "files": ["supabase/functions/auto-lead-routing/index.ts"]
-    },
-    "maintenance_schedules": {
-      "story": "WF-V-04",
-      "reason": "No schema, no migration - and maintenance_records beside it is in the same state. server/routes-preventive-maintenance.ts serves dev from hard-coded fixtures (its own comments say so), so the two hosts disagree about whether preventive maintenance exists at all. WF-V-04 deletes the fixtures and decides the schema; that decision, not this guard, is what the table shape should follow.",
-      "files": ["supabase/functions/maintenance/index.ts"]
     }
   },
   "unreviewed": [
@@ -89,7 +84,6 @@
     "leads (supabase/functions/lead-assignment-queue/index.ts)",
     "leads (supabase/functions/today-dashboard/index.ts)",
     "leads (supabase/functions/user-assignments/index.ts)",
-    "maintenance_records (supabase/functions/maintenance/index.ts)",
     "managed_services_contracts (supabase/functions/managed-services/index.ts)",
     "manufacturer_sync_logs (supabase/functions/manufacturer-integrations/index.ts)",
     "mps_billing_records (supabase/functions/managed-services/index.ts)",

@@ -17,7 +17,6 @@ const log = createModuleLogger('fix-data-consistency');
 export const ROUTES_TO_FIX = [
   'routes-business-records.ts',
   'routes-sales-forecasting.ts',
-  'routes-preventive-maintenance.ts',
   'routes-service-dispatch.ts',
   'routes-mobile.ts',
   'routes-analytics.ts',

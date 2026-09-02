@@ -284,6 +284,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // router's other prefixes (/api/build-processes, /api/delivery-schedules,
     // /api/serial-numbers, /api/equipment) are untouched by this entry.
     '/api/warehouse-operations': 'warehouse-operations',
+    // WF-V-04. server/routes-preventive-maintenance.ts answered this prefix from
+    // hard-coded fixtures whose own comments said "until schema is updated", AND
+    // was never registered - so /api/maintenance/* 404'd in dev and hit the edge
+    // function in production. The function reads maintenance_schedules and
+    // maintenance_records, which migration 0071 finally declares, and now serves
+    // the /analytics and /auto-generate paths the page calls too.
+    '/api/maintenance': 'maintenance',
     '/api/companies': 'companies',
     // PA-021. /api/customers used to be special-cased below to the `companies`
     // function for the bare list, with only /:id/:sub forwarded to `customers`.

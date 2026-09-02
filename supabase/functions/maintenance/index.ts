@@ -161,6 +161,140 @@ export default async function handler(req: Request) {
     }
 
     // GET /maintenance/stats - Get maintenance statistics
+    // ── WF-V-04: the two endpoints the page calls that nothing served ──────
+    //
+    // PreventiveMaintenanceAutomation.tsx calls /analytics and /auto-generate.
+    // The only implementation was server/routes-preventive-maintenance.ts, which
+    // answered both from hard-coded fixtures ("Sample maintenance analytics") AND
+    // was never registered, so they 404'd in dev as well as production.
+    if (req.method === 'GET' && endpoint === 'analytics') {
+      const now = new Date();
+      const windowStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+
+      const [{ data: schedules }, { data: records }] = await Promise.all([
+        admin
+          .from('maintenance_schedules')
+          .select('id, status, next_due_date, maintenance_type')
+          .eq('tenant_id', tenantId),
+        admin
+          .from('maintenance_records')
+          .select('id, completed_at, labor_hours, cost')
+          .eq('tenant_id', tenantId)
+          .gte('completed_at', windowStart),
+      ]);
+
+      const scheduleList = schedules ?? [];
+      const recordList = records ?? [];
+      const nowIso = now.toISOString();
+
+      const laborHours = recordList
+        .map((r: Record<string, unknown>) => Number(r.labor_hours))
+        .filter((n: number) => Number.isFinite(n));
+      const costs = recordList
+        .map((r: Record<string, unknown>) => Number(r.cost))
+        .filter((n: number) => Number.isFinite(n));
+      const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+
+      return createCorsResponse(
+        {
+          windowDays: 90,
+          totalSchedules: scheduleList.length,
+          activeSchedules: scheduleList.filter(
+            (x: Record<string, unknown>) => x.status === 'active',
+          ).length,
+          overdueSchedules: scheduleList.filter(
+            (x: Record<string, unknown>) =>
+              x.status === 'active' && String(x.next_due_date ?? '') < nowIso,
+          ).length,
+          completedInWindow: recordList.length,
+          totalLaborHours: laborHours.length > 0 ? sum(laborHours) : null,
+          totalCost: costs.length > 0 ? sum(costs) : null,
+          // Named rather than omitted. The old fixture reported a compliance rate
+          // and an annual saving; neither is derivable from a schedule table and a
+          // record table, and inventing them is what this story removed.
+          unbacked: [
+            'complianceRate: nothing records whether a due date was met, only that work was completed',
+            'costSavings: no cost model exists to compare against, so a saving cannot be computed',
+          ],
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /maintenance/auto-generate - create schedules for real equipment.
+    //
+    // The fixture version submitted five hard-coded equipment ids ('eq-001'..),
+    // persisted nothing, and returned an invented annual-savings figure while
+    // reporting success. This one writes rows and returns what it wrote.
+    if (req.method === 'POST' && endpoint === 'auto-generate') {
+      const body = await req.json();
+      const equipmentIds: string[] = Array.isArray(body.equipmentIds)
+        ? body.equipmentIds.map(String).filter(Boolean)
+        : [];
+      if (equipmentIds.length === 0) {
+        return createCorsResponse({ error: 'equipmentIds is required' }, 400, req);
+      }
+
+      // Only equipment this tenant actually owns. An id typed or pasted from
+      // somewhere else must not create a schedule against another tenant's asset.
+      const { data: owned } = await admin
+        .from('equipment')
+        .select('id, model_number, serial_number')
+        .eq('tenant_id', tenantId)
+        .in('id', equipmentIds);
+
+      const ownedList = owned ?? [];
+      const ownedIds = new Set(ownedList.map((e: Record<string, unknown>) => String(e.id)));
+      const unknownEquipmentIds = equipmentIds.filter((id) => !ownedIds.has(id));
+
+      if (ownedList.length === 0) {
+        return createCorsResponse(
+          { error: 'None of those equipment ids belong to this tenant', unknownEquipmentIds },
+          400,
+          req,
+        );
+      }
+
+      const frequency = String(body.frequency ?? 'quarterly');
+      const startDate = body.startDate ? new Date(body.startDate) : new Date();
+      const rows = ownedList.map((e: Record<string, unknown>) => ({
+        tenant_id: tenantId,
+        equipment_id: e.id,
+        name: `Preventive maintenance — ${e.model_number ?? e.serial_number ?? e.id}`,
+        maintenance_type: 'preventive',
+        frequency,
+        frequency_value: Number(body.frequencyValue ?? 1),
+        next_due_date: startDate.toISOString(),
+        status: 'active',
+        created_by: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { data: created, error } = await admin
+        .from('maintenance_schedules')
+        .insert(rows)
+        .select();
+
+      if (error) {
+        console.error('Error generating maintenance schedules:', error);
+        return createCorsResponse(
+          { error: 'Failed to generate the schedules', details: error },
+          500,
+          req,
+        );
+      }
+
+      // The persisted rows, and the ids that were skipped. No savings figure:
+      // nothing here can price maintenance that has not happened.
+      return createCorsResponse(
+        { created: created ?? [], createdCount: (created ?? []).length, unknownEquipmentIds },
+        201,
+        req,
+      );
+    }
+
     if (req.method === 'GET' && endpoint === 'stats') {
       const today = new Date().toISOString();
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();

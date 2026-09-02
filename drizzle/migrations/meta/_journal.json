@@ -379,6 +379,13 @@
       "when": 1788328247738,
       "tag": "0070_groovy_imperial_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1788330442862,
+      "tag": "0071_good_goblin_queen",
+      "breakpoints": true
     }
   ]
 }

@@ -5683,6 +5683,9 @@ export const prospectingCampaignsRelations = relations(prospectingCampaigns, ({ 
 // Re-export equipment lifecycle types
 export * from './equipment-schema';
 
+// WF-V-04: preventive maintenance schedules and records.
+export * from './maintenance-schema';
+
 // ============= TASK MANAGEMENT SYSTEM =============
 
 // Tasks table
