@@ -296,6 +296,14 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   const { inboundWebhookReceiver } = await import('./integrations/webhook-routes');
   app.use(inboundWebhookReceiver);
 
+  // ─── Service ticket analysis (must be BEFORE the proxy) ────────────
+  // WF-V-01: /api/service-tickets is proxied, and the proxy forwards the WHOLE
+  // prefix and falls through only on a NETWORK error, never a 404. The edge
+  // function has no /:id/analysis branch, so registering this after the proxy
+  // would take the analysis panel from working-in-dev to 404-in-dev. Same shape
+  // as the inbound-webhook ordering above.
+  registerServiceAnalysisRoutes(app);
+
   // ─── Edge Function Proxy (must be before CRM routes) ───────────────
   registerEdgeFunctionProxy(app);
 
@@ -402,7 +410,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerWarehouseRoutes(app);
 
   // ─── Service & CRM ────────────────────────────────────────────────
-  registerServiceAnalysisRoutes(app);
   registerCrmGoalRoutes(app);
   registerCrmNotesRoutes(app);
   registerDealTagRoutes(app);

@@ -27,180 +27,24 @@ const router = Router();
  * GET /api/service-tickets
  * List service tickets with optional search and status filter
  */
-router.get('/api/service-tickets', async (req: any, res) => {
-  try {
-    const tenantId = getTenantId(req);
-    if (!tenantId) return res.status(400).json({ message: 'Tenant ID required' });
-
-    const { search, status, limit = '50', page = '1' } = req.query;
-    const limitNum = Math.min(parseInt(limit) || 50, 100);
-    const offset = (Math.max(parseInt(page) || 1, 1) - 1) * limitNum;
-
-    const conditions: any[] = [eq(serviceTickets.tenantId, tenantId)];
-
-    if (status && status !== 'all') {
-      conditions.push(eq(serviceTickets.status, status));
-    }
-
-    if (search) {
-      conditions.push(
-        or(
-          ilike(serviceTickets.title, `%${search}%`),
-          ilike(serviceTickets.ticketNumber, `%${search}%`),
-          ilike(serviceTickets.description, `%${search}%`),
-        ),
-      );
-    }
-
-    // AUDIT-013: service_tickets stores customer_id / equipment_id /
-    // assigned_technician_id but has NO customerName / equipmentModel /
-    // assignedTechnician columns. ServiceHub renders and filters on those names,
-    // so resolve them here via LEFT JOINs (all LEFT: equipment_id and
-    // assigned_technician_id are nullable, and a customer_id can point at a
-    // deleted business_record). Joins are tenant-scoped on both sides to
-    // preserve multi-tenant isolation.
-    const rows = await db
-      .select({
-        ticket: serviceTickets,
-        customerName: businessRecords.companyName,
-        equipmentModel: equipment.modelNumber,
-        technicianFirstName: technicians.firstName,
-        technicianLastName: technicians.lastName,
-      })
-      .from(serviceTickets)
-      .leftJoin(
-        businessRecords,
-        and(
-          eq(businessRecords.id, serviceTickets.customerId),
-          eq(businessRecords.tenantId, tenantId),
-        ),
-      )
-      .leftJoin(
-        equipment,
-        and(eq(equipment.id, serviceTickets.equipmentId), eq(equipment.tenantId, tenantId)),
-      )
-      .leftJoin(
-        technicians,
-        and(
-          eq(technicians.id, serviceTickets.assignedTechnicianId),
-          eq(technicians.tenantId, tenantId),
-        ),
-      )
-      .where(and(...conditions))
-      .orderBy(desc(serviceTickets.createdAt))
-      .limit(limitNum)
-      .offset(offset);
-
-    const tickets = rows.map((row) => {
-      const technicianName = [row.technicianFirstName, row.technicianLastName]
-        .filter(Boolean)
-        .join(' ');
-      return {
-        ...row.ticket,
-        customerName: row.customerName,
-        equipmentModel: row.equipmentModel,
-        assignedTechnician: technicianName || null,
-      };
-    });
-
-    res.json(tickets);
-  } catch (error: any) {
-    log.error('Error listing service tickets:', error);
-    res.status(500).json({ message: 'Failed to fetch service tickets' });
-  }
-});
-
-/**
- * GET /api/service-tickets/stats
- * Service ticket counts by status
- */
-router.get('/api/service-tickets/stats', async (req: any, res) => {
-  try {
-    const tenantId = getTenantId(req);
-    if (!tenantId) return res.status(400).json({ message: 'Tenant ID required' });
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const [openCount] = await db
-      .select({ count: count() })
-      .from(serviceTickets)
-      .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'open')));
-
-    const [inProgressCount] = await db
-      .select({ count: count() })
-      .from(serviceTickets)
-      .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'in-progress')));
-
-    const [completedTodayCount] = await db
-      .select({ count: count() })
-      .from(serviceTickets)
-      .where(
-        and(
-          eq(serviceTickets.tenantId, tenantId),
-          eq(serviceTickets.status, 'completed'),
-          sql`${serviceTickets.resolvedAt} >= ${today.toISOString()}`,
-        ),
-      );
-
-    const [overdueCount] = await db
-      .select({ count: count() })
-      .from(serviceTickets)
-      .where(
-        and(
-          eq(serviceTickets.tenantId, tenantId),
-          or(eq(serviceTickets.status, 'open'), eq(serviceTickets.status, 'in-progress')),
-          sql`${serviceTickets.scheduledDate} < NOW()`,
-        ),
-      );
-
-    const [urgentCount] = await db
-      .select({ count: count() })
-      .from(serviceTickets)
-      .where(
-        and(
-          eq(serviceTickets.tenantId, tenantId),
-          or(eq(serviceTickets.priority, 'urgent'), eq(serviceTickets.priority, 'critical')),
-        ),
-      );
-
-    const [resolvedCount] = await db
-      .select({ count: count() })
-      .from(serviceTickets)
-      .where(
-        and(
-          eq(serviceTickets.tenantId, tenantId),
-          or(
-            eq(serviceTickets.status, 'resolved'),
-            eq(serviceTickets.status, 'closed'),
-            eq(serviceTickets.status, 'completed'),
-          ),
-        ),
-      );
-
-    const [totalCount] = await db
-      .select({ count: count() })
-      .from(serviceTickets)
-      .where(eq(serviceTickets.tenantId, tenantId));
-
-    // iOS dashboard cards (IOS-074) read open/inProgress/urgent/resolved/total
-    // (real totals, not page-scoped). `inProgress` (camelCase) is left as-is by
-    // the client's convertFromSnakeCase decoder — do NOT also emit `in_progress`
-    // or the two keys collide after conversion.
-    res.json({
-      open: openCount?.count ?? 0,
-      inProgress: inProgressCount?.count ?? 0,
-      urgent: urgentCount?.count ?? 0,
-      resolved: resolvedCount?.count ?? 0,
-      total: totalCount?.count ?? 0,
-      completedToday: completedTodayCount?.count ?? 0,
-      overdue: overdueCount?.count ?? 0,
-    });
-  } catch (error: any) {
-    log.error('Error fetching service ticket stats:', error);
-    res.status(500).json({ message: 'Failed to fetch service ticket stats' });
-  }
-});
+// WF-V-01: GET /api/service-tickets and GET /api/service-tickets/stats used to
+// live here, and they were the reason the dispatcher queue looked right in dev
+// and wrong in production. This handler joined business_records, equipment and
+// technicians with Drizzle; supabase/functions/service-tickets/ - which is what
+// production reaches - joined none of them, so equipmentModel and
+// assignedTechnician were blank on every ticket, and so was customerName,
+// because the edge function emitted customer_name and ServiceHub.tsx reads
+// customerName. AUDIT-013 fixed this half and nobody connected the two.
+//
+// /api/service-tickets is in crmProxies now and the edge function does all three
+// joins, so both hosts answer the same shape from one implementation. The
+// /:id/analysis route (routes-service-analysis.ts) is registered BEFORE the proxy
+// in routes-registry.ts, because the edge function does not serve it.
+//
+// The two /stats implementations disagreed about the status vocabulary -
+// 'in-progress' here, 'in_progress' there, and 'completed' counted as resolved
+// only here - so the edge version now counts both spellings. See the WF-V-01
+// note for the vocabulary question itself.
 
 // ─── Equipment ─────────────────────────────────────────────────────────
 

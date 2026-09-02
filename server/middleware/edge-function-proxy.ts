@@ -262,6 +262,19 @@ export function registerEdgeFunctionProxy(app: any) {
   const crmProxies: Record<string, ProxyTarget> = {
     // Core CRM (EDGE-001 baseline)
     '/api/business-records': 'business-records',
+    // WF-V-01. server/routes-mobile-api.ts served the list and /stats in dev and
+    // joined equipment + technicians with Drizzle, so the dispatcher queue looked
+    // correct locally while production - which reaches this function directly -
+    // showed a blank machine and a blank technician on every ticket. AUDIT-013
+    // fixed the dev half only.
+    //
+    // ORDERING MATTERS HERE, not un-proxying: routes-service-analysis.ts owns
+    // /api/service-tickets/:id/analysis, which this function does not serve, so
+    // that router is registered BEFORE the proxy in routes-registry.ts. The proxy
+    // forwards the whole prefix and falls through only on a network error, never
+    // a 404, so without that ordering the analysis panel would go from
+    // working-in-dev to 404-in-dev.
+    '/api/service-tickets': 'service-tickets',
     '/api/companies': 'companies',
     // PA-021. /api/customers used to be special-cased below to the `companies`
     // function for the bare list, with only /:id/:sub forwarded to `customers`.

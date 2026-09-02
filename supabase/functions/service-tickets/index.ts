@@ -3,26 +3,9 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { enrichTickets } from './_enrich.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
-async function enrichWithCustomerNames(admin: any, records: any[]) {
-  if (!records || records.length === 0) return records;
-  const customerIds = [...new Set(records.map((r: any) => r.customer_id).filter(Boolean))];
-  if (customerIds.length === 0) return records;
-
-  const { data: customers } = await admin
-    .from('business_records')
-    .select('id, company_name, primary_contact_name')
-    .in('id', customerIds);
-
-  const customerMap = new Map((customers || []).map((c: any) => [c.id, c]));
-  return records.map((r: any) => ({
-    ...r,
-    customer_name: customerMap.get(r.customer_id)?.company_name || null,
-    customer: customerMap.get(r.customer_id) || null,
-  }));
-}
-
 export default async function handler(req: Request) {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
@@ -72,12 +55,19 @@ export default async function handler(req: Request) {
           .from('service_tickets')
           .select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId);
+      // WF-V-01: BOTH spellings, because service_tickets.status has two
+      // vocabularies in this repo and picking one silently zeroes a card. The
+      // schema comment says `in-progress` and Express counted that; the demo
+      // seeder writes `in_progress` and this function counted that; `completed`
+      // was resolved to Express and not here. A superset cannot under-count, and
+      // under-counting is the failure that looks like real data. Which spelling
+      // is canonical is a separate question - see the WF-V-01 note.
       const [total, open, inProgress, urgent, resolved] = await Promise.all([
         base(),
         base().eq('status', 'open'),
-        base().eq('status', 'in_progress'),
+        base().in('status', ['in_progress', 'in-progress']),
         base().in('priority', ['urgent', 'critical']),
-        base().in('status', ['resolved', 'closed']),
+        base().in('status', ['resolved', 'closed', 'completed']),
       ]);
       return createCorsResponse(
         {
@@ -139,8 +129,8 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch service tickets' }, 500, req);
       }
 
-      // Enrich with customer names
-      const enriched = await enrichWithCustomerNames(admin, tickets || []);
+      // WF-V-01: the machine and the technician, not just the customer.
+      const enriched = await enrichTickets(admin, tenantId, tickets || []);
       return createCorsResponse({ data: enriched, total: count || 0 }, 200, req);
     }
 
@@ -200,18 +190,9 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
-      // Enrich with customer name
-      let enrichedTicket = ticket;
-      if (ticket?.customer_id) {
-        const { data: customer } = await admin
-          .from('business_records')
-          .select(
-            'id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone',
-          )
-          .eq('id', ticket.customer_id)
-          .single();
-        enrichedTicket = { ...ticket, customer: customer || null };
-      }
+      // WF-V-01: the same three joins as the list, so a ticket does not gain or
+      // lose fields depending on which screen opened it.
+      const [enrichedTicket] = await enrichTickets(admin, tenantId, [ticket]);
 
       return createCorsResponse({ ...enrichedTicket, updates: updates || [] }, 200, req);
     }
