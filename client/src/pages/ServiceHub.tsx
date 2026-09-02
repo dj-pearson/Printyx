@@ -56,6 +56,14 @@ import { useMobileDetection } from '@/hooks/useExternalIntegrations';
 import { MobileServiceDispatch } from '@/components/mobile/MobileServiceDispatch';
 import { CustomerEquipmentProfile } from '@/components/CustomerEquipmentProfile';
 import { useActionParam } from '@/hooks/use-action-param';
+import {
+  PRIORITY_LABELS,
+  SERVICE_TICKET_PRIORITIES,
+  SERVICE_TICKET_STATUSES,
+  STATUS_LABELS,
+  normalizeTicketPriority,
+  normalizeTicketStatus,
+} from '@shared/service-ticket-vocabulary';
 
 /**
  * AUDIT-013: the `service_tickets` table stores FKs (customer_id, equipment_id,
@@ -219,8 +227,13 @@ export default function ServiceHub() {
       ticket.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.equipmentModel?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
+    // WF-V-05: compare NORMALIZED values. A row written before the backfill
+    // carries 'in-progress', and comparing the raw strings makes it invisible to
+    // the filter that is meant to find it.
+    const matchesStatus =
+      statusFilter === 'all' || normalizeTicketStatus(ticket.status) === statusFilter;
+    const matchesPriority =
+      priorityFilter === 'all' || normalizeTicketPriority(ticket.priority) === priorityFilter;
     const matchesTechnician =
       technicianFilter === 'all' || ticket.technicianId === technicianFilter;
     return matchesSearch && matchesStatus && matchesPriority && matchesTechnician;
@@ -688,14 +701,16 @@ export default function ServiceHub() {
                         <SelectValue placeholder="Filter by status" />
                       </SelectTrigger>
                       <SelectContent>
+                        {/* WF-V-05: the one vocabulary, served by
+                            GET /service-tickets/vocabulary. This list used to be
+                            written out here and offered `new`, which nothing
+                            writes - so filtering by it always came back empty. */}
                         <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="new">New</SelectItem>
-                        <SelectItem value="assigned">Assigned</SelectItem>
-                        <SelectItem value="en_route">En Route</SelectItem>
-                        <SelectItem value="on_site">On Site</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                        {SERVICE_TICKET_STATUSES.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {STATUS_LABELS[status]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
 
@@ -704,12 +719,14 @@ export default function ServiceHub() {
                         <SelectValue placeholder="Filter by priority" />
                       </SelectTrigger>
                       <SelectContent>
+                        {/* `emergency` was offered here and matched nothing:
+                            it is an alias of urgent, not a level of its own. */}
                         <SelectItem value="all">All Priorities</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="urgent">Urgent</SelectItem>
-                        <SelectItem value="emergency">Emergency</SelectItem>
+                        {SERVICE_TICKET_PRIORITIES.map((priority) => (
+                          <SelectItem key={priority} value={priority}>
+                            {PRIORITY_LABELS[priority]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
 

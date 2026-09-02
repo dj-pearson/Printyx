@@ -14,6 +14,9 @@
 
 export type TicketChange = { field: string; oldValue: unknown; newValue: unknown };
 
+/** A value that belongs to no vocabulary. Reported, never stored. */
+export type RejectedField = { field: string; value: unknown };
+
 export const TICKET_FIELD_MAP: Record<string, string> = {
   customerId: 'customer_id',
   equipmentId: 'equipment_id',
@@ -36,23 +39,32 @@ export const TICKET_FIELD_MAP: Record<string, string> = {
   laborHours: 'labor_hours',
 };
 
-/** Statuses that mean the work is still outstanding. */
-export const OPEN_TICKET_STATUSES = [
-  'open',
-  'assigned',
-  'in_progress',
-  'on_site',
-  'pending',
-  'scheduled',
-];
+/**
+ * Statuses that mean the work is still outstanding.
+ *
+ * WF-V-05: re-exported from the one vocabulary rather than kept here. This list
+ * used to carry `pending`, which is in no vocabulary at all - a ticket in it
+ * would have counted as dispatch load and appeared in no filter - and omitted
+ * `en_route` and `on_hold`, which are outstanding work by any reading.
+ */
+export { OPEN_TICKET_STATUSES } from '../_shared/service-ticket-vocabulary.ts';
+import {
+  normalizeTicketPriority,
+  normalizeTicketStatus,
+} from '../_shared/service-ticket-vocabulary.ts';
 
 export function applyTicketFields(
   body: Record<string, unknown>,
   currentTicket: Record<string, unknown> | null,
   fieldMap: Record<string, string> = TICKET_FIELD_MAP,
-): { updateData: Record<string, unknown>; changes: TicketChange[] } {
+): {
+  updateData: Record<string, unknown>;
+  changes: TicketChange[];
+  rejected: RejectedField[];
+} {
   const updateData: Record<string, unknown> = {};
   const changes: TicketChange[] = [];
+  const rejected: RejectedField[] = [];
 
   for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
     const hasCamel = Object.prototype.hasOwnProperty.call(body, camelKey);
@@ -62,13 +74,39 @@ export function applyTicketFields(
     const newValue = hasCamel && body[camelKey] !== undefined ? body[camelKey] : body[snakeKey];
     if (newValue === undefined) continue;
 
-    updateData[snakeKey] = newValue;
-    if (currentTicket && currentTicket[snakeKey] !== newValue) {
-      changes.push({ field: snakeKey, oldValue: currentTicket[snakeKey] ?? null, newValue });
+    // WF-V-05: normalized here, so every writer that goes through this mapper
+    // stores one spelling. 'in-progress' from the mobile component and
+    // 'in_progress' from the board are the same status and must not sit in the
+    // column as two. An UNKNOWN value is rejected by the caller, not silently
+    // written - that is what stopped the vocabulary growing a fifth member.
+    let stored = newValue;
+    if (snakeKey === 'status') {
+      const normalized = normalizeTicketStatus(newValue);
+      if (normalized === null) {
+        rejected.push({ field: 'status', value: newValue });
+        continue;
+      }
+      stored = normalized;
+    } else if (snakeKey === 'priority') {
+      const normalized = normalizeTicketPriority(newValue);
+      if (normalized === null) {
+        rejected.push({ field: 'priority', value: newValue });
+        continue;
+      }
+      stored = normalized;
+    }
+
+    updateData[snakeKey] = stored;
+    if (currentTicket && currentTicket[snakeKey] !== stored) {
+      changes.push({
+        field: snakeKey,
+        oldValue: currentTicket[snakeKey] ?? null,
+        newValue: stored,
+      });
     }
   }
 
-  return { updateData, changes };
+  return { updateData, changes, rejected };
 }
 
 export type DispatchLoadRow = { technicianId: string; openCount: number; todayCount: number };

@@ -428,6 +428,13 @@
       "when": 1788342576428,
       "tag": "0077_wf_l04_equipment_receipt_links",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1788342696428,
+      "tag": "0078_wf_v05_ticket_vocabulary",
+      "breakpoints": true
     }
   ]
 }

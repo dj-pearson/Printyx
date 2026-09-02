@@ -5,12 +5,17 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { enrichTickets } from './_enrich.ts';
 import { applyUserScope, resolveScope, rowInScope } from '../_shared/scope.ts';
+import { applyTicketFields, assignmentNotification, dispatchLoad } from './_dispatch.ts';
 import {
-  applyTicketFields,
-  assignmentNotification,
-  dispatchLoad,
   OPEN_TICKET_STATUSES,
-} from './_dispatch.ts';
+  SERVICE_TICKET_PRIORITIES,
+  SERVICE_TICKET_STATUSES,
+  normalizeTicketPriority,
+  normalizeTicketStatus,
+  PRIORITY_ALIASES,
+  STATUS_ALIASES,
+  ticketVocabulary,
+} from '../_shared/service-ticket-vocabulary.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 export default async function handler(req: Request) {
@@ -88,25 +93,44 @@ export default async function handler(req: Request) {
       );
     };
 
+    // GET /service-tickets/vocabulary - the one status and priority list
+    //
+    // WF-V-05. Four vocabularies were in play and no constraint enforced any, so
+    // a filter offering `new` matched nothing and one offering `emergency`
+    // matched nothing either. Served rather than duplicated into each select, so
+    // adding a status is one edit.
+    if (req.method === 'GET' && ticketId === 'vocabulary' && !subResource) {
+      return createCorsResponse(ticketVocabulary(), 200, req);
+    }
+
     if (req.method === 'GET' && ticketId === 'stats') {
       const base = () =>
         admin
           .from('service_tickets')
           .select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId);
-      // WF-V-01: BOTH spellings, because service_tickets.status has two
-      // vocabularies in this repo and picking one silently zeroes a card. The
-      // schema comment says `in-progress` and Express counted that; the demo
-      // seeder writes `in_progress` and this function counted that; `completed`
-      // was resolved to Express and not here. A superset cannot under-count, and
-      // under-counting is the failure that looks like real data. Which spelling
-      // is canonical is a separate question - see the WF-V-01 note.
+      // WF-V-01 counted BOTH spellings because the vocabulary was unsettled;
+      // WF-V-05 settled it, so the alias lists come from the vocabulary module
+      // instead of being written out here. They are still counted - rows written
+      // before the backfill may carry the old spelling - but from one list, so a
+      // new alias reaches the stats card without a second edit.
+      const alias = (canonical: string) => [
+        canonical,
+        ...Object.entries(STATUS_ALIASES)
+          .filter(([, v]) => v === canonical)
+          .map(([k]) => k),
+      ];
       const [total, open, inProgress, urgent, resolved] = await Promise.all([
         base(),
-        base().eq('status', 'open'),
-        base().in('status', ['in_progress', 'in-progress']),
-        base().in('priority', ['urgent', 'critical']),
-        base().in('status', ['resolved', 'closed', 'completed']),
+        base().in('status', alias('open')),
+        base().in('status', alias('in_progress')),
+        base().in('priority', [
+          'urgent',
+          ...Object.entries(PRIORITY_ALIASES)
+            .filter(([, v]) => v === 'urgent')
+            .map(([k]) => k),
+        ]),
+        base().in('status', alias('completed')),
       ]);
       return createCorsResponse(
         {
@@ -277,6 +301,28 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && !ticketId) {
       const body = await req.json();
 
+      // WF-V-05: refuse a status or priority outside the vocabulary. Sending one
+      // used to store it, and a ticket in a status no filter offers is invisible
+      // on every board that lists by status.
+      const badStatus = body.status !== undefined && normalizeTicketStatus(body.status) === null;
+      const badPriority =
+        body.priority !== undefined && normalizeTicketPriority(body.priority) === null;
+      if (badStatus || badPriority) {
+        return createCorsResponse(
+          {
+            error: 'Unknown status or priority',
+            code: 'INVALID_TICKET_VOCABULARY',
+            rejected: [
+              ...(badStatus ? [{ field: 'status', value: body.status }] : []),
+              ...(badPriority ? [{ field: 'priority', value: body.priority }] : []),
+            ],
+            allowed: { status: SERVICE_TICKET_STATUSES, priority: SERVICE_TICKET_PRIORITIES },
+          },
+          400,
+          req,
+        );
+      }
+
       // Generate ticket number if not provided
       const ticketNumber = body.ticketNumber || body.ticket_number || `TKT-${Date.now()}`;
 
@@ -287,8 +333,10 @@ export default async function handler(req: Request) {
         ticket_number: ticketNumber,
         title: body.title,
         description: body.description || null,
-        priority: body.priority || 'medium',
-        status: body.status || 'open',
+        // WF-V-05: normalized, and an unknown value is refused above rather
+        // than written into a column no filter can match.
+        priority: normalizeTicketPriority(body.priority) ?? 'medium',
+        status: normalizeTicketStatus(body.status) ?? 'open',
         assigned_technician_id: body.assignedTechnicianId || body.assigned_technician_id || null,
         scheduled_date: body.scheduledDate || body.scheduled_date || null,
         estimated_duration: body.estimatedDuration || body.estimated_duration || null,
@@ -389,7 +437,25 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .single();
 
-      const { updateData, changes } = applyTicketFields(body, currentTicket);
+      const { updateData, changes, rejected } = applyTicketFields(body, currentTicket);
+      if (rejected.length > 0) {
+        // A status or priority outside the vocabulary is a 400 naming what is
+        // allowed, not a silent write that makes the ticket invisible to every
+        // filter - which is what happened before there was a vocabulary.
+        return createCorsResponse(
+          {
+            error: 'Unknown status or priority',
+            code: 'INVALID_TICKET_VOCABULARY',
+            rejected,
+            allowed: {
+              status: SERVICE_TICKET_STATUSES,
+              priority: SERVICE_TICKET_PRIORITIES,
+            },
+          },
+          400,
+          req,
+        );
+      }
       updateData.updated_at = new Date().toISOString();
 
       // If status is completed, set resolved_at
