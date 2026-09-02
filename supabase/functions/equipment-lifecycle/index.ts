@@ -9,6 +9,21 @@ import {
   getAvailableTransitions,
   getValidationRequirements,
 } from '../_shared/equipment-lifecycle-transitions.ts';
+import {
+  PENDING_PO_ID,
+  buildLineItemRow,
+  lineItemsSubtotal,
+} from '../purchase-orders/_line-items.ts';
+import {
+  buildDeliveryRow,
+  buildInstallationRow,
+  hubAssets,
+  hubDeliveries,
+  hubInstallations,
+  hubLifecycle,
+  hubMetrics,
+  hubPurchaseOrders,
+} from './_hub.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -51,6 +66,194 @@ export default async function handler(req: Request) {
 
     const firstPart = parts[0]; // After 'equipment-lifecycle'
     const secondPart = parts[1];
+
+    // ── WF-L-02: the Equipment Lifecycle Hub's own endpoints ──────────────
+    //
+    // EquipmentLifecycleHub.tsx has called these since it was written and
+    // NEITHER host served any of them, so every list on the page was empty
+    // behind a 404 and the three create dialogs posted into nothing.
+    if (req.method === 'GET' && firstPart === 'metrics') {
+      return createCorsResponse(await hubMetrics(admin, tenantId), 200, req);
+    }
+
+    // /lifecycle, not /stages. /stages is the stage VOCABULARY below - which
+    // stages exist and what may follow them - and the page was calling it
+    // expecting equipment rows, so its board mapped {key, value, name} objects
+    // into equipment records.
+    if (req.method === 'GET' && firstPart === 'lifecycle') {
+      return createCorsResponse(
+        await hubLifecycle(admin, tenantId, {
+          stage: url.searchParams.get('stage'),
+          status: url.searchParams.get('status'),
+        }),
+        200,
+        req,
+      );
+    }
+
+    if (req.method === 'GET' && firstPart === 'purchase-orders') {
+      return createCorsResponse(await hubPurchaseOrders(admin, tenantId), 200, req);
+    }
+
+    if (req.method === 'GET' && firstPart === 'deliveries') {
+      return createCorsResponse(await hubDeliveries(admin, tenantId), 200, req);
+    }
+
+    if (req.method === 'GET' && firstPart === 'installations') {
+      return createCorsResponse(await hubInstallations(admin, tenantId), 200, req);
+    }
+
+    if (req.method === 'GET' && firstPart === 'assets') {
+      return createCorsResponse(await hubAssets(admin, tenantId), 200, req);
+    }
+
+    if (req.method === 'POST' && firstPart === 'deliveries') {
+      const body = await req.json();
+      const row = buildDeliveryRow(body, tenantId);
+      if ('error' in row) return createCorsResponse({ error: row.error }, 400, req);
+
+      const { data, error } = await admin.from('delivery_schedules').insert(row).select().single();
+      if (error) {
+        console.error('Error scheduling delivery:', error);
+        return createCorsResponse(
+          { error: 'Failed to schedule the delivery', details: error },
+          500,
+          req,
+        );
+      }
+      return createCorsResponse(data, 201, req);
+    }
+
+    if (req.method === 'POST' && firstPart === 'installations') {
+      const body = await req.json();
+      const row = buildInstallationRow(body, tenantId);
+      if ('error' in row) return createCorsResponse({ error: row.error }, 400, req);
+
+      const { data, error } = await admin
+        .from('installation_schedules')
+        .insert(row)
+        .select()
+        .single();
+      if (error) {
+        console.error('Error scheduling installation:', error);
+        return createCorsResponse(
+          { error: 'Failed to schedule the installation', details: error },
+          500,
+          req,
+        );
+      }
+      return createCorsResponse(data, 201, req);
+    }
+
+    // POST /equipment-lifecycle/purchase-orders
+    //
+    // The hub's dialog collects a vendor NAME with no vendor picker, and
+    // purchase_orders.vendor_id is NOT NULL, so the name is resolved against the
+    // tenant's vendors. An unknown name is a 400 that says so - creating a vendor
+    // row per typed string would fill the vendor list with variants of the same
+    // company, and writing a null into a NOT NULL column is a 23502 the caller
+    // reads as "something went wrong".
+    //
+    // Line items go through the same builder as /api/purchase-orders (WF-P-01),
+    // so the two create paths cannot disagree about the column vocabulary.
+    if (req.method === 'POST' && firstPart === 'purchase-orders') {
+      const body = await req.json();
+      const vendorName = String(body.vendor_name ?? body.vendorName ?? '').trim();
+      if (!vendorName) {
+        return createCorsResponse({ error: 'vendor_name is required' }, 400, req);
+      }
+
+      const { data: vendors } = await admin
+        .from('vendors')
+        .select('id, vendor_name')
+        .eq('tenant_id', tenantId)
+        .ilike('vendor_name', vendorName)
+        .limit(2);
+
+      if (!vendors || vendors.length === 0) {
+        return createCorsResponse(
+          {
+            error: `No vendor named "${vendorName}". Add the vendor first, then raise the order.`,
+            code: 'VENDOR_NOT_FOUND',
+          },
+          400,
+          req,
+        );
+      }
+      if (vendors.length > 1) {
+        return createCorsResponse(
+          { error: `More than one vendor matches "${vendorName}".`, code: 'VENDOR_AMBIGUOUS' },
+          400,
+          req,
+        );
+      }
+
+      const items = Array.isArray(body.items) ? body.items : [];
+      const lineRows = items.map((item: Record<string, unknown>, index: number) =>
+        buildLineItemRow(
+          {
+            itemDescription: item.description ?? item.equipment_model,
+            itemCode: item.equipment_model,
+            manufacturerPartNumber: item.equipment_brand,
+            quantity: item.quantity,
+            unitPrice: item.unit_price,
+          },
+          { tenantId, purchaseOrderId: PENDING_PO_ID, lineNumber: index + 1 },
+        ),
+      );
+      const subtotal = lineItemsSubtotal(lineRows);
+
+      const { data: po, error } = await admin
+        .from('purchase_orders')
+        .insert({
+          tenant_id: tenantId,
+          po_number: `PO-${Date.now()}`,
+          vendor_id: vendors[0].id,
+          requested_by: user.id,
+          order_date: body.order_date ?? new Date().toISOString(),
+          expected_date: body.requested_delivery_date ?? null,
+          subtotal,
+          total_amount: subtotal,
+          status: 'draft',
+          delivery_address: body.delivery_address ?? null,
+          special_instructions: body.special_instructions ?? null,
+          customer_id: body.customer_id ?? null,
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating purchase order from the lifecycle hub:', error);
+        return createCorsResponse(
+          { error: 'Failed to create the purchase order', details: error },
+          500,
+          req,
+        );
+      }
+
+      if (lineRows.length > 0) {
+        const { error: lineError } = await admin
+          .from('purchase_order_items')
+          .insert(lineRows.map((row) => ({ ...row, purchase_order_id: po.id })));
+        if (lineError) {
+          console.error('Error creating purchase order lines:', lineError);
+          return createCorsResponse(
+            {
+              error: 'The purchase order was created but its line items were not saved',
+              purchaseOrderId: po.id,
+              details: lineError,
+            },
+            500,
+            req,
+          );
+        }
+      }
+
+      return createCorsResponse(po, 201, req);
+    }
 
     // GET /equipment-lifecycle/stages - Get all lifecycle stages
     if (req.method === 'GET' && firstPart === 'stages') {
