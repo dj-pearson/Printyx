@@ -91,168 +91,37 @@ const deliveryScheduleSchema = z.object({
 export function registerWarehouseRoutes(app: Express) {
   // Apply authentication and RBAC context to all warehouse routes
   // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires
-  app.use('/api/warehouse-operations', isAuthenticated, enhanceUserContext);
   app.use('/api/serial-numbers', isAuthenticated, enhanceUserContext);
   app.use('/api/build-processes', isAuthenticated, enhanceUserContext);
   app.use('/api/delivery-schedules', isAuthenticated, enhanceUserContext);
 
-  // Warehouse Operations CRUD - requires inventory view permission
-  app.get(
-    '/api/warehouse-operations',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.WAREHOUSE.VIEW, PERMISSIONS.INVENTORY.ITEM.VIEW]),
-    authed(async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = req.user?.tenantId || (req as any).user?.claims?.tenantId;
-        const operations = await storage.getWarehouseOperations(tenantId);
-        res.json(operations);
-      } catch (error) {
-        log.error('Error fetching warehouse operations:', error);
-        serverError(res, 'Failed to fetch warehouse operations');
-      }
-    }),
-  );
-
-  // ROUTE ORDER IS LOAD-BEARING. /stats was registered AFTER
-  // /api/warehouse-operations/:id, so express served it from the :id handler
-  // with id = 'stats' and WarehouseOperations.tsx could only ever get a 404.
-  // Gated by npm run check:route-shadowing.
-  // Warehouse statistics
-  app.get('/api/warehouse-operations/stats', isAuthenticated, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
-      const operations = await storage.getWarehouseOperations(tenantId);
-
-      const stats = {
-        totalOperations: operations.length,
-        pendingOperations: operations.filter((op) => op.status === 'pending').length,
-        inProgressOperations: operations.filter((op) => op.status === 'in_progress').length,
-        completedOperations: operations.filter((op) => op.status === 'completed').length,
-        failedOperations: operations.filter((op) => op.status === 'failed').length,
-        operationsByType: {
-          receiving: operations.filter((op) => op.operationType === 'receiving').length,
-          quality_control: operations.filter((op) => op.operationType === 'quality_control').length,
-          staging: operations.filter((op) => op.operationType === 'staging').length,
-          shipping: operations.filter((op) => op.operationType === 'shipping').length,
-          build: operations.filter((op) => op.operationType === 'build').length,
-        },
-      };
-
-      res.json(stats);
-    } catch (error) {
-      log.error('Error fetching warehouse statistics:', error);
-      serverError(res, 'Failed to fetch warehouse statistics');
-    }
-  });
+  // WF-L-03: the /api/warehouse-operations handlers used to live here, and they
+  // were the reason the board worked in dev and not in production.
+  // WarehouseOperations.tsx calls the bare list, POST and PATCH /:id/status, and
+  // all three fell to the terminal 404 in supabase/functions/warehouse-operations/
+  // - which is what production reaches. The edge function serves them now (plus
+  // /stats and GET /:id, which it already had or has gained), and the prefix is
+  // in crmProxies so dev runs the same code.
+  //
+  // One defect went with them: the PATCH handler set `completedBy` on completion
+  // and warehouse_operations HAS NO SUCH COLUMN, so Drizzle dropped the key on
+  // every write. The edge version writes completed_date, which exists.
+  //
+  // The rest of this router - /api/build-processes, /api/delivery-schedules,
+  // /api/serial-numbers, /api/equipment - is untouched and still Express-only.
 
   // Serial Number Management
 
-  app.get('/api/warehouse-operations/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
-      const { id } = req.params;
-
-      const operation = await storage.getWarehouseOperation(id, tenantId);
-      if (!operation) {
-        return notFound(res, 'Warehouse operation not found');
-      }
-
-      res.json(operation);
-    } catch (error) {
-      log.error('Error fetching warehouse operation:', error);
-      serverError(res, 'Failed to fetch warehouse operation');
-    }
-  });
-
-  app.post('/api/warehouse-operations', isAuthenticated, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
-      const userId = req.user?.id || req.user?.claims?.sub;
-
-      const validatedData = warehouseOperationSchema.parse(req.body);
-
-      const operation = await storage.createWarehouseOperation({
-        ...validatedData,
-        tenantId,
-        assignedTo: validatedData.assignedTo || userId,
-        scheduledDate: validatedData.scheduledDate
-          ? new Date(validatedData.scheduledDate)
-          : undefined,
-      });
-
-      res.json(operation);
-    } catch (error: any) {
-      log.error('Error creating warehouse operation:', error);
-      if (error.name === 'ZodError') {
-        badRequest(res, 'Invalid data', { details: error.errors });
-      } else {
-        serverError(res, 'Failed to create warehouse operation');
-      }
-    }
-  });
-
-  app.put('/api/warehouse-operations/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
-      const { id } = req.params;
-
-      const operation = await storage.updateWarehouseOperation(id, req.body, tenantId);
-      if (!operation) {
-        return notFound(res, 'Warehouse operation not found');
-      }
-
-      res.json(operation);
-    } catch (error) {
-      log.error('Error updating warehouse operation:', error);
-      serverError(res, 'Failed to update warehouse operation');
-    }
-  });
-
-  app.patch('/api/warehouse-operations/:id/status', isAuthenticated, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
-      const { id } = req.params;
-      const { status } = req.body;
-      const userId = req.user?.id || req.user?.claims?.sub;
-
-      const updateData: any = {
-        status,
-        updatedAt: new Date(),
-      };
-
-      if (status === 'completed') {
-        updateData.completedDate = new Date();
-        updateData.completedBy = userId;
-      }
-
-      const operation = await storage.updateWarehouseOperation(id, updateData, tenantId);
-      if (!operation) {
-        return notFound(res, 'Warehouse operation not found');
-      }
-
-      res.json(operation);
-    } catch (error) {
-      log.error('Error updating warehouse operation status:', error);
-      serverError(res, 'Failed to update warehouse operation status');
-    }
-  });
-
-  app.delete('/api/warehouse-operations/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
-      const { id } = req.params;
-
-      const success = await storage.deleteWarehouseOperation(id, tenantId);
-      if (!success) {
-        return notFound(res, 'Warehouse operation not found');
-      }
-
-      res.json({ success: true });
-    } catch (error) {
-      log.error('Error deleting warehouse operation:', error);
-      serverError(res, 'Failed to delete warehouse operation');
-    }
-  });
+  // WF-L-03: GET /:id, POST, PUT /:id, PATCH /:id/status and DELETE /:id used to
+  // be here. /api/warehouse-operations is proxied now and
+  // supabase/functions/warehouse-operations/ serves the list, the create, the
+  // single read and the status change; PUT and DELETE had no caller in any client
+  // tree and were not ported, so nothing lost a working feature.
+  //
+  // The PATCH handler carried a defect worth remembering: it set `completedBy` on
+  // completion and warehouse_operations has no such column, so Drizzle dropped the
+  // key on every write - silently, which is exactly why nobody noticed the field
+  // was never stored. The edge version writes completed_date, which exists.
 
   app.get('/api/serial-numbers', isAuthenticated, async (req: any, res) => {
     try {

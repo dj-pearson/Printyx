@@ -275,6 +275,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // a 404, so without that ordering the analysis panel would go from
     // working-in-dev to 404-in-dev.
     '/api/service-tickets': 'service-tickets',
+    // WF-L-03. The board's three calls - the bare list, POST and
+    // PATCH /:id/status - fell to the edge function's terminal 404, so
+    // WarehouseOperations.tsx worked only in dev, where server/routes-warehouse.ts
+    // served them. EDGE-002h missed it because that check compares NAMED
+    // sub-paths and the bare list has no name. The whole prefix is safe to proxy:
+    // the edge function now covers every path the Express router had, and the
+    // router's other prefixes (/api/build-processes, /api/delivery-schedules,
+    // /api/serial-numbers, /api/equipment) are untouched by this entry.
+    '/api/warehouse-operations': 'warehouse-operations',
     '/api/companies': 'companies',
     // PA-021. /api/customers used to be special-cased below to the `companies`
     // function for the bare list, with only /:id/:sub forwarded to `customers`.

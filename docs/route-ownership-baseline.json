@@ -45,15 +45,13 @@
     "seo",
     "service-analysis",
     "service-analytics",
-    "service-tickets",
     "social-media",
     "software-products",
     "subscriptions",
     "supplies",
     "task-workflows",
     "technician-management",
-    "templates",
-    "warehouse-operations"
+    "templates"
   ],
   "missingEdge": [],
   "deadInBoth": []

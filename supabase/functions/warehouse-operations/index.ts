@@ -4,6 +4,38 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 
+/**
+ * The named sub-paths, so the single-operation GET below cannot swallow one.
+ *
+ * PA-052 hit the mirror image of this three times: a list branch with no
+ * `!resourceId` guard swallowing everything behind an id. Here the risk runs the
+ * other way, because the id sits where a name would.
+ */
+const NAMED_ENDPOINTS = new Set([
+  'warehouses',
+  'inventory',
+  'transfers',
+  'bin-locations',
+  'picking-list',
+  'stats',
+]);
+
+/**
+ * WF-L-03, on the five branches nothing calls.
+ *
+ * /warehouses, /inventory, /transfers, /bin-locations and /picking-list have no
+ * caller in ANY client tree - client/src, ios, mobile-app and printyx-client were
+ * all checked. They are KEPT rather than deleted, and the reason is not
+ * sentiment: six of the seven tables they read - warehouses, inventory,
+ * inventory_transactions, inventory_transfers, bin_locations and order_items -
+ * sit in docs/phantom-tables-baseline.json's `unreviewed` list, which means
+ * nothing in this repository declares them. So they cannot be given a caller
+ * until those tables are settled, and deleting them would throw away the only
+ * written description of what a warehouse module over those tables would look
+ * like.
+ *
+ * What they must NOT be mistaken for is live. Nothing reaches them today.
+ */
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -380,6 +412,145 @@ export default async function handler(req: Request) {
         200,
         req,
       );
+    }
+
+    // ── WF-L-03: the three endpoints WarehouseOperations.tsx actually calls ──
+    //
+    // The board lists GET /, creates with POST / and advances with
+    // PATCH /:id/status. None of the three existed here, so every one fell to the
+    // terminal 404 below and the page worked only in dev, where
+    // server/routes-warehouse.ts served them. EDGE-002h missed it because that
+    // check compares NAMED sub-paths and the bare list has no name.
+    //
+    // These are LAST on purpose: `endpoint` is undefined for the bare list, and
+    // for PATCH it is the id, so putting them above would swallow the named
+    // branches - the missing-!resourceId defect PA-052 hit three times.
+    //
+    // Rows go out in camelCase because that is what the page reads.
+    const toOperation = (row: Record<string, unknown>) => ({
+      id: row.id,
+      tenantId: row.tenant_id,
+      equipmentId: row.equipment_id,
+      operationType: row.operation_type,
+      status: row.status,
+      assignedTo: row.assigned_to,
+      scheduledDate: row.scheduled_date,
+      completedDate: row.completed_date,
+      notes: row.notes,
+      qualityControlChecks: row.quality_control_checks,
+      photos: row.photos,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    });
+
+    if (req.method === 'GET' && !endpoint) {
+      const status = url.searchParams.get('status');
+      const operationType =
+        url.searchParams.get('operationType') || url.searchParams.get('operation_type');
+
+      let query = admin
+        .from('warehouse_operations')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (status) query = query.eq('status', status);
+      if (operationType) query = query.eq('operation_type', operationType);
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('Error fetching warehouse operations:', error);
+        return createCorsResponse({ error: 'Failed to fetch warehouse operations' }, 500, req);
+      }
+      return createCorsResponse((data ?? []).map(toOperation), 200, req);
+    }
+
+    if (req.method === 'POST' && !endpoint) {
+      const body = await req.json();
+      const equipmentId = body.equipmentId ?? body.equipment_id;
+      const operationType = body.operationType ?? body.operation_type;
+
+      // Both are NOT NULL. Saying which one is missing beats a 23502 the caller
+      // reads as "something went wrong".
+      if (!equipmentId) return createCorsResponse({ error: 'equipmentId is required' }, 400, req);
+      if (!operationType) {
+        return createCorsResponse({ error: 'operationType is required' }, 400, req);
+      }
+
+      const { data, error } = await admin
+        .from('warehouse_operations')
+        .insert({
+          tenant_id: tenantId,
+          equipment_id: equipmentId,
+          operation_type: operationType,
+          status: body.status ?? 'pending',
+          // The Express version defaulted an unassigned operation to the caller.
+          // Kept, so an operation always has someone against it.
+          assigned_to: body.assignedTo ?? body.assigned_to ?? user.id,
+          scheduled_date: body.scheduledDate ?? body.scheduled_date ?? null,
+          notes: body.notes ?? null,
+          quality_control_checks: body.qualityControlChecks ?? body.quality_control_checks ?? null,
+          photos: body.photos ?? null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating warehouse operation:', error);
+        return createCorsResponse(
+          { error: 'Failed to create the warehouse operation', details: error },
+          500,
+          req,
+        );
+      }
+      return createCorsResponse(toOperation(data), 201, req);
+    }
+
+    if (req.method === 'GET' && endpoint && !resourceId && !NAMED_ENDPOINTS.has(endpoint)) {
+      const { data, error } = await admin
+        .from('warehouse_operations')
+        .select('*')
+        .eq('id', endpoint)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching warehouse operation:', error);
+        return createCorsResponse({ error: 'Failed to fetch the operation' }, 500, req);
+      }
+      if (!data) return createCorsResponse({ error: 'Warehouse operation not found' }, 404, req);
+      return createCorsResponse(toOperation(data), 200, req);
+    }
+
+    if (req.method === 'PATCH' && endpoint && resourceId === 'status') {
+      const body = await req.json();
+      const status = body.status;
+      if (!status) return createCorsResponse({ error: 'status is required' }, 400, req);
+
+      // NO completed_by. The Express handler set it on completion and
+      // warehouse_operations has no such column, so Drizzle dropped the key on
+      // every write - silently, which is why nobody noticed the field was never
+      // stored. completed_date is the one that exists.
+      const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+      if (status === 'completed') patch.completed_date = new Date().toISOString();
+
+      const { data, error } = await admin
+        .from('warehouse_operations')
+        .update(patch)
+        .eq('id', endpoint)
+        .eq('tenant_id', tenantId)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error updating warehouse operation status:', error);
+        return createCorsResponse({ error: 'Failed to update the operation' }, 500, req);
+      }
+      if (!data) return createCorsResponse({ error: 'Warehouse operation not found' }, 404, req);
+      return createCorsResponse(toOperation(data), 200, req);
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
