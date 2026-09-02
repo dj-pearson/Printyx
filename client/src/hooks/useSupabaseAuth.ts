@@ -256,17 +256,26 @@ export function useSupabaseAuth() {
           };
         }
 
-        // Fallback: fetch from roles table if we have role_id but no API role
+        // Fallback: fetch from roles table if we have role_id but no API role.
+        //
+        // WF-R-09: `code` and `department` were NOT selected here, and this is the
+        // path every web session actually takes - /api/me has no caller in any
+        // client tree. usePermissions reads `role?.code || role?.name`, so every
+        // user's effective role code was their role's display NAME ("Company
+        // Administrator"), which matches no key in DEFAULT_ROLE_LAYOUTS - those are
+        // codes. Every role therefore got the DEFAULT dashboard layout.
         if (!roleData && roleId) {
           const { data: role, error: roleError } = await supabase
             .from('roles')
-            .select('id, name, level, permissions, can_access_all_tenants')
+            .select('id, code, name, department, level, permissions, can_access_all_tenants')
             .eq('id', roleId)
             .single();
 
           if (!roleError && role) {
             roleData = {
               id: role.id,
+              code: role.code ?? undefined,
+              department: role.department ?? undefined,
               name: role.name,
               level: role.level || 1,
               permissions: normalizePermissions(role.permissions),
