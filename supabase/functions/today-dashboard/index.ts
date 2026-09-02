@@ -99,12 +99,17 @@ export default async function handler(req: Request) {
 
       const { data: wonDeals } = await admin
         .from('deals')
-        .select('value')
+        // AUDIT-037: `deals` has amount and actual_close_date, not value and
+        // closed_at, so this 42703'd and today's revenue was always 0 - a
+        // number the dashboard printed with no way to tell it apart from a
+        // genuinely quiet morning.
+        .select('amount')
         .eq('tenant_id', tenantId)
         .eq('status', 'won')
-        .gte('closed_at', todayIso);
+        .gte('actual_close_date', todayIso);
 
-      const todayRevenue = wonDeals?.reduce((sum: number, d: any) => sum + (d.value || 0), 0) || 0;
+      const todayRevenue =
+        wonDeals?.reduce((sum: number, d: any) => sum + Number(d.amount ?? 0), 0) || 0;
 
       return createCorsResponse(
         {

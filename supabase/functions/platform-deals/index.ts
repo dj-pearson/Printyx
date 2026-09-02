@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
+import { toCamel } from '../_shared/case.ts';
 
 const PIPELINE_STAGES = [
   { stage: 'prospecting', order: 1, probability: 10, category: 'pipeline' },
@@ -279,6 +280,58 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(deal, 200, req);
+    }
+
+    // GET /platform-deals/:id/bant - BANT qualification for this deal
+    // PA-052: PlatformDealDetail's BANT tab called this and the function had no
+    // branch for it, so every score rendered as the `|| 0` fallback and the
+    // status as "Not assessed" whether or not an assessment existed.
+    //
+    // platform_bant_qualification is keyed on business_record_id (UNIQUE) with an
+    // optional deal_id, so resolve the deal first and try both links. The table is
+    // platform-level and carries NO tenant_id; the root-admin gate above is the
+    // access control.
+    if (req.method === 'GET' && dealId && subResource === 'bant') {
+      const { data: deal, error: dealError } = await admin
+        .from('platform_deals')
+        .select('id, business_record_id')
+        .eq('id', dealId)
+        .single();
+
+      if (dealError || !deal) {
+        return createCorsResponse({ error: 'Deal not found' }, 404, req);
+      }
+
+      let { data: bant, error } = await admin
+        .from('platform_bant_qualification')
+        .select('*')
+        .eq('deal_id', dealId)
+        .maybeSingle();
+
+      if (!error && !bant && deal.business_record_id) {
+        ({ data: bant, error } = await admin
+          .from('platform_bant_qualification')
+          .select('*')
+          .eq('business_record_id', deal.business_record_id)
+          .maybeSingle());
+      }
+
+      if (error) {
+        console.error('Error fetching BANT qualification:', error);
+        return createCorsResponse({ error: 'Failed to fetch BANT qualification' }, 500, req);
+      }
+
+      // No assessment is a real answer, and it is not a zero score. Leave every
+      // score null so the tab reads "Not assessed" instead of a scored zero.
+      if (!bant) {
+        return createCorsResponse({ assessed: false, qualificationStatus: null }, 200, req);
+      }
+
+      return createCorsResponse(
+        { ...(toCamel(bant) as Record<string, unknown>), assessed: true },
+        200,
+        req,
+      );
     }
 
     // POST /platform-deals/:id/move-stage - Move deal to a new stage

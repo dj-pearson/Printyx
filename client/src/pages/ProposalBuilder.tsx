@@ -185,8 +185,8 @@ function mapTemplateRow(r: any): ProposalTemplate {
         }));
   return {
     id: r.id,
-    name: r.template_name ?? 'Untitled Template',
-    category: r.template_type ?? 'general',
+    name: r.name ?? 'Untitled Template',
+    category: r.category ?? 'general',
     description: r.description ?? '',
     isDefault: !!r.is_default,
     sections,

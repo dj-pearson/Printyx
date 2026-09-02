@@ -3,6 +3,33 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { createAdapter } from '../_shared/manufacturer-adapters.ts';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolve parts[0], which is EITHER an integration id or a manufacturer name.
+ *
+ * PA-052: every per-integration branch here looked the row up by
+ * `.eq('manufacturer', parts[0])`, and the only caller in any client tree -
+ * ManufacturerIntegration.tsx - passes `integration.id`. `manufacturer` is a
+ * pgEnum, so a uuid in that filter is 22P02: not "no row", a 500. Express keys
+ * the same paths by id, so the page worked in dev and failed in prod on every
+ * per-integration action.
+ *
+ * The id form is checked first and only against `id`, so a uuid never reaches
+ * the enum column.
+ */
+async function resolveIntegration(admin: any, tenantId: string, ref: string) {
+  const column = UUID_RE.test(ref) ? 'id' : 'manufacturer';
+  const { data, error } = await admin
+    .from('manufacturer_integrations')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq(column, ref)
+    .maybeSingle();
+  return { integration: data ?? null, error: error ?? null };
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -161,12 +188,7 @@ export default async function handler(req: Request) {
 
     // GET /manufacturer-integrations/:manufacturer - Get specific integration
     if (req.method === 'GET' && manufacturer && !endpoint) {
-      const { data: integration } = await admin
-        .from('manufacturer_integrations')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('manufacturer', manufacturer)
-        .single();
+      const { integration } = await resolveIntegration(admin, tenantId, manufacturer);
 
       if (!integration) {
         return createCorsResponse(
@@ -339,30 +361,209 @@ export default async function handler(req: Request) {
 
     // POST /manufacturer-integrations/:manufacturer/test - Test connection
     if (req.method === 'POST' && manufacturer && endpoint === 'test') {
-      const { data: integration } = await admin
-        .from('manufacturer_integrations')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('manufacturer', manufacturer)
-        .single();
+      const { integration, error } = await resolveIntegration(admin, tenantId, manufacturer);
 
-      if (!integration || !integration.is_active) {
+      if (error) {
+        console.error('Error loading integration for test:', error);
+        return createCorsResponse({ error: 'Failed to load integration' }, 500, req);
+      }
+
+      if (!integration) {
+        return createCorsResponse({ success: false, message: 'Integration not found' }, 404, req);
+      }
+
+      if (!integration.is_active) {
+        return createCorsResponse(
+          { success: false, connectivityVerified: false, message: 'Integration is inactive' },
+          200,
+          req,
+        );
+      }
+
+      // PA-052: this used to answer `success: true, "Connection to X is
+      // working"` unconditionally, under a comment saying a real test would go
+      // here - so a misconfigured integration reported a working connection.
+      // There is no manufacturer API client in this function, so what it can
+      // honestly report is what is stored. connectivityVerified stays false.
+      const credentials = (integration.credentials ?? {}) as Record<string, unknown>;
+      const hasCredentials = Object.values(credentials).some(
+        (v) => v !== null && v !== undefined && String(v).trim() !== '',
+      );
+      const problems: string[] = [];
+      if (!hasCredentials) problems.push('no credentials are stored');
+      if (!integration.api_endpoint) problems.push('no API endpoint is configured');
+
+      return createCorsResponse(
+        {
+          success: problems.length === 0,
+          connectivityVerified: false,
+          lastSync: integration.last_sync ?? null,
+          message:
+            problems.length === 0
+              ? `${integration.manufacturer} is configured (credentials and endpoint present). The connection itself was not tested.`
+              : `Configuration incomplete: ${problems.join(', ')}.`,
+          timestamp: new Date().toISOString(),
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /manufacturer-integrations/:id/discover - Discover and register devices
+    //
+    // PA-054: this answered 501 (PA-052) because the vendor adapters were
+    // Node-only and the browser cannot reach Express in production. They are
+    // ported to _shared/manufacturer-adapters.ts now - plain fetch and field
+    // mapping, no Node built-ins - so discovery runs here.
+    if (req.method === 'POST' && manufacturer && endpoint === 'discover') {
+      const { integration, error } = await resolveIntegration(admin, tenantId, manufacturer);
+
+      if (error) {
+        console.error('Error loading integration for discovery:', error);
+        return createCorsResponse({ error: 'Failed to load integration' }, 500, req);
+      }
+      if (!integration) {
+        return createCorsResponse({ error: 'Integration not found' }, 404, req);
+      }
+      if (!integration.is_active) {
+        return createCorsResponse({ error: 'Integration is inactive' }, 400, req);
+      }
+
+      let devices: Awaited<ReturnType<ReturnType<typeof createAdapter>['discoverDevices']>>;
+      try {
+        const adapter = createAdapter(
+          integration.manufacturer,
+          integration.credentials ?? {},
+          integration.api_endpoint || '',
+        );
+        devices = await adapter.discoverDevices();
+      } catch (err) {
+        // A vendor API that errors must NOT come back as an empty device list.
+        // Every adapter's discoverDevices already swallows its own fetch failure
+        // and returns [], which is why this says so explicitly: "registered 0
+        // devices" and "could not reach the vendor" are different answers, and
+        // the Express version reported them identically.
+        console.error('Device discovery failed:', err);
         return createCorsResponse(
           {
-            success: false,
-            message: 'Integration not configured or inactive',
+            error: 'Device discovery failed',
+            details: err instanceof Error ? err.message : String(err),
+          },
+          502,
+          req,
+        );
+      }
+
+      if (!devices.length) {
+        return createCorsResponse(
+          {
+            registered: 0,
+            devices: [],
+            message:
+              'The integration answered with no devices. That is either an empty fleet or a ' +
+              'vendor error the adapter swallowed; check the integration credentials if this is unexpected.',
           },
           200,
           req,
         );
       }
 
-      // In production, this would test the actual API connection
+      const adapter = createAdapter(
+        integration.manufacturer,
+        integration.credentials ?? {},
+        integration.api_endpoint || '',
+      );
+
+      const rows = [];
+      for (const device of devices) {
+        try {
+          const shaped = await adapter.registerDevice(device);
+          rows.push({
+            tenant_id: tenantId,
+            integration_id: integration.id,
+            device_id: String(shaped.deviceId ?? ''),
+            device_name: shaped.deviceName ?? null,
+            model: shaped.model ?? null,
+            serial_number: shaped.serialNumber ?? null,
+            ip_address: shaped.ipAddress ?? null,
+            mac_address: shaped.macAddress ?? null,
+            location: shaped.location ?? null,
+            capabilities: shaped.capabilities ?? [],
+            status: shaped.status ?? 'unknown',
+            last_seen: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.error('Failed to shape a discovered device:', err);
+        }
+      }
+
+      // device_id is the manufacturer's id and is NOT NULL; a device the adapter
+      // could not identify is counted as skipped rather than inserted blank.
+      const registrable = rows.filter((r) => r.device_id);
+
+      // NO UPSERT: device_registrations has indexes on (tenant_id, device_id)
+      // and integration_id but no UNIQUE constraint, and PostgREST's onConflict
+      // needs one. Re-running discovery would otherwise duplicate the whole
+      // fleet, so existing ids are read first and updated in place.
+      const { data: existing } = await admin
+        .from('device_registrations')
+        .select('id, device_id')
+        .eq('tenant_id', tenantId)
+        .eq('integration_id', integration.id);
+
+      const existingByDeviceId = new Map<string, string>(
+        (existing || []).map((d: any) => [d.device_id, d.id]),
+      );
+
+      let updated = 0;
+      let created = 0;
+      const toInsert: typeof registrable = [];
+
+      for (const row of registrable) {
+        const id = existingByDeviceId.get(row.device_id);
+        if (id) {
+          const { error: updateError } = await admin
+            .from('device_registrations')
+            .update({ ...row, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .eq('tenant_id', tenantId);
+          if (updateError) {
+            console.error('Error updating a discovered device:', updateError);
+          } else {
+            updated++;
+          }
+        } else {
+          toInsert.push(row);
+        }
+      }
+
+      if (toInsert.length) {
+        const { data: inserted, error: insertError } = await admin
+          .from('device_registrations')
+          .insert(toInsert)
+          .select('id');
+        if (insertError) {
+          console.error('Error registering devices:', insertError);
+          return createCorsResponse(
+            {
+              error: 'Devices were discovered but could not be registered',
+              details: insertError,
+              updated,
+            },
+            500,
+            req,
+          );
+        }
+        created = inserted?.length ?? 0;
+      }
+
       return createCorsResponse(
         {
-          success: true,
-          message: `Connection to ${manufacturer} is working`,
-          timestamp: new Date().toISOString(),
+          registered: created + updated,
+          created,
+          updated,
+          skipped: rows.length - registrable.length,
+          message: `Discovered ${devices.length} device(s): ${created} new, ${updated} updated.`,
         },
         200,
         req,

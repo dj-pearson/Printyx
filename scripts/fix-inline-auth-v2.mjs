@@ -16,7 +16,6 @@ const targetFiles = [
   'routes-business-process-optimization.ts',
   'routes-client-metrics.ts',
   'routes-company-ids.ts',
-  'routes-content-marketing.ts',
   'routes-contract-alerts.ts',
   'routes-customer-numbers.ts',
   'routes-customer-portal.ts',

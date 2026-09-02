@@ -49,6 +49,10 @@ jobs:
         run: npm run check:migrations
       - name: tenant_id column-type guard (AUDIT-032)
         run: npm run check:tenant-id-types
+      - name: Foreign-key column-type ratchet (AUDIT-036)
+        run: npm run check:fk-id-types
+      - name: Declared-column guard (AUDIT-037)
+        run: npm run check:declared-cols
       - name: Raw-SQL phantom-table ratchet (CR-017)
         run: npm run check:sql-string-tables
       - name: Server orphaned-file ratchet (AUDIT-034)
@@ -93,6 +97,8 @@ jobs:
         run: npm run check:phantom-cols
       - name: Phantom PostgREST table ratchet (PROD-008b)
         run: npm run check:phantom-tables
+      - name: Duplicate object-literal keys in edge functions (hard gate at zero)
+        run: npm run check:dupe-keys
       - name: Spread-insert key ratchet (hard gate at zero)
         run: npm run check:spread-insert-keys
       - name: Chained .where() ratchet (tenant scope, QUALITY-002)

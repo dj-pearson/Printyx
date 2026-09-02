@@ -11,7 +11,7 @@
  * The real surface is CalendarProvider, wrapped around the routed
  * /demo-scheduling page, and it uses a different prefix entirely -
  * /api/integrations/calendar/* - which NEITHER backend serves. It degrades
- * honestly ("Calendar sync is not configured", "Event Saved Locally"), and in
+ * honestly, and in
  * production those messages never ran: a relative fetch('/api/...') never
  * passes through getApiUrl, so it hit the static-bundle origin, which answers
  * an unknown path with index.html at 200. `response.ok` was true and
@@ -49,9 +49,13 @@ describe('CalendarProvider', () => {
   });
 
   it('still tells the user what happened rather than failing silently', () => {
-    // The point of the change is that these branches now execute; losing them
-    // would trade a misleading error for no message at all.
-    expect(provider).toMatch(/Calendar sync is not configured/);
-    expect(provider).toMatch(/Event Saved Locally/);
+    // PA-056 replaced the "not configured" toast with a real consent flow, so
+    // the strings changed. What must not change is that every branch ends in a
+    // message: a connect attempt that returns no URL, one the server refuses,
+    // and a 200 with nothing in it all say so rather than leaving the user on a
+    // page that never moves.
+    expect(provider).toMatch(/not connected/);
+    expect(provider).toMatch(/OAuth is not configured on this server yet/);
+    expect(provider).toMatch(/The consent flow could not be started/);
   });
 });

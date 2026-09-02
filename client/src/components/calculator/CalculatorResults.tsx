@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Download,
+  Mail,
   TrendingUp,
   TrendingDown,
   AlertCircle,
@@ -30,13 +30,18 @@ import type { CalculatorSession } from './types';
 
 interface CalculatorResultsProps {
   session: CalculatorSession;
-  onDownloadPDF: () => void;
+  /** Opens the contact form. Named for what it does; nothing is downloaded. */
+  onRequestAnalysis: () => void;
   onBookDemo: () => void;
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-export function CalculatorResults({ session, onDownloadPDF, onBookDemo }: CalculatorResultsProps) {
+export function CalculatorResults({
+  session,
+  onRequestAnalysis,
+  onBookDemo,
+}: CalculatorResultsProps) {
   const { results, recommendations } = session;
 
   // Prepare chart data
@@ -286,24 +291,30 @@ export function CalculatorResults({ session, onDownloadPDF, onBookDemo }: Calcul
 
       {/* CTAs */}
       <div className="grid md:grid-cols-2 gap-4 mt-8">
+        {/*
+          AUDIT-023: this offered a 12-page PDF, an implementation roadmap, a
+          tracking spreadsheet and an RFP template. No code generates any of
+          them, and the capture behind the button emails nothing. The button
+          opens the contact form, so it now says that.
+        */}
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Download className="h-5 w-5" />
-              Download Complete Report
+              <Mail className="h-5 w-5" />
+              Get a Written Analysis
             </CardTitle>
             <CardDescription>
-              Get a comprehensive 12-page PDF with device-level analysis, implementation roadmap,
-              and ROI calculator
+              Have a specialist go through these numbers with you and send back an analysis of your
+              fleet
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={onDownloadPDF} className="w-full" size="lg">
-              Download PDF Report
+            <Button onClick={onRequestAnalysis} className="w-full" size="lg">
+              Send Me the Analysis
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
             <p className="text-xs text-gray-600 mt-2 text-center">
-              Includes tracking spreadsheet & RFP template
+              Your results stay on this page either way
             </p>
           </CardContent>
         </Card>

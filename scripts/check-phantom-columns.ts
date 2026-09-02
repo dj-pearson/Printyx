@@ -21,8 +21,12 @@
  * hands to PostgREST against the table the call chain is on.
  *
  * WHAT IT CANNOT SEE, so that nobody reads a pass as proof of correctness:
- *   - insert/update payloads built as a named variable rather than an inline
- *     object literal. The deals insert was one of those.
+ *   - a payload whose keys are assembled at runtime (a spread, a camel-to-snake
+ *     field map, Object.assign). A payload built as a NAMED VARIABLE used to be
+ *     here too and no longer is - see the resolution rule at the insert/update
+ *     scan, and note that it resolves the nearest preceding BINDING, so a
+ *     variable assigned from a function call resolves to nothing rather than to
+ *     an older literal of the same name.
  *   - column names assembled at runtime, and field maps keyed camel -> snake.
  *   - tables that exist live but are in no Drizzle schema (COP-M00 counted 107
  *     of them, created by db:push). Those are reported as unknown, not failed.
@@ -48,18 +52,59 @@ import { readdirSync as readSchemaDir } from 'node:fs';
 const repo = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const BASELINE = join(repo, 'docs', 'phantom-columns-baseline.json');
 const update = process.argv.includes('--update-baseline');
+
+/**
+ * Written into the baseline on every regeneration. See the comment at the
+ * writeFileSync below for why it is a constant rather than JSON prose.
+ */
+const BASELINE_NOTE = [
+  'Column literals handed to PostgREST that are not columns on the table the call chain is on.',
+  'Each entry is a runtime 42703 waiting for the code path to run. Fix them; do not grow this list.',
+  'Regenerate with: npx tsx scripts/check-phantom-columns.ts --update-baseline',
+  '',
+  'IT HAS GROWN TWICE BY SEEING MORE, NOT BY CODE GETTING WORSE. 152 -> 280 when it stopped skipping',
+  'tables declared twice with different shapes (shared/drizzle-schema.ts resolves every collision, so',
+  'whatever it exports is the shape the migrations built), and 262 -> 383 when it stopped reading only',
+  'INLINE object literals. Most handlers build a payload as a named variable, so `const poData = { … }`',
+  'followed by `.insert(poData)` was invisible - that hid the larger half of the purchase-order cluster',
+  'and a user-creation insert writing phone, job_title and department, three columns CLAUDE.md already',
+  'records as absent from `users`.',
+  '',
+  'Named payloads resolve to the NEAREST PRECEDING BINDING, used only if that binding is an object',
+  'literal. Two looser rules were tried and both invented findings: pooling declarations by name across',
+  "a file attributed one table's payload to another table's insert (39 phantom columns on a ten-key",
+  'row), and taking the nearest preceding LITERAL reached past `const x = someFn()` to an older literal',
+  'of the same name (eighteen more).',
+  '',
+  'AUDIT-037 carries the backlog. Shrink this list by fixing the code or settling a table collision -',
+  'never by re-widening a skip, which would look like progress.',
+  '',
+  'DO NOT WORK THIS LIST TOP-DOWN. Roughly half of it sits in edge functions that nothing calls (cross',
+  'it against docs/unreferenced-edge-fns-baseline.json), where a phantom column cannot hurt anyone and',
+  'fixing it is building for a caller that does not exist. The entries worth fixing are the ones in a',
+  'REACHABLE function: those are live 42703s under a screen somebody opens.',
+].join(' ');
 const triage = process.argv.includes('--triage');
 
 // ─── 1. Physical columns, per physical table name ──────────────────────────
 //
-// Every shared/*.ts is loaded separately rather than through
-// shared/drizzle-schema.ts, because that entry point re-exports and so shows
-// only ONE definition per table name. Four table names are declared twice with
-// different shapes (see check:dup-tables) — blog_posts most consequentially —
-// and for those there is no way to know from the code which one is live. Those
-// tables are marked AMBIGUOUS and skipped: reporting them would be reporting a
-// schema collision as a query bug, which is a different story with a different
-// fix.
+// Every shared/*.ts is loaded separately, which is how a table declared twice
+// with two different shapes is DETECTED. It used to also be the end of the
+// story: such a table was marked AMBIGUOUS and skipped, on the reasoning that
+// there is no way to know from the code which shape is live.
+//
+// There is. shared/drizzle-schema.ts is the single entry point drizzle-kit
+// reads, and it resolves every collision by hand — picking one declaration and
+// SKIPPING the other by name, with a comment saying so. Whatever it exports is
+// therefore the shape every migration was generated against, which makes it the
+// shape the database has. So an ambiguous table is RESOLVED against that entry
+// point, and only a table it does not export stays skipped.
+//
+// This was not academic. AUDIT-035 found two live defects inside the skip:
+// proposal_line_items lost QUOTE-017's recurring columns, so a monthly charge
+// saved as a one-time amount, and proposal_templates named ten columns the table
+// does not have, so a template could never be created. Both were invisible here
+// for as long as the ambiguity was treated as unanswerable.
 const tableColumns = new Map<string, Set<string>>();
 const ambiguousTables = new Set<string>();
 const signatures = new Map<string, Set<string>>();
@@ -90,7 +135,30 @@ for (const file of schemaFiles) {
     tableColumns.set(cfg.name, existing);
   }
 }
-for (const name of ambiguousTables) tableColumns.delete(name);
+// Resolve the ambiguity against the entry point drizzle-kit actually reads.
+const resolvedTables = new Set<string>();
+try {
+  const entry = (await import(join(repo, 'shared', 'drizzle-schema.ts'))) as Record<
+    string,
+    unknown
+  >;
+  for (const value of Object.values(entry)) {
+    if (!is(value as any, PgTable)) continue;
+    const cfg = getTableConfig(value as any);
+    if (!ambiguousTables.has(cfg.name)) continue;
+    // The entry point's shape wins outright - the merged union collected above
+    // would still contain the losing declaration's columns.
+    tableColumns.set(cfg.name, new Set(cfg.columns.map((c) => c.name)));
+    resolvedTables.add(cfg.name);
+  }
+} catch {
+  // If the entry point will not load, fall back to skipping every ambiguous
+  // table rather than checking against a half-built map.
+}
+for (const name of ambiguousTables) {
+  if (!resolvedTables.has(name)) tableColumns.delete(name);
+}
+for (const name of resolvedTables) ambiguousTables.delete(name);
 
 // ─── 2. Column literals an edge function hands to PostgREST ────────────────
 const FILTER_METHODS = [
@@ -311,30 +379,166 @@ function scan(source: string): Ref[] {
 
   // .insert({ … }) / .update({ … }) with an INLINE object literal.
   for (const m of source.matchAll(/\.(insert|update)\(\s*\{/g)) {
-    const start = (m.index ?? 0) + m[0].length - 1;
-    let depth = 0;
-    let end = start;
-    for (let i = start; i < source.length; i++) {
-      if (source[i] === '{') depth++;
-      else if (source[i] === '}') {
-        depth--;
-        if (depth === 0) {
-          end = i;
-          break;
-        }
-      }
+    const body = balancedBody(source, (m.index ?? 0) + m[0].length - 1);
+    for (const key of topLevelKeys(body)) push(m.index ?? 0, key, m[1]);
+  }
+
+  // .insert(payload) / .update(payload) where `payload` is a NAMED VARIABLE.
+  //
+  // AUDIT-037: this used to be a stated blind spot, and it hid the larger half
+  // of the purchase-order cluster - `const poData = { … }` followed by
+  // `.insert(poData)` writes nine columns that do not exist, and none was
+  // reported while the inline-literal scan was the only one.
+  //
+  // Resolution is by NEAREST PRECEDING DECLARATION, not by name across the
+  // file. `row`, `payload` and `updateData` are reused constantly - one file had
+  // four different `const row = {…}` for four different tables - and pooling
+  // them by name attributed every table's columns to every insert. That
+  // reported 39 phantom columns on a ten-key payload, which is the kind of noise
+  // a real finding hides in.
+  //
+  // Two sources of keys: the object literal the variable is declared with, and
+  // any `payload.column = …` assignment BETWEEN that declaration and the call,
+  // which is how a handler builds a partial update.
+  // EVERY binding of a name is collected, not only the object literals. The
+  // nearest preceding one decides, and it is used ONLY if it is a literal - so
+  // `const insertRow = normalizeLineItem(...)` resolves to nothing rather than
+  // reaching further back to an unrelated `const insertRow = { … }` earlier in
+  // the same file. That reach-back attributed one payload to another table's
+  // insert and reported eighteen phantom columns that were not there.
+  const declarations: { name: string; at: number; keys: string[] | null }[] = [];
+  for (const d of source.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n]+)?=\s*/g)) {
+    const at = d.index ?? 0;
+    const rhs = at + d[0].length;
+    declarations.push({
+      name: d[1],
+      at,
+      keys: source[rhs] === '{' ? topLevelKeys(balancedBody(source, rhs)) : null,
+    });
+  }
+  // A later bare re-assignment invalidates the literal too.
+  for (const r of source.matchAll(/^\s*([A-Za-z_$][\w$]*)\s*=\s*(?!=)/gm)) {
+    declarations.push({ name: r[1], at: r.index ?? 0, keys: null });
+  }
+
+  // A FUNCTION PARAMETER IS NOT THE SAME VARIABLE, even under the same name,
+  // and the nearest-preceding rule above cannot tell. predictive-failure has
+  // `const updates = { … }` in one handler and, 340 lines later,
+  // `async function updatePrediction(admin, tenantId, id, updates)` doing
+  // `.update(updates)` on a DIFFERENT table. The rule resolved the second to
+  // the first and reported five columns of predictive_dispatch_settings as
+  // phantom columns of equipment_failure_predictions - correct code accused,
+  // which is worse than a missed finding and is the third variant of this same
+  // trap the script has hit.
+  //
+  // Parameters are collected as bindings with NO keys, so the existing
+  // nearest-preceding rule handles them: a call inside updatePrediction resolves
+  // to its own parameter and stops there.
+  //
+  // A CRUDER VERSION OF THIS WAS TRIED AND WAS WRONG, which is worth recording
+  // because it looked safe. Rejecting any resolution with a `function` keyword
+  // or arrow body between the declaration and the call also dropped
+  // lead-scoring's `updates`, separated from its
+  // `.from('business_records').update(updates)` only by an unrelated
+  // `const copy = (leadKey, apolloKey) => { … }` helper - and its
+  // enriched_from_apollo / apollo_enriched_at are genuine phantom columns. So
+  // "over-rejecting is the safe direction" is FALSE when the over-rejection
+  // retires a true finding from the baseline as though it were fixed. The rule
+  // has to name the actual shadow, not a proxy for it.
+  for (const f of source.matchAll(/\bfunction\b\s*[A-Za-z_$][\w$]*\s*\(|\bfunction\s*\(/g)) {
+    const open = source.indexOf('(', (f.index ?? 0) + f[0].length - 1);
+    if (open < 0) continue;
+    for (const name of paramNames(balancedParens(source, open))) {
+      declarations.push({ name, at: open, keys: null });
     }
-    const body = source.slice(start, end);
-    // Only top-level keys: a nested object's keys belong to a jsonb value.
-    let nest = 0;
-    for (const km of body.matchAll(/([{}]|(?:^|[,{\n])\s*([a-z][a-z0-9_]*)\s*:)/g)) {
-      if (km[1] === '{') nest++;
-      else if (km[1] === '}') nest--;
-      else if (km[2] && nest === 1) push(m.index ?? 0, km[2], m[1]);
+  }
+  // Arrow parameter lists: `(a, b) =>` and `async (a) =>`.
+  for (const a of source.matchAll(/\(([^()]*)\)\s*(?::[^=\n]+)?=>/g)) {
+    for (const name of paramNames(a[1])) {
+      declarations.push({ name, at: a.index ?? 0, keys: null });
     }
   }
 
+  const assignments: { name: string; at: number; key: string }[] = [];
+  for (const a of source.matchAll(/\b([A-Za-z_$][\w$]*)\.([a-z][a-z0-9_]*)\s*=\s*(?!=)/g)) {
+    assignments.push({ name: a[1], at: a.index ?? 0, key: a[2] });
+  }
+
+  for (const m of source.matchAll(/\.(insert|update)\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g)) {
+    const callAt = m.index ?? 0;
+    const decl = declarations
+      .filter((d) => d.name === m[2] && d.at < callAt)
+      .sort((a, b) => b.at - a.at)[0];
+    if (!decl || !decl.keys) continue;
+    const keys = new Set(decl.keys);
+    for (const a of assignments) {
+      if (a.name === m[2] && a.at > decl.at && a.at < callAt) keys.add(a.key);
+    }
+    for (const key of keys) push(callAt, key, m[1]);
+  }
+
   return refs;
+}
+
+/** Identifier names in a parameter list, ignoring types, defaults and patterns. */
+function paramNames(list: string): string[] {
+  const names: string[] = [];
+  let depth = 0;
+  let current = '';
+  const flush = () => {
+    const m = current.trim().match(/^\.{0,3}\s*([A-Za-z_$][\w$]*)/);
+    if (m) names.push(m[1]);
+    current = '';
+  };
+  for (const ch of list) {
+    if ('([{<'.includes(ch)) depth++;
+    else if (')]}>'.includes(ch)) depth--;
+    if (ch === ',' && depth === 0) flush();
+    else current += ch;
+  }
+  flush();
+  return names;
+}
+
+/** The parenthesis-balanced body after the `(` at `start`, exclusive of both. */
+function balancedParens(source: string, start: number): string {
+  let depth = 0;
+  for (let i = start; i < source.length; i++) {
+    if (source[i] === '(') depth++;
+    else if (source[i] === ')') {
+      depth--;
+      if (depth === 0) return source.slice(start + 1, i);
+    }
+  }
+  return '';
+}
+
+/**
+ * Top-level keys of a brace-balanced object body. A nested object's keys belong
+ * to a jsonb value, not to the table.
+ */
+function topLevelKeys(body: string): string[] {
+  const keys: string[] = [];
+  let nest = 0;
+  for (const km of body.matchAll(/([{}]|(?:^|[,{\n])\s*([a-z][a-z0-9_]*)\s*:)/g)) {
+    if (km[1] === '{') nest++;
+    else if (km[1] === '}') nest--;
+    else if (km[2] && nest === 1) keys.push(km[2]);
+  }
+  return keys;
+}
+
+/** The brace-balanced body starting at the `{` at `start`, inclusive of it. */
+function balancedBody(source: string, start: number): string {
+  let depth = 0;
+  for (let i = start; i < source.length; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}') {
+      depth--;
+      if (depth === 0) return source.slice(start, i);
+    }
+  }
+  return '';
 }
 
 // ─── 3. Walk the edge functions ────────────────────────────────────────────
@@ -451,10 +655,11 @@ if (update) {
     BASELINE,
     JSON.stringify(
       {
-        note:
-          'Column literals handed to PostgREST that are not columns on the table the call chain is on. ' +
-          'Each entry is a runtime 42703 waiting for the code path to run. Fix them; do not grow this list. ' +
-          'Regenerate with: npx tsx scripts/check-phantom-columns.ts --update-baseline',
+        // The note lives HERE, not in the JSON. --update-baseline rewrites the
+        // file wholesale, so prose added to the baseline by hand is silently
+        // lost on the next regeneration - which happened twice before anyone
+        // noticed, both times taking the explanation of why the list had grown.
+        note: BASELINE_NOTE,
         allowed: current,
       },
       null,

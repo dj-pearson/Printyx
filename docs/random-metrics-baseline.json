@@ -1,14 +1,5 @@
 {
-  "note": "Object properties whose value comes from Math.random(), i.e. a measurement someone made up. Keyed by file and property name so line moves do not churn it. Do not grow this list; see scripts/check-no-random-metrics.mjs and AUDIT-020.",
-  "total": 7,
-  "offenders": {
-    "server/services/meeting-scheduling-service.ts": ["flexibility", "meetingFatigueRisk"],
-    "server/services/team-collaboration-service.ts": [
-      "aiEfficiencyScore",
-      "aiPredictedWorkload",
-      "overdueTasksCount",
-      "projectsCount",
-      "tasksCount"
-    ]
-  }
+  "note": "AUDIT-021 drove this to zero and it is now a HARD GATE at 0: check:no-random-metrics fails on the first object property whose value comes from Math.random(), i.e. a measurement someone made up. Keyed by file and property name so line moves do not churn it. Do not add entries - the guard exists because a random metric changes on every request, which is exactly what real telemetry does, so refreshing appears to confirm it. See scripts/check-no-random-metrics.mjs, AUDIT-020 and AUDIT-021. Known blind spots, stated so a pass is never read as proof: the rule is line-anchored, so a single-line object literal escapes it; it watches a PROPERTY, so a random value passed positionally into a query does not trip it (CR-017's seeder-in-disguise was one); and a value invented as a plain literal is check:fabricated's and check:no-static-posture's territory, not this one.",
+  "total": 0,
+  "offenders": {}
 }

@@ -392,7 +392,15 @@ export default async function handler(req: Request) {
         );
       }
 
-      // Create user record in users table
+      // Create user record in users table.
+      //
+      // AUDIT-037: phone, job_title and department used to be in this payload
+      // and `users` has none of them, so every invitation 42703'd - the auth
+      // user was created, the row insert failed, and the cleanup path below
+      // deleted the auth user again. Inviting a colleague has never worked.
+      // They live on user_settings, which is the same correction COP-M01 made
+      // to the user and users-team functions, and they are written below once
+      // the row exists.
       const newUserData = {
         id: authUser.user.id,
         tenant_id: tenantId,
@@ -401,9 +409,6 @@ export default async function handler(req: Request) {
         last_name: body.lastName || null,
         role_id: body.roleId || null,
         team_id: body.teamId || null,
-        phone: body.phone || null,
-        job_title: body.jobTitle || null,
-        department: body.department || null,
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -422,6 +427,30 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create user record' }, 500, req);
       }
 
+      // The profile fields `users` does not carry. user_settings.tenant_id is
+      // NOT NULL, so it goes in the row. A failure here does not undo the
+      // invitation - the account exists and works; only the optional profile is
+      // missing - so it is logged rather than raised.
+      const profileFields = {
+        phone: body.phone ?? null,
+        job_title: body.jobTitle ?? null,
+        department: body.department ?? null,
+      };
+      if (Object.values(profileFields).some((v) => v !== null)) {
+        const { error: settingsError } = await admin.from('user_settings').upsert(
+          {
+            tenant_id: tenantId,
+            user_id: newUser.id,
+            ...profileFields,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' },
+        );
+        if (settingsError) {
+          console.error('Error storing invited user profile fields:', settingsError.message);
+        }
+      }
+
       // Log audit event
       await logAuditEvent(
         admin,
@@ -431,7 +460,7 @@ export default async function handler(req: Request) {
         'users',
         newUser.id,
         null,
-        newUserData,
+        { ...newUserData, ...profileFields },
         req,
       );
 
@@ -488,12 +517,19 @@ export default async function handler(req: Request) {
       if (body.lastName !== undefined) updateData.last_name = body.lastName;
       if (body.roleId !== undefined) updateData.role_id = body.roleId;
       if (body.teamId !== undefined) updateData.team_id = body.teamId;
-      if (body.phone !== undefined) updateData.phone = body.phone;
-      if (body.jobTitle !== undefined) updateData.job_title = body.jobTitle;
-      if (body.department !== undefined) updateData.department = body.department;
-      if (body.timezone !== undefined) updateData.timezone = body.timezone;
-      if (body.locale !== undefined) updateData.locale = body.locale;
       if (body.profileImageUrl !== undefined) updateData.profile_image_url = body.profileImageUrl;
+
+      // AUDIT-037: phone, job_title, department, timezone and locale were in
+      // this payload and none is a column on `users`, so ANY edit that touched
+      // one 42703'd and the whole update was lost - including the role change
+      // in the same request. They belong to user_settings, where `locale` is
+      // called `language`.
+      const settingsUpdate: Record<string, unknown> = {};
+      if (body.phone !== undefined) settingsUpdate.phone = body.phone;
+      if (body.jobTitle !== undefined) settingsUpdate.job_title = body.jobTitle;
+      if (body.department !== undefined) settingsUpdate.department = body.department;
+      if (body.timezone !== undefined) settingsUpdate.timezone = body.timezone;
+      if (body.locale !== undefined) settingsUpdate.language = body.locale;
 
       const { data: updatedUser, error: updateError } = await admin
         .from('users')
@@ -506,6 +542,22 @@ export default async function handler(req: Request) {
       if (updateError) {
         console.error('Error updating user:', updateError);
         return createCorsResponse({ error: 'Failed to update user' }, 500, req);
+      }
+
+      if (Object.keys(settingsUpdate).length > 0) {
+        const { error: settingsError } = await admin.from('user_settings').upsert(
+          {
+            tenant_id: tenantId,
+            user_id: resourceId,
+            ...settingsUpdate,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' },
+        );
+        if (settingsError) {
+          console.error('Error updating user profile fields:', settingsError.message);
+          return createCorsResponse({ error: 'Failed to update user profile' }, 500, req);
+        }
       }
 
       // Update Supabase Auth user metadata if email changed

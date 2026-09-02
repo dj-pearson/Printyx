@@ -277,7 +277,7 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
     priority: 0.8,
     changefreq: 'monthly',
     breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'ROI Calculator' }],
-    relatedPaths: ['/case-studies', '/pricing'],
+    relatedPaths: ['/case-studies', '/pricing', '/print-cost-calculator'],
     howToEstimatedTime: 'PT5M',
     howToSteps: [
       {
@@ -291,6 +291,39 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
       {
         name: 'Review Your Savings Projection',
         text: 'See your projected annual savings, ROI percentage, and payback period when switching from legacy systems to Printyx.',
+      },
+    ],
+  },
+  {
+    path: '/print-cost-calculator',
+    title: 'Print Cost Calculator | What Your Fleet Actually Costs',
+    description:
+      'Work out the true cost of your print fleet - devices, pages, supplies and service - and see where the savings are. Three steps, no signup.',
+    keywords: [
+      'print cost calculator',
+      'cost per page calculator',
+      'managed print services cost',
+      'copier fleet cost analysis',
+    ],
+    ogType: 'website',
+    schema: 'HowTo',
+    priority: 0.8,
+    changefreq: 'monthly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Print Cost Calculator' }],
+    relatedPaths: ['/roi-calculator', '/case-studies'],
+    howToEstimatedTime: 'PT5M',
+    howToSteps: [
+      {
+        name: 'Describe Your Fleet',
+        text: 'Enter how many devices you run, what kinds they are, how old they are and roughly how many pages a month they produce.',
+      },
+      {
+        name: 'Add Any Costs You Know',
+        text: 'Optional. Add what you currently pay for supplies, service and leases so the estimate uses your figures instead of industry averages.',
+      },
+      {
+        name: 'Read Your Cost Breakdown',
+        text: 'See cost per page by device type, where your fleet sits against industry benchmarks, and what each change would be worth.',
       },
     ],
   },

@@ -43,6 +43,7 @@ const footerSections = [
       { href: '/knowledge-base', label: 'Knowledge Base' },
       { href: '/blog', label: 'Blog' },
       { href: '/roi-calculator', label: 'ROI Calculator' },
+      { href: '/print-cost-calculator', label: 'Print Cost Calculator' },
       { href: '/compare-eautomate', label: 'E-Automate Alternative' },
     ],
   },

@@ -3,6 +3,11 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import {
+  canTransition,
+  getAvailableTransitions,
+  getValidationRequirements,
+} from '../_shared/equipment-lifecycle-transitions.ts';
 
 // Valid lifecycle stages
 const LIFECYCLE_STAGES = {
@@ -320,6 +325,89 @@ export default async function handler(req: Request) {
       equipmentId === 'upcoming'
     ) {
       return createCorsResponse({ error: 'Equipment ID required' }, 400, req);
+    }
+
+    // GET /equipment-lifecycle/:equipmentId/available-transitions
+    // GET /equipment-lifecycle/:equipmentId/can-transition/:toStage
+    //
+    // PA-052: both were Express-only, so EquipmentTransitionDialog worked in dev
+    // and 404'd in production. The transition policy is now shared
+    // (_shared/equipment-lifecycle-transitions.ts) rather than reimplemented.
+    //
+    // REQUIREMENTS ARE REPORTED AS OUTSTANDING, NOT AS PASSED. The Express
+    // version ran them through a runValidations() whose own comment says
+    // "Mock: assume all pass for now"; it returned passed:true and the message
+    // "<requirement> verified" for every one, and the dialog drew a green tick
+    // per row. A technician saw "Data Wiped Confirmed - verified" and
+    // "Certificate Of Destruction - verified" before disposing of a machine.
+    // Nothing checks any of them, so nothing here says they passed.
+    if (
+      req.method === 'GET' &&
+      (secondPart === 'available-transitions' || secondPart === 'can-transition')
+    ) {
+      const { data: lifecycle, error } = await admin
+        .from('equipment_lifecycle')
+        .select('current_stage')
+        .eq('equipment_id', equipmentId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching lifecycle:', error);
+        return createCorsResponse({ error: 'Failed to fetch lifecycle status' }, 500, req);
+      }
+      if (!lifecycle) {
+        return createCorsResponse({ success: false, message: 'Equipment not found' }, 404, req);
+      }
+
+      const currentStage = lifecycle.current_stage as string;
+
+      if (secondPart === 'available-transitions') {
+        return createCorsResponse(
+          {
+            success: true,
+            data: {
+              currentStage,
+              availableTransitions: getAvailableTransitions(currentStage).map((toStage) => ({
+                toStage,
+                validationRequirements: getValidationRequirements(currentStage, toStage),
+              })),
+            },
+          },
+          200,
+          req,
+        );
+      }
+
+      const toStage = parts[2];
+      if (!toStage) {
+        return createCorsResponse({ success: false, message: 'Target stage required' }, 400, req);
+      }
+
+      const allowed = canTransition(currentStage, toStage);
+      const requirements = getValidationRequirements(currentStage, toStage);
+
+      return createCorsResponse(
+        {
+          success: true,
+          data: {
+            canTransition: allowed,
+            currentStage,
+            targetStage: toStage,
+            validationRequirements: requirements,
+            // Nothing verifies these, so none is reported as met. `checked` is
+            // false so a caller cannot read the empty list as "all clear".
+            requirementsChecked: false,
+            message: allowed
+              ? requirements.length
+                ? `Allowed. ${requirements.length} requirement(s) must be completed first; none is verified automatically.`
+                : 'Transition allowed.'
+              : `Transition from ${currentStage} to ${toStage} is not allowed.`,
+          },
+        },
+        200,
+        req,
+      );
     }
 
     // GET /equipment-lifecycle/:equipmentId/status - Get equipment's current lifecycle status

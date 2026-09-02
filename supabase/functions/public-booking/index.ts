@@ -198,6 +198,18 @@ async function hostName(db: SupabaseClient, userId: string): Promise<string> {
 }
 
 // ─── CRM linkage (best-effort) ──────────────────────────────────────────────
+//
+// Best-effort is the right design: a booking must not fail because CRM linkage
+// did. What was wrong (AUDIT-038) is that a failure left no trace anywhere.
+// Each step sat inside a try/catch, and PostgREST does not THROW - it returns
+// `{ data, error }` - so those catches could only fire on a network fault while
+// the actual failure mode returned quietly. Every error was destructured away
+// or not destructured at all, so a linkage failing on every booking looked
+// exactly like a booking with nothing to link: business_record_id null on the
+// row and nothing in the log.
+//
+// The errors are surfaced now. The catches stay, because a network fault is
+// still possible and still must not fail the booking.
 async function linkCrm(
   db: SupabaseClient,
   page: BookingPageRow,
@@ -224,18 +236,19 @@ async function linkCrm(
 
   try {
     // Match existing lead/account by primary contact email.
-    const { data: matched } = await db
+    const { data: matched, error: matchErr } = await db
       .from('business_records')
       .select('id')
       .eq('tenant_id', tenantId)
       .ilike('primary_contact_email', booking.inviteeEmail)
       .limit(1)
       .maybeSingle();
+    if (matchErr) console.error('[public-booking] lead match failed', matchErr);
 
     if (matched?.id) {
       result.businessRecordId = matched.id;
     } else {
-      const { data: created } = await db
+      const { data: created, error: createErr } = await db
         .from('business_records')
         .insert({
           tenant_id: tenantId,
@@ -250,6 +263,7 @@ async function linkCrm(
         })
         .select('id')
         .maybeSingle();
+      if (createErr) console.error('[public-booking] lead create failed', createErr);
       if (created?.id) result.businessRecordId = created.id;
     }
   } catch {
@@ -258,13 +272,14 @@ async function linkCrm(
 
   // Match an existing contact by email (read-only; company_contacts needs a company FK).
   try {
-    const { data: contact } = await db
+    const { data: contact, error: contactErr } = await db
       .from('company_contacts')
       .select('id')
       .eq('tenant_id', tenantId)
       .ilike('email', booking.inviteeEmail)
       .limit(1)
       .maybeSingle();
+    if (contactErr) console.error('[public-booking] contact match failed', contactErr);
     if (contact?.id) result.contactId = contact.id;
   } catch {
     // ignore
@@ -272,7 +287,7 @@ async function linkCrm(
 
   // Record the meeting as a CRM activity on the timeline.
   try {
-    const { data: activity } = await db
+    const { data: activity, error: activityErr } = await db
       .from('business_record_activities')
       .insert({
         tenant_id: tenantId,
@@ -289,6 +304,7 @@ async function linkCrm(
       })
       .select('id')
       .maybeSingle();
+    if (activityErr) console.error('[public-booking] activity create failed', activityErr);
     if (activity?.id) result.activityId = activity.id;
   } catch {
     // ignore
@@ -297,7 +313,7 @@ async function linkCrm(
   // Polymorphic association activity -> contact (CRMX-006), best-effort.
   if (result.activityId && result.contactId) {
     try {
-      await db.from('crm_associations').insert({
+      const { error: assocErr } = await db.from('crm_associations').insert({
         tenant_id: tenantId,
         source_type: 'activity',
         source_id: result.activityId,
@@ -306,6 +322,7 @@ async function linkCrm(
         relation: 'related',
         created_by: booking.assignedUserId,
       });
+      if (assocErr) console.error('[public-booking] association create failed', assocErr);
     } catch {
       // ignore
     }

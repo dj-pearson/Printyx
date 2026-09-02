@@ -26,7 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { queryClient } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import {
   Smartphone,
@@ -87,30 +87,36 @@ export default function ManufacturerIntegrationDevices() {
   const { toast } = useToast();
 
   const { data: devices = [], isLoading } = useQuery<Device[]>({
-    queryKey: ['/api/devices'],
+    // PA-054: this page used to call a prefix proxied by neither host, so all
+    // three of its calls 404'd in production. device-monitoring is proxied and
+    // owns device_registrations and device_metrics (AUDIT-031). AUDIT-037
+    // deleted the function behind the old prefix - it read a `devices` table
+    // that exists in no schema and no migration.
+    queryKey: ['/api/device-monitoring/devices'],
     refetchInterval: 30000,
   });
 
   const { data: deviceMetrics = [] } = useQuery<DeviceMetric[]>({
-    queryKey: ['/api/devices', selectedDevice?.device.id, 'metrics'],
+    queryKey: ['/api/device-monitoring/devices', selectedDevice?.device.id, 'metrics'],
     enabled: !!selectedDevice,
     refetchInterval: 60000,
   });
 
   const collectMetricsMutation = useMutation({
-    mutationFn: async (deviceId: string) => {
-      const response = await fetch(`/api/devices/${deviceId}/collect`, {
-        method: 'POST',
-      });
-      if (!response.ok) throw new Error('Failed to collect metrics');
-      return response.json();
-    },
+    // Raw fetch() carries no Authorization header and 401s against an edge
+    // function.
+    mutationFn: async (deviceId: string) =>
+      apiRequest(`/api/device-monitoring/devices/${deviceId}/collect`, { method: 'POST' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/devices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/device-monitoring/devices'] });
       toast({ title: 'Metrics collected successfully' });
     },
-    onError: () => {
-      toast({ title: 'Failed to collect metrics', variant: 'destructive' });
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to collect metrics',
+        description: error?.message,
+        variant: 'destructive',
+      });
     },
   });
 
@@ -185,7 +191,11 @@ export default function ManufacturerIntegrationDevices() {
             Monitor and manage all registered devices across manufacturer integrations
           </p>
         </div>
-        <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/devices'] })}>
+        <Button
+          onClick={() =>
+            queryClient.invalidateQueries({ queryKey: ['/api/device-monitoring/devices'] })
+          }
+        >
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>

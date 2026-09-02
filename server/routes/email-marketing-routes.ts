@@ -1,3 +1,43 @@
+/**
+ * Email marketing: templates, campaigns, lists, list members, sends, events and
+ * unsubscribes. 72 identity reads over seven prefixes.
+ *
+ * CANNOT AUTHENTICATE ANYONE - see SEC-SESSION-001 before changing this file.
+ *
+ * Every handler below reads `req.session.user` as its only source of identity.
+ * Nothing in this codebase assigns it: session login sets the flat
+ * req.session.userId / req.session.tenantId and the JWT path sets req.user, so
+ * each of these answers 401 in dev exactly as it does in production. It has
+ * never run. server/types/express-session.d.ts records the same finding and
+ * declares the type that lets it compile, which is why tsc sees nothing wrong.
+ *
+ * WHICH OF THE SEVEN PREFIXES MATTER, checked across all seven client trees:
+ *
+ *   NONE of the seven, as of AUDIT-037. /email-campaigns used to be the one -
+ *   useEmailSequences, from the routed /marketing/sequences page - and it was
+ *   never served from here either: the prefix was proxied to
+ *   supabase/functions/email-campaigns/, and the proxy registers at
+ *   routes-registry:297 while this router mounts at :620, so these handlers were
+ *   shadowed as well as dead. That hook now calls
+ *   /api/email-marketing/email-campaigns, so this prefix has no caller at all.
+ *
+ *   The other six - email-templates, email-lists, email-list-members,
+ *   email-sends, email-events, email-unsubscribes - never had one in any client
+ *   tree. supabase/functions/email-marketing/ covers all seven and is the
+ *   canonical implementation; the standalone email-templates and email-campaigns
+ *   edge functions it absorbed are deleted.
+ *
+ * The shadowed-express baseline described retiring this file as a per-prefix job
+ * because the edge coverage was uneven. It is even now - the canonical edge
+ * function covers all seven - and with no caller on any of them the question is
+ * whether anyone wants the feature, not how to port it.
+ *
+ * The fix is one of three, and it is a product call rather than cleanup:
+ * migrate the handlers to getUserId/getTenantId from utils/auth-helpers and
+ * build the callers, retire the file in favour of edge functions, or delete it.
+ * Populating req.session.user in the login path would revive all twelve of
+ * these files at once and touches security-sensitive code.
+ */
 import { Router, type Request, type Response } from 'express';
 import { storage } from '../storage';
 import { stripServerFields } from '../utils/strip-server-fields';

@@ -77,6 +77,7 @@ const DynamicPricingAIBlog = React.lazy(
 
 // Conversion pages
 const ROICalculator = React.lazy(() => import('@/pages/marketing/ROICalculator'));
+const PrintCostCalculator = React.lazy(() => import('@/pages/PrintCostCalculator'));
 const CaseStudies = React.lazy(() => import('@/pages/marketing/CaseStudies'));
 const CompetitiveBattleCard = React.lazy(() => import('@/pages/marketing/CompetitiveBattleCard'));
 
@@ -255,7 +256,6 @@ const CommissionManagement = React.lazy(() => import('@/pages/CommissionManageme
 const SalesPerformanceAnalytics = React.lazy(() => import('@/pages/SalesPerformanceAnalytics'));
 const ServiceAnalytics = React.lazy(() => import('@/pages/ServiceAnalytics'));
 const MobileFieldOperations = React.lazy(() => import('@/pages/MobileFieldOperations'));
-const RemoteMonitoring = React.lazy(() => import('@/pages/RemoteMonitoring'));
 const FleetMonitoringDashboard = React.lazy(() => import('@/pages/FleetMonitoringDashboard'));
 const DemoScheduling = React.lazy(() => import('@/pages/DemoScheduling'));
 const SocialMediaGenerator = React.lazy(() => import('@/pages/SocialMediaGenerator'));
@@ -294,7 +294,6 @@ const PreventiveMaintenanceAutomation = React.lazy(
   () => import('@/pages/PreventiveMaintenanceAutomation'),
 );
 const CustomerSuccessManagement = React.lazy(() => import('@/pages/CustomerSuccessManagement'));
-const DocumentManagement = React.lazy(() => import('@/pages/DocumentManagement'));
 const MobileServiceApp = React.lazy(() => import('@/pages/MobileServiceApp'));
 const AdvancedAnalyticsDashboard = React.lazy(() => import('@/pages/AdvancedAnalyticsDashboard'));
 const AIAnalyticsDashboard = React.lazy(() => import('@/pages/AIAnalyticsDashboard'));
@@ -582,6 +581,15 @@ function Router() {
 
           {/* Conversion pages */}
           <Route path="/roi-calculator" component={ROICalculator} />
+          {/*
+            AUDIT-023: the page, its lead capture and an unauthenticated edge
+            function all existed with nothing linking to any of them. It sits
+            beside /roi-calculator because it is the same kind of thing - a
+            public tool a visitor completes before talking to anyone - and the
+            page names no path of its own, so this URL is a choice, not a
+            recovery.
+          */}
+          <Route path="/print-cost-calculator" component={PrintCostCalculator} />
           <Route path="/case-studies" component={CaseStudies} />
           <Route path="/battle-card" component={CompetitiveBattleCard} />
 
@@ -780,7 +788,17 @@ function Router() {
                 <Route path="/commission-management" component={CommissionManagement} />
                 <Route path="/sales-command-center" component={SalesCommandCenter} />
                 <Route path="/sales-performance-analytics" component={SalesPerformanceAnalytics} />
-                <Route path="/remote-monitoring" component={RemoteMonitoring} />
+                {/*
+                  AUDIT-030: Remote Monitoring was a fixture twin of Fleet
+                  Monitoring - same fleet, same three tables, 1,176 lines bound
+                  to a shape no endpoint produced. Its five paths 404'd in
+                  production and two of them were answered in dev by hardcoded
+                  equipment. The route is kept as a redirect because
+                  navigation-permissions and both sidebars still name it.
+                */}
+                <Route path="/remote-monitoring">
+                  {() => <LegacyRedirect to="/fleet-monitoring" />}
+                </Route>
                 <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
                 <Route path="/service-analytics" component={ServiceAnalytics} />
                 <Route path="/workflow-automation" component={WorkflowAutomation} />
@@ -985,7 +1003,6 @@ function Router() {
                   component={PreventiveMaintenanceAutomation}
                 />
                 <Route path="/customer-success" component={CustomerSuccessManagement} />
-                <Route path="/document-management" component={DocumentManagement} />
                 <Route path="/mobile-service-app" component={MobileServiceApp} />
                 <Route
                   path="/advanced-analytics-dashboard"

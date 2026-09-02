@@ -280,13 +280,15 @@ export default async function handler(req: Request) {
         priority: body.priority || 'medium',
         customer_tier: body.customerTier,
         assigned_sales_rep: body.assignedSalesRep,
-        lead_source: body.leadSource || 'website',
-        estimated_amount: body.estimatedDealValue ? parseFloat(body.estimatedDealValue) : null,
+        // AUDIT-037: the columns are `source` and `estimated_deal_value`, not
+        // lead_source and estimated_amount, and `tags` does not exist at all -
+        // so creating a customer through this function 42703'd every time.
+        source: body.leadSource || 'website',
+        estimated_deal_value: body.estimatedDealValue ? parseFloat(body.estimatedDealValue) : null,
         probability: body.probability ? parseInt(body.probability) : 100,
 
         // Notes and metadata
         notes: body.notes,
-        tags: body.tags,
         customer_since: new Date().toISOString(),
         created_by: user.id,
         owner_id: body.ownerId || user.id,
@@ -348,9 +350,10 @@ export default async function handler(req: Request) {
       if (body.priority) updateData.priority = body.priority;
       if (body.customerTier) updateData.customer_tier = body.customerTier;
       if (body.assignedSalesRep) updateData.assigned_sales_rep = body.assignedSalesRep;
-      if (body.leadSource) updateData.lead_source = body.leadSource;
+      if (body.leadSource) updateData.source = body.leadSource;
       if (body.notes !== undefined) updateData.notes = body.notes;
-      if (body.tags !== undefined) updateData.tags = body.tags;
+      // `tags` is not a column on business_records, so it is not written. It was
+      // here, which meant any edit that sent tags lost the whole update.
 
       const { data: customer, error } = await admin
         .from('business_records')

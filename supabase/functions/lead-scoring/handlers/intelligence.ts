@@ -295,20 +295,26 @@ async function enrichFromApollo(
     .maybeSingle();
   if (!lead) return { enriched: false, source: 'apollo', fieldsUpdated: [], confidence: 0 };
 
-  if (!lead.email) {
+  // AUDIT-037: this read lead.email, and business_records has no `email`
+  // column - a record there is a COMPANY and the person lives in
+  // primary_contact_*. So this gate was always true and Apollo enrichment
+  // returned "no email to match against" for every lead ever passed to it,
+  // which is why the phantom columns below were never even reached.
+  const leadEmail = lead.primary_contact_email as string | undefined;
+  if (!leadEmail) {
     return {
       enriched: false,
       source: 'apollo',
       fieldsUpdated: [],
       confidence: 0,
-      reason: 'Lead has no email to match against',
+      reason: 'Lead has no primary contact email to match against',
     };
   }
 
   const { data: apollo } = await db
     .from('centralized_apollo_contacts')
     .select('*')
-    .eq('email', lead.email)
+    .eq('email', leadEmail)
     .limit(1)
     .maybeSingle();
   if (!apollo) {
@@ -321,6 +327,11 @@ async function enrichFromApollo(
     };
   }
 
+  // Every target below is a real business_records column. The old list wrote
+  // first_name, last_name, job_title and linkedin_url, none of which exists -
+  // the same mistake the Chrome extension's contact import made, recorded in
+  // CLAUDE.md. A person's name goes in primary_contact_name and their role in
+  // primary_contact_title.
   const updates: AnyRec = {};
   const fieldsUpdated: string[] = [];
   const copy = (leadKey: string, apolloKey: string) => {
@@ -329,26 +340,54 @@ async function enrichFromApollo(
       fieldsUpdated.push(leadKey);
     }
   };
-  copy('first_name', 'first_name');
-  copy('last_name', 'last_name');
-  copy('job_title', 'title');
-  copy('linkedin_url', 'linkedin_url');
+  copy('primary_contact_title', 'title');
   copy('industry', 'industry');
   copy('employee_count', 'employee_count');
   copy('website', 'website_url');
   copy('company_name', 'organization_name');
 
-  // Phone: apollo stores string[] in phone_numbers
-  if (!lead.phone && Array.isArray(apollo.phone_numbers) && apollo.phone_numbers.length > 0) {
-    updates.phone = apollo.phone_numbers[0];
-    fieldsUpdated.push('phone');
+  // Apollo carries first and last name separately; the column is one field.
+  if (!lead.primary_contact_name) {
+    const full = [apollo.first_name, apollo.last_name].filter(Boolean).join(' ').trim();
+    if (full) {
+      updates.primary_contact_name = full;
+      fieldsUpdated.push('primary_contact_name');
+    }
   }
 
+  // Phone: apollo stores string[] in phone_numbers. It is the CONTACT's number,
+  // so it goes to primary_contact_phone rather than the company's `phone`.
+  if (
+    !lead.primary_contact_phone &&
+    Array.isArray(apollo.phone_numbers) &&
+    apollo.phone_numbers.length > 0
+  ) {
+    updates.primary_contact_phone = apollo.phone_numbers[0];
+    fieldsUpdated.push('primary_contact_phone');
+  }
+
+  // linkedin_url, enriched_from_apollo and apollo_enriched_at have no columns
+  // on business_records. The provenance is not lost: the tenant_apollo_leads
+  // upsert immediately below records which Apollo contact this lead matched and
+  // when, which is the same fact in the table built to hold it.
   if (Object.keys(updates).length > 0) {
     updates.updated_at = new Date().toISOString();
-    updates.enriched_from_apollo = true;
-    updates.apollo_enriched_at = new Date().toISOString();
-    await db.from('business_records').update(updates).eq('id', leadId).eq('tenant_id', tenantId);
+    const { error: enrichError } = await db
+      .from('business_records')
+      .update(updates)
+      .eq('id', leadId)
+      .eq('tenant_id', tenantId);
+    if (enrichError) {
+      console.error('[lead-scoring] apollo enrichment update failed', enrichError);
+      return {
+        enriched: false,
+        source: 'apollo',
+        fieldsUpdated: [],
+        apolloContactId: apollo.id,
+        confidence: 0,
+        reason: 'Enrichment write failed',
+      };
+    }
   }
 
   // Tenant-apollo lead record — upsert

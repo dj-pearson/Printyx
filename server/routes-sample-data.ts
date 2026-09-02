@@ -4,8 +4,8 @@
  */
 import type { Express } from 'express';
 import { db } from './db';
-import { eq, sql, asc, and } from 'drizzle-orm';
-import { businessRecords, locations, regions, tenants } from '@shared/schema';
+import { eq, sql } from 'drizzle-orm';
+import { locations, regions, tenants } from '@shared/schema';
 import { storage } from './storage';
 import { getUserId } from './utils/auth-helpers';
 import { requireAuth } from './replitAuth';
@@ -167,223 +167,26 @@ export function registerSampleDataRoutes(app: Express) {
   // Demo Scheduling Routes
   // ──────────────────────────────────────────────
 
-  app.get('/api/demos', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
+  // PA-052: the two /api/demos handlers that sat here are gone. The first
+  // returned one invented demo for "ABC Corporation" and the second duplicated
+  // a customer lookup; /api/demos is proxied to the demos edge function now,
+  // which serves the list, the customer picker, create and the status update
+  // off demo_schedules.
 
-      // For now, return sample demo data structure until schema is updated
-      const sampleDemos = [
-        {
-          id: 'demo-1',
-          businessRecordId: 'customer-1',
-          customerName: 'ABC Corporation',
-          contactPerson: 'John Smith',
-          scheduledDate: new Date('2025-01-10'),
-          scheduledTime: '10:00 AM',
-          duration: 60,
-          demoType: 'equipment',
-          equipmentModels: ['Canon imageRUNNER ADVANCE C3330i'],
-          demoLocation: 'customer_site',
-          assignedSalesRep: 'Sales Rep Name',
-          status: 'scheduled',
-          confirmationStatus: 'pending',
-          preparationCompleted: false,
-          demoObjectives: 'Demonstrate color printing capabilities and scan-to-email features',
-          proposalAmount: 15000,
-          createdAt: new Date('2025-01-05'),
-        },
-      ];
-
-      res.json(sampleDemos);
-    } catch (error) {
-      log.error('Error fetching demos:', error);
-      res.status(500).json({ message: 'Failed to fetch demos' });
-    }
-  });
-
-  app.get('/api/demos/customers', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Get real customers from business records
-      const customers = await db
-        .select({
-          id: businessRecords.id,
-          companyName: businessRecords.companyName,
-          primaryContactName: businessRecords.primaryContactName,
-          phone: businessRecords.phone,
-          email: businessRecords.primaryContactEmail,
-          addressLine1: businessRecords.addressLine1,
-          city: businessRecords.city,
-          state: businessRecords.state,
-          postalCode: businessRecords.postalCode,
-        })
-        .from(businessRecords)
-        .where(
-          and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
-        )
-        .orderBy(asc(businessRecords.companyName));
-
-      res.json(customers);
-    } catch (error) {
-      log.error('Error fetching customers for demo:', error);
-      res.status(500).json({ message: 'Failed to fetch customers' });
-    }
-  });
-
-  // SALES TRENDS: removed (AUDIT-021). GET /api/sales-trends built six months of
-  // revenue, deal counts, unit counts, pipeline value, conversion rate and
-  // average deal size entirely from Math.random(), so every refresh produced a
-  // different history. No client tree named the path, the prefix is not proxied
-  // and no edge function serves it, so nothing lost a caller.
-
-  // ──────────────────────────────────────────────
-  // E-signature Integration Routes (Sample Data)
-  // ──────────────────────────────────────────────
-
-  app.get('/api/signature-requests', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Sample signature requests until schema is updated
-      const sampleRequests = [
-        {
-          id: 'sig-req-1',
-          documentName: 'Service Agreement - ABC Corporation',
-          documentType: 'service_agreement',
-          businessRecordId: 'customer-1',
-          customerName: 'ABC Corporation',
-          customerEmail: 'john.smith@abccorp.com',
-          status: 'pending',
-          requestedBy: 'Sales Rep',
-          requestedDate: new Date('2025-01-20'),
-          expirationDate: new Date('2025-02-20'),
-          signedDate: null,
-          documentUrl: '/documents/service-agreement-abc-corp.pdf',
-          signatureUrl: null,
-          remindersSent: 1,
-          lastReminderDate: new Date('2025-01-25'),
-          contractValue: 85000,
-          contractDuration: 36,
-          signers: [
-            {
-              name: 'John Smith',
-              email: 'john.smith@abccorp.com',
-              role: 'Customer',
-              status: 'pending',
-              signedDate: null,
-            },
-          ],
-          createdAt: new Date('2025-01-20'),
-        },
-      ];
-
-      res.json(sampleRequests);
-    } catch (error) {
-      log.error('Error fetching signature requests:', error);
-      res.status(500).json({ message: 'Failed to fetch signature requests' });
-    }
-  });
-
-  app.get('/api/signature-templates', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Sample signature templates
-      const sampleTemplates = [
-        {
-          id: 'template-1',
-          templateName: 'Standard Service Agreement',
-          documentType: 'service_agreement',
-          description: 'Standard copier service and maintenance agreement template',
-          templateUrl: '/templates/standard-service-agreement.pdf',
-          signatureFields: [
-            {
-              fieldName: 'customer_signature',
-              x: 100,
-              y: 750,
-              page: 1,
-              required: true,
-            },
-            {
-              fieldName: 'customer_date',
-              x: 300,
-              y: 750,
-              page: 1,
-              required: true,
-            },
-          ],
-          isActive: true,
-          usageCount: 25,
-          lastUsed: new Date('2025-01-20'),
-          createdAt: new Date('2024-10-15'),
-        },
-      ];
-
-      res.json(sampleTemplates);
-    } catch (error) {
-      log.error('Error fetching signature templates:', error);
-      res.status(500).json({ message: 'Failed to fetch signature templates' });
-    }
-  });
-
-  app.get('/api/signature-analytics', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Sample analytics data
-      const analytics = {
-        totalRequests: 45,
-        completedRequests: 32,
-        pendingRequests: 8,
-        expiredRequests: 5,
-        completionRate: 71.1,
-        averageSigningTime: 2.3,
-        totalContractValue: 1850000,
-        byDocumentType: [
-          {
-            type: 'service_agreement',
-            count: 18,
-            completed: 14,
-            value: 950000,
-          },
-          { type: 'equipment_lease', count: 20, completed: 15, value: 750000 },
-          {
-            type: 'maintenance_contract',
-            count: 7,
-            completed: 3,
-            value: 150000,
-          },
-        ],
-        signingSpeedAnalysis: {
-          within24Hours: 12,
-          within48Hours: 8,
-          within1Week: 7,
-          moreThan1Week: 5,
-        },
-      };
-
-      res.json(analytics);
-    } catch (error) {
-      log.error('Error fetching signature analytics:', error);
-      res.status(500).json({ message: 'Failed to fetch signature analytics' });
-    }
-  });
+  // The three /api/signature-* fixtures REMOVED (AUDIT-021 follow-up).
+  //
+  // /signature-requests, /signature-templates and /signature-analytics all
+  // returned invented rows - a "Service Agreement - ABC Corporation" pending
+  // since January, completion rates, a turnaround histogram. The first of them
+  // WON over two other registrations of the same path, one of which
+  // (server/routes/signature-routes.ts) reads the real signature_requests
+  // table through storage. A fixture beating a real handler is the exact case
+  // check:dup-routes' header describes, and it could not see this one: the real
+  // router mounts at the /api root and declares its paths without the prefix.
+  //
+  // Nothing calls /api/signature-* from any client tree either - EDGE-005e
+  // moved the frontend to the consolidated /api/signatures/{requests,templates,
+  // analytics} shape, served by supabase/functions/signatures/.
 
   // ──────────────────────────────────────────────
   // Preventive Maintenance Automation Routes (Mock)
@@ -631,320 +434,39 @@ export function registerSampleDataRoutes(app: Express) {
   // customer_health_scores and friends. These three returned hand-built mock
   // objects and never ran.
 
-  // ──────────────────────────────────────────────
-  // Remote Monitoring & IoT Integration Routes (Mock)
-  // ──────────────────────────────────────────────
+  // Remote Monitoring fixtures REMOVED (AUDIT-030).
+  //
+  // /remote-monitoring is a redirect to /fleet-monitoring now. These two
+  // handlers answered a routed page with 47 pieces of equipment, a customer
+  // called Metro Office Solutions and 96.8% average uptime, none of it from a
+  // database - and only in dev, since production sends /api/* to the functions
+  // host. FleetMonitoringDashboard reads the same fleet through
+  // supabase/functions/device-monitoring/ over device_registrations,
+  // device_metrics and device_alerts.
 
-  app.get('/api/remote-monitoring/equipment-status', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const equipmentStatus = [
-        {
-          equipmentId: 'eq-001',
-          serialNumber: 'MX-2025-001',
-          model: 'Canon ImageRunner 2535i',
-          location: {
-            customerName: 'Metro Office Solutions',
-            address: '123 Business Center Dr, Suite 200',
-            floor: '2nd Floor - Copy Center',
-            coordinates: { lat: 40.7128, lng: -74.006 },
-          },
-          status: 'operational',
-          connectionStatus: 'connected',
-          lastPing: new Date('2025-02-03T23:45:32Z'),
-          uptime: 98.7,
-          currentMetrics: {
-            pagesPerMinute: 35,
-            tonerLevels: { black: 78, cyan: 82, magenta: 75, yellow: 91 },
-            paperLevels: { tray1: 85, tray2: 92, tray3: 67 },
-            temperature: 42.3,
-            humidity: 45,
-            errorCount: 0,
-            jamCount: 2,
-            lastJobCompleted: new Date('2025-02-03T23:44:15Z'),
-          },
-          performance: {
-            dailyPageCount: 1247,
-            weeklyPageCount: 8650,
-            monthlyPageCount: 32450,
-            utilizationRate: 87,
-            efficiency: 94.2,
-            averageJobSize: 12.5,
-            peakUsageHour: 14,
-          },
-          maintenance: {
-            nextScheduled: new Date('2025-02-15T09:00:00Z'),
-            lastCompleted: new Date('2025-01-20T14:30:00Z'),
-            maintenanceScore: 92,
-            predictiveAlerts: [
-              {
-                component: 'Fuser Unit',
-                condition: 'good',
-                estimatedLife: 85,
-                nextReplacement: new Date('2025-04-15T00:00:00Z'),
-              },
-            ],
-          },
-          alerts: [
-            {
-              id: 'alert-001',
-              type: 'supply_low',
-              severity: 'medium',
-              message: 'Magenta toner at 75% - consider ordering replacement',
-              timestamp: new Date('2025-02-03T22:30:00Z'),
-              acknowledged: false,
-            },
-          ],
-          environmental: {
-            powerConsumption: 450,
-            energyEfficiency: 'A+',
-            carbonFootprint: 2.3,
-            sleepModeActive: false,
-            autoSleepEnabled: true,
-          },
-        },
-      ];
-
-      res.json(equipmentStatus);
-    } catch (error) {
-      log.error('Error fetching equipment status:', error);
-      res.status(500).json({ message: 'Failed to fetch equipment status' });
-    }
-  });
-
-  app.get('/api/remote-monitoring/fleet-overview', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const fleetOverview = {
-        summary: {
-          totalEquipment: 47,
-          onlineEquipment: 44,
-          offlineEquipment: 3,
-          equipmentWithAlerts: 8,
-          criticalAlerts: 2,
-          averageUptime: 96.8,
-          fleetUtilization: 78.5,
-          energyEfficiency: 'A-',
-        },
-        statusDistribution: {
-          operational: 38,
-          warning: 6,
-          critical: 2,
-          offline: 3,
-          maintenance: 1,
-        },
-        performanceTrends: {
-          weeklyUptime: [96.2, 97.1, 96.8, 97.5, 96.9, 97.2, 96.8],
-          weeklyUtilization: [75.2, 78.1, 76.8, 79.5, 77.9, 80.2, 78.5],
-          weeklyEfficiency: [89.2, 91.1, 90.8, 92.5, 91.9, 93.2, 91.5],
-        },
-        topPerformers: [
-          {
-            equipmentId: 'eq-003',
-            customerName: 'Regional Medical Center',
-            model: 'Ricoh MP C3004',
-            uptime: 99.2,
-            efficiency: 98.7,
-            utilizationRate: 95,
-          },
-        ],
-        attentionRequired: [
-          {
-            equipmentId: 'eq-002',
-            customerName: 'TechStart Innovations',
-            model: 'Xerox WorkCentre 5855',
-            issues: ['Critical toner low', 'Frequent jams'],
-            priority: 'high',
-            estimatedRevenueLoss: 1200,
-          },
-        ],
-      };
-
-      res.json(fleetOverview);
-    } catch (error) {
-      log.error('Error fetching fleet overview:', error);
-      res.status(500).json({ message: 'Failed to fetch fleet overview' });
-    }
-  });
-
-  // ──────────────────────────────────────────────
-  // Document Management & Workflow Automation Routes (Mock)
-  // ──────────────────────────────────────────────
-
-  app.get('/api/document-management/library', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const documentLibrary = {
-        summary: {
-          totalDocuments: 2847,
-          categoriesCount: 12,
-          pendingApproval: 23,
-          expiringSoon: 8,
-          storageUsed: '4.2 GB',
-          storageLimit: '50 GB',
-          lastBackup: new Date('2025-02-03T02:00:00Z'),
-          complianceScore: 96.5,
-        },
-        categories: [
-          {
-            id: 'contracts',
-            name: 'Contracts & Agreements',
-            documentCount: 456,
-            subcategories: [
-              { name: 'Service Contracts', count: 234, icon: 'FileText' },
-              { name: 'Lease Agreements', count: 156, icon: 'FileSignature' },
-              {
-                name: 'Master Service Agreements',
-                count: 45,
-                icon: 'FileContract',
-              },
-            ],
-            recentActivity: 12,
-            complianceStatus: 'compliant',
-            retentionPolicy: '7 years',
-            accessLevel: 'restricted',
-          },
-          {
-            id: 'service-docs',
-            name: 'Service Documentation',
-            documentCount: 1342,
-            subcategories: [
-              { name: 'Service Reports', count: 789, icon: 'FileText' },
-              { name: 'Installation Docs', count: 234, icon: 'Settings' },
-              { name: 'Maintenance Records', count: 198, icon: 'Wrench' },
-            ],
-            recentActivity: 45,
-            complianceStatus: 'compliant',
-            retentionPolicy: '5 years',
-            accessLevel: 'department',
-          },
-        ],
-        recentDocuments: [
-          {
-            id: 'doc-001',
-            title: 'Metro Office Solutions - Service Contract Renewal',
-            category: 'contracts',
-            subcategory: 'Service Contracts',
-            fileType: 'pdf',
-            fileSize: '2.4 MB',
-            lastModified: new Date('2025-02-03T16:30:00Z'),
-            modifiedBy: 'Sarah Chen',
-            status: 'active',
-            version: '2.1',
-            tags: ['renewal', 'service', 'metro-office'],
-            workflow: {
-              currentStage: 'customer_review',
-              nextAction: 'awaiting_signature',
-              dueDate: new Date('2025-02-10T17:00:00Z'),
-              assignedTo: 'John Smith',
-            },
-          },
-        ],
-        pendingActions: [
-          {
-            id: 'action-001',
-            documentId: 'doc-001',
-            documentTitle: 'Metro Office Solutions - Service Contract Renewal',
-            actionType: 'approval_required',
-            priority: 'high',
-            assignedTo: 'John Smith',
-            dueDate: new Date('2025-02-05T17:00:00Z'),
-            description: 'Contract renewal requires final management approval',
-            estimatedTime: 15,
-          },
-        ],
-      };
-
-      res.json(documentLibrary);
-    } catch (error) {
-      log.error('Error fetching document library:', error);
-      res.status(500).json({ message: 'Failed to fetch document library' });
-    }
-  });
-
-  app.get('/api/document-management/workflows', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const workflowData = {
-        templates: [
-          {
-            id: 'contract-approval',
-            name: 'Contract Approval Workflow',
-            description: 'Multi-stage approval process for service contracts',
-            isActive: true,
-            usage: 156,
-            stages: [
-              {
-                id: 'stage-1',
-                name: 'Initial Review',
-                assignedRole: 'sales',
-                slaHours: 24,
-              },
-              {
-                id: 'stage-2',
-                name: 'Legal Review',
-                assignedRole: 'legal',
-                slaHours: 48,
-              },
-              {
-                id: 'stage-3',
-                name: 'Management Approval',
-                assignedRole: 'management',
-                slaHours: 12,
-              },
-            ],
-            metrics: {
-              averageCompletionTime: 4.2,
-              approvalRate: 89.5,
-              slaComplianceRate: 92.1,
-            },
-          },
-        ],
-        activeWorkflows: [
-          {
-            id: 'wf-001',
-            templateId: 'contract-approval',
-            documentTitle: 'Metro Office Solutions - Service Contract Renewal',
-            currentStage: 'management_approval',
-            progress: 75,
-            startedAt: new Date('2025-01-30T09:00:00Z'),
-            dueAt: new Date('2025-02-05T17:00:00Z'),
-            assignedTo: 'John Smith',
-            priority: 'high',
-            slaStatus: 'on_track',
-          },
-        ],
-        automationStats: {
-          totalRulesActive: 24,
-          rulesTriggeredToday: 12,
-          automationSuccessRate: 96.8,
-          timesSaved: 145,
-          documentsProcessed: 2847,
-        },
-      };
-
-      res.json(workflowData);
-    } catch (error) {
-      log.error('Error fetching workflow data:', error);
-      res.status(500).json({ message: 'Failed to fetch workflow data' });
-    }
-  });
+  // Document Management fixtures REMOVED (AUDIT-037).
+  //
+  // Two handlers answered the routed /document-management page with 2,847
+  // documents, 12 categories, 4.2 GB of 50 GB used, 23 documents pending
+  // approval and a 96.5% compliance score - every value a literal, and only
+  // in dev, since production sends /api/* to the functions host. There the
+  // page 404'd on all four paths it called, because
+  // supabase/functions/document-management/ read parts[0] as a document id,
+  // so /library was a lookup for a document whose id is the string "library".
+  //
+  // The page, its edge function and the unregistered 828-line
+  // routes-document-management.ts are all deleted. The `documents` table they
+  // named is a purchase-agreement and service-contract record (agreement
+  // number, buyer name, black/colour rates, monthly base), owned by
+  // supabase/functions/documents/ for DocumentBuilder; the twelve file-library
+  // columns those three files read off it, and the document_folders table two
+  // of them queried, exist in no schema and no migration.
+  //
+  // A real document library would be built on document_uploads and
+  // document_templates (shared/document-automation-schema.ts), which hold file
+  // metadata, OCR text and AI field extraction for real. That is PROD-008d's
+  // unconnected feature, and connecting it means building a UI - a decision,
+  // not a repair. See docs/document-surfaces.md.
 
   // GET /api/business-process/dashboard was removed here (PROD-010), along with
   // BusinessProcessOptimization.tsx and the unregistered 746-line

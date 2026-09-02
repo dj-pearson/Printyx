@@ -11,6 +11,18 @@ import { eq, and, sql, desc, asc, gte, lte } from 'drizzle-orm';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('meeting-scheduling-service');
 
+/**
+ * Named on every availability response rather than filled with a plausible
+ * number, the way supabase/functions/_shared/erp-integration-dashboard.ts names
+ * its own gaps.
+ */
+const UNBACKED_AVAILABILITY_FIELDS = [
+  'availableSlots/busySlots: needs a calendar_events read for this user',
+  'bestProductivityHours: nothing records when a person works well',
+  'meetingFatigueRisk: not measured',
+  'flexibility: not measured',
+];
+
 interface MeetingType {
   id: string;
   tenantId: string;
@@ -316,7 +328,20 @@ Return JSON with suggestions:
     const summary: Record<string, any> = {};
     const conflicts: Array<{ userId: string; conflict: string; severity: string }> = [];
 
-    // Mock availability analysis - in production, this would query actual calendars
+    // AUDIT-021. This read a per-user availability that was invented end to end:
+    // free blocks at 9am and 2pm tomorrow, a lunch break, four "best
+    // productivity hours", plus a meeting-fatigue risk of Math.random() * 0.5
+    // and a flexibility of 0.7 + Math.random() * 0.3. Those last two then fed
+    // CONFLICTS - "High meeting fatigue risk", "Limited scheduling flexibility"
+    // against a named person - which is a statement about a colleague drawn
+    // from a random number, and it changed on every request.
+    //
+    // getUserAvailability now returns nothing rather than something invented,
+    // so this produces no windows and no conflicts. Real availability lives in
+    // calendar_events, which is a drift table with no Drizzle schema (its only
+    // DDL is drizzle/rls/meetings-tables.sql), so reading it from here needs a
+    // raw query and a tenant id this method does not carry. That is filed
+    // rather than guessed at.
     for (const userId of allParticipants) {
       const userAvailability = await this.getUserAvailability(userId, startRange, endRange);
 
@@ -339,22 +364,8 @@ Return JSON with suggestions:
         })),
       );
 
-      // Check for conflicts
-      if (userAvailability.meetingFatigueRisk > 0.7) {
-        conflicts.push({
-          userId,
-          conflict: 'High meeting fatigue risk',
-          severity: 'medium',
-        });
-      }
-
-      if (userAvailability.flexibility < 0.3) {
-        conflicts.push({
-          userId,
-          conflict: 'Limited scheduling flexibility',
-          severity: 'high',
-        });
-      }
+      // No conflict is raised from fatigue or flexibility: neither is measured.
+      // A conflict naming a person has to come from that person's calendar.
     }
 
     return { windows, summary, conflicts };
@@ -371,36 +382,27 @@ Return JSON with suggestions:
     availableSlots: Array<{ start: Date; end: Date; confidence: number }>;
     busySlots: Array<{ start: Date; end: Date; context: string }>;
     bestProductivityHours: string[];
-    meetingFatigueRisk: number;
-    flexibility: number;
+    meetingFatigueRisk: number | null;
+    flexibility: number | null;
+    unbacked: string[];
   }> {
-    // Mock user availability - in production, this would integrate with calendar APIs
-    const now = new Date();
-    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
+    // Nothing here is measured, so nothing is returned. Suggesting 9am tomorrow
+    // to every participant is worse than suggesting nothing: an empty result
+    // reads as "we do not know", while a confident window gets a real invitation
+    // sent to a time somebody is busy.
+    //
+    // What each field needs before it can carry a value:
+    //   availableSlots / busySlots - a read of calendar_events for this user in
+    //     the range, joined to their calendar_connections row.
+    //   bestProductivityHours - nothing records when a person works well.
+    //   meetingFatigueRisk / flexibility - nothing records either.
     return {
-      availableSlots: [
-        {
-          start: new Date(tomorrow.getTime() + 9 * 60 * 60 * 1000), // 9 AM tomorrow
-          end: new Date(tomorrow.getTime() + 12 * 60 * 60 * 1000), // 12 PM tomorrow
-          confidence: 0.9,
-        },
-        {
-          start: new Date(tomorrow.getTime() + 14 * 60 * 60 * 1000), // 2 PM tomorrow
-          end: new Date(tomorrow.getTime() + 17 * 60 * 60 * 1000), // 5 PM tomorrow
-          confidence: 0.8,
-        },
-      ],
-      busySlots: [
-        {
-          start: new Date(tomorrow.getTime() + 13 * 60 * 60 * 1000), // 1 PM tomorrow
-          end: new Date(tomorrow.getTime() + 14 * 60 * 60 * 1000), // 2 PM tomorrow
-          context: 'Lunch break',
-        },
-      ],
-      bestProductivityHours: ['9 AM', '10 AM', '2 PM', '3 PM'],
-      meetingFatigueRisk: Math.random() * 0.5, // 0-50% fatigue risk
-      flexibility: 0.7 + Math.random() * 0.3, // 70-100% flexibility
+      availableSlots: [],
+      busySlots: [],
+      bestProductivityHours: [],
+      meetingFatigueRisk: null,
+      flexibility: null,
+      unbacked: UNBACKED_AVAILABILITY_FIELDS,
     };
   }
 
@@ -554,14 +556,13 @@ Return JSON with suggestions:
       });
     }
 
-    // Random conflict for demo
-    if (Math.random() > 0.7) {
-      conflicts.push({
-        type: 'participant_conflict',
-        description: 'One participant has a potential scheduling conflict',
-        impact: 'medium' as const,
-      });
-    }
+    // AUDIT-021: a 30% chance of reporting "One participant has a potential
+    // scheduling conflict" was here, labelled "Random conflict for demo".
+    // check:no-random-metrics did not see it - the guard watches a PROPERTY
+    // assigned from Math.random(), and jitter inside an `if` is excluded by
+    // rule - so it survived the sweep that emptied the baseline. A participant
+    // conflict is a claim about a specific person's calendar and needs a
+    // calendar_events read, which is the same gap getUserAvailability names.
 
     return conflicts;
   }

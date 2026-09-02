@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Dialog,
   DialogContent,
@@ -32,81 +33,70 @@ import {
 } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  GitBranch,
-  Plus,
-  Edit,
-  Trash2,
-  Play,
-  Pause,
-  Users,
-  MapPin,
-  Target,
-  Settings,
-  Activity,
-  TrendingUp,
-} from 'lucide-react';
+import { GitBranch, Plus, Edit, Trash2, Play, Users, MapPin, Settings } from 'lucide-react';
 
+// Mirrors platform_lead_assignment_rules (shared/platform-crm-schema.ts), in the
+// camelCase the platform-crm function returns. PA-052: the previous shape - name,
+// triggerOn, leadGrades, leadTiers, recordStatuses, regions, companySizeMin/Max,
+// revenueMin/Max, assignToTerritoryId/Name, roundRobinPool, totalAssignments,
+// lastTriggered, avgExecutionTime - matched no column on any table, and the
+// endpoints it posted to did not exist on either host.
 interface AssignmentRule {
   id: string;
-  name: string;
-  description?: string;
+  ruleName: string;
+  description?: string | null;
   isActive: boolean;
   priority: number;
-  assignmentType: 'territory' | 'user' | 'round_robin' | 'load_balanced';
+  // The column's own vocabulary. 'user' and 'load_balanced' were invented.
+  assignmentType: 'territory' | 'round_robin' | 'skill_based' | 'workload_balanced' | 'manual';
 
-  // Trigger conditions
-  triggerOn: 'create' | 'update' | 'score_change' | 'manual';
-  minLeadScore?: number;
-  maxLeadScore?: number;
-  leadGrades?: string[];
-  leadTiers?: string[];
-  recordStatuses?: string[];
-
-  // Match criteria
-  regions?: string[];
-  industries?: string[];
-  companySizeMin?: number;
-  companySizeMax?: number;
-  revenueMin?: string;
-  revenueMax?: string;
+  // Matching criteria
+  leadSource?: string[] | null;
+  leadScoreMin?: number | null;
+  leadScoreMax?: number | null;
+  industries?: string[] | null;
 
   // Assignment target
-  targetTerritoryId?: string;
-  targetTerritoryName?: string;
-  targetUserId?: string;
-  targetUserName?: string;
-  roundRobinPool?: string[];
+  assignToTerritoryId?: string | null;
+  assignToUserId?: string | null;
+  roundRobinUsers?: string[] | null;
 
-  // Stats
-  totalAssignments?: number;
-  lastTriggered?: string;
-  avgExecutionTime?: number;
+  // Capacity and timing
+  maxLeadsPerRep?: number | null;
+  maxLeadsPerDay?: number | null;
+  assignImmediately?: boolean | null;
+  delayMinutes?: number | null;
+  businessHoursOnly?: boolean | null;
 
   createdAt: string;
   updatedAt: string;
 }
 
+interface RuleTestResult {
+  matchCount: number;
+  criteriaApplied: string[];
+  // Criteria the server could not evaluate. A count means less without this.
+  unevaluated: string[];
+  message: string;
+}
+
 interface RuleFormData {
-  name: string;
+  ruleName: string;
   description: string;
   isActive: boolean;
   priority: string;
   assignmentType: string;
-  triggerOn: string;
-  minLeadScore: string;
-  maxLeadScore: string;
-  leadGrades: string;
-  leadTiers: string;
-  recordStatuses: string;
-  regions: string;
+  leadSource: string;
+  leadScoreMin: string;
+  leadScoreMax: string;
   industries: string;
-  companySizeMin: string;
-  companySizeMax: string;
-  revenueMin: string;
-  revenueMax: string;
-  targetTerritoryId: string;
-  targetUserId: string;
+  assignToTerritoryId: string;
+  assignToUserId: string;
+  maxLeadsPerRep: string;
+  maxLeadsPerDay: string;
+  assignImmediately: boolean;
+  delayMinutes: string;
+  businessHoursOnly: boolean;
 }
 
 const ASSIGNMENT_TYPES = [
@@ -115,21 +105,35 @@ const ASSIGNMENT_TYPES = [
     label: 'Territory Assignment',
     description: 'Assign to a specific territory',
   },
-  { value: 'user', label: 'User Assignment', description: 'Assign to a specific user' },
   { value: 'round_robin', label: 'Round Robin', description: 'Distribute evenly across users' },
-  { value: 'load_balanced', label: 'Load Balanced', description: 'Balance by workload' },
+  { value: 'skill_based', label: 'Skill Based', description: 'Match on rep skills' },
+  { value: 'workload_balanced', label: 'Workload Balanced', description: 'Balance by open load' },
+  { value: 'manual', label: 'Manual', description: 'Assigned by hand' },
 ];
 
-const TRIGGER_OPTIONS = [
-  { value: 'create', label: 'On Create', description: 'When prospect is created' },
-  { value: 'update', label: 'On Update', description: 'When prospect is updated' },
-  { value: 'score_change', label: 'On Score Change', description: 'When lead score changes' },
-  { value: 'manual', label: 'Manual Only', description: 'Triggered manually' },
-];
+// A trigger vocabulary, lead grades, lead tiers and record statuses were all
+// rendered here as filter controls. None of them is a column on
+// platform_lead_assignment_rules, so the rules they described could not be
+// stored, let alone applied. They are gone rather than defaulted.
 
-const LEAD_GRADES = ['A', 'B', 'C', 'D', 'F'];
-const LEAD_TIERS = ['hot', 'warm', 'cold'];
-const RECORD_STATUSES = ['new', 'qualifying', 'qualified', 'unqualified', 'contacted', 'engaged'];
+const EMPTY_FORM: RuleFormData = {
+  ruleName: '',
+  description: '',
+  isActive: true,
+  priority: '1',
+  assignmentType: 'territory',
+  leadSource: '',
+  leadScoreMin: '',
+  leadScoreMax: '',
+  industries: '',
+  assignToTerritoryId: '',
+  assignToUserId: '',
+  maxLeadsPerRep: '',
+  maxLeadsPerDay: '',
+  assignImmediately: true,
+  delayMinutes: '',
+  businessHoursOnly: false,
+};
 
 export default function PlatformAssignmentRules() {
   const { toast } = useToast();
@@ -138,27 +142,7 @@ export default function PlatformAssignmentRules() {
   const [editingRule, setEditingRule] = useState<AssignmentRule | null>(null);
   const [selectedTab, setSelectedTab] = useState('all');
 
-  const [formData, setFormData] = useState<RuleFormData>({
-    name: '',
-    description: '',
-    isActive: true,
-    priority: '1',
-    assignmentType: 'territory',
-    triggerOn: 'create',
-    minLeadScore: '',
-    maxLeadScore: '',
-    leadGrades: '',
-    leadTiers: '',
-    recordStatuses: '',
-    regions: '',
-    industries: '',
-    companySizeMin: '',
-    companySizeMax: '',
-    revenueMin: '',
-    revenueMax: '',
-    targetTerritoryId: '',
-    targetUserId: '',
-  });
+  const [formData, setFormData] = useState<RuleFormData>({ ...EMPTY_FORM });
 
   // Fetch assignment rules
   const { data: rules = [], isLoading } = useQuery<AssignmentRule[]>({
@@ -176,16 +160,12 @@ export default function PlatformAssignmentRules() {
   });
 
   // Create rule mutation
+  // PA-052: all five of these were raw fetch(), so they carried no Authorization
+  // header and would 401 against the platform-crm edge function even now that it
+  // serves them.
   const createMutation = useMutation({
-    mutationFn: async (data: Partial<AssignmentRule>) => {
-      const response = await fetch('/api/platform-crm/assignment-rules', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to create assignment rule');
-      return response.json();
-    },
+    mutationFn: async (data: Partial<AssignmentRule>) =>
+      apiRequest('/api/platform-crm/assignment-rules', { method: 'POST', body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/assignment-rules'] });
       toast({
@@ -199,15 +179,8 @@ export default function PlatformAssignmentRules() {
 
   // Update rule mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<AssignmentRule> }) => {
-      const response = await fetch(`/api/platform-crm/assignment-rules/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to update assignment rule');
-      return response.json();
-    },
+    mutationFn: async ({ id, data }: { id: string; data: Partial<AssignmentRule> }) =>
+      apiRequest(`/api/platform-crm/assignment-rules/${id}`, { method: 'PUT', body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/assignment-rules'] });
       toast({
@@ -221,13 +194,8 @@ export default function PlatformAssignmentRules() {
 
   // Delete rule mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`/api/platform-crm/assignment-rules/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete assignment rule');
-      return response.json();
-    },
+    mutationFn: async (id: string) =>
+      apiRequest(`/api/platform-crm/assignment-rules/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/assignment-rules'] });
       toast({
@@ -239,15 +207,11 @@ export default function PlatformAssignmentRules() {
 
   // Toggle rule status
   const toggleMutation = useMutation({
-    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const response = await fetch(`/api/platform-crm/assignment-rules/${id}/toggle`, {
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) =>
+      apiRequest(`/api/platform-crm/assignment-rules/${id}/toggle`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive }),
-      });
-      if (!response.ok) throw new Error('Failed to toggle rule');
-      return response.json();
-    },
+        body: { isActive },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/assignment-rules'] });
       toast({
@@ -259,43 +223,22 @@ export default function PlatformAssignmentRules() {
 
   // Test rule execution
   const testMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`/api/platform-crm/assignment-rules/${id}/test`, {
-        method: 'POST',
-      });
-      if (!response.ok) throw new Error('Failed to test rule');
-      return response.json();
-    },
-    onSuccess: (data) => {
+    mutationFn: async (id: string) =>
+      apiRequest(`/api/platform-crm/assignment-rules/${id}/test`, { method: 'POST' }),
+    // A match count means less when some of the rule's criteria could not be
+    // evaluated, so name those rather than reporting the number alone.
+    onSuccess: (data: RuleTestResult) => {
       toast({
         title: 'Test Complete',
-        description: `Rule would match ${data.matchCount} prospect(s)`,
+        description: data.unevaluated?.length
+          ? `${data.message} Not evaluated: ${data.unevaluated.join('; ')}.`
+          : data.message,
       });
     },
   });
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      description: '',
-      isActive: true,
-      priority: '1',
-      assignmentType: 'territory',
-      triggerOn: 'create',
-      minLeadScore: '',
-      maxLeadScore: '',
-      leadGrades: '',
-      leadTiers: '',
-      recordStatuses: '',
-      regions: '',
-      industries: '',
-      companySizeMin: '',
-      companySizeMax: '',
-      revenueMin: '',
-      revenueMax: '',
-      targetTerritoryId: '',
-      targetUserId: '',
-    });
+    setFormData({ ...EMPTY_FORM });
     setEditingRule(null);
   };
 
@@ -303,25 +246,22 @@ export default function PlatformAssignmentRules() {
     if (rule) {
       setEditingRule(rule);
       setFormData({
-        name: rule.name,
+        ruleName: rule.ruleName,
         description: rule.description || '',
         isActive: rule.isActive,
-        priority: rule.priority.toString(),
+        priority: rule.priority?.toString() ?? '0',
         assignmentType: rule.assignmentType,
-        triggerOn: rule.triggerOn,
-        minLeadScore: rule.minLeadScore?.toString() || '',
-        maxLeadScore: rule.maxLeadScore?.toString() || '',
-        leadGrades: rule.leadGrades?.join(', ') || '',
-        leadTiers: rule.leadTiers?.join(', ') || '',
-        recordStatuses: rule.recordStatuses?.join(', ') || '',
-        regions: rule.regions?.join(', ') || '',
+        leadSource: rule.leadSource?.join(', ') || '',
+        leadScoreMin: rule.leadScoreMin?.toString() || '',
+        leadScoreMax: rule.leadScoreMax?.toString() || '',
         industries: rule.industries?.join(', ') || '',
-        companySizeMin: rule.companySizeMin?.toString() || '',
-        companySizeMax: rule.companySizeMax?.toString() || '',
-        revenueMin: rule.revenueMin || '',
-        revenueMax: rule.revenueMax || '',
-        targetTerritoryId: rule.targetTerritoryId || '',
-        targetUserId: rule.targetUserId || '',
+        assignToTerritoryId: rule.assignToTerritoryId || '',
+        assignToUserId: rule.assignToUserId || '',
+        maxLeadsPerRep: rule.maxLeadsPerRep?.toString() || '',
+        maxLeadsPerDay: rule.maxLeadsPerDay?.toString() || '',
+        assignImmediately: rule.assignImmediately ?? true,
+        delayMinutes: rule.delayMinutes?.toString() || '',
+        businessHoursOnly: rule.businessHoursOnly ?? false,
       });
     } else {
       resetForm();
@@ -332,51 +272,32 @@ export default function PlatformAssignmentRules() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const list = (value: string) =>
+      value
+        ? value
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean)
+        : [];
+    const num = (value: string) => (value ? parseInt(value, 10) : undefined);
+
     const ruleData: Partial<AssignmentRule> = {
-      name: formData.name,
+      ruleName: formData.ruleName,
       description: formData.description || undefined,
       isActive: formData.isActive,
-      priority: parseInt(formData.priority),
-      assignmentType: formData.assignmentType as any,
-      triggerOn: formData.triggerOn as any,
-      minLeadScore: formData.minLeadScore ? parseInt(formData.minLeadScore) : undefined,
-      maxLeadScore: formData.maxLeadScore ? parseInt(formData.maxLeadScore) : undefined,
-      leadGrades: formData.leadGrades
-        ? formData.leadGrades
-            .split(',')
-            .map((g) => g.trim())
-            .filter(Boolean)
-        : undefined,
-      leadTiers: formData.leadTiers
-        ? formData.leadTiers
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : undefined,
-      recordStatuses: formData.recordStatuses
-        ? formData.recordStatuses
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : undefined,
-      regions: formData.regions
-        ? formData.regions
-            .split(',')
-            .map((r) => r.trim())
-            .filter(Boolean)
-        : undefined,
-      industries: formData.industries
-        ? formData.industries
-            .split(',')
-            .map((i) => i.trim())
-            .filter(Boolean)
-        : undefined,
-      companySizeMin: formData.companySizeMin ? parseInt(formData.companySizeMin) : undefined,
-      companySizeMax: formData.companySizeMax ? parseInt(formData.companySizeMax) : undefined,
-      revenueMin: formData.revenueMin || undefined,
-      revenueMax: formData.revenueMax || undefined,
-      targetTerritoryId: formData.targetTerritoryId || undefined,
-      targetUserId: formData.targetUserId || undefined,
+      priority: parseInt(formData.priority, 10) || 0,
+      assignmentType: formData.assignmentType as AssignmentRule['assignmentType'],
+      leadSource: list(formData.leadSource),
+      leadScoreMin: num(formData.leadScoreMin),
+      leadScoreMax: num(formData.leadScoreMax),
+      industries: list(formData.industries),
+      assignToTerritoryId: formData.assignToTerritoryId || undefined,
+      assignToUserId: formData.assignToUserId || undefined,
+      maxLeadsPerRep: num(formData.maxLeadsPerRep),
+      maxLeadsPerDay: num(formData.maxLeadsPerDay),
+      assignImmediately: formData.assignImmediately,
+      delayMinutes: num(formData.delayMinutes) ?? 0,
+      businessHoursOnly: formData.businessHoursOnly,
     };
 
     if (editingRule) {
@@ -406,16 +327,21 @@ export default function PlatformAssignmentRules() {
       ? rules
       : rules.filter((rule) => rule.isActive === (selectedTab === 'active'));
 
+  // /territories and /managers are still unserved on both hosts (PA-052 covers
+  // assignment-rules only), so these resolve to [] and a target falls back to
+  // its id rather than rendering blank.
+  const territoryName = (id: string) => territories.find((t) => t.id === id)?.name ?? id;
+  const managerName = (id: string) => users.find((u) => u.id === id)?.name ?? id;
+
   // Calculate stats
+  // totalAssignments and avgExecutionTime were summed here off fields no table
+  // records. platform_lead_assignment_history could back a real assignment count
+  // per rule, but that needs a server-side aggregate this endpoint does not do
+  // yet, and zeroes would read as "no rule has ever fired".
   const stats = {
     total: rules.length,
     active: rules.filter((r) => r.isActive).length,
     inactive: rules.filter((r) => !r.isActive).length,
-    totalAssignments: rules.reduce((sum, r) => sum + (r.totalAssignments || 0), 0),
-    avgExecutionTime:
-      rules.length > 0
-        ? rules.reduce((sum, r) => sum + (r.avgExecutionTime || 0), 0) / rules.length
-        : 0,
   };
 
   if (isLoading) {
@@ -467,35 +393,10 @@ export default function PlatformAssignmentRules() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Assignments
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-3xl font-bold">{stats.totalAssignments.toLocaleString()}</span>
-              <Users className="h-8 w-8 text-muted-foreground opacity-50" />
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">All time</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Avg Execution Time
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-3xl font-bold">{stats.avgExecutionTime.toFixed(0)}ms</span>
-              <Activity className="h-8 w-8 text-muted-foreground opacity-50" />
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">Per assignment</p>
-          </CardContent>
-        </Card>
+        {/* "Total Assignments" and "Avg Execution Time" cards stood here, summed
+            from fields no table records. platform_lead_assignment_history could
+            back the first once the endpoint aggregates it; nothing measures the
+            second at all. */}
 
         <Card>
           <CardHeader className="pb-3">
@@ -553,7 +454,7 @@ export default function PlatformAssignmentRules() {
                       <TableRow key={rule.id}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{rule.name}</div>
+                            <div className="font-medium">{rule.ruleName}</div>
                             {rule.description && (
                               <div className="text-sm text-muted-foreground line-clamp-1">
                                 {rule.description}
@@ -567,25 +468,20 @@ export default function PlatformAssignmentRules() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">
-                            {TRIGGER_OPTIONS.find((t) => t.value === rule.triggerOn)?.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
                           <div className="text-sm">
-                            {rule.targetTerritoryName && (
+                            {rule.assignToTerritoryId && (
                               <div className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
-                                {rule.targetTerritoryName}
+                                {territoryName(rule.assignToTerritoryId)}
                               </div>
                             )}
-                            {rule.targetUserName && (
+                            {rule.assignToUserId && (
                               <div className="flex items-center gap-1">
                                 <Users className="h-3 w-3" />
-                                {rule.targetUserName}
+                                {managerName(rule.assignToUserId)}
                               </div>
                             )}
-                            {!rule.targetTerritoryName && !rule.targetUserName && (
+                            {!rule.assignToTerritoryId && !rule.assignToUserId && (
                               <span className="text-muted-foreground">Auto</span>
                             )}
                           </div>
@@ -593,7 +489,6 @@ export default function PlatformAssignmentRules() {
                         <TableCell>
                           <Badge variant="outline">{rule.priority}</Badge>
                         </TableCell>
-                        <TableCell>{rule.totalAssignments?.toLocaleString() || 0}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Switch
@@ -654,11 +549,11 @@ export default function PlatformAssignmentRules() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2">
-                  <Label htmlFor="name">Rule Name *</Label>
+                  <Label htmlFor="ruleName">Rule Name *</Label>
                   <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    id="ruleName"
+                    value={formData.ruleName}
+                    onChange={(e) => setFormData({ ...formData, ruleName: e.target.value })}
                     placeholder="e.g., Enterprise Territory Assignment"
                     required
                   />
@@ -698,30 +593,6 @@ export default function PlatformAssignmentRules() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="triggerOn">Trigger *</Label>
-                  <Select
-                    value={formData.triggerOn}
-                    onValueChange={(value) => setFormData({ ...formData, triggerOn: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TRIGGER_OPTIONS.map((trigger) => (
-                        <SelectItem key={trigger.value} value={trigger.value}>
-                          <div>
-                            <div>{trigger.label}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {trigger.description}
-                            </div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="priority">Priority</Label>
                   <Input
                     id="priority"
@@ -750,75 +621,36 @@ export default function PlatformAssignmentRules() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="minLeadScore">Min Lead Score</Label>
+                  <Label htmlFor="leadScoreMin">Min Lead Score</Label>
                   <Input
-                    id="minLeadScore"
+                    id="leadScoreMin"
                     type="number"
                     min="0"
-                    value={formData.minLeadScore}
-                    onChange={(e) => setFormData({ ...formData, minLeadScore: e.target.value })}
+                    value={formData.leadScoreMin}
+                    onChange={(e) => setFormData({ ...formData, leadScoreMin: e.target.value })}
                     placeholder="e.g., 50"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="maxLeadScore">Max Lead Score</Label>
+                  <Label htmlFor="leadScoreMax">Max Lead Score</Label>
                   <Input
-                    id="maxLeadScore"
+                    id="leadScoreMax"
                     type="number"
                     min="0"
-                    value={formData.maxLeadScore}
-                    onChange={(e) => setFormData({ ...formData, maxLeadScore: e.target.value })}
+                    value={formData.leadScoreMax}
+                    onChange={(e) => setFormData({ ...formData, leadScoreMax: e.target.value })}
                     placeholder="e.g., 100"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="leadGrades">Lead Grades (comma-separated)</Label>
-                  <Input
-                    id="leadGrades"
-                    value={formData.leadGrades}
-                    onChange={(e) => setFormData({ ...formData, leadGrades: e.target.value })}
-                    placeholder="e.g., A, B"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Available: {LEAD_GRADES.join(', ')}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="leadTiers">Lead Tiers (comma-separated)</Label>
-                  <Input
-                    id="leadTiers"
-                    value={formData.leadTiers}
-                    onChange={(e) => setFormData({ ...formData, leadTiers: e.target.value })}
-                    placeholder="e.g., hot, warm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Available: {LEAD_TIERS.join(', ')}
-                  </p>
-                </div>
-
                 <div className="space-y-2 col-span-2">
-                  <Label htmlFor="recordStatuses">Record Statuses (comma-separated)</Label>
+                  <Label htmlFor="leadSource">Lead Sources (comma-separated)</Label>
                   <Input
-                    id="recordStatuses"
-                    value={formData.recordStatuses}
-                    onChange={(e) => setFormData({ ...formData, recordStatuses: e.target.value })}
-                    placeholder="e.g., new, qualifying"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Available: {RECORD_STATUSES.join(', ')}
-                  </p>
-                </div>
-
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="regions">Regions (comma-separated)</Label>
-                  <Input
-                    id="regions"
-                    value={formData.regions}
-                    onChange={(e) => setFormData({ ...formData, regions: e.target.value })}
-                    placeholder="e.g., North America - East, Europe - West"
+                    id="leadSource"
+                    value={formData.leadSource}
+                    onChange={(e) => setFormData({ ...formData, leadSource: e.target.value })}
+                    placeholder="e.g., website, referral, outbound"
                   />
                 </div>
 
@@ -832,49 +664,13 @@ export default function PlatformAssignmentRules() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="companySizeMin">Min Company Size</Label>
-                  <Input
-                    id="companySizeMin"
-                    type="number"
-                    min="1"
-                    value={formData.companySizeMin}
-                    onChange={(e) => setFormData({ ...formData, companySizeMin: e.target.value })}
-                    placeholder="e.g., 100"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="companySizeMax">Max Company Size</Label>
-                  <Input
-                    id="companySizeMax"
-                    type="number"
-                    min="1"
-                    value={formData.companySizeMax}
-                    onChange={(e) => setFormData({ ...formData, companySizeMax: e.target.value })}
-                    placeholder="e.g., 10000"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="revenueMin">Min Annual Revenue</Label>
-                  <Input
-                    id="revenueMin"
-                    value={formData.revenueMin}
-                    onChange={(e) => setFormData({ ...formData, revenueMin: e.target.value })}
-                    placeholder="e.g., 1000000"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="revenueMax">Max Annual Revenue</Label>
-                  <Input
-                    id="revenueMax"
-                    value={formData.revenueMax}
-                    onChange={(e) => setFormData({ ...formData, revenueMax: e.target.value })}
-                    placeholder="e.g., 100000000"
-                  />
-                </div>
+                {/* Lead grades, lead tiers, record statuses, regions, company
+                    size and annual revenue were fields here. None is a column on
+                    platform_lead_assignment_rules, so a rule built on them could
+                    not be stored, let alone applied. Company size and geography
+                    ARE on the table, but as free-form jsonb with no matching
+                    column on platform_business_records to test against - the
+                    rule test reports them under `unevaluated` for that reason. */}
               </div>
             </div>
 
@@ -885,11 +681,11 @@ export default function PlatformAssignmentRules() {
               <div className="grid grid-cols-2 gap-4">
                 {formData.assignmentType === 'territory' && (
                   <div className="space-y-2 col-span-2">
-                    <Label htmlFor="targetTerritoryId">Target Territory</Label>
+                    <Label htmlFor="assignToTerritoryId">Target Territory</Label>
                     <Select
-                      value={formData.targetTerritoryId}
+                      value={formData.assignToTerritoryId}
                       onValueChange={(value) =>
-                        setFormData({ ...formData, targetTerritoryId: value })
+                        setFormData({ ...formData, assignToTerritoryId: value })
                       }
                     >
                       <SelectTrigger>
@@ -908,10 +704,10 @@ export default function PlatformAssignmentRules() {
 
                 {formData.assignmentType === 'user' && (
                   <div className="space-y-2 col-span-2">
-                    <Label htmlFor="targetUserId">Target User</Label>
+                    <Label htmlFor="assignToUserId">Target User</Label>
                     <Select
-                      value={formData.targetUserId}
-                      onValueChange={(value) => setFormData({ ...formData, targetUserId: value })}
+                      value={formData.assignToUserId}
+                      onValueChange={(value) => setFormData({ ...formData, assignToUserId: value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select user..." />

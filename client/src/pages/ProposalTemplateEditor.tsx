@@ -15,8 +15,8 @@ const BRANDING_KEY = '/api/branding-profiles';
 
 interface TemplateRow {
   id: string;
-  template_name: string;
-  template_type: string;
+  name: string;
+  category: string;
   description?: string | null;
   template_content?: { sections?: any[]; globalStyling?: any } | null;
 }
@@ -72,7 +72,7 @@ export default function ProposalTemplateEditor() {
     if (!row) return undefined;
     return {
       id: row.id,
-      name: row.template_name,
+      name: row.name,
       description: row.description ?? '',
       sections: row.template_content?.sections ?? [],
       globalStyling: row.template_content?.globalStyling ?? {

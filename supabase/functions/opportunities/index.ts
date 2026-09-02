@@ -18,8 +18,12 @@ function mapDealToOpportunity(deal: any): any {
     // iOS Opportunity model fields (snake_case for automatic conversion)
     company_name: deal.company_name || deal.title,
     primary_contact_name: deal.primary_contact_name,
-    primary_contact_email: deal.email,
-    primary_contact_phone: deal.phone,
+    // AUDIT-037: the columns are primary_contact_email and
+    // primary_contact_phone. Reading deal.email gave undefined on every row, so
+    // the iOS opportunity list showed no contact details, and the insert below
+    // named the same two absent columns - so creating an opportunity 42703'd.
+    primary_contact_email: deal.primary_contact_email,
+    primary_contact_phone: deal.primary_contact_phone,
     record_type: deal.deal_type || 'deal',
     status: deal.status,
     sales_stage: deal.deal_stage?.name || deal.status || 'new',
@@ -275,8 +279,8 @@ export default async function handler(req: Request) {
         owner_id: body.ownerId || body.owner_id || user.id,
         description: body.description || null,
         primary_contact_name: body.primaryContactName || body.primary_contact_name || null,
-        email: body.email || null,
-        phone: body.phone || null,
+        primary_contact_email: body.email || body.primaryContactEmail || null,
+        primary_contact_phone: body.phone || body.primaryContactPhone || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

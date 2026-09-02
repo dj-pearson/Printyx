@@ -137,12 +137,7 @@ import {
   registerTaskWorkflowRoutes,
 } from './domains/tasks';
 
-import {
-  registerSeoCoreRoutes,
-  seoRoutes,
-  googleIndexingRoutes,
-  contentMarketingRoutes,
-} from './domains/content';
+import { registerSeoCoreRoutes, seoRoutes, googleIndexingRoutes } from './domains/content';
 
 import {
   registerOnboardingRoutes,
@@ -716,7 +711,22 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api', warehouseFpyRoutes);
 
   // ─── Content & SEO ────────────────────────────────────────────────
-  app.use(contentMarketingRoutes);
+  //
+  // routes-content-marketing.ts is GONE (AUDIT-037). 863 lines and twelve
+  // endpoints under /api/content, with no caller in any of the seven client
+  // trees and no edge function to fall back to - PROD-013 established that when
+  // it deleted the one beacon that used to reach the prefix, and called
+  // retiring the router a routine-cleanup story.
+  //
+  // Deleting it settles something bigger than its own size. It was the ONLY
+  // consumer of content-marketing-schema's blog_posts, the declaration that wins
+  // the duplicate-table collision and therefore the shape migration 0000 built.
+  // The other declaration, blog-schema's, is what 37 blog-* edge functions and
+  // the platform-admin blog UI read. So "which system owns blog_posts" is not a
+  // contest between two live systems any more; it is a live subsystem against a
+  // shape nothing reads. Changing the table is still the owner's call and is
+  // recorded on AUDIT-037.
+  app.use(printCostCalculatorRoutes);
   app.use(printCostCalculatorRoutes);
   app.use(seoRoutes);
   app.use(googleIndexingRoutes);

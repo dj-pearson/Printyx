@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import MainLayout from '@/components/layout/main-layout';
 
@@ -66,6 +66,12 @@ interface OnboardingChecklist {
 
 interface CreateChecklistData {
   checklistTitle: string;
+  /**
+   * equipment_onboarding_checklists.customer_id is NOT NULL and links to
+   * business_records. The dialog used to collect a company NAME and no id, so
+   * this create could never satisfy the constraint (AUDIT-037).
+   */
+  customerId: string;
   installationType: string;
   customerData: {
     companyName: string;
@@ -122,6 +128,18 @@ export default function OnboardingDashboard() {
     queryKey: ['/api/onboarding/checklists'],
   });
 
+  // A checklist must name a real business record - see CreateChecklistData.
+  const { data: businessRecordsResponse } = useQuery({
+    queryKey: ['/api/business-records'],
+    enabled: isCreateDialogOpen,
+  });
+  const businessRecords = extractRecords<{
+    id: string;
+    companyName?: string;
+    company_name?: string;
+  }>(businessRecordsResponse);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+
   // Create checklist mutation
   const createChecklistMutation = useMutation({
     mutationFn: (data: CreateChecklistData) =>
@@ -132,6 +150,7 @@ export default function OnboardingDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/onboarding/checklists'] });
       setIsCreateDialogOpen(false);
+      setSelectedCustomerId('');
       toast({
         title: 'Success',
         description: 'Onboarding checklist created successfully',
@@ -228,8 +247,18 @@ export default function OnboardingDashboard() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
+    if (!selectedCustomerId) {
+      toast({
+        title: 'Customer required',
+        description: 'Pick the business record this installation belongs to.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const checklistData: CreateChecklistData = {
       checklistTitle: formData.get('checklistTitle') as string,
+      customerId: selectedCustomerId,
       installationType: formData.get('installationType') as string,
       customerData: {
         companyName: formData.get('companyName') as string,
@@ -310,6 +339,22 @@ export default function OnboardingDashboard() {
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleCreateChecklist} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="customerId">Customer</Label>
+                    <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                      <SelectTrigger id="customerId" className="min-h-11">
+                        <SelectValue placeholder="Select a business record" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {businessRecords.map((record) => (
+                          <SelectItem key={record.id} value={record.id}>
+                            {record.companyName || record.company_name || record.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="checklistTitle">Checklist Title</Label>
@@ -328,10 +373,17 @@ export default function OnboardingDashboard() {
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="new_site">New Site</SelectItem>
-                          <SelectItem value="equipment_upgrade">Equipment Upgrade</SelectItem>
+                          {/*
+                            These are the installation_type Postgres enum's four
+                            values. The select used to offer new_site,
+                            equipment_upgrade and expansion, none of which is in
+                            the enum, so three of four options were a 22P02
+                            (AUDIT-037).
+                          */}
+                          <SelectItem value="new_installation">New Installation</SelectItem>
+                          <SelectItem value="replacement">Replacement</SelectItem>
                           <SelectItem value="relocation">Relocation</SelectItem>
-                          <SelectItem value="expansion">Expansion</SelectItem>
+                          <SelectItem value="upgrade">Upgrade</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

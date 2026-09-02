@@ -76,12 +76,15 @@ interface ActivityItem {
 }
 
 interface BantQualification {
-  budgetScore: number;
-  authorityScore: number;
-  needScore: number;
-  timelineScore: number;
-  totalBantScore: number;
-  qualificationStatus: string;
+  // `assessed` is false when no platform_bant_qualification row exists for the
+  // deal; every score is then absent rather than zero.
+  assessed?: boolean;
+  budgetScore?: number;
+  authorityScore?: number;
+  needScore?: number;
+  timelineScore?: number;
+  totalBantScore?: number;
+  qualificationStatus?: string | null;
   budgetNotes?: string;
   authorityNotes?: string;
   needNotes?: string;

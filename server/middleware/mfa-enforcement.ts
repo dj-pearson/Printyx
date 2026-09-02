@@ -4,22 +4,33 @@
  * Enforces Multi-Factor Authentication requirements for admin and sensitive roles.
  * Implements configurable role-level MFA requirements.
  *
- * NOT MOUNTED, AND NOT MOUNTABLE AS WRITTEN. Three separate things stop it:
+ * NOT MOUNTED, AND NOT MOUNTABLE AS WRITTEN. Two separate things stop it:
  *
  *   1. Nothing imports enforceMfaForAdmins - it is exported and never used, so
  *      no route in this application requires MFA today. requirePermissionWithMFA
  *      in enhanced-rbac-middleware.ts is in the same position (SEC-MFA-001).
- *   2. It reads req.session.user, which nothing in this codebase assigns
- *      (SEC-SESSION-001), so mounting it would deny every request rather than
- *      check anything.
- *   3. QUALITY-002 found it passing storage.getUserWithRole's `role` - a Role
- *      ROW, not a string - to parseRoleLevel, which calls .toLowerCase(); read
- *      role?.code for the name and role?.level for the level.
+ *   2. Its two-factor state comes from user_settings.two_factor_enabled, which
+ *      nothing writes: supabase/functions/mfa/ keeps enrolments in
+ *      mfa_enrollments. Mounting this as written would treat every enrolled
+ *      user as un-enrolled and lock out exactly the privileged accounts it
+ *      exists to protect.
  *
- * It also reads two-factor state from user_settings.two_factor_enabled, which
- * supabase/functions/mfa/ does not write - that function's enrolments live in
- * mfa_enrollments. Whichever of those becomes authoritative, this file has to
- * follow it, so fix the storage question before the auth one.
+ * CORRECTED 2026-09-01: this header used to name SEC-SESSION-001 as the second
+ * blocker, on the reading that the file authenticates against req.session.user
+ * and would therefore deny everyone. It does not. Both call sites read
+ * `(req as any).user || req.session?.user` - req.user FIRST, which the JWT path
+ * does assign - so a JWT request would authenticate normally. The
+ * check:session-auth guard reported it because its fallback pattern matched a
+ * bare `req.user` and not the cast form; the guard now recognises both and the
+ * file is out of that baseline (12 files -> 11).
+ *
+ * QUALITY-002's finding, that it passed storage.getUserWithRole's `role` - a
+ * Role ROW, not a string - into parseRoleLevel, is already fixed: both call
+ * sites read role?.code and role?.level.
+ *
+ * So the real blockers are the two above. Whichever of user_settings or
+ * mfa_enrollments becomes authoritative, this file has to follow it, so settle
+ * the storage question before mounting anything.
  */
 
 import { Request, Response, NextFunction } from 'express';

@@ -154,7 +154,6 @@ const ROUTES = {
     '/compare-eautomate',
     '/meeting-to-proposal',
     '/document-builder',
-    '/document-management',
     '/contracts',
     '/contract-renewals',
     '/ai-hub',

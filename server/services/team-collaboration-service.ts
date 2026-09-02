@@ -7,9 +7,34 @@ import { db } from '../db';
 import ClaudeAIService from './claude-ai-service';
 import AdvancedSchedulingService from './advanced-scheduling-service';
 import DynamicReschedulingService from './dynamic-rescheduling-service';
-import { eq, and, sql, desc, asc } from 'drizzle-orm';
+import { eq, and, sql, desc, asc, inArray, lt, isNotNull } from 'drizzle-orm';
+import { users } from '../../shared/schema';
+import { tasks as tasksTable } from '../../shared/task-schema';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('team-collaboration-service');
+
+/**
+ * A standard week. There is no per-user capacity column anywhere, so this is a
+ * stated assumption rather than a measurement - which is why it lives here with
+ * a name instead of as a 40 buried in an expression.
+ */
+const STANDARD_WEEK_HOURS = 40;
+
+/** Policy: do not plan a person above 85% of their week. */
+const RECOMMENDED_CAPACITY_RATIO = 0.85;
+
+/**
+ * Named on every capacity response, the way
+ * supabase/functions/_shared/erp-integration-dashboard.ts names its own gaps.
+ * A consumer that sees null here knows it is not measured, rather than guessing
+ * whether zero means idle.
+ */
+const UNBACKED_CAPACITY_FIELDS = [
+  'aiPredictedWorkload: nothing forecasts a workload',
+  'aiEfficiencyScore: nothing measures individual efficiency',
+  'totalCapacityHours: assumes a 40-hour week; no per-user capacity is recorded',
+  'allocatedHours: sums tasks.estimated_hours, so unestimated tasks count as zero',
+];
 
 interface Team {
   id: string;
@@ -97,10 +122,19 @@ interface TeamCapacityAnalysis {
   totalCapacityHours: number;
   allocatedHours: number;
   utilizationPercentage: number;
-  aiPredictedWorkload: number;
-  aiBurnoutRisk: number;
-  aiEfficiencyScore: number;
-  aiRecommendedCapacity: number;
+  /**
+   * AUDIT-021: null, always. Nothing predicts a workload and nothing measures
+   * an efficiency score - these were `allocatedHours * (1 + Math.random()*0.2)`
+   * and `0.7 + Math.random()*0.3`, so they changed on every request, which is
+   * exactly what real telemetry does. Kept as null fields rather than removed
+   * so the shape stays stable, and named in `unbacked` on the response.
+   */
+  aiPredictedWorkload: null;
+  aiEfficiencyScore: null;
+  /** Derived: allocated hours exceed 90% of the standard week. */
+  overAllocated: boolean;
+  /** Policy, not a measurement: 85% of the standard week. */
+  recommendedCapacityHours: number;
   projectsCount: number;
   tasksCount: number;
   overdueTasksCount: number;
@@ -246,20 +280,24 @@ class TeamCollaborationService {
   /**
    * Optimize task assignments across team using AI
    */
-  async optimizeTaskAssignments(teamId: string, tasks: any[]): Promise<TaskAssignment[]> {
+  async optimizeTaskAssignments(
+    tenantId: string,
+    teamId: string,
+    tasks: any[],
+  ): Promise<TaskAssignment[]> {
     log.info('🎯 Optimizing task assignments for team:', teamId);
 
     try {
       // Get team members and their current workload
-      const teamMembers = await this.getTeamMembers(teamId);
-      const currentCapacity = await this.analyzeTeamCapacity(teamId);
+      const teamMembers = await this.getTeamMembers(tenantId, teamId);
+      const currentCapacity = await this.analyzeTeamCapacity(tenantId, teamId);
 
       // Use AI to optimize assignments
       const optimizationPrompt = `Optimize task assignments for maximum efficiency:
 
 Team Members: ${teamMembers.length}
 Available Tasks: ${tasks.length}
-Current Team Utilization: ${Math.round(currentCapacity.averageUtilization)}%
+Current Team Utilization: ${currentCapacity.averageUtilization === null ? 'not measured' : Math.round(currentCapacity.averageUtilization) + '%'}
 
 Team Member Skills and Capacity:
 ${teamMembers.map((m) => `- ${m.userId}: Skills: ${m.skills.join(', ')}, Capacity: ${m.workloadCapacity}x, Current: ${currentCapacity.memberAnalytics[m.userId]?.utilizationPercentage || 0}%`).join('\n')}
@@ -335,49 +373,92 @@ Return JSON with assignments:
   /**
    * Analyze team capacity and workload distribution
    */
-  async analyzeTeamCapacity(teamId: string): Promise<{
-    averageUtilization: number;
+  async analyzeTeamCapacity(
+    tenantId: string,
+    teamId: string,
+  ): Promise<{
+    averageUtilization: number | null;
     totalCapacity: number;
     allocatedCapacity: number;
     memberAnalytics: Record<string, TeamCapacityAnalysis>;
     bottlenecks: string[];
     recommendations: string[];
+    unbacked: string[];
   }> {
     log.info('📊 Analyzing team capacity:', teamId);
 
     try {
-      const teamMembers = await this.getTeamMembers(teamId);
+      const teamMembers = await this.getTeamMembers(tenantId, teamId);
       const memberAnalytics: Record<string, TeamCapacityAnalysis> = {};
 
       let totalCapacity = 0;
       let totalAllocated = 0;
 
-      // Mock capacity analysis for each member
+      // AUDIT-021. Every number below used to come from Math.random(): the
+      // allocation itself, the task and project counts, the overdue count. The
+      // method then read its own invented utilisation back out and recommended
+      // "redistribute tasks from <user> to prevent burnout" - a claim about a
+      // named person's workload, regenerated per request.
+      //
+      // tasks carries assigned_to, project_id, due_date, status and
+      // estimated_hours, which is enough for all of it. Only two fields have no
+      // source at all and they are null, not smaller guesses.
+      const memberIds = teamMembers.map((m) => m.userId);
+      const openTasks = memberIds.length
+        ? await db
+            .select({
+              assignedTo: tasksTable.assignedTo,
+              projectId: tasksTable.projectId,
+              dueDate: tasksTable.dueDate,
+              estimatedHours: tasksTable.estimatedHours,
+            })
+            .from(tasksTable)
+            .where(
+              and(
+                eq(tasksTable.tenantId, tenantId),
+                inArray(tasksTable.assignedTo, memberIds),
+                inArray(tasksTable.status, ['todo', 'in_progress', 'review']),
+              ),
+            )
+        : [];
+
+      const now = new Date();
+
       for (const member of teamMembers) {
-        const weeklyHours = 40; // Standard work week
-        const availableHours = weeklyHours * member.workloadCapacity;
-        const allocatedHours = Math.random() * availableHours; // Mock current allocation
+        // No per-user capacity column exists, so the standard week is a stated
+        // assumption rather than a measurement, and workloadCapacity is 1.0 for
+        // everyone until something records otherwise.
+        const availableHours = STANDARD_WEEK_HOURS * member.workloadCapacity;
+        const mine = openTasks.filter((t) => t.assignedTo === member.userId);
+
+        // An unestimated task contributes 0 hours. That understates the load
+        // rather than inventing an estimate for it.
+        const allocatedHours = mine.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
+        const projectIds = new Set(mine.map((t) => t.projectId).filter(Boolean));
+        const overdue = mine.filter((t) => t.dueDate && t.dueDate < now).length;
 
         memberAnalytics[member.userId] = {
           teamId,
           userId: member.userId,
           totalCapacityHours: availableHours,
           allocatedHours,
-          utilizationPercentage: (allocatedHours / availableHours) * 100,
-          aiPredictedWorkload: allocatedHours * (1 + Math.random() * 0.2), // +0-20%
-          aiBurnoutRisk: allocatedHours > availableHours * 0.9 ? 0.8 : 0.2,
-          aiEfficiencyScore: 0.7 + Math.random() * 0.3, // 70-100%
-          aiRecommendedCapacity: availableHours * 0.85, // 85% recommended max
-          projectsCount: Math.floor(Math.random() * 5) + 1,
-          tasksCount: Math.floor(Math.random() * 15) + 3,
-          overdueTasksCount: Math.floor(Math.random() * 3),
+          utilizationPercentage: availableHours > 0 ? (allocatedHours / availableHours) * 100 : 0,
+          aiPredictedWorkload: null,
+          aiEfficiencyScore: null,
+          overAllocated: allocatedHours > availableHours * 0.9,
+          recommendedCapacityHours: availableHours * RECOMMENDED_CAPACITY_RATIO,
+          projectsCount: projectIds.size,
+          tasksCount: mine.length,
+          overdueTasksCount: overdue,
         };
 
         totalCapacity += availableHours;
         totalAllocated += allocatedHours;
       }
 
-      const averageUtilization = (totalAllocated / totalCapacity) * 100;
+      // A team with no members has no utilisation. 0% would read as an idle
+      // team, which is a different claim from 'nobody is on this team'.
+      const averageUtilization = totalCapacity > 0 ? (totalAllocated / totalCapacity) * 100 : null;
 
       // Identify bottlenecks and generate recommendations
       const bottlenecks = [];
@@ -405,16 +486,20 @@ Return JSON with assignments:
         memberAnalytics,
         bottlenecks,
         recommendations,
+        unbacked: UNBACKED_CAPACITY_FIELDS,
       };
     } catch (error) {
       log.error('Team capacity analysis failed:', error);
+      // A failed read is not an idle team. averageUtilization is null so the
+      // caller can tell the two apart; it used to be 0.
       return {
-        averageUtilization: 0,
+        averageUtilization: null,
         totalCapacity: 0,
         allocatedCapacity: 0,
         memberAnalytics: {},
         bottlenecks: [],
         recommendations: [],
+        unbacked: UNBACKED_CAPACITY_FIELDS,
       };
     }
   }
@@ -422,13 +507,16 @@ Return JSON with assignments:
   /**
    * Generate collaboration insights using AI
    */
-  async generateCollaborationInsights(teamId: string): Promise<CollaborationInsights> {
+  async generateCollaborationInsights(
+    tenantId: string,
+    teamId: string,
+  ): Promise<CollaborationInsights> {
     log.info('🧠 Generating collaboration insights for team:', teamId);
 
     try {
       // Get team performance data
-      const capacityAnalysis = await this.analyzeTeamCapacity(teamId);
-      const teamMembers = await this.getTeamMembers(teamId);
+      const capacityAnalysis = await this.analyzeTeamCapacity(tenantId, teamId);
+      const teamMembers = await this.getTeamMembers(tenantId, teamId);
       const recentProjects = await this.getTeamProjects(teamId, {
         status: ['active', 'completed'],
         limit: 5,
@@ -438,7 +526,7 @@ Return JSON with assignments:
       const insightsPrompt = `Analyze team collaboration effectiveness:
 
 Team Size: ${teamMembers.length} members
-Average Utilization: ${Math.round(capacityAnalysis.averageUtilization)}%
+Average Utilization: ${capacityAnalysis.averageUtilization === null ? 'not measured' : Math.round(capacityAnalysis.averageUtilization) + '%'}
 Active Projects: ${recentProjects.filter((p) => p.status === 'active').length}
 Completed Projects: ${recentProjects.filter((p) => p.status === 'completed').length}
 
@@ -648,34 +736,42 @@ Generate coordination plan and risk assessment to ensure smooth collaboration.`;
     // This would create milestones and initial tasks
   }
 
-  private async getTeamMembers(teamId: string): Promise<TeamMember[]> {
-    // Mock team members
-    return [
-      {
-        id: 'member-1',
-        teamId,
-        userId: 'user-1',
-        role: 'manager',
-        permissions: ['all'],
-        workloadCapacity: 1.0,
-        skills: ['leadership', 'sales', 'project_management'],
-        availabilityPattern: {},
-        joinedAt: new Date(),
-        isActive: true,
-      },
-      {
-        id: 'member-2',
-        teamId,
-        userId: 'user-2',
-        role: 'member',
-        permissions: ['view_tasks', 'edit_own_tasks'],
-        workloadCapacity: 1.2,
-        skills: ['technical', 'installation', 'troubleshooting'],
-        availabilityPattern: {},
-        joinedAt: new Date(),
-        isActive: true,
-      },
-    ];
+  /**
+   * The team's real members.
+   *
+   * AUDIT-021: this returned two hardcoded people, 'user-1' and 'user-2', with
+   * invented skills and a 1.2 workload multiplier - so every per-member number
+   * the capacity analysis produced was about someone who does not exist.
+   * users.team_id is the real membership, and it is filtered by tenant here
+   * because the callers take a teamId straight off the URL.
+   *
+   * Two fields have no column and are stated rather than invented:
+   * workloadCapacity is 1.0 for everyone, and skills is empty. A skills list is
+   * what optimizeTaskAssignments matches on, so an empty one is the honest
+   * input - a fabricated one would have it assign work on made-up expertise.
+   */
+  private async getTeamMembers(tenantId: string, teamId: string): Promise<TeamMember[]> {
+    const rows = await db
+      .select({
+        id: users.id,
+        roleId: users.roleId,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(and(eq(users.tenantId, tenantId), eq(users.teamId, teamId), eq(users.isActive, true)));
+
+    return rows.map((r) => ({
+      id: r.id,
+      teamId,
+      userId: r.id,
+      role: 'member' as const,
+      permissions: [],
+      workloadCapacity: 1.0,
+      skills: [],
+      availabilityPattern: {},
+      joinedAt: r.createdAt ?? new Date(),
+      isActive: true,
+    }));
   }
 
   private async getTeamProjects(teamId: string, filters: any): Promise<Project[]> {

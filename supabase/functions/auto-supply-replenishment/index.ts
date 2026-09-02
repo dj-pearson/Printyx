@@ -507,76 +507,40 @@ export default async function handler(req: Request) {
       );
     }
 
-    // POST /auto-supply-replenishment/trigger - Manually trigger replenishment check
+    // POST /auto-supply-replenishment/trigger - manually trigger a replenishment run
     if (req.method === 'POST' && endpoint === 'trigger') {
-      const body = await req.json();
-
-      // Get rules to process
-      let query = admin
-        .from('supply_replenishment_rules')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .eq('auto_order', true);
-
-      if (body.productId) query = query.eq('product_id', body.productId);
-
-      const { data: rules } = await query;
-
-      const ordersCreated = [];
-
-      for (const rule of rules || []) {
-        const { data: inventory } = await admin
-          .from('inventory')
-          .select('quantity')
-          .eq('product_id', rule.product_id)
-          .eq('warehouse_id', rule.warehouse_id)
-          .single();
-
-        const currentQty = inventory?.quantity || 0;
-
-        if (currentQty <= rule.reorder_point) {
-          // Create purchase order
-          const { data: order } = await admin
-            .from('purchase_orders')
-            .insert({
-              tenant_id: tenantId,
-              supplier_id: rule.supplier_id,
-              status: 'pending_approval',
-              order_type: 'auto_replenishment',
-              source_rule_id: rule.id,
-              created_by: user.id,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .select()
-            .single();
-
-          if (order) {
-            await admin.from('purchase_order_items').insert({
-              purchase_order_id: order.id,
-              product_id: rule.product_id,
-              quantity: rule.reorder_quantity,
-              created_at: new Date().toISOString(),
-            });
-
-            ordersCreated.push({
-              orderId: order.id,
-              productId: rule.product_id,
-              quantity: rule.reorder_quantity,
-            });
-          }
-        }
-      }
-
+      // AUDIT-037: this used to create a purchase order per triggered rule and
+      // report how many it made. It could not create one, and it could not read
+      // a rule either.
+      //
+      // The rule query filtered supply_replenishment_rules on is_active,
+      // auto_order and product_id. That table is per-TENANT SETTINGS - one row,
+      // holding thresholds, budgets and notification preferences - and has none
+      // of those three columns, nor reorder_point, warehouse_id or
+      // reorder_quantity. So there is no per-product rule model to iterate.
+      //
+      // The insert then named supplier_id, order_type and source_rule_id, none
+      // of which is a column on purchase_orders, and OMITTED six that are NOT
+      // NULL: po_number, vendor_id, requested_by, order_date, subtotal and
+      // total_amount. Its line item named product_id, which purchase_order_items
+      // does not have either. And the result was destructured as
+      // `{ data: order }` with no error, so every failure was swallowed and this
+      // answered 200 with `ordersCreated: 0` - a run that ordered nothing looked
+      // exactly like a run with nothing to order.
+      //
+      // Building it means a per-product rule table, PO numbering, a supplier to
+      // vendor resolution and a priced line. That is a feature. Saying so beats
+      // reporting a number nothing produced.
       return createCorsResponse(
         {
-          success: true,
-          rulesChecked: rules?.length || 0,
-          ordersCreated: ordersCreated.length,
-          orders: ordersCreated,
+          error: 'Not implemented',
+          message:
+            'Automatic purchase-order creation is not built. supply_replenishment_rules holds ' +
+            'per-tenant settings, not per-product reorder rules, and a purchase order needs a ' +
+            'number, a vendor and a priced line that nothing here can supply.',
+          code: 'NOT_IMPLEMENTED',
         },
-        200,
+        501,
         req,
       );
     }
@@ -588,14 +552,14 @@ export default async function handler(req: Request) {
         .select(
           `
           *,
-          items:purchase_order_items (
-            *,
-            product:product_id (id, name, sku)
-          )
+          items:purchase_order_items (*)
         `,
         )
         .eq('tenant_id', tenantId)
-        .eq('order_type', 'auto_replenishment')
+        // No order_type column exists, so there is nothing to filter on - and
+        // nothing writes an auto-replenishment order in the first place (see
+        // the /check branch above). Left as a tenant-scoped list rather than a
+        // 42703 on a column that is not there.
         .order('created_at', { ascending: false })
         .limit(50);
 

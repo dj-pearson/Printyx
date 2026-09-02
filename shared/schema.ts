@@ -6027,6 +6027,21 @@ export const proposals = pgTable(
     lastOpenedAt: timestamp('last_opened_at'),
 
     // Internal Notes and Comments
+    // AUDIT-037: six columns that EXIST on every database and were missing from
+    // this declaration, so drizzle-kit did not know about them and every read of
+    // them looked like a phantom. customer_feedback ships in 0000;
+    // total_dealer_cost and total_margin_percentage came in 0042; share_token and
+    // share_expires_at in 0045; discount_reason and discount_reason_note in 0047 -
+    // each a hand-written migration added when a feature needed the column, and
+    // none of them ever came back to the schema.
+    totalDealerCost: decimal('total_dealer_cost', { precision: 10, scale: 2 }),
+    totalMarginPercentage: decimal('total_margin_percentage', { precision: 5, scale: 2 }),
+    discountReason: varchar('discount_reason'),
+    discountReasonNote: text('discount_reason_note'),
+    shareToken: varchar('share_token'),
+    shareExpiresAt: timestamp('share_expires_at'),
+    customerFeedback: text('customer_feedback'),
+
     internalNotes: text('internal_notes'),
 
     createdAt: timestamp('created_at').defaultNow(),
@@ -6072,6 +6087,22 @@ export const proposalLineItems = pgTable(
     unitCost: decimal('unit_cost'), // Internal cost
     totalPrice: decimal('total_price').notNull(),
     margin: decimal('margin'), // Line margin %, server-computed from cost vs price
+
+    // QUOTE-016: a DOLLAR amount off the whole line, not a percentage.
+    // total_price is stored NET of it. Migration 0047 added the column to real
+    // databases by hand after 0002 dropped it, but it was never added back to
+    // this declaration - so drizzle-kit's snapshot did not know it existed and
+    // the next db:generate would have emitted a DROP for it.
+    discount: decimal('discount').default('0'),
+
+    // QUOTE-017: recurring lines. Every money field on one is a PER PERIOD
+    // amount. 0002 dropped all three and nothing restored them, so the quote
+    // builder wrote to columns that did not exist; the proposals edge function
+    // caught the PGRST204 and retried with core columns only, which persisted a
+    // monthly charge as a one-time amount and logged a warning.
+    isRecurring: boolean('is_recurring').default(false),
+    recurringFrequency: varchar('recurring_frequency'), // monthly | quarterly | annually
+    recurringDuration: integer('recurring_duration'), // period count; NULL/0 = ongoing
 
     // Service-specific fields
     serviceFrequency: varchar('service_frequency'), // monthly, quarterly, annually
@@ -6174,6 +6205,12 @@ export const proposalTemplates = pgTable('proposal_templates', {
     headerStyle?: string;
     footerContent?: string;
   }>(),
+
+  // AUDIT-037: on every database since migration 0000 and never declared, so
+  // drizzle-kit had not seen it and every read of it looked like a phantom. It
+  // is the jsonb the template body lives in - the five body-section columns the
+  // edge function used to name do not exist and fold into this one.
+  templateContent: jsonb('template_content').default('{}'),
 
   // Created by and ownership
   createdBy: varchar('created_by').notNull(),
@@ -6779,6 +6816,28 @@ export const purchaseOrders = pgTable(
     // Delivery Information
     deliveryAddress: text('delivery_address'),
     specialInstructions: text('special_instructions'),
+
+    // Submit / approve / reject / receive.
+    //
+    // AUDIT-037: the purchase-orders edge function has written these since it
+    // shipped and none of them was a column, so submit, approve, reject and
+    // receive each answered a 42703. They are audit trail for a workflow the
+    // function already implements end to end, and dropping them would mean a
+    // rejection with no reason and a receipt with no receiver.
+    submittedAt: timestamp('submitted_at'),
+    submittedBy: varchar('submitted_by'),
+    approvalNotes: text('approval_notes'),
+    rejectedAt: timestamp('rejected_at'),
+    rejectedBy: varchar('rejected_by'),
+    rejectionReason: text('rejection_reason'),
+    receivedBy: varchar('received_by'),
+    lastReceiptDate: timestamp('last_receipt_date'),
+    receiptNotes: text('receipt_notes'),
+    orderedAt: timestamp('ordered_at'),
+    orderedBy: varchar('ordered_by'),
+    cancelledAt: timestamp('cancelled_at'),
+    cancelledBy: varchar('cancelled_by'),
+    cancellationReason: text('cancellation_reason'),
 
     // Approval
     approvedBy: varchar('approved_by'),

@@ -7,10 +7,10 @@ import { IntegrationService } from './integration-service';
 import { availableIntegrations, validateOAuthConfig } from './oauth-config';
 import webhookRoutes from './webhook-routes';
 import { db } from '../db';
-import { integrationMetrics, integrationApiLogs } from '../../shared/schema';
-import { eq, and, gte, desc } from 'drizzle-orm';
+import { platformIntegrations } from '../../shared/schema';
+import { eq, and, desc } from 'drizzle-orm';
 import { createModuleLogger } from '../lib/logger';
-import { getUserId, getTenantId } from '../utils/auth-helpers';
+import { getTenantId } from '../utils/auth-helpers';
 import { requireAuth } from '../replitAuth';
 const log = createModuleLogger('routes');
 
@@ -51,101 +51,43 @@ router.get('/api/integrations/marketplace', requireAuth, async (req: any, res) =
  */
 router.get('/api/integrations', requireAuth, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = getTenantId(req);
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
-    const integrations = await IntegrationService.getIntegrations(tenantId);
-
-    // Get today's metrics for all integrations
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const metricsResults = await db
+    // PA-053 settled which table backs /system-integrations:
+    // `platform_integrations`, the connector catalogue. It is the only one of
+    // the two candidates with a `category` column, which the page groups by, and
+    // it is what production has always served this prefix from - this handler
+    // was reading `system_integrations` (the OAuth CONNECTION store), so dev and
+    // prod listed different rows behind one URL.
+    //
+    // system_integrations keeps the OAuth flow below (/oauth/init and
+    // /:provider/callback); PA-056 covers converging that store.
+    const rows = await db
       .select()
-      .from(integrationMetrics)
-      .where(
-        and(eq(integrationMetrics.tenantId, tenantId), gte(integrationMetrics.periodStart, today)),
-      );
+      .from(platformIntegrations)
+      .where(eq(platformIntegrations.tenantId, tenantId))
+      .orderBy(desc(platformIntegrations.createdAt));
 
-    // Build metrics map by integration ID
-    const metricsMap = new Map<string, (typeof metricsResults)[0]>();
-    for (const metric of metricsResults) {
-      metricsMap.set(metric.integrationId, metric);
-    }
-
-    // Get recent activity logs
-    const recentLogs = await db
-      .select()
-      .from(integrationApiLogs)
-      .where(
-        and(
-          eq(integrationApiLogs.tenantId, tenantId),
-          gte(integrationApiLogs.requestTimestamp, new Date(Date.now() - 24 * 60 * 60 * 1000)),
-        ),
-      )
-      .orderBy(desc(integrationApiLogs.requestTimestamp))
-      .limit(50);
-
-    // Build activity map by integration ID
-    const activityMap = new Map<string, typeof recentLogs>();
-    for (const log of recentLogs) {
-      if (!activityMap.has(log.integrationId)) {
-        activityMap.set(log.integrationId, []);
-      }
-      activityMap.get(log.integrationId)!.push(log);
-    }
-
-    // Transform for frontend with real metrics
-    const activeIntegrations = integrations.map((integration) => {
-      const metrics = metricsMap.get(integration.id);
-      const logs = activityMap.get(integration.id) || [];
-
-      // Calculate success rate from real data
-      const totalCalls = Number(metrics?.totalApiCalls) || 0;
-      const successfulCalls = Number(metrics?.successfulCalls) || 0;
-      const failedCalls = Number(metrics?.failedCalls) || 0;
-      const successRate =
-        totalCalls > 0
-          ? (successfulCalls / totalCalls) * 100
-          : integration.status === 'connected'
-            ? 100
-            : 0;
-
-      return {
-        id: integration.id,
-        apiId: integration.providerId,
-        name: integration.name,
-        status: integration.status,
-        configuredAt: integration.config?.userInfo?.created || new Date(),
-        lastSync: integration.lastSync || null,
-        syncFrequency: integration.providerId.includes('calendar') ? 'real-time' : 'hourly',
-        recordsSynced: Number(metrics?.recordsSynced) || 0,
-        apiCallsToday: totalCalls,
-        successRate: Math.round(successRate * 10) / 10,
-        averageLatency: Number(metrics?.avgLatencyMs) || 0,
-        dataVolume:
-          Math.round(((Number(metrics?.dataVolumeBytes) || 0) / (1024 * 1024)) * 100) / 100, // MB
-        errorCount: failedCalls,
-        configuration: {
-          environment: 'production',
-          userInfo: integration.metadata,
-        },
-        webhooks: [],
-        recentActivity: logs.slice(0, 5).map((log) => ({
-          timestamp: log.requestTimestamp,
-          action: log.endpoint.split('/').pop() || 'sync',
-          records: log.recordsAffected || 0,
-          status: log.success ? 'success' : 'failed',
-        })),
-      };
-    });
-
-    res.json(activeIntegrations);
+    // Credentials never leave the server. The edge function does the same.
+    res.json(
+      rows.map((row) => ({
+        id: row.id,
+        integrationKey: row.integrationKey,
+        integrationName: row.integrationName,
+        category: row.category,
+        status: row.status,
+        syncFrequency: row.syncFrequency,
+        lastSyncedAt: row.lastSyncedAt,
+        lastSyncStatus: row.lastSyncStatus,
+        lastErrorMessage: row.lastErrorMessage,
+      })),
+    );
   } catch (error) {
-    log.error('Error fetching user integrations:', error);
+    log.error('Error fetching integrations:', error);
     res.status(500).json({ message: 'Failed to fetch integrations' });
   }
 });
@@ -303,62 +245,142 @@ router.delete('/api/integrations/:integrationId', requireAuth, async (req: any, 
 });
 
 /**
- * Test an integration connection
+ * Disconnect an integration
+ *
+ * PA-052: SystemIntegrations.tsx called this on both hosts and neither served it
+ * (Express had DELETE /:integrationId only; the edge function fell to its 405).
  */
-router.post('/api/integrations/:integrationId/test', requireAuth, async (req: any, res) => {
+router.post('/api/integrations/:integrationId/disconnect', requireAuth, async (req: any, res) => {
   try {
     const { integrationId } = req.params;
-    const tenantId = req.user?.tenantId;
+    const tenantId = getTenantId(req);
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
-    // Try to fetch a small amount of data to test the connection
-    const integrations = await IntegrationService.getIntegrations(tenantId);
-    const integration = integrations.find((i) => i.id === integrationId);
+    // PA-053: this wrote system_integrations while the page lists
+    // platform_integrations, so Disconnect reported success and changed
+    // nothing the user could see.
+    const updated = await db
+      .update(platformIntegrations)
+      .set({
+        status: 'disconnected',
+        credentials: {},
+        lastErrorMessage: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(platformIntegrations.id, integrationId),
+          eq(platformIntegrations.tenantId, tenantId),
+        ),
+      )
+      .returning({ id: platformIntegrations.id });
+
+    if (!updated.length) {
+      return res.status(404).json({ message: 'Integration not found' });
+    }
+
+    res.json({ success: true, message: 'Integration disconnected' });
+  } catch (error) {
+    log.error('Error disconnecting integration:', error);
+    res.status(500).json({ message: 'Failed to disconnect integration' });
+  }
+});
+
+/**
+ * Test an integration connection
+ */
+router.post('/api/integrations/:integrationId/test', requireAuth, async (req: any, res) => {
+  try {
+    const { integrationId } = req.params;
+    const tenantId = getTenantId(req);
+
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID is required' });
+    }
+
+    const [integration] = await db
+      .select()
+      .from(platformIntegrations)
+      .where(
+        and(
+          eq(platformIntegrations.id, integrationId),
+          eq(platformIntegrations.tenantId, tenantId),
+        ),
+      )
+      .limit(1);
 
     if (!integration) {
       return res.status(404).json({ message: 'Integration not found' });
     }
 
-    let testResult;
-    if (integration.providerId === 'google-calendar') {
-      const events = await IntegrationService.getGoogleCalendarEvents(
-        integrationId,
-        tenantId,
-        new Date(),
-        new Date(Date.now() + 24 * 60 * 60 * 1000),
-      );
-      testResult = {
-        success: true,
-        message: `Successfully fetched ${events.length} events`,
-        data: { eventCount: events.length },
-      };
-    } else if (integration.providerId === 'microsoft-calendar') {
-      const events = await IntegrationService.getMicrosoftCalendarEvents(
-        integrationId,
-        tenantId,
-        new Date(),
-        new Date(Date.now() + 24 * 60 * 60 * 1000),
-      );
-      testResult = {
-        success: true,
-        message: `Successfully fetched ${events.length} events`,
-        data: { eventCount: events.length },
-      };
-    } else {
-      testResult = { success: false, message: 'Unsupported provider for testing' };
-    }
+    // PA-053: same table as the list now, and the same answer shape as the edge
+    // function's branch. There is no provider client here either, so what is
+    // reported is what is stored; connectivityVerified stays false.
+    const credentials = (integration.credentials ?? {}) as Record<string, unknown>;
+    const hasCredentials = Object.values(credentials).some(
+      (v) => v !== null && v !== undefined && String(v).trim() !== '',
+    );
 
-    res.json(testResult);
+    res.json({
+      success: hasCredentials,
+      connectivityVerified: false,
+      lastSync: integration.lastSyncedAt ?? null,
+      message: hasCredentials
+        ? `${integration.integrationName} has stored credentials. The connection itself was not tested.`
+        : 'No credentials are stored for this integration.',
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
     log.error('Error testing integration:', error);
-    res.json({
-      success: false,
-      message: 'Integration test failed',
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
+    res.status(500).json({ message: 'Failed to test integration' });
+  }
+});
+
+/**
+ * Store credentials / cadence on an integration.
+ *
+ * PA-053: the config dialog's Save posts here. It previously had no Express
+ * handler at all - only the edge function served PUT /:id - so in dev the dialog
+ * 404'd while claiming success in prod.
+ */
+router.put('/api/integrations/:integrationId', requireAuth, async (req: any, res) => {
+  try {
+    const { integrationId } = req.params;
+    const tenantId = getTenantId(req);
+
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID is required' });
+    }
+
+    const update: Record<string, unknown> = { updatedAt: new Date() };
+    if (req.body.credentials !== undefined) update.credentials = req.body.credentials;
+    if (req.body.config !== undefined) update.config = req.body.config;
+    if (req.body.syncFrequency !== undefined) update.syncFrequency = req.body.syncFrequency;
+    if (req.body.status !== undefined) update.status = req.body.status;
+
+    const updated = await db
+      .update(platformIntegrations)
+      .set(update)
+      .where(
+        and(
+          eq(platformIntegrations.id, integrationId),
+          eq(platformIntegrations.tenantId, tenantId),
+        ),
+      )
+      .returning({ id: platformIntegrations.id, status: platformIntegrations.status });
+
+    if (!updated.length) {
+      return res.status(404).json({ message: 'Integration not found' });
+    }
+
+    // Credentials are never echoed back.
+    res.json({ id: updated[0].id, status: updated[0].status });
+  } catch (error) {
+    log.error('Error updating integration:', error);
+    res.status(500).json({ message: 'Failed to update integration' });
   }
 });
 

@@ -65,38 +65,19 @@ router.get('/widgets', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * GET /api/dashboard/layouts
- * Get dashboard layouts for current user and their role
- */
-router.get('/layouts', async (req: Request, res: Response) => {
-  try {
-    // Use Supabase auth helpers for user context
-    const userId = getUserId(req);
-    const roleId = getRoleId(req);
-    const tenantId = getTenantId(req);
-
-    if (!userId || !tenantId) {
-      return unauthorized(res, 'Unauthorized');
-    }
-
-    // Get user's custom layout and role default layout
-    const layouts = await db
-      .select()
-      .from(dashboardLayouts)
-      .where(
-        and(
-          eq(dashboardLayouts.tenantId, tenantId),
-          or(eq(dashboardLayouts.userId, userId), eq(dashboardLayouts.roleId, roleId || '')),
-        ),
-      );
-
-    res.json({ data: layouts });
-  } catch (error) {
-    log.error('Error fetching layouts:', error);
-    serverError(res, 'Failed to fetch layouts');
-  }
-});
+// GET /api/dashboard/layouts REMOVED (AUDIT-021 follow-up) - it never ran.
+//
+// server/routes-dashboard-layouts.ts registers the same path at
+// routes-registry:~400 and this router mounts at :494, so Express matched the
+// other one. Both are real reads of dashboardLayouts, which is what made this
+// worth checking rather than deleting on sight: they disagree about the rows
+// (user + public tenant layouts there, user + role default here) and about the
+// shape (a bare array there, { data } here). The live page has always seen the
+// first, so removing this changes nothing and stops the second answer looking
+// available.
+//
+// The other nine handlers here - /widgets, /layout/:id, /preferences,
+// /snapshot, /snapshots/:id - are this file alone and are untouched.
 
 /**
  * GET /api/dashboard/layout/:layoutId

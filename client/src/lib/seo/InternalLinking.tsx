@@ -177,6 +177,7 @@ export function FooterSitemapLinks() {
         { path: '/blog', label: 'Blog' },
         { path: '/case-studies', label: 'Case Studies' },
         { path: '/roi-calculator', label: 'ROI Calculator' },
+        { path: '/print-cost-calculator', label: 'Print Cost Calculator' },
         { path: '/knowledge-base', label: 'Knowledge Base' },
       ],
     },

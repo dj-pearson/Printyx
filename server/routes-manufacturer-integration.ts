@@ -282,13 +282,51 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
-      // This would test the connection using the integration service
-      // For now, return a mock response
-      const success = Math.random() > 0.3; // 70% success rate for demo
+      // PA-052: this returned `Math.random() > 0.3` and reported it as a
+      // connection result, so the same integration passed and failed at random
+      // and the page believed both. check:no-random-metrics did not see it
+      // because the value is a const assigned before the object literal, not a
+      // property assigned from Math.random() on one line.
+      //
+      // What can be checked without a vendor round-trip is what is stored, and
+      // that is what this reports; connectivityVerified stays false. The edge
+      // function's branch answers the same shape.
+      const [integration] = await db
+        .select()
+        .from(manufacturerIntegrations)
+        .where(
+          and(eq(manufacturerIntegrations.tenantId, tenantId), eq(manufacturerIntegrations.id, id)),
+        )
+        .limit(1);
+
+      if (!integration) {
+        return res.status(404).json({ success: false, message: 'Integration not found' });
+      }
+
+      if (!integration.isActive) {
+        return res.json({
+          success: false,
+          connectivityVerified: false,
+          message: 'Integration is inactive',
+        });
+      }
+
+      const credentials = (integration.credentials ?? {}) as Record<string, unknown>;
+      const hasCredentials = Object.values(credentials).some(
+        (v) => v !== null && v !== undefined && String(v).trim() !== '',
+      );
+      const problems: string[] = [];
+      if (!hasCredentials) problems.push('no credentials are stored');
+      if (!integration.apiEndpoint) problems.push('no API endpoint is configured');
 
       res.json({
-        success,
-        message: success ? 'Connection successful' : 'Connection failed',
+        success: problems.length === 0,
+        connectivityVerified: false,
+        lastSync: integration.lastSync ?? null,
+        message:
+          problems.length === 0
+            ? `${integration.manufacturer} is configured (credentials and endpoint present). The connection itself was not tested.`
+            : `Configuration incomplete: ${problems.join(', ')}.`,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {

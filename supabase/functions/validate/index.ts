@@ -261,7 +261,7 @@ async function validatePoToWarehouse(
 
   const { data: po } = await admin
     .from('purchase_orders')
-    .select('id, po_number, status, supplier_id, expected_date, approved_date, total_amount')
+    .select('id, po_number, status, vendor_id, expected_date, approved_date, total_amount')
     .eq('id', poId)
     .eq('tenant_id', tenantId)
     .maybeSingle();
@@ -309,10 +309,17 @@ async function validateServiceCompletion(
 ) {
   const errors: ValidationError[] = [];
 
+  // AUDIT-037: this named technician_id, work_performed and time_spent. The
+  // columns are assigned_technician_id, work_order_notes and labor_hours, and
+  // PostgREST rejects a whole select on one bad name - so `ticket` was always
+  // null and this gate answered "Service ticket not found" for every ticket
+  // that exists. A definition-of-done check that fails closed on a query error
+  // reads as a real finding, which is why nobody noticed it was one bug rather
+  // than four missing fields.
   const { data: ticket } = await admin
     .from('service_tickets')
     .select(
-      'id, ticket_number, status, technician_id, resolution_notes, work_performed, parts_used, time_spent, customer_signature',
+      'id, ticket_number, status, assigned_technician_id, resolution_notes, work_order_notes, parts_used, labor_hours, customer_signature',
     )
     .eq('id', ticketId)
     .eq('tenant_id', tenantId)
@@ -332,19 +339,19 @@ async function validateServiceCompletion(
     });
   }
 
-  if (!ticket.work_performed?.trim()) {
+  if (!ticket.work_order_notes?.trim()) {
     errors.push({
-      field: 'work_performed',
+      field: 'work_order_notes',
       message: 'Work performed description is required',
       action: 'Document work performed',
       actionLink: `/service-hub/${ticketId}/complete`,
     });
   }
 
-  if (!ticket.time_spent || Number(ticket.time_spent) <= 0) {
+  if (!ticket.labor_hours || Number(ticket.labor_hours) <= 0) {
     errors.push({
-      field: 'time_spent',
-      message: 'Time spent must be recorded',
+      field: 'labor_hours',
+      message: 'Labour hours must be recorded',
       action: 'Record time spent',
       actionLink: `/service-hub/${ticketId}/time`,
     });

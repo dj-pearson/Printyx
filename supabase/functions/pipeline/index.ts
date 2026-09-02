@@ -155,7 +155,9 @@ export default async function handler(req: Request) {
     // GET /pipeline/stats - Get pipeline statistics
     if (req.method === 'GET' && resource === 'stats') {
       const [deals, stages] = await Promise.all([
-        admin.from('deals').select('stage, deal_value').eq('tenant_id', tenantId),
+        // AUDIT-037: stage and deal_value are not columns - `deals` has stage_id and
+        // amount - so every pipeline stat was computed over an empty array.
+        admin.from('deals').select('stage_id, amount').eq('tenant_id', tenantId),
         admin
           .from('deal_stages')
           .select('*')
@@ -164,8 +166,10 @@ export default async function handler(req: Request) {
       ]);
 
       const pipelineStats = stages.data?.map((stage) => {
-        const stageDeals = deals.data?.filter((d) => d.stage === stage.stage_name) || [];
-        const totalValue = stageDeals.reduce((sum, d) => sum + parseFloat(d.deal_value || '0'), 0);
+        // deals.stage_id holds a legacy deal_stages.id (CRMX-005), so the join
+        // is on the stage's id rather than its name.
+        const stageDeals = deals.data?.filter((d) => d.stage_id === stage.id) || [];
+        const totalValue = stageDeals.reduce((sum, d) => sum + Number(d.amount ?? 0), 0);
 
         return {
           stageName: stage.stage_name,
@@ -181,7 +185,7 @@ export default async function handler(req: Request) {
         {
           stages: pipelineStats || [],
           totalDeals: deals.data?.length || 0,
-          totalValue: deals.data?.reduce((sum, d) => sum + parseFloat(d.deal_value || '0'), 0) || 0,
+          totalValue: deals.data?.reduce((sum, d) => sum + Number(d.amount ?? 0), 0) || 0,
         },
         200,
         req,

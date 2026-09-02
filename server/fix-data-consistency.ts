@@ -16,13 +16,9 @@ const log = createModuleLogger('fix-data-consistency');
 // Routes that need hardcoded tenant ID replacement
 export const ROUTES_TO_FIX = [
   'routes-business-records.ts',
-  'routes-demo-scheduling.ts',
   'routes-sales-forecasting.ts',
-  'routes-esignature.ts',
   'routes-preventive-maintenance.ts',
   'routes-service-dispatch.ts',
-  'routes-remote-monitoring.ts',
-  'routes-document-management.ts',
   'routes-mobile.ts',
   'routes-analytics.ts',
   'routes-business-process-optimization.ts',

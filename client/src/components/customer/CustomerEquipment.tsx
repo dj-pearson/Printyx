@@ -80,16 +80,20 @@ interface Equipment {
   customerId: string;
 }
 
+// Mirrors the real `meter_readings` columns (shared/schema.ts). The previous
+// shape (currentMeterCount / printVolume / readingType) exists on no table.
 interface MeterReading {
   id: string;
   equipmentId: string;
   readingDate: string;
-  currentMeterCount: number;
-  previousMeterCount: number;
-  printVolume: number;
-  colorPages?: number;
-  blackWhitePages?: number;
-  readingType: string;
+  bwMeterReading?: number | null;
+  colorMeterReading?: number | null;
+  previousBlackMeter?: number | null;
+  previousColorMeter?: number | null;
+  blackCopies?: number | null;
+  colorCopies?: number | null;
+  collectionMethod?: string | null;
+  readingMethod?: string | null;
 }
 
 interface CustomerEquipmentProps {
@@ -144,6 +148,9 @@ export function CustomerEquipment({ customerId, customerName }: CustomerEquipmen
   const formatDate = (date: string) => {
     return format(new Date(date), 'MMM dd, yyyy');
   };
+
+  // A meter that was never collected is blank, not zero.
+  const formatMeter = (value?: number | null) => (value == null ? '-' : value.toLocaleString());
 
   // Filter equipment
   const filteredEquipment = equipment.filter((item) => {
@@ -558,18 +565,32 @@ export function CustomerEquipment({ customerId, customerName }: CustomerEquipmen
                     <TableHeader>
                       <TableRow>
                         <TableHead>Date</TableHead>
-                        <TableHead>Current Reading</TableHead>
-                        <TableHead>Print Volume</TableHead>
-                        <TableHead>Type</TableHead>
+                        <TableHead className="text-right">B&amp;W Meter</TableHead>
+                        <TableHead className="text-right">Color Meter</TableHead>
+                        <TableHead className="text-right">Copies</TableHead>
+                        <TableHead>Collected</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {meterReadings.slice(0, 5).map((reading) => (
                         <TableRow key={reading.id}>
                           <TableCell>{formatDate(reading.readingDate)}</TableCell>
-                          <TableCell>{reading.currentMeterCount.toLocaleString()}</TableCell>
-                          <TableCell>{reading.printVolume.toLocaleString()}</TableCell>
-                          <TableCell className="capitalize">{reading.readingType}</TableCell>
+                          <TableCell className="text-right">
+                            {formatMeter(reading.bwMeterReading)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatMeter(reading.colorMeterReading)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatMeter(
+                              reading.blackCopies == null && reading.colorCopies == null
+                                ? null
+                                : (reading.blackCopies ?? 0) + (reading.colorCopies ?? 0),
+                            )}
+                          </TableCell>
+                          <TableCell className="capitalize">
+                            {reading.collectionMethod ?? reading.readingMethod ?? '-'}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

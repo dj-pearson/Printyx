@@ -1,5 +1,17 @@
 // GPS tracking — technician locations + history + ticket timeline.
 //
+// AUDIT-037: location_history is a bare GPS trail - technician_id, session_id,
+// lat/lng, accuracy, address, timestamp, speed, heading - and this file wrote
+// ticket_id, customer_id, device_id and activity_type onto it, so every append
+// 42703'd. The context those four carry lives on technician_locations, which
+// does have current_ticket_id, current_customer_id and device_id.
+//
+// The ticket link is NOT missing, which is why no column was added for it:
+// location_history.session_id references mobile_service_sessions, whose
+// service_ticket_id is NOT NULL. The timeline resolves ticket -> sessions ->
+// history now, which is the model the schema already expresses and cannot
+// drift from the session's own ticket the way a copied column would.
+//
 // Paths (full dispatcher pathParts):
 //   GET   /technicians/locations                    — list all current locations
 //   GET   /technicians/:id/location                 — current location
@@ -28,15 +40,13 @@ export async function handleLocations(req: Request, ctx: HandlerCtx): Promise<Re
     const row = {
       tenant_id: auth.tenantId,
       technician_id: body.technicianId ?? body.technician_id,
+      session_id: body.sessionId ?? body.session_id ?? null,
       latitude: body.latitude,
       longitude: body.longitude,
       accuracy: body.accuracy ?? null,
+      address: body.address ?? null,
       speed: body.speed ?? null,
       heading: body.heading ?? null,
-      ticket_id: body.ticketId ?? body.ticket_id ?? null,
-      customer_id: body.customerId ?? body.customer_id ?? null,
-      device_id: body.deviceId ?? body.device_id ?? null,
-      activity_type: body.activityType ?? body.activity_type ?? null,
     };
     if (!row.technician_id || row.latitude === undefined || row.longitude === undefined) {
       return errorResponse(400, 'technician_id, latitude, longitude required', req, {
@@ -46,7 +56,28 @@ export async function handleLocations(req: Request, ctx: HandlerCtx): Promise<Re
     }
     const { data, error } = await db.from('location_history').insert(row).select().maybeSingle();
     if (error) return dbErr(req, requestId, 'Failed to append history', error);
-    return jsonResponse(data, 201, req, requestId);
+
+    // Reported rather than dropped silently. Pass sessionId to tie a ping to a
+    // ticket - the session carries service_ticket_id - and the technician's
+    // current ticket, customer and device live on technician_locations.
+    const ignored = ['ticketId', 'customerId', 'deviceId', 'activityType'].filter(
+      (k) =>
+        body[k] !== undefined ||
+        body[k.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase())] !== undefined,
+    );
+    return jsonResponse(
+      ignored.length > 0
+        ? {
+            ...(data as Record<string, unknown>),
+            unpersisted: ignored.map(
+              (k) => `${k}: location_history is a GPS trail; pass sessionId to link a ticket`,
+            ),
+          }
+        : data,
+      201,
+      req,
+      requestId,
+    );
   }
 
   // /technicians/locations — list all current
@@ -161,18 +192,34 @@ export async function handleLocations(req: Request, ctx: HandlerCtx): Promise<Re
       if (result.error) return dbErr(req, requestId, 'Failed to write location', result.error);
 
       // Also append to history for trail analytics.
-      await db.from('location_history').insert({
+      //
+      // This is the real-time path, so it is the one that has actually been
+      // failing: it wrote ticket_id, customer_id and device_id, which
+      // location_history does not have, and discarded the error entirely - so
+      // every ping since this was written returned 200 and stored nothing, and
+      // the trail is empty. The current ticket, customer and device are on the
+      // technician_locations row this handler just wrote; the history row is
+      // the position.
+      //
+      // session_id is passed through when the caller supplies it. It is not
+      // looked up here: resolving a session per ping is a query on a real-time
+      // path, and the caller already knows which session it is in. A ping
+      // written without one will not appear in a ticket's activity timeline.
+      const { error: historyError } = await db.from('location_history').insert({
         tenant_id: auth.tenantId,
         technician_id: techId,
+        session_id: body.sessionId ?? body.session_id ?? null,
         latitude: row.latitude,
         longitude: row.longitude,
         accuracy: row.accuracy,
         speed: row.speed,
         heading: row.heading,
-        ticket_id: row.current_ticket_id,
-        customer_id: row.current_customer_id,
-        device_id: row.device_id,
       });
+      if (historyError) {
+        // The current position is written and that is what the caller asked
+        // for, so this does not fail the request - but it is never silent.
+        console.error('[field-service] location_history append failed', historyError);
+      }
 
       return jsonResponse(result.data, 200, req, requestId);
     }
@@ -223,13 +270,26 @@ export async function handleLocations(req: Request, ctx: HandlerCtx): Promise<Re
     method === 'GET'
   ) {
     const ticketId = pathParts[1];
+
+    // location_history has no ticket_id. It hangs off a session, and the
+    // session names the ticket, so the trail is resolved through that rather
+    // than filtered on a column this table has never had.
+    const { data: sessionRows } = await db
+      .from('mobile_service_sessions')
+      .select('id')
+      .eq('tenant_id', auth.tenantId)
+      .eq('service_ticket_id', ticketId);
+    const sessionIds = ((sessionRows ?? []) as Array<{ id: string }>).map((r) => r.id);
+
     const [history, events] = await Promise.all([
-      db
-        .from('location_history')
-        .select('*')
-        .eq('tenant_id', auth.tenantId)
-        .eq('ticket_id', ticketId)
-        .order('timestamp', { ascending: true }),
+      sessionIds.length > 0
+        ? db
+            .from('location_history')
+            .select('*')
+            .eq('tenant_id', auth.tenantId)
+            .in('session_id', sessionIds)
+            .order('timestamp', { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
       db
         .from('geofence_events')
         .select('*')

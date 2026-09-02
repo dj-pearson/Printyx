@@ -1,8 +1,19 @@
 {
-  "note": "Duplicate physical-table ratchet. scripts/check-duplicate-tables.mjs fails CI when a table name is newly declared by two different shared/*.ts Drizzle schemas. Both compile, shared/schema.ts re-exports both, and an explicit named re-export silently decides which definition consumers of @shared/schema receive — while only one shape can exist in the database. Run with --list to see the declaration sites. Shrink this list, never grow it: node scripts/check-duplicate-tables.mjs --update-baseline",
+  "note": "Duplicate physical-table ratchet. scripts/check-duplicate-tables.mjs fails CI when a table name is newly declared by two different shared/*.ts Drizzle schemas. Both compile, shared/schema.ts re-exports both, and an explicit named re-export silently decides which definition consumers of @shared/schema receive \u2014 while only one shape can exist in the database. Run with --list to see the declaration sites. Shrink this list, never grow it: node scripts/check-duplicate-tables.mjs --update-baseline SCOPE CORRECTED 2026-09-01 (AUDIT-035): shared/schema.ts used to be excluded from this scan, on the reasoning that it is the aggregator that re-exports the others. It does re-export - and it also DECLARES 129 tables of its own, so excluding it hid every collision between it and another schema file, which is most of them. The list went 3 -> 14. Re-exports are not a hazard for this scan: `export { x } from './y'` is not a pgTable call. What settles a duplicate is shared/drizzle-schema.ts, the single entry point drizzle-kit reads: it picks ONE declaration per table and SKIPS the other by name, so the skipped shape has no migration behind it and any code written against it is writing to columns that do not exist. proposal_line_items was the worked example - QUOTE-017's is_recurring, recurring_frequency and recurring_duration were dropped by 0002 and never restored, so recurring quote lines saved as one-time amounts until 0064.",
   "allowed": [
     "blog_posts :: blog-schema.ts|content-marketing-schema.ts",
     "dashboard_layouts :: reporting-schema.ts|schema-dashboard.ts",
-    "location_history :: gps-tracking-schema.ts|mobile-service-schema.ts"
+    "equipment_packages :: quote-proposal-schema.ts|schema.ts",
+    "location_history :: gps-tracking-schema.ts|mobile-service-schema.ts",
+    "projects :: schema.ts|task-schema.ts",
+    "proposal_analytics :: quote-proposal-schema.ts|schema.ts",
+    "proposal_approvals :: quote-proposal-schema.ts|schema.ts",
+    "proposal_comments :: quote-proposal-schema.ts|schema.ts",
+    "proposal_line_items :: quote-proposal-schema.ts|schema.ts",
+    "proposal_templates :: quote-proposal-schema.ts|schema.ts",
+    "proposals :: quote-proposal-schema.ts|schema.ts",
+    "purchase_order_items :: equipment-schema.ts|schema.ts",
+    "purchase_orders :: equipment-schema.ts|schema.ts",
+    "tasks :: schema.ts|task-schema.ts"
   ]
 }

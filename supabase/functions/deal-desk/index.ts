@@ -83,9 +83,26 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && resource === 'rules' && !resourceId) {
       const body = await req.json();
 
+      // AUDIT-037: eight of these were not columns, so creating an approval
+      // rule 42703'd every time - the deal desk has never had a rule to match
+      // against. shared/deal-desk-schema.ts is the shape: rule_name,
+      // comparison_operator, approval_chain_type, escalate_to_role_id.
+      //
+      // Two fields are dropped rather than given columns.
+      // auto_approve_below_threshold has no home, and it is a POLICY that would
+      // silently approve discounts if it were ever honoured - inventing a column
+      // for it here would be inventing the behaviour. requires_justification is
+      // the same: approval_requests.business_justification is nullable, so
+      // nothing enforces it, and a flag that no code reads is worse than an
+      // absent one. Both are named in the response so a caller that sent them
+      // learns they were ignored.
+      const ignoredRuleFields = ['autoApproveBelowThreshold', 'requiresJustification'].filter(
+        (f) => body[f] !== undefined || body[f.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase())],
+      );
+
       const ruleData = {
         tenant_id: tenantId,
-        name: body.name,
+        rule_name: body.name || body.ruleName || body.rule_name,
         description: body.description || null,
         rule_type: body.ruleType || body.rule_type || 'discount',
         priority: body.priority || 1,
@@ -93,22 +110,23 @@ export default async function handler(req: Request) {
         conditions: body.conditions || {},
         threshold_type: body.thresholdType || body.threshold_type || null,
         threshold_value: body.thresholdValue || body.threshold_value || null,
-        threshold_operator: body.thresholdOperator || body.threshold_operator || null,
-        approvers: body.approvers || [],
-        approver_role_ids: body.approverRoleIds || body.approver_role_ids || [],
-        approval_mode: body.approvalMode || body.approval_mode || 'any',
-        sla_hours: body.slaHours || body.sla_hours || 24,
-        escalation_hours: body.escalationHours || body.escalation_hours || null,
-        escalation_approvers: body.escalationApprovers || body.escalation_approvers || [],
+        comparison_operator: body.thresholdOperator || body.threshold_operator || null,
+        // approvers is the jsonb list; the camelCase alias below was a second
+        // name for the same thing and folds into it.
+        approvers: body.approvers || body.approverRoleIds || [],
+        approval_chain_type: body.approvalMode || body.approval_mode || 'any',
+        sla_hours: body.slaHours || body.sla_hours || body.escalationHours || 24,
+        escalate_to_role_id: body.escalateToRoleId || body.escalate_to_role_id || null,
+        escalation_enabled:
+          body.escalationEnabled ??
+          body.escalation_enabled ??
+          Boolean(body.escalationHours || body.escalation_hours),
         is_active:
           body.isActive !== undefined
             ? body.isActive
             : body.is_active !== undefined
               ? body.is_active
               : true,
-        auto_approve_below_threshold:
-          body.autoApproveBelowThreshold || body.auto_approve_below_threshold || false,
-        requires_justification: body.requiresJustification || body.requires_justification || false,
         created_by: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -129,7 +147,11 @@ export default async function handler(req: Request) {
         );
       }
 
-      return createCorsResponse(rule, 201, req);
+      return createCorsResponse(
+        ignoredRuleFields.length > 0 ? { ...rule, ignored: ignoredRuleFields } : rule,
+        201,
+        req,
+      );
     }
 
     // DELETE /deal-desk/rules/:id - Delete approval rule
@@ -157,8 +179,12 @@ export default async function handler(req: Request) {
       };
 
       // Map updatable fields
+      // Same correction as the create above: these are the columns
+      // shared/deal-desk-schema.ts declares. autoApproveBelowThreshold and
+      // requiresJustification are gone because nothing stores or reads them.
       const fieldMap: Record<string, string> = {
-        name: 'name',
+        name: 'rule_name',
+        ruleName: 'rule_name',
         description: 'description',
         ruleType: 'rule_type',
         priority: 'priority',
@@ -166,16 +192,14 @@ export default async function handler(req: Request) {
         conditions: 'conditions',
         thresholdType: 'threshold_type',
         thresholdValue: 'threshold_value',
-        thresholdOperator: 'threshold_operator',
+        thresholdOperator: 'comparison_operator',
         approvers: 'approvers',
-        approverRoleIds: 'approver_role_ids',
-        approvalMode: 'approval_mode',
+        approverRoleIds: 'approvers',
+        approvalMode: 'approval_chain_type',
         slaHours: 'sla_hours',
-        escalationHours: 'escalation_hours',
-        escalationApprovers: 'escalation_approvers',
+        escalationEnabled: 'escalation_enabled',
+        escalateToRoleId: 'escalate_to_role_id',
         isActive: 'is_active',
-        autoApproveBelowThreshold: 'auto_approve_below_threshold',
-        requiresJustification: 'requires_justification',
       };
 
       for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
@@ -353,17 +377,24 @@ export default async function handler(req: Request) {
         requested_by_name: userName,
         requested_by_role: roleName,
         status: 'pending',
-        priority: body.priority || 'normal',
-        original_value: body.originalValue || body.original_value || null,
-        requested_value: body.requestedValue || body.requested_value || null,
+        // AUDIT-037: ten of these were not columns, so submitting a request
+        // for approval 42703'd - the deal desk could neither hold a rule nor
+        // take a request. The real names are original_price, proposed_price,
+        // business_justification, current_approval_level and sla_deadline.
+        //
+        // priority, a matched-rule list and a step total are dropped. There is no
+        // priority on a request (it is a property of the RULE that matched);
+        // the chain lives in approval_chain, whose length is the step count, so
+        // storing a second copy invites the two to disagree; and nothing reads
+        // a matched-rules list.
+        original_price: body.originalValue || body.original_value || null,
+        proposed_price: body.requestedValue || body.requested_value || null,
         discount_percentage: body.discountPercentage || body.discount_percentage || null,
         discount_amount: body.discountAmount || body.discount_amount || null,
-        justification: body.justification || null,
-        context: body.context || {},
-        matched_rules: body.matchedRules || body.matched_rules || [],
-        current_step: 1,
-        total_steps: body.totalSteps || body.total_steps || 1,
-        sla_due_at: body.slaDueAt || body.sla_due_at || null,
+        business_justification: body.justification || null,
+        approval_chain: body.approvalChain || body.approval_chain || [],
+        current_approval_level: 1,
+        sla_deadline: body.slaDueAt || body.sla_due_at || null,
         submitted_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -397,23 +428,20 @@ export default async function handler(req: Request) {
 
       const fieldMap: Record<string, string> = {
         status: 'status',
-        priority: 'priority',
-        originalValue: 'original_value',
-        requestedValue: 'requested_value',
+        originalValue: 'original_price',
+        requestedValue: 'proposed_price',
         discountPercentage: 'discount_percentage',
         discountAmount: 'discount_amount',
-        justification: 'justification',
-        context: 'context',
-        currentStep: 'current_step',
-        totalSteps: 'total_steps',
-        slaDueAt: 'sla_due_at',
+        justification: 'business_justification',
+        currentStep: 'current_approval_level',
+        slaDueAt: 'sla_deadline',
         slaBreached: 'sla_breached',
         escalatedAt: 'escalated_at',
         completedAt: 'completed_at',
         finalDecision: 'final_decision',
         finalDecisionBy: 'final_decision_by',
         finalDecisionAt: 'final_decision_at',
-        finalComments: 'final_comments',
+        finalComments: 'final_decision_comments',
       };
 
       for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
@@ -473,9 +501,18 @@ export default async function handler(req: Request) {
       let newStatus = request.status;
       let completedAt = null;
 
+      // AUDIT-037: the step counter is current_approval_level, and the number
+      // of steps is the length of approval_chain - there is no total_steps
+      // column, and keeping a second copy of a length is how the two come to
+      // disagree. An empty chain means a single step.
+      const totalSteps = Array.isArray(request.approval_chain)
+        ? Math.max(request.approval_chain.length, 1)
+        : 1;
+      const currentStep = Number(request.current_approval_level ?? 1);
+
       if (decision === 'approve') {
         // Check if this is the final step
-        if (request.current_step >= request.total_steps) {
+        if (currentStep >= totalSteps) {
           newStatus = 'approved';
           completedAt = new Date().toISOString();
         } else {
@@ -500,13 +537,13 @@ export default async function handler(req: Request) {
         updateData.final_decision_by = user.id;
         updateData.final_decision_at = completedAt;
         if (comments) {
-          updateData.final_comments = comments;
+          updateData.final_decision_comments = comments;
         }
       }
 
-      // If approved and not final step, increment current_step
-      if (decision === 'approve' && request.current_step < request.total_steps) {
-        updateData.current_step = request.current_step + 1;
+      // If approved and not the final step, advance the level
+      if (decision === 'approve' && currentStep < totalSteps) {
+        updateData.current_approval_level = currentStep + 1;
       }
 
       const { data: updatedRequest, error } = await admin

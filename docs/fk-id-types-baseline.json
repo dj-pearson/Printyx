@@ -1,0 +1,5 @@
+{
+  "note": "AUDIT-036 drove this to zero and it is a HARD GATE at 0. Foreign-key columns whose type cannot hold the key they name: an integer column against a varchar uuid primary key makes the read a 22P02 and the write a 42804, and under PostgREST both read as a table nobody has filled in. Migration 0063_abandoned_the_phantom.sql converted 31 of them, proven against Postgres 16 - the failures reproduced first, then the chain replayed on a fresh database with zero errors and the migration applied twice. Do not add entries. See scripts/check-fk-id-types.mjs for what it can and cannot see: a target is resolved by COLUMN NAME only, so a differently-named foreign key is invisible (assigned_sales_rep_id, sent_by_user_id, reviewed_by, uploaded_by and supplier_id all needed converting and none of them was found by this guard), and a polymorphic <x>_id beside an <x>_type is skipped by rule rather than baselined.",
+  "total": 0,
+  "offenders": []
+}

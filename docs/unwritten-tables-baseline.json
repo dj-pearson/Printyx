@@ -1,7 +1,7 @@
 {
-  "note": "Declared tables (not views) that an edge function reads and that nothing anywhere inserts into. Each is a question - who fills this in? - not a defect: the answer is usually a UI that was never built, an importer never wired, or an external feed that should be named in a comment. See scripts/check-unwritten-tables.mjs. Do not grow it.",
-  "generated": "2026-08-30",
-  "ofTablesRead": 524,
+  "note": "Declared tables (not views) that an edge function reads and that nothing anywhere inserts into. Each is a question - who fills this in? - not a defect: the answer is usually a UI that was never built, an importer never wired, or an external feed that should be named in a comment. See scripts/check-unwritten-tables.mjs. Do not grow it. AUDIT-036 CHANGED WHAT SOME OF THESE MEAN. Six entries - contract_renewal_tracking, renewal_analytics, supply_monitoring, supply_replenishment_analytics, supply_usage_history and client_collected_metrics - were not merely unwritten: their tenant_id was integer against a uuid tenants.id (AUDIT-032, migration 0062) and their foreign keys were integer against uuid targets (AUDIT-036, migration 0063), so nothing COULD write them. Both are fixed, which means the question this file asks is now a real one for those six rather than a symptom. platform_bant_qualification is the newest entry and the cleanest example of the shape: supabase/functions/platform-deals/ reads it correctly for the BANT tab, the table and its columns are real, and no code anywhere inserts a row - so the tab is honestly empty rather than wrong.",
+  "generated": "2026-09-01",
+  "ofTablesRead": 531,
   "tables": [
     "ai_employee_workflows",
     "alert_configurations",
@@ -28,6 +28,7 @@
     "meeting_notes",
     "payment_methods",
     "platform_activity_reports",
+    "platform_bant_qualification",
     "platform_cohort_analysis",
     "platform_contacts",
     "platform_sales_goals",

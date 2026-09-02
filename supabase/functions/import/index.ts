@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { parseCsv, overallConfidence } from './_csv.ts';
+import { DUPLICATE_RESOLUTIONS, findDuplicate } from '../_shared/import-duplicate-match.ts';
 
 // CRMX-011a: job state lives in csv_import_jobs, not in this process.
 //
@@ -35,6 +36,26 @@ async function loadJob(admin: any, jobId: string, tenantId: string) {
     return null;
   }
   return data;
+}
+
+/**
+ * Keep csv_import_jobs.duplicates_resolved in step with the rows. PostgREST has
+ * no COUNT in an update, so it is read back rather than incremented - two
+ * resolves racing would otherwise both add one to a stale value.
+ */
+async function syncResolvedCount(admin: any, jobId: string, tenantId: string) {
+  const { count } = await admin
+    .from('csv_import_duplicates')
+    .select('id', { count: 'exact', head: true })
+    .eq('import_job_id', jobId)
+    .eq('tenant_id', tenantId)
+    .neq('resolution', 'pending');
+
+  await admin
+    .from('csv_import_jobs')
+    .update({ duplicates_resolved: count ?? 0, updated_at: new Date().toISOString() })
+    .eq('id', jobId)
+    .eq('tenant_id', tenantId);
 }
 
 async function updateJob(admin: any, jobId: string, tenantId: string, patch: Record<string, any>) {
@@ -370,11 +391,91 @@ export default async function handler(req: Request) {
       const invalidRows = validationErrors.length;
       const validRows = rows.length - invalidRows;
 
+      // PA-052: duplicates_detected was hardcoded 0 and no duplicate was ever
+      // recorded, so the review step had nothing to show - while the execute
+      // path went on to match and MERGE silently. Detection now runs here, with
+      // the same rule execute uses (_shared/import-duplicate-match.ts).
+      let duplicatesDetected = 0;
+      if (nameColumn && job.entity_type === 'business_records') {
+        const cityColumn = mappings.find(
+          (m) => m.targetField === 'city' || m.targetField === 'billingCity',
+        )?.sourceColumn;
+        const stateColumn = mappings.find(
+          (m) => m.targetField === 'state' || m.targetField === 'billingState',
+        )?.sourceColumn;
+        const phoneColumn = mappings.find(
+          (m) => m.targetField === 'phone' || m.targetField === 'primaryContactPhone',
+        )?.sourceColumn;
+
+        // Re-detecting must not stack rows from a previous run.
+        await admin
+          .from('csv_import_duplicates')
+          .delete()
+          .eq('import_job_id', jobId)
+          .eq('tenant_id', tenantId);
+
+        const pending: Record<string, unknown>[] = [];
+
+        for (let index = 0; index < rows.length; index++) {
+          const row = rows[index];
+          const businessName = row[nameColumn]?.trim();
+          if (!businessName) continue;
+
+          const { data: candidates, error: searchError } = await admin
+            .from('companies')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .ilike('business_name', businessName)
+            .limit(10);
+
+          // A lookup failure is not "no duplicate". Skipping the row here would
+          // send it to execute, which merges without asking.
+          if (searchError) {
+            console.error('Duplicate lookup failed:', searchError);
+            continue;
+          }
+
+          const match = findDuplicate(
+            {
+              businessName,
+              city: cityColumn ? row[cityColumn] : null,
+              state: stateColumn ? row[stateColumn] : null,
+              phone: phoneColumn ? row[phoneColumn] : null,
+            },
+            candidates || [],
+          );
+
+          if (!match) continue;
+
+          pending.push({
+            import_job_id: jobId,
+            tenant_id: tenantId,
+            row_number: index + 1,
+            row_data: row,
+            existing_record_id: match.existing.id,
+            existing_record_data: match.existing,
+            matching_fields: match.matchingFields,
+            match_score: match.matchScore,
+            resolution: 'pending',
+          });
+        }
+
+        if (pending.length) {
+          const { error: insertError } = await admin.from('csv_import_duplicates').insert(pending);
+          if (insertError) {
+            console.error('Failed to record duplicates:', insertError);
+          } else {
+            duplicatesDetected = pending.length;
+          }
+        }
+      }
+
       await updateJob(admin, jobId, tenantId, {
         status: 'awaiting_review',
         valid_rows: validRows,
         invalid_rows: invalidRows,
-        duplicates_detected: 0,
+        duplicates_detected: duplicatesDetected,
+        duplicates_resolved: 0,
         validation_errors: validationErrors,
       });
 
@@ -382,8 +483,8 @@ export default async function handler(req: Request) {
         {
           validRows,
           invalidRows,
-          duplicatesDetected: 0,
-          needsDuplicateReview: false,
+          duplicatesDetected,
+          needsDuplicateReview: duplicatesDetected > 0,
           canProceed: validRows > 0,
           // Capped so a wholly malformed file does not return a response the
           // browser has to render row by row.
@@ -403,13 +504,84 @@ export default async function handler(req: Request) {
     ) {
       const jobId = pathParts[1];
 
+      const { data, error } = await admin
+        .from('csv_import_duplicates')
+        .select('*')
+        .eq('import_job_id', jobId)
+        .eq('tenant_id', tenantId)
+        .order('row_number', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching duplicates:', error);
+        return createCorsResponse({ error: 'Failed to fetch duplicates' }, 500, req);
+      }
+
       return createCorsResponse(
         {
-          duplicates: [],
+          duplicates: (data || []).map((d: any) => ({
+            id: d.id,
+            rowNumber: d.row_number,
+            rowData: d.row_data,
+            existingRecordId: d.existing_record_id,
+            existingRecordData: d.existing_record_data,
+            matchingFields: d.matching_fields,
+            matchScore: d.match_score,
+            resolution: d.resolution,
+          })),
         },
         200,
         req,
       );
+    }
+
+    // POST /import/jobs/:jobId/duplicates/:duplicateId/resolve
+    //
+    // PA-052: this had no branch, so the per-row Skip / Merge / Create buttons
+    // in CSVImportWizard 404'd.
+    if (
+      req.method === 'POST' &&
+      pathParts[0] === 'jobs' &&
+      pathParts[1] &&
+      pathParts[2] === 'duplicates' &&
+      pathParts[3] &&
+      pathParts[3] !== 'resolve-all' &&
+      pathParts[4] === 'resolve'
+    ) {
+      const jobId = pathParts[1];
+      const duplicateId = pathParts[3];
+      const body = await req.json().catch(() => ({}));
+      const resolution = body.resolution;
+
+      if (!DUPLICATE_RESOLUTIONS.includes(resolution) || resolution === 'pending') {
+        return createCorsResponse(
+          { error: `resolution must be one of: skip, merge, create_new` },
+          400,
+          req,
+        );
+      }
+
+      const { data, error } = await admin
+        .from('csv_import_duplicates')
+        .update({
+          resolution,
+          resolved_by: user.id,
+          resolved_at: new Date().toISOString(),
+        })
+        .eq('id', duplicateId)
+        .eq('import_job_id', jobId)
+        .eq('tenant_id', tenantId)
+        .select('id')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error resolving duplicate:', error);
+        return createCorsResponse({ error: 'Failed to resolve duplicate' }, 500, req);
+      }
+      if (!data) return createCorsResponse({ error: 'Duplicate not found' }, 404, req);
+
+      await syncResolvedCount(admin, jobId, tenantId);
+
+      return createCorsResponse({ success: true, id: data.id, resolution }, 200, req);
     }
 
     // POST /import/jobs/:jobId/duplicates/resolve-all
@@ -420,7 +592,45 @@ export default async function handler(req: Request) {
       pathParts[2] === 'duplicates' &&
       pathParts[3] === 'resolve-all'
     ) {
-      return createCorsResponse({ message: 'Duplicates resolved' }, 200, req);
+      const jobId = pathParts[1];
+      const body = await req.json().catch(() => ({}));
+      const resolution = body.resolution ?? body.strategy;
+
+      // PA-052: this used to answer "Duplicates resolved" without touching a
+      // row, so the wizard advanced and the execute step merged whatever it
+      // liked.
+      if (!DUPLICATE_RESOLUTIONS.includes(resolution) || resolution === 'pending') {
+        return createCorsResponse(
+          { error: `resolution must be one of: skip, merge, create_new` },
+          400,
+          req,
+        );
+      }
+
+      const { data, error } = await admin
+        .from('csv_import_duplicates')
+        .update({
+          resolution,
+          resolved_by: user.id,
+          resolved_at: new Date().toISOString(),
+        })
+        .eq('import_job_id', jobId)
+        .eq('tenant_id', tenantId)
+        .eq('resolution', 'pending')
+        .select('id');
+
+      if (error) {
+        console.error('Error resolving duplicates:', error);
+        return createCorsResponse({ error: 'Failed to resolve duplicates' }, 500, req);
+      }
+
+      await syncResolvedCount(admin, jobId, tenantId);
+
+      return createCorsResponse(
+        { success: true, resolved: (data || []).length, resolution },
+        200,
+        req,
+      );
     }
 
     // POST /import/jobs/:jobId/execute
@@ -466,9 +676,38 @@ export default async function handler(req: Request) {
           `[IMPORT] Processing batch: rows ${startIndex} to ${startIndex + rowsToProcess.length} of ${allRows.length}`,
         );
 
+        // PA-052: the review step is decorative unless this honours it. Rows the
+        // user resolved as `skip` are not imported; everything else falls through
+        // to the matching below, which merges into an existing company when it
+        // finds one. `create_new` is recorded and NOT yet acted on - forcing a
+        // second company row needs the match to be bypassed here, and doing that
+        // silently would be worse than the current merge, so it is named in the
+        // response instead.
+        const { data: resolutionRows } = await admin
+          .from('csv_import_duplicates')
+          .select('row_number, resolution')
+          .eq('import_job_id', jobId)
+          .eq('tenant_id', tenantId)
+          .neq('resolution', 'pending');
+
+        const resolutionByRow = new Map<number, string>(
+          (resolutionRows || []).map((r: any) => [r.row_number, r.resolution]),
+        );
+        let unhonouredCreateNew = 0;
+
         // Process each row in this batch
         for (let i = 0; i < rowsToProcess.length; i++) {
           const row = rowsToProcess[i];
+          // row_number is 1-based over the whole file, matching detection.
+          const resolution = resolutionByRow.get(startIndex + i + 1);
+
+          if (resolution === 'skip') {
+            skippedRows++;
+            continue;
+          }
+          if (resolution === 'create_new') {
+            unhonouredCreateNew++;
+          }
 
           // Check if we're approaching timeout
           if (Date.now() - startTime > MAX_EXECUTION_TIME) {
@@ -963,6 +1202,17 @@ export default async function handler(req: Request) {
             totalRows,
             hasMore,
             nextIndex: hasMore ? processedRows : null,
+            // PA-052: `create_new` is recorded but not yet acted on - such a row
+            // still merges into the company it matched. Saying so beats letting
+            // the count read as a clean import.
+            ...(unhonouredCreateNew
+              ? {
+                  unhonoured: [
+                    `${unhonouredCreateNew} row(s) resolved as "create new" were merged into the ` +
+                      'existing company instead; forcing a second company row is not implemented.',
+                  ],
+                }
+              : {}),
           },
           200,
           req,

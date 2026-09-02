@@ -121,14 +121,21 @@ export default async function handler(req: Request) {
         business_record_id: body.businessRecordId || body.business_record_id,
         activity_type: body.activityType || body.activity_type,
         subject: body.subject,
-        notes: body.notes || null,
+        // AUDIT-037: the column is `description`. `notes` was a 42703, and
+        // since PostgREST fails the whole insert on one bad name, logging any
+        // activity at all was broken - not just its notes.
+        description: body.notes ?? body.description ?? null,
         scheduled_date:
           body.activityDate ||
           body.activity_date ||
           body.scheduledDate ||
           body.scheduled_date ||
           new Date().toISOString(),
-        duration_minutes: body.durationMinutes || body.duration_minutes || null,
+        // The only duration this table records is call_duration, an integer of
+        // minutes. It is narrower than "activity duration" by name, but it is
+        // the same fact and it is the column that exists; adding a second
+        // duration would give one activity two.
+        call_duration: body.durationMinutes ?? body.duration_minutes ?? null,
         direction: body.direction || null,
         email_to: body.emailTo || body.email_to || null,
         email_cc: body.emailCc || body.email_cc || null,
@@ -137,7 +144,6 @@ export default async function handler(req: Request) {
         completed_date: body.completedDate || body.completed_date || null,
         next_action: body.nextAction || body.next_action || null,
         follow_up_date: body.followUpDate || body.follow_up_date || null,
-        priority: body.priority || 'medium',
         created_by: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -154,7 +160,23 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create activity', details: error }, 500, req);
       }
 
-      return createCorsResponse(activity, 201, req);
+      // business_record_activities has no priority column. Its urgency lives in
+      // due_date and follow_up_date; a priority string with nothing reading it
+      // would be a second, quieter answer to the same question.
+      const activityIgnored = body.priority !== undefined ? ['priority'] : [];
+
+      return createCorsResponse(
+        activityIgnored.length > 0
+          ? {
+              ...(activity as Record<string, unknown>),
+              unpersisted: [
+                'priority: business_record_activities records urgency as due_date / follow_up_date',
+              ],
+            }
+          : activity,
+        201,
+        req,
+      );
     }
 
     // PATCH /activities/:id/complete - Mark activity as completed
@@ -197,10 +219,11 @@ export default async function handler(req: Request) {
       const fieldMap: Record<string, string> = {
         activityType: 'activity_type',
         subject: 'subject',
-        notes: 'notes',
+        notes: 'description',
+        description: 'description',
         activityDate: 'scheduled_date',
         scheduledDate: 'scheduled_date',
-        durationMinutes: 'duration_minutes',
+        durationMinutes: 'call_duration',
         direction: 'direction',
         emailTo: 'email_to',
         emailCc: 'email_cc',
@@ -209,7 +232,6 @@ export default async function handler(req: Request) {
         completedDate: 'completed_date',
         nextAction: 'next_action',
         followUpDate: 'follow_up_date',
-        priority: 'priority',
       };
 
       for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {

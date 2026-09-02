@@ -33,6 +33,12 @@ export type LifecycleStage = (typeof LIFECYCLE_STAGES)[keyof typeof LIFECYCLE_ST
 // Validation result interface
 export interface ValidationResult {
   isValid: boolean;
+  /**
+   * False whenever the requirements were listed but not actually checked, which
+   * is currently always (PA-052). A caller must not read an empty `failed` list
+   * as an all-clear without looking at this.
+   */
+  requirementsChecked?: boolean;
   passed: ValidationCheck[];
   failed: ValidationCheck[];
 }
@@ -160,30 +166,28 @@ export class EquipmentLifecycleStateMachine {
   /**
    * Run validations for a specific equipment transition
    */
+  /**
+   * PA-052: this used to return `passed: true` and the message
+   * "<requirement> verified" for every requirement, under a comment saying it
+   * was a mock. EquipmentTransitionDialog rendered that as a green tick per
+   * row, so a technician saw "Data Wiped Confirmed - verified" and
+   * "Certificate Of Destruction - verified" before disposing of a machine.
+   * Nothing checked either one.
+   *
+   * Nothing checks them now either, and that is what this reports: every
+   * requirement comes back outstanding. Reinstating a pass here means writing
+   * the check that earns it - a delivery signature row, a QC record, an
+   * uploaded document - not flipping the boolean.
+   */
   private static async runValidations(
-    equipmentId: string,
+    _equipmentId: string,
     requiredValidations: string[],
   ): Promise<ValidationCheck[]> {
-    // This would integrate with actual validation logic
-    // For now, return mock validation results
-
-    const results: ValidationCheck[] = [];
-
-    for (const validation of requiredValidations) {
-      // In a real implementation, this would check actual conditions
-      // For example:
-      // - Check if delivery signature exists
-      // - Verify quality control checks completed
-      // - Confirm documentation uploaded
-
-      results.push({
-        name: validation,
-        passed: true, // Mock: assume all pass for now
-        message: `${validation} verified`,
-      });
-    }
-
-    return results;
+    return requiredValidations.map((validation) => ({
+      name: validation,
+      passed: false,
+      message: 'Not verified automatically — confirm before transitioning',
+    }));
   }
 
   /**
@@ -206,10 +210,16 @@ export class EquipmentLifecycleStateMachine {
 
     const validationResults = await this.runValidations(equipmentId, requiredValidations);
 
+    // `isValid` says whether anything BLOCKS the transition, and nothing here
+    // can establish that either way - see runValidations. It reports the
+    // requirements as outstanding and leaves the decision with the operator,
+    // rather than either asserting they passed or refusing every transition
+    // that has requirements at all.
     return {
-      isValid: validationResults.every((v) => v.passed),
-      passed: validationResults.filter((v) => v.passed),
-      failed: validationResults.filter((v) => !v.passed),
+      isValid: true,
+      requirementsChecked: false,
+      passed: [],
+      failed: validationResults,
     };
   }
 

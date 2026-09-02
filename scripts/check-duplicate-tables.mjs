@@ -35,9 +35,23 @@ function stripComments(src) {
     .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ''));
 }
 
-// `shared/schema.ts` is the aggregator that re-exports the others, so it is not
-// itself a declaration site.
-const files = readdirSync(sharedDir).filter((f) => f.endsWith('.ts') && f !== 'schema.ts');
+// `shared/schema.ts` USED TO BE SKIPPED HERE, on the reasoning that it is the
+// aggregator that re-exports the others and so is not itself a declaration
+// site. Half of that is true and the half that is not was load-bearing: the
+// file re-exports plenty, and it also declares 129 tables of its own -
+// projects, contracts, users, teams, equipment. Excluding it hid every
+// collision between it and another schema file, which is most of them.
+//
+// `projects` is the worked example. shared/schema.ts:5691 declares it with a
+// varchar status defaulting to 'active'; shared/task-schema.ts:82 declares the
+// same Postgres table with a projectStatusEnum defaulting to 'planning', plus a
+// project manager, a budget and a completion percentage. Nothing re-exports the
+// second, so both symbols exist and code picks one by which file it imports -
+// and whichever it is, it is writing the other one's table.
+//
+// Re-exports are not a problem for this scan: `export { x } from './y'` is not a
+// pgTable call, so the pattern below never sees one.
+const files = readdirSync(sharedDir).filter((f) => f.endsWith('.ts'));
 
 const byTable = new Map();
 for (const file of files) {

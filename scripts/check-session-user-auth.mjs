@@ -65,8 +65,13 @@ function walk(dir, out = []) {
 }
 
 const READS_SESSION_USER = /req\.session\??\.user\b/;
+// `(req as any).user` is the same fallback written through a cast, and the
+// plain word-boundary pattern does not match it, because the cast sits between
+// the two words. That over-reported server/middleware/mfa-enforcement.ts, which reads
+// req.user FIRST and falls back to the session, so mounting it would have
+// authenticated a JWT request rather than denying everyone.
 const HAS_FALLBACK =
-  /req\.user\b|isAuthenticated|requireAuth|protectedRoute|requireSupabaseAuth|getUserId\(|getTenantId\(/;
+  /req\.user\b|\(req as [^)]+\)\.user\b|isAuthenticated|requireAuth|protectedRoute|requireSupabaseAuth|getUserId\(|getTenantId\(/;
 
 const findings = [];
 for (const file of walk(join(repo, 'server'))) {

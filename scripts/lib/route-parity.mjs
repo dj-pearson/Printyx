@@ -38,6 +38,10 @@ const repoDefault = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // ingest, auth/session infra, telemetry, and installer/health endpoints that
 // are intentionally NOT edge functions.
 export const EXPRESS_CANONICAL = new Set([
+  // AUDIT-037 deleted supabase/functions/client-metrics/, so this is now the
+  // only implementation rather than the canonical one of two. Kept in the set
+  // because the classifier still needs to know the agent ingest path is not a
+  // migration gap.
   'client-metrics', // monitoring agent ingest (submit/heartbeat/config/install-report)
   'device-monitoring', // live device-monitoring read path (routes-device-monitoring.ts)
   'auth', // GoTrue/session bridge

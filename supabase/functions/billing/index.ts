@@ -389,23 +389,97 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && resource === 'rules') {
       const body = await req.json();
 
-      const ruleData = {
+      // AUDIT-037: this wrote description, conditions, actions, effective_from
+      // and effective_to - none of them columns - and dropped the twenty rate
+      // and rounding fields billing-rule-dialog.tsx actually collects, while
+      // never setting effective_start_date, which is NOT NULL. So creating a
+      // billing rule was a 42703 that would have been a 23502 anyway.
+      //
+      // The dialog was already right: ruleName, ruleDescription, ruleType,
+      // ruleStatus, billingCycle, priority, effectiveStartDate,
+      // effectiveEndDate, baseCharge, minimumCharge, maximumCharge, bwRate,
+      // colorRate, baseVolumeBw, baseVolumeColor, overageMultiplier,
+      // applicableToAllCustomers, applicableToAllEquipment, roundingMethod,
+      // roundingPrecision and customCalculationFormula are all real columns in
+      // camelCase.
+      const take = (...keys: string[]) => {
+        for (const k of keys)
+          if (body[k] !== undefined && body[k] !== null && body[k] !== '') {
+            return body[k];
+          }
+        return undefined;
+      };
+
+      const ruleName = take('ruleName', 'rule_name');
+      const ruleType = take('ruleType', 'rule_type');
+      const effectiveStart = take(
+        'effectiveStartDate',
+        'effective_start_date',
+        'effectiveFrom',
+        'effective_from',
+      );
+      const missingRuleFields: string[] = [];
+      if (!ruleName) missingRuleFields.push('ruleName');
+      if (!ruleType) missingRuleFields.push('ruleType');
+      if (!effectiveStart) missingRuleFields.push('effectiveStartDate');
+      if (missingRuleFields.length > 0) {
+        return createCorsResponse(
+          {
+            error: `Missing required field(s): ${missingRuleFields.join(', ')}`,
+            missing: missingRuleFields,
+          },
+          400,
+          req,
+        );
+      }
+
+      const ruleData: Record<string, unknown> = {
         tenant_id: tenantId,
-        rule_name: body.ruleName || body.rule_name,
-        rule_type: body.ruleType || body.rule_type,
-        rule_status: body.ruleStatus || body.rule_status || 'active',
-        description: body.description || null,
-        priority: body.priority || 0,
-        customer_id: body.customerId || body.customer_id || null,
-        contract_id: body.contractId || body.contract_id || null,
-        conditions: body.conditions || null,
-        actions: body.actions || null,
-        effective_from: body.effectiveFrom || body.effective_from || null,
-        effective_to: body.effectiveTo || body.effective_to || null,
+        rule_name: ruleName,
+        rule_description: take('ruleDescription', 'rule_description', 'description') ?? null,
+        rule_type: ruleType,
+        rule_status: take('ruleStatus', 'rule_status') ?? 'active',
+        priority: body.priority ?? 0,
+        contract_id: take('contractId', 'contract_id') ?? null,
+        customer_id: take('customerId', 'customer_id') ?? null,
+        equipment_id: take('equipmentId', 'equipment_id') ?? null,
+        product_category: take('productCategory', 'product_category') ?? null,
+        applicable_to_all_customers:
+          body.applicableToAllCustomers ?? body.applicable_to_all_customers ?? false,
+        applicable_to_all_equipment:
+          body.applicableToAllEquipment ?? body.applicable_to_all_equipment ?? false,
+        effective_start_date: effectiveStart,
+        effective_end_date:
+          take('effectiveEndDate', 'effective_end_date', 'effectiveTo', 'effective_to') ?? null,
+        billing_cycle: take('billingCycle', 'billing_cycle') ?? 'monthly',
+        tiered_rates: take('tieredRates', 'tiered_rates') ?? null,
+        base_charge: take('baseCharge', 'base_charge') ?? null,
+        minimum_charge: take('minimumCharge', 'minimum_charge') ?? null,
+        maximum_charge: take('maximumCharge', 'maximum_charge') ?? null,
+        bw_rate: take('bwRate', 'bw_rate') ?? null,
+        color_rate: take('colorRate', 'color_rate') ?? null,
+        base_volume_bw: body.baseVolumeBw ?? body.base_volume_bw ?? 0,
+        base_volume_color: body.baseVolumeColor ?? body.base_volume_color ?? 0,
+        overage_multiplier: take('overageMultiplier', 'overage_multiplier') ?? '1.0',
+        volume_discounts: take('volumeDiscounts', 'volume_discounts') ?? null,
+        time_based_pricing: take('timeBasedPricing', 'time_based_pricing') ?? null,
+        allow_negative_balance: body.allowNegativeBalance ?? body.allow_negative_balance ?? false,
+        rounding_method: take('roundingMethod', 'rounding_method') ?? 'nearest',
+        rounding_precision: body.roundingPrecision ?? body.rounding_precision ?? 2,
+        custom_calculation_formula:
+          take('customCalculationFormula', 'custom_calculation_formula') ?? null,
+        metadata: take('metadata') ?? null,
         created_by: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+
+      // conditions and actions have no columns. billing_rules is a TYPED rule -
+      // rule_type picks the shape and tiered_rates / volume_discounts /
+      // time_based_pricing / custom_calculation_formula carry it - so a generic
+      // condition/action pair has nowhere to go, and adding jsonb for one would
+      // be inventing a second rule engine beside the one that exists.
+      const ruleUnpersisted = ['conditions', 'actions'].filter((k) => body[k] !== undefined);
 
       const { data: newRule, error } = await admin
         .from('billing_rules')
@@ -422,7 +496,19 @@ export default async function handler(req: Request) {
         );
       }
 
-      return createCorsResponse(newRule, 201, req);
+      return createCorsResponse(
+        ruleUnpersisted.length > 0
+          ? {
+              ...(newRule as Record<string, unknown>),
+              unpersisted: ruleUnpersisted.map(
+                (k) =>
+                  `${k}: billing_rules is a typed rule - use ruleType with tieredRates, volumeDiscounts, timeBasedPricing or customCalculationFormula`,
+              ),
+            }
+          : newRule,
+        201,
+        req,
+      );
     }
 
     // =============================================================================
@@ -448,18 +534,44 @@ export default async function handler(req: Request) {
       };
 
       // Map camelCase to snake_case
+      // AUDIT-037: five of these eleven named nothing, so any edit touching one
+      // lost the whole update - and the sixteen fields the dialog collects
+      // below rule level were not in the map at all, so editing a rate did
+      // nothing even when the request succeeded.
       const fieldMap: Record<string, string> = {
         ruleName: 'rule_name',
+        ruleDescription: 'rule_description',
+        description: 'rule_description',
         ruleType: 'rule_type',
         ruleStatus: 'rule_status',
-        description: 'description',
         priority: 'priority',
-        customerId: 'customer_id',
         contractId: 'contract_id',
-        conditions: 'conditions',
-        actions: 'actions',
-        effectiveFrom: 'effective_from',
-        effectiveTo: 'effective_to',
+        customerId: 'customer_id',
+        equipmentId: 'equipment_id',
+        productCategory: 'product_category',
+        applicableToAllCustomers: 'applicable_to_all_customers',
+        applicableToAllEquipment: 'applicable_to_all_equipment',
+        effectiveStartDate: 'effective_start_date',
+        effectiveFrom: 'effective_start_date',
+        effectiveEndDate: 'effective_end_date',
+        effectiveTo: 'effective_end_date',
+        billingCycle: 'billing_cycle',
+        tieredRates: 'tiered_rates',
+        baseCharge: 'base_charge',
+        minimumCharge: 'minimum_charge',
+        maximumCharge: 'maximum_charge',
+        bwRate: 'bw_rate',
+        colorRate: 'color_rate',
+        baseVolumeBw: 'base_volume_bw',
+        baseVolumeColor: 'base_volume_color',
+        overageMultiplier: 'overage_multiplier',
+        volumeDiscounts: 'volume_discounts',
+        timeBasedPricing: 'time_based_pricing',
+        allowNegativeBalance: 'allow_negative_balance',
+        roundingMethod: 'rounding_method',
+        roundingPrecision: 'rounding_precision',
+        customCalculationFormula: 'custom_calculation_formula',
+        metadata: 'metadata',
       };
 
       for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {

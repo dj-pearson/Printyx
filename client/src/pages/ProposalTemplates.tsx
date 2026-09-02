@@ -39,8 +39,8 @@ const TEMPLATE_TYPES = [
 
 interface TemplateRow {
   id: string;
-  template_name: string;
-  template_type: string;
+  name: string;
+  category: string;
   description?: string | null;
   is_default?: boolean;
   is_active?: boolean;
@@ -107,7 +107,7 @@ export default function ProposalTemplates() {
     mutationFn: (row: TemplateRow) =>
       apiRequest(`${QUERY_KEY}/${row.id}`, {
         method: 'PATCH',
-        body: { isDefault: true, templateType: row.template_type },
+        body: { isDefault: true, templateType: row.category },
       }),
     onSuccess: () => {
       invalidate();
@@ -170,7 +170,7 @@ export default function ProposalTemplates() {
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  {t.template_name}
+                  {t.name}
                   {t.is_default && (
                     <Badge variant="secondary" className="text-[10px]">
                       <Star className="h-3 w-3 mr-1 fill-amber-400 text-amber-400" />
@@ -180,7 +180,7 @@ export default function ProposalTemplates() {
                 </CardTitle>
               </div>
               <Badge variant="outline" className="w-fit text-xs">
-                {typeLabel(t.template_type)}
+                {typeLabel(t.category)}
               </Badge>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col justify-between">
@@ -219,7 +219,7 @@ export default function ProposalTemplates() {
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    if (confirm(`Delete template "${t.template_name}"?`)) {
+                    if (confirm(`Delete template "${t.name}"?`)) {
                       deleteMutation.mutate(t.id);
                     }
                   }}
