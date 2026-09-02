@@ -654,6 +654,17 @@ export default async function handler(req: Request) {
         query = query.lte('order_date', endDate);
       }
 
+      // WF-P-03: the contract detail and the Needs Ordering queue both ask
+      // "which POs are for this contract".
+      const contractId =
+        url.searchParams.get('contractId') || url.searchParams.get('source_contract_id');
+      const dealId = url.searchParams.get('dealId') || url.searchParams.get('source_deal_id');
+      const customerId = url.searchParams.get('customerId') || url.searchParams.get('customer_id');
+
+      if (contractId) query = query.eq('source_contract_id', contractId);
+      if (dealId) query = query.eq('source_deal_id', dealId);
+      if (customerId) query = query.eq('customer_id', customerId);
+
       if (search) {
         // AUDIT-037: reference_number and notes are not columns on this table -
         // the searchable free text is `description`, and the reference is the
@@ -687,7 +698,9 @@ export default async function handler(req: Request) {
         .select(
           `
           *,
-          vendor:vendors(id, vendor_name, primary_contact_name, email, phone, address_line_1, address_line_2, city, state, zip_code)
+          vendor:vendors(id, vendor_name, primary_contact_name, email, phone, address_line_1, address_line_2, city, state, zip_code),
+          sourceContract:contracts!purchase_orders_source_contract_id_fkey(id, contract_number, customer_id, status),
+          customer:business_records!purchase_orders_customer_id_fkey(id, company_name)
         `,
         )
         .eq('id', poId)
@@ -768,6 +781,13 @@ export default async function handler(req: Request) {
         delivery_address: body.deliveryAddress || body.delivery_address || null,
         special_instructions:
           body.specialInstructions || body.special_instructions || body.internalNotes || null,
+        // WF-P-03: what this order is for. `contractId` is the name the Book
+        // Order link uses; the others follow the column names. All optional - a
+        // stock-replenishment PO has none of them.
+        source_contract_id:
+          body.sourceContractId || body.source_contract_id || body.contractId || null,
+        source_deal_id: body.sourceDealId || body.source_deal_id || body.dealId || null,
+        customer_id: body.customerId || body.customer_id || null,
         created_by: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

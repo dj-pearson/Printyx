@@ -96,6 +96,24 @@ export default function Contracts() {
     colorRate: '',
   });
 
+  // WF-P-03: how many purchase orders have been raised against each contract.
+  // One request for the page rather than one per row, grouped client-side -
+  // there is no aggregate endpoint and PostgREST has no GROUP BY. Book Order
+  // used to be a one-way door: the link carried ?contractId=, nothing saved it,
+  // and no screen could answer "has this contract been ordered yet".
+  const { data: contractPoCounts = {} } = useQuery<Record<string, number>>({
+    queryKey: ['/api/purchase-orders', 'by-contract'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/purchase-orders', 'GET');
+      const counts: Record<string, number> = {};
+      for (const po of extractRecords(response) as Array<Record<string, unknown>>) {
+        const contractId = (po.source_contract_id ?? po.sourceContractId) as string | undefined;
+        if (contractId) counts[contractId] = (counts[contractId] || 0) + 1;
+      }
+      return counts;
+    },
+  });
+
   // Fetch active/accepted quotes for building contracts
   const { data: availableQuotes = [], isLoading: quotesLoading } = useQuery({
     queryKey: ['/api/quotes', 'contract-source', quoteSearch],
@@ -613,7 +631,9 @@ export default function Contracts() {
                                     }
                                   >
                                     <FileText className="w-4 h-4 mr-2" />
-                                    Book Order
+                                    {contractPoCounts[contract.id]
+                                      ? `Purchase Orders (${contractPoCounts[contract.id]})`
+                                      : 'Book Order'}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -685,7 +705,9 @@ export default function Contracts() {
                           className="flex-1"
                           onClick={() => setLocation(`/purchase-orders?contractId=${contract.id}`)}
                         >
-                          Book Order
+                          {contractPoCounts[contract.id]
+                            ? `Purchase Orders (${contractPoCounts[contract.id]})`
+                            : 'Book Order'}
                         </Button>
                       </div>
                     </CardContent>

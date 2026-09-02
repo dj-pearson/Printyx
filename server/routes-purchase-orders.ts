@@ -83,7 +83,14 @@ export function registerPurchaseOrderRoutes(app: Express) {
     authed(async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user?.tenantId || (req as any).user?.claims?.tenantId;
-        const purchaseOrders = await storage.getPurchaseOrders(tenantId);
+        // WF-P-03: mirror the edge function's filters. Both spellings are
+        // accepted there, so both are accepted here.
+        const q = req.query as Record<string, string | undefined>;
+        const purchaseOrders = await storage.getPurchaseOrders(tenantId, {
+          sourceContractId: q.contractId || q.source_contract_id,
+          sourceDealId: q.dealId || q.source_deal_id,
+          customerId: q.customerId || q.customer_id,
+        });
         res.json(purchaseOrders);
       } catch (error) {
         log.error('Error fetching purchase orders:', error);
@@ -131,6 +138,13 @@ export function registerPurchaseOrderRoutes(app: Express) {
           tenantId,
           createdBy: userId,
           requestedBy: req.body.requestedBy || userId,
+          // WF-P-03: `contractId` is the name the Book Order link uses. Zod
+          // strips unknown keys, so without this line the page's value reaches
+          // the parse and is silently dropped - the defect this story is about,
+          // one layer further in.
+          sourceContractId: req.body.sourceContractId || req.body.contractId || null,
+          sourceDealId: req.body.sourceDealId || req.body.dealId || null,
+          customerId: req.body.customerId || null,
         });
 
         const purchaseOrder = await storage.createPurchaseOrder(validatedData);

@@ -694,7 +694,10 @@ export interface IStorage {
   createDealActivity(activity: any): Promise<any>;
 
   // Purchase Order operations
-  getPurchaseOrders(tenantId: string): Promise<PurchaseOrder[]>;
+  getPurchaseOrders(
+    tenantId: string,
+    filters?: { sourceContractId?: string; sourceDealId?: string; customerId?: string },
+  ): Promise<PurchaseOrder[]>;
   getPurchaseOrder(id: string, tenantId: string): Promise<PurchaseOrder | undefined>;
   createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder>;
   updatePurchaseOrder(
@@ -4278,8 +4281,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Purchase Order operations
-  async getPurchaseOrders(tenantId: string): Promise<PurchaseOrder[]> {
-    return await db.select().from(purchaseOrders).where(eq(purchaseOrders.tenantId, tenantId));
+  async getPurchaseOrders(
+    tenantId: string,
+    filters?: { sourceContractId?: string; sourceDealId?: string; customerId?: string },
+  ): Promise<PurchaseOrder[]> {
+    // WF-P-03: the same ?contractId= filter the edge function serves, so the
+    // contract detail lists its POs in dev as well as in production.
+    const conditions = [eq(purchaseOrders.tenantId, tenantId)];
+    if (filters?.sourceContractId) {
+      conditions.push(eq(purchaseOrders.sourceContractId, filters.sourceContractId));
+    }
+    if (filters?.sourceDealId) {
+      conditions.push(eq(purchaseOrders.sourceDealId, filters.sourceDealId));
+    }
+    if (filters?.customerId) {
+      conditions.push(eq(purchaseOrders.customerId, filters.customerId));
+    }
+    return await db
+      .select()
+      .from(purchaseOrders)
+      .where(and(...conditions));
   }
 
   async getPurchaseOrder(id: string, tenantId: string): Promise<PurchaseOrder | undefined> {

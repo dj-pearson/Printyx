@@ -6796,6 +6796,17 @@ export const purchaseOrders = pgTable(
     vendorId: varchar('vendor_id').notNull(),
     requestedBy: varchar('requested_by').notNull(),
 
+    // What this order is FOR (WF-P-03).
+    //
+    // The table knew its vendor and its status and nothing about the sale that
+    // caused it, so the Book Order button on contracts.tsx passed ?contractId=
+    // and the PO page rendered it as a blue hint and dropped it. All three are
+    // nullable: a PO for warehouse stock has no contract, deal or customer, and
+    // the low-stock suggestion path creates exactly those.
+    sourceContractId: varchar('source_contract_id'),
+    sourceDealId: varchar('source_deal_id'),
+    customerId: varchar('customer_id'),
+
     // Order Details
     orderDate: timestamp('order_date').notNull(),
     expectedDate: timestamp('expected_date'),

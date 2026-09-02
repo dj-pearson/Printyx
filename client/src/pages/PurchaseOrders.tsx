@@ -139,16 +139,23 @@ export default function PurchaseOrders() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
+  // WF-P-03: the Book Order item on contracts.tsx navigates here with
+  // ?contractId=<id>. The page used to render that id as a hint above the form
+  // and never send it, so the order was never linked to the contract that
+  // caused it. Read once - three separate window.location.search reads is how it
+  // stayed decorative.
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+  const contractIdParam = new URLSearchParams(search).get('contractId') || '';
+
   // Fetch purchase orders
   const { data: purchaseOrders = [], isLoading } = useQuery<PurchaseOrder[]>({
-    queryKey: ['/api/purchase-orders', typeof window !== 'undefined' ? window.location.search : ''],
+    queryKey: ['/api/purchase-orders', search],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (typeof window !== 'undefined') {
-        const url = new URLSearchParams(window.location.search);
-        const filter = url.get('filter');
-        if (filter) params.append('filter', filter);
-      }
+      const url = new URLSearchParams(search);
+      const filter = url.get('filter');
+      if (filter) params.append('filter', filter);
+      if (contractIdParam) params.append('contractId', contractIdParam);
       const path = `/api/purchase-orders${params.toString() ? `?${params.toString()}` : ''}`;
       const response = await apiRequest(path, 'GET');
       return extractRecords(response).map((po: any) => ({
@@ -159,6 +166,9 @@ export default function PurchaseOrders() {
         orderDate: po.order_date || po.orderDate || '',
         expectedDate: po.expected_date || po.expectedDate || null,
         receivedDate: po.received_date || po.receivedDate || null,
+        sourceContractId: po.source_contract_id ?? po.sourceContractId ?? null,
+        sourceDealId: po.source_deal_id ?? po.sourceDealId ?? null,
+        customerId: po.customer_id ?? po.customerId ?? null,
         createdAt: po.created_at || po.createdAt || '',
         updatedAt: po.updated_at || po.updatedAt || '',
       }));
@@ -202,7 +212,7 @@ export default function PurchaseOrders() {
 
   // Create purchase order mutation
   const createPOMutation = useMutation({
-    mutationFn: async (data: PurchaseOrderFormData) =>
+    mutationFn: async (data: PurchaseOrderFormData & { sourceContractId?: string }) =>
       apiRequest('/api/purchase-orders', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
@@ -299,7 +309,9 @@ export default function PurchaseOrders() {
 
   // Handle form submission
   const onSubmit = (data: PurchaseOrderFormData) => {
-    createPOMutation.mutate(data);
+    createPOMutation.mutate(
+      contractIdParam ? { ...data, sourceContractId: contractIdParam } : data,
+    );
   };
 
   // Generate PO number
@@ -479,14 +491,11 @@ export default function PurchaseOrders() {
                         </FormItem>
                       )}
                     />
-                    {/* If navigated with contractId in query, show hint */}
-                    {typeof window !== 'undefined' &&
-                      new URLSearchParams(window.location.search).get('contractId') && (
-                        <div className="md:col-span-2 text-sm text-blue-700 bg-blue-50 p-2 rounded">
-                          Creating PO for Contract ID:{' '}
-                          {new URLSearchParams(window.location.search).get('contractId')}
-                        </div>
-                      )}
+                    {contractIdParam && (
+                      <div className="md:col-span-2 rounded bg-blue-50 p-2 text-sm text-blue-700">
+                        This order will be linked to contract {contractIdParam}.
+                      </div>
+                    )}
 
                     <FormField
                       control={form.control}
@@ -1089,6 +1098,26 @@ export default function PurchaseOrders() {
                             : 'N/A'}
                         </span>
                       </div>
+                      {/* WF-P-03. Absent on a stock-replenishment order, which is
+                          the normal case for the low-stock suggestion path, so
+                          the row is omitted rather than showing "N/A". */}
+                      {selectedPO.sourceContractId && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">For Contract:</span>
+                          {/* Text, not a link: there is no contract detail route
+                              to open. contracts.tsx has a "View Details" button
+                              with no onClick and no target page, and linking to
+                              /contracts?contractId= would send a parameter
+                              nothing reads. */}
+                          <span className="font-medium">{selectedPO.sourceContractId}</span>
+                        </div>
+                      )}
+                      {selectedPO.sourceDealId && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">For Deal:</span>
+                          <span className="font-medium">{selectedPO.sourceDealId}</span>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
