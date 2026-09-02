@@ -3,6 +3,11 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import {
+  linkOnboardingEquipment,
+  UNMAPPED_ONBOARDING_FIELDS,
+  type EquipmentLinkResult,
+} from '../_shared/onboarding-equipment-link.ts';
 
 /**
  * The installation_type Postgres enum, verbatim (migration 0000, line 56).
@@ -501,6 +506,72 @@ export default async function handler(req: Request) {
         install_notes: val('installNotes', 'install_notes') ?? null,
       };
 
+      // WF-L-09: the device has to BE an equipment row, or the install completes
+      // and the machine is invisible to meter billing, service and replenishment.
+      // Linked, matched by serial, or created against the checklist's customer -
+      // see _shared/onboarding-equipment-link.ts for which and why.
+      const { data: checklistRow } = await admin
+        .from('equipment_onboarding_checklists')
+        .select('id, customer_id')
+        .eq('id', checklistId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      let link: EquipmentLinkResult = { equipmentId: null, action: 'skipped' };
+      try {
+        link = await linkOnboardingEquipment(
+          {
+            equipmentId: equipmentData.equipment_id as string | null,
+            manufacturer,
+            model,
+            serialNumber: equipmentData.serial_number as string | null,
+            assetTag: equipmentData.asset_tag as string | null,
+            targetIpAddress: equipmentData.target_ip_address as string | null,
+            buildingLocation: equipmentData.building_location as string | null,
+            roomLocation: equipmentData.room_location as string | null,
+            specificLocation: equipmentData.specific_location as string | null,
+          },
+          { tenantId, customerId: (checklistRow?.customer_id as string) ?? '' },
+          {
+            findById: async (id) => {
+              const { data } = await admin
+                .from('equipment')
+                .select('id, tenant_id, serial_number')
+                .eq('id', id)
+                .eq('tenant_id', tenantId)
+                .maybeSingle();
+              return data ?? null;
+            },
+            findBySerial: async (serial) => {
+              const { data } = await admin
+                .from('equipment')
+                .select('id, tenant_id, serial_number')
+                .eq('serial_number', serial)
+                .maybeSingle();
+              return data ?? null;
+            },
+            insertEquipment: async (row) => {
+              const { data, error: insertError } = await admin
+                .from('equipment')
+                .insert(row)
+                .select('id, tenant_id, serial_number')
+                .single();
+              if (insertError) throw insertError;
+              return data;
+            },
+          },
+        );
+      } catch (linkError) {
+        // A failed link must not lose the device the installer just recorded.
+        console.error('Could not link onboarding device to equipment:', linkError);
+        link = {
+          equipmentId: null,
+          action: 'skipped',
+          reason: 'could not create the equipment row; the device is recorded without one',
+        };
+      }
+      equipmentData.equipment_id = link.equipmentId;
+
       const { data: equipment, error } = await admin
         .from('onboarding_equipment')
         .insert(equipmentData)
@@ -519,11 +590,18 @@ export default async function handler(req: Request) {
         body.isPrimary !== undefined || body.is_primary !== undefined
           ? ['isPrimary: onboarding_equipment does not record a primary device']
           : [];
+      for (const field of UNMAPPED_ONBOARDING_FIELDS) {
+        if (body[field] !== undefined && body[field] !== null && body[field] !== '') {
+          unpersistedEquipment.push(`${field}: equipment has no column for it`);
+        }
+      }
 
       return createCorsResponse(
-        unpersistedEquipment.length > 0
-          ? { ...equipment, unpersisted: unpersistedEquipment }
-          : equipment,
+        {
+          ...equipment,
+          equipmentLink: link,
+          ...(unpersistedEquipment.length > 0 ? { unpersisted: unpersistedEquipment } : {}),
+        },
         201,
         req,
       );

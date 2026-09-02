@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -119,6 +121,44 @@ export function CustomerEquipment({ customerId, customerName }: CustomerEquipmen
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  // WF-L-09: the other direction. A machine that is already an equipment row can
+  // start an onboarding checklist from here, and the device is added with its
+  // equipment_id set, so the checklist and the machine are the same thing from
+  // the first click rather than two records somebody reconciles later.
+  const startOnboarding = useMutation({
+    mutationFn: async (item: Equipment) => {
+      const checklist = await apiRequest('/api/onboarding/checklists', 'POST', {
+        customerId,
+        checklistTitle:
+          `${item.manufacturer ?? 'Equipment'} ${item.modelNumber ?? ''} - ${customerName}`.trim(),
+        installationType: 'new_installation',
+        status: 'draft',
+      });
+      const checklistId = checklist?.id;
+      if (!checklistId) throw new Error('The checklist was created without an id');
+
+      await apiRequest(`/api/onboarding/checklists/${checklistId}/equipment`, 'POST', {
+        equipmentId: item.id,
+        manufacturer: item.manufacturer,
+        model: item.modelNumber,
+        serialNumber: item.serialNumber,
+        assetTag: item.assetTag,
+        targetIpAddress: item.ipAddress,
+        specificLocation: item.locationDescription,
+      });
+      return checklistId as string;
+    },
+    onSuccess: (checklistId) => setLocation(`/onboarding/${checklistId}`),
+    onError: (error: Error) =>
+      toast({
+        title: 'Could not start onboarding',
+        description: error.message,
+        variant: 'destructive',
+      }),
+  });
 
   // Fetch equipment for this customer
   const { data: equipment = [], isLoading } = useQuery<Equipment[]>({
@@ -598,6 +638,16 @@ export function CustomerEquipment({ customerId, customerName }: CustomerEquipmen
                 </div>
               </div>
             )}
+            <div className="flex justify-end border-t pt-4">
+              <Button
+                variant="outline"
+                disabled={startOnboarding.isPending}
+                onClick={() => startOnboarding.mutate(selectedEquipment)}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                {startOnboarding.isPending ? 'Starting…' : 'Start onboarding checklist'}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       )}

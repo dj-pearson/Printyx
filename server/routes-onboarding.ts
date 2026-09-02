@@ -27,7 +27,10 @@ import {
   businessRecords,
   quotes,
   onboardingProgress,
+  equipment,
+  equipmentOnboardingChecklists,
 } from '@shared/schema';
+import { linkOnboardingEquipment, type EquipmentLinkResult } from './lib/onboarding-equipment-link';
 import { storage } from './storage';
 import { ObjectStorageService } from './objectStorage';
 import { eq, and, or, ilike, sql, desc } from 'drizzle-orm';
@@ -607,8 +610,90 @@ export function registerOnboardingRoutes(app: Express): void {
         checklistId,
       });
 
-      const equipment = await storage.createOnboardingEquipment(validatedData);
-      res.status(201).json(equipment);
+      // WF-L-09: the device has to BE an equipment row, or the install completes
+      // and the machine is invisible to meter billing, service and toner
+      // replenishment. Same decision as the edge twin - see
+      // server/lib/onboarding-equipment-link.ts.
+      const [checklist] = await db
+        .select({
+          id: equipmentOnboardingChecklists.id,
+          customerId: equipmentOnboardingChecklists.customerId,
+        })
+        .from(equipmentOnboardingChecklists)
+        .where(
+          and(
+            eq(equipmentOnboardingChecklists.id, checklistId),
+            eq(equipmentOnboardingChecklists.tenantId, tenantId),
+          ),
+        )
+        .limit(1);
+
+      let link: EquipmentLinkResult = { equipmentId: null, action: 'skipped' };
+      try {
+        link = await linkOnboardingEquipment(
+          {
+            equipmentId: validatedData.equipmentId ?? null,
+            manufacturer: validatedData.manufacturer,
+            model: validatedData.model,
+            serialNumber: validatedData.serialNumber ?? null,
+            assetTag: validatedData.assetTag ?? null,
+            targetIpAddress: validatedData.targetIpAddress ?? null,
+            buildingLocation: validatedData.buildingLocation ?? null,
+            roomLocation: validatedData.roomLocation ?? null,
+            specificLocation: validatedData.specificLocation ?? null,
+          },
+          { tenantId, customerId: checklist?.customerId ?? '' },
+          {
+            findById: async (id) => {
+              const [row] = await db
+                .select({ id: equipment.id, tenant_id: equipment.tenantId })
+                .from(equipment)
+                .where(and(eq(equipment.id, id), eq(equipment.tenantId, tenantId)))
+                .limit(1);
+              return row ?? null;
+            },
+            findBySerial: async (serial) => {
+              const [row] = await db
+                .select({ id: equipment.id, tenant_id: equipment.tenantId })
+                .from(equipment)
+                .where(eq(equipment.serialNumber, serial))
+                .limit(1);
+              return row ?? null;
+            },
+            insertEquipment: async (row) => {
+              const [created] = await db
+                .insert(equipment)
+                .values({
+                  tenantId,
+                  customerId: String(row.customer_id),
+                  serialNumber: (row.serial_number as string | null) ?? null,
+                  modelNumber: (row.model_number as string | null) ?? null,
+                  manufacturer: (row.manufacturer as string | null) ?? null,
+                  assetTag: (row.asset_tag as string | null) ?? null,
+                  ipAddress: (row.ip_address as string | null) ?? null,
+                  locationDescription: (row.location_description as string | null) ?? null,
+                  equipmentStatus: 'active',
+                })
+                .returning({ id: equipment.id, tenant_id: equipment.tenantId });
+              return created;
+            },
+          },
+        );
+      } catch (linkError) {
+        // A failed link must not lose the device the installer just recorded.
+        log.error('Could not link onboarding device to equipment:', linkError);
+        link = {
+          equipmentId: null,
+          action: 'skipped',
+          reason: 'could not create the equipment row; the device is recorded without one',
+        };
+      }
+
+      const created = await storage.createOnboardingEquipment({
+        ...validatedData,
+        equipmentId: link.equipmentId,
+      });
+      res.status(201).json({ ...created, equipmentLink: link });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return badRequest(res, 'Validation error', { details: error.errors });

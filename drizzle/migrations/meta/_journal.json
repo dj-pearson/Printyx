@@ -407,6 +407,13 @@
       "when": 1788338219966,
       "tag": "0074_proposal_pricing_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1788338339966,
+      "tag": "0075_onboarding_equipment_fk",
+      "breakpoints": true
     }
   ]
 }
