@@ -3,6 +3,21 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+
+/**
+ * The installation_type Postgres enum, verbatim (migration 0000, line 56).
+ * OnboardingDashboard's Quick Checklist select offered new_site,
+ * equipment_upgrade, relocation and expansion - only one of which is in this
+ * list - so three of its four options were a 22P02 waiting behind the 42703.
+ */
+const INSTALLATION_TYPES = ['new_installation', 'replacement', 'relocation', 'upgrade'];
+
+/** estimated_duration is an integer column; a form sends it as a string. */
+function toInt(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
 import { renderChecklistPdf } from './_pdf.ts';
 
 // Long enough to open the tab, short enough that a copied link stops working.
@@ -313,19 +328,90 @@ export default async function handler(req: Request) {
     }
 
     // POST /onboarding/checklists - Create checklist
+    //
+    // AUDIT-037: this used to write business_record_id, assigned_to,
+    // installation_date and notes, none of which is a column, while setting
+    // none of checklist_title, installation_type, customer_data,
+    // site_information or equipment_details - and the first two are NOT NULL
+    // with no default. So a create was a 42703 that would have been a 23502
+    // anyway.
+    //
+    // The vocabulary below is EnhancedOnboardingForm's payload, which was
+    // already correct: it sends checklistTitle, installationType (derived from
+    // whether any equipment item is a replacement), customerId, customerData,
+    // siteInformation, equipmentDetails, scheduledInstallDate and
+    // estimatedDuration - the real columns in camelCase. The handler is what
+    // was wrong, not the page. customer_id IS the link to business_records
+    // (the schema comment says so), which is why businessRecordId maps onto it
+    // rather than needing a column of its own.
     if (req.method === 'POST' && !checklistId && pathParts[0] === 'checklists') {
       const body = await req.json();
 
-      const checklistData = {
+      const pick = (...keys: string[]) => {
+        for (const k of keys)
+          if (body[k] !== undefined && body[k] !== null && body[k] !== '') {
+            return body[k];
+          }
+        return undefined;
+      };
+
+      const customerId = pick(
+        'customerId',
+        'customer_id',
+        'businessRecordId',
+        'business_record_id',
+      );
+      const checklistTitle = pick('checklistTitle', 'checklist_title');
+      const installationType = pick('installationType', 'installation_type');
+
+      // 400 naming the field beats a 23502 the caller reads as "server error".
+      const missing: string[] = [];
+      if (!checklistTitle) missing.push('checklistTitle');
+      if (!installationType) missing.push('installationType');
+      if (!customerId) missing.push('customerId');
+      if (missing.length > 0) {
+        return createCorsResponse(
+          { error: `Missing required field(s): ${missing.join(', ')}`, missing },
+          400,
+          req,
+        );
+      }
+
+      // installation_type is a Postgres enum. A value outside it is a 22P02,
+      // which reads as a server fault rather than a bad request.
+      if (!INSTALLATION_TYPES.includes(installationType)) {
+        return createCorsResponse(
+          {
+            error: `installationType must be one of: ${INSTALLATION_TYPES.join(', ')}`,
+            received: installationType,
+          },
+          400,
+          req,
+        );
+      }
+
+      const checklistData: Record<string, unknown> = {
         tenant_id: tenantId,
-        customer_id: body.customerId || body.customer_id,
-        business_record_id: body.businessRecordId || body.business_record_id || null,
-        quote_id: body.quoteId || body.quote_id || null,
-        status: body.status || 'draft',
-        assigned_to: body.assignedTo || body.assigned_to || user.id,
-        installation_date: body.installationDate || body.installation_date || null,
-        notes: body.notes || null,
+        customer_id: customerId,
+        quote_id: pick('quoteId', 'quote_id') ?? null,
+        order_id: pick('orderId', 'order_id') ?? null,
+        checklist_title: checklistTitle,
+        description: pick('description') ?? null,
+        status: pick('status') ?? 'draft',
+        installation_type: installationType,
+        customer_data: pick('customerData', 'customer_data') ?? null,
+        site_information: pick('siteInformation', 'site_information') ?? null,
+        equipment_details: pick('equipmentDetails', 'equipment_details', 'equipment') ?? null,
+        scheduled_install_date:
+          pick('scheduledInstallDate', 'scheduled_install_date', 'installationDate') ?? null,
+        assigned_technician_id:
+          pick('assignedTechnicianId', 'assigned_technician_id', 'assignedTo') ?? null,
+        estimated_duration: toInt(pick('estimatedDuration', 'estimated_duration')),
+        access_requirements: pick('accessRequirements', 'access_requirements') ?? null,
+        business_hours: pick('businessHours', 'business_hours') ?? null,
+        special_instructions: pick('specialInstructions', 'special_instructions') ?? null,
         created_by: user.id,
+        last_modified_by: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -345,27 +431,74 @@ export default async function handler(req: Request) {
         );
       }
 
-      return createCorsResponse(checklist, 201, req);
+      // `notes` has no column. description and special_instructions do, and
+      // guessing which one a caller meant would put the text somewhere it may
+      // not belong, so it is reported rather than silently placed or dropped.
+      const unpersisted =
+        body.notes !== undefined
+          ? ['notes: equipment_onboarding_checklists has description and special_instructions']
+          : [];
+
+      return createCorsResponse(
+        unpersisted.length > 0 ? { ...checklist, unpersisted } : checklist,
+        201,
+        req,
+      );
     }
 
     // POST /onboarding/:id/equipment - Add equipment to checklist
     if (req.method === 'POST' && checklistId && subResource === 'equipment') {
       const body = await req.json();
 
-      const equipmentData = {
+      // AUDIT-037: this wrote model_number, installation_location, ip_address
+      // and is_primary - none of them columns - and never set manufacturer or
+      // model, which are both NOT NULL. Of the nine fields OnboardingDetails'
+      // dialog sends, only serialNumber landed, so adding equipment to a
+      // checklist has never worked. The dialog already uses the real names.
+      const val = (...keys: string[]) => {
+        for (const k of keys)
+          if (body[k] !== undefined && body[k] !== null && body[k] !== '') {
+            return body[k];
+          }
+        return undefined;
+      };
+
+      const manufacturer = val('manufacturer');
+      const model = val('model', 'modelNumber', 'model_number');
+      const missingEquipment: string[] = [];
+      if (!manufacturer) missingEquipment.push('manufacturer');
+      if (!model) missingEquipment.push('model');
+      if (missingEquipment.length > 0) {
+        return createCorsResponse(
+          {
+            error: `Missing required field(s): ${missingEquipment.join(', ')}`,
+            missing: missingEquipment,
+          },
+          400,
+          req,
+        );
+      }
+
+      const equipmentData: Record<string, unknown> = {
         tenant_id: tenantId,
         checklist_id: checklistId,
-        equipment_id: body.equipmentId || body.equipment_id,
-        serial_number: body.serialNumber || body.serial_number || null,
-        model_number: body.modelNumber || body.model_number || null,
-        installation_location: body.installationLocation || body.installation_location || null,
-        ip_address: body.ipAddress || body.ip_address || null,
-        is_primary:
-          body.isPrimary !== undefined
-            ? body.isPrimary
-            : body.is_primary !== undefined
-              ? body.is_primary
-              : false,
+        equipment_id: val('equipmentId', 'equipment_id') ?? null,
+        manufacturer,
+        model,
+        serial_number: val('serialNumber', 'serial_number') ?? null,
+        asset_tag: val('assetTag', 'asset_tag') ?? null,
+        target_ip_address:
+          val('targetIpAddress', 'target_ip_address', 'ipAddress', 'ip_address') ?? null,
+        hostname: val('hostname') ?? null,
+        mac_address: val('macAddress', 'mac_address') ?? null,
+        network_assignment: val('networkAssignment', 'network_assignment') ?? null,
+        building_location: val('buildingLocation', 'building_location') ?? null,
+        room_location: val('roomLocation', 'room_location') ?? null,
+        specific_location:
+          val('specificLocation', 'specific_location', 'installationLocation') ?? null,
+        is_replacement: body.isReplacement === true || body.is_replacement === true,
+        old_equipment_data: val('oldEquipmentData', 'old_equipment_data') ?? null,
+        install_notes: val('installNotes', 'install_notes') ?? null,
       };
 
       const { data: equipment, error } = await admin
@@ -379,7 +512,21 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to add equipment' }, 500, req);
       }
 
-      return createCorsResponse(equipment, 201, req);
+      // No is_primary column. Which of several devices on a site is "primary"
+      // is not something this table records, and adding a column for a flag
+      // nothing reads would be inventing the behaviour.
+      const unpersistedEquipment =
+        body.isPrimary !== undefined || body.is_primary !== undefined
+          ? ['isPrimary: onboarding_equipment does not record a primary device']
+          : [];
+
+      return createCorsResponse(
+        unpersistedEquipment.length > 0
+          ? { ...equipment, unpersisted: unpersistedEquipment }
+          : equipment,
+        201,
+        req,
+      );
     }
 
     // POST /onboarding/:id/sections - Add section to checklist
@@ -455,11 +602,29 @@ export default async function handler(req: Request) {
         updated_at: new Date().toISOString(),
       };
 
+      // AUDIT-037: three of the four entries here named columns that do not
+      // exist, so any edit touching one lost the whole update - including a
+      // status change sent in the same request.
       const fieldMap: Record<string, string> = {
         status: 'status',
-        assignedTo: 'assigned_to',
-        installationDate: 'installation_date',
-        notes: 'notes',
+        checklistTitle: 'checklist_title',
+        description: 'description',
+        installationType: 'installation_type',
+        customerData: 'customer_data',
+        siteInformation: 'site_information',
+        equipmentDetails: 'equipment_details',
+        scheduledInstallDate: 'scheduled_install_date',
+        actualInstallDate: 'actual_install_date',
+        assignedTechnicianId: 'assigned_technician_id',
+        assignedTo: 'assigned_technician_id',
+        installationDate: 'scheduled_install_date',
+        estimatedDuration: 'estimated_duration',
+        accessRequirements: 'access_requirements',
+        businessHours: 'business_hours',
+        specialInstructions: 'special_instructions',
+        completedSections: 'completed_sections',
+        totalSections: 'total_sections',
+        progressPercentage: 'progress_percentage',
       };
 
       for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
@@ -467,6 +632,22 @@ export default async function handler(req: Request) {
           updateData[snakeKey] = body[camelKey] !== undefined ? body[camelKey] : body[snakeKey];
         }
       }
+
+      if (
+        updateData.installation_type !== undefined &&
+        !INSTALLATION_TYPES.includes(updateData.installation_type as string)
+      ) {
+        return createCorsResponse(
+          {
+            error: `installationType must be one of: ${INSTALLATION_TYPES.join(', ')}`,
+            received: updateData.installation_type,
+          },
+          400,
+          req,
+        );
+      }
+
+      updateData.last_modified_by = user.id;
 
       const { data: checklist, error } = await admin
         .from('equipment_onboarding_checklists')
