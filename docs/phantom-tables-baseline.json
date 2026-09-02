@@ -1,6 +1,47 @@
 {
-  "note": "PROD-008b: edge-function .from() names absent from BOTH the Drizzle definitions in shared/ and the CREATE TABLE/VIEW statements in drizzle/. Absence here is a question, not a defect: 107 tables exist live with no Drizzle schema (db:push, pre-migrations). Confirm against the database before treating an entry as broken. The list may not grow.",
-  "allowed": [
+  "note": "Edge-function .from() names absent from BOTH the Drizzle definitions in shared/ and the CREATE TABLE/VIEW statements in drizzle/. Absence here is a QUESTION, not a defect: COP-M00 counted 107 tables that exist live and are in no Drizzle schema, created by db:push before the migration workflow landed. database-schema-report.json cannot settle it either - it is a June snapshot that predates web_forms, among others.",
+  "contract": "WF-G-02: `allowed` is an allow-list, not a ratchet. Every entry must carry a non-empty `reason` and the `story` that owns the decision, and the guard fails without them. --update-baseline PRUNES ONLY - it never adds an entry, so a new undeclared relation cannot enter without somebody writing down why it is acceptable.",
+  "unreviewedNote": "The pre-existing entries, carried over verbatim when the allow-list contract landed. They are NOT justified and NOT accepted - they are a triage queue, shrink-only. Do not add to it. Writing 73 plausible-sounding reasons in one pass would have been the same fabrication this guard exists to catch, so only the entries with an identified owning story were promoted. To triage one: run --list (it flags every file that discards the PostgREST error, which is how a missing relation renders as an empty list at 200), find or file the story that owns the feature, then move the entry into `allowed` with a reason.",
+  "allowed": {
+    "sales_handoffs": {
+      "story": "WF-C-06",
+      "reason": "No schema, no migration. The handoff model that DOES exist is shared/sales-handoff-schema.ts (sales_handoff_checklists, handoff_task_templates, handoff_tasks, implementation_projects), served by server/routes-sales-handoff.ts, which has no caller; this edge function is in docs/unreferenced-edge-fns-baseline.json, so nothing reaches either. Two models, neither wired. WF-C-06 decides which survives and builds the operations queue on it; creating sales_handoffs to satisfy this guard would entrench the wrong one.",
+      "files": ["supabase/functions/sales-handoffs/index.ts"]
+    },
+    "work_orders": {
+      "story": "WF-V-07",
+      "reason": "No schema, no migration. work-orders/ and service-contracts/ are both unreferenced by every client tree, but technician-management IS reachable and its GET /:id/schedule does `const { data: schedule } = await query` then `schedule || []` - the error is discarded, so a technician's schedule is a permanent empty list at 200 rather than an error. That handler is the live half and is what WF-V-07 owns.",
+      "files": [
+        "supabase/functions/service-contracts/index.ts",
+        "supabase/functions/technician-management/index.ts",
+        "supabase/functions/work-orders/index.ts"
+      ]
+    },
+    "appointments": {
+      "story": "WF-L-06",
+      "reason": "No schema, no migration; the nearest declared relation is customer_maintenance_appointments, which is the customer portal's, not this. scheduling/ is unreferenced, but today-dashboard IS reachable (the iOS app calls it, APIEndpoint.swift) and discards the error the same way, so today's appointments are permanently empty there. WF-L-06 owns the delivery/installation scheduling model these two would sit on; it names delivery_schedules and installation_schedules, so the table this becomes is part of that decision.",
+      "files": [
+        "supabase/functions/scheduling/index.ts",
+        "supabase/functions/today-dashboard/index.ts"
+      ]
+    },
+    "lead_routing_rules": {
+      "story": "WF-S-02",
+      "reason": "No schema, no migration, no RLS file. This is the one entry of the six that is already handled honestly: EDGE-002g removed the two fabricated sample rules this function used to return at 200 and the rule endpoints now answer 503 ROUTING_RULES_UNAVAILABLE, so an admin is told the feature is unavailable rather than shown rules that do not exist. WF-S-02 creates the table.",
+      "files": ["supabase/functions/auto-lead-routing/index.ts"]
+    },
+    "maintenance_schedules": {
+      "story": "WF-V-04",
+      "reason": "No schema, no migration - and maintenance_records beside it is in the same state. server/routes-preventive-maintenance.ts serves dev from hard-coded fixtures (its own comments say so), so the two hosts disagree about whether preventive maintenance exists at all. WF-V-04 deletes the fixtures and decides the schema; that decision, not this guard, is what the table shape should follow.",
+      "files": ["supabase/functions/maintenance/index.ts"]
+    },
+    "purchase_order_line_items": {
+      "story": "WF-P-01",
+      "reason": "No schema, no migration, and unlike the rest of these the correct relation is already known: purchase_order_items, declared in BOTH shared/schema.ts and shared/equipment-schema.ts with different shapes (which is check:dup-tables' half of the story). 16 references in purchase-orders/index.ts point at the wrong name. WF-P-01 repoints them and resolves the duplicate declaration; this entry exists so the guard does not report the same defect twice.",
+      "files": ["supabase/functions/purchase-orders/index.ts"]
+    }
+  },
+  "unreviewed": [
     "activities (supabase/functions/crm-goals/index.ts)",
     "activities (supabase/functions/gdpr/index.ts)",
     "activities (supabase/functions/sales-reports/index.ts)",
@@ -9,8 +50,6 @@
     "apollo_contacts (supabase/functions/apollo/index.ts)",
     "apollo_saved_searches (supabase/functions/apollo/index.ts)",
     "apollo_tenant_leads (supabase/functions/apollo/index.ts)",
-    "appointments (supabase/functions/scheduling/index.ts)",
-    "appointments (supabase/functions/today-dashboard/index.ts)",
     "automation_rules (supabase/functions/automation/index.ts)",
     "bin_locations (supabase/functions/warehouse-operations/index.ts)",
     "commission_statements (supabase/functions/commission/index.ts)",
@@ -48,7 +87,6 @@
     "inventory (supabase/functions/warehouse-operations/index.ts)",
     "inventory_transactions (supabase/functions/warehouse-operations/index.ts)",
     "inventory_transfers (supabase/functions/warehouse-operations/index.ts)",
-    "lead_routing_rules (supabase/functions/auto-lead-routing/index.ts)",
     "leads (supabase/functions/assign-lead/index.ts)",
     "leads (supabase/functions/companies/index.ts)",
     "leads (supabase/functions/crm-goals/index.ts)",
@@ -57,7 +95,6 @@
     "leads (supabase/functions/today-dashboard/index.ts)",
     "leads (supabase/functions/user-assignments/index.ts)",
     "maintenance_records (supabase/functions/maintenance/index.ts)",
-    "maintenance_schedules (supabase/functions/maintenance/index.ts)",
     "managed_services_contracts (supabase/functions/managed-services/index.ts)",
     "manufacturer_sync_logs (supabase/functions/manufacturer-integrations/index.ts)",
     "mps_billing_records (supabase/functions/managed-services/index.ts)",
@@ -80,10 +117,8 @@
     "product_accessory_compatibility (supabase/functions/catalog/index.ts)",
     "professional_services_projects (supabase/functions/professional-services/index.ts)",
     "project_tasks (supabase/functions/professional-services/index.ts)",
-    "purchase_order_line_items (supabase/functions/purchase-orders/index.ts)",
     "quickbooks_mappings (supabase/functions/quickbooks/index.ts)",
     "rbac_audit_log (supabase/functions/rbac/index.ts)",
-    "sales_handoffs (supabase/functions/sales-handoffs/index.ts)",
     "sales_quotas (supabase/functions/sales-reports/index.ts)",
     "scheduled_tasks (supabase/functions/automation/index.ts)",
     "service_analyses (supabase/functions/service-analysis/index.ts)",
@@ -99,9 +134,6 @@
     "warehouses (supabase/functions/warehouse-operations/index.ts)",
     "work_order_labor (supabase/functions/work-orders/index.ts)",
     "work_order_notes (supabase/functions/work-orders/index.ts)",
-    "work_order_parts (supabase/functions/work-orders/index.ts)",
-    "work_orders (supabase/functions/service-contracts/index.ts)",
-    "work_orders (supabase/functions/technician-management/index.ts)",
-    "work_orders (supabase/functions/work-orders/index.ts)"
+    "work_order_parts (supabase/functions/work-orders/index.ts)"
   ]
 }
