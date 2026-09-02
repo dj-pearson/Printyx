@@ -102,11 +102,16 @@ interface DealData {
 }
 
 interface StageOption {
+  /** The LEGACY deal_stages.id - what the move endpoint takes and deals group by. */
   id: string;
   name: string;
   displayName?: string;
   color?: string;
   order?: number;
+  // WF-C-02: the board endpoint has always returned these; nothing read them, so
+  // Mark Won had no way to know which stage "won" meant and patched status instead.
+  isClosedWon?: boolean;
+  isClosedLost?: boolean;
 }
 
 interface BoardResponse {
@@ -281,18 +286,41 @@ export default function DealDetail() {
     onError: () => toast({ title: 'Could not move stage', variant: 'destructive' }),
   });
 
+  // WF-C-02: this had the same defect as CrmDealsPage's Mark Won - it PUT status
+  // and actualCloseDate and nothing else, so the board (which groups strictly by
+  // stageId) kept the deal in its old column while this page said Won. Marking a
+  // deal closed IS a stage move, so it goes through the same endpoint the stage
+  // control above uses, which sets status, probability and actual_close_date from
+  // the stage's own flags and fires deal.stage_changed (WF-C-01).
   const setStatus = useMutation({
-    mutationFn: (status: 'won' | 'lost') =>
-      apiRequest(`/api/deals/${dealId}`, 'PUT', {
-        status,
-        actualCloseDate: new Date().toISOString(),
-      }),
+    mutationFn: (status: 'won' | 'lost') => {
+      const target = stages.find((s) => (status === 'won' ? s.isClosedWon : s.isClosedLost));
+      if (!target) {
+        // Refusing beats writing a status the board cannot show; a pipeline with
+        // no closing stage is a configuration problem, and patching status anyway
+        // is what produced the disagreement.
+        return Promise.reject(
+          new Error(
+            `This pipeline has no Closed ${status === 'won' ? 'Won' : 'Lost'} stage. ` +
+              'Add one in Pipeline Configuration first.',
+          ),
+        );
+      }
+      return apiRequest(`/api/pipeline-config/deals/${dealId}/move`, 'POST', {
+        toStageId: target.id,
+      });
+    },
     onSuccess: (_d, status) => {
       queryClient.invalidateQueries({ queryKey: [`/api/deals/${dealId}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       toast({ title: `Deal marked ${status}` });
     },
-    onError: () => toast({ title: 'Could not update the deal', variant: 'destructive' }),
+    onError: (err) =>
+      toast({
+        title: 'Could not update the deal',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      }),
   });
 
   if (isLoading) {
