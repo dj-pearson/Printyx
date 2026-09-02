@@ -23,25 +23,26 @@ import PhoneInTicketCreator from '@/components/service/PhoneInTicketCreator';
 import TechnicianTicketWorkflow from '@/components/service/TechnicianTicketWorkflow';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Phone,
-  MapPin,
-  Clock,
-  Users,
-  AlertTriangle,
-  CheckCircle,
-  Wrench,
-  Plus,
-  Search,
-  Filter,
-  RefreshCw,
   Activity,
-  TrendingUp,
-  Calendar,
-  User,
+  AlertTriangle,
   Building,
-  Timer,
-  Printer,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Filter,
+  MapPin,
   Monitor,
+  Phone,
+  Plus,
+  Printer,
+  RefreshCw,
+  Search,
+  Smartphone,
+  Timer,
+  TrendingUp,
+  User,
+  Users,
+  Wrench,
 } from 'lucide-react';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 // KpiSummaryBar removed - using inline KPI cards
@@ -348,6 +349,21 @@ export default function ServiceHub() {
               </Button>
             </div>
           )}
+
+        {/* WF-V-02: the way to the check-in console. It used to be reachable only
+            by typing /mobile-field-service, where it was wired to a hard-coded
+            'ticket-123'; the bare path is the caller's own assigned queue now. */}
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            className="min-h-[44px]"
+            onClick={() => setLocation('/mobile-field-service')}
+          >
+            <Smartphone className="mr-2 h-4 w-4" />
+            My service calls
+          </Button>
+        </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

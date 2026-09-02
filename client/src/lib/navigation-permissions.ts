@@ -283,6 +283,11 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/mobile-field-service': {
     requiredPermissions: ['service.ticket.view_own', 'service.schedule.view_own'],
   },
+  // WF-V-02: same gate on the per-ticket path. A route reachable on looser terms
+  // than the one leading to it is the AUDIT-019 mistake.
+  '/mobile-field-service/:ticketId': {
+    requiredPermissions: ['service.ticket.view_own', 'service.schedule.view_own'],
+  },
   '/mobile-field-operations': {
     requiredPermissions: ['service.ticket.view_own'],
   },

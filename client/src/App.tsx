@@ -869,6 +869,10 @@ function Router() {
                 <Route path="/technician-management" component={TechnicianManagement} />
                 <Route path="/vehicle-management" component={VehicleManagement} />
                 <Route path="/asset-management" component={AssetManagement} />
+                {/* WF-V-02: the ticket id is in the path. The bare route is the
+                    technician's own queue, which is what makes the console
+                    reachable without knowing an id. */}
+                <Route path="/mobile-field-service/:ticketId" component={MobileFieldService} />
                 <Route path="/mobile-field-service" component={MobileFieldService} />
                 <Route path="/product-catalog" component={ProductHubUnified} />
                 <Route path="/product-management-hub" component={ProductHubUnified} />

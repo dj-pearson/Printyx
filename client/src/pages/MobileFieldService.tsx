@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useRoute, Link } from 'wouter';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,9 +78,20 @@ export default function MobileFieldService() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Mock service ticket ID for demo
-  const serviceTicketId = 'ticket-123';
-  const technicianId = 'tech-456';
+  /**
+   * WF-V-02: the ticket comes from the route and the technician from the session.
+   *
+   * These were `'ticket-123'` and `'tech-456'` with the comment "Mock service
+   * ticket ID for demo". The backend behind this page is real - it moves
+   * service_tickets.status through in_progress and completed - so the only web
+   * surface with a working check-in could not be used against a real ticket.
+   *
+   * There is no technicianId at all now: the mobile function takes it from the
+   * JWT, and sending one from the client was how a technician could open a
+   * check-in against somebody else's name.
+   */
+  const [, params] = useRoute('/mobile-field-service/:ticketId');
+  const serviceTicketId = params?.ticketId ?? null;
 
   // Get current location
   useEffect(() => {
@@ -112,12 +124,14 @@ export default function MobileFieldService() {
   // Fetch active sessions
   const { data: sessions = [], refetch: refetchSessions } = useQuery({
     queryKey: ['/api/mobile/sessions', serviceTicketId],
+    enabled: Boolean(serviceTicketId),
     queryFn: () => apiRequest(`/api/mobile/sessions?serviceTicketId=${serviceTicketId}`),
   });
 
   // Fetch service photos
   const { data: photos = [] } = useQuery({
     queryKey: ['/api/mobile/photos', serviceTicketId],
+    enabled: Boolean(serviceTicketId),
     queryFn: () => apiRequest(`/api/mobile/photos?serviceTicketId=${serviceTicketId}`),
   });
 
@@ -189,9 +203,10 @@ export default function MobileFieldService() {
       return;
     }
 
+    if (!serviceTicketId) return;
+
     checkInMutation.mutate({
       serviceTicketId,
-      technicianId,
       checkInLatitude: currentLocation.latitude.toString(),
       checkInLongitude: currentLocation.longitude.toString(),
       checkInTimestamp: new Date().toISOString(),
@@ -259,6 +274,14 @@ export default function MobileFieldService() {
   useEffect(() => {
     setActiveSession(currentSession || null);
   }, [currentSession]);
+
+  // WF-V-02: with no ticket in the route there is nothing to check in to, so the
+  // page offers the caller's own assigned work rather than a console wired to
+  // nothing. /api/mobile/sync is the technician's queue and takes the technician
+  // from the JWT.
+  if (!serviceTicketId) {
+    return <TicketPicker />;
+  }
 
   return (
     <MainLayout
@@ -473,6 +496,70 @@ export default function MobileFieldService() {
             )}
           </CardContent>
         </Card>
+      </div>
+    </MainLayout>
+  );
+}
+
+interface SyncTicket {
+  id: string;
+  ticketNumber?: string | null;
+  ticket_number?: string | null;
+  title?: string | null;
+  status?: string | null;
+  priority?: string | null;
+  scheduledDate?: string | null;
+  scheduled_date?: string | null;
+  customer?: { companyName?: string | null; company_name?: string | null } | null;
+}
+
+/** The caller's own assigned tickets, as the entry point to a check-in. */
+function TicketPicker() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['/api/mobile/sync'],
+    queryFn: () => apiRequest('/api/mobile/sync'),
+  });
+
+  // The response is { syncedAt, technician, data: { serviceTickets, ... }, counts }.
+  // Reading `data.tickets` here would have rendered an empty queue forever - the
+  // PA-040 shape, where a page reads key names its endpoint does not send.
+  const tickets: SyncTicket[] = Array.isArray(data?.data?.serviceTickets)
+    ? data.data.serviceTickets
+    : [];
+
+  return (
+    <MainLayout title="My service calls" description="Pick a ticket to check in to">
+      <div className="space-y-3">
+        {isLoading && <p className="text-sm text-muted-foreground">Loading your tickets…</p>}
+
+        {!isLoading && tickets.length === 0 && (
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              Nothing is assigned to you right now. A dispatcher assigns service calls; they appear
+              here as soon as one is yours.
+            </CardContent>
+          </Card>
+        )}
+
+        {tickets.map((ticket) => (
+          <Link key={ticket.id} href={`/mobile-field-service/${ticket.id}`}>
+            <Card className="cursor-pointer transition-colors hover:bg-accent">
+              <CardContent className="flex items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    {ticket.title || ticket.ticketNumber || ticket.ticket_number || ticket.id}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {ticket.customer?.companyName ?? ticket.customer?.company_name ?? 'No customer'}
+                  </p>
+                </div>
+                <Badge variant="secondary" className="shrink-0">
+                  {ticket.status ?? 'open'}
+                </Badge>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
     </MainLayout>
   );
