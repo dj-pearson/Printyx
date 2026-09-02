@@ -1,9 +1,7 @@
 {
   "note": "Column literals handed to PostgREST that are not columns on the table the call chain is on. Each entry is a runtime 42703 waiting for the code path to run. Fix them; do not grow this list. Regenerate with: npx tsx scripts/check-phantom-columns.ts --update-baseline  IT HAS GROWN TWICE BY SEEING MORE, NOT BY CODE GETTING WORSE. 152 -> 280 when it stopped skipping tables declared twice with different shapes (shared/drizzle-schema.ts resolves every collision, so whatever it exports is the shape the migrations built), and 262 -> 383 when it stopped reading only INLINE object literals. Most handlers build a payload as a named variable, so `const poData = { … }` followed by `.insert(poData)` was invisible - that hid the larger half of the purchase-order cluster and a user-creation insert writing phone, job_title and department, three columns CLAUDE.md already records as absent from `users`.  Named payloads resolve to the NEAREST PRECEDING BINDING, used only if that binding is an object literal. Two looser rules were tried and both invented findings: pooling declarations by name across a file attributed one table's payload to another table's insert (39 phantom columns on a ten-key row), and taking the nearest preceding LITERAL reached past `const x = someFn()` to an older literal of the same name (eighteen more).  AUDIT-037 carries the backlog. Shrink this list by fixing the code or settling a table collision - never by re-widening a skip, which would look like progress.  DO NOT WORK THIS LIST TOP-DOWN. Roughly half of it sits in edge functions that nothing calls (cross it against docs/unreferenced-edge-fns-baseline.json), where a phantom column cannot hurt anyone and fixing it is building for a caller that does not exist. The entries worth fixing are the ones in a REACHABLE function: those are live 42703s under a screen somebody opens.",
   "allowed": [
-    "supabase/functions/activities/index.ts:business_record_activities.duration_minutes",
     "supabase/functions/activities/index.ts:business_record_activities.notes",
-    "supabase/functions/activities/index.ts:business_record_activities.priority",
     "supabase/functions/apollo/index.ts:business_records.source_id",
     "supabase/functions/assign-lead/index.ts:lead_assignment_history.assigned_by_id",
     "supabase/functions/assign-lead/index.ts:lead_assignment_history.assigned_to_id",
@@ -173,11 +171,8 @@
     "supabase/functions/projects-enhanced/index.ts:projects.tags",
     "supabase/functions/projects/index.ts:projects.actual_budget",
     "supabase/functions/projects/index.ts:projects.estimated_budget",
-    "supabase/functions/projects/index.ts:projects.project_manager_id",
+    "supabase/functions/projects/index.ts:projects.project_manager",
     "supabase/functions/projects/index.ts:projects.tags",
-    "supabase/functions/quote-line-items/index.ts:quote_line_items.discount_percent",
-    "supabase/functions/quote-line-items/index.ts:quote_line_items.line_number",
-    "supabase/functions/quote-line-items/index.ts:quote_line_items.product_id",
     "supabase/functions/remote-monitoring/index.ts:monitored_devices.status",
     "supabase/functions/renewal-activities/index.ts:renewal_activities.completed_at",
     "supabase/functions/renewal-activities/index.ts:renewal_activities.description",
@@ -202,9 +197,6 @@
     "supabase/functions/sales-territories/index.ts:sales_territories.rules",
     "supabase/functions/sales-territories/index.ts:sales_territories.states",
     "supabase/functions/sales-territories/index.ts:sales_territories.zip_codes",
-    "supabase/functions/service-analysis/index.ts:parts_orders.ordered_by",
-    "supabase/functions/service-analysis/index.ts:parts_orders.parts",
-    "supabase/functions/service-analysis/index.ts:parts_orders.total_cost",
     "supabase/functions/settings/index.ts:tenants.settings",
     "supabase/functions/sso/index.ts:sso_provider_configs.last_test_error",
     "supabase/functions/sso/index.ts:sso_provider_configs.last_test_success",
@@ -220,9 +212,6 @@
     "supabase/functions/territories/index.ts:sales_territories.target_quota",
     "supabase/functions/user-assignments/index.ts:lead_assignment_history.assigned_to_id",
     "supabase/functions/user-assignments/index.ts:tasks.assignee_id",
-    "supabase/functions/validate/index.ts:service_tickets.technician_id",
-    "supabase/functions/validate/index.ts:service_tickets.time_spent",
-    "supabase/functions/validate/index.ts:service_tickets.work_performed",
     "supabase/functions/vendors/index.ts:vendors.notes"
   ]
 }

@@ -1,3 +1,17 @@
+// AUDIT-037. THE COLUMN IS project_manager, NOT project_manager_id - that one
+// rename is the only defect this file had, and the other three names
+// check:phantom-cols reported here were FALSE. estimated_budget, actual_budget
+// and tags all exist on the physical table, and estimated_budget really is an
+// integer of cents, so the `* 100` below is correct.
+//
+// The guard was wrong because shared/drizzle-schema.ts resolves the `projects`
+// collision the wrong way: it SKIPS task-schema.ts's declaration in favour of
+// schema.ts's, and migration 0000 built task-schema's shape - project_manager,
+// estimated_budget, actual_budget, color, template, workflow, tags,
+// custom_fields, contract_id. schema.ts's version has estimated_hours,
+// actual_hours and budget, none of which the table has. See AUDIT-039: the
+// snapshot drizzle-kit diffs against is the wrong shape for this table, which
+// is a db:generate hazard, not just a reporting one.
 // Projects Edge Function
 // Handles CRUD operations for projects
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
@@ -126,7 +140,7 @@ export default async function handler(req: Request) {
             name: project.name,
             description: project.description,
             status: project.status,
-            projectManager: project.project_manager_id,
+            projectManager: project.project_manager,
             projectManagerName: project.project_manager
               ? `${project.project_manager.first_name || ''} ${project.project_manager.last_name || ''}`.trim()
               : null,
@@ -160,7 +174,7 @@ export default async function handler(req: Request) {
           name: body.name,
           description: body.description || null,
           status: body.status || 'planning',
-          project_manager_id: body.projectManager || null,
+          project_manager: body.projectManager || null,
           customer_id: body.customerId || null,
           start_date: body.startDate || null,
           end_date: body.endDate || null,
@@ -197,7 +211,7 @@ export default async function handler(req: Request) {
         if (body.name !== undefined) updateData.name = body.name;
         if (body.description !== undefined) updateData.description = body.description;
         if (body.status !== undefined) updateData.status = body.status;
-        if (body.projectManager !== undefined) updateData.project_manager_id = body.projectManager;
+        if (body.projectManager !== undefined) updateData.project_manager = body.projectManager;
         if (body.customerId !== undefined) updateData.customer_id = body.customerId;
         if (body.startDate !== undefined) updateData.start_date = body.startDate;
         if (body.endDate !== undefined) updateData.end_date = body.endDate;

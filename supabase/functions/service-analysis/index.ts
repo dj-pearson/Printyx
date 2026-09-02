@@ -220,16 +220,63 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && resource && subResource === 'parts-order') {
       const body = await req.json();
 
+      // AUDIT-037: this wrote parts, total_cost and ordered_by, none of which
+      // is a column, and omitted five NOT NULLs - service_ticket_id,
+      // order_number, vendor_name, order_date, subtotal and total. So creating
+      // a parts order was a 42703 that would have failed five more times.
+      //
+      // The client was already right: ServiceTicketAnalysis derives its form
+      // from insertPartsOrderSchema, so it sends the real column set in
+      // camelCase, and the line items go separately to
+      // /api/parts-orders/:id/items - which is why `parts` had nowhere to go.
+      const { data: analysisRow } = await admin
+        .from('service_call_analysis')
+        .select('id, service_ticket_id')
+        .eq('id', resource)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (!analysisRow) {
+        return createCorsResponse({ error: 'Analysis not found' }, 404, req);
+      }
+
+      const vendorName = body.vendorName ?? body.vendor_name;
+      const subtotal = Number(body.subtotal ?? 0);
+      const total = Number(body.total ?? subtotal);
+      if (!vendorName) {
+        return createCorsResponse(
+          { error: 'vendorName is required', missing: ['vendorName'] },
+          400,
+          req,
+        );
+      }
+
+      const orderNumber =
+        body.orderNumber ??
+        body.order_number ??
+        `PO-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)
+          .toString()
+          .padStart(4, '0')}`;
+
       const { data: order, error } = await admin
         .from('parts_orders')
         .insert({
           tenant_id: tenantId,
           analysis_id: resource,
-          parts: body.parts || [],
-          vendor_id: body.vendorId || body.vendor_id,
+          service_ticket_id: (analysisRow as Record<string, unknown>).service_ticket_id,
+          order_number: orderNumber,
+          vendor_id: body.vendorId ?? body.vendor_id ?? null,
+          vendor_name: vendorName,
           status: 'pending',
-          total_cost: body.totalCost || body.total_cost,
-          ordered_by: user.id,
+          order_date: body.orderDate ?? body.order_date ?? new Date().toISOString(),
+          expected_delivery_date: body.expectedDeliveryDate ?? body.expected_delivery_date ?? null,
+          subtotal,
+          tax: Number(body.tax ?? 0),
+          shipping: Number(body.shipping ?? 0),
+          total,
+          priority: body.priority ?? 'normal',
+          rush_order: body.rushOrder ?? body.rush_order ?? false,
+          special_instructions: body.specialInstructions ?? body.special_instructions ?? null,
+          delivery_address: body.deliveryAddress ?? body.delivery_address ?? null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -240,7 +287,20 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create parts order' }, 500, req);
       }
 
-      return createCorsResponse(order, 201, req);
+      // `parts` is not dropped information: parts_order_items is the table for
+      // it, and the client already posts there with the new order's id.
+      const partsIgnored =
+        body.parts !== undefined
+          ? ['parts: line items belong in parts_order_items - POST /parts-orders/:id/items']
+          : [];
+
+      return createCorsResponse(
+        partsIgnored.length > 0
+          ? { ...(order as Record<string, unknown>), unpersisted: partsIgnored }
+          : order,
+        201,
+        req,
+      );
     }
 
     // GET /service-analysis/:analysisId/parts-orders - Get parts orders

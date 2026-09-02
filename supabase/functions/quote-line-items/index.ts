@@ -46,17 +46,28 @@ export default async function handler(req: Request) {
     const quoteId = parts[0]; // quotes/:quoteId/line-items
 
     // GET /quotes/:quoteId/line-items - Get quote line items
+    //
+    // AUDIT-037. Three things were wrong here and one of them was a tenant leak.
+    //
+    // quote_line_items is a MINIMAL table - quote_id, description, quantity,
+    // unit_price, total_price - with no product_id, no discount_percent and no
+    // line_number. So the `product:product_id (…)` embed named a foreign key
+    // that does not exist and the order named a missing column, and PostgREST
+    // failed the whole read. (The rich line-item model with discounts and line
+    // numbers is proposal_line_items, a different table behind the quote
+    // builder - see QUOTE-016 and QUOTE-020.)
+    //
+    // THE LEAK: this filtered on quote_id ALONE, with no tenant_id, so any
+    // authenticated user who knew or guessed a quote id could read another
+    // tenant's line items - prices included. It only ever returned an error
+    // because of the embed above, which is not a control.
     if (req.method === 'GET' && quoteId) {
       const { data: lineItems, error } = await admin
         .from('quote_line_items')
-        .select(
-          `
-          *,
-          product:product_id (id, name, sku)
-        `,
-        )
+        .select('*')
+        .eq('tenant_id', tenantId)
         .eq('quote_id', quoteId)
-        .order('line_number', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) {
         return createCorsResponse({ error: 'Failed to fetch quote line items' }, 500, req);
@@ -69,16 +80,31 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && quoteId) {
       const body = await req.json();
 
+      // tenant_id and total_price are NOT NULL and neither was set, so this
+      // insert could not have worked even without the three phantom columns.
+      const description = body.description;
+      const quantity = Number(body.quantity ?? 1);
+      const unitPrice = Number(body.unitPrice ?? body.unit_price);
+      if (!description || !Number.isFinite(unitPrice)) {
+        return createCorsResponse(
+          {
+            error: 'description and unitPrice are required',
+            missing: ['description', 'unitPrice'],
+          },
+          400,
+          req,
+        );
+      }
+
       const { data: lineItem, error } = await admin
         .from('quote_line_items')
         .insert({
+          tenant_id: tenantId,
           quote_id: quoteId,
-          product_id: body.productId || body.product_id,
-          description: body.description,
-          quantity: body.quantity || 1,
-          unit_price: body.unitPrice || body.unit_price,
-          discount_percent: body.discountPercent || body.discount_percent || 0,
-          line_number: body.lineNumber || body.line_number,
+          description,
+          quantity,
+          unit_price: unitPrice,
+          total_price: Number((quantity * unitPrice).toFixed(2)),
           created_at: new Date().toISOString(),
         })
         .select()
@@ -88,7 +114,25 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to add line item' }, 500, req);
       }
 
-      return createCorsResponse(lineItem, 201, req);
+      // productId, discountPercent and lineNumber have no columns here. The
+      // model that carries them is proposal_line_items; adding them to this
+      // table would give the quote two line-item shapes.
+      const ignored = ['productId', 'discountPercent', 'lineNumber'].filter(
+        (k) => body[k] !== undefined,
+      );
+
+      return createCorsResponse(
+        ignored.length > 0
+          ? {
+              ...(lineItem as Record<string, unknown>),
+              unpersisted: ignored.map(
+                (k) => `${k}: quote_line_items has no such column - see proposal_line_items`,
+              ),
+            }
+          : lineItem,
+        201,
+        req,
+      );
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
