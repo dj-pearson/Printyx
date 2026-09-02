@@ -6804,6 +6804,7 @@ export const purchaseOrders = pgTable(
     // function already implements end to end, and dropping them would mean a
     // rejection with no reason and a receipt with no receiver.
     submittedAt: timestamp('submitted_at'),
+    submittedBy: varchar('submitted_by'),
     approvalNotes: text('approval_notes'),
     rejectedAt: timestamp('rejected_at'),
     rejectedBy: varchar('rejected_by'),
@@ -6811,6 +6812,11 @@ export const purchaseOrders = pgTable(
     receivedBy: varchar('received_by'),
     lastReceiptDate: timestamp('last_receipt_date'),
     receiptNotes: text('receipt_notes'),
+    orderedAt: timestamp('ordered_at'),
+    orderedBy: varchar('ordered_by'),
+    cancelledAt: timestamp('cancelled_at'),
+    cancelledBy: varchar('cancelled_by'),
+    cancellationReason: text('cancellation_reason'),
 
     // Approval
     approvedBy: varchar('approved_by'),

@@ -64,9 +64,11 @@ describe('the baseline records the growth honestly', () => {
     expect(baseline.note).toMatch(/GROWN TWICE BY SEEING MORE, NOT BY CODE GETTING WORSE/);
   });
 
-  it('holds the two confirmed true positives', () => {
-    const all = JSON.stringify(baseline.allowed);
-    expect(all).toMatch(/users\.job_title/);
-    expect(all).toMatch(/purchase_orders\.reference_number/);
+  it('records the two confirmed true positives in the note, not the list', () => {
+    // They were the evidence that named payloads are a real class; both are
+    // fixed now, so asserting they are still listed would assert the debt.
+    expect(baseline.note).toMatch(/phone, job_title and department/);
+    expect(baseline.note).toMatch(/purchase-order cluster/);
+    expect(JSON.stringify(baseline.allowed)).not.toMatch(/users\.job_title/);
   });
 });

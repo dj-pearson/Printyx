@@ -774,27 +774,36 @@ export default async function handler(req: Request) {
       const shippingAmount = parseFloat(body.shippingAmount || body.shipping_amount || 0);
       const totalAmount = subtotal + taxAmount + shippingAmount;
 
+      // AUDIT-037: this payload and the page that posts to it did not share a
+      // vocabulary. The page (client/src/pages/PurchaseOrders.tsx) sends
+      // poNumber, vendorId, requestedBy, orderDate, expectedDate, description,
+      // deliveryAddress and specialInstructions - the real column names. This
+      // read referenceNumber, expectedDeliveryDate, four shipTo* parts, notes
+      // and internalNotes, none of which is a column, and it never set
+      // requested_by, which is NOT NULL. So creating a purchase order failed
+      // twice over and had done since the function shipped.
+      //
+      // Four fields are dropped rather than given columns: reference_number,
+      // currency, shipping_method and payment_terms. The page sends none of
+      // them, the PO number is the reference, and a vendor already carries its
+      // payment terms. Adding columns for input nothing supplies is how the
+      // rest of this file got into that state.
       const poData = {
         tenant_id: tenantId,
         vendor_id: body.vendorId || body.vendor_id,
         po_number: poNumber,
-        reference_number: body.referenceNumber || body.reference_number || null,
+        requested_by: body.requestedBy || body.requested_by || user.id,
         order_date: body.orderDate || body.order_date || new Date().toISOString().split('T')[0],
-        expected_delivery_date: body.expectedDeliveryDate || body.expected_delivery_date || null,
-        ship_to_address: body.shipToAddress || body.ship_to_address || null,
-        ship_to_city: body.shipToCity || body.ship_to_city || null,
-        ship_to_state: body.shipToState || body.ship_to_state || null,
-        ship_to_zip: body.shipToZip || body.ship_to_zip || null,
-        shipping_method: body.shippingMethod || body.shipping_method || null,
-        payment_terms: body.paymentTerms || body.payment_terms || null,
+        expected_date: body.expectedDate || body.expected_date || body.expectedDeliveryDate || null,
+        description: body.description || body.notes || null,
         subtotal: subtotal,
         tax_amount: taxAmount,
         shipping_amount: shippingAmount,
         total_amount: totalAmount,
-        currency: body.currency || 'USD',
         status: 'draft' as POStatus,
-        notes: body.notes || null,
-        internal_notes: body.internalNotes || body.internal_notes || null,
+        delivery_address: body.deliveryAddress || body.delivery_address || null,
+        special_instructions:
+          body.specialInstructions || body.special_instructions || body.internalNotes || null,
         created_by: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -889,41 +898,45 @@ export default async function handler(req: Request) {
         updated_at: new Date().toISOString(),
       };
 
+      // AUDIT-037: same rebinding as the create above. notes, internal_notes,
+      // reference_number, expected_delivery_date, the four shipTo* parts,
+      // shipping_method and currency are not columns, so ANY edit that touched
+      // one lost the whole update - including the vendor change in the same
+      // request.
+      //
       // Fields that can be updated regardless of status
-      if (body.notes !== undefined) updateData.notes = body.notes;
-      if (body.internalNotes !== undefined || body.internal_notes !== undefined) {
-        updateData.internal_notes = body.internalNotes || body.internal_notes;
+      if (body.notes !== undefined || body.description !== undefined) {
+        updateData.description = body.description ?? body.notes;
+      }
+      if (
+        body.specialInstructions !== undefined ||
+        body.special_instructions !== undefined ||
+        body.internalNotes !== undefined
+      ) {
+        updateData.special_instructions =
+          body.specialInstructions ?? body.special_instructions ?? body.internalNotes;
       }
 
       // Fields that can only be updated in editable statuses
       if (editableStatuses.includes(existingPO.status)) {
         if (body.vendorId || body.vendor_id) updateData.vendor_id = body.vendorId || body.vendor_id;
-        if (body.referenceNumber !== undefined || body.reference_number !== undefined) {
-          updateData.reference_number = body.referenceNumber || body.reference_number;
-        }
         if (body.orderDate || body.order_date)
           updateData.order_date = body.orderDate || body.order_date;
-        if (body.expectedDeliveryDate !== undefined || body.expected_delivery_date !== undefined) {
-          updateData.expected_delivery_date =
-            body.expectedDeliveryDate || body.expected_delivery_date;
+        if (
+          body.expectedDate !== undefined ||
+          body.expected_date !== undefined ||
+          body.expectedDeliveryDate !== undefined
+        ) {
+          updateData.expected_date =
+            body.expectedDate ?? body.expected_date ?? body.expectedDeliveryDate;
         }
-        if (body.shipToAddress !== undefined || body.ship_to_address !== undefined) {
-          updateData.ship_to_address = body.shipToAddress || body.ship_to_address;
-        }
-        if (body.shipToCity !== undefined || body.ship_to_city !== undefined) {
-          updateData.ship_to_city = body.shipToCity || body.ship_to_city;
-        }
-        if (body.shipToState !== undefined || body.ship_to_state !== undefined) {
-          updateData.ship_to_state = body.shipToState || body.ship_to_state;
-        }
-        if (body.shipToZip !== undefined || body.ship_to_zip !== undefined) {
-          updateData.ship_to_zip = body.shipToZip || body.ship_to_zip;
-        }
-        if (body.shippingMethod !== undefined || body.shipping_method !== undefined) {
-          updateData.shipping_method = body.shippingMethod || body.shipping_method;
-        }
-        if (body.paymentTerms !== undefined || body.payment_terms !== undefined) {
-          updateData.payment_terms = body.paymentTerms || body.payment_terms;
+        if (
+          body.deliveryAddress !== undefined ||
+          body.delivery_address !== undefined ||
+          body.shipToAddress !== undefined
+        ) {
+          updateData.delivery_address =
+            body.deliveryAddress ?? body.delivery_address ?? body.shipToAddress;
         }
         if (body.taxAmount !== undefined || body.tax_amount !== undefined) {
           updateData.tax_amount = parseFloat(body.taxAmount || body.tax_amount);
@@ -931,7 +944,6 @@ export default async function handler(req: Request) {
         if (body.shippingAmount !== undefined || body.shipping_amount !== undefined) {
           updateData.shipping_amount = parseFloat(body.shippingAmount || body.shipping_amount);
         }
-        if (body.currency) updateData.currency = body.currency;
       }
 
       // Status can be updated to 'ordered' or 'cancelled' from approved

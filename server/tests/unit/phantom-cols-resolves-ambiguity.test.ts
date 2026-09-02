@@ -67,10 +67,14 @@ describe('the baseline says why it grew', () => {
     expect(baseline.note).toMatch(/never by re-widening a skip/i);
   });
 
-  it('holds the clusters the story names', () => {
+  it('no longer holds the clusters that have been fixed', () => {
+    // This asserted that purchase_orders.submitted_by was IN the list, which is
+    // an assertion about debt - it failed the hour that column was added.
+    // What must hold is that a fixed entry leaves.
     const all = JSON.stringify(baseline.allowed);
-    expect(all).toMatch(/purchase_orders\.submitted_by/);
-    expect(all).toMatch(/proposal_comments\.comment/);
-    expect(all).toMatch(/tasks\.parent_task_id/);
+    expect(all).not.toMatch(/purchase_orders\./);
+    expect(all).not.toMatch(/users\.job_title/);
+    // Still open, and named in AUDIT-037 so the shrink is legible.
+    expect(all).toMatch(/blog_posts\./);
   });
 });
