@@ -12,6 +12,7 @@ import {
   type InsertEquipmentLifecycleTransition,
 } from '@shared/schema';
 import { sendEmail } from './email-service';
+import { runLifecycleActivation, runLifecycleRetirement } from './lifecycle-activation-effects';
 
 // Valid lifecycle stages
 export const LIFECYCLE_STAGES = {
@@ -572,9 +573,29 @@ export class EquipmentLifecycleStateMachine {
             `[State Machine] Equipment ${equipmentId}: Activate monitoring & send welcome email`,
           );
 
-          // Activate equipment monitoring
+          // WF-L-08: this WAS `try { log.info('monitoring activated') } catch`, a
+          // log line inside a try/catch with nothing in it that could throw -
+          // and the real warranty stamp and welcome email beside it are what made
+          // the block read as implemented. Nothing was registered, no contract
+          // term started and no baseline meter captured, on either host.
+          //
+          // The decisions live in supabase/functions/_shared/lifecycle-activation.ts
+          // so this and the edge transition handler cannot drift.
           try {
-            log.info(`[State Machine] Equipment ${equipmentId}: Equipment monitoring activated`);
+            const result = await runLifecycleActivation(tx, tenantId, equipmentId);
+            for (const reason of result.skipped) {
+              log.info(`[State Machine] Equipment ${equipmentId}: ${reason}`);
+            }
+            if (result.done.length > 0) {
+              log.info(
+                `[State Machine] Equipment ${equipmentId}: activated - ${result.done.join(', ')}`,
+              );
+            }
+            if (result.failed.length > 0) {
+              log.error(
+                `[State Machine] Equipment ${equipmentId}: activation writes failed - ${result.failed.join(', ')}`,
+              );
+            }
           } catch (error) {
             log.error(
               `[State Machine] Equipment ${equipmentId}: Failed to activate monitoring`,
@@ -688,9 +709,17 @@ export class EquipmentLifecycleStateMachine {
         [LIFECYCLE_STAGES.RETIRED]: async () => {
           log.info(`[State Machine] Equipment ${equipmentId}: Deactivate monitoring`);
 
-          // Deactivate equipment monitoring
+          // WF-L-08, the symmetric half - and the same empty try/catch.
           try {
-            log.info(`[State Machine] Equipment ${equipmentId}: Equipment monitoring deactivated`);
+            const result = await runLifecycleRetirement(tx, tenantId, equipmentId);
+            for (const reason of result.skipped) {
+              log.info(`[State Machine] Equipment ${equipmentId}: ${reason}`);
+            }
+            if (result.done.length > 0) {
+              log.info(
+                `[State Machine] Equipment ${equipmentId}: retired - ${result.done.join(', ')}`,
+              );
+            }
           } catch (error) {
             log.error(
               `[State Machine] Equipment ${equipmentId}: Failed to deactivate monitoring`,

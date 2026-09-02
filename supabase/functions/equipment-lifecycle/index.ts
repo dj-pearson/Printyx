@@ -10,6 +10,13 @@ import {
   getValidationRequirements,
 } from '../_shared/equipment-lifecycle-transitions.ts';
 import {
+  ACTIVATION_STAGE_FROM,
+  ACTIVATION_STAGE_TO,
+  RETIREMENT_STAGE_TO,
+  planActivation,
+  planRetirement,
+} from '../_shared/lifecycle-activation.ts';
+import {
   PENDING_PO_ID,
   buildLineItemRow,
   lineItemsSubtotal,
@@ -25,6 +32,179 @@ import {
   hubPurchaseOrders,
 } from './_hub.ts';
 import { accessibleCustomerIds, resolveScope } from '../_shared/scope.ts';
+
+/**
+ * WF-L-08 side effects, PostgREST half. The DECISIONS live in
+ * _shared/lifecycle-activation.ts; this reads what that needs and writes what it
+ * returns. Each write is checked independently: one failing must not hide the
+ * others, because "monitoring registered but no baseline captured" is a real and
+ * different state from "nothing ran".
+ */
+// deno-lint-ignore no-explicit-any
+async function runActivation(
+  admin: any,
+  tenantId: string,
+  equipmentId: string,
+  lifecycle: Record<string, unknown>,
+  body: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const { data: equipmentRow } = await admin
+    .from('equipment')
+    .select(
+      'id, serial_number, manufacturer, model_number, customer_id, ip_address, service_contract_number, location_description',
+    )
+    .eq('id', equipmentId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+
+  const customerId =
+    (lifecycle.customer_id as string | null) ??
+    (equipmentRow?.customer_id as string | null) ??
+    null;
+  const serialNumber =
+    (lifecycle.serial_number as string | null) ?? (equipmentRow?.serial_number as string | null);
+
+  const [{ data: integrations }, { data: existingRegistrations }] = await Promise.all([
+    admin
+      .from('manufacturer_integrations')
+      .select('id, manufacturer, is_active')
+      .eq('tenant_id', tenantId),
+    serialNumber
+      ? admin
+          .from('device_registrations')
+          .select('id, status')
+          .eq('tenant_id', tenantId)
+          .eq('serial_number', serialNumber)
+          .limit(1)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const { data: contracts } = customerId
+    ? await admin
+        .from('contracts')
+        .select('id, contract_number, start_date, lease_id')
+        .eq('tenant_id', tenantId)
+        .eq('customer_id', customerId)
+    : { data: [] };
+
+  const plan = planActivation({
+    unit: {
+      equipmentId,
+      tenantId,
+      serialNumber,
+      manufacturer:
+        (lifecycle.manufacturer as string | null) ??
+        (equipmentRow?.manufacturer as string | null) ??
+        null,
+      model: (lifecycle.model as string | null) ?? (equipmentRow?.model_number as string | null),
+      customerId,
+      currentLocation:
+        (lifecycle.current_location as string | null) ??
+        (equipmentRow?.location_description as string | null),
+      ipAddress: (equipmentRow?.ip_address as string | null) ?? null,
+      serviceContractNumber: (equipmentRow?.service_contract_number as string | null) ?? null,
+    },
+    integrations: integrations ?? [],
+    existingRegistration: existingRegistrations?.[0] ?? null,
+    contracts: contracts ?? [],
+    lease: null,
+    reading: (body.reading ?? body.meterReading ?? null) as Record<string, unknown> | null,
+  });
+
+  const done: string[] = [];
+  const failed: string[] = [];
+
+  if (plan.deviceRegistration) {
+    const { error } = await admin.from('device_registrations').insert(plan.deviceRegistration);
+    if (error) failed.push('device registration');
+    else done.push('device registration');
+  }
+
+  let leaseStart = plan.leaseStart;
+  if (plan.contractStart) {
+    const { error } = await admin
+      .from('contracts')
+      .update(plan.contractStart.patch)
+      .eq('id', plan.contractStart.id)
+      .eq('tenant_id', tenantId);
+    if (error) failed.push('contract start date');
+    else done.push('contract start date');
+
+    // The lease hangs off the contract, so it is only knowable once the contract
+    // is: a second planning pass rather than a guess made before the pick.
+    const contract = (contracts ?? []).find(
+      (c: Record<string, unknown>) => c.id === plan.contractStart!.id,
+    );
+    if (!leaseStart && contract?.lease_id) {
+      const { data: lease } = await admin
+        .from('leases')
+        .select('id, first_payment_date')
+        .eq('id', contract.lease_id)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (lease && !lease.first_payment_date) {
+        leaseStart = {
+          id: lease.id,
+          patch: {
+            first_payment_date: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        };
+      }
+    }
+  }
+
+  if (leaseStart) {
+    const { error } = await admin
+      .from('leases')
+      .update(leaseStart.patch)
+      .eq('id', leaseStart.id)
+      .eq('tenant_id', tenantId);
+    if (error) failed.push('lease first payment date');
+    else done.push('lease first payment date');
+  }
+
+  if (plan.baselineReading) {
+    const { error } = await admin.from('meter_readings').insert(plan.baselineReading);
+    if (error) failed.push('baseline meter reading');
+    else done.push('baseline meter reading');
+  }
+
+  return { done, failed, skipped: plan.skipped };
+}
+
+// deno-lint-ignore no-explicit-any
+async function runRetirement(
+  admin: any,
+  tenantId: string,
+  lifecycle: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const serialNumber = lifecycle.serial_number as string | null;
+  const { data: registrations } = serialNumber
+    ? await admin
+        .from('device_registrations')
+        .select('id, status')
+        .eq('tenant_id', tenantId)
+        .eq('serial_number', serialNumber)
+        .limit(1)
+    : { data: [] };
+
+  const plan = planRetirement(registrations?.[0] ?? null);
+  const done: string[] = [];
+  const failed: string[] = [];
+
+  if (plan.deviceRegistration) {
+    const { error } = await admin
+      .from('device_registrations')
+      .update(plan.deviceRegistration.patch)
+      .eq('id', plan.deviceRegistration.id)
+      .eq('tenant_id', tenantId);
+    if (error) failed.push('device deregistration');
+    else done.push('device deregistration');
+  }
+
+  return { done, failed, skipped: plan.skipped };
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -755,6 +935,26 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update lifecycle stage' }, 500, req);
       }
 
+      // WF-L-08: acceptance is the moment a machine becomes a serviced, billable
+      // asset, and this handler did none of it - it set the stage, wrote the
+      // transition row and returned. Registration, contract term and baseline
+      // meter are decided by _shared/lifecycle-activation.ts so the Express state
+      // machine cannot drift from it, and every side effect NOT performed comes
+      // back named rather than being silently absent.
+      let activation: Record<string, unknown> | null = null;
+      try {
+        if (fromStage === ACTIVATION_STAGE_FROM && toStage === ACTIVATION_STAGE_TO) {
+          activation = await runActivation(admin, tenantId, equipmentId, lifecycle, body);
+        } else if (toStage === RETIREMENT_STAGE_TO) {
+          activation = await runRetirement(admin, tenantId, lifecycle);
+        }
+      } catch (activationError) {
+        // The stage moved and that is the fact of record. Failing the request
+        // here would tell the caller the transition did not happen.
+        console.error('Error running lifecycle side effects:', activationError);
+        activation = { error: 'The stage moved but its side effects did not all run' };
+      }
+
       // Record transition
       const { data: transition, error: transitionError } = await admin
         .from('equipment_lifecycle_transitions')
@@ -790,6 +990,7 @@ export default async function handler(req: Request) {
             newStage: toStage,
             transition: transition || null,
             validationsPassed,
+            activation,
           },
         },
         200,
