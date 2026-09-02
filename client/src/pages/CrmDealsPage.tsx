@@ -352,6 +352,9 @@ export default function CrmDealsPage() {
         pipelineId={selectedPipelineId}
         search={props.search}
         activeFilters={props.activeFilters}
+        boardConfig={props.boardConfig}
+        onBoardConfigChange={props.onBoardConfigChange}
+        boardConfigPersists={props.boardConfigPersists}
       />
     ),
     [selectedPipelineId],

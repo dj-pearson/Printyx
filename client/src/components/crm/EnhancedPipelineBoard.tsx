@@ -19,7 +19,22 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { getCrmObjectConfig, type CrmObjectType } from '@/lib/crm-object-registry';
+import { useLocation } from 'wouter';
+import {
+  getCrmObjectConfig,
+  type CrmFieldDef,
+  type CrmObjectType,
+} from '@/lib/crm-object-registry';
+// COP-M04: what a card shows, and what a column totals, both persisted into
+// saved_views.board_config. The helpers are pure so the rules are testable.
+import {
+  DEFAULT_COLUMN_TOTALS,
+  columnTotal,
+  formatCardValue,
+  resolveCardFields,
+  type BoardConfig,
+} from '@/lib/crm-board-config';
+import { BoardOptionsMenu } from '@/components/crm/BoardOptionsMenu';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,18 +44,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  GripVertical,
-  MoreHorizontal,
-  Eye,
-  User,
-  Building2,
-  DollarSign,
-  Calendar,
-  MapPin,
-  AlertTriangle,
-  RefreshCw,
-} from 'lucide-react';
+// COP-M04: the per-field icons went with the fixed card layout. A card whose
+// rows are chosen at runtime cannot carry a hand-picked icon per row.
+import { MoreHorizontal, Eye, AlertTriangle, RefreshCw } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useListKeyboardNav } from '@/hooks/useListKeyboardNav';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,6 +57,11 @@ interface EnhancedPipelineBoardProps {
   pipelineId?: string;
   search?: string;
   activeFilters?: Record<string, any>;
+  /** COP-M04: the active saved view's board_config, or null for the defaults. */
+  boardConfig?: BoardConfig | null;
+  onBoardConfigChange?: (config: BoardConfig) => void;
+  /** False when no saved view is active, so a change lasts the session only. */
+  boardConfigPersists?: boolean;
 }
 
 interface PipelineStageData {
@@ -88,12 +99,13 @@ interface DealRecord {
 function StageColumn({
   stage,
   records,
-  aggregates,
+  total,
   children,
 }: {
   stage: PipelineStageData;
   records: DealRecord[];
-  aggregates: { count: number; totalValue: number };
+  /** COP-M04: null when the chosen total cannot be answered from these rows. */
+  total: { value: number; kind: 'currency' | 'count' } | null;
   children: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
@@ -115,12 +127,13 @@ function StageColumn({
           />
           <span className="text-sm font-medium truncate">{stage.displayName || stage.name}</span>
           <Badge variant="secondary" className="text-[10px] h-5 min-w-[20px] justify-center">
-            {aggregates.count}
+            {records.length}
           </Badge>
         </div>
-        {aggregates.totalValue > 0 && (
+        {total !== null && (
           <span className="text-xs font-medium text-muted-foreground tabular-nums">
-            ${aggregates.totalValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+            {total.kind === 'currency' ? '$' : ''}
+            {total.value.toLocaleString('en-US', { maximumFractionDigits: 0 })}
           </span>
         )}
       </div>
@@ -145,10 +158,13 @@ function StageColumn({
 
 function DealCard({
   record,
+  cardFields,
   isDragOverlay,
   onViewDetail,
 }: {
   record: DealRecord;
+  /** COP-M04: the configured fields, in card order. */
+  cardFields: CrmFieldDef[];
   isDragOverlay?: boolean;
   onViewDetail?: (record: DealRecord) => void;
 }) {
@@ -161,8 +177,6 @@ function DealCard({
     : undefined;
 
   const displayName = record.title || record.companyName || 'Untitled';
-  const contactName = record.primaryContactName || record.assignedToName || record.ownerName;
-  const dealValue = record.value || record.amount || record.estimatedAmount;
 
   return (
     <Card
@@ -207,57 +221,50 @@ function DealCard({
           )}
         </div>
 
-        {/* Deal value */}
-        {dealValue != null && dealValue > 0 && (
-          <div className="flex items-center gap-1.5 text-xs">
-            <DollarSign className="h-3 w-3 text-green-600" />
-            <span className="font-medium tabular-nums">
-              {typeof dealValue === 'number'
-                ? dealValue.toLocaleString('en-US', { maximumFractionDigits: 0 })
-                : dealValue}
-            </span>
-          </div>
-        )}
-
-        {/* Contact */}
-        {contactName && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <User className="h-3 w-3" />
-            <span className="truncate">{contactName}</span>
-          </div>
-        )}
-
-        {/* Company (if different from title) */}
-        {record.companyName && record.companyName !== displayName && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Building2 className="h-3 w-3" />
-            <span className="truncate">{record.companyName}</span>
-          </div>
-        )}
-
-        {/* Close date */}
-        {record.expectedCloseDate && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Calendar className="h-3 w-3" />
-            <span>{new Date(record.expectedCloseDate).toLocaleDateString()}</span>
-          </div>
-        )}
-
-        {/* Priority badge */}
-        {record.priority && (
-          <Badge
-            variant="outline"
-            className={cn(
-              'text-[10px] h-4',
-              record.priority === 'urgent' && 'border-red-300 text-red-700 bg-red-50',
-              record.priority === 'high' && 'border-orange-300 text-orange-700 bg-orange-50',
-              record.priority === 'medium' && 'border-yellow-300 text-yellow-700 bg-yellow-50',
-              record.priority === 'low' && 'border-gray-300 text-gray-600',
-            )}
-          >
-            {record.priority}
-          </Badge>
-        )}
+        {/* COP-M04: the configured fields. The card used to hold a fixed five -
+            value, contact, company, close date, priority - so none of the ten
+            copier fields could appear on it, and a rep working lease rollovers
+            could not see buyout exposure without opening every deal. A field the
+            record has no value for renders NO ROW, rather than a label with a
+            blank beside it. */}
+        {cardFields.map((field) => {
+          if (field.field === 'title') return null;
+          const value = formatCardValue(record, field);
+          if (value === null) return null;
+          if (field.type === 'badge') {
+            return (
+              <Badge
+                key={field.field}
+                variant="outline"
+                className={cn(
+                  'text-[10px] h-4 mr-1',
+                  value === 'Urgent' && 'border-red-300 text-red-700 bg-red-50',
+                  value === 'High' && 'border-orange-300 text-orange-700 bg-orange-50',
+                )}
+              >
+                {value}
+              </Badge>
+            );
+          }
+          return (
+            <div
+              key={field.field}
+              className="flex items-center justify-between gap-2 text-xs text-muted-foreground"
+            >
+              <span className="truncate">{field.label}</span>
+              <span
+                className={cn(
+                  'truncate text-right',
+                  field.type === 'currency' || field.type === 'number'
+                    ? 'tabular-nums font-medium text-foreground'
+                    : '',
+                )}
+              >
+                {value}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </Card>
   );
@@ -270,8 +277,12 @@ export function EnhancedPipelineBoard({
   pipelineId,
   search,
   activeFilters = {},
+  boardConfig,
+  onBoardConfigChange,
+  boardConfigPersists,
 }: EnhancedPipelineBoardProps) {
   const config = getCrmObjectConfig(objectType);
+  const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -405,21 +416,26 @@ export function EnhancedPipelineBoard({
     return groups;
   }, [records, stages]);
 
-  // Compute aggregates per stage
-  const stageAggregates = useMemo(() => {
-    const aggs: Record<string, { count: number; totalValue: number }> = {};
+  // COP-M04: the stage header total, in whichever mode the board is configured
+  // for. It used to be a hardcoded sum with `r.value || r.amount || ...`, which
+  // reads a legitimate 0 as absent, and it rendered nothing when the sum was 0 -
+  // so a stage of genuinely zero-value deals and a stage the total could not be
+  // computed for looked identical. columnTotal answers null for the second.
+  const totalsMode = boardConfig?.columnTotals ?? DEFAULT_COLUMN_TOTALS;
+  const stageTotals = useMemo(() => {
+    const totals: Record<string, { value: number; kind: 'currency' | 'count' } | null> = {};
     for (const stage of stages) {
-      const stageRecords = stageGroups[stage.id] ?? [];
-      aggs[stage.id] = {
-        count: stageRecords.length,
-        totalValue: stageRecords.reduce(
-          (sum, r) => sum + (r.value || r.amount || r.estimatedAmount || 0),
-          0,
-        ),
-      };
+      totals[stage.id] = columnTotal(stageGroups[stage.id] ?? [], totalsMode);
     }
-    return aggs;
-  }, [stages, stageGroups]);
+    return totals;
+  }, [stages, stageGroups, totalsMode]);
+
+  // COP-M04: the fields each card carries, from the same registry the table
+  // columns come from - so the ten copier fields reach the board too.
+  const cardFields = useMemo(
+    () => resolveCardFields(config.fields, boardConfig, objectType),
+    [config.fields, boardConfig, objectType],
+  );
 
   // Stage change mutation (optimistic)
   const stageChangeMutation = useMutation({
@@ -499,6 +515,14 @@ export function EnhancedPipelineBoard({
   // COP-I02: j/k + arrow navigation over the board cards.
   const boardNavRef = useListKeyboardNav<HTMLDivElement>();
 
+  // The card's onClick and its "View Details" item both took an onViewDetail
+  // prop that nothing ever passed, so clicking a card did nothing. The registry
+  // already knows where a record of this type lives.
+  const openDetail = useCallback(
+    (record: DealRecord) => setLocation(`${config.detailPath}/${record.id}`),
+    [setLocation, config.detailPath],
+  );
+
   // Active dragging record
   const activeRecord = activeId ? records.find((r) => r.id === activeId) : null;
 
@@ -539,16 +563,36 @@ export function EnhancedPipelineBoard({
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      {/* COP-M04: the board's own configuration. BoardOptionsMenu existed and
+          was imported by nothing, so saved_views.board_config - present since
+          migration 0003 and fully served by the saved-views edge function - had
+          no writer at all. */}
+      {onBoardConfigChange && (
+        <div className="flex justify-end px-4 pt-3">
+          <BoardOptionsMenu
+            objectType={objectType}
+            fields={config.fields}
+            boardConfig={boardConfig}
+            onBoardConfigChange={onBoardConfigChange}
+            persists={Boolean(boardConfigPersists)}
+          />
+        </div>
+      )}
       <div className="flex gap-3 p-4 overflow-x-auto h-full" ref={boardNavRef}>
         {stages.map((stage) => (
           <StageColumn
             key={stage.id}
             stage={stage}
             records={stageGroups[stage.id] ?? []}
-            aggregates={stageAggregates[stage.id] ?? { count: 0, totalValue: 0 }}
+            total={stageTotals[stage.id] ?? null}
           >
             {(stageGroups[stage.id] ?? []).map((record) => (
-              <DealCard key={record.id} record={record} />
+              <DealCard
+                key={record.id}
+                record={record}
+                cardFields={cardFields}
+                onViewDetail={openDetail}
+              />
             ))}
           </StageColumn>
         ))}
@@ -556,7 +600,9 @@ export function EnhancedPipelineBoard({
 
       {/* Drag Overlay */}
       <DragOverlay>
-        {activeRecord ? <DealCard record={activeRecord} isDragOverlay /> : null}
+        {activeRecord ? (
+          <DealCard record={activeRecord} cardFields={cardFields} isDragOverlay />
+        ) : null}
       </DragOverlay>
     </DndContext>
   );
