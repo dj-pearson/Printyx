@@ -421,6 +421,44 @@ function scan(source: string): Ref[] {
     declarations.push({ name: r[1], at: r.index ?? 0, keys: null });
   }
 
+  // A FUNCTION PARAMETER IS NOT THE SAME VARIABLE, even under the same name,
+  // and the nearest-preceding rule above cannot tell. predictive-failure has
+  // `const updates = { … }` in one handler and, 340 lines later,
+  // `async function updatePrediction(admin, tenantId, id, updates)` doing
+  // `.update(updates)` on a DIFFERENT table. The rule resolved the second to
+  // the first and reported five columns of predictive_dispatch_settings as
+  // phantom columns of equipment_failure_predictions - correct code accused,
+  // which is worse than a missed finding and is the third variant of this same
+  // trap the script has hit.
+  //
+  // Parameters are collected as bindings with NO keys, so the existing
+  // nearest-preceding rule handles them: a call inside updatePrediction resolves
+  // to its own parameter and stops there.
+  //
+  // A CRUDER VERSION OF THIS WAS TRIED AND WAS WRONG, which is worth recording
+  // because it looked safe. Rejecting any resolution with a `function` keyword
+  // or arrow body between the declaration and the call also dropped
+  // lead-scoring's `updates`, separated from its
+  // `.from('business_records').update(updates)` only by an unrelated
+  // `const copy = (leadKey, apolloKey) => { … }` helper - and its
+  // enriched_from_apollo / apollo_enriched_at are genuine phantom columns. So
+  // "over-rejecting is the safe direction" is FALSE when the over-rejection
+  // retires a true finding from the baseline as though it were fixed. The rule
+  // has to name the actual shadow, not a proxy for it.
+  for (const f of source.matchAll(/\bfunction\b\s*[A-Za-z_$][\w$]*\s*\(|\bfunction\s*\(/g)) {
+    const open = source.indexOf('(', (f.index ?? 0) + f[0].length - 1);
+    if (open < 0) continue;
+    for (const name of paramNames(balancedParens(source, open))) {
+      declarations.push({ name, at: open, keys: null });
+    }
+  }
+  // Arrow parameter lists: `(a, b) =>` and `async (a) =>`.
+  for (const a of source.matchAll(/\(([^()]*)\)\s*(?::[^=\n]+)?=>/g)) {
+    for (const name of paramNames(a[1])) {
+      declarations.push({ name, at: a.index ?? 0, keys: null });
+    }
+  }
+
   const assignments: { name: string; at: number; key: string }[] = [];
   for (const a of source.matchAll(/\b([A-Za-z_$][\w$]*)\.([a-z][a-z0-9_]*)\s*=\s*(?!=)/g)) {
     assignments.push({ name: a[1], at: a.index ?? 0, key: a[2] });
@@ -440,6 +478,39 @@ function scan(source: string): Ref[] {
   }
 
   return refs;
+}
+
+/** Identifier names in a parameter list, ignoring types, defaults and patterns. */
+function paramNames(list: string): string[] {
+  const names: string[] = [];
+  let depth = 0;
+  let current = '';
+  const flush = () => {
+    const m = current.trim().match(/^\.{0,3}\s*([A-Za-z_$][\w$]*)/);
+    if (m) names.push(m[1]);
+    current = '';
+  };
+  for (const ch of list) {
+    if ('([{<'.includes(ch)) depth++;
+    else if (')]}>'.includes(ch)) depth--;
+    if (ch === ',' && depth === 0) flush();
+    else current += ch;
+  }
+  flush();
+  return names;
+}
+
+/** The parenthesis-balanced body after the `(` at `start`, exclusive of both. */
+function balancedParens(source: string, start: number): string {
+  let depth = 0;
+  for (let i = start; i < source.length; i++) {
+    if (source[i] === '(') depth++;
+    else if (source[i] === ')') {
+      depth--;
+      if (depth === 0) return source.slice(start + 1, i);
+    }
+  }
+  return '';
 }
 
 /**
