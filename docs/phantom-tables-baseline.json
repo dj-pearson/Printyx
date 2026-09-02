@@ -19,11 +19,6 @@
         "supabase/functions/scheduling/index.ts",
         "supabase/functions/today-dashboard/index.ts"
       ]
-    },
-    "lead_routing_rules": {
-      "story": "WF-S-02",
-      "reason": "No schema, no migration, no RLS file. This is the one entry of the six that is already handled honestly: EDGE-002g removed the two fabricated sample rules this function used to return at 200 and the rule endpoints now answer 503 ROUTING_RULES_UNAVAILABLE, so an admin is told the feature is unavailable rather than shown rules that do not exist. WF-S-02 creates the table.",
-      "files": ["supabase/functions/auto-lead-routing/index.ts"]
     }
   },
   "unreviewed": [

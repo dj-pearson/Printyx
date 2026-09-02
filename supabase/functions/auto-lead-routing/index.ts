@@ -1,35 +1,79 @@
 // Auto Lead Routing Edge Function
 // Handles automatic lead assignment based on rules
 //
-// `lead_routing_rules` is named by this file and by nothing else in the
-// repository: no Drizzle schema, no migration under drizzle/, no server code,
-// no seeder. If it is not present as untracked drift then every read here is a
-// 42P01, and PostgREST reports that by leaving `.data` null rather than
-// throwing. This file used to answer that with two hardcoded "sample rules"
-// from GET /rules and with `{ routed: false, error: 'No matching routing rule
-// found' }` from POST /route — a missing relation presented as an empty
-// configuration. Both now say which relation is missing (503
-// ROUTING_RULES_UNAVAILABLE) so the failure is visible instead of looking like
-// a tenant that has not set any rules up yet.
+// WF-S-02. This file used to read and write `lead_routing_rules`, a relation
+// named here and NOWHERE else in the repository - no Drizzle schema, no
+// migration, no RLS file, no seeder - so every rule endpoint was a 42P01 that
+// EDGE-002g had already dressed as two hardcoded "sample rules" once and then
+// as a 503.
+//
+// The table this needed ALREADY EXISTED under another name:
+// `lead_assignment_rules`, declared in shared/lead-assignment-schema.ts, created
+// by migration 0000, and served by server/routes-lead-assignment.ts with no
+// caller. Creating a second rules table to satisfy the old column names would
+// have entrenched the duplicate model rather than removing it, so this reads the
+// real one. Column names differ and are mapped in toRoutingRule/fromRoutingRule
+// below: rule_name, criteria, assignment_type, assign_to_team.
+//
+// The MATCHING is new too. /route took rules[0] and said so in a comment - the
+// loop that once stood there broke on its first iteration - so a $400 toner lead
+// and a fifty-machine fleet lead went to the same rep. _shared/lead-routing.ts
+// evaluates the criteria the table declares.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
-import { isMissingTableError } from '../_shared/postgrest-errors.ts';
+import {
+  resolveAssignee,
+  selectRule,
+  type LeadRoutingRule,
+  type RoutableLead,
+} from '../_shared/lead-routing.ts';
 
-// 503 rather than 500: the request is well formed and retrying it will work
-// once the relation exists. The table name is in the body because "no rules
-// configured" and "no such table" are indistinguishable to a caller otherwise.
-function routingRulesUnavailable(req: Request, error: unknown): Response {
-  console.error('lead_routing_rules is unavailable:', error);
-  return createCorsResponse(
-    {
-      error: 'Lead routing rules are unavailable: relation lead_routing_rules does not exist',
-      code: 'ROUTING_RULES_UNAVAILABLE',
-      table: 'lead_routing_rules',
-    },
-    503,
-    req,
-  );
+const RULES_TABLE = 'lead_assignment_rules';
+
+/** The API shape the dashboard speaks, from a lead_assignment_rules row. */
+function toRoutingRule(row: Record<string, unknown>) {
+  return {
+    id: row.id,
+    name: row.rule_name,
+    description: row.description,
+    criteria: row.criteria ?? {},
+    assignmentMethod: row.assignment_type,
+    assignToUserId: row.assign_to_user_id,
+    assignToTeam: row.assign_to_team,
+    territoryId: row.territory_id,
+    roundRobinConfig: row.round_robin_config,
+    priority: row.priority,
+    isActive: row.is_active,
+    assignmentsCount: row.assignments_count,
+    lastAssignedAt: row.last_assigned_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/** Only real columns. An unknown key is dropped by PostgREST with no error. */
+function fromRoutingRule(body: Record<string, unknown>): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  const set = (column: string, ...keys: string[]) => {
+    for (const key of keys) {
+      if (body[key] !== undefined) {
+        patch[column] = body[key];
+        return;
+      }
+    }
+  };
+  set('rule_name', 'name', 'ruleName', 'rule_name');
+  set('description', 'description');
+  set('criteria', 'criteria', 'conditions');
+  set('assignment_type', 'assignmentMethod', 'assignmentType', 'assignment_type');
+  set('assign_to_user_id', 'assignToUserId', 'assign_to_user_id');
+  set('assign_to_team', 'assignToTeam', 'assignToTeamId', 'assign_to_team');
+  set('territory_id', 'territoryId', 'territory_id');
+  set('round_robin_config', 'roundRobinConfig', 'round_robin_config');
+  set('priority', 'priority');
+  set('is_active', 'isActive', 'is_active');
+  return patch;
 }
 
 export default async function handler(req: Request) {
@@ -72,79 +116,100 @@ export default async function handler(req: Request) {
     const ruleId = parts[1];
     const pathLeadId = parts[1];
 
+    // GET /auto-lead-routing/rules/:id - Get single rule
+    //
+    // BEFORE the list branch. It used to sit after one that tested only
+    // `endpoint === 'rules'`, so /rules/:id never reached it - every request for
+    // one rule answered with the whole list at 200, which no caller could tell
+    // from a rule that happened to be alone.
+    if (req.method === 'GET' && endpoint === 'rules' && ruleId) {
+      const { data: rule, error } = await admin
+        .from(RULES_TABLE)
+        .select('*')
+        .eq('id', ruleId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (error || !rule) {
+        return createCorsResponse({ error: 'Rule not found' }, 404, req);
+      }
+
+      return createCorsResponse(toRoutingRule(rule), 200, req);
+    }
+
     // GET /auto-lead-routing/rules - List routing rules
+    //
+    // HIGHEST priority first, which is what lead_assignment_rules.priority says
+    // in its own comment. The old order was ascending, so the LOWEST-priority
+    // rule would have won every lead the day the table existed.
     if (req.method === 'GET' && endpoint === 'rules') {
       const { data: rules, error } = await admin
-        .from('lead_routing_rules')
+        .from(RULES_TABLE)
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('priority', { ascending: true });
+        .order('priority', { ascending: false });
 
       if (error) {
-        if (isMissingTableError(error)) return routingRulesUnavailable(req, error);
         console.error('Error listing routing rules:', error);
         return createCorsResponse({ error: 'Failed to list rules' }, 500, req);
       }
 
-      return createCorsResponse(rules || [], 200, req);
-    }
-
-    // GET /auto-lead-routing/rules/:id - Get single rule
-    if (req.method === 'GET' && endpoint === 'rules' && ruleId) {
-      const { data: rule, error } = await admin
-        .from('lead_routing_rules')
-        .select('*')
-        .eq('id', ruleId)
-        .eq('tenant_id', tenantId)
-        .single();
-
-      if (error) {
-        return createCorsResponse({ error: 'Rule not found' }, 404, req);
-      }
-
-      return createCorsResponse(rule, 200, req);
+      return createCorsResponse((rules ?? []).map(toRoutingRule), 200, req);
     }
 
     // POST /auto-lead-routing/rules - Create routing rule
     if (req.method === 'POST' && endpoint === 'rules') {
       const body = await req.json();
 
+      const patch = fromRoutingRule(body);
+      // rule_name, assignment_type and criteria are NOT NULL, so a 400 naming
+      // the field beats a 23502 the caller reads as a server fault.
+      const missing: string[] = [];
+      if (!patch.rule_name) missing.push('name');
+      if (!patch.assignment_type) missing.push('assignmentMethod');
+      if (missing.length > 0) {
+        return createCorsResponse(
+          { error: `Missing required field(s): ${missing.join(', ')}`, missing },
+          400,
+          req,
+        );
+      }
+
       const ruleData = {
+        ...patch,
         tenant_id: tenantId,
-        name: body.name,
-        description: body.description,
-        conditions: body.conditions || {},
-        assign_to_user_id: body.assignToUserId || body.assign_to_user_id,
-        assign_to_team_id: body.assignToTeamId || body.assign_to_team_id,
-        assignment_method: body.assignmentMethod || body.assignment_method || 'round_robin',
-        priority: body.priority || 100,
-        is_active: body.isActive !== false,
+        criteria: patch.criteria ?? {},
+        priority: patch.priority ?? 100,
+        is_active: patch.is_active !== false,
         created_by: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
 
       const { data: rule, error } = await admin
-        .from('lead_routing_rules')
+        .from(RULES_TABLE)
         .insert(ruleData)
         .select()
         .single();
 
       if (error) {
         console.error('Error creating routing rule:', error);
-        return createCorsResponse({ error: 'Failed to create rule' }, 500, req);
+        return createCorsResponse({ error: 'Failed to create rule', details: error }, 500, req);
       }
 
-      return createCorsResponse(rule, 201, req);
+      return createCorsResponse(toRoutingRule(rule), 201, req);
     }
 
     // PUT /auto-lead-routing/rules/:id - Update rule
     if (req.method === 'PUT' && endpoint === 'rules' && ruleId) {
       const body = await req.json();
 
+      // `...body` used to be spread straight into the update. PostgREST rejects
+      // an unknown column, so a caller sending a camelCase field failed the whole
+      // write; mapping first keeps the write to columns that exist.
       const { data: rule, error } = await admin
-        .from('lead_routing_rules')
-        .update({ ...body, updated_at: new Date().toISOString() })
+        .from(RULES_TABLE)
+        .update({ ...fromRoutingRule(body), updated_at: new Date().toISOString() })
         .eq('id', ruleId)
         .eq('tenant_id', tenantId)
         .select()
@@ -154,7 +219,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update rule' }, 500, req);
       }
 
-      return createCorsResponse(rule, 200, req);
+      return createCorsResponse(toRoutingRule(rule), 200, req);
     }
 
     // ─── Dashboard + config (EDGE-002g) ─────────────────────────────────────
@@ -350,50 +415,79 @@ export default async function handler(req: Request) {
         );
       }
 
-      // Get active rules
       const { data: rules, error: rulesError } = await admin
-        .from('lead_routing_rules')
+        .from(RULES_TABLE)
         .select('*')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
-        .order('priority', { ascending: true });
+        .order('priority', { ascending: false });
 
       if (rulesError) {
-        if (isMissingTableError(rulesError)) return routingRulesUnavailable(req, rulesError);
         console.error('Error loading routing rules:', rulesError);
         return createCorsResponse({ error: 'Failed to load routing rules' }, 500, req);
       }
 
-      // Lowest `priority` wins. `rule.conditions` is NOT evaluated — the loop
-      // that used to stand here broke on its first iteration, so it was already
-      // first-wins; writing it as an index makes that legible and stops it
-      // reading like matching that works. The response says so rather than
-      // implying the winning rule's conditions were checked.
-      const matchedRule = (rules ?? [])[0] ?? null;
+      // The lead itself, because the criteria are about the lead and the caller
+      // may send none. leadData from the body wins where present so a caller
+      // routing a record it has not stored yet still gets real matching.
+      const { data: record } = await admin
+        .from('business_records')
+        // The real column names: business_records stores the lead source as
+        // `source` and the deal size as `estimated_deal_value`. check:phantom-cols
+        // caught both, which is what it is for - neither is visible to tsc.
+        .select(
+          'id, source, lead_score, industry, employee_count, estimated_deal_value, country, state, city, postal_code',
+        )
+        .eq('id', leadId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      const supplied = (leadData ?? {}) as Record<string, unknown>;
+      const lead: RoutableLead = {
+        leadSource: (supplied.leadSource as string) ?? record?.source ?? null,
+        leadScore: (supplied.leadScore as number) ?? record?.lead_score ?? null,
+        industry: (supplied.industry as string) ?? record?.industry ?? null,
+        employeeCount: (supplied.employeeCount as number) ?? record?.employee_count ?? null,
+        estimatedAmount:
+          (supplied.estimatedAmount as number) ?? record?.estimated_deal_value ?? null,
+        country: (supplied.country as string) ?? record?.country ?? null,
+        state: (supplied.state as string) ?? record?.state ?? null,
+        city: (supplied.city as string) ?? record?.city ?? null,
+        postalCode: (supplied.postalCode as string) ?? record?.postal_code ?? null,
+        productInterest: (supplied.productInterest as string) ?? null,
+      };
+
+      // WF-S-02: the criteria are EVALUATED now. This used to be rules[0].
+      const selection = selectRule((rules ?? []) as LeadRoutingRule[], lead);
+      const matchedRule = selection.rule;
 
       if (!matchedRule) {
         return createCorsResponse(
-          { error: 'No active routing rule configured', routed: false },
+          {
+            routed: false,
+            error:
+              (rules ?? []).length === 0
+                ? 'No active routing rule configured'
+                : 'No active routing rule matches this lead',
+            // Which criterion each rule failed on, so an admin can see why
+            // rather than guessing at the rule editor.
+            considered: selection.considered,
+          },
           200,
           req,
         );
       }
 
-      // Assign the lead.
-      //
-      // business_records has none of assigned_to, routing_rule_id or routed_at,
-      // so every routed lead failed to actually be assigned. Ownership is
-      // owner_id + assigned_sales_rep, set together the way
-      // sales-rep-assignments does it. A rule pointing at a TEAM has nowhere to
-      // land — there is no team column on the record — so that case is reported
-      // rather than written into the rep field, which would be wrong.
-      const assignedUserId = matchedRule.assign_to_user_id ?? null;
-      const assigneeId = assignedUserId || matchedRule.assign_to_team_id;
+      // Who it goes to. A team or territory rule has nowhere to land -
+      // business_records holds an owner, not a team - so that is reported.
+      const choice = resolveAssignee(matchedRule as LeadRoutingRule);
+      const assignedUserId = choice.userId;
       const unpersisted: string[] = [
         'routingRuleId / routedAt: business_records records neither which rule routed it nor when',
       ];
+      if (choice.reason) unpersisted.push(choice.reason);
 
-      if (leadId && assignedUserId) {
+      if (assignedUserId) {
         await admin
           .from('business_records')
           .update({
@@ -403,21 +497,35 @@ export default async function handler(req: Request) {
           })
           .eq('id', leadId)
           .eq('tenant_id', tenantId);
-      } else if (leadId) {
-        unpersisted.push(
-          'assignToTeamId: business_records has no team column; only a user can own a record',
-        );
+
+        // The rule's own counters, which the table declares and nothing set.
+        // Advancing the round-robin index here is what stops every lead going to
+        // the same first rep in the pool.
+        const rulePatch: Record<string, unknown> = {
+          assignments_count: Number(matchedRule.assignments_count ?? 0) + 1,
+          last_assigned_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        if (choice.nextRoundRobinIndex !== undefined) {
+          rulePatch.round_robin_config = {
+            ...(matchedRule.round_robin_config ?? {}),
+            currentIndex: choice.nextRoundRobinIndex,
+          };
+        }
+        await admin
+          .from(RULES_TABLE)
+          .update(rulePatch)
+          .eq('id', matchedRule.id)
+          .eq('tenant_id', tenantId);
       }
 
       return createCorsResponse(
         {
-          routed: Boolean(leadId && assignedUserId),
-          rule: matchedRule,
-          assignedTo: assigneeId,
-          // The rule was chosen by priority alone; nothing compared the lead
-          // against rule.conditions. Callers that need condition matching must
-          // not read this as "the lead qualified".
-          conditionsEvaluated: false,
+          routed: Boolean(assignedUserId),
+          rule: toRoutingRule(matchedRule as Record<string, unknown>),
+          assignedTo: assignedUserId,
+          // Now true, and the shape is kept so an existing caller still reads it.
+          conditionsEvaluated: true,
           unpersisted,
         },
         200,
@@ -462,7 +570,7 @@ export default async function handler(req: Request) {
     // DELETE /auto-lead-routing/rules/:id - Delete rule
     if (req.method === 'DELETE' && endpoint === 'rules' && ruleId) {
       const { error } = await admin
-        .from('lead_routing_rules')
+        .from(RULES_TABLE)
         .delete()
         .eq('id', ruleId)
         .eq('tenant_id', tenantId);
