@@ -84,7 +84,21 @@ The last two are JSONB blobs in System A with different internal shapes again;
 Tenant isolation is intact throughout — every function filters by `tenant_id`.
 What is missing is intra-tenant privilege separation.
 
-## What has to be decided before any code changes
+## Decision
+
+**Settled 2026-09-02 (WF-R-01): see `docs/rbac-decision.md`.** In short: the `roles`
+table (System A) survives because it is the one signup, the JWT and
+`_shared/rbac.ts` already use and the only one anything populates; the canonical
+vocabulary is the three-segment `module.resource.action` form stored nested in
+`roles.permissions`, because `flattenPermissions` and `navigation-permissions.ts`
+already speak it; and `roles.level` is the enforcement primitive until WF-R-03 puts
+the claims in the token. The migration order is WF-R-02 through WF-R-09, in that
+order, and the record explains why each step cannot move earlier.
+
+The section below is the question as it stood before that decision, kept because it
+records why the question was hard.
+
+## What had to be decided before any code changes
 
 1. **Which role system survives.** System A is what production uses and what
    signup depends on. System B is richer and better documented and is what every
