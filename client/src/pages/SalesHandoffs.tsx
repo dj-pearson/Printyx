@@ -323,9 +323,10 @@ export default function SalesHandoffs() {
                   </div>
 
                   <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
-                    {/* WF-P-04 will make this the pre-filled create. Today it opens
-                        the purchase-order page carrying the contract, which is the
-                        parameter that page already reads. */}
+                    {/* WF-P-04: the same pre-filled create the Needs Ordering tab
+                        opens. The purchase-order page matches ?contractId= against
+                        its own queue and fills the dialog from the accepted
+                        proposal's lines, so both doors give the same form. */}
                     <Button
                       variant="outline"
                       onClick={() =>

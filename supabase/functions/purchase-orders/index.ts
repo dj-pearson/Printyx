@@ -25,6 +25,12 @@ import {
   outstandingSerialUnits,
   planSerialCapture,
 } from './_serialization.ts';
+import {
+  ORDERABLE_CONTRACT_STATUSES,
+  buildNeedsOrderingRow,
+  contractsNeedingOrders,
+  orderableLines,
+} from './_needs-ordering.ts';
 import { isUniqueViolation } from '../_shared/postgrest-errors.ts';
 import {
   applyUserScope,
@@ -631,6 +637,112 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(updatedPO, 200, req);
+    }
+
+    // GET /purchase-orders/needs-ordering - sold, and nobody has ordered it
+    //
+    // WF-P-04. No page answered "which deals closed and need equipment"; a buyer
+    // hunted through Contracts. The decisions - which contracts count, which
+    // lines a vendor can supply, which vendor - are in ./_needs-ordering.ts.
+    if (req.method === 'GET' && poId === 'needs-ordering' && !subResource) {
+      const [{ data: contractRows }, { data: orders }] = await Promise.all([
+        admin
+          .from('contracts')
+          .select(
+            'id, contract_number, customer_id, status, start_date, proposal_id, deal_id, acquisition_type',
+          )
+          .eq('tenant_id', tenantId)
+          .in('status', ORDERABLE_CONTRACT_STATUSES)
+          .order('start_date', { ascending: true })
+          .limit(500),
+        admin
+          .from('purchase_orders')
+          .select('id, po_number, status, source_contract_id')
+          .eq('tenant_id', tenantId)
+          .not('source_contract_id', 'is', null),
+      ]);
+
+      const { needing } = contractsNeedingOrders(contractRows ?? [], orders ?? []);
+      if (needing.length === 0) {
+        return createCorsResponse({ data: [], total: 0 }, 200, req);
+      }
+
+      const proposalIds = [...new Set(needing.map((c) => c.proposal_id).filter(Boolean))];
+      const customerIds = [...new Set(needing.map((c) => c.customer_id))];
+
+      const [{ data: lineRows }, { data: customers }, { data: vendors }] = await Promise.all([
+        proposalIds.length > 0
+          ? admin
+              .from('proposal_line_items')
+              .select(
+                'id, proposal_id, line_number, item_type, product_id, product_code, product_name, description, quantity, unit_cost, unit_price, is_recurring',
+              )
+              .eq('tenant_id', tenantId)
+              .in('proposal_id', proposalIds)
+          : Promise.resolve({ data: [] }),
+        admin
+          .from('business_records')
+          .select('id, company_name')
+          .eq('tenant_id', tenantId)
+          .in('id', customerIds),
+        admin.from('vendors').select('id, vendor_name').eq('tenant_id', tenantId),
+      ]);
+
+      // Inventory is looked up by the codes the proposal actually carries, so a
+      // tenant with thousands of items does not have its whole catalogue read.
+      const codes = [
+        ...new Set(
+          (lineRows ?? [])
+            .flatMap((l: Record<string, unknown>) => [l.product_code, l.product_id])
+            .filter(Boolean),
+        ),
+      ] as string[];
+      let inventory: Record<string, unknown>[] = [];
+      if (codes.length > 0) {
+        const { data } = await admin
+          .from('inventory_items')
+          .select('id, part_number, manufacturer_part_number, primary_vendor, unit_of_measure')
+          .eq('tenant_id', tenantId)
+          .or(
+            [
+              `part_number.in.(${codes.map((c) => JSON.stringify(c)).join(',')})`,
+              `manufacturer_part_number.in.(${codes.map((c) => JSON.stringify(c)).join(',')})`,
+              `id.in.(${codes.map((c) => JSON.stringify(c)).join(',')})`,
+            ].join(','),
+          );
+        inventory = data ?? [];
+      }
+
+      const nameById = new Map<string, string>(
+        (customers ?? []).map((c: Record<string, unknown>) => [
+          String(c.id),
+          String(c.company_name ?? ''),
+        ]),
+      );
+      const linesByProposal = new Map<string, Record<string, unknown>[]>();
+      for (const line of lineRows ?? []) {
+        const key = String(line.proposal_id);
+        linesByProposal.set(key, [...(linesByProposal.get(key) ?? []), line]);
+      }
+
+      const rows = needing.map((contract) => {
+        const proposalLines = contract.proposal_id
+          ? (linesByProposal.get(String(contract.proposal_id)) ?? [])
+          : [];
+        const { lines, notOrderable } = orderableLines(
+          proposalLines as never,
+          inventory as never,
+          (vendors ?? []) as never,
+        );
+        return buildNeedsOrderingRow(
+          contract,
+          nameById.get(String(contract.customer_id)) ?? null,
+          lines,
+          notOrderable,
+        );
+      });
+
+      return createCorsResponse({ data: rows, total: rows.length }, 200, req);
     }
 
     // POST /purchase-orders/:id/serials - record the serials for a receipt
