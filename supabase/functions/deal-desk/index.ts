@@ -609,6 +609,40 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to process decision' }, 500, req);
       }
 
+      // WF-C-04: stamp the PROPOSAL on a final approve, so the send guardrail has
+      // something server-side to read.
+      //
+      // Before this, approving only moved approval_requests.status, and the
+      // guardrail in supabase/functions/proposals trusted `body.approved` - which
+      // QuoteBuilder set from the SENDER'S OWN isManager flag. So a rep whose
+      // exception had genuinely been approved still could not send, while anyone
+      // who could post JSON could send anything.
+      //
+      // Only on a FINAL approve: an in_review request has cleared one step of its
+      // chain and is not approved yet. And never on reject or request_changes -
+      // the stamp is cleared there, because a request that swung back is an
+      // exception that no longer holds.
+      if (request.quote_id) {
+        const stamp =
+          newStatus === 'approved'
+            ? { pricing_approval_id: resourceId, pricing_approved_at: completedAt }
+            : decision === 'approve'
+              ? null
+              : { pricing_approval_id: null, pricing_approved_at: null };
+        if (stamp) {
+          const { error: stampError } = await admin
+            .from('proposals')
+            .update(stamp)
+            .eq('id', request.quote_id)
+            .eq('tenant_id', tenantId);
+          if (stampError) {
+            // The decision itself is recorded; losing the stamp means the rep is
+            // still blocked, which is the safe direction and is worth a log.
+            console.error('Error stamping proposal pricing approval:', stampError.message);
+          }
+        }
+      }
+
       // Add a comment for the decision
       if (comments) {
         const { data: userData } = await admin

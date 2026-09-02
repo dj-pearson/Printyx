@@ -6049,6 +6049,13 @@ export const proposals = pgTable(
 
     // Timestamps for status tracking
     sentAt: timestamp('sent_at'),
+
+    // WF-C-04: `proposals` is declared TWICE - here with 46 columns and in
+    // shared/quote-proposal-schema.ts with 52 - and check:phantom-cols resolves
+    // the ambiguity to whichever it sees, so a column added to one of them reads
+    // as phantom. One table in the database; both declarations carry it.
+    pricingApprovalId: varchar('pricing_approval_id'),
+    pricingApprovedAt: timestamp('pricing_approved_at'),
     viewedAt: timestamp('viewed_at'),
     acceptedAt: timestamp('accepted_at'),
     rejectedAt: timestamp('rejected_at'),

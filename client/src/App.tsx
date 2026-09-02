@@ -183,7 +183,6 @@ const MobileFieldService = React.lazy(() => import('@/pages/MobileFieldService')
 const PricingManagement = React.lazy(() => import('@/pages/PricingManagement'));
 const PricingSettings = React.lazy(() => import('@/pages/PricingSettings'));
 const MarginAnalysisReport = React.lazy(() => import('@/pages/MarginAnalysisReport'));
-const PriceApprovals = React.lazy(() => import('@/pages/PriceApprovals'));
 const Contacts = React.lazy(() => import('@/pages/Contacts'));
 const CustomerDetail = React.lazy(() => import('@/pages/CustomerDetail'));
 const TenantSetup = React.lazy(() => import('@/pages/TenantSetup'));
@@ -878,7 +877,11 @@ function Router() {
                 <Route path="/product-models-v2" component={EnhancedProductModels} />
                 <Route path="/pricing/settings" component={PricingSettings} />
                 <Route path="/pricing/margin-report" component={MarginAnalysisReport} />
-                <Route path="/pricing/approvals" component={PriceApprovals} />
+                {/* WF-C-04: retired. PriceApprovals listed price_change_approvals,
+                    a table NOTHING writes - not a competing approval model, a
+                    permanently empty queue next to a working one. Its widget and
+                    badge were already orphans. The deal desk is the one model. */}
+                <Route path="/pricing/approvals">{() => <LegacyRedirect to="/deal-desk" />}</Route>
                 <Route path="/product-accessories" component={EnhancedProductAccessories} />
                 <Route path="/professional-services" component={ProfessionalServices} />
                 <Route path="/service-products" component={ServiceProducts} />

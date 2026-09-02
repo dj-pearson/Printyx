@@ -536,9 +536,12 @@ export default function QuoteBuilder({
   // Submit quote mutation (change status to sent)
   const submitQuoteMutation = useMutation({
     mutationFn: async (quoteId: string) => {
+      // WF-C-04: the `approved` flag is gone. It was this component telling the
+      // server whether this component's user was allowed - the server now reads
+      // the caller's role level from the JWT and the deal-desk stamp from the
+      // proposal row, so nothing here can grant itself a bypass.
       return await apiRequest(`/api/proposals/${quoteId}/status`, 'PATCH', {
         status: 'sent',
-        approved: isManager, // managers bypass the below-margin gate
       });
     },
     onSuccess: (_data, quoteId) => {

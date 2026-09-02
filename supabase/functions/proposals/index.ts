@@ -55,6 +55,7 @@ import { z } from 'https://esm.sh/zod@3.22.4';
 import { handleCors } from '../_shared/cors.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
+import { hasPricingApproval, needsPricingApproval } from './_send-gate.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { renderProposalPDF } from './_pdf.ts';
@@ -570,14 +571,9 @@ function isShareExpired(p: { share_expires_at?: string | null }): boolean {
 // (pricing_settings.require_approval_below_margin) — that needs manager approval.
 // Managers (anything not sales-only) bypass.
 
+/** WF-C-04: the decision lives in _send-gate.ts, where a test can drive it. */
 function isSalesOnlyRole(ctx: SB): boolean {
-  const rawRole = String(
-    (ctx.supabaseUser as any)?.app_metadata?.role ??
-      (ctx.supabaseUser as any)?.user_metadata?.role ??
-      '',
-  ).toLowerCase();
-  const salesOnly = ['sales_rep', 'salesperson', 'sales'];
-  return salesOnly.some((r) => rawRole === r || rawRole.endsWith(r));
+  return needsPricingApproval((ctx as any)?.supabaseUser);
 }
 
 async function getMinMarginPolicy(db: SB, tenantId: string): Promise<number> {
@@ -1933,20 +1929,27 @@ export default async function handler(req: Request) {
       const status = String(body.status);
 
       // QUOTE-006/016: a sales-only rep cannot send a quote that violates the
-      // pricing policy without manager approval (body.approved bypasses, for an
-      // approval flow). Margin is computed on the discounted subtotal (which is
-      // already net of per-line discounts), and the max-discount gate evaluates
-      // the EFFECTIVE discount — per-line discounts plus the quote-level one,
-      // relative to the gross subtotal — so spreading a discount across lines
-      // cannot dodge the policy.
-      if (status === 'sent' && isSalesOnlyRole(ctx) && !body.approved) {
+      // pricing policy without manager approval. Margin is computed on the
+      // discounted subtotal (which is already net of per-line discounts), and the
+      // max-discount gate evaluates the EFFECTIVE discount — per-line discounts
+      // plus the quote-level one, relative to the gross subtotal — so spreading a
+      // discount across lines cannot dodge the policy.
+      //
+      // WF-C-04: `body.approved` NO LONGER BYPASSES ANYTHING. It was set by
+      // QuoteBuilder from the sender's own isManager flag, so the check asked the
+      // caller whether the caller was allowed - anyone able to post JSON could
+      // send any quote, and a rep whose deal-desk exception had actually been
+      // approved still could not, because approval only moved
+      // approval_requests.status. The bypass is now the stamp the deal-desk
+      // function writes on final approve, read from the row itself.
+      if (status === 'sent' && isSalesOnlyRole(ctx)) {
         const { data: cur } = await db
           .from('proposals')
-          .select('subtotal, discount_amount, total_dealer_cost')
+          .select('subtotal, discount_amount, total_dealer_cost, pricing_approval_id')
           .eq('id', subMatch[1])
           .eq('tenant_id', ctx.tenantId)
           .maybeSingle();
-        if (cur) {
+        if (cur && !hasPricingApproval(cur)) {
           const revenue = toNum(cur.subtotal) - toNum(cur.discount_amount);
           const cost = toNum(cur.total_dealer_cost);
           const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;

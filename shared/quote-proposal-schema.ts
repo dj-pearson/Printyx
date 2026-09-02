@@ -223,6 +223,11 @@ export const proposals = pgTable('proposals', {
   eSignatureDocumentId: varchar('e_signature_document_id'),
   eSignatureStatus: varchar('e_signature_status'), // pending, signed, declined
 
+  // WF-C-04: the deal-desk request that unblocked this quote's pricing, stamped
+  // by the final approve. The send guardrail reads it instead of trusting a
+  // client-supplied `approved` flag. No FK - see migration 0074.
+  pricingApprovalId: varchar('pricing_approval_id'),
+  pricingApprovedAt: timestamp('pricing_approved_at'),
   // Tracking and Analytics
   openCount: integer('open_count').default(0), // How many times opened
   lastOpenedAt: timestamp('last_opened_at'),

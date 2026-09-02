@@ -737,6 +737,9 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['finance.reports.view'],
     minLevel: 4,
   },
+  // WF-C-04: retired, redirects to /deal-desk. The entry stays because the path
+  // is still reachable - a redirect target with no gate of its own would be
+  // reachable on looser terms than the path forwarding to it (AUDIT-019's rule).
   '/pricing/approvals': {
     requiredPermissions: ['sales.quote.approve_standard'],
     minLevel: 3,
