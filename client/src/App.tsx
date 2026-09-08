@@ -48,6 +48,7 @@ const DataProcessingAgreement = React.lazy(() => import('@/pages/legal/DataProce
 const Unauthorized = React.lazy(() => import('@/pages/Unauthorized'));
 
 // Marketing pages - lazy load
+const ComingSoon = React.lazy(() => import('@/pages/marketing/ComingSoon'));
 const Homepage = React.lazy(() => import('@/pages/marketing/Homepage'));
 const CopierDealerCRM = React.lazy(() => import('@/pages/marketing/CopierDealerCRM'));
 const PrintServiceDispatchMobile = React.lazy(
@@ -387,6 +388,19 @@ const BlogRefresh = React.lazy(() => import('@/pages/platform-admin/blog/BlogRef
 
 const LAST_ROUTE_KEY = 'printyx_last_route';
 
+/**
+ * The public marketing site is closed while the product is still being built:
+ * every marketing route serves `ComingSoon` instead. Only the signed-out
+ * surface is affected - login, the auth callbacks and the legal pages stay
+ * routed, and so do the token URLs above (/p/, /f/, /book/), which existing
+ * customers are sent directly.
+ *
+ * Set VITE_COMING_SOON=false in the build environment to bring the site back;
+ * the default is closed, so a deploy that forgets the variable stays closed
+ * rather than publishing a half-finished site.
+ */
+const COMING_SOON = import.meta.env.VITE_COMING_SOON !== 'false';
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuthContext();
   const [pathname, setLocation] = useLocation();
@@ -539,6 +553,33 @@ function Router() {
   }
 
   if (!isAuthenticated) {
+    // Site closed: auth + legal only, everything else is the holding page.
+    if (COMING_SOON) {
+      return (
+        <>
+          <Switch>
+            <Route path="/login" component={Login} />
+            <Route path="/signup" component={Signup} />
+            <Route path="/forgot-password" component={ForgotPassword} />
+            <Route path="/reset-password" component={ResetPassword} />
+            <Route path="/verify-email" component={VerifyEmail} />
+            <Route path="/auth/callback" component={AuthCallback} />
+            <Route path="/eula" component={EndUserLicenseAgreement} />
+            <Route path="/privacy" component={PrivacyPolicy} />
+            <Route path="/terms" component={TermsAndConditions} />
+            <Route path="/accessibility" component={AccessibilityStatement} />
+            <Route path="/do-not-sell" component={DoNotSell} />
+            <Route path="/data-sources" component={DataSources} />
+            <Route path="/cookies" component={CookiePolicy} />
+            <Route path="/subprocessors" component={Subprocessors} />
+            <Route path="/dpa" component={DataProcessingAgreement} />
+            <Route component={ComingSoon} />
+          </Switch>
+          <AccessibilityWidget />
+        </>
+      );
+    }
+
     return (
       <>
         <Switch>
