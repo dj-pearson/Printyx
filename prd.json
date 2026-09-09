@@ -14201,6 +14201,22 @@
       "category": "ui-correctness",
       "dependsOn": [],
       "notes": "FILED 2026-09-09. Scan lives at scratchpad/dead-buttons.mjs; move it into scripts/ and harden it before baselining. Read the CLAUDE.md note on check-nav-targets first - its isNoise() lesson (a query string hid nine dead buttons) is the same failure mode this scan can have, and its header explains why a collect-everything design beat a narrower one. Two rules to carry over: delete a control whose feature has no backing column rather than faking it, and strip comments on both sides of any absence assertion. Highest-value files by candidate count: CustomerInvoices.tsx (4), UserManagement.tsx (4), PlatformConfiguration.tsx (4), DataEnrichment.tsx (4), Contacts.tsx (4)."
+    },
+    {
+      "id": "SEO-PAGES-001",
+      "title": "seoPages is declared nowhere, so /sitemap.xml is a permanent 500 and four more handlers always throw",
+      "description": "As the marketing site, /sitemap.xml must return a sitemap. server/routes-seo-core.ts opens with a try/catch that does require(\"@shared/schema\") and assigns schema.seoPages, logging \"SEO pages schema not available\" when it is missing - and it is missing: there is no seoPages export, no seo_pages pgTable and no such table in the migration chain. shared/seo-schema.ts declares 30 seo_* tables and that is not one of them. So seoPages is undefined at runtime and every handler that reads a column off it throws a TypeError into its own catch block: GET /sitemap.xml answers 500 \"Error generating sitemap\", GET /meta.json and GET /schema.json quietly serve their generic Printyx fallback for every path, and GET and POST /api/seo/pages 500. The try/catch at the top is what makes this survivable and therefore invisible - it turns a boot failure into five handlers that fail one request at a time.",
+      "acceptanceCriteria": [
+        "Decide and record whether seo_pages should exist. If it should, declare it in shared/seo-schema.ts with a tenant_id, generate a journaled migration, and re-export it; if it should not, delete the five handlers rather than leaving them to throw.",
+        "GET /sitemap.xml returns valid XML with a 200 against a real database, or is removed.",
+        "/meta.json and /schema.json either serve per-path data or say plainly that they serve one generic document; the current behaviour - falling back silently on an exception - is not either of those.",
+        "The require() try/catch at the top of routes-seo-core.ts goes away. A schema import that may or may not resolve is how this stayed hidden."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "seo",
+      "dependsOn": [],
+      "notes": "FILED 2026-09-09, found while scoping the seo settings handlers by tenant (SEO-TRANSPORT-001 follow-on). Check which host actually serves these paths before sizing the impact: the marketing site is Cloudflare Pages and the SPA, so /sitemap.xml on printyx.net may never reach Express at all - in which case the honest finding is five dead handlers in a registered router rather than a live SEO outage, and the fix is deletion. Establish that with a request, not by reading the dispatcher. Related but separate: the five PUBLIC handlers in this file each read seo_settings with `select ... limit 1` and no filter, which picks an arbitrary tenant's robots.txt and site URL to serve as the marketing site's own. That is a design question - which tenant owns the public site? - not a filter that can just be added, so it was left alone when the /api/seo/settings pair was scoped."
     }
   ]
 }
