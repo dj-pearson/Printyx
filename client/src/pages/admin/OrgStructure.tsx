@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/main-layout';
 import { apiRequest } from '@/lib/queryClient';
+import { QueryStates } from '@/components/ui/query-state';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 interface OrgUser {
   id: string;
@@ -151,13 +152,6 @@ export default function OrgStructure() {
       toast({ title: 'Could not invite', description: error.message, variant: 'destructive' }),
   });
 
-  const loading =
-    usersQuery.isLoading ||
-    rolesQuery.isLoading ||
-    locationsQuery.isLoading ||
-    regionsQuery.isLoading ||
-    teamsQuery.isLoading;
-
   const unplaced = useMemo(
     () => users.filter((u) => !u.primaryLocationId && !u.regionId && !u.managerId).length,
     [users],
@@ -169,40 +163,40 @@ export default function OrgStructure() {
       description="Managers, locations, regions and teams — what every list is scoped by"
     >
       <div className="space-y-6">
-        {!loading && users.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Why this matters</CardTitle>
-              <CardDescription>
-                Record visibility is resolved from a user&apos;s manager, team, location and region.
-                {unplaced > 0
-                  ? ` ${unplaced} of ${users.length} people have none of them set, so their scope falls back to their own records.`
-                  : ' Everyone here has at least one placement.'}
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        )}
+        <QueryStates
+          queries={[usersQuery, rolesQuery, locationsQuery, regionsQuery, teamsQuery]}
+          errorTitle="Could not load the org structure"
+        >
+          {users.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Why this matters</CardTitle>
+                <CardDescription>
+                  Record visibility is resolved from a user&apos;s manager, team, location and
+                  region.
+                  {unplaced > 0
+                    ? ` ${unplaced} of ${users.length} people have none of them set, so their scope falls back to their own records.`
+                    : ' Everyone here has at least one placement.'}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
 
-        <Tabs defaultValue="people">
-          <TabsList>
-            <TabsTrigger value="people">People</TabsTrigger>
-            <TabsTrigger value="locations">Locations</TabsTrigger>
-            <TabsTrigger value="regions">Regions</TabsTrigger>
-            <TabsTrigger value="teams">Teams</TabsTrigger>
-          </TabsList>
+          <Tabs defaultValue="people">
+            <TabsList>
+              <TabsTrigger value="people">People</TabsTrigger>
+              <TabsTrigger value="locations">Locations</TabsTrigger>
+              <TabsTrigger value="regions">Regions</TabsTrigger>
+              <TabsTrigger value="teams">Teams</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="people" className="space-y-4">
-            <InviteCard
-              roles={roles}
-              onInvite={(body) => inviteUser.mutate(body)}
-              pending={inviteUser.isPending}
-            />
+            <TabsContent value="people" className="space-y-4">
+              <InviteCard
+                roles={roles}
+                onInvite={(body) => inviteUser.mutate(body)}
+                pending={inviteUser.isPending}
+              />
 
-            {loading ? (
-              <div className="flex items-center gap-2 p-6 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading people…
-              </div>
-            ) : (
               <div className="space-y-3">
                 {users.map((u) => (
                   <Card key={u.id}>
@@ -260,38 +254,38 @@ export default function OrgStructure() {
                   </Card>
                 ))}
               </div>
-            )}
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="locations">
-            <NamedRowTab
-              kind="locations"
-              rows={locations}
-              extraField={{ label: 'Region', key: 'regionId', options: regions }}
-              onCreate={(body) => createRow.mutate({ kind: 'locations', body })}
-              pending={createRow.isPending}
-            />
-          </TabsContent>
+            <TabsContent value="locations">
+              <NamedRowTab
+                kind="locations"
+                rows={locations}
+                extraField={{ label: 'Region', key: 'regionId', options: regions }}
+                onCreate={(body) => createRow.mutate({ kind: 'locations', body })}
+                pending={createRow.isPending}
+              />
+            </TabsContent>
 
-          <TabsContent value="regions">
-            <NamedRowTab
-              kind="regions"
-              rows={regions}
-              onCreate={(body) => createRow.mutate({ kind: 'regions', body })}
-              pending={createRow.isPending}
-            />
-          </TabsContent>
+            <TabsContent value="regions">
+              <NamedRowTab
+                kind="regions"
+                rows={regions}
+                onCreate={(body) => createRow.mutate({ kind: 'regions', body })}
+                pending={createRow.isPending}
+              />
+            </TabsContent>
 
-          <TabsContent value="teams">
-            <NamedRowTab
-              kind="teams"
-              rows={teams}
-              extraField={{ label: 'Location', key: 'locationId', options: locations }}
-              onCreate={(body) => createRow.mutate({ kind: 'teams', body })}
-              pending={createRow.isPending}
-            />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="teams">
+              <NamedRowTab
+                kind="teams"
+                rows={teams}
+                extraField={{ label: 'Location', key: 'locationId', options: locations }}
+                onCreate={(body) => createRow.mutate({ kind: 'teams', body })}
+                pending={createRow.isPending}
+              />
+            </TabsContent>
+          </Tabs>
+        </QueryStates>
       </div>
     </MainLayout>
   );

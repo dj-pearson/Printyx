@@ -1,6 +1,6 @@
 {
   "note": "CR-033 query-state ratchet. scripts/check-query-states.mjs fails CI when a REACHABLE component calls useQuery and neither reads isError nor uses the shared QueryState / QueryStates wrapper (client/src/components/ui/query-state.tsx). Such a component renders the same markup whether the request succeeded, is in flight, or failed. Shrink this list, never grow it: node scripts/check-query-states.mjs --update-baseline.",
-  "count": 203,
+  "count": 202,
   "allowed": [
     "client/src/components/ActivityTimeline.tsx",
     "client/src/components/ContactManager.tsx",
@@ -130,7 +130,6 @@
     "client/src/pages/PredictiveServiceDispatchDashboard.tsx",
     "client/src/pages/PreventiveMaintenanceAutomation.tsx",
     "client/src/pages/PreventiveMaintenanceScheduling.tsx",
-    "client/src/pages/PriceApprovals.tsx",
     "client/src/pages/PricingManagement.tsx",
     "client/src/pages/ProactiveServiceDashboard.tsx",
     "client/src/pages/ProductHubUnified.tsx",
