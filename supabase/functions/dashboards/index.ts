@@ -140,6 +140,9 @@ export default async function handler(req: Request) {
         { count: totalDeals },
         { data: revenue },
         { count: activeTickets },
+        { count: totalTicketCount },
+        { count: resolvedTicketCount },
+        { data: satisfactionRows },
       ] = await Promise.all([
         admin
           .from('business_records')
@@ -153,9 +156,52 @@ export default async function handler(req: Request) {
           .select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId)
           .in('status', ['new', 'open', 'assigned']),
+        admin
+          .from('service_tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId),
+        admin
+          .from('service_tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .in('status', ['resolved', 'closed', 'completed']),
+        admin
+          .from('service_calls')
+          .select('customer_satisfaction_rating')
+          .eq('tenant_id', tenantId)
+          .not('customer_satisfaction_rating', 'is', null),
       ]);
 
       const totalRevenue = sumAmounts(revenue);
+
+      // These three shipped as `revenueGrowth: 12.5`, `customerSatisfaction: 92`
+      // and `ticketResolutionRate: 85`, each marked "// Placeholder" in a comment
+      // nobody reading the response could see. Next to four counts that ARE real,
+      // an invented KPI inherits their credibility, which is what makes this shape
+      // worse than a page of obvious mock data.
+      //
+      // Two of the three are derivable right here, and the resolution rate was
+      // derivable from counts this same handler already had two blocks above.
+      // CSAT comes off service_calls.customer_satisfaction_rating, the column
+      // reports/_queries/executive.ts already averages - and note the UNIT: it is a
+      // 1-5 rating, so 92 was not merely invented, it was in the wrong scale and
+      // would have read as a percentage.
+      //
+      // revenueGrowth needs a prior period and nothing here defines one. Null,
+      // named in `unbacked`, rather than a number.
+      const resolutionDenominator = totalTicketCount ?? 0;
+      const ticketResolutionRate =
+        resolutionDenominator > 0
+          ? Math.round(((resolvedTicketCount ?? 0) / resolutionDenominator) * 1000) / 10
+          : null;
+
+      const ratings = ((satisfactionRows ?? []) as Array<{ customer_satisfaction_rating: number }>)
+        .map((r) => r.customer_satisfaction_rating)
+        .filter((n) => typeof n === 'number');
+      const customerSatisfaction =
+        ratings.length > 0
+          ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 100) / 100
+          : null;
 
       return createCorsResponse(
         {
@@ -164,10 +210,23 @@ export default async function handler(req: Request) {
           totalRevenue,
           activeTickets: activeTickets || 0,
           kpis: {
-            revenueGrowth: 12.5, // Placeholder
-            customerSatisfaction: 92, // Placeholder
-            ticketResolutionRate: 85, // Placeholder
+            revenueGrowth: null,
+            /** Mean of service_calls.customer_satisfaction_rating, on its native 1-5 scale. */
+            customerSatisfaction,
+            customerSatisfactionScale: '1-5',
+            customerSatisfactionSampleSize: ratings.length,
+            /** Percentage of this tenant's service tickets in a resolved state. */
+            ticketResolutionRate,
           },
+          unbacked: [
+            'kpis.revenueGrowth: no prior-period comparison is computed anywhere.',
+            ...(customerSatisfaction === null
+              ? ['kpis.customerSatisfaction: no service call carries a satisfaction rating yet.']
+              : []),
+            ...(ticketResolutionRate === null
+              ? ['kpis.ticketResolutionRate: this tenant has no service tickets.']
+              : []),
+          ],
         },
         200,
         req,
