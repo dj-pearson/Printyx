@@ -3,9 +3,10 @@
  */
 
 import { Request, Response } from 'express';
-import { desc, asc, sql, count, and, or, like, ilike, eq } from 'drizzle-orm';
+import { desc, asc, sql, count, and, or, like, ilike, eq, getTableColumns } from 'drizzle-orm';
 import { db } from './db';
 import { businessRecords, serviceTickets, inventoryItems, invoices } from '../shared/schema';
+import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-pagination');
@@ -17,6 +18,30 @@ interface PaginationQuery {
   sortDirection?: 'asc' | 'desc';
   search?: string;
   [key: string]: any; // For filters
+}
+
+/**
+ * Resolve ?sortBy= to a real column, or fall back.
+ *
+ * Every handler below used to write `table[sortBy as keyof typeof table] || table.createdAt`,
+ * indexing a Drizzle table object with a raw query-string value. An unknown key
+ * falls back correctly, but a key that exists on the table OBJECT rather than as a
+ * column does not: `?sortBy=enableRLS` and `?sortBy=constructor` both resolve to a
+ * FUNCTION, which is truthy, so the `||` never fires and drizzle binds it as a bind
+ * parameter - the statement comes out as `order by $1 asc`, which Postgres rejects.
+ * That is a 500 on four list endpoints from a query string.
+ *
+ * getTableColumns returns only the declared columns, so a name that is not one of
+ * them cannot get through however the caller spells it.
+ */
+function resolveSortColumn(table: PgTable, sortBy: string | undefined, fallback: PgColumn) {
+  if (!sortBy) return fallback;
+  const columns = getTableColumns(table) as Record<string, PgColumn | undefined>;
+  // hasOwn, not a plain lookup: the columns object inherits from Object.prototype, so
+  // `columns['constructor']` and `columns['toString']` are truthy and would sail
+  // straight past a `?? fallback`. That is the same shape as the bug being fixed.
+  if (!Object.prototype.hasOwnProperty.call(columns, sortBy)) return fallback;
+  return columns[sortBy] ?? fallback;
 }
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -95,9 +120,7 @@ export async function getPaginatedBusinessRecords(req: TenantRequest, res: Respo
       .from(businessRecords)
       .where(whereClause)
       .orderBy(
-        sortDirection(
-          businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt,
-        ),
+        sortDirection(resolveSortColumn(businessRecords, sortBy, businessRecords.createdAt) as any),
       )
       .limit(limit)
       .offset(offset);
@@ -145,9 +168,7 @@ export async function getPaginatedServiceTickets(req: TenantRequest, res: Respon
       .from(serviceTickets)
       .where(whereClause)
       .orderBy(
-        sortDirection(
-          serviceTickets[sortBy as keyof typeof serviceTickets] || serviceTickets.createdAt,
-        ),
+        sortDirection(resolveSortColumn(serviceTickets, sortBy, serviceTickets.createdAt) as any),
       )
       .limit(limit)
       .offset(offset);
@@ -167,12 +188,16 @@ export async function getPaginatedInventory(req: TenantRequest, res: Response) {
 
     const conditions = [eq(inventoryItems.tenantId, tenantId)];
 
+    // itemName, sku, description and currentStock are not columns on inventory_items.
+    // ilike(undefined, ...) throws, so ?search= and ?lowStock=true were each a 500 on
+    // this endpoint; tsc had been reporting all four as TS2339 the whole time. The real
+    // names are name / part_number / item_description / quantity_on_hand.
     if (search) {
       conditions.push(
         or(
-          ilike(inventoryItems.itemName, `%${search}%`),
-          ilike(inventoryItems.sku, `%${search}%`),
-          ilike(inventoryItems.description, `%${search}%`),
+          ilike(inventoryItems.name, `%${search}%`),
+          ilike(inventoryItems.partNumber, `%${search}%`),
+          ilike(inventoryItems.itemDescription, `%${search}%`),
         )!,
       );
     }
@@ -181,7 +206,7 @@ export async function getPaginatedInventory(req: TenantRequest, res: Response) {
       conditions.push(eq(inventoryItems.category, req.query.category as string));
     }
     if (req.query.lowStock === 'true') {
-      conditions.push(sql`${inventoryItems.currentStock} <= ${inventoryItems.reorderPoint}`);
+      conditions.push(sql`${inventoryItems.quantityOnHand} <= ${inventoryItems.reorderPoint}`);
     }
 
     const whereClause = and(...conditions);
@@ -196,9 +221,7 @@ export async function getPaginatedInventory(req: TenantRequest, res: Response) {
       .from(inventoryItems)
       .where(whereClause)
       .orderBy(
-        sortDirection(
-          inventoryItems[sortBy as keyof typeof inventoryItems] || inventoryItems.createdAt,
-        ),
+        sortDirection(resolveSortColumn(inventoryItems, sortBy, inventoryItems.createdAt) as any),
       )
       .limit(limit)
       .offset(offset);
@@ -218,11 +241,12 @@ export async function getPaginatedInvoices(req: TenantRequest, res: Response) {
 
     const conditions = [eq(invoices.tenantId, tenantId)];
 
+    // invoices has no `description`; the free-text column is invoice_notes.
     if (search) {
       conditions.push(
         or(
           ilike(invoices.invoiceNumber, `%${search}%`),
-          ilike(invoices.description, `%${search}%`),
+          ilike(invoices.invoiceNotes, `%${search}%`),
         )!,
       );
     }
@@ -245,7 +269,7 @@ export async function getPaginatedInvoices(req: TenantRequest, res: Response) {
       .select()
       .from(invoices)
       .where(whereClause)
-      .orderBy(sortDirection(invoices[sortBy as keyof typeof invoices] || invoices.createdAt))
+      .orderBy(sortDirection(resolveSortColumn(invoices, sortBy, invoices.createdAt) as any))
       .limit(limit)
       .offset(offset);
 
