@@ -152,22 +152,31 @@ export default async function handler(req: Request) {
       // Calculate won deals value
       const wonDealsValue = quotes.reduce((sum, q) => sum + parseFloat(q.total_amount || '0'), 0);
 
-      // Calculate estimated expenses (simplified - could be enhanced with actual expense tracking)
-      // For now, estimate as a percentage of revenue or from contracts
-      const estimatedCOGS = totalRevenue * 0.6; // 60% cost of goods sold estimate
-      const estimatedOperatingExpenses = monthlyRecurringRevenue * 0.25; // 25% of MRR for operating
-      const totalExpenses = estimatedCOGS + estimatedOperatingExpenses;
-
-      // Calculate profit metrics
-      const grossProfit = totalRevenue - estimatedCOGS;
-      const netProfit = grossProfit - estimatedOperatingExpenses;
-      const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
-      const netMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
-
-      // Cash flow metrics
+      // EXPENSES, PROFIT AND OUTFLOW ARE NULL, AND THAT IS THE CORRECTION.
+      //
+      // This block used to invent both sides of the P&L: COGS as
+      // `totalRevenue * 0.6` ("60% cost of goods sold estimate") and operating
+      // expenses as `monthlyRecurringRevenue * 0.25`. Six figures were then
+      // derived from those two - gross profit, net profit, gross margin, net
+      // margin, cash outflow and net cash flow - and returned at 200 beside
+      // revenue numbers that are genuinely read from invoices and contracts.
+      //
+      // grossMargin was the worst of them, and it is PA-040's tautology exactly:
+      // (revenue - 0.6*revenue) / revenue is 0.4 whatever revenue is, so every
+      // tenant on every request was told their gross margin was 40.00%. A constant
+      // wearing a derivation's clothes. netMargin was a fixed function of the
+      // MRR-to-revenue ratio and nothing else, and cashOutflow multiplied the
+      // invented total by a further 0.9 ("assuming 90% of expenses are paid").
+      //
+      // Nothing in this platform records an expense. There is no COGS column, no
+      // expense table and no accounts-payable roll-up on this path, so these are
+      // not degraded measurements that could be improved by a better estimate -
+      // there is no input. They are null, and `unbacked` says so, per the rule
+      // this repo already applies to unmeasurable operational values.
+      //
+      // Everything above this line stays: revenue, collected, outstanding,
+      // overdue, won deals, MRR and ARR are all read from real rows.
       const cashInflow = collectedRevenue;
-      const cashOutflow = totalExpenses * 0.9; // Assuming 90% of expenses are paid
-      const netCashFlow = cashInflow - cashOutflow;
 
       return createCorsResponse(
         {
@@ -188,21 +197,27 @@ export default async function handler(req: Request) {
             activeContracts: contracts.length,
           },
           expenses: {
-            total: Math.round(totalExpenses * 100) / 100,
-            cogs: Math.round(estimatedCOGS * 100) / 100,
-            operating: Math.round(estimatedOperatingExpenses * 100) / 100,
+            total: null,
+            cogs: null,
+            operating: null,
           },
           profit: {
-            gross: Math.round(grossProfit * 100) / 100,
-            net: Math.round(netProfit * 100) / 100,
-            grossMargin: Math.round(grossMargin * 100) / 100,
-            netMargin: Math.round(netMargin * 100) / 100,
+            gross: null,
+            net: null,
+            grossMargin: null,
+            netMargin: null,
           },
           cashFlow: {
+            // Inflow is real: it is the amount actually collected on invoices.
             inflow: Math.round(cashInflow * 100) / 100,
-            outflow: Math.round(cashOutflow * 100) / 100,
-            net: Math.round(netCashFlow * 100) / 100,
+            outflow: null,
+            net: null,
           },
+          unbacked: [
+            'expenses.*: nothing in this platform records an expense. There is no COGS column and no expense table.',
+            'profit.*: derived from expenses, so unavailable for the same reason. grossMargin was previously a constant 40.00% for every tenant, being (revenue - 0.6*revenue) / revenue.',
+            'cashFlow.outflow and cashFlow.net: outflow needs expenses. cashFlow.inflow is real.',
+          ],
         },
         200,
         req,
