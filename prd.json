@@ -14217,6 +14217,23 @@
       "category": "seo",
       "dependsOn": [],
       "notes": "FILED 2026-09-09, found while scoping the seo settings handlers by tenant (SEO-TRANSPORT-001 follow-on). Check which host actually serves these paths before sizing the impact: the marketing site is Cloudflare Pages and the SPA, so /sitemap.xml on printyx.net may never reach Express at all - in which case the honest finding is five dead handlers in a registered router rather than a live SEO outage, and the fix is deletion. Establish that with a request, not by reading the dispatcher. Related but separate: the five PUBLIC handlers in this file each read seo_settings with `select ... limit 1` and no filter, which picks an arbitrary tenant's robots.txt and site URL to serve as the marketing site's own. That is a design question - which tenant owns the public site? - not a filter that can just be added, so it was left alone when the /api/seo/settings pair was scoped."
+    },
+    {
+      "id": "DASH-METRICS-001",
+      "title": "Derive the dashboard widget metrics, and give them an edge function that exists in production",
+      "description": "As any user, the first screen after login must show measurements. server/routes-dashboard-layouts.ts (routes-registry:428) serves the stat cards behind RoleBasedDashboard and every widget CustomDashboard offers, and ten of them answered with typed-in values until they were emptied: revenue, tickets, inventory-alerts, renewals, a six-month revenue trend, ticket counts by status, an activity feed, urgent items, my-tasks and a five-person sales leaderboard. They now return null or [] with an `unbacked` string naming what is not measured. Each is genuinely derivable - service_tickets by status, inventory_items against reorder_point, contracts by end date, business_record_activities for the feed, invoices for revenue - so this story is the derivation. SECOND HALF, and it is the bigger one: /api/dashboard is not in crmProxies and supabase/functions/dashboard/ serves only card-config and modules. So user-layout, metrics/:type, charts/:type, activity, urgent, my-tasks and team-performance all 404 in production. The saved dashboard layout cannot be loaded or saved on the deployed platform at all; RoleBasedDashboard falls back to DEFAULT_ROLE_LAYOUTS every time and the PUT that saves a rearranged dashboard goes nowhere.",
+      "acceptanceCriteria": [
+        "Each emptied widget either reads real rows or keeps its `unbacked` reason; no value is reinstated as a literal.",
+        "A percentage change is computed from an actual prior period or stays null. Nothing in the tree computes one today.",
+        "supabase/functions/dashboard/ serves user-layout (GET and PUT), metrics/:type, charts/:type, activity, urgent, my-tasks and team-performance, confirmed with a request per path rather than by reading the dispatcher.",
+        "Saving a rearranged dashboard survives a reload in production.",
+        "A guard catches a fabricated value in server/ and supabase/functions/, not only in client/src - all three existing fabrication guards are client-scoped, which is why ten of these survived every audit."
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "dashboard",
+      "dependsOn": [],
+      "notes": "FILED 2026-09-09 while mining the typecheck ratchet. The fabrications are already removed and locked by server/tests/unit/dashboard-metrics-not-fabricated.test.ts - this story is the derivation and the edge parity, not the deletion. Two broken real queries were fixed at the same time: opportunities.stage is stage_name, and COALESCE(SUM(value), 0) named a column that does not exist on opportunities (it is amount) - that one was raw SQL, so neither tsc nor check:phantom-cols could see it, which is CR-017 exactly. AC5 is the most reusable part: check:fabricated, check:no-static-posture and check:no-mocks all scan client/src only, so a fabricated dashboard sitting in an Express router was invisible to every one of them."
     }
   ]
 }
