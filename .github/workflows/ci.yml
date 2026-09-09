@@ -122,6 +122,8 @@ jobs:
         run: npm run check:edge-coverage
       - name: Edge boot-load guard (WF-G-01)
         run: npm run check:edge-boot
+      - name: Month-arithmetic ratchet (DATE-SETMONTH-001)
+        run: npm run check:month-arithmetic
       - name: Proxy-override parity (PA-019)
         run: npm run check:proxy-overrides
       - name: Telemetry consent gate (LEGAL-001)

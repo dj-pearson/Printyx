@@ -1,6 +1,7 @@
 // Maintenance Edge Function
 // Handles preventive maintenance scheduling and management
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+import { addMonths } from '../_shared/date-months.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 
@@ -456,23 +457,32 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to complete maintenance' }, 500, req);
       }
 
-      // Calculate next due date based on frequency
+      // Calculate next due date based on frequency.
+      //
+      // The monthly and quarterly cases used setMonth, which overflows rather than
+      // clamping: completing a monthly service on 31 January scheduled the next one
+      // for 3 March, skipping February entirely, and a quarterly job completed on
+      // 31 May landed on 31 August only by luck of month lengths. addMonths clamps
+      // (DATE-SETMONTH-001), so 31 January plus a month is 28 February.
+      const interval = schedule.frequency_value || 1;
       let nextDueDate = new Date();
       switch (schedule.frequency) {
         case 'daily':
-          nextDueDate.setDate(nextDueDate.getDate() + (schedule.frequency_value || 1));
+          nextDueDate.setDate(nextDueDate.getDate() + interval);
           break;
         case 'weekly':
-          nextDueDate.setDate(nextDueDate.getDate() + 7 * (schedule.frequency_value || 1));
+          nextDueDate.setDate(nextDueDate.getDate() + 7 * interval);
           break;
         case 'monthly':
-          nextDueDate.setMonth(nextDueDate.getMonth() + (schedule.frequency_value || 1));
+          nextDueDate = addMonths(nextDueDate, interval);
           break;
         case 'quarterly':
-          nextDueDate.setMonth(nextDueDate.getMonth() + 3 * (schedule.frequency_value || 1));
+          nextDueDate = addMonths(nextDueDate, 3 * interval);
           break;
         case 'yearly':
-          nextDueDate.setFullYear(nextDueDate.getFullYear() + (schedule.frequency_value || 1));
+          // Also a clamp: 29 February plus a year must be 28 February, and
+          // setFullYear on a leap day gives 1 March.
+          nextDueDate = addMonths(nextDueDate, 12 * interval);
           break;
       }
 

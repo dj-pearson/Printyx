@@ -20,7 +20,7 @@
  * the defect is arithmetic and arithmetic can be run.
  */
 import { describe, it, expect } from 'vitest';
-import { subtractMonths, monthsBetween } from '../../../supabase/functions/financial/_period.ts';
+import { subtractMonths, monthsBetween } from '../../../supabase/functions/_shared/date-months.ts';
 
 const ymd = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

@@ -3,7 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
-import { subtractMonths, monthsBetween } from './_period.ts';
+import { subtractMonths, monthsBetween } from '../_shared/date-months.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight

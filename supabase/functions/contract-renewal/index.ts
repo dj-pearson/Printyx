@@ -6,6 +6,7 @@ import { toNumber } from '../_shared/quote-math.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
+import { termEndDate } from '../_shared/date-months.ts';
 import {
   buildRenewalAnalysisPrompt,
   buildRenewalPricingPrompt,
@@ -288,12 +289,26 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Contract not found' }, 404, req);
       }
 
-      // Calculate new dates
+      // Calculate new dates.
+      //
+      // The end date used to be `newStartDate.setMonth(getMonth() + termMonths)`,
+      // which is wrong twice over on a document people are held to.
+      //
+      // A twelve-month term starting 1 January 2025 ended on 1 JANUARY 2026 - 366
+      // days, and the same calendar day the next term would start on. Because the
+      // next renewal takes its start from that end plus a day, every renewal
+      // pushed the anniversary forward by one: chained from 31 December, five
+      // renewals moved a 1 January contract to the 5th.
+      //
+      // And setMonth overflows rather than clamping, so a one-month term starting
+      // 31 March ended on 1 May rather than 30 April.
+      //
+      // termEndDate anchors on the day before the start, which makes both ends
+      // right at once. See _shared/date-months.ts.
+      const termMonths = body.termMonths || 12;
       const newStartDate = new Date(currentContract.end_date);
       newStartDate.setDate(newStartDate.getDate() + 1);
-      const termMonths = body.termMonths || 12;
-      const newEndDate = new Date(newStartDate);
-      newEndDate.setMonth(newEndDate.getMonth() + termMonths);
+      const newEndDate = termEndDate(newStartDate, termMonths);
 
       // Create new contract
       const { data: newContract, error } = await admin
