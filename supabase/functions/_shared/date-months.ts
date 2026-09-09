@@ -78,3 +78,8 @@ export function termEndDate(start: Date, months: number): Date {
   dayBefore.setDate(dayBefore.getDate() - 1);
   return addMonths(dayBefore, months);
 }
+
+/** Days in a given month. `month` is zero-based, matching Date. */
+export function daysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}

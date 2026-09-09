@@ -1,6 +1,6 @@
 {
   "note": "DATE-SETMONTH-001 ratchet. Each entry is a real defect on the 29th, 30th and 31st of a month - a TODO list, not settled debt. Shrink this, never grow it. See scripts/check-month-arithmetic.mjs.",
-  "total": 27,
+  "total": 25,
   "allowed": [
     "client/src/components/leads/LeadDeals.tsx::threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);",
     "server/routes-admin-stats.ts::startOfLastMonth.setMonth(startOfLastMonth.getMonth() - 1);",
@@ -24,8 +24,6 @@
     "supabase/functions/analytics/index.ts::startDate.setMonth(now.getMonth() - 3);",
     "supabase/functions/customer-portal/handlers/analytics.ts::startDate.setMonth(endDate.getMonth() - 6);",
     "supabase/functions/customer-portal/handlers/satisfaction.ts::startDate.setMonth(now.getMonth() - 6);",
-    "supabase/functions/leases/handlers/leases.ts::d.setMonth(start.getMonth() + i);",
-    "supabase/functions/reports/handlers/scheduled.ts::next.setMonth(next.getMonth() + 1);",
     "supabase/functions/seo/index.ts::startDate.setMonth(now.getMonth() - 1);",
     "supabase/functions/seo/index.ts::startDate.setMonth(now.getMonth() - 3);",
     "supabase/functions/voice-agent/index.ts::since.setMonth(since.getMonth() - 5);"

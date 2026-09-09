@@ -40,11 +40,14 @@ import path from 'node:path';
 
 const ROOTS = ['server', 'supabase/functions', 'client/src'];
 // The helper module is the sanctioned implementation; the tests demonstrate the
-// defect on purpose and must keep the idiom to do so.
+// defect on purpose and must keep the idiom to do so. Exempting them by NAME
+// rather than by a `tests/` glob is deliberate - a real offence in a test helper
+// should still be reported, and a blanket exemption is how one hides.
 const EXEMPT = new Set([
   'supabase/functions/_shared/date-months.ts',
   'server/tests/unit/financial-period-months.test.ts',
   'server/tests/unit/contract-and-maintenance-dates.test.ts',
+  'server/tests/unit/lease-schedule-months.test.ts',
   'scripts/check-month-arithmetic.mjs',
 ]);
 
