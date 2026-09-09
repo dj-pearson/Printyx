@@ -14251,6 +14251,23 @@
       "category": "meetings",
       "dependsOn": [],
       "notes": "FILED 2026-09-09 while sweeping server/ for the fabricated-backend shape that DASH-METRICS-001 turned up. Retiring is the likelier answer: there is no caller in client/src, printyx-client, printyx-desktop, mobile-app, mobile, browser-extensions, printyx-extension or ios, and the only live /api/meetings traffic is /calendar/*, which the proxy sends to supabase/functions/meetings/ over calendar_connections and calendar_events. Do NOT delete without checking the root mount first: this router owns the generic paths /api/types, /api/rooms and /api/analytics at the /api root, so anything that starts using those names inherits them. The reads answer 501 rather than an empty 200 on purpose - an empty list asserts \"you have no meetings\", which is its own unbacked claim. Locked by server/tests/unit/meeting-reads-not-fabricated.test.ts."
+    },
+    {
+      "id": "DATE-SETMONTH-001",
+      "title": "Date.setMonth overflows rather than clamping, and a dozen call sites rely on it",
+      "description": "As anyone reading a report or holding a contract, a month of arithmetic must land in the month asked for. Date.setMonth does not clamp: asking a 31 March date for month index 2 gives \"31 February\", which resolves to 3 March. Every use of the `d.setMonth(d.getMonth() +/- n)` idiom is therefore wrong on the 29th, 30th and 31st - about four days in twelve of every year - and silently right the rest of the time, which is why none of it has ever been reported. supabase/functions/financial/ was fixed in iteration 13 (its reporting window excluded the whole previous month, its MRR series skipped February, and its six-month forecast put two points in May and none in April). The same idiom remains at roughly a dozen sites, and two of them are not reports: supabase/functions/contract-renewal/index.ts computes a renewed contract's end date as newEndDate.setMonth(getMonth() + termMonths), so renewing a term that ends on the 31st moves the end date into the following month; supabase/functions/maintenance/index.ts computes the next maintenance due date the same way.",
+      "acceptanceCriteria": [
+        "supabase/functions/financial/_period.ts (subtractMonths, monthsBetween) or an equivalent in _shared/ is the single implementation, and every remaining call site uses it.",
+        "contract-renewal's renewed end date is correct for a term starting or ending on the 29th, 30th or 31st, with a test naming the dates.",
+        "maintenance's next-due calculation is correct for the same days.",
+        "A guard flags the bare `setMonth(...getMonth() +/- ` idiom across server/ and supabase/functions/ so a new one cannot be added, with the fixed sites at zero.",
+        "Any month-series loop enumerates months by anchoring to the first of the month; none steps a cursor carrying a day-of-month."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "correctness",
+      "dependsOn": [],
+      "notes": "FILED 2026-09-09. The financial half is done and locked by server/tests/unit/financial-period-months.test.ts, which DEMONSTRATES each failure with arithmetic rather than asserting it from memory - reuse that style, because the premise is the thing people doubt. Two shapes to look for, not one: subtracting/adding months (clamp the day, see subtractMonths) and ENUMERATING months (anchor to the first, see monthsBetween). The second is the nastier one: a skipped month leaves a gap in a chart, which reads as a month in which nothing happened rather than as an error. Call sites at the time of filing: customer-portal/handlers/analytics.ts:52, customer-portal/handlers/satisfaction.ts:357, contract-renewal/index.ts:296, voice-agent/index.ts:305, maintenance/index.ts:469 and :472, plus any in server/. Note _period.ts is deliberately Deno-import-free so vitest can exercise it directly; index.ts pulls https: specifiers and cannot be imported from a Node test."
     }
   ]
 }

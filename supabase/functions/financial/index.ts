@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { subtractMonths, monthsBetween } from './_period.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -54,33 +55,49 @@ export default async function handler(req: Request) {
     const startDateParam = url.searchParams.get('startDate') || url.searchParams.get('start_date');
     const endDateParam = url.searchParams.get('endDate') || url.searchParams.get('end_date');
 
-    // Calculate date range based on period
+    // Calculate date range based on period.
+    //
+    // WHY THIS IS NOT `startDate.setMonth(now.getMonth() - 1)`, which is what it
+    // used to be. Date.setMonth OVERFLOWS rather than clamping: on 31 March,
+    // asking for month index 2 gives "31 February", which JavaScript resolves to
+    // 3 March. So `period=month` returned 3 March to 31 March - a 28-day window
+    // entirely inside the current month, with February excluded completely. Same
+    // on the 29th and 30th, and `quarter` on 31 May started on 3 March. Every
+    // endpoint in this function takes its range from here (metrics, cash-flow,
+    // profitability, kpis, mrr-analysis), so on roughly four days of each month
+    // all of them silently reported on the wrong window. It looks correct the
+    // other twenty-seven, which is why it survived.
+    //
+    // subtractMonths clamps the day to the target month's length instead: 31
+    // March minus one month is 28 February, not 3 March.
     const now = new Date();
-    let startDate = new Date();
-    let endDate = new Date();
+    let startDate: Date;
+    let endDate: Date;
 
     if (startDateParam && endDateParam) {
       startDate = new Date(startDateParam);
       endDate = new Date(endDateParam);
     } else {
+      endDate = new Date(now);
       switch (period) {
         case 'week':
-          startDate.setDate(now.getDate() - 7);
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 7);
           break;
         case 'month':
-          startDate.setMonth(now.getMonth() - 1);
+          startDate = subtractMonths(now, 1);
           break;
         case 'quarter':
-          startDate.setMonth(now.getMonth() - 3);
+          startDate = subtractMonths(now, 3);
           break;
         case 'year':
-          startDate.setFullYear(now.getFullYear() - 1);
+          startDate = subtractMonths(now, 12);
           break;
         case 'ytd':
           startDate = new Date(now.getFullYear(), 0, 1); // January 1st of current year
           break;
         default:
-          startDate.setMonth(now.getMonth() - 1);
+          startDate = subtractMonths(now, 1);
       }
     }
 
@@ -543,65 +560,33 @@ export default async function handler(req: Request) {
         0,
       );
 
-      // Estimate expense categories (these would ideally come from actual expense tracking)
-      const expenseCategories = [
-        {
-          category: 'Cost of Goods Sold',
-          description: 'Direct costs for products and services',
-          amount: Math.round(totalRevenue * 0.5 * 100) / 100, // 50% COGS
-          percentage: 50,
-        },
-        {
-          category: 'Labor & Payroll',
-          description: 'Employee salaries and benefits',
-          amount: Math.round(mrr * 0.3 * 100) / 100, // 30% of MRR
-          percentage: 15,
-        },
-        {
-          category: 'Overhead',
-          description: 'Rent, utilities, insurance',
-          amount: Math.round(mrr * 0.15 * 100) / 100, // 15% of MRR
-          percentage: 8,
-        },
-        {
-          category: 'Sales & Marketing',
-          description: 'Advertising, commissions, promotions',
-          amount: Math.round(totalRevenue * 0.1 * 100) / 100, // 10% of revenue
-          percentage: 10,
-        },
-        {
-          category: 'Operations',
-          description: 'Vehicle, supplies, maintenance',
-          amount: Math.round(mrr * 0.1 * 100) / 100, // 10% of MRR
-          percentage: 5,
-        },
-        {
-          category: 'Technology',
-          description: 'Software, hardware, IT services',
-          amount: Math.round(mrr * 0.05 * 100) / 100, // 5% of MRR
-          percentage: 3,
-        },
-      ];
+      // NO EXPENSE CATEGORY TABLE. This endpoint used to answer with six invented
+      // ones - Cost of Goods Sold at 50% of revenue, Labor & Payroll at 30% of MRR,
+      // Overhead at 15%, Sales & Marketing, Operations, Technology - each with an
+      // `amount` and a `percentage`, presented to a dealer as their own cost
+      // structure. The two columns did not even agree with each other: Labor was
+      // computed at 30% of MRR and labelled 15%.
+      //
+      // A `note` at the bottom of the response said "estimated based on industry
+      // averages", which is not a disclosure a chart carries. Nothing in this
+      // platform records an expense, so there is no input to estimate FROM: the
+      // ratios were chosen, not measured.
+      const expenseCategories: Array<{
+        category: string;
+        description: string;
+        amount: number;
+        percentage: number;
+      }> = [];
 
-      const totalExpenses = expenseCategories.reduce((sum, c) => sum + c.amount, 0);
-
-      // Group expenses by period (month)
-      const expensesByPeriod: Record<string, { period: string; amount: number }> = {};
-      const periodMonths = Math.max(
-        1,
-        Math.ceil((endDate.getTime() - startDate.getTime()) / (30 * 24 * 60 * 60 * 1000)),
-      );
-      const monthlyExpense = totalExpenses / periodMonths;
-
-      const currentDate = new Date(startDate);
-      while (currentDate <= endDate) {
-        const periodKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-        expensesByPeriod[periodKey] = {
-          period: periodKey,
-          amount: Math.round(monthlyExpense * 100) / 100,
-        };
-        currentDate.setMonth(currentDate.getMonth() + 1);
-      }
+      // Spreading an invented total evenly across the months produced a flat line
+      // that looked like a stable cost base. The months are still enumerated, so a
+      // consumer gets the shape of the period with nulls in it rather than a
+      // missing key - and monthsBetween cannot skip February the way the old
+      // setMonth loop did.
+      const expensesByPeriod = monthsBetween(startDate, endDate).map(({ key }) => ({
+        period: key,
+        amount: null,
+      }));
 
       return createCorsResponse(
         {
@@ -609,15 +594,15 @@ export default async function handler(req: Request) {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
           summary: {
-            totalExpenses: Math.round(totalExpenses * 100) / 100,
-            expenseToRevenueRatio:
-              totalRevenue > 0 ? Math.round((totalExpenses / totalRevenue) * 100 * 100) / 100 : 0,
+            totalExpenses: null,
+            expenseToRevenueRatio: null,
           },
           byCategory: expenseCategories,
-          byPeriod: Object.values(expensesByPeriod).sort((a, b) =>
-            a.period.localeCompare(b.period),
-          ),
-          note: 'Expense data is estimated based on industry averages. Implement expense tracking for accurate data.',
+          byPeriod: expensesByPeriod,
+          unbacked: [
+            'Every field here is null: no expense is recorded anywhere in this platform. There is no COGS column, no expense table and no payables roll-up on this path.',
+            'This endpoint previously answered with six invented categories derived from fixed ratios of revenue and MRR.',
+          ],
         },
         200,
         req,
@@ -631,8 +616,7 @@ export default async function handler(req: Request) {
       const forecastMonths = parseInt(url.searchParams.get('months') || '6');
 
       // Get historical data for trend analysis
-      const historicalStart = new Date();
-      historicalStart.setMonth(historicalStart.getMonth() - 12); // Last 12 months
+      const historicalStart = subtractMonths(new Date(), 12); // Last 12 months
 
       const [invoicesResult, contractsResult, quotesResult] = await Promise.all([
         admin
@@ -725,15 +709,22 @@ export default async function handler(req: Request) {
       const currentDate = new Date();
 
       for (let i = 1; i <= forecastMonths; i++) {
-        const forecastDate = new Date(currentDate);
-        forecastDate.setMonth(currentDate.getMonth() + i);
+        // subtractMonths with a negative count adds, clamping the day. Stepping
+        // with setMonth from a date carrying today's day-of-month produced
+        // DUPLICATE period keys near month end - on 31 March, +1 and +2 both land
+        // in May - so the series silently lost a point and repeated another.
+        const forecastDate = subtractMonths(currentDate, -i);
         const periodKey = `${forecastDate.getFullYear()}-${String(forecastDate.getMonth() + 1).padStart(2, '0')}`;
 
         // Project revenue with growth
         const projectedRevenue = baseRevenue * Math.pow(1 + avgGrowthRate, i);
         const projectedMRR = currentMRR * Math.pow(1 + avgGrowthRate * 0.5, i); // MRR grows slower
-        const projectedExpenses = projectedRevenue * 0.75; // 75% expense ratio
-        const projectedProfit = projectedRevenue - projectedExpenses;
+        // projectedExpenses was `projectedRevenue * 0.75`, which made
+        // projectedProfit exactly 25% of projected revenue at every horizon - the
+        // same tautology the metrics endpoint carried, forecast forward. Nothing
+        // records an expense, so neither figure has an input.
+        const projectedExpenses = null;
+        const projectedProfit = null;
 
         // Confidence decreases with time
         let confidence: string;
@@ -745,8 +736,8 @@ export default async function handler(req: Request) {
           period: periodKey,
           projectedRevenue: Math.round(projectedRevenue * 100) / 100,
           projectedMRR: Math.round(projectedMRR * 100) / 100,
-          projectedExpenses: Math.round(projectedExpenses * 100) / 100,
-          projectedProfit: Math.round(projectedProfit * 100) / 100,
+          projectedExpenses,
+          projectedProfit,
           confidence,
         });
       }
@@ -755,8 +746,7 @@ export default async function handler(req: Request) {
       const expiringContracts = contracts.filter((c) => {
         if (!c.end_date) return false;
         const endDate = new Date(c.end_date);
-        const forecastEnd = new Date();
-        forecastEnd.setMonth(forecastEnd.getMonth() + forecastMonths);
+        const forecastEnd = subtractMonths(new Date(), -forecastMonths);
         return endDate >= currentDate && endDate <= forecastEnd;
       });
 
@@ -1077,17 +1067,22 @@ export default async function handler(req: Request) {
             }))
             .sort((a, b) => b.mrr - a.mrr);
 
-          // Calculate historical MRR trend (simplified)
-          const mrrTrend: Array<{ period: string; mrr: number; contractCount: number }> = [];
-          const currentDate = new Date(startDate);
-          while (currentDate <= endDate) {
-            const periodKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-
-            // Count contracts active during this period
+          // Historical MRR, one point per calendar month in the window.
+          //
+          // Two corrections. The loop used to step with
+          // `currentDate.setMonth(currentDate.getMonth() + 1)` from a date carrying
+          // today's day-of-month, so from 31 January it jumped to 3 March and
+          // FEBRUARY WAS ABSENT from the series, with no error.
+          //
+          // Second, the series counted `status !== 'cancelled'` while currentMRR
+          // above counts `status === 'active'`, so the final point of the trend did
+          // not equal the headline figure sitting beside it. Both mean active now.
+          const mrrTrend = monthsBetween(startDate, endDate).map(({ key, at }) => {
             const activeInPeriod = contracts.filter((c) => {
+              if (c.status !== 'active') return false;
               const start = new Date(c.start_date);
-              const end = c.end_date ? new Date(c.end_date) : new Date('2099-12-31');
-              return start <= currentDate && end >= currentDate && c.status !== 'cancelled';
+              const end = c.end_date ? new Date(c.end_date) : null;
+              return start <= at && (end === null || end >= at);
             });
 
             const periodMRR = activeInPeriod.reduce(
@@ -1095,14 +1090,12 @@ export default async function handler(req: Request) {
               0,
             );
 
-            mrrTrend.push({
-              period: periodKey,
+            return {
+              period: key,
               mrr: Math.round(periodMRR * 100) / 100,
               contractCount: activeInPeriod.length,
-            });
-
-            currentDate.setMonth(currentDate.getMonth() + 1);
-          }
+            };
+          });
 
           return createCorsResponse(
             {
