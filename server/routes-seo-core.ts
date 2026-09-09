@@ -49,8 +49,16 @@ try {
 
 export function registerSeoCoreRoutes(app: Express) {
   // ===== SEO Management Routes =====
-  // Root Admin: upsert global SEO settings
-  app.post('/api/seo/settings', async (req: any, res) => {
+  // Root Admin: upsert global SEO settings.
+  //
+  // SEO-TRANSPORT-001: PUT is the canonical method - supabase/functions/seo/index.ts
+  // serves `req.method === 'PUT' && resource === 'settings'` and nothing else, and
+  // that function is what production reaches. POST is kept so an older client (and
+  // routes-seo.ts's shadowed copy) does not start 404ing on the dev host.
+  app.put('/api/seo/settings', upsertSeoSettings);
+  app.post('/api/seo/settings', upsertSeoSettings);
+
+  async function upsertSeoSettings(req: any, res: any) {
     try {
       const isPlatformUser = isPlatformAdmin(req);
       if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
@@ -76,7 +84,7 @@ export function registerSeoCoreRoutes(app: Express) {
         detail: error?.message,
       });
     }
-  });
+  }
 
   // Root Admin: upsert SEO page record
   app.post('/api/seo/pages', async (req: any, res) => {
