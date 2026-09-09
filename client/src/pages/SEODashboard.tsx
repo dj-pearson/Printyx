@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -247,6 +247,22 @@ export default function SEODashboard() {
     queryKey: ['/api/seo/settings'],
   });
 
+  // The Settings tab's draft. Its five fields were uncontrolled and its Save
+  // Settings button had no onClick at all, so Site URL, Site Name, Default
+  // Title, Default Meta Description and Automated Monitoring were editable and
+  // discarded on tab change. Seeded from the server when the query resolves;
+  // `settings?.id` in the dep list means a background refetch of the same row
+  // does not overwrite what the user is typing.
+  const [settingsDraft, setSettingsDraft] = useState<SeoSettings>({ siteUrl: '' });
+  useEffect(() => {
+    if (settings) setSettingsDraft(settings);
+    // Deliberate: keying on the row id rather than the object means a background
+    // refetch of the same settings row does not clobber an in-progress edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.id]);
+  const setSetting = (patch: Partial<SeoSettings>) =>
+    setSettingsDraft((prev) => ({ ...prev, ...patch }));
+
   // Fetch audit history
   const { data: auditHistory = [] } = useQuery<AuditResult[]>({
     queryKey: ['/api/seo/audit/history'],
@@ -329,6 +345,13 @@ export default function SEODashboard() {
       toast({
         title: 'Settings saved',
         description: 'SEO settings have been saved successfully.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not save settings',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
       });
     },
   });
@@ -1016,7 +1039,8 @@ export default function SEODashboard() {
                         <Input
                           id="siteUrl"
                           placeholder="https://example.com"
-                          defaultValue={settings?.siteUrl}
+                          value={settingsDraft.siteUrl ?? ''}
+                          onChange={(e) => setSetting({ siteUrl: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">
@@ -1024,7 +1048,8 @@ export default function SEODashboard() {
                         <Input
                           id="siteName"
                           placeholder="My Website"
-                          defaultValue={settings?.siteName}
+                          value={settingsDraft.siteName ?? ''}
+                          onChange={(e) => setSetting({ siteName: e.target.value })}
                         />
                       </div>
                     </div>
@@ -1034,7 +1059,8 @@ export default function SEODashboard() {
                       <Input
                         id="defaultTitle"
                         placeholder="Default page title"
-                        defaultValue={settings?.defaultTitle}
+                        value={settingsDraft.defaultTitle ?? ''}
+                        onChange={(e) => setSetting({ defaultTitle: e.target.value })}
                       />
                     </div>
 
@@ -1044,7 +1070,8 @@ export default function SEODashboard() {
                         id="defaultDescription"
                         placeholder="Default meta description for pages"
                         rows={3}
-                        defaultValue={settings?.defaultDescription}
+                        value={settingsDraft.defaultDescription ?? ''}
+                        onChange={(e) => setSetting({ defaultDescription: e.target.value })}
                       />
                     </div>
 
@@ -1055,10 +1082,18 @@ export default function SEODashboard() {
                           Enable automated SEO monitoring
                         </p>
                       </div>
-                      <Switch defaultChecked={settings?.monitoringEnabled} />
+                      <Switch
+                        checked={settingsDraft.monitoringEnabled ?? false}
+                        onCheckedChange={(v) => setSetting({ monitoringEnabled: v })}
+                      />
                     </div>
 
-                    <Button>Save Settings</Button>
+                    <Button
+                      onClick={() => saveSettingsMutation.mutate(settingsDraft)}
+                      disabled={saveSettingsMutation.isPending}
+                    >
+                      {saveSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
+                    </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -1172,7 +1207,18 @@ export default function SEODashboard() {
                             Automatically check SEO metrics on a schedule
                           </p>
                         </div>
-                        <Switch defaultChecked={settings?.monitoringEnabled} />
+                        <Switch
+                          checked={settingsDraft.monitoringEnabled ?? false}
+                          onCheckedChange={(v) => {
+                            // This card has no Save button, so the toggle IS the
+                            // save. It writes the whole draft because the settings
+                            // row is upserted as one object.
+                            const next = { ...settingsDraft, monitoringEnabled: v };
+                            setSettingsDraft(next);
+                            saveSettingsMutation.mutate(next);
+                          }}
+                          disabled={saveSettingsMutation.isPending}
+                        />
                       </div>
                       <Separator />
                       <div>

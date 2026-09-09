@@ -14168,6 +14168,23 @@
       "category": "guards",
       "dependsOn": [],
       "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02."
+    },
+    {
+      "id": "SEO-TRANSPORT-001",
+      "title": "SEO Dashboard writes go nowhere in production: 15 raw fetch() calls and a POST/PUT split",
+      "description": "As a marketer, every action on the SEO Dashboard must reach a backend in production. All 17 of its mutations use raw fetch(\"/api/seo/...\") instead of apiRequest, so they carry no Bearer header and are never rewritten to the functions host. /api/seo is not in crmProxies either, so dev is served by Express (routes-seo.ts + routes-seo-core.ts, both of which register /api/seo/settings) while production sends the request to the Cloudflare Pages origin, which has no such path. The page therefore works locally and does nothing at all once deployed. A second divergence sits behind it: the page and Express use POST /api/seo/settings while supabase/functions/seo/index.ts serves PUT /settings, so repairing the transport alone would turn a silent no-op into a 404.",
+      "acceptanceCriteria": [
+        "Every fetch(\"/api/seo/...\") in client/src/pages/SEODashboard.tsx goes through apiRequest, so it carries auth and is rewritten to the functions host in production.",
+        "The settings write agrees on one method across the page, server/routes-seo*.ts and supabase/functions/seo/index.ts; the mismatch is resolved rather than papered over with a retry.",
+        "Each of the 17 endpoints the page calls is confirmed present in supabase/functions/seo/index.ts, or the gap is recorded against EDGE-002e rather than left to 404.",
+        "docs/raw-api-fetch-baseline.json drops all 15 SEODashboard.tsx entries.",
+        "Every mutation on the page has an onError, so a failure is reported rather than silent."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "edge-parity",
+      "dependsOn": ["EDGE-002e"],
+      "notes": "FILED 2026-09-09, found while wiring the Settings tab (its Save Settings button had no onClick and its five fields were uncontrolled). That fix is committed and is independent of this one: it makes the form carry the user edits, which is right in dev and a prerequisite either way. Do not repair the transport without first settling the POST/PUT split above. The seo edge function was 404ing on every endpoint before the normalizePath sweep, so confirm each branch with a curl rather than by reading the dispatcher."
     }
   ]
 }
