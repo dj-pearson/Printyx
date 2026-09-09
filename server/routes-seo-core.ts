@@ -49,24 +49,45 @@ try {
 
 export function registerSeoCoreRoutes(app: Express) {
   // ===== SEO Management Routes =====
-  // Root Admin: upsert global SEO settings
-  app.post('/api/seo/settings', async (req: any, res) => {
+  // Root Admin: upsert global SEO settings.
+  //
+  // SEO-TRANSPORT-001: PUT is the canonical method - supabase/functions/seo/index.ts
+  // serves `req.method === 'PUT' && resource === 'settings'` and nothing else, and
+  // that function is what production reaches. POST is kept so an older client (and
+  // routes-seo.ts's shadowed copy) does not start 404ing on the dev host.
+  app.put('/api/seo/settings', upsertSeoSettings);
+  app.post('/api/seo/settings', upsertSeoSettings);
+
+  // seo_settings.tenant_id is NOT NULL and this pair used to ignore it entirely:
+  // `select ... limit 1` with no where clause, then an update keyed on whatever row
+  // came back. So a platform admin saving settings overwrote SOME tenant's row -
+  // whichever the planner returned first - and the GET below answered with that same
+  // arbitrary row, to any caller, with no auth check at all. The seo edge function,
+  // which is what production reaches, filters on tenant_id in both directions; these
+  // now match it, so the two hosts stop disagreeing about whose settings these are.
+  async function upsertSeoSettings(req: any, res: any) {
     try {
       const isPlatformUser = isPlatformAdmin(req);
       if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
-      const payload = insertSeoSettingsSchema.parse(req.body);
-      const [existing] = await db.select().from(seoSettings).limit(1);
+      const tenantId = getTenantId(req);
+      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
+      const payload = insertSeoSettingsSchema.parse({ ...req.body, tenantId });
+      const [existing] = await db
+        .select()
+        .from(seoSettings)
+        .where(eq(seoSettings.tenantId, tenantId))
+        .limit(1);
       if (existing) {
         const [updated] = await db
           .update(seoSettings)
-          .set({ ...payload, updatedAt: new Date() })
+          .set({ ...payload, tenantId, updatedAt: new Date() })
           .where(eq(seoSettings.id, (existing as any).id))
           .returning();
         return res.json(updated);
       }
       const [created] = await db
         .insert(seoSettings)
-        .values(payload as any)
+        .values({ ...payload, tenantId } as any)
         .returning();
       res.json(created);
     } catch (error: any) {
@@ -76,7 +97,7 @@ export function registerSeoCoreRoutes(app: Express) {
         detail: error?.message,
       });
     }
-  });
+  }
 
   // Root Admin: upsert SEO page record
   app.post('/api/seo/pages', async (req: any, res) => {
@@ -443,10 +464,17 @@ Printyx serves the copier/printer dealer and managed print services industry, in
     }
   });
 
-  // Admin: get SEO settings
-  app.get('/api/seo/settings', async (_req: any, res) => {
+  // Admin: get SEO settings for the caller's tenant. See the note on
+  // upsertSeoSettings above for what this used to return.
+  app.get('/api/seo/settings', async (req: any, res) => {
     try {
-      const rows = await db.select().from(seoSettings).limit(1);
+      const tenantId = getTenantId(req);
+      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
+      const rows = await db
+        .select()
+        .from(seoSettings)
+        .where(eq(seoSettings.tenantId, tenantId))
+        .limit(1);
       res.json(rows[0] || null);
     } catch (error: any) {
       res.status(500).json({

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+// SEO-TRANSPORT-001. Every mutation on this page used raw fetch('/api/seo/...'),
+// which carries no Bearer header and is never rewritten to the functions host, so
+// in production the request went to the Pages origin and there is no /api/seo
+// there. The page worked in dev - Express serves the prefix, which is not proxied -
+// and did nothing at all once deployed.
+import { apiRequest } from '@/lib/queryClient';
 import {
   BarChart3,
   Search,
@@ -247,6 +253,22 @@ export default function SEODashboard() {
     queryKey: ['/api/seo/settings'],
   });
 
+  // The Settings tab's draft. Its five fields were uncontrolled and its Save
+  // Settings button had no onClick at all, so Site URL, Site Name, Default
+  // Title, Default Meta Description and Automated Monitoring were editable and
+  // discarded on tab change. Seeded from the server when the query resolves;
+  // `settings?.id` in the dep list means a background refetch of the same row
+  // does not overwrite what the user is typing.
+  const [settingsDraft, setSettingsDraft] = useState<SeoSettings>({ siteUrl: '' });
+  useEffect(() => {
+    if (settings) setSettingsDraft(settings);
+    // Deliberate: keying on the row id rather than the object means a background
+    // refetch of the same settings row does not clobber an in-progress edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.id]);
+  const setSetting = (patch: Partial<SeoSettings>) =>
+    setSettingsDraft((prev) => ({ ...prev, ...patch }));
+
   // Fetch audit history
   const { data: auditHistory = [] } = useQuery<AuditResult[]>({
     queryKey: ['/api/seo/audit/history'],
@@ -285,14 +307,7 @@ export default function SEODashboard() {
   // Run audit mutation
   const runAuditMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await fetch('/api/seo/audit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ url }),
-      });
-      if (!response.ok) throw new Error('Failed to run audit');
-      return response.json();
+      return apiRequest('/api/seo/audit', 'POST', { url });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/seo/audit/history'] });
@@ -315,14 +330,7 @@ export default function SEODashboard() {
   // Save settings mutation
   const saveSettingsMutation = useMutation({
     mutationFn: async (data: SeoSettings) => {
-      const response = await fetch('/api/seo/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to save settings');
-      return response.json();
+      return apiRequest('/api/seo/settings', 'PUT', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/seo/settings'] });
@@ -331,23 +339,23 @@ export default function SEODashboard() {
         description: 'SEO settings have been saved successfully.',
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not save settings',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Crawl website mutation
   const crawlMutation = useMutation({
     mutationFn: async (params: { url: string; maxPages: number; maxDepth: number }) => {
-      const response = await fetch('/api/seo/crawl', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          startUrl: params.url,
-          maxPages: params.maxPages,
-          maxDepth: params.maxDepth,
-        }),
+      return apiRequest('/api/seo/crawl', 'POST', {
+        startUrl: params.url,
+        maxPages: params.maxPages,
+        maxDepth: params.maxDepth,
       });
-      if (!response.ok) throw new Error('Failed to crawl website');
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/seo/crawl/results'] });
@@ -363,48 +371,41 @@ export default function SEODashboard() {
   // Save robots.txt mutation
   const saveRobotsMutation = useMutation({
     mutationFn: async (content: string) => {
-      const response = await fetch('/api/seo/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ robotsTxt: content }),
-      });
-      if (!response.ok) throw new Error('Failed to save robots.txt');
-      return response.json();
+      return apiRequest('/api/seo/settings', 'PUT', { robotsTxt: content });
     },
     onSuccess: () => {
       toast({ title: 'Saved', description: 'robots.txt saved successfully.' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not save robots.txt',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
   // Save llms.txt mutation
   const saveLlmsMutation = useMutation({
     mutationFn: async (content: string) => {
-      const response = await fetch('/api/seo/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ llmsTxt: content }),
-      });
-      if (!response.ok) throw new Error('Failed to save llms.txt');
-      return response.json();
+      return apiRequest('/api/seo/settings', 'PUT', { llmsTxt: content });
     },
     onSuccess: () => {
       toast({ title: 'Saved', description: 'llms.txt saved successfully.' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not save llms.txt',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
   // Image analysis mutation
   const analyzeImagesMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await fetch('/api/seo/images/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ url }),
-      });
-      if (!response.ok) throw new Error('Failed to analyze images');
-      return response.json();
+      return apiRequest('/api/seo/images/analyze', 'POST', { url });
     },
     onSuccess: (data) => {
       setImageAnalysisResults(data.images || []);
@@ -413,37 +414,37 @@ export default function SEODashboard() {
         description: `Found ${data.images?.length || 0} images`,
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Image analysis failed',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Links analysis mutation
   const analyzeLinksMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await fetch('/api/seo/links/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ url }),
-      });
-      if (!response.ok) throw new Error('Failed to analyze links');
-      return response.json();
+      return apiRequest('/api/seo/links/analyze', 'POST', { url });
     },
     onSuccess: (data) => {
       setLinkAnalysisResults(data.links || []);
       toast({ title: 'Analysis complete', description: `Found ${data.links?.length || 0} links` });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Link analysis failed',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
   // Broken links check mutation
   const checkBrokenLinksMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await fetch('/api/seo/links/broken', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ url }),
-      });
-      if (!response.ok) throw new Error('Failed to check broken links');
-      return response.json();
+      return apiRequest('/api/seo/links/broken', 'POST', { url });
     },
     onSuccess: (data) => {
       setBrokenLinksResults(data.brokenLinks || []);
@@ -452,19 +453,19 @@ export default function SEODashboard() {
         description: `Found ${data.brokenLinks?.length || 0} broken links`,
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Broken-link check failed',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Redirect check mutation
   const checkRedirectsMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await fetch('/api/seo/redirects/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ url }),
-      });
-      if (!response.ok) throw new Error('Failed to check redirects');
-      return response.json();
+      return apiRequest('/api/seo/redirects/check', 'POST', { url });
     },
     onSuccess: (data) => {
       setRedirectResults(data.chains || []);
@@ -473,18 +474,19 @@ export default function SEODashboard() {
         description: `Found ${data.chains?.length || 0} redirect chains`,
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Redirect check failed',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Duplicate content scan mutation
   const scanDuplicatesMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/seo/content/duplicates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to scan for duplicates');
-      return response.json();
+      return apiRequest('/api/seo/content/duplicates', 'POST');
     },
     onSuccess: (data) => {
       setDuplicateContentResults(data.duplicates || []);
@@ -493,19 +495,19 @@ export default function SEODashboard() {
         description: `Found ${data.duplicates?.length || 0} duplicate pairs`,
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Duplicate-content scan failed',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Security analysis mutation
   const analyzeSecurityMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await fetch('/api/seo/security/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ url }),
-      });
-      if (!response.ok) throw new Error('Failed to analyze security');
-      return response.json();
+      return apiRequest('/api/seo/security/analyze', 'POST', { url });
     },
     onSuccess: (data) => {
       setSecurityResults(data);
@@ -514,37 +516,40 @@ export default function SEODashboard() {
         description: `Security score: ${data.securityScore}/100`,
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Security analysis failed',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Mobile analysis mutation
   const analyzeMobileMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await fetch('/api/seo/mobile/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ url }),
-      });
-      if (!response.ok) throw new Error('Failed to analyze mobile-friendliness');
-      return response.json();
+      return apiRequest('/api/seo/mobile/analyze', 'POST', { url });
     },
     onSuccess: (data) => {
       setMobileResults(data);
       toast({ title: 'Analysis complete', description: `Mobile score: ${data.mobileScore}/100` });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Mobile analysis failed',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
   // Performance check mutation
   const checkPerformanceMutation = useMutation({
     mutationFn: async (params: { url: string; device: string }) => {
-      const response = await fetch('/api/seo/performance/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ url: params.url, device: params.device }),
+      return apiRequest('/api/seo/performance/check', 'POST', {
+        url: params.url,
+        device: params.device,
       });
-      if (!response.ok) throw new Error('Failed to check performance');
-      return response.json();
     },
     onSuccess: (data) => {
       setPerformanceResults(data);
@@ -553,19 +558,19 @@ export default function SEODashboard() {
         description: `Performance score: ${data.performanceScore}/100`,
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Performance check failed',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Structured data validation mutation
   const validateStructuredDataMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await fetch('/api/seo/structured-data/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ url }),
-      });
-      if (!response.ok) throw new Error('Failed to validate structured data');
-      return response.json();
+      return apiRequest('/api/seo/structured-data/validate', 'POST', { url });
     },
     onSuccess: (data) => {
       setStructuredDataResults(data);
@@ -574,37 +579,37 @@ export default function SEODashboard() {
         description: `Found ${data.schemas?.length || 0} schemas`,
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Structured-data validation failed',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Content optimization mutation
   const optimizeContentMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await fetch('/api/seo/content/optimize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ url }),
-      });
-      if (!response.ok) throw new Error('Failed to analyze content');
-      return response.json();
+      return apiRequest('/api/seo/content/optimize', 'POST', { url });
     },
     onSuccess: (data) => {
       setContentResults(data);
       toast({ title: 'Analysis complete', description: 'Content optimization suggestions ready' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Content optimization failed',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
   // Semantic analysis mutation
   const analyzeSemanticMutation = useMutation({
     mutationFn: async (keyword: string) => {
-      const response = await fetch('/api/seo/semantic/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ keyword }),
-      });
-      if (!response.ok) throw new Error('Failed to analyze semantic keywords');
-      return response.json();
+      return apiRequest('/api/seo/semantic/analyze', 'POST', { keyword });
     },
     onSuccess: (data) => {
       setSemanticResults(data);
@@ -613,23 +618,31 @@ export default function SEODashboard() {
         description: `Found ${data.relatedKeywords?.length || 0} related keywords`,
       });
     },
+    onError: (error: Error) => {
+      toast({
+        title: 'Semantic analysis failed',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Sitemap generation mutation
   const generateSitemapMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/seo/sitemap/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to generate sitemap');
-      return response.json();
+      return apiRequest('/api/seo/sitemap/generate', 'POST');
     },
     onSuccess: (data) => {
       toast({
         title: 'Sitemap generated',
         description: `Generated sitemap with ${data.pageCount || 0} pages`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not generate the sitemap',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
       });
     },
   });
@@ -1016,7 +1029,8 @@ export default function SEODashboard() {
                         <Input
                           id="siteUrl"
                           placeholder="https://example.com"
-                          defaultValue={settings?.siteUrl}
+                          value={settingsDraft.siteUrl ?? ''}
+                          onChange={(e) => setSetting({ siteUrl: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">
@@ -1024,7 +1038,8 @@ export default function SEODashboard() {
                         <Input
                           id="siteName"
                           placeholder="My Website"
-                          defaultValue={settings?.siteName}
+                          value={settingsDraft.siteName ?? ''}
+                          onChange={(e) => setSetting({ siteName: e.target.value })}
                         />
                       </div>
                     </div>
@@ -1034,7 +1049,8 @@ export default function SEODashboard() {
                       <Input
                         id="defaultTitle"
                         placeholder="Default page title"
-                        defaultValue={settings?.defaultTitle}
+                        value={settingsDraft.defaultTitle ?? ''}
+                        onChange={(e) => setSetting({ defaultTitle: e.target.value })}
                       />
                     </div>
 
@@ -1044,7 +1060,8 @@ export default function SEODashboard() {
                         id="defaultDescription"
                         placeholder="Default meta description for pages"
                         rows={3}
-                        defaultValue={settings?.defaultDescription}
+                        value={settingsDraft.defaultDescription ?? ''}
+                        onChange={(e) => setSetting({ defaultDescription: e.target.value })}
                       />
                     </div>
 
@@ -1055,10 +1072,18 @@ export default function SEODashboard() {
                           Enable automated SEO monitoring
                         </p>
                       </div>
-                      <Switch defaultChecked={settings?.monitoringEnabled} />
+                      <Switch
+                        checked={settingsDraft.monitoringEnabled ?? false}
+                        onCheckedChange={(v) => setSetting({ monitoringEnabled: v })}
+                      />
                     </div>
 
-                    <Button>Save Settings</Button>
+                    <Button
+                      onClick={() => saveSettingsMutation.mutate(settingsDraft)}
+                      disabled={saveSettingsMutation.isPending}
+                    >
+                      {saveSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
+                    </Button>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -1172,7 +1197,18 @@ export default function SEODashboard() {
                             Automatically check SEO metrics on a schedule
                           </p>
                         </div>
-                        <Switch defaultChecked={settings?.monitoringEnabled} />
+                        <Switch
+                          checked={settingsDraft.monitoringEnabled ?? false}
+                          onCheckedChange={(v) => {
+                            // This card has no Save button, so the toggle IS the
+                            // save. It writes the whole draft because the settings
+                            // row is upserted as one object.
+                            const next = { ...settingsDraft, monitoringEnabled: v };
+                            setSettingsDraft(next);
+                            saveSettingsMutation.mutate(next);
+                          }}
+                          disabled={saveSettingsMutation.isPending}
+                        />
                       </div>
                       <Separator />
                       <div>

@@ -1,6 +1,7 @@
 // Subscriptions Edge Function
 // Handles subscription management for tenants
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+import { addMonths } from '../_shared/date-months.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import {
   buildSubscriptionStatus,
@@ -347,7 +348,10 @@ export default async function handler(req: Request) {
       if (selectedBillingCycle === 'annual') {
         periodEnd.setFullYear(periodEnd.getFullYear() + 1);
       } else {
-        periodEnd.setMonth(periodEnd.getMonth() + 1);
+        // addMonths clamps: a subscription started on 31 January bills again on
+        // 28 February, not on 3 March. setMonth overflows, which silently gave
+        // some customers a 31-day first period and skipped a month boundary.
+        periodEnd.setTime(addMonths(periodEnd, 1).getTime());
       }
 
       if (currentSubscription) {
@@ -680,7 +684,10 @@ export default async function handler(req: Request) {
       } else if (billingCycle === 'annual') {
         periodEnd.setFullYear(periodEnd.getFullYear() + 1);
       } else {
-        periodEnd.setMonth(periodEnd.getMonth() + 1);
+        // addMonths clamps: a subscription started on 31 January bills again on
+        // 28 February, not on 3 March. setMonth overflows, which silently gave
+        // some customers a 31-day first period and skipped a month boundary.
+        periodEnd.setTime(addMonths(periodEnd, 1).getTime());
       }
 
       const amount = billingCycle === 'annual' ? plan.annual_price : plan.monthly_price;
@@ -1549,7 +1556,7 @@ export default async function handler(req: Request) {
         if (subscription.billing_cycle === 'annual') {
           newPeriodEnd.setFullYear(newPeriodEnd.getFullYear() + 1);
         } else {
-          newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+          newPeriodEnd.setTime(addMonths(newPeriodEnd, 1).getTime());
         }
         newPeriodEnd = newPeriodEnd.toISOString();
       }

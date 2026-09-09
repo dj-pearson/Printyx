@@ -63,9 +63,52 @@ function describeCriteria(criteria: RoutingRule['criteria']): string {
   return parts.length > 0 ? parts.join(', ') : 'matches any lead';
 }
 
+/**
+ * The routing settings the edge function stores under
+ * tenants.metadata.autoLeadRouting. These defaults mirror AUTO_ROUTING_DEFAULTS in
+ * supabase/functions/auto-lead-routing/index.ts - a tenant that has never saved
+ * reads exactly this shape back, so seeding the dialog with them is what the
+ * server would have sent anyway, not a guess.
+ */
+interface RoutingConfig {
+  enabled: boolean;
+  autoRouteNewLeads: boolean;
+  minLeadScore: number;
+  respectRepCapacity: boolean;
+  maxLeadsPerRepPerDay: number;
+  sendImmediateEmail: boolean;
+  emailTemplate: string;
+  slaMinutes: number;
+  businessHoursOnly: boolean;
+  escalationEnabled: boolean;
+  escalateAfterMinutes: number;
+}
+
+const ROUTING_CONFIG_DEFAULTS: RoutingConfig = {
+  enabled: true,
+  autoRouteNewLeads: true,
+  minLeadScore: 50,
+  respectRepCapacity: true,
+  maxLeadsPerRepPerDay: 10,
+  sendImmediateEmail: true,
+  emailTemplate: 'default',
+  slaMinutes: 5,
+  businessHoursOnly: false,
+  escalationEnabled: true,
+  escalateAfterMinutes: 60,
+};
+
 export default function AutoLeadRoutingDashboard() {
   const [selectedLeadId, setSelectedLeadId] = useState<string>('');
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
+
+  // The routing settings the dialog is editing. Every control below used to be
+  // uncontrolled - defaultValue/defaultChecked with no onChange - and Save
+  // posted back the config it had just FETCHED, so a user could raise the daily
+  // cap from 10 to 25, be told "settings saved successfully", and reopen the
+  // dialog on 10. The edge function persists into tenants.metadata.autoLeadRouting
+  // and always did; nothing was ever sending it a changed value.
+  const [configDraft, setConfigDraft] = useState<RoutingConfig | null>(null);
 
   // WF-S-02: the rule editor's draft. Kept as strings because these are inputs;
   // the payload below converts, and an empty string means "do not constrain"
@@ -147,10 +190,20 @@ export default function AutoLeadRoutingDashboard() {
   });
 
   // Fetch config
-  const { data: config } = useQuery({
+  const { data: config } = useQuery<RoutingConfig>({
     queryKey: ['/api/auto-lead-routing/config'],
     queryFn: () => apiRequest('/api/auto-lead-routing/config'),
   });
+
+  // Seed the draft from the server on open rather than on every render, so a
+  // background refetch cannot discard what the user is part-way through typing.
+  const openConfigDialog = (open: boolean) => {
+    if (open) setConfigDraft({ ...ROUTING_CONFIG_DEFAULTS, ...(config ?? {}) });
+    setConfigDialogOpen(open);
+  };
+  const draft = configDraft ?? ROUTING_CONFIG_DEFAULTS;
+  const setDraft = (patch: Partial<RoutingConfig>) =>
+    setConfigDraft((prev) => ({ ...ROUTING_CONFIG_DEFAULTS, ...(prev ?? {}), ...patch }));
 
   // Manual routing mutation
   const routeMutation = useMutation({
@@ -176,7 +229,7 @@ export default function AutoLeadRoutingDashboard() {
 
   // Update config mutation
   const updateConfigMutation = useMutation({
-    mutationFn: (newConfig: any) =>
+    mutationFn: (newConfig: RoutingConfig) =>
       apiRequest('/api/auto-lead-routing/config', {
         method: 'PUT',
         body: JSON.stringify(newConfig),
@@ -189,6 +242,15 @@ export default function AutoLeadRoutingDashboard() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/auto-lead-routing/config'] });
       setConfigDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      // Without this a rejected save was completely silent: the dialog stayed
+      // open with the user's edits and no indication they had not landed.
+      toast({
+        title: 'Could not save configuration',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -231,7 +293,7 @@ export default function AutoLeadRoutingDashboard() {
               seconds
             </p>
           </div>
-          <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
+          <Dialog open={configDialogOpen} onOpenChange={openConfigDialog}>
             <DialogTrigger asChild>
               <Button variant="outline">
                 <Settings className="mr-2 h-4 w-4" />
@@ -253,11 +315,19 @@ export default function AutoLeadRoutingDashboard() {
                       Automatically route new leads when they're created
                     </p>
                   </div>
-                  <Switch defaultChecked={config?.enabled} />
+                  <Switch
+                    checked={draft.enabled}
+                    onCheckedChange={(v) => setDraft({ enabled: v })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Minimum Lead Score</Label>
-                  <Input type="number" defaultValue={config?.minLeadScore || 50} placeholder="50" />
+                  <Input
+                    type="number"
+                    value={draft.minLeadScore}
+                    onChange={(e) => setDraft({ minLeadScore: Number(e.target.value) })}
+                    placeholder="50"
+                  />
                   <p className="text-xs text-muted-foreground">
                     Only auto-route leads with score ≥ this value
                   </p>
@@ -266,7 +336,8 @@ export default function AutoLeadRoutingDashboard() {
                   <Label>Max Leads Per Rep Per Day</Label>
                   <Input
                     type="number"
-                    defaultValue={config?.maxLeadsPerRepPerDay || 10}
+                    value={draft.maxLeadsPerRepPerDay}
+                    onChange={(e) => setDraft({ maxLeadsPerRepPerDay: Number(e.target.value) })}
                     placeholder="10"
                   />
                 </div>
@@ -277,7 +348,10 @@ export default function AutoLeadRoutingDashboard() {
                       Don't assign to reps at max capacity
                     </p>
                   </div>
-                  <Switch defaultChecked={config?.respectRepCapacity} />
+                  <Switch
+                    checked={draft.respectRepCapacity}
+                    onCheckedChange={(v) => setDraft({ respectRepCapacity: v })}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
@@ -286,11 +360,14 @@ export default function AutoLeadRoutingDashboard() {
                       Email rep immediately when lead is assigned
                     </p>
                   </div>
-                  <Switch defaultChecked={config?.sendImmediateEmail} />
+                  <Switch
+                    checked={draft.sendImmediateEmail}
+                    onCheckedChange={(v) => setDraft({ sendImmediateEmail: v })}
+                  />
                 </div>
                 <Button
                   className="w-full"
-                  onClick={() => updateConfigMutation.mutate(config)}
+                  onClick={() => updateConfigMutation.mutate(draft)}
                   disabled={updateConfigMutation.isPending}
                 >
                   Save Configuration

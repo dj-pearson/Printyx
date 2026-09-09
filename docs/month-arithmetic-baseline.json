@@ -1,0 +1,31 @@
+{
+  "note": "DATE-SETMONTH-001 ratchet. Each entry is a real defect on the 29th, 30th and 31st of a month - a TODO list, not settled debt. Shrink this, never grow it. See scripts/check-month-arithmetic.mjs.",
+  "total": 25,
+  "allowed": [
+    "client/src/components/leads/LeadDeals.tsx::threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);",
+    "server/routes-admin-stats.ts::startOfLastMonth.setMonth(startOfLastMonth.getMonth() - 1);",
+    "server/routes-crm-goals.ts::startDate.setMonth(startDate.getMonth() - 1);",
+    "server/routes-platform-deals.ts::startDate.setMonth(now.getMonth() - 1);",
+    "server/routes-platform-deals.ts::startDate.setMonth(now.getMonth() - 3);",
+    "server/routes-sales-forecasting.ts::date.setMonth(date.getMonth() - i);",
+    "server/routes-sales-forecasting.ts::startDate.setMonth(startDate.getMonth() - monthsBack);",
+    "server/seed-lease-data.ts::scheduledDate.setMonth(startDate.getMonth() + i);",
+    "server/seed-lease-data.ts::scheduledDate.setMonth(startDate.getMonth() + paymentsCompleted + i);",
+    "server/services/automated-billing-service.ts::next.setMonth(next.getMonth() + 1);",
+    "server/services/automated-billing-service.ts::next.setMonth(next.getMonth() + 1);",
+    "server/services/automated-billing-service.ts::next.setMonth(next.getMonth() + 3);",
+    "server/services/automated-billing-service.ts::start.setMonth(start.getMonth() - 1);",
+    "server/services/automated-billing-service.ts::start.setMonth(start.getMonth() - 1);",
+    "server/services/automated-billing-service.ts::start.setMonth(start.getMonth() - 3);",
+    "server/services/billing-analytics-service.ts::forecastMonth.setMonth(forecastMonth.getMonth() + i);",
+    "server/services/billing-analytics-service.ts::startDate.setMonth(startDate.getMonth() - monthsBack);",
+    "server/services/billing-engine-service.ts::date.setMonth(date.getMonth() + 1);",
+    "supabase/functions/analytics/index.ts::startDate.setMonth(now.getMonth() - 1);",
+    "supabase/functions/analytics/index.ts::startDate.setMonth(now.getMonth() - 3);",
+    "supabase/functions/customer-portal/handlers/analytics.ts::startDate.setMonth(endDate.getMonth() - 6);",
+    "supabase/functions/customer-portal/handlers/satisfaction.ts::startDate.setMonth(now.getMonth() - 6);",
+    "supabase/functions/seo/index.ts::startDate.setMonth(now.getMonth() - 1);",
+    "supabase/functions/seo/index.ts::startDate.setMonth(now.getMonth() - 3);",
+    "supabase/functions/voice-agent/index.ts::since.setMonth(since.getMonth() - 5);"
+  ]
+}

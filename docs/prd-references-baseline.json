@@ -1,6 +1,6 @@
 {
   "note": "Story + guidance file-reference ratchet. scripts/check-prd-references.mjs fails when a path named in an OPEN story or in CLAUDE.md stops resolving — usually because someone deleted or moved the file, which means that story now describes a place that does not exist and needs re-reading. THIS LIST IS NOT A DEFECT LIST: many entries are forward-looking stories naming files they would create (the AOS-* subsystem is entirely of this kind). Do not \"fix\" those. Entries leave the list when the path resolves again or the story closes: node scripts/check-prd-references.mjs --update-baseline.",
-  "count": 54,
+  "count": 58,
   "allowed": [
     "AOS-001 drizzle/rls/agentic-os.sql",
     "AOS-001 shared/agentic-os-schema.ts",
@@ -46,6 +46,8 @@
     "CLAUDE.md server/routes-deals.ts",
     "CLAUDE.md server/routes-predictive-service-dispatch.ts",
     "CLAUDE.md server/routes-workflow-automation.ts",
+    "CLAUDE.md server/routes/meeting-transcription-routes.ts",
+    "CLAUDE.md server/services/meeting-transcription-service.ts",
     "CR-026 server/routes-predictive-maintenance-hub.ts",
     "CRMX-008a server/routes-deals.ts",
     "EDGE-002g-remainder server/routes-predictive-service-dispatch.ts",
@@ -55,6 +57,8 @@
     "LEGAL-006 server/routes-qbr.ts",
     "SUPA-012 server/routes-predictive-service-dispatch.ts",
     "SUPA-016 server/routes-workflow-automation.ts",
-    "SUPA-023 server/routes-predictive-service-dispatch.ts"
+    "SUPA-023 server/routes-predictive-service-dispatch.ts",
+    "UI-DEAD-BUTTONS-001 docs/dead-buttons-baseline.json",
+    "UI-DEAD-BUTTONS-001 scripts/check-dead-buttons.mjs"
   ]
 }

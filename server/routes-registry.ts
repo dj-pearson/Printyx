@@ -628,7 +628,16 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   const asyncRootApiMounts: string[] = [
     './routes/team-collaboration-routes',
     './routes/meeting-scheduling-routes',
-    './routes/meeting-transcription-routes',
+    // meeting-transcription-routes retired (iteration 10). Its nine endpoints and
+    // the 828-line service beneath them are covered one for one by
+    // supabase/functions/meeting-transcription/, whose own header names both files
+    // as replaced. Four of the nine Express handlers returned hardcoded recordings,
+    // transcripts, notes and highlights, and the service was a mock too - it
+    // generated transcript segments and wrote tenantId: 'mock-tenant'. Nothing in
+    // any of the eight client trees called these paths: MeetingTranscription.tsx
+    // goes to /api/meeting-transcription, which the proxy sends to the edge
+    // function. The edge function also serves /recordings/:id/consent, which this
+    // router never had (LEGAL-009).
     './routes/ai-documentation-routes',
     './routes/ai-search-knowledge-routes',
     // './routes/ai-employee-routes' — retired (PROD-008b). All ten handlers were

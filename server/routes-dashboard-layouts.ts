@@ -13,7 +13,7 @@ import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
 import { dashboardLayouts } from '@shared/reporting-schema';
-import { businessRecords, opportunities, equipment, contacts } from '@shared/schema';
+import { businessRecords, opportunities, equipment } from '@shared/schema';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
@@ -284,12 +284,32 @@ export function registerDashboardLayoutsRoutes(app: Express) {
         const tenantId = req.tenantId!;
         const { type } = req.params;
 
-        let result: any = { value: 0, change: 0 };
+        // WHY EVERY `change` IS NULL, and four of these six have no value either.
+        //
+        // This endpoint feeds the role-based dashboard's stat cards and the widgets
+        // CustomDashboard offers, and it used to answer with typed-in numbers:
+        // revenue was the string '$125,432' with 12.5% growth, tickets 23 at -3.1%,
+        // inventory-alerts 7, renewals 12, and every single `change` - including on
+        // the two metrics that DO count real rows - was a literal (12.5, 5.2, 8.3).
+        // Nothing anywhere computes a prior-period comparison, so a percentage change
+        // is not a degraded measurement, it is an invention. Per the rule this repo
+        // already applies to fabricated operational values, an unbacked claim is
+        // removed rather than faked, and the response names what it cannot answer so
+        // an absence is not read as zero.
+        //
+        // The three counts removed rather than derived ARE derivable - service_tickets,
+        // inventory_items against reorder_point, contracts by end date - and that is
+        // DASH-METRICS-001, not arithmetic to guess at here.
+        let result: any = { value: null, change: null, unbacked: ['change'] };
 
         switch (type) {
           case 'revenue': {
-            // Mock data - replace with actual query
-            result = { value: '$125,432', change: 12.5 };
+            result = {
+              value: null,
+              change: null,
+              unbacked: ['value', 'change'],
+              reason: 'No revenue roll-up is computed here. Billing owns invoice totals.',
+            };
             break;
           }
 
@@ -304,7 +324,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
                   eq(businessRecords.status, 'active'),
                 ),
               );
-            result = { value: countResult?.count || 0, change: 5.2 };
+            result = { value: countResult?.count || 0, change: null, unbacked: ['change'] };
             break;
           }
 
@@ -312,38 +332,51 @@ export function registerDashboardLayoutsRoutes(app: Express) {
             const [oppResult] = await db
               .select({
                 count: count(),
-                total: sql<number>`COALESCE(SUM(value), 0)`,
+                total: sql<number>`COALESCE(SUM(${opportunities.amount}), 0)`,
               })
               .from(opportunities)
               .where(
                 and(
                   eq(opportunities.tenantId, tenantId),
-                  sql`${opportunities.stage} NOT IN ('Closed Won', 'Closed Lost')`,
+                  sql`${opportunities.stageName} NOT IN ('Closed Won', 'Closed Lost')`,
                 ),
               );
             result = {
               value: `$${Number(oppResult?.total || 0).toLocaleString()}`,
               count: oppResult?.count || 0,
-              change: 8.3,
+              change: null,
+              unbacked: ['change'],
             };
             break;
           }
 
           case 'tickets': {
-            // Mock data - replace with actual query
-            result = { value: 23, change: -3.1 };
+            result = {
+              value: null,
+              change: null,
+              unbacked: ['value', 'change'],
+              reason: 'Open-ticket counts are not rolled up here. See DASH-METRICS-001.',
+            };
             break;
           }
 
           case 'inventory-alerts': {
-            // Mock data - replace with actual query
-            result = { value: 7, change: 0 };
+            result = {
+              value: null,
+              change: null,
+              unbacked: ['value', 'change'],
+              reason: 'Below-reorder-point counts are not computed here. See DASH-METRICS-001.',
+            };
             break;
           }
 
           case 'renewals': {
-            // Mock data - replace with actual query
-            result = { value: 12, change: 0 };
+            result = {
+              value: null,
+              change: null,
+              unbacked: ['value', 'change'],
+              reason: 'Upcoming renewals are not computed here. See DASH-METRICS-001.',
+            };
             break;
           }
 
@@ -371,18 +404,19 @@ export function registerDashboardLayoutsRoutes(app: Express) {
         const { type } = req.params;
 
         let data: any[] = [];
+        let unbacked: string | null = null;
 
         switch (type) {
           case 'pipeline': {
             const stages = await db
               .select({
-                stage: opportunities.stage,
+                stage: opportunities.stageName,
                 count: count(),
-                total: sql<number>`COALESCE(SUM(value), 0)`,
+                total: sql<number>`COALESCE(SUM(${opportunities.amount}), 0)`,
               })
               .from(opportunities)
               .where(eq(opportunities.tenantId, tenantId))
-              .groupBy(opportunities.stage);
+              .groupBy(opportunities.stageName);
 
             data = stages.map((s) => ({
               name: s.stage || 'Unknown',
@@ -393,15 +427,11 @@ export function registerDashboardLayoutsRoutes(app: Express) {
           }
 
           case 'revenue-trend': {
-            // Mock data - replace with actual query
-            data = [
-              { month: 'Jan', revenue: 45000 },
-              { month: 'Feb', revenue: 52000 },
-              { month: 'Mar', revenue: 48000 },
-              { month: 'Apr', revenue: 61000 },
-              { month: 'May', revenue: 55000 },
-              { month: 'Jun', revenue: 67000 },
-            ];
+            // Six months of invented revenue, rendered as a trend line. A chart is a
+            // claim about a shape over time; drawn over typed-in points it asserts
+            // something specific and false. Empty until DASH-METRICS-001 derives it.
+            data = [];
+            unbacked = 'No monthly revenue series is computed. Billing owns invoice totals.';
             break;
           }
 
@@ -429,13 +459,8 @@ export function registerDashboardLayoutsRoutes(app: Express) {
           }
 
           case 'service-metrics': {
-            // Mock data - replace with actual query
-            data = [
-              { status: 'Open', count: 15 },
-              { status: 'In Progress', count: 23 },
-              { status: 'Pending', count: 8 },
-              { status: 'Resolved', count: 45 },
-            ];
+            data = [];
+            unbacked = 'Ticket counts by status are not rolled up here. See DASH-METRICS-001.';
             break;
           }
 
@@ -443,7 +468,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
             return res.status(404).json({ message: `Unknown chart type: ${type}` });
         }
 
-        res.json({ data });
+        res.json(unbacked ? { data, unbacked } : { data });
       } catch (error: any) {
         log.error('Error fetching chart data:', error);
         res.status(500).json({ message: 'Failed to fetch chart data' });
@@ -459,16 +484,14 @@ export function registerDashboardLayoutsRoutes(app: Express) {
     isAuthenticated,
     async (req: DashboardRequest, res: Response) => {
       try {
-        // Mock data - replace with actual activity log query
-        const items = [
-          { id: 1, text: "New customer 'Acme Corp' added", time: '2 min ago' },
-          { id: 2, text: 'Invoice #1234 paid ($5,432)', time: '1 hour ago' },
-          { id: 3, text: 'Service ticket #456 resolved', time: '3 hours ago' },
-          { id: 4, text: "Deal 'Enterprise Contract' won", time: '5 hours ago' },
-          { id: 5, text: 'Equipment PM scheduled', time: 'Yesterday' },
-        ];
-
-        res.json({ items });
+        // Was five invented events naming a customer, an invoice number and a
+        // dollar amount. business_record_activities is the real feed and this
+        // endpoint does not read it; see DASH-METRICS-001.
+        res.json({
+          items: [],
+          unbacked:
+            'No activity feed is assembled here. business_record_activities holds the real events.',
+        });
       } catch (error: any) {
         log.error('Error fetching activity:', error);
         res.status(500).json({ message: 'Failed to fetch activity' });
@@ -484,15 +507,15 @@ export function registerDashboardLayoutsRoutes(app: Express) {
     isAuthenticated,
     async (req: DashboardRequest, res: Response) => {
       try {
-        // Mock data - replace with actual urgent items query
-        const items = [
-          { id: 1, title: 'Critical server issue at Client ABC', priority: 'critical' },
-          { id: 2, title: 'Customer escalation - billing dispute', priority: 'high' },
-          { id: 3, title: 'Contract expiring in 3 days', priority: 'high' },
-          { id: 4, title: 'Low toner alert - 5 devices', priority: 'medium' },
-        ];
-
-        res.json({ items });
+        // Was four invented incidents, one of them marked critical. A dashboard
+        // that shows a critical item nobody reported is worse than an empty one:
+        // it spends attention, and an empty list here reads as "nothing is wrong"
+        // when the truth is that nothing is being checked.
+        res.json({
+          items: [],
+          unbacked:
+            'Urgent items are not derived here. routes-operations-extended derives four real alert families.',
+        });
       } catch (error: any) {
         log.error('Error fetching urgent items:', error);
         res.status(500).json({ message: 'Failed to fetch urgent items' });
@@ -508,15 +531,12 @@ export function registerDashboardLayoutsRoutes(app: Express) {
     isAuthenticated,
     async (req: DashboardRequest, res: Response) => {
       try {
-        // Mock data - replace with actual tasks query
-        const items = [
-          { id: 1, title: 'Follow up with prospect', done: false, dueDate: 'Today' },
-          { id: 2, title: 'Submit weekly report', done: false, dueDate: 'Tomorrow' },
-          { id: 3, title: 'Review contract draft', done: true, dueDate: 'Yesterday' },
-          { id: 4, title: 'Schedule customer meeting', done: false, dueDate: 'This week' },
-        ];
-
-        res.json({ items });
+        // Was four invented tasks, one already ticked. The tasks tables are real
+        // and this endpoint does not read them; see DASH-METRICS-001.
+        res.json({
+          items: [],
+          unbacked: 'This does not read the tasks tables.',
+        });
       } catch (error: any) {
         log.error('Error fetching tasks:', error);
         res.status(500).json({ message: 'Failed to fetch tasks' });
@@ -532,16 +552,13 @@ export function registerDashboardLayoutsRoutes(app: Express) {
     isAuthenticated,
     async (req: DashboardRequest, res: Response) => {
       try {
-        // Mock data - replace with actual team performance query
-        const items = [
-          { id: 1, name: 'John Smith', value: '$125,000', rank: 1 },
-          { id: 2, name: 'Jane Doe', value: '$98,000', rank: 2 },
-          { id: 3, name: 'Bob Johnson', value: '$87,000', rank: 3 },
-          { id: 4, name: 'Alice Brown', value: '$76,000', rank: 4 },
-          { id: 5, name: 'Charlie Wilson', value: '$65,000', rank: 5 },
-        ];
-
-        res.json({ items });
+        // Was five invented people with invented revenue and a leaderboard rank.
+        // A sales leaderboard is a statement about named colleagues; typed in, it is
+        // the least defensible thing on this page.
+        res.json({
+          items: [],
+          unbacked: 'No per-rep attainment is computed here. See DASH-METRICS-001.',
+        });
       } catch (error: any) {
         log.error('Error fetching team performance:', error);
         res.status(500).json({ message: 'Failed to fetch team performance' });

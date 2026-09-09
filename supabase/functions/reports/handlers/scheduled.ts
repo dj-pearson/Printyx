@@ -27,6 +27,7 @@
 // keys belong to the caller and must not be rewritten.
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
+import { addMonths, daysInMonth } from '../../_shared/date-months.ts';
 import { toCamelShallow } from '../../_shared/case.ts';
 import type { HandlerCtx } from '../_context.ts';
 
@@ -118,9 +119,13 @@ function calculateNextRun(cronExpression: string): Date {
         nextMonth = months[0];
         next.setFullYear(next.getFullYear() + 1);
       }
+      // setMonth on a date carrying a day-of-month past the target month's length
+      // overflows into the month after: a report scheduled for the 31st and rolled
+      // to February would fire in March. Clamp the day first.
+      next.setDate(Math.min(next.getDate(), daysInMonth(next.getFullYear(), nextMonth - 1)));
       next.setMonth(nextMonth - 1);
     } else if (next <= now) {
-      next.setMonth(next.getMonth() + 1);
+      next.setTime(addMonths(next, 1).getTime());
     }
     return next;
   }

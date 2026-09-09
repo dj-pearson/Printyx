@@ -115,13 +115,40 @@ type FinancialKPI = {
   calculation_period: string;
 };
 
+/**
+ * The shape supabase/functions/financial/ actually returns from /financial/metrics.
+ *
+ * This type used to name totalRevenueForecast, cashFlowProjection, profitMargin,
+ * riskLevel, forecastAccuracy and growthProjection - SIX keys the endpoint has
+ * never sent. Every read resolved to undefined and fell through `|| '0'`, so the
+ * three cards below showed $0, $0 and 0% on every account, in dev and production
+ * alike. That is PA-040's shape: a page and its endpoint disagreeing about key
+ * names, which no guard here compares.
+ *
+ * `profit` and `expenses` are null by design - nothing in the platform records an
+ * expense, and the endpoint used to invent COGS at 60% of revenue, which made
+ * grossMargin a constant 40.00% for every tenant. See its own note for why.
+ */
 type FinancialMetrics = {
-  totalRevenueForecast: number;
-  cashFlowProjection: number;
-  profitMargin: number;
-  riskLevel: string;
-  forecastAccuracy: number;
-  growthProjection: number;
+  period?: string;
+  revenue?: {
+    total?: number;
+    collected?: number;
+    outstanding?: number;
+    overdue?: number;
+    wonDeals?: number;
+    invoiceCount?: number;
+  };
+  recurring?: { mrr?: number; arr?: number; activeContracts?: number };
+  expenses?: { total: number | null; cogs: number | null; operating: number | null };
+  profit?: {
+    gross: number | null;
+    net: number | null;
+    grossMargin: number | null;
+    netMargin: number | null;
+  };
+  cashFlow?: { inflow?: number; outflow: number | null; net: number | null };
+  unbacked?: string[];
 };
 
 // Form Schemas
@@ -165,13 +192,10 @@ export default function FinancialForecasting() {
   const { data: metrics } = useQuery<FinancialMetrics>({
     queryKey: ['/api/financial/metrics'],
     queryFn: async () => {
-      const response = await apiRequest('/api/financial/metrics', 'GET');
-      return {
-        ...response,
-        totalRevenue: response?.total_revenue || response?.totalRevenue || 0,
-        totalExpenses: response?.total_expenses || response?.totalExpenses || 0,
-        netIncome: response?.net_income || response?.netIncome || 0,
-      };
+      // The normalizer that used to sit here invented three more camelCase keys
+      // (totalRevenue, totalExpenses, netIncome) from snake_case names the
+      // endpoint does not send either, so it only added to the mismatch.
+      return (await apiRequest('/api/financial/metrics', 'GET')) as FinancialMetrics;
     },
   });
 
@@ -803,46 +827,56 @@ export default function FinancialForecasting() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Revenue Forecast</CardTitle>
+                  <CardTitle className="text-sm font-medium">Invoiced revenue</CardTitle>
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    ${metrics?.totalRevenueForecast?.toLocaleString() || '0'}
+                    ${(metrics?.revenue?.total ?? 0).toLocaleString()}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {metrics?.growthProjection
-                      ? `${(metrics.growthProjection * 100).toFixed(1)}% growth projected`
-                      : 'No growth data'}
+                    {/* Not a forecast: this is what was invoiced in the period. The
+                        endpoint computes no projection and no growth rate. */}
+                    {metrics?.revenue?.invoiceCount != null
+                      ? `${metrics.revenue.invoiceCount} invoices this period`
+                      : 'This period'}
                   </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Cash Flow</CardTitle>
+                  <CardTitle className="text-sm font-medium">Cash collected</CardTitle>
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div
-                    className={`text-2xl font-bold ${
-                      (metrics?.cashFlowProjection || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}
-                  >
-                    ${metrics?.cashFlowProjection?.toLocaleString() || '0'}
+                  <div className="text-2xl font-bold text-green-600">
+                    ${(metrics?.cashFlow?.inflow ?? 0).toLocaleString()}
                   </div>
-                  <p className="text-xs text-muted-foreground">Net cash flow projection</p>
+                  <p className="text-xs text-muted-foreground">
+                    {/* Inflow only. Net cash flow needs outflow, which needs expenses,
+                        and nothing records one - so there is no net figure to show. */}
+                    Paid on invoices this period
+                  </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Profit Margin</CardTitle>
+                  <CardTitle className="text-sm font-medium">Recurring revenue</CardTitle>
                   <PieChart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {metrics?.profitMargin ? `${metrics.profitMargin.toFixed(1)}%` : '0%'}
+                    ${(metrics?.recurring?.mrr ?? 0).toLocaleString()}
                   </div>
-                  <p className="text-xs text-muted-foreground">Average profit margin</p>
+                  <p className="text-xs text-muted-foreground">
+                    {/* This card was "Profit Margin", reading a key the endpoint never
+                        sent, so it always showed 0%. Profit is unavailable rather than
+                        zero - see the endpoint's `unbacked` - so the slot shows a figure
+                        that IS measured instead of a placeholder for one that is not. */}
+                    {metrics?.recurring?.activeContracts != null
+                      ? `MRR across ${metrics.recurring.activeContracts} active contracts`
+                      : 'Monthly recurring revenue'}
+                  </p>
                 </CardContent>
               </Card>
             </div>

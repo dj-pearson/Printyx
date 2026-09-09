@@ -20,6 +20,7 @@
 // Optional ?format=pdf on GET /:id streams a generated lease PDF.
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
+import { addMonths } from '../../_shared/date-months.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { handlePayments } from './payments.ts';
 import { handleRenewals } from './renewals.ts';
@@ -202,12 +203,21 @@ async function generateSchedule(req: Request, ctx: HandlerCtx, leaseId: string):
     });
   }
 
-  // Straight-line schedule — one row per month, fixed monthly_payment.
+  // Straight-line schedule - one row per month, fixed monthly_payment.
+  //
+  // This stepped with `d.setMonth(start.getMonth() + i)`, and setMonth OVERFLOWS
+  // rather than clamping. From a first payment on 31 January, a twelve-month
+  // lease produced payments in only SEVEN distinct months: March, May, July,
+  // October and December each got two, while February, April, June, September
+  // and November got none. Rows written to lease_payments, so a customer was
+  // scheduled to be billed twice in some months and not at all in others.
+  //
+  // addMonths clamps the day (DATE-SETMONTH-001), which gives one payment per
+  // calendar month for the whole term whatever day it starts on.
   const start = new Date(lease.first_payment_date as string);
   const rows: Array<Record<string, unknown>> = [];
   for (let i = 0; i < Number(lease.term); i++) {
-    const d = new Date(start);
-    d.setMonth(start.getMonth() + i);
+    const d = addMonths(start, i);
     rows.push({
       tenant_id: auth.tenantId,
       lease_id: lease.id,
