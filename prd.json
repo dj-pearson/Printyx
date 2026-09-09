@@ -14234,6 +14234,23 @@
       "category": "dashboard",
       "dependsOn": [],
       "notes": "FILED 2026-09-09 while mining the typecheck ratchet. The fabrications are already removed and locked by server/tests/unit/dashboard-metrics-not-fabricated.test.ts - this story is the derivation and the edge parity, not the deletion. Two broken real queries were fixed at the same time: opportunities.stage is stage_name, and COALESCE(SUM(value), 0) named a column that does not exist on opportunities (it is amount) - that one was raw SQL, so neither tsc nor check:phantom-cols could see it, which is CR-017 exactly. AC5 is the most reusable part: check:fabricated, check:no-static-posture and check:no-mocks all scan client/src only, so a fabricated dashboard sitting in an Express router was invisible to every one of them."
+    },
+    {
+      "id": "MEETINGS-READS-001",
+      "title": "Implement the four meetings read endpoints, or retire the surface",
+      "description": "As a user with meetings, listing them must read the database. server/routes/meeting-scheduling-routes.ts is mounted at the /api ROOT and its four read handlers - GET /meetings, GET /meetings/:meetingId, GET /types, GET /rooms - returned hardcoded sample data and never touched MeetingSchedulingService or the database. They answer 501 now. The other four handlers in the same router (schedule-request, schedule/:requestId, analytics, optimize-schedule) genuinely call that service, which is real, db-backed, and was cleaned by AUDIT-021, so the surface is half built rather than fake throughout. Decide which half wins: implement the reads over the meeting tables, or retire the router and its service together.",
+      "acceptanceCriteria": [
+        "GET /meetings lists the caller tenant's meetings from a real table, or the endpoint is removed along with its three siblings.",
+        "GET /meetings/:meetingId returns the meeting asked for. The previous version returned the same sample meeting for every id, which no test would have caught because there were no meetings to compare against.",
+        "Meeting types and rooms are either backed by tables or dropped; there is no meeting_types or meeting_rooms table today.",
+        "If the surface is retired, MeetingSchedulingService goes with it or is recorded in docs/server-orphans-baseline.json, since this router is its only importer.",
+        "Whatever ships has a caller. Nothing in any of the eight client trees calls any of these paths today."
+      ],
+      "priority": 4,
+      "passes": false,
+      "category": "meetings",
+      "dependsOn": [],
+      "notes": "FILED 2026-09-09 while sweeping server/ for the fabricated-backend shape that DASH-METRICS-001 turned up. Retiring is the likelier answer: there is no caller in client/src, printyx-client, printyx-desktop, mobile-app, mobile, browser-extensions, printyx-extension or ios, and the only live /api/meetings traffic is /calendar/*, which the proxy sends to supabase/functions/meetings/ over calendar_connections and calendar_events. Do NOT delete without checking the root mount first: this router owns the generic paths /api/types, /api/rooms and /api/analytics at the /api root, so anything that starts using those names inherits them. The reads answer 501 rather than an empty 200 on purpose - an empty list asserts \"you have no meetings\", which is its own unbacked claim. Locked by server/tests/unit/meeting-reads-not-fabricated.test.ts."
     }
   ]
 }
