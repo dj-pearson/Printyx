@@ -14185,6 +14185,22 @@
       "category": "edge-parity",
       "dependsOn": ["EDGE-002e"],
       "notes": "FILED 2026-09-09, found while wiring the Settings tab (its Save Settings button had no onClick and its five fields were uncontrolled). That fix is committed and is independent of this one: it makes the form carry the user edits, which is right in dev and a prerequisite either way. Do not repair the transport without first settling the POST/PUT split above. The seo edge function was 404ing on every endpoint before the normalizePath sweep, so confirm each branch with a curl rather than by reading the dispatcher."
+    },
+    {
+      "id": "UI-DEAD-BUTTONS-001",
+      "title": "Around 115 action buttons across the app have no handler at all",
+      "description": "As a user, a button labelled Save, Export, Send or Schedule must do something when pressed. A scan of client/src for <Button> elements whose label carries an action verb and whose attributes have no onClick, no type=\"submit\", no asChild and no href - excluding any within 15 lines of a Dialog/Popover/Sheet/Dropdown trigger or a <form> - returns roughly 115 candidates across 60 files. Three have already been confirmed as genuinely dead and fixed by hand: SEODashboard's Save Settings, and View Details plus Download on every row of Invoices.tsx (whose PDF preview dialog was itself an orphan with no importer). The rest are unverified, and the scan has known false positives - a submit button in a form declared more than 15 lines above, a trigger the heuristic did not associate - so the number is an upper bound, not a count of defects. This is a dead control, not a broken one: nothing throws, nothing logs, and the user concludes the feature is slow or that they did it wrong.",
+      "acceptanceCriteria": [
+        "scripts/check-dead-buttons.mjs reports every <Button> with an action-verb label and no handler, resolving form and trigger ancestry properly rather than by a line window, and is wired into CI as a shrink-only ratchet with docs/dead-buttons-baseline.json.",
+        "Every entry in the baseline is triaged into one of three outcomes and annotated with which: wired to a real handler, deleted because the feature has no backing data (the AUDIT-016 rule), or recorded as a false positive fixed by the scanner rather than by the baseline.",
+        "The scanner is run over its own output with comments stripped, so a worked example named in a header does not clear itself.",
+        "No entry is left as \"looks fine\" without a named handler or a named reason."
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "ui-correctness",
+      "dependsOn": [],
+      "notes": "FILED 2026-09-09. Scan lives at scratchpad/dead-buttons.mjs; move it into scripts/ and harden it before baselining. Read the CLAUDE.md note on check-nav-targets first - its isNoise() lesson (a query string hid nine dead buttons) is the same failure mode this scan can have, and its header explains why a collect-everything design beat a narrower one. Two rules to carry over: delete a control whose feature has no backing column rather than faking it, and strip comments on both sides of any absence assertion. Highest-value files by candidate count: CustomerInvoices.tsx (4), UserManagement.tsx (4), PlatformConfiguration.tsx (4), DataEnrichment.tsx (4), Contacts.tsx (4)."
     }
   ]
 }

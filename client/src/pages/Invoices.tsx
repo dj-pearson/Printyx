@@ -43,6 +43,8 @@ import {
 } from 'lucide-react';
 import type { Contract, Customer } from '@shared/schema';
 import { normalizeInvoices, type NormalizedInvoice } from '@/lib/invoice-normalize';
+import { fetchInvoicePdfBlob, triggerBlobDownload } from '@/lib/invoice-pdf';
+import { InvoicePDFPreview } from '@/components/billing/invoice-pdf-preview';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
@@ -75,6 +77,30 @@ export default function Invoices() {
   const [paymentMethod, setPaymentMethod] = useState('');
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // View Details and Download sat on every invoice row with no onClick at all,
+  // while the dialog built for exactly this - components/billing/invoice-pdf-preview
+  // - had no importer anywhere and was sitting in docs/orphan-files-baseline.json.
+  // Billing.tsx already downloads through the same helper; this row just never
+  // reached for it.
+  const [previewInvoiceId, setPreviewInvoiceId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownloadInvoice = async (invoice: NormalizedInvoice) => {
+    setDownloadingId(invoice.id);
+    try {
+      const blob = await fetchInvoicePdfBlob(invoice.id);
+      triggerBlobDownload(blob, `invoice-${invoice.invoiceNumber || invoice.id}.pdf`);
+    } catch (error) {
+      toast({
+        title: 'Could not download this invoice',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
   const { progress: bulkProgress, dismiss: dismissProgress, executeBulk } = useBulkProgress();
 
   // AUDIT-011: the edge fn's list endpoint returns raw snake_case rows, so this
@@ -781,6 +807,7 @@ export default function Invoices() {
                   <Button
                     variant="outline"
                     className="w-full sm:flex-1 min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
+                    onClick={() => setPreviewInvoiceId(invoice.id)}
                   >
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
@@ -788,9 +815,11 @@ export default function Invoices() {
                   <Button
                     variant="outline"
                     className="w-full sm:flex-1 min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
+                    onClick={() => void handleDownloadInvoice(invoice)}
+                    disabled={downloadingId === invoice.id}
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download
+                    {downloadingId === invoice.id ? 'Preparing…' : 'Download'}
                   </Button>
 
                   {invoice.status === 'draft' && (
@@ -952,6 +981,14 @@ export default function Invoices() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <InvoicePDFPreview
+          open={previewInvoiceId !== null}
+          onOpenChange={(open) => {
+            if (!open) setPreviewInvoiceId(null);
+          }}
+          invoiceId={previewInvoiceId}
+        />
       </div>
     </MainLayout>
   );
