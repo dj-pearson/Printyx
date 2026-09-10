@@ -205,3 +205,60 @@ describe('published prices match the plans that are sold (SEO-007)', () => {
     }
   });
 });
+
+describe('the site names itself in one place (SEO-011)', () => {
+  /**
+   * SEO-009's root cause was a component hardcoding a hostname. Sweeping for
+   * the rest of that class found four dead same-origin asset URLs that
+   * check:seo-assets could not see, because it only read index.html and
+   * seoConfig:
+   *
+   *   Homepage         og:image at /og-image-homepage.jpg, a file that has
+   *                    never existed - on the most-shared URL of the site
+   *   Homepage         Organization logoUrl at /logo.png (the asset is at
+   *                    /logos/logo.png)
+   *   schemaMarkup     the same dead /logo.png, a third copy that survived
+   *                    SEO-002 correcting the other two
+   *   BlogSettings     a placeholder teaching an admin that same dead path
+   *
+   * The homepage also advertised price 'Contact for pricing' for a product with
+   * a published price list (SEO-007).
+   */
+  const homepage = readFileSync(join(root, 'client/src/pages/marketing/Homepage.tsx'), 'utf8');
+  const schemaMarkup = readFileSync(join(root, 'client/src/lib/schemaMarkup.ts'), 'utf8');
+  const strip = (src: string) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  it('the homepage derives its URL, image, logo and price rather than typing them', () => {
+    const code = strip(homepage);
+    expect(code).toContain('ogImage: DEFAULT_OG_IMAGE');
+    expect(code).toContain('canonicalUrl: SITE_URL');
+    expect(code).toContain('logoUrl: ORGANIZATION_DATA.logo');
+    expect(code).toContain('ENTRY_MONTHLY_PRICE_USD');
+    expect(code).not.toContain('Contact for pricing');
+    expect(code).not.toContain('og-image-homepage');
+  });
+
+  it('schemaMarkup takes the publisher logo from ORGANIZATION_DATA', () => {
+    const code = strip(schemaMarkup);
+    expect(code).toContain('url: ORGANIZATION_DATA.logo');
+    expect(code).not.toContain("'https://printyx.net/logo.png'");
+  });
+
+  it('the SEO crawler identifies itself on the domain it belongs to', () => {
+    // The User-Agent said +https://printyx.com/seo - wrong domain, and a path
+    // that does not exist on either. It is what other sites see in their logs.
+    const service = readFileSync(join(root, 'server/services/seo-service.ts'), 'utf8');
+    expect(service).toContain('PrintyxSEOBot');
+    expect(service).not.toContain('printyx.com/seo');
+  });
+
+  it('check:seo-assets walks the whole client, not two files', () => {
+    const guard = readFileSync(join(root, 'scripts/check-seo-assets.mjs'), 'utf8');
+    expect(guard).toContain("resolve(ROOT, 'client/src')");
+    // A naive line-comment strip eats every line containing https:// and makes
+    // the check silently match nothing. It passed like that until a mutation
+    // test caught it.
+    expect(guard).toContain('(^|[^:])\\/\\/.*$');
+  });
+});

@@ -89,7 +89,7 @@ export async function performComprehensiveSEOAudit(url: string): Promise<AuditRe
     // Fetch the page
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; PrintyxSEOBot/1.0; +https://printyx.com/seo)',
+        'User-Agent': 'Mozilla/5.0 (compatible; PrintyxSEOBot/1.0; +https://printyx.net)',
       },
     });
 

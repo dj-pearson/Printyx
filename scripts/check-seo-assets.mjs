@@ -20,7 +20,7 @@
  * Exits non-zero on any miss. Deliberately not a ratchet: the correct count is
  * zero, and it was zero the moment the four dead references were fixed.
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -179,6 +179,43 @@ if (monthlyPrices.length === 0) {
       if (!llms.includes(dollars)) {
         failures.push(`llms.txt: does not publish the ${dollars}/month plan`);
       }
+    }
+  }
+}
+
+// 9. Same-origin asset URLs anywhere in the CLIENT, not just index.html and
+//    seoConfig (SEO-011). Scoping this check to two files is how three copies
+//    of the dead /logo.png path survived SEO-002 fixing two of them, and how
+//    the homepage shipped og:image pointing at og-image-homepage.jpg - a file
+//    that has never existed, on the most-shared URL of the site. Same lesson
+//    check:no-static-posture learned when PA-040 widened it past one directory.
+const CLIENT_DIR = resolve(ROOT, 'client/src');
+function walk(dir) {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = resolve(dir, entry.name);
+    if (entry.isDirectory()) out.push(...walk(full));
+    else if (/\.(ts|tsx)$/.test(entry.name)) out.push(full);
+  }
+  return out;
+}
+const ASSET_URL = new RegExp(`${SITE_URL}(/[A-Za-z0-9._/-]*\\.[a-z0-9]{2,5})`, 'g');
+for (const file of walk(CLIENT_DIR)) {
+  const src = readFileSync(file, 'utf8');
+  // Strip block comments, and line comments whose `//` is NOT the one inside a
+  // URL scheme. A naive /\/\/.*$/ ate every line containing https:// - which
+  // made the first version of this check silently match nothing, and it passed.
+  // The mutation test is what caught that; the check alone looked healthy.
+  const stripped = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+  // A placeholder= hint is a form example, not a URL the page emits, but it
+  // still teaches the reader a path - so it is checked the same way.
+  for (const m of stripped.matchAll(ASSET_URL)) {
+    if (!existsSync(resolve(PUBLIC_DIR, `.${m[1]}`))) {
+      failures.push(
+        `${file.slice(ROOT.length + 1)}: ${SITE_URL}${m[1]} -> no such file under client/public`
+      );
     }
   }
 }

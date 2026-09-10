@@ -307,7 +307,7 @@ function OrganizationCard({ settings, isSaving, onSave }: OrganizationCardProps)
             type="url"
             value={logo}
             onChange={(e) => setLogo(e.target.value)}
-            placeholder="https://printyx.net/logo.png"
+            placeholder="https://printyx.net/logos/logo.png"
             maxLength={1000}
           />
         </div>

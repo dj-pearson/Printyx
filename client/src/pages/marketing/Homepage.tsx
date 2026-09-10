@@ -28,6 +28,8 @@ import {
   generateSoftwareApplicationSchema,
   generateFAQSchema,
 } from '@/lib/schemaMarkup';
+import { SITE_URL, DEFAULT_OG_IMAGE, ORGANIZATION_DATA } from '@/lib/seo/seoConfig';
+import { ENTRY_MONTHLY_PRICE_USD } from '@shared/pricing-plans';
 import { GEOFaqSection } from '@/lib/seo/GEOFaqSection';
 
 const Homepage = () => {
@@ -57,17 +59,20 @@ const Homepage = () => {
       'managed print services',
       'MPS platform',
     ],
-    ogImage: 'https://printyx.net/og-image-homepage.jpg',
+    // SEO-011: was 'https://printyx.net/og-image-homepage.jpg', a file that has
+    // never existed, so the homepage - the most-shared URL on the site - had no
+    // share image at all. DEFAULT_OG_IMAGE is the real 1200x630 card.
+    ogImage: DEFAULT_OG_IMAGE,
     ogType: 'website',
-    canonicalUrl: 'https://printyx.net',
+    canonicalUrl: SITE_URL,
     schema: {
       '@context': 'https://schema.org',
       '@graph': [
         // Organization Schema
         generateOrganizationSchema({
           name: 'Printyx',
-          url: 'https://printyx.net',
-          logoUrl: 'https://printyx.net/logo.png',
+          url: SITE_URL,
+          logoUrl: ORGANIZATION_DATA.logo,
           description:
             'AI-powered predictive intelligence platform for copier dealers. Modern architecture with predictive equipment failure detection, dynamic pricing engine, and smart service dispatch.',
           socialProfiles: ['https://linkedin.com/company/printyx', 'https://twitter.com/printyx'],
@@ -81,7 +86,9 @@ const Homepage = () => {
             'The first AI-native dealer management platform designed to predict failures, automate service workflows, and maximize profitability for modern copier dealers. Features include predictive equipment failure detection, dynamic contract profitability analysis, smart service dispatch with AI routing, and natural language CRM.',
           category: 'BusinessApplication',
           os: 'Web, iOS, Android',
-          price: 'Contact for pricing',
+          // SEO-011: was 'Contact for pricing' for a product with a published
+          // price list. shared/pricing-plans.ts is the one source (SEO-007).
+          price: String(ENTRY_MONTHLY_PRICE_USD),
           currency: 'USD',
           // LEGAL-002: rating 4.9 / ratingCount 127 were removed. No such
           // reviews exist, and generateSoftwareApplicationSchema only emits
