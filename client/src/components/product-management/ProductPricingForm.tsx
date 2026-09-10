@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { lineMarginPct } from '@shared/quote-math';
 
 interface PricingTier {
   active: boolean;
@@ -106,7 +107,11 @@ export function ProductPricingForm({
     const customer = parseFloat(values.suggestedRetail?.toString() || '0');
 
     if (dealer > 0 && customer > 0) {
-      return (((customer - dealer) / dealer) * 100).toFixed(2);
+      // Against the SELLING price, not the cost. The old divisor made this
+      // markup, which reads higher than margin for every profitable item - and
+      // isMarginLow below compares the result against the minimum-margin floor,
+      // so the guardrail waved through prices that broke the policy it states.
+      return lineMarginPct(customer, dealer).toFixed(2);
     }
     return '0.00';
   };

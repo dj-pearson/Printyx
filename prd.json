@@ -14401,6 +14401,38 @@
       "category": "security",
       "dependsOn": [],
       "notes": "NEXT ITERATION CANDIDATE. Count with: grep -rn \"req.headers.get('x-tenant-id')\" supabase/functions --include=*.ts. Note CLAUDE.md documents the header as the FIRST link in the resolution chain for the Express side; in the edge functions the JWT is checked first and the header is the fallback, so the two backends do not agree about which wins - that disagreement is part of the story."
+    },
+    {
+      "id": "PRICING-MARGIN-001",
+      "title": "Two live pricing components computed markup and called it margin",
+      "description": "Margin is measured against the SELLING price; dividing by cost gives markup, which reads higher for every profitable item ($500 cost at $1000 is 50% margin and 100% markup). server/services/pricing-service.ts had this defect and was corrected, with a note explaining that a minimum-margin floor built on the wrong one 'would pass prices that break the policy it states'. The two CLIENT components computing the same number were missed: ProductPricingDisplay showed the inflated figure on every product card, and ProductPricingForm fed it to isMarginLow(), which compares against company_pricing_settings.min_margin_percentage - so the guardrail waved through prices below the floor it enforces (a real 14% margin reads as 16.3% markup and clears a 15% minimum). A third copy sat in server/services/product-pricing-service.ts, which nothing imports, feeding validatePriceChange the same way. All three now use lineMarginPct from shared/quote-math.ts, the definition the quote builder and both PDFs already share.",
+      "acceptanceCriteria": [
+        "ProductPricingDisplay and ProductPricingForm use lineMarginPct from shared/quote-math.ts",
+        "product-pricing-service margin methods divide by the selling price",
+        "check:margin-formula hard-gates the shape at zero and is wired into CI",
+        "The guard is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "correctness",
+      "dependsOn": [],
+      "notes": "The guard's first cut had a false negative that a clean run would never have shown: its divisor pattern required a character before 'cost'/'dealer', so it caught dealerCost and missed a bare dealer - which is exactly the shape in the live component. Mutation-testing is the only reason that surfaced."
+    },
+    {
+      "id": "PRICING-MARGIN-002",
+      "title": "Percentage math across the client has no shared zero-guard, and one component divides by a previous period that can be zero",
+      "description": "A scan for (a / b) * 100 in client/src returns roughly 25 sites where the divisor is business data rather than a list length. Most guard zero; several do not. customer-portal/UsageAnalyticsDashboard divides by the previous period with no guard at all - AUDIT-021 already rebuilt that endpoint so percentageChange is null when the previous window has no readings, but the component still does its own division and will render Infinity for a customer in their first month. ProductPricingDisplay and dashboard widgets divide by totals that a new tenant has none of. The pattern to settle: one formatPercent helper that returns null (rendered as an em dash, never 'NaN%' or 'Infinity%') when the divisor is zero or the inputs are not finite, adopted across the client, plus a guard for raw * 100 divisions outside it. MetricCard already takes number | null for exactly this reason - the type exists and most callers do not use it.",
+      "acceptanceCriteria": [
+        "Each of the ~25 percentage sites is triaged for a zero or non-finite divisor",
+        "A shared percent helper returns null rather than NaN or Infinity, and the UI renders an absence",
+        "UsageAnalyticsDashboard reads the endpoint percentageChange instead of recomputing it",
+        "A guard reports a raw (a / b) * 100 in client/src outside the helper"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "correctness",
+      "dependsOn": ["PRICING-MARGIN-001"],
+      "notes": "NEXT ITERATION CANDIDATE. Find them with: grep -rnE '/ *[a-zA-Z_][a-zA-Z0-9_.?]*\\) *\\* *100' client/src. Divisors that are a .length of a rendered list are fine and should be excluded by rule, not baselined."
     }
   ]
 }

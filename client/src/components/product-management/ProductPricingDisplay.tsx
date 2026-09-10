@@ -2,6 +2,7 @@ import { DollarSign, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
+import { lineMarginPct } from '@shared/quote-math';
 
 interface PricingTierData {
   active?: boolean;
@@ -49,8 +50,11 @@ export function ProductPricingDisplay({
 
     if (dealer === 0 || isNaN(dealer) || isNaN(retail)) return '—';
 
-    const margin = ((retail - dealer) / dealer) * 100;
-    return `${margin.toFixed(1)}%`;
+    // Margin is measured against the SELLING price, not the cost. Dividing by
+    // dealer cost is MARKUP, and it reads high: $500 cost at $1000 is 50%
+    // margin and 100% markup. shared/quote-math.ts is the one definition the
+    // quote builder and both PDFs already use.
+    return `${lineMarginPct(retail, dealer).toFixed(1)}%`;
   };
 
   const renderTierPricing = (
