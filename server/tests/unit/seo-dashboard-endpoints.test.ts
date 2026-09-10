@@ -76,3 +76,84 @@ describe('the four endpoints SEO-004 repointed', () => {
     expect(dash.replace(/\/\/.*$/gm, '')).not.toContain(`'/api/seo/${dead}'`);
   });
 });
+
+describe('SEO-004 second tranche: shapes match the real columns', () => {
+  /**
+   * Repointing the URL alone would have given a working request and a blank
+   * table. The page's interfaces described a shape no endpoint has ever
+   * returned - src/alt/dimensions for images, url/sourcePages/recommendation
+   * for links, url/finalUrl/redirectCount for redirects - and the responses are
+   * bare arrays while the page read data.images / data.brokenLinks /
+   * data.chains off them. This is the BATCH 7 phantom-shape class at response
+   * level: nothing errors, the panel just stays empty.
+   */
+  const dash = readFileSync(join(root, 'client/src/pages/SEODashboard.tsx'), 'utf8');
+  const schema = readFileSync(join(root, 'shared/seo-schema.ts'), 'utf8');
+
+  function columnsOf(table: string): Set<string> {
+    const start = schema.indexOf(`export const ${table} = pgTable(`);
+    expect(start, `${table} not found`).toBeGreaterThan(-1);
+    const body = schema.slice(start, schema.indexOf('\n);', start));
+    return new Set([...body.matchAll(/^\s{4}(\w+):\s/gm)].map((m) => m[1]));
+  }
+
+  function fieldsOf(iface: string): string[] {
+    const start = dash.indexOf(`interface ${iface} {`);
+    expect(start, `${iface} not found`).toBeGreaterThan(-1);
+    const body = dash.slice(start, dash.indexOf('\n}', start));
+    return [...body.matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]);
+  }
+
+  it.each([
+    ['ImageAnalysis', 'seoImageAnalysis'],
+    ['BrokenLink', 'seoLinkAnalysis'],
+    ['RedirectChain', 'seoRedirectAnalysis'],
+    ['StructuredDataResult', 'seoStructuredData'],
+  ])('%s names only columns %s has', (iface, table) => {
+    const columns = columnsOf(table);
+    const phantom = fieldsOf(iface).filter((f) => !columns.has(f));
+    expect(phantom).toEqual([]);
+  });
+
+  it('reads the bare arrays these endpoints return, not a wrapper key', () => {
+    // Each of these was a read off an array, so it resolved to undefined and
+    // the `|| []` fallback made the panel look like "no results".
+    //
+    // Comments are stripped first: the code's own notes explaining the fix name
+    // the very strings this asserts are gone, and would clear the assertion.
+    const code = dash.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code).not.toContain('data.images');
+    expect(code).not.toContain('data.brokenLinks');
+    expect(code).not.toContain('data.chains');
+    expect(code).not.toContain('structuredDataResults.schemas');
+  });
+});
+
+describe('the broken-link checker does not report unchecked links as healthy', () => {
+  /**
+   * checkBrokenLinks fetches only the first CHECKED_LINK_LIMIT links on a page.
+   * statusCode and isBroken were initialised to 200 and false and stored that
+   * way, so every link past the twentieth was persisted as a working link that
+   * nothing had ever requested - a page with 200 links reported 180 healthy on
+   * no evidence at all.
+   */
+  const service = readFileSync(join(root, 'server/services/seo-service.ts'), 'utf8');
+
+  it('initialises an unchecked link to null, not to 200/false', () => {
+    expect(service).toContain('let statusCode: number | null = null;');
+    expect(service).toContain('let isBroken: boolean | null = null;');
+    expect(service).not.toContain('let statusCode = 200;');
+  });
+
+  it('shares one limit between the fetch gate and the rate limiter', () => {
+    expect(service).toContain('export const CHECKED_LINK_LIMIT = 20;');
+    expect(service.match(/i < CHECKED_LINK_LIMIT/g)?.length).toBe(2);
+  });
+
+  it('the page counts unchecked links rather than hiding them', () => {
+    const dash = readFileSync(join(root, 'client/src/pages/SEODashboard.tsx'), 'utf8');
+    expect(dash).toContain('uncheckedLinkCount');
+    expect(dash).toContain('link.isBroken === true');
+    expect(dash).toContain('link.isBroken === null');
+  });
+});

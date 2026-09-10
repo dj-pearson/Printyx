@@ -15,26 +15,6 @@
   "doneNote": "Those four differ by URL only: body keys and response shapes already matched, so the change is mechanical and verifiable. They now work in dev. They still 404 in production - see productionPort below.",
   "remaining": [
     {
-      "frontend": "POST /api/seo/images/analyze { url }",
-      "express": "POST /api/seo/analyze/images { pageUrl }",
-      "work": "rename the body key, and the page reads data.images off a response that is a bare array"
-    },
-    {
-      "frontend": "POST /api/seo/links/broken { url }",
-      "express": "POST /api/seo/check/broken-links { sourceUrl }",
-      "work": "rename the body key; the page reads data.brokenLinks off a bare array"
-    },
-    {
-      "frontend": "POST /api/seo/redirects/check { url }",
-      "express": "POST /api/seo/detect/redirect-chains { sourceUrl }",
-      "work": "rename the body key; the page reads data.chains off a single row"
-    },
-    {
-      "frontend": "POST /api/seo/structured-data/validate { url }",
-      "express": "POST /api/seo/validate/structured-data { url }",
-      "work": "URL rename, but the page sets the result directly from a response that is an array of stored schemas - confirm what the render expects"
-    },
-    {
       "frontend": "POST /api/seo/content/duplicates (no body)",
       "express": "POST /api/seo/detect/duplicate-content { url1, url2 }",
       "work": "genuinely incompatible. The page offers a 'scan for duplicates' button with no inputs; the server compares exactly two named URLs. Decide whether the button picks pairs from seo_pages or the UI grows two fields."
@@ -74,5 +54,12 @@
       "POST /api/seo/sitemap/generate - edge only"
     ]
   },
-  "suggestedGuard": "A check that every '/api/<x>' literal in a client page resolves to either an Express router registration or an edge-function branch. check:edge-coverage does half of it; nothing does the Express half, which is how twelve URLs stayed dead in both environments."
+  "suggestedGuard": "A check that every '/api/<x>' literal in a client page resolves to either an Express router registration or an edge-function branch. check:edge-coverage does half of it; nothing does the Express half, which is how twelve URLs stayed dead in both environments.",
+  "doneInIteration6": [
+    "images/analyze -> analyze/images, body url -> pageUrl, response is a bare array",
+    "links/broken -> check/broken-links, body url -> sourceUrl, filter isBroken, surface the unchecked count",
+    "redirects/check -> detect/redirect-chains, body url -> sourceUrl, response is ONE row not a list",
+    "structured-data/validate -> validate/structured-data, response is a bare array"
+  ],
+  "doneNote6": "These four needed more than a URL: the page's ImageAnalysis, BrokenLink, RedirectChain and structured-data shapes named fields no endpoint has ever returned, so repointing alone would have produced a working request and a blank panel. All four are rebound to the real seo_* columns. Separately, server/services/seo-service.ts checkBrokenLinks initialised statusCode to 200 and isBroken to false and only overwrote them for the first 20 links, so every link past the twentieth was PERSISTED as healthy without being requested; they are null now and the page says how many went unchecked."
 }

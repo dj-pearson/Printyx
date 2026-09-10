@@ -48,12 +48,12 @@
       "check",
       "content",
       "core-web-vitals",
-      "images",
+      "detect",
       "links",
       "regenerate-llms",
       "regenerate-robots",
       "regenerate-sitemap",
-      "structured-data"
+      "validate"
     ],
     "subscriptions": ["checkout", "portal", "preview-upgrade", "setup-intent", "stripe"],
     "technician-management": ["dashboard"]

@@ -29,6 +29,12 @@
       "element": "the /seo dashboard's endpoints",
       "prd": "tasks/prd-seo-dashboard-endpoints.json",
       "summary": "SEODashboard (2333 lines, routed at /seo) was written against a /api/seo/<noun>/<verb> URL scheme; server/routes-seo.ts registers /api/seo/<verb>/<noun>. Twelve of its endpoints POST to a path no router has, so they fail in dev AND production. The Express implementations are genuine - real Drizzle tables, PageSpeed Insights for Core Web Vitals, which throws without a key rather than inventing numbers - so the two halves were simply never connected. Repointed the four that differ by URL alone (mobile/analyze, performance/check, security/analyze, semantic/analyze): body keys and response shapes already matched. The other eight need body-key or response-shape work, or have no backend at all, and the whole set is missing from supabase/functions/seo, which serves production - all filed as SEO-004. Corrected the edge-coverage baseline note, which recorded these as prod-only gaps when they are dead in dev too. Edge-coverage ratchet 72 -> 68."
+    },
+    {
+      "iteration": 6,
+      "element": "SEO-004 second tranche: four endpoints rebound to their real columns",
+      "prd": "tasks/prd-seo-dashboard-endpoints.json",
+      "summary": "images/analyze, links/broken, redirects/check and structured-data/validate needed more than a URL rename. The page's ImageAnalysis, BrokenLink and RedirectChain interfaces named fields no endpoint has ever returned (src/alt/dimensions, url/sourcePages/recommendation, url/finalUrl/redirectCount) and all four onSuccess handlers read a wrapper key off a bare array, so repointing alone would have given a working request and a blank panel. Rebound every field to the real seo_* columns, and the redirect endpoint returns ONE row rather than a list. Separately found a fabrication in server/services/seo-service.ts: checkBrokenLinks fetches only the first 20 links but initialised statusCode to 200 and isBroken to false, so every link past the twentieth was persisted as healthy without ever being requested - a 200-link page reported 180 working on no evidence. Those are null now, the page filters to confirmed-broken and says how many went unchecked. SEO-004 down to 6 remaining. eslint on SEODashboard 13 -> 11."
     }
   ],
   "candidatesForLaterIterations": [
@@ -40,7 +46,7 @@
     "sameAs in the Organization JSON-LD lists linkedin/twitter/youtube profiles nobody verified; a sameAs pointing at a 404 weakens entity resolution rather than helping it",
     "Contact emails disagree: sales@printyx.com vs support@printyx.net in the same JSON-LD block",
     "PRD-sized: prerendering/SSR for the public routes once the site opens - all title/description/canonical/JSON-LD is injected client-side today",
-    "SEO-004 remaining work (see tasks/prd-seo-dashboard-endpoints.json): 8 endpoints plus the production port",
-    "No guard checks a frontend /api URL against the EXPRESS router table - check:edge-coverage only does the edge half, which is how 12 URLs stayed dead in both environments"
+    "No guard checks a frontend /api URL against the EXPRESS router table - check:edge-coverage only does the edge half, which is how 12 URLs stayed dead in both environments",
+    "SEO-004 remaining (6): content/duplicates, content/optimize, links/analyze, and RootAdminSEO's three regenerate-* buttons, plus the production port to supabase/functions/seo"
   ]
 }
