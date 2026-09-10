@@ -118,10 +118,14 @@ export default function PlatformDealDetail() {
   });
 
   // Fetch activities
-  const { data: activities } = useQuery<ActivityItem[]>({
-    queryKey: [`/api/platform-activities`, { dealId: id, limit: 50 }],
+  // platform-activities answers { activities, pagination }, not a bare array.
+  // Read as an array, `activities.length` was undefined and the timeline showed
+  // its empty state for every deal - silently, with nothing thrown or logged.
+  const { data: activitiesResponse } = useQuery<{ activities: ActivityItem[] }>({
+    queryKey: [`/api/platform-activities?dealId=${id}&limit=50`],
     enabled: !!id,
   });
+  const activities = activitiesResponse?.activities;
 
   // Fetch BANT qualification
   const { data: bant } = useQuery<BantQualification>({

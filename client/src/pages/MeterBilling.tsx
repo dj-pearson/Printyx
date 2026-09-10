@@ -58,6 +58,7 @@ import type {
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
+import { todayLocalDate } from '@/lib/date-utils';
 
 const createMeterReadingSchema = insertMeterReadingSchema
   .omit({ tenantId: true, createdBy: true })
@@ -104,7 +105,7 @@ export default function MeterBilling() {
   const meterForm = useForm<CreateMeterReadingInput>({
     resolver: zodResolver(createMeterReadingSchema),
     defaultValues: {
-      readingDate: new Date().toISOString().split('T')[0],
+      readingDate: todayLocalDate(),
       bwMeterReading: 0,
       colorMeterReading: 0,
       collectionMethod: 'manual',

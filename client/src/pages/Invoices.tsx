@@ -56,6 +56,7 @@ import {
 import { BulkProgressTracker, useBulkProgress } from '@/components/ui/bulk-progress-tracker';
 import { useToast } from '@/hooks/use-toast';
 import { useActionParam } from '@/hooks/use-action-param';
+import { todayLocalDate } from '@/lib/date-utils';
 
 export default function Invoices() {
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
@@ -265,7 +266,7 @@ export default function Invoices() {
   const openPaymentDialog = (invoice: NormalizedInvoice) => {
     setSelectedInvoice(invoice);
     setPaymentAmount(String(invoice.totalAmount));
-    setPaymentDate(new Date().toISOString().split('T')[0]);
+    setPaymentDate(todayLocalDate());
     setIsPaymentDialogOpen(true);
   };
 
@@ -361,7 +362,7 @@ export default function Invoices() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `invoices-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `invoices-export-${todayLocalDate()}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } else {
@@ -381,7 +382,7 @@ export default function Invoices() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `invoices-export-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `invoices-export-${todayLocalDate()}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     }

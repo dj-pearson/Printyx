@@ -65,15 +65,19 @@ export default function ManufacturerIntegrationAudit() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [daysFilter, setDaysFilter] = useState('7');
 
+  // The default queryFn joins the key with '/', so the filter object here
+  // requested .../audit-logs/[object Object] - the three selectors above did
+  // nothing. The endpoint reads action, status and days as query params.
+  const auditParams = new URLSearchParams({ days: daysFilter });
+  if (actionFilter !== 'all') auditParams.set('action', actionFilter);
+  if (statusFilter !== 'all') auditParams.set('status', statusFilter);
+
   const {
     data: auditLogs = [],
     isLoading,
     refetch,
   } = useQuery<AuditLog[]>({
-    queryKey: [
-      '/api/manufacturer-integrations/audit-logs',
-      { action: actionFilter, status: statusFilter, days: daysFilter },
-    ],
+    queryKey: [`/api/manufacturer-integrations/audit-logs?${auditParams}`],
     refetchInterval: 30000,
   });
 

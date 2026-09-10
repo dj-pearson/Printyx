@@ -32,6 +32,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { fetchInBatches, groupBy } from '../_shared/batch-fetch.ts';
 import {
   DEFAULT_CONFIDENCE_THRESHOLD,
   PREDICTION_WINDOW_DAYS,
@@ -41,6 +42,11 @@ import {
 } from './scoring.ts';
 
 const DAY_MS = 86_400_000;
+/** The scorer's deltas need the last 12 readings per machine. */
+const METER_ROWS_PER_MACHINE = 12;
+/** Date bound on the batched meter read - readings are periodic, so 18 months
+ *  covers 12 of them without pulling a machine's whole history. */
+const METER_LOOKBACK_DAYS = 550;
 const CLOSED_TICKET_STATUSES = ['completed', 'resolved', 'closed'];
 /** Above this confidence an auto-created draft ticket is raised to high priority. */
 const HIGH_PRIORITY_CONFIDENCE = 0.85;
@@ -342,27 +348,51 @@ async function handleScore(
     .eq('tenant_id', tenantId)
     .eq('equipment_status', 'active');
 
+  // Two BATCHED reads, not two per machine. This was a loop issuing one
+  // meter_readings query and one service_tickets query for every active
+  // machine: a dealer with 800 machines made 1,600 sequential round trips in a
+  // single invocation, so the endpoint timed out for exactly the customers the
+  // feature is for. It looked fine against a seeded tenant with a dozen.
+  //
+  // meter_readings keeps the last 12 per machine, which PostgREST cannot do
+  // per-group, so the batch is bounded by date instead and trimmed in memory.
+  // Readings are periodic, so METER_LOOKBACK_DAYS comfortably covers 12 of them
+  // while keeping the result set bounded.
+  const machineIds = (machines ?? []).map((m: Record<string, unknown>) => String(m.id));
+  const meterSince = new Date(nowMs - METER_LOOKBACK_DAYS * DAY_MS).toISOString();
+
+  const [meterRowsAll, ticketRowsAll] = await Promise.all([
+    fetchInBatches<Record<string, unknown>>(machineIds, 'equipment_id', () =>
+      admin
+        .from('meter_readings')
+        .select('equipment_id, reading_date, bw_meter_reading, color_meter_reading')
+        .eq('tenant_id', tenantId)
+        .gte('reading_date', meterSince)
+        // Newest first, so the per-machine trim below keeps the LAST 12.
+        .order('reading_date', { ascending: false }),
+    ),
+    fetchInBatches<Record<string, unknown>>(machineIds, 'equipment_id', () =>
+      admin
+        .from('service_tickets')
+        .select('equipment_id, status, created_at, description')
+        .eq('tenant_id', tenantId)
+        .gte('created_at', ninetyDaysAgo),
+    ),
+  ]);
+
+  const metersByMachine = groupBy(meterRowsAll, (r) =>
+    r.equipment_id == null ? null : String(r.equipment_id),
+  );
+  const ticketsByMachine = groupBy(ticketRowsAll, (r) =>
+    r.equipment_id == null ? null : String(r.equipment_id),
+  );
+
   const scored: ScoredMachine[] = [];
 
   for (const m of machines ?? []) {
     const machineId = String(m.id);
-
-    // Newest-first, then the scorer re-sorts ascending — this keeps the LAST 12
-    // readings rather than the first 12, which is what the deltas need.
-    const { data: meterRows } = await admin
-      .from('meter_readings')
-      .select('reading_date, bw_meter_reading, color_meter_reading')
-      .eq('tenant_id', tenantId)
-      .eq('equipment_id', machineId)
-      .order('reading_date', { ascending: false })
-      .limit(12);
-
-    const { data: recentTickets } = await admin
-      .from('service_tickets')
-      .select('status, created_at, description')
-      .eq('tenant_id', tenantId)
-      .eq('equipment_id', machineId)
-      .gte('created_at', ninetyDaysAgo);
+    const meterRows = (metersByMachine.get(machineId) ?? []).slice(0, METER_ROWS_PER_MACHINE);
+    const recentTickets = ticketsByMachine.get(machineId) ?? [];
 
     scored.push(
       scoreMachine({
@@ -371,13 +401,13 @@ async function handleScore(
         lastServiceDate: asDate(m.last_service_date),
         // Cumulative E-Automate meter columns, NOT black_copies/color_copies —
         // both pairs exist on meter_readings and mean different things.
-        meterRows: (meterRows ?? [])
+        meterRows: meterRows
           .map((r: Record<string, unknown>) => ({
             readingDate: asDate(r.reading_date),
             total: num(r.bw_meter_reading) + num(r.color_meter_reading),
           }))
           .filter((r): r is { readingDate: Date; total: number } => r.readingDate !== null),
-        recentTickets: (recentTickets ?? []).map((t: Record<string, unknown>) => ({
+        recentTickets: recentTickets.map((t: Record<string, unknown>) => ({
           status: (t.status as string) ?? null,
           createdAt: asDate(t.created_at),
           description: (t.description as string) ?? null,

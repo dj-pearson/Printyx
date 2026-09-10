@@ -184,6 +184,8 @@ export default async function handler(req: Request) {
       const offset = (page - 1) * limit;
       const stage = url.searchParams.get('stage');
       const status = url.searchParams.get('status');
+      // PlatformBusinessRecordDetail's Deals tab scopes to one account.
+      const businessRecordId = url.searchParams.get('businessRecordId');
 
       let query = admin
         .from('platform_deals')
@@ -193,6 +195,7 @@ export default async function handler(req: Request) {
 
       if (stage) query = query.eq('stage', stage);
       if (status) query = query.eq('status', status);
+      if (businessRecordId) query = query.eq('business_record_id', businessRecordId);
 
       const { data: deals, error, count } = await query;
 

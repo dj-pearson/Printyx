@@ -77,11 +77,25 @@ describe('/api/user storage', () => {
     expect(userFn).toMatch(/detailed/);
   });
 
-  it('resolves a tenant id before any upsert, since user_settings.tenant_id is NOT NULL', () => {
+  it('resolves a tenant id before any row-creating write, since user_settings.tenant_id is NOT NULL', () => {
+    // Widened from upserts alone by SEC-TENANT-004: PUT /user/accessibility
+    // CREATED its row with a plain .insert() and no tenant_id, so the first save
+    // returned 500 for every user. Counting upserts only, this test passed while
+    // that was live.
     const upserts = userFn.match(/upsert\(/g) ?? [];
-    expect(upserts.length).toBeGreaterThan(0);
+    const inserts = userFn.match(/\.from\('user_settings'\)\s*\n?\s*\.insert\(/g) ?? [];
+    const creatingWrites = upserts.length + inserts.length;
+    expect(creatingWrites).toBeGreaterThan(0);
     const resolves = userFn.match(/await resolveTenantId\(\)/g) ?? [];
-    expect(resolves.length).toBe(upserts.length);
+    expect(resolves.length).toBe(creatingWrites);
+  });
+
+  it('every user_settings insert sets tenant_id', () => {
+    for (const m of userFn.matchAll(
+      /\.from\('user_settings'\)[\s\S]{0,80}?\.insert\(\{([\s\S]*?)\}\)/g,
+    )) {
+      expect(m[1]).toMatch(/tenant_id/);
+    }
   });
 });
 

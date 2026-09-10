@@ -67,6 +67,18 @@ jobs:
         run: npm run check:orphans
       - name: Query loading/error-state ratchet (CR-033)
         run: npm run check:query-states
+      - name: Object-in-queryKey gate (QUERYKEY-001)
+        run: npm run check:query-keys
+      - name: Markup-as-margin gate (PRICING-MARGIN-001)
+        run: npm run check:margin-formula
+      - name: Unchecked blob-download gate (EXPORT-DOWNLOAD-001)
+        run: npm run check:blob-downloads
+      - name: UTC-as-local-date gate (DATE-LOCAL-001)
+        run: npm run check:local-dates
+      - name: Local formatCurrency ratchet (MONEY-FORMAT-001)
+        run: npm run check:currency-copies
+      - name: Insert-without-tenant_id gate (SEC-TENANT-004)
+        run: npm run check:insert-tenant-id
       - name: Fabricated-fallback ratchet (AUDIT-019)
         run: npm run check:fabricated
       - name: Static-posture gate for admin surfaces (AUDIT-019)

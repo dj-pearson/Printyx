@@ -66,3 +66,48 @@ export function expiryDisplay(value: string | Date | null | undefined): {
   if (diffDays <= 30) return { text: `Expires in ${diffDays}d`, urgent: false };
   return { text: date.toLocaleDateString(), urgent: false };
 }
+
+/**
+ * Turn a UI time-range token ('7d' | '30d' | '90d' | '1y' | 'all') into the ISO
+ * startDate the platform-analytics endpoints filter on. Returns null for 'all'
+ * and for anything unrecognised, meaning "no lower bound".
+ *
+ * Day arithmetic rather than setMonth/setFullYear: setMonth overflows instead of
+ * clamping, so subtracting a year from Feb 29 lands on Mar 1.
+ */
+export function timeRangeStartDate(range: string): string | null {
+  const days: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
+  const n = days[range];
+  if (!n) return null;
+  return new Date(Date.now() - n * 86_400_000).toISOString();
+}
+
+/**
+ * Today's date on the USER'S calendar, as yyyy-MM-dd.
+ *
+ * `new Date().toISOString().split('T')[0]` is today in UTC, which for a dealer
+ * anywhere in the US is TOMORROW from late afternoon onward. A technician
+ * submitting a meter reading at 5pm Pacific dated it into the next day, and
+ * sometimes the next billing period; a payment recorded after 7pm Eastern
+ * landed on the wrong day for aging and month-end.
+ *
+ * A date-only business value is a calendar date, not an instant, so it comes
+ * from the local calendar.
+ */
+export function todayLocalDate(): string {
+  return toDateInputValue(new Date())!;
+}
+
+/**
+ * A Date as yyyy-MM-dd on the local calendar - the value an `<input type="date">`
+ * expects, and what a date picker's selection actually means. Going through
+ * toISOString here shifts the day in either direction depending on the offset's
+ * sign.
+ */
+export function toDateInputValue(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = typeof value === 'string' ? new Date(value) : value;
+  if (isNaN(date.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}

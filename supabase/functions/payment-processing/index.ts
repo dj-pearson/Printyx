@@ -123,139 +123,49 @@ export default async function handler(req: Request) {
     }
 
     // POST /payment-processing/charge - Process a payment
+    //
+    // 501, deliberately. What used to be here inserted a payments row, set it
+    // to 'completed' one statement later, and answered "Payment processed
+    // successfully" - with no processor anywhere in the call. A fabricated
+    // settlement in the ledger is worse than no endpoint: it is indistinguishable
+    // from a real one downstream, and /summary and /history read the same table.
+    //
+    // It also wrote to invoices using an invoice id taken straight from the
+    // request body, with no tenant filter on either the read or the update, via
+    // the service-role client. Any authenticated user could set another tenant's
+    // invoice to paid, with amount_paid raised by a number they chose. Two
+    // further faults in the same six lines: it wrote `status`, the LEGACY column,
+    // while every read path uses `invoice_status`, so a payment that "succeeded"
+    // left the invoice showing open; and balance_due was never recomputed.
+    //
+    // Real card capture lives in StripeService (/api/subscriptions, and the
+    // webhook receiver at /api/webhooks/stripe). Settling an invoice from a
+    // captured payment belongs there, not in a simulator.
     if (req.method === 'POST' && endpoint === 'charge') {
-      const body = await req.json();
-
-      // In production, this would integrate with Stripe or other payment processor
-      const paymentData = {
-        tenant_id: tenantId,
-        customer_id: body.customerId || body.customer_id,
-        invoice_id: body.invoiceId || body.invoice_id,
-        amount: body.amount,
-        currency: body.currency || 'USD',
-        payment_method: body.paymentMethod || body.payment_method,
-        status: 'pending',
-        reference_number: `PAY-${Date.now()}`,
-        description: body.description,
-        created_by: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data: payment, error } = await admin
-        .from('payments')
-        .insert(paymentData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating payment:', error);
-        return createCorsResponse({ error: 'Failed to process payment' }, 500, req);
-      }
-
-      // Simulate successful payment (in production, this would be async after payment processor callback)
-      const { data: completedPayment } = await admin
-        .from('payments')
-        .update({
-          status: 'completed',
-          processed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', payment.id)
-        .select()
-        .single();
-
-      // Update invoice if specified
-      if (body.invoiceId || body.invoice_id) {
-        const invoiceId = body.invoiceId || body.invoice_id;
-        const { data: invoice } = await admin
-          .from('invoices')
-          .select('amount_paid, total_amount')
-          .eq('id', invoiceId)
-          .single();
-
-        const newAmountPaid = (invoice?.amount_paid || 0) + body.amount;
-        const newStatus = newAmountPaid >= (invoice?.total_amount || 0) ? 'paid' : 'partial';
-
-        await admin
-          .from('invoices')
-          .update({
-            amount_paid: newAmountPaid,
-            status: newStatus,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', invoiceId);
-      }
-
       return createCorsResponse(
         {
-          success: true,
-          payment: completedPayment,
-          message: 'Payment processed successfully',
+          error: 'Payment capture is not implemented in this function',
+          detail:
+            'Card capture runs through StripeService; this endpoint never contacted a processor.',
         },
-        200,
+        501,
         req,
       );
     }
 
     // POST /payment-processing/refund - Process a refund
+    //
+    // 501 for the same reason as /charge: it inserted a negative payment already
+    // marked 'completed' and reported "Refund processed successfully" without
+    // contacting a processor. Its tenant scoping was correct - the defect is that
+    // the money never moved.
     if (req.method === 'POST' && endpoint === 'refund') {
-      const body = await req.json();
-
-      const { data: originalPayment } = await admin
-        .from('payments')
-        .select('*')
-        .eq('id', body.paymentId || body.payment_id)
-        .eq('tenant_id', tenantId)
-        .single();
-
-      if (!originalPayment) {
-        return createCorsResponse({ error: 'Original payment not found' }, 404, req);
-      }
-
-      const refundAmount = body.amount || originalPayment.amount;
-
-      const { data: refund, error } = await admin
-        .from('payments')
-        .insert({
-          tenant_id: tenantId,
-          customer_id: originalPayment.customer_id,
-          invoice_id: originalPayment.invoice_id,
-          amount: -refundAmount,
-          currency: originalPayment.currency,
-          payment_method: originalPayment.payment_method,
-          status: 'completed',
-          reference_number: `REF-${Date.now()}`,
-          original_payment_id: originalPayment.id,
-          description: body.reason || 'Refund',
-          created_by: user.id,
-          created_at: new Date().toISOString(),
-          processed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return createCorsResponse({ error: 'Failed to process refund' }, 500, req);
-      }
-
-      // Update original payment status
-      await admin
-        .from('payments')
-        .update({
-          status: refundAmount >= originalPayment.amount ? 'refunded' : 'partial_refund',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', originalPayment.id);
-
       return createCorsResponse(
         {
-          success: true,
-          refund,
-          message: 'Refund processed successfully',
+          error: 'Refunds are not implemented in this function',
+          detail: 'No payment processor is called here; a refund recorded now would be fiction.',
         },
-        200,
+        501,
         req,
       );
     }

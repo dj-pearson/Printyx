@@ -22,6 +22,7 @@ import { z } from 'https://esm.sh/zod@3.22.4';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { sanitizeSvg } from '../_shared/svg-sanitize.ts';
 import { removeStoragePrefix } from '../_shared/storage-delete.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
@@ -472,7 +473,35 @@ async function uploadLogo(admin: Admin, tenantId: string, id: string, req: Reque
     return createCorsResponse({ error: 'Logo exceeds 2MB limit' }, 413, req);
   }
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  let bytes = new Uint8Array(await file.arrayBuffer());
+
+  // An SVG is an XML document, not an image format. This bucket is created with
+  // public: true and the object is stored with the caller's own content type,
+  // so an SVG carrying <script> came back as a working URL that executes in the
+  // storage origin - and that URL is rendered in proposals and PDFs sent to
+  // customers. A browser does not run scripts in an SVG loaded through <img>,
+  // which is why it never surfaced in the app; direct navigation is another
+  // matter. Strip the executable surface, and refuse the file if that cannot be
+  // done confidently.
+  if (file.type === 'image/svg+xml') {
+    const cleaned = sanitizeSvg(new TextDecoder().decode(bytes));
+    if (!cleaned.ok) {
+      return createCorsResponse(
+        { error: cleaned.reason ?? 'SVG rejected', removed: cleaned.removed },
+        422,
+        req,
+      );
+    }
+    if (cleaned.removed.length > 0) {
+      console.warn('branding-profiles: stripped active content from an uploaded logo', {
+        tenantId,
+        profileId: id,
+        removed: cleaned.removed,
+      });
+    }
+    bytes = new TextEncoder().encode(cleaned.svg!);
+  }
+
   const path = `${tenantId}/${id}/logo-${crypto.randomUUID()}.${ext}`;
 
   await ensureBucket(admin);

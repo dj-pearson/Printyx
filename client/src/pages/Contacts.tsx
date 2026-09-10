@@ -85,7 +85,7 @@ import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { useAuthContext } from '@/providers/AuthProvider';
 import MobileFAB from '@/components/layout/MobileFAB';
-import { relativeDate } from '@/lib/date-utils';
+import { relativeDate, todayLocalDate } from '@/lib/date-utils';
 
 // Contact form schema
 const contactFormSchema = z.object({
@@ -1804,7 +1804,7 @@ export default function Contacts() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Activity date</Label>
-                  <Input type="date" defaultValue={new Date().toISOString().split('T')[0]} />
+                  <Input type="date" defaultValue={todayLocalDate()} />
                 </div>
                 <div>
                   <Label>Follow-up in</Label>

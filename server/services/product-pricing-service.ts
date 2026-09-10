@@ -264,8 +264,13 @@ export class ProductPricingService {
    * @returns Margin percentage
    */
   calculateMarginPercentage(dealerCost: number, customerPrice: number): number {
-    if (dealerCost === 0) return 0;
-    return ((customerPrice - dealerCost) / dealerCost) * 100;
+    // Against the SELLING price. Dividing by cost is markup, and
+    // validatePriceChange below compares this against minMarginPercentage - so
+    // the old divisor let prices below the floor pass the check that names it.
+    // Nothing imports this file today, so this is a latent trap removed rather
+    // than a live number changed; the same defect was live in two client
+    // components (ProductPricingDisplay, ProductPricingForm).
+    return customerPrice > 0 ? ((customerPrice - dealerCost) / customerPrice) * 100 : 0;
   }
 
   /**
@@ -287,8 +292,8 @@ export class ProductPricingService {
    * @returns Rep margin percentage
    */
   calculateRepMarginPercentage(repCost: number, customerPrice: number): number {
-    if (repCost === 0) return 0;
-    return ((customerPrice - repCost) / repCost) * 100;
+    // Same correction as calculateMarginPercentage: margin is on the price.
+    return customerPrice > 0 ? ((customerPrice - repCost) / customerPrice) * 100 : 0;
   }
 
   /**

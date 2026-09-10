@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { format, isToday, isTomorrow, isYesterday } from 'date-fns';
 import { clickableProps } from '@/lib/accessibility';
+import { toDateInputValue } from '@/lib/date-utils';
 
 // Priority configuration
 const priorityConfig = {
@@ -273,7 +274,10 @@ export function InlineDatePicker({
           mode="single"
           selected={value ? new Date(value) : undefined}
           onSelect={(date) => {
-            onChange(date ? date.toISOString().split('T')[0] : null);
+            // The calendar hands back local midnight. toISOString shifts that
+            // to the previous day for any positive UTC offset, so a due date
+            // picked in Europe saved as the day before.
+            onChange(toDateInputValue(date));
             setOpen(false);
           }}
           initialFocus

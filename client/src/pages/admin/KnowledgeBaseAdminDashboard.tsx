@@ -64,6 +64,7 @@ import {
   Edit,
   Copy,
 } from 'lucide-react';
+import { downloadAuthedFile } from '@/lib/authed-download';
 
 interface DashboardStats {
   articles: {
@@ -182,40 +183,26 @@ export default function KnowledgeBaseAdminDashboard() {
   });
 
   // Export articles
+  // Raw fetch with credentials:'include' sends cookies only, and the relative
+  // path is never rewritten to the functions host - so in production this hits
+  // the SPA origin, and neither branch checked response.ok. The JSON branch ran
+  // .json() on whatever came back and saved data.data (undefined) as the export;
+  // the CSV branch saved the error body under a .csv name.
   const handleExport = async (format: 'json' | 'csv') => {
     try {
-      const res = await fetch(`/api/admin/knowledge-base/export?format=${format}`, {
-        credentials: 'include',
-      });
-
-      if (format === 'json') {
-        const data = await res.json();
-        const blob = new Blob([JSON.stringify(data.data, null, 2)], {
-          type: 'application/json',
-        });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `kb-export-${new Date().toISOString()}.json`;
-        a.click();
-      } else {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `kb-export-${new Date().toISOString()}.csv`;
-        a.click();
-      }
-
+      await downloadAuthedFile(
+        `/api/admin/knowledge-base/export?format=${format}`,
+        `kb-export-${new Date().toISOString()}.${format}`,
+      );
       toast({
-        title: 'Success',
-        description: 'Articles exported successfully',
+        title: 'Export ready',
+        description: `Knowledge base exported as ${format.toUpperCase()}.`,
       });
-      setExportDialog(false);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to export articles',
+        title: 'Export failed',
+        description:
+          error instanceof Error ? error.message : 'Could not export the knowledge base.',
         variant: 'destructive',
       });
     }

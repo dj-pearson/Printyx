@@ -35,6 +35,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { todayLocalDate, toDateInputValue } from '@/lib/date-utils';
 
 const billingRuleSchema = z.object({
   ruleName: z.string().min(1, 'Rule name is required'),
@@ -80,7 +81,7 @@ export function BillingRuleDialog({ open, onOpenChange, rule }: BillingRuleDialo
       ruleType: 'flat_rate',
       ruleStatus: 'draft',
       priority: 0,
-      effectiveStartDate: new Date().toISOString().split('T')[0],
+      effectiveStartDate: todayLocalDate(),
       billingCycle: 'monthly',
       applicableToAllCustomers: false,
       applicableToAllEquipment: false,
@@ -98,12 +99,8 @@ export function BillingRuleDialog({ open, onOpenChange, rule }: BillingRuleDialo
         ruleType: rule.ruleType || 'flat_rate',
         ruleStatus: rule.ruleStatus || 'draft',
         priority: rule.priority || 0,
-        effectiveStartDate: rule.effectiveStartDate
-          ? new Date(rule.effectiveStartDate).toISOString().split('T')[0]
-          : new Date().toISOString().split('T')[0],
-        effectiveEndDate: rule.effectiveEndDate
-          ? new Date(rule.effectiveEndDate).toISOString().split('T')[0]
-          : undefined,
+        effectiveStartDate: toDateInputValue(rule.effectiveStartDate) ?? todayLocalDate(),
+        effectiveEndDate: toDateInputValue(rule.effectiveEndDate) ?? undefined,
         billingCycle: rule.billingCycle || 'monthly',
         baseCharge: rule.baseCharge || '',
         minimumCharge: rule.minimumCharge || '',
@@ -126,7 +123,7 @@ export function BillingRuleDialog({ open, onOpenChange, rule }: BillingRuleDialo
         ruleType: 'flat_rate',
         ruleStatus: 'draft',
         priority: 0,
-        effectiveStartDate: new Date().toISOString().split('T')[0],
+        effectiveStartDate: todayLocalDate(),
         billingCycle: 'monthly',
         applicableToAllCustomers: false,
         applicableToAllEquipment: false,

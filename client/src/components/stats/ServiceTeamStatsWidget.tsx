@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
 import { useToast } from '@/hooks/use-toast';
+import { todayLocalDate } from '@/lib/date-utils';
 
 interface ServiceTeamQuickStats {
   performance: {
@@ -190,7 +191,7 @@ export default function ServiceTeamStatsWidget({
       createExportColumn<(typeof exportData)[0]>('trend', 'Trend'),
     ];
 
-    const timestamp = new Date().toISOString().split('T')[0];
+    const timestamp = todayLocalDate();
     const filename = `service-team-stats-${timestamp}`;
 
     if (format === 'csv') {

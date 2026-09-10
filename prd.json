@@ -14268,6 +14268,467 @@
       "category": "correctness",
       "dependsOn": [],
       "notes": "FILED 2026-09-09. The financial half is done and locked by server/tests/unit/financial-period-months.test.ts, which DEMONSTRATES each failure with arithmetic rather than asserting it from memory - reuse that style, because the premise is the thing people doubt. Two shapes to look for, not one: subtracting/adding months (clamp the day, see subtractMonths) and ENUMERATING months (anchor to the first, see monthsBetween). The second is the nastier one: a skipped month leaves a gap in a chart, which reads as a month in which nothing happened rather than as an error. Call sites at the time of filing: customer-portal/handlers/analytics.ts:52, customer-portal/handlers/satisfaction.ts:357, contract-renewal/index.ts:296, voice-agent/index.ts:305, maintenance/index.ts:469 and :472, plus any in server/. Note _period.ts is deliberately Deno-import-free so vitest can exercise it directly; index.ts pulls https: specifiers and cannot be imported from a Node test.\n\nPARTLY DONE 2026-09-09 (iteration 14). The helpers moved to supabase/functions/_shared/date-months.ts and gained addMonths and termEndDate. Fixed: contract-renewal (the renewed END DATE), maintenance (monthly, quarterly and yearly next-due), subscriptions (three billing period ends). \n\nTHE COUNT WAS WRONG IN THIS STORY AS FILED: it said about a dozen sites. npm run check:month-arithmetic found THIRTY, and 27 remain in docs/month-arithmetic-baseline.json as a shrink-only ratchet. Several are money and should go first: server/services/automated-billing-service.ts (six sites, including the NEXT BILLING DATE), supabase/functions/leases/handlers/leases.ts:210 (a payment schedule), supabase/functions/reports/handlers/scheduled.ts:123 (next scheduled run), server/services/billing-analytics-service.ts. The rest are reporting windows (analytics, seo, customer-portal, platform-deals, crm-goals, admin-stats, sales-forecasting, voice-agent) and one client-side date (LeadDeals.tsx:254). \n\nTWO SHAPES, and contract-renewal needed BOTH. Clamping alone was not enough there: `start + termMonths` also overran the term by a day - a twelve-month term from 1 January 2025 ended on 1 January 2026, the same day the next term starts - and because each renewal takes its start from the previous end plus a day, the anniversary drifted forward one day per renewal (five renewals moved 1 January to the 5th). termEndDate anchors on the day BEFORE the start, which fixes the overrun and the overflow together. When fixing a remaining site, ask whether it wants addMonths (a period boundary, where the end IS the next start, e.g. subscriptions) or termEndDate (the last day of a term, e.g. a contract).\n\nITERATION 15 took two more, both writing to the database rather than to a chart. supabase/functions/leases/handlers/leases.ts generates the lease_payments schedule, and from a first payment on 31 January a TWELVE-MONTH LEASE COVERED SEVEN DISTINCT MONTHS: March, May, July, October and December each got two payments, February, April, June, September and November got none. The row COUNT was still right, which is why nothing downstream could notice. supabase/functions/reports/handlers/scheduled.ts rolled a report scheduled for the 31st into March when it meant February. Ratchet 27 -> 25.\n\nTHE GUARD CAUGHT ITS OWN TEST, which is worth knowing before adding another: the tests demonstrate the old behaviour deliberately and keep the idiom to do it, so each is exempted BY NAME in scripts/check-month-arithmetic.mjs. Do not widen that to a tests/ glob - a real offence in a test helper should still be reported, and a blanket exemption is how one hides."
+    },
+    {
+      "id": "QUERYKEY-002",
+      "title": "Twenty-four more query keys put filter state in the URL path",
+      "description": "The default queryFn in client/src/lib/queryClient.ts builds its URL with queryKey.join('/'), so every element of the key becomes a path segment. QUERYKEY-001 fixed the ten keys carrying an OBJECT (each produced a literal '[object Object]' segment) and added check:query-keys to hard-gate that shape at zero. Twenty-four keys remain where a filter or selector VALUE is a plain string element: RootAdminSignupsCRM requests /api/root-admin/signups/<statusFilter>/<page>, AdvancedAnalyticsDashboard requests /api/analytics/dashboard/<period>/<segment>, WorkflowAutomation /api/workflow-automation/dashboard/<category>/<status>, MobileFieldOperations /api/mobile-field/work-orders/<status>/<tech>/<priority>, CustomerSuccessManagement /api/customer-success/usage-analytics/<period>, admin/UserManagement /api/admin/users/<tenant>, SalesCommandCenter /api/crm/goal-progress/<scope>, PlatformCustomerSuccess /api/platform-cs/health-scores/<filter>/<csm>, PlatformBusinessRecords /api/platform-crm/business-records/<querystring>, and the two address-book components which append a bare '?customer_id=' element after a slash. Each of these is either a 404 or a silently unfiltered read, and in every case the selector the user moves does nothing. These are NOT all the same fix: some endpoints already accept the param as a query string (repoint the key), some accept nothing (the filter needs adding server-side, as QUERYKEY-001 did for platform-deals and platform-cs), and some sub-resource keys like ['/api/tasks', taskId, 'time-entries'] are CORRECT path segments and must be left alone. Triage each one against the edge function that serves it before touching the page.",
+      "acceptanceCriteria": [
+        "Every one of the 24 sites is triaged against the edge function that actually serves it, and the finding recorded: correct path segment, repointable to a query string, or needs a server-side filter",
+        "Keys that encode filter or selector state are moved into the query string; the corresponding selector is verified to change the request",
+        "Where the endpoint does not read the filter, the filter is added to the edge function against a real column (not dropped silently)",
+        "Sub-resource keys that legitimately build a path (/api/tasks/:id/time-entries) are left unchanged and documented as such",
+        "check:query-keys is extended to also flag non-path key elements once the backlog is at zero, or a shrink-only baseline is committed",
+        "npm run check, lint and build stay green"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "frontend-data-contracts",
+      "dependsOn": ["QUERYKEY-001"],
+      "notes": "Detector used to find these: a scan for useQuery calls with no queryFn whose queryKey array has more than one top-level element. scripts/check-query-keys.mjs already has the parsing half of that; it only reports object elements today. Beware the false positives - ContactManager, TaskTimeTracker, ServiceTicketAnalysis and CompanyContacts all build real sub-resource paths and are fine."
+    },
+    {
+      "id": "QUERYKEY-001",
+      "title": "Ten query keys carried an object, so ten requests went to /[object Object]",
+      "description": "The default queryFn joins queryKey with '/', so an object element stringifies into the URL. Ten sites shipped this way: PlatformCRMDashboard's time-range selector (three queries, and a fourth sending timeRange= to an endpoint that reads startDate), MarginAnalysisReport's four filters, ManufacturerIntegrationAudit's three, ContractRenewalDashboard's renewal window, DealDeskDashboard's status filter, and the Deals/Activities/Health tabs on PlatformBusinessRecordDetail plus the Activities tab on PlatformDealDetail. Every one of them rendered empty behind `data ?? []` rather than erroring, and every selector above them was inert. Fixed by moving the values into the query string; platform-deals and platform-cs health-scores gained the businessRecordId filter they were being asked for and did not have.",
+      "acceptanceCriteria": [
+        "All ten object-in-key sites request a real URL with the filter in the query string",
+        "platform-deals and platform-cs health-scores filter on business_record_id",
+        "PlatformCRMDashboard derives startDate from its time range via timeRangeStartDate (day arithmetic, no setMonth overflow)",
+        "npm run check:query-keys hard-gates the shape at zero and is wired into CI"
+      ],
+      "priority": 3,
+      "passes": true,
+      "category": "frontend-data-contracts",
+      "dependsOn": [],
+      "notes": "The guard was mutation-tested by re-introducing PlatformDealDetail's object key and confirming a non-zero exit."
+    },
+    {
+      "id": "INVALIDATE-001",
+      "title": "Nine mutations reported success and refreshed nothing",
+      "description": "TanStack matches a queryKey filter element by element, and element 0 of a key in this app is a whole URL. So invalidateQueries({ queryKey: ['/api/rbac'] }) does not touch a query keyed ['/api/rbac/roles'] - the strings differ and nothing refetches. The misfire is silent: the mutation succeeds, the toast says saved, the list keeps the old rows until a reload. Confirmed sites: all four assignment mutations on SalesRepAssignments (assign, unassign, reassign, bulk), the RBAC initialiser on RoleManagement, the cross-module equipment-lifecycle hook, PhoneInTicketCreator (invalidated /api/contacts/search while its picker is keyed on /api/phone-in-tickets/search-contacts, so a contact created there never appeared in the list that created it), and CsvImportWizard's five post-import invalidations. Two more were introduced by QUERYKEY-001 itself, which moved filters into the query string and so broke the exact-key match on ContractRenewalDashboard and DealDeskDashboard. Fixed with invalidateApiPath(prefix) in client/src/lib/queryClient.ts, which matches on the path (the prefix, or anything continuing with '/' or '?') via a predicate.",
+      "acceptanceCriteria": [
+        "invalidateApiPath exists in client/src/lib/queryClient.ts and matches prefix, prefix/... and prefix?...",
+        "A sibling sharing only a string prefix (/api/deals under /api/deal) is not swept away",
+        "The nine confirmed sites use it",
+        "Unit test locks the matching rule"
+      ],
+      "priority": 3,
+      "passes": true,
+      "category": "frontend-data-contracts",
+      "dependsOn": ["QUERYKEY-001"],
+      "notes": "Detector: collect every queryKey array literal that is not inside an invalidate/refetch/remove call, take element 0, and report any invalidation key that equals none of them. Watch three false-positive classes - a key held in a variable (useCrmNotes, useCustomFields), a generic with nested angle brackets defeating a naive useQuery<...> regex, and a doc comment naming an example key."
+    },
+    {
+      "id": "INVALIDATE-002",
+      "title": "Ten invalidation keys still match nothing, and no guard watches the shape",
+      "description": "After INVALIDATE-001 there are ten invalidateQueries calls whose key matches no query key in any client tree. Some are false positives of the detector rather than defects and need confirming by hand: useCrmNotes and useCustomFields both build their key in a variable whose element 0 does match. The rest look like genuine dead invalidations with small blast radius - EquipmentTransitionDialog and EquipmentLifecycleHub both invalidate /api/equipment-lifecycle/stages which nothing queries, ApolloLeadEnrichment invalidates /api/apollo/search twice (a mutation endpoint, so there is nothing cached to refresh), CustomReportBuilder invalidates /api/reports, BANTAssessment invalidates a bare 'lead-intelligence', and MeterReadReview builds a template key that may or may not line up with the query it means. Each needs the same triage: find the query it intended to refresh, repoint it, or delete it. Then the shape wants a guard, which is the harder half - it has to resolve keys held in variables before it can hard-gate at zero, or ship as a shrink-only baseline.",
+      "acceptanceCriteria": [
+        "Each of the ten is confirmed a defect or a detector false positive, and the finding recorded",
+        "Genuine dead invalidations are repointed at the query they meant to refresh, or deleted",
+        "A check:invalidation-keys guard resolves variable-held query keys and strips comments before matching",
+        "The guard is wired into CI at zero, or with a shrink-only baseline if any true positive is deferred",
+        "The guard is mutation-tested: re-introducing a known dead invalidation makes it exit non-zero"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "frontend-data-contracts",
+      "dependsOn": ["INVALIDATE-001"],
+      "notes": "NEXT ITERATION CANDIDATE. Start from the detector described in INVALIDATE-001's notes; it currently reports 10, one of which is queryClient.ts's own doc comment - strip comments on both sides, the lesson CLAUDE.md already records for check:edge-coverage."
+    },
+    {
+      "id": "SEC-TENANT-001",
+      "title": "parts-orders let one tenant read, extend and strip another tenant’s order lines",
+      "description": "parts_order_items is only reachable through its parent order, and the three /parts-orders/:id/items handlers plus DELETE /parts-orders/:id took that id straight from the URL and handed it to the service-role client, which bypasses RLS. Nothing checked whose order it was. GET returned another tenant's part numbers, quantities and unit prices. POST appended rows to their order (stamped with the CALLER's tenant_id, so the injected lines were invisible to a tenant-filtered read and the victim's own UI showed an order it could not fully account for). DELETE was the worst: the unscoped items delete ran BEFORE the tenant-scoped delete of the order row, so the order survived with every line stripped off it and the caller got { success: true }. One ownedOrder() resolution against tenant_id now gates all four, and the items delete carries the tenant filter too.",
+      "acceptanceCriteria": [
+        "GET, POST /:id/items and DELETE /:id resolve the order against the caller tenant first and 404 otherwise",
+        "Every parts_order_items chain carries a tenant filter, except the insert which sets tenant_id in the payload",
+        "A unit test locks all three gates and strips comments before asserting absence"
+      ],
+      "priority": 1,
+      "passes": true,
+      "category": "security",
+      "dependsOn": [],
+      "notes": "Found with scripts/report-untenanted-postgrest.mjs, added in the same commit."
+    },
+    {
+      "id": "SEC-TENANT-002",
+      "title": "469 PostgREST chains name a tenant-scoped table without a tenant filter",
+      "description": "scripts/report-untenanted-postgrest.mjs cross-references the 575 Drizzle tables carrying a tenant_id against every .from() chain in the edge tree and reports the ones that never mention tenant_id: 214 inserts, 164 selects, 71 updates, 17 deletes, 3 upserts. These functions use the service-role client, so a tenant filter is the only isolation there is. The number is NOT a defect count - most are guarded by an ownership fetch the script cannot see (saved-views checks the owner, monitoring-clients calls findClientForTenant, the knowledge-base handlers scope by user_id, several deletes are rollbacks of a row the same handler just created). SEC-TENANT-001 shows what a real one looks like. The work is to triage the list into three buckets - guarded by a preceding ownership check, genuinely unscoped, or a table that is not tenant-scoped in practice - fix the second bucket, and annotate the first so the next reader does not re-derive it. Start with the 71 updates and 17 deletes: a destructive write reached by a URL id is where an unguarded chain does the most damage, and it is also the smallest slice.",
+      "acceptanceCriteria": [
+        "The 71 update and 17 delete findings are each triaged and the verdict recorded",
+        "Every genuinely unscoped destructive write gains an ownership check or a tenant filter, with a test",
+        "The 164 selects are triaged for cross-tenant disclosure, prioritising handlers that take an id from the URL",
+        "The 214 inserts are triaged for rows written with a tenant_id the caller does not own",
+        "The report script grows an ownership-aware rule, or a reviewed baseline is committed so the number can only shrink"
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "security",
+      "dependsOn": ["SEC-TENANT-001"],
+      "notes": "NEXT ITERATION CANDIDATE - take the deletes and updates first. The script's own header records its three blind spots: the chain ends at the first ';' so a query built across statements looks unfiltered, a table name in a variable is invisible, and the 107 tables in no Drizzle schema are never classified as tenant-scoped. Do not treat a clean line as proof."
+    },
+    {
+      "id": "SEC-PAYMENT-001",
+      "title": "A payment endpoint that contacted no processor could mark any tenant’s invoice paid",
+      "description": "POST /payment-processing/charge inserted a payments row, set it to 'completed' one statement later and answered \"Payment processed successfully\" - with no payment processor in the call at all. /history and /summary read that same table, so the fabricated settlement was indistinguishable from a real one downstream. It then updated invoices using an id taken straight from the request body, unfiltered by tenant on both the read and the update, through the service-role client that bypasses RLS: any authenticated user could set another tenant's invoice to paid with amount_paid raised by a number they chose. Two further faults in the same six lines - it wrote `status`, the LEGACY column, while every read path uses `invoice_status` (so a payment that 'succeeded' left the invoice showing open), and balance_due was never recomputed. /refund had the same fabrication (a negative payment inserted already marked completed) with correct tenant scoping. Both answer 501 now, naming StripeService as where capture actually lives. /void, /methods, /history, /transactions/:id and /summary are real reads and writes over real rows and are unchanged. The function has no caller in any client tree - it is in the AUDIT-024 unreferenced baseline - but it is deployed and reachable at functions.printyx.net by any authenticated user, so the cross-tenant write was live.",
+      "acceptanceCriteria": [
+        "charge and refund answer 501 and write nothing",
+        "The function no longer references the invoices table",
+        "No branch writes a payment already marked completed",
+        "void keeps its tenant filter and its pending-only guard",
+        "A unit test locks all of the above and strips comments before asserting absence"
+      ],
+      "priority": 1,
+      "passes": true,
+      "category": "security",
+      "dependsOn": [],
+      "notes": "Reached from the SEC-TENANT-002 triage: an ownership-aware pass over the report script narrowed 88 update/delete findings to 34 with no tenant_id within 45 lines, and this was the one that mattered."
+    },
+    {
+      "id": "SEC-TENANT-003",
+      "title": "157 edge functions accept the tenant id from a request header",
+      "description": "Tenant resolution in the edge tree reads app_metadata.tenantId from the JWT and falls back to req.headers.get('x-tenant-id') - a value the caller controls. For a user whose JWT carries a tenantId the fallback never fires and the resolution is sound, which is why this has held. The question nobody has answered is who reaches production WITHOUT one: newly provisioned users before their first tenant assignment, platform admins, service and cron callers, and anyone whose app_metadata was written by a path that does not set it. For those, the tenant filter throughout the function is attacker-supplied, and every .eq('tenant_id', tenantId) in it becomes a filter on a tenant of the caller's choosing rather than an isolation boundary. 157 functions resolve tenancy this way, so this is a shape to settle once in _shared and adopt, not a per-function fix. The resolution should verify the header names a tenant the user is actually a member of - the membership data exists - and fail closed when it does not.",
+      "acceptanceCriteria": [
+        "Establish empirically whether any production user can authenticate with no tenantId in app_metadata, and record the answer",
+        "A shared resolveTenant helper in supabase/functions/_shared verifies a header-supplied tenant against the caller membership and fails closed",
+        "The helper is adopted across the 157 functions, or the fallback is removed where the JWT is always authoritative",
+        "A guard reports any edge function resolving tenancy inline rather than through the helper",
+        "Tests cover: JWT tenant wins over a conflicting header; a header naming a non-member tenant is rejected; no tenant at all is a 400"
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "security",
+      "dependsOn": [],
+      "notes": "NEXT ITERATION CANDIDATE. Count with: grep -rn \"req.headers.get('x-tenant-id')\" supabase/functions --include=*.ts. Note CLAUDE.md documents the header as the FIRST link in the resolution chain for the Express side; in the edge functions the JWT is checked first and the header is the fallback, so the two backends do not agree about which wins - that disagreement is part of the story."
+    },
+    {
+      "id": "PRICING-MARGIN-001",
+      "title": "Two live pricing components computed markup and called it margin",
+      "description": "Margin is measured against the SELLING price; dividing by cost gives markup, which reads higher for every profitable item ($500 cost at $1000 is 50% margin and 100% markup). server/services/pricing-service.ts had this defect and was corrected, with a note explaining that a minimum-margin floor built on the wrong one 'would pass prices that break the policy it states'. The two CLIENT components computing the same number were missed: ProductPricingDisplay showed the inflated figure on every product card, and ProductPricingForm fed it to isMarginLow(), which compares against company_pricing_settings.min_margin_percentage - so the guardrail waved through prices below the floor it enforces (a real 14% margin reads as 16.3% markup and clears a 15% minimum). A third copy sat in server/services/product-pricing-service.ts, which nothing imports, feeding validatePriceChange the same way. All three now use lineMarginPct from shared/quote-math.ts, the definition the quote builder and both PDFs already share.",
+      "acceptanceCriteria": [
+        "ProductPricingDisplay and ProductPricingForm use lineMarginPct from shared/quote-math.ts",
+        "product-pricing-service margin methods divide by the selling price",
+        "check:margin-formula hard-gates the shape at zero and is wired into CI",
+        "The guard is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "correctness",
+      "dependsOn": [],
+      "notes": "The guard's first cut had a false negative that a clean run would never have shown: its divisor pattern required a character before 'cost'/'dealer', so it caught dealerCost and missed a bare dealer - which is exactly the shape in the live component. Mutation-testing is the only reason that surfaced."
+    },
+    {
+      "id": "PRICING-MARGIN-002",
+      "title": "Percentage math across the client has no shared zero-guard, and one component divides by a previous period that can be zero",
+      "description": "A scan for (a / b) * 100 in client/src returns roughly 25 sites where the divisor is business data rather than a list length. Most guard zero; several do not. customer-portal/UsageAnalyticsDashboard divides by the previous period with no guard at all - AUDIT-021 already rebuilt that endpoint so percentageChange is null when the previous window has no readings, but the component still does its own division and will render Infinity for a customer in their first month. ProductPricingDisplay and dashboard widgets divide by totals that a new tenant has none of. The pattern to settle: one formatPercent helper that returns null (rendered as an em dash, never 'NaN%' or 'Infinity%') when the divisor is zero or the inputs are not finite, adopted across the client, plus a guard for raw * 100 divisions outside it. MetricCard already takes number | null for exactly this reason - the type exists and most callers do not use it.",
+      "acceptanceCriteria": [
+        "Each of the ~25 percentage sites is triaged for a zero or non-finite divisor",
+        "A shared percent helper returns null rather than NaN or Infinity, and the UI renders an absence",
+        "UsageAnalyticsDashboard reads the endpoint percentageChange instead of recomputing it",
+        "A guard reports a raw (a / b) * 100 in client/src outside the helper"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "correctness",
+      "dependsOn": ["PRICING-MARGIN-001"],
+      "notes": "NEXT ITERATION CANDIDATE. Find them with: grep -rnE '/ *[a-zA-Z_][a-zA-Z0-9_.?]*\\) *\\* *100' client/src. Divisors that are a .length of a rendered list are fine and should be excluded by rule, not baselined."
+    },
+    {
+      "id": "REPORTS-CHARTS-001",
+      "title": "Three charts on the routed /reports page were Math.random(), and no guard watched the client",
+      "description": "EnhancedReportsHub, which /reports resolves to, rendered 'Performance Trends', 'Distribution Analysis' and 'Period Comparison' from generateMockChartData - twelve months of Math.random() * 50000 laid over a hardcoded target of 40000, plus invented locations and regions for the filters. The values moved on every render, which is what real telemetry does, so refreshing appeared to confirm them. The panel is replaced with NotConnectedState and the generator deleted; the reports catalog below it is the real part of the page. Two more in the same class: LeadDeals scored every lead against `const monthlyGoal = 50000` written inline four times and commented 'Lead-specific goal', driving a Goal Attainment percentage, a Remaining to Goal figure and an On Track / At Risk / Behind badge - there is no per-lead goal column, setting or concept anywhere, so all of it was measured against an invented number; and DatabaseManagement showed a per-query duration in milliseconds from Math.random() beside a real query and a real user off audit_logs, which has no timing column, plus one hand-written backup row claiming a completed backup six hours old at a real size. THE REASON THESE SURVIVED: check:no-random-metrics scoped to server/ and supabase/functions/ only, because that is where the offenders it was written for lived. Nothing watched the render path - check:fabricated needs a `|| literal`, check:no-static-posture needs a literal in JSX and excludes components by design. The guard now walks client/src and .tsx, and found DatabaseManagement itself the moment it did.",
+      "acceptanceCriteria": [
+        "The three mock charts and generateMockChartData are gone; the panel says it is not connected",
+        "LeadDeals shows only figures derived from the deals it lists",
+        "DatabaseManagement reports query timing as not recorded, and claims no backup it cannot see",
+        "check:no-random-metrics walks client/src and .tsx files",
+        "The widened guard is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "data-integrity",
+      "dependsOn": [],
+      "notes": "The guard-scope lesson for the third time in this repo: a guard scoped to where the last batch of offenders lived misses the next surface. Widening check:no-random-metrics cost one line and immediately found a defect nobody had reported."
+    },
+    {
+      "id": "REPORTS-CHARTS-002",
+      "title": "The /reports dashboard panel needs a real aggregation endpoint",
+      "description": "With the fabricated charts removed, /reports shows a working catalog and an honest not-connected panel where the trend, distribution and period-comparison charts were. The supabase/functions/reports function exists and its _queries/ modules build real statements through the PostgREST builder - AUDIT-024 established it as the live implementation that superseded ten server/services/*-reporting-service.ts files - but it serves report DEFINITIONS and runs, not the three dashboard aggregations this panel wants. Decide whether the panel is worth building: a trend series over a period, a distribution by category, and a period-over-period comparison, each scoped to the selected category and tenant. If it is not, delete the panel rather than leaving a not-connected state on the page indefinitely.",
+      "acceptanceCriteria": [
+        "Decide: build the three aggregations in the reports edge function, or remove the panel",
+        "If built, each chart reads a real endpoint and renders an empty state when the tenant has no data",
+        "If built, the hardcoded target line is either a real per-tenant goal or absent",
+        "The NotConnectedState placeholder does not outlive the decision"
+      ],
+      "priority": 4,
+      "passes": false,
+      "category": "frontend",
+      "dependsOn": ["REPORTS-CHARTS-001"],
+      "notes": "Check what supabase/functions/reports/_queries already computes before adding anything - AUDIT-024 records that its headers name the unbacked tables honestly, so some of this may be underivable and should be said rather than filled in."
+    },
+    {
+      "id": "EXPORT-DOWNLOAD-001",
+      "title": "Three exports saved the error body to disk under the filename the user expected",
+      "description": "MarginAnalysisReport, PlatformBusinessRecords and KnowledgeBaseAdminDashboard each downloaded through a raw fetch() with no response.ok check, so a failed request was written to disk as margin-report-2026-09-10.csv or business-records-csv-1712.csv. The raw fetch is wrong twice more: it carries no Authorization header, and a relative path is never rewritten to the functions host, so all three fail the moment the request leaves dev. PlatformBusinessRecords is the worst of them - its endpoint, /api/platform-crm/business-records/export, exists on NO backend, not in the platform-crm edge function that prefix is proxied to and not in Express, so it 404s in dev as well as production; nothing threw, so the catch never fired and the handler went on to toast 'Success - Exported 47 records as CSV'. A platform admin was told the export worked and handed an error page with a spreadsheet's name on it. All three now go through downloadAuthedFile, which attaches the app's auth, rewrites the host, and throws with the server's own message on a non-2xx.",
+      "acceptanceCriteria": [
+        "All three exports use downloadAuthedFile from @/lib/authed-download",
+        "A failed export shows the server message and writes no file",
+        "No handler reports success for a download that did not happen",
+        "check:blob-downloads hard-gates the shape at zero and is wired into CI",
+        "The guard is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "error-handling",
+      "dependsOn": [],
+      "notes": "The helper already existed and already did all three things right (EDGE-023). These were the copies nobody repointed - the same shape as PRICING-MARGIN-001 two iterations earlier."
+    },
+    {
+      "id": "PLATFORM-EXPORT-001",
+      "title": "Platform business-records export has a button, three formats, and no endpoint",
+      "description": "PlatformBusinessRecords offers Export as CSV, Excel and PDF. /api/platform-crm/business-records/export is implemented nowhere - the platform-crm edge function that owns the proxied prefix has no export branch, and no Express router claims it either. EXPORT-DOWNLOAD-001 made the failure visible (it now shows the error instead of saving a 404 as a spreadsheet), which is honest but still three buttons that cannot work. Decide: implement export in the platform-crm edge function for the formats worth supporting, or remove the formats that are not. CSV is straightforward over the rows the list already queries; PDF is a different problem and PA-028 already flags synchronous PDF/XLSX generation as needing streaming or offloading, so do not add a fourth synchronous generator without reading that story first.",
+      "acceptanceCriteria": [
+        "Each offered format either downloads a real file or is removed from the menu",
+        "The export respects the filters the list is showing, not just the loaded page",
+        "Any generator added is bounded in rows and does not block the request thread (see PA-028)",
+        "check:blob-downloads and the route-ownership baseline both stay clean"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "frontend",
+      "dependsOn": ["EXPORT-DOWNLOAD-001"],
+      "notes": "NEXT ITERATION CANDIDATE. Check the same question for /api/pricing/margin-report/export and /api/admin/knowledge-base/export: both exist in Express only, so they work in dev and 404 in production once getApiUrl sends the prefix to the functions host. That is the same defect one step less far along, and it was not fixed here."
+    },
+    {
+      "id": "PERF-NPLUS1-001",
+      "title": "Predictive failure ran two queries per machine, so it timed out for anyone with a fleet",
+      "description": "The predictive-failure engine behind /service/predictions loaded every active machine and then, inside the loop, issued one meter_readings query and one service_tickets query for each. A dealer with 800 active machines made 1,600 SEQUENTIAL PostgREST round trips inside a single edge-function invocation - at even 15ms each that is 24 seconds, past the timeout. The feature could not complete for exactly the customers it exists for, and it looked fine in testing because a seeded tenant has a dozen machines. Replaced with two batched reads through the new supabase/functions/_shared/batch-fetch.ts: chunked .in() lists, explicit paging past PostgREST's silent 1000-row cap, and grouping in memory. meter_readings keeps the last 12 per machine, which PostgREST cannot do per-group, so the batch is bounded by date (550 days, comfortably more than 12 periodic readings) and trimmed after grouping.",
+      "acceptanceCriteria": [
+        "The scoring pass issues a constant number of queries regardless of fleet size",
+        "Batched reads chunk their id lists and page past the 1000-row cap",
+        "A query error propagates rather than silently returning a short result",
+        "The last 12 readings per machine are still what the scorer sees",
+        "predictive-failure-scoring stays green and the helper has its own tests"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "performance",
+      "dependsOn": [],
+      "notes": "Found with scripts/report-nplus1-loops.mjs, added in the same commit. The helper is the fix shape for the rest."
+    },
+    {
+      "id": "PERF-NPLUS1-002",
+      "title": "A hundred more loops in the edge tree await a query per iteration",
+      "description": "scripts/report-nplus1-loops.mjs finds 100 loops in supabase/functions containing an awaited PostgREST call, 8 of them already wrapped in Promise.all. Most are fine and must not be 'fixed': explicit pagination loops, insert batching by chunk, and retry loops all match the shape. The ones that matter iterate over TENANT DATA, where the row count is the customer's business rather than a constant - and those are the ones that pass every test and fail in production, because a seeded tenant is small. Worth reading first, all confirmed loops over tenant rows: qbr (contracts per customer), renewal-autoquote (meter_readings per candidate), purchase-orders (equipment per plan line, inventory_items per movement), truck-stock (recommendations per technician), printer-monitoring (per device, then per metric), voice-ticket-close (truck_inventory per resolved part), and pipeline-config (tasks per pending row). Triage each against the row count a real dealer has, and convert the ones that scale with it using batch-fetch.ts.",
+      "acceptanceCriteria": [
+        "Each of the 100 is classified: bounded by a constant, deliberate batching or paging, or scales with tenant data",
+        "Every loop that scales with tenant data is converted to batched reads or justified in a comment",
+        "The report script gains a rule that recognises pagination and chunk-batching loops, so the number reflects real candidates",
+        "A representative large-tenant case is measured before and after, not assumed"
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "performance",
+      "dependsOn": ["PERF-NPLUS1-001"],
+      "notes": "NEXT ITERATION CANDIDATE. The script's header records its two blind spots: the loop body is read by indentation for 45 lines, so a longer body is missed, and a query behind a helper call is invisible. Do not read a clean line as proof."
+    },
+    {
+      "id": "DATE-LOCAL-001",
+      "title": "Meter readings, payments and journal entries were dated in UTC, so they were a day out for most of the working day",
+      "description": "new Date().toISOString().split('T')[0] is today in UTC, not today where the user is. For a dealer anywhere in the US it is TOMORROW from late afternoon onward: a technician submitting a meter reading at 5pm Pacific dated it into the next day, and at month end into the next BILLING PERIOD; a payment recorded after 7pm Eastern landed on the wrong day for aging and month-end close; a journal entry could post to the wrong accounting period. The same call ran in the other direction on the two task date pickers - the calendar hands back local midnight, and toISOString walks that back across the boundary for any positive UTC offset, so a due date picked in Europe saved as YESTERDAY. Nine sites in all: MeterReadings (the field default and the Today button), MeterBilling, Invoices (payment date), JournalEntries (entry date), billing-rule-dialog (effective start and end), InlineEditors and TaskDialogs (due dates), and a Contacts activity date. todayLocalDate() and toDateInputValue() in client/src/lib/date-utils.ts read the local calendar; the tests pass under America/Los_Angeles, Europe/Berlin, Asia/Tokyo, Pacific/Auckland and UTC.",
+      "acceptanceCriteria": [
+        "Every date-only business value is taken from the local calendar, not from UTC",
+        "The two calendar pickers store the day the user actually clicked",
+        "Tests pass in negative-offset, positive-offset and UTC timezones",
+        "check:local-dates hard-gates the shape at zero and is wired into CI",
+        "Export filenames are exempt by rule rather than baselined",
+        "The guard is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "correctness",
+      "dependsOn": [],
+      "notes": "The correct idiom, date-fns format(d, 'yyyy-MM-dd'), was already in use in contracts.tsx, DocumentBuilder, TaskTimeTracker and MaintenanceSchedulingComponent - so the codebase had the right answer and the wrong copies side by side, the same shape as PRICING-MARGIN-001 and EXPORT-DOWNLOAD-001."
+    },
+    {
+      "id": "DATE-LOCAL-002",
+      "title": "Server and edge date handling has not been checked for the same UTC-vs-local split",
+      "description": "DATE-LOCAL-001 fixed the client. The question it raises and does not answer is what the OTHER side does with the same values. A date-only column (meter_readings.reading_date, invoices.paid_date, journal entry dates, contract start and end) is a calendar date, but every server and edge comparison against it uses new Date() or toISOString(), which is an instant in UTC. Two things to establish: whether a report filtered 'this month' agrees with what a user in UTC-8 considers this month, and whether a billing period boundary computed server-side lines up with the reading dates the client now writes locally. Related and already filed: DATE-SETMONTH-001 records that Date.setMonth overflows rather than clamping, with a dozen call sites relying on it - the two want fixing in one pass, since both are about a date arithmetic that is almost right. Decide the rule first (store and compare date-only values as calendar dates; reserve instants for timestamps) and write it into CLAUDE.md, because this is the kind of thing that gets re-litigated per file.",
+      "acceptanceCriteria": [
+        "The rule for date-only vs instant columns is written down and applied consistently",
+        "Period boundaries used by billing and reports are checked against a non-UTC tenant",
+        "DATE-SETMONTH-001 is resolved in the same pass",
+        "A guard or test covers the boundary cases rather than relying on review"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "correctness",
+      "dependsOn": ["DATE-LOCAL-001"],
+      "notes": "NEXT ITERATION CANDIDATE. Note the tenant timezone may not be stored anywhere - check before assuming a per-tenant offset is available, because if it is not, that is the first piece of work."
+    },
+    {
+      "id": "MONEY-FORMAT-001",
+      "title": "Product prices displayed rounded to whole dollars, from one of 53 currency formatters",
+      "description": "client/src held 53 local formatCurrency definitions in six different behaviours, and the differences were not stylistic. Thirteen dropped cents. Three of those thirteen were byte-identical copies rendering dealer cost, rep cost, suggested retail and MSRP on ProductPricingDisplay (twice in the same file) and EnhancedProductModels - so a copier costing $3,499.50 showed as $3,500 to the rep quoting from it, and the same component computes margin off those values. Thirty-five of the 53 did not coerce a string, which matters because a Drizzle decimal column arrives from Express as a string and from PostgREST as a number: the same field is both, depending on which backend answered. Thirty-two had no null handling and rendered $NaN. The exported formatCurrency in lib/utils.ts was itself one of the whole-dollar variants, typed to accept only a number, and had no importers at all. It is now the one formatter: cents by default, string-coercing, and an em dash for a missing value rather than $0.00, because a missing price is not a free one.",
+      "acceptanceCriteria": [
+        "One exported formatCurrency, cents by default, string-coercing, absence-safe",
+        "The three copies rendering product prices are gone and prices show cents",
+        "A real zero is distinguishable from a missing value",
+        "check:currency-copies ratchets the remaining local copies shrink-only in CI",
+        "The ratchet is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "correctness",
+      "dependsOn": [],
+      "notes": "Whole dollars is not always wrong - an annual TCO or a dashboard aggregate can legitimately drop cents, which is why the helper takes { cents: false } and why the rest is a ratchet rather than a hard gate."
+    },
+    {
+      "id": "MONEY-FORMAT-002",
+      "title": "Forty-nine local currency formatters remain, each needing its call sites read",
+      "description": "MONEY-FORMAT-001 established the one formatter and removed the three copies that were demonstrably wrong. Forty-nine remain, recorded in docs/currency-copies-baseline.json. They cannot be replaced mechanically: ten drop cents on dashboard aggregates and annual totals where whole dollars may be the right call, and converting those blindly is churn rather than a fix. The work is per site - read what the number is, then either import the shared helper or pass { cents: false } deliberately. Two classes to prioritise: any copy without string coercion that renders a value from an Express route (a Drizzle decimal arrives as a string there and as a number from PostgREST, so the same field is both), and any copy that renders $0.00 for a null, which states a price of zero where there is no price. Tighten the ratchet as each batch lands.",
+      "acceptanceCriteria": [
+        "Each of the 49 is read at its call sites and either repointed or justified",
+        "No remaining copy renders $NaN or $0.00 for a missing value",
+        "Every copy that can receive a decimal-column string coerces it",
+        "The baseline shrinks to zero, or the survivors are annotated with why they differ"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "correctness",
+      "dependsOn": ["MONEY-FORMAT-001"],
+      "notes": "NEXT ITERATION CANDIDATE. Group the baseline by behaviour first (fraction digits, coercion, null handling) rather than walking it file by file - the six behaviours are the real unit of work."
+    },
+    {
+      "id": "SEC-SVG-001",
+      "title": "A logo upload was stored XSS: SVG allow-listed into a public bucket, served as image/svg+xml",
+      "description": "branding-profiles accepts image/svg+xml, creates its bucket with public: true a hundred lines above, and stores the object with contentType: file.type. An SVG is an XML document, so any authenticated user who could edit a branding profile could upload a logo containing <script> and get back a public URL that executes it in the storage origin - and that URL is rendered in proposals and PDFs that go to customers. It never surfaced in the app because a browser does not run scripts in an SVG loaded through <img>; direct navigation is another matter, and so is anywhere the file is inlined. supabase/functions/_shared/svg-sanitize.ts strips the executable surface - script, foreignObject, iframe, embed, object, animation handlers, on* attributes in every quoting style, javascript:/vbscript:/data: URLs in href and xlink:href, and style blocks carrying a script URL or expression() - looping to a fixed point because a single pass can leave a nested construct behind, and REJECTING with 422 rather than storing a half-cleaned file if it cannot converge in five passes. SVG stays supported, because a logo is the one place vector earns its keep.",
+      "acceptanceCriteria": [
+        "An uploaded SVG is sanitised before it reaches storage",
+        "Script elements, event handlers, script URLs and foreignObject do not survive",
+        "A document that cannot be sanitised is rejected with 422, not stored",
+        "An ordinary logo passes through unchanged",
+        "What was stripped is logged for the audit trail"
+      ],
+      "priority": 1,
+      "passes": true,
+      "category": "security",
+      "dependsOn": [],
+      "notes": "The first cut of the sanitiser had a false negative its own tests caught: DANGEROUS_URL is anchored (correctly, for an attribute value) and was also being used to scan <style> bodies and the whole document, where it matched nothing. There are now two patterns, anchored and not, and the difference is commented. Without the style-block test the guard would have passed while missing that case."
+    },
+    {
+      "id": "SEC-SVG-002",
+      "title": "blog-assets issues signed upload URLs with no content validation at all",
+      "description": "blog-assets hands the client a createSignedUploadUrl for a tenant-scoped path and takes mime_type as a declared string on a separate metadata call. Nothing validates what is actually uploaded: not the type, not the size, not the content. The bucket is read back with getPublicUrl, so whatever lands there is publicly addressable. That is the same exposure SEC-SVG-001 closed on branding-profiles, one step earlier in the pipeline and wider - branding-profiles at least had an extension allow-list and a 2MB cap. Two things to establish before fixing, neither of which can be read from source: whether the blog-assets bucket is actually public (it is created out of band, unlike branding-profiles which creates its own), and whether Supabase storage is configured with allowedMimeTypes and a fileSizeLimit on it. Then decide the shape: validate server-side after upload and quarantine anything that fails, or stop issuing signed URLs and proxy the upload through the function so it can be checked before it is stored. Adopt sanitizeSvg from _shared either way.",
+      "acceptanceCriteria": [
+        "The blog-assets bucket policy is established empirically and written down",
+        "Uploads are constrained by type and size somewhere that the client cannot bypass",
+        "Any SVG reaching a public bucket goes through sanitizeSvg",
+        "The declared mime_type is verified against the stored object, or is not trusted"
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "security",
+      "dependsOn": ["SEC-SVG-001"],
+      "notes": "NEXT ITERATION CANDIDATE. AssetUploadDialog.tsx accepts image/svg+xml in its file picker, so this path is reachable from the UI today. Check meeting-transcription and onboarding for the same question while you are there - both write to storage."
+    },
+    {
+      "id": "PERF-ROWCAP-001",
+      "title": "The financial dashboard, P&L and MRR analysis stopped counting at row 1000",
+      "description": "PostgREST truncates a response at db-max-rows (1000) WITHOUT erroring and with no marker in the payload. Five endpoints in the financial edge function summed a plain .select(): /metrics (the revenue dashboard - total revenue, MRR, won-deal value), /expenses, /forecasts (a twelve-month invoice history feeding every projection), and the profit-loss and mrr-analysis reports. A dealer billing more than a thousand invoices in the selected period got a total that stopped partway through - quietly, and always in the direction of business being smaller than it is. mrr-analysis was the first to cross it: it reads EVERY contract the tenant has ever had, with no date bound at all. supabase/functions/_shared/paged-select.ts pages explicitly, propagates an error rather than returning a short result that looks complete, and builds a fresh query per page because a PostgREST builder accumulates its filters.",
+      "acceptanceCriteria": [
+        "All five financial endpoints read every matching row",
+        "An error propagates rather than yielding a partial sum",
+        "A full last page triggers one more request rather than an assumption",
+        "The helper is shared, not local to one function"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "performance",
+      "dependsOn": [],
+      "notes": "platform-analytics had already solved this for itself under AUDIT-006 with a local fetchAllRows and a comment explaining the cap - the fourth time in this run that the right answer was already in the tree beside the wrong copies. A helper inside one function cannot be reused by the next one that needs it."
+    },
+    {
+      "id": "PERF-ROWCAP-002",
+      "title": "Thirty-three more sums read at most a thousand rows",
+      "description": "scripts/report-unbounded-sums.mjs finds 33 remaining unbounded .select() calls on high-volume tables whose result is summed with .reduce(). The reporting surfaces are the ones to take first, because a wrong total there is quoted: reports/handlers (dashboards, second-tier, frontend-stubs) across service_tickets, invoices, deals and business_records; sales-reports (three sums over deals); team-reports (four over business_records); service-analytics and technicians over service_tickets; today-dashboard over deals; and crm-goals, which sums deals AND activities to score goal attainment. Convert each with fetchAllRows from _shared/paged-select.ts, or switch to a HEAD count where only the number is wanted - that transfers no rows at all and is strictly better than paging to count. The report's own limits are in its header: the .reduce() must be within 30 lines of the .from(), a sum written as a for-loop is invisible to it, and the high-volume table list is hand-maintained, so a clean line is not proof.",
+      "acceptanceCriteria": [
+        "Each of the 33 is converted, switched to a HEAD count, or justified as bounded",
+        "Counting paths use { count: exact, head: true } rather than paging rows to length them",
+        "The report reaches zero, or the survivors carry a comment saying why they are bounded",
+        "A large-tenant case is measured rather than assumed"
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "performance",
+      "dependsOn": ["PERF-ROWCAP-001"],
+      "notes": "NEXT ITERATION CANDIDATE. The report initially could not see its own fixes - the inner chain inside fetchAllRows(() => admin.from(...).select(...)) carries no .range of its own, so a corrected call still looked unbounded and the number would never have moved. It skips already-paged chains now; check that rule still holds if the helper is ever renamed."
+    },
+    {
+      "id": "SEC-TENANT-004",
+      "title": "Saving accessibility settings failed for every user the first time",
+      "description": "user_settings.tenant_id is NOT NULL and PUT /user/accessibility omitted it on the create branch, so the first save returned 500 with 'Failed to create accessibility settings'. Only a user who already had a user_settings row from another path could save at all - and the users this affects are the ones who need those settings most. The two sibling handlers in the same file, /preferences and /notification-preferences, both call resolveTenantId() and set the column; this one did not, which is the fifth time in this run that the correct answer sat next to the wrong copy. check:insert-tenant-id now gates the shape at zero across the edge tree. It RESOLVES SPREADS, which is the whole difficulty: two blog handlers build `const payload = { tenant_id, ... }` and insert `{ ...payload, created_by_user_id }`, and a guard reading only the inline literal reports both as defects - a baseline holding two known non-defects is where a real one hides. The platform_* tables are excluded by rule rather than baselined: they are Printyx's own CRM about its tenants, and platform_business_records.tenant_id is a linkage filled after a prospect converts, not a tenancy boundary.",
+      "acceptanceCriteria": [
+        "PUT /user/accessibility resolves the tenant and sets tenant_id on create",
+        "The guard resolves spread payloads so it does not report the two blog handlers",
+        "platform_* tables are excluded by rule with the reason stated, not baselined",
+        "The guard hard-gates at zero in CI and is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "security",
+      "dependsOn": [],
+      "notes": "Only one of the four raw hits was a real defect; the other three were a spread that carried the column and a table that is legitimately cross-tenant. That ratio is why the guard resolves spreads rather than baselining."
+    },
+    {
+      "id": "SEC-TENANT-005",
+      "title": "Updates and upserts are not covered by the insert guard, and a payload built by a function is invisible to it",
+      "description": "check:insert-tenant-id covers `.insert({...})` with an inline or single-spread payload. Three gaps remain, each of which can produce the same silent outcome. UPSERT is not checked at all, and an upsert missing tenant_id on a NOT NULL column fails exactly like an insert. UPDATE is a different failure: it does not need tenant_id in the payload, it needs it in the FILTER, or the write reaches another tenant's row - that is what SEC-TENANT-001 found in parts-orders and SEC-TENANT-002 still has 71 unreviewed instances of. And a payload assembled by a helper function or across branches is invisible to the spread resolution, so a clean run is not proof for those. Extend the guard to upserts, and settle whether the update case is better served by the ownership-check rule from SEC-TENANT-002 than by a payload scan.",
+      "acceptanceCriteria": [
+        "Upserts into tenant-scoped tables are covered by the same gate",
+        "The update case has a stated rule (filter, not payload) and something enforcing it",
+        "Payloads built by a helper function are either resolved or reported as unresolvable rather than passing silently",
+        "The guard reports what it could not resolve, so a clean run is not read as proof"
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "security",
+      "dependsOn": ["SEC-TENANT-004", "SEC-TENANT-002"],
+      "notes": "NEXT ITERATION CANDIDATE. Merge with SEC-TENANT-002 if taking both - the update half is the same work."
+    },
+    {
+      "id": "SHAPE-ENVELOPE-001",
+      "title": "Three platform record tabs rendered \"none\" no matter how much data the tenant had",
+      "description": "The platform CRM list endpoints answer with an envelope - { deals, pagination }, { activities, pagination }, { healthScores, pagination } - while the contacts endpoint next door returns a bare array. Both conventions live in the same feature. PlatformBusinessRecordDetail and PlatformDealDetail were typed and read as if every one returned an array, so `deals.length` was undefined, `undefined > 0` was false, and the Deals, Activities and Health tabs rendered their empty states regardless of the data. Nothing threw and nothing logged: the page simply looked like a record with no history. QUERYKEY-001 fixed the URLs these ask for and added the businessRecordId filter server-side; the shape was a second layer underneath it and stayed broken, which is why the test added here asserts BOTH halves - that the endpoints still send an envelope, and that the pages read the named key.",
+      "acceptanceCriteria": [
+        "Each query is typed to the envelope its endpoint actually sends",
+        "The pages read the named key rather than the response itself",
+        "A test asserts the endpoint shape and the page reading together, so a change to either fails",
+        "The contacts endpoint stays a bare array and the test records that both conventions coexist"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "frontend-data-contracts",
+      "dependsOn": ["QUERYKEY-001"],
+      "notes": "Fixing a URL is not fixing a data contract. Ten other sites the same scan flagged turned out to be correctly guarded by `!x || x.length === 0` before the map, and were left alone."
+    },
+    {
+      "id": "SHAPE-ENVELOPE-002",
+      "title": "Nothing compares the keys a page reads against the keys its endpoint sends",
+      "description": "PA-040 recorded this gap and it is still open: check:fabricated watches for a `|| literal`, check:no-static-posture watches for a literal in JSX, and check:no-random-metrics watches for Math.random() - none of them compares KEY NAMES across the seam. SHAPE-ENVELOPE-001 is the third instance found by hand (after PlatformCohortAnalysis and the analytics widgets), and the failure mode is always the same: the page renders an empty state or a fallback, nothing throws, and both environments agree because both are wrong. A guard is buildable but not small. It needs to resolve, for each useQuery, the URL its key produces, map that to the edge function and branch that serves it, collect the keys of the object literal that branch returns, and compare them against the properties the page reads off the query result. The pieces exist - check:edge-coverage already maps paths to functions, and check:phantom-cols already parses object literals in edge handlers. Start with list endpoints, where the envelope-versus-array question is the whole defect and the return literal is usually a single object.",
+      "acceptanceCriteria": [
+        "The report resolves a queryKey URL to the specific edge BRANCH that serves it, not just the function",
+        "Each of the 13 candidates is confirmed a defect or a false positive, and the verdict recorded",
+        "It reports what it could not resolve, so a clean run is never read as proof",
+        "It stays mutation-tested against SHAPE-ENVELOPE-001",
+        "It becomes a gate only once the false-positive rate is measured, not assumed"
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "frontend-data-contracts",
+      "dependsOn": ["SHAPE-ENVELOPE-001"],
+      "notes": "STARTED: scripts/report-response-shape-mismatch.mjs is the first cut, mutation-tested against SHAPE-ENVELOPE-001 (reverting it makes the report fire; fixing it clears). It reports 13 CANDIDATES, not confirmed defects - each still needs its branch read by hand. Its value is as much in the five rules it learned as in the list: (1) getQueryFn auto-unwraps `{ data: [...] }` and NOTHING else, which is the single most important fact about this seam and the reason `{ deals: [...] }` broke while `{ data: [...] }` never does; (2) two response helpers are in use, createCorsResponse and jsonResponse, and scanning for one reports every function using the other; (3) `useQuery<{ data: Level[] }>` is a correctly typed envelope and a bare /\\[\\]$/ matches the [] inside it; (4) `group.levels.map()` is not a read of a query variable named levels; (5) a `select:` transform reshapes the response deliberately. The first run said 42 and five rounds of checking findings against the source removed 29 - a gate built on the first cut would have blocked 29 correct pages. WHAT REMAINS for a gate: branch-level resolution. The script asks whether a FUNCTION ever returns an array, not whether the branch serving THIS path does, so the platform CRM - contacts bare, deals enveloped - satisfies it either way. That is the last piece."
     }
   ]
 }

@@ -84,7 +84,8 @@ interface BackupInfo {
 interface QueryLog {
   id: string;
   query: string;
-  duration: number;
+  /** null: audit_logs records what happened, not how long it took. */
+  duration: number | null;
   timestamp: string;
   user: string;
   database: string;
@@ -323,24 +324,23 @@ export default function DatabaseManagement() {
     status: table.row_count > 100000 ? 'warning' : 'healthy',
   }));
 
-  // Backup functionality would require additional backend implementation
-  const backups: BackupInfo[] = [
-    {
-      id: 'backup-001',
-      name: `automatic_backup_${format(new Date(), 'yyyy_MM_dd')}`,
-      type: 'full',
-      size: dbStats.totalSize,
-      status: 'completed',
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-      duration: 'Real backup system needed',
-    },
-  ];
+  // Backups run as a K8s CronJob (k8s/base/cronjob-backup.yaml, pg_dump to
+  // GCS) and nothing exposes their history to this screen. There used to be one
+  // hand-written row here: status 'completed', a real size lifted off dbStats,
+  // and a timestamp six hours old. An operator reads that as "last night's
+  // backup succeeded" - a claim this page cannot make. Empty until an endpoint
+  // reports the CronJob's actual runs.
+  const backups: BackupInfo[] = [];
 
   // Process audit logs as query logs
   const queryLogs: QueryLog[] = logs.slice(0, 20).map((log: any) => ({
     id: log.id,
     query: `${log.action} on ${log.tableName}${log.recordId ? ` (ID: ${log.recordId})` : ''}`,
-    duration: Math.floor(Math.random() * 1000) + 10, // Would be real timing data
+    // audit_logs has no timing column. This was Math.random() * 1000, rendered
+    // as "<n>ms" beside a real query and a real user - fiction wearing the
+    // shape of telemetry, and it moved on every render, so refreshing looked
+    // like confirmation.
+    duration: null,
     timestamp: log.timestamp,
     user: log.userName || 'System',
     database: 'printyx_main',
@@ -1139,7 +1139,13 @@ export default function DatabaseManagement() {
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
                               <Badge className={getStatusColor(log.status)}>{log.status}</Badge>
-                              <Badge variant="outline">{log.duration}ms</Badge>
+                              {log.duration === null ? (
+                                <Badge variant="outline" title="Query timing is not recorded">
+                                  timing not recorded
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">{log.duration}ms</Badge>
+                              )}
                               <span className="text-sm text-gray-500">
                                 {format(new Date(log.timestamp), 'MMM dd, HH:mm:ss')}
                               </span>

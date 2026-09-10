@@ -47,6 +47,7 @@ import ManagementToolbar from '@/components/product-management/ManagementToolbar
 import { ProductPricingForm } from '@/components/product-management/ProductPricingForm';
 import { ProductPricingDisplay } from '@/components/product-management/ProductPricingDisplay';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
+import { formatCurrency } from '@/lib/utils';
 
 type TierState = {
   active: boolean;
@@ -301,18 +302,6 @@ export default function EnhancedProductModels() {
   const handleBulkDelete = () => {
     if (selectedIds.size === 0) return;
     bulkDeleteMutation.mutate(Array.from(selectedIds));
-  };
-
-  const formatCurrency = (value?: string | number | null): string => {
-    if (value === null || value === undefined || value === '') return '—';
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    if (isNaN(num)) return '—';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(num);
   };
 
   return (

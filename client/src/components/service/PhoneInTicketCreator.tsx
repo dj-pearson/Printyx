@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -246,7 +246,10 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
       form.setValue('callerRole', newContact.role);
       setShowNewContactForm(false);
       toast({ title: 'Success', description: 'New contact created successfully' });
-      queryClient.invalidateQueries({ queryKey: ['/api/contacts/search'] });
+      // The contact picker above is keyed on /api/phone-in-tickets/search-contacts;
+      // this used to invalidate /api/contacts/search, which nothing queries, so a
+      // contact created here did not appear in the list that created it.
+      invalidateApiPath('/api/phone-in-tickets/search-contacts');
     },
   });
 

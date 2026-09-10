@@ -51,7 +51,17 @@ const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const BASELINE = join(ROOT, 'docs', 'random-metrics-baseline.json');
 const UPDATE = process.argv.includes('--update-baseline');
 
-const ROOTS = ['server', 'supabase/functions'];
+/**
+ * client/src was NOT in this list until REPORTS-CHARTS-001, and that is exactly
+ * how three charts titled "Performance Trends", "Distribution Analysis" and
+ * "Period Comparison" shipped on the routed /reports page built entirely from
+ * Math.random(). The guard scoped to the two backends because that is where the
+ * offenders it was written for lived; the render path was never covered, and no
+ * other guard watches for it either (check:fabricated wants a `|| literal`,
+ * check:no-static-posture wants a literal in JSX). A number invented in the
+ * component is the same fabrication as one invented in the handler.
+ */
+const ROOTS = ['server', 'supabase/functions', 'client/src'];
 
 /** Seeds and tests may randomise: the data is openly fake, not reported. */
 const EXEMPT = /(^|\/)(seed|seeds)[^/]*|\.test\.ts$|\.spec\.ts$|(^|\/)tests?\//;
@@ -86,7 +96,7 @@ function walk(dir, out = []) {
     const full = join(dir, entry);
     if (entry === 'node_modules' || entry.startsWith('.')) continue;
     if (statSync(full).isDirectory()) walk(full, out);
-    else if (/\.ts$/.test(entry)) out.push(full);
+    else if (/\.tsx?$/.test(entry)) out.push(full);
   }
   return out;
 }
