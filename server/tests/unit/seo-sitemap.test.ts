@@ -34,6 +34,38 @@ const appSource = readFileSync(join(root, 'client/src/App.tsx'), 'utf8');
 
 const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
 
+/**
+ * robots.txt is a set of groups, not a flat list. A rule only applies to the
+ * user-agents named above it, so `Disallow: /` under CCBot says nothing about
+ * Googlebot - reading the file flat reports the site as blocked when the
+ * training-bot rules are doing their job. Returns the Disallow paths that apply
+ * to a given agent, falling back to the `*` group.
+ */
+function disallowFor(agent: string): string[] {
+  const groups = new Map<string, string[]>();
+  let current: string[] = [];
+  let expectingAgents = false;
+  for (const raw of robots.split('\n')) {
+    const line = raw.replace(/#.*$/, '').trim();
+    if (!line) continue;
+    const [rawKey, ...rest] = line.split(':');
+    const key = rawKey.trim().toLowerCase();
+    const value = rest.join(':').trim();
+    if (key === 'user-agent') {
+      // Consecutive User-agent lines share one group of rules.
+      if (!expectingAgents) current = [];
+      expectingAgents = true;
+      groups.set(value.toLowerCase(), current);
+    } else if (key === 'disallow') {
+      expectingAgents = false;
+      if (value) current.push(value);
+    } else {
+      expectingAgents = false;
+    }
+  }
+  return groups.get(agent.toLowerCase()) ?? groups.get('*') ?? [];
+}
+
 describe('sitemap.xml', () => {
   it('is well-formed and non-empty', () => {
     expect(sitemap.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
@@ -69,18 +101,17 @@ describe('sitemap.xml', () => {
     expect(robots).toContain(`Sitemap: ${SITE_URL}/sitemap.xml`);
   });
 
-  it('lists no URL that robots.txt disallows', () => {
-    const disallowed = robots
-      .split('\n')
-      .filter((line) => line.trim().startsWith('Disallow:'))
-      .map((line) => line.slice(line.indexOf(':') + 1).trim())
-      .filter(Boolean);
-    for (const loc of locs) {
-      const path = loc.slice(SITE_URL.length) || '/';
-      const hit = disallowed.find((prefix) => path.startsWith(prefix));
-      expect(hit, `${path} is in the sitemap and disallowed by "${hit}"`).toBeUndefined();
-    }
-  });
+  it.each(['*', 'Googlebot', 'Bingbot'])(
+    'lists no URL that robots.txt disallows for %s',
+    (agent) => {
+      const disallowed = disallowFor(agent);
+      for (const loc of locs) {
+        const path = loc.slice(SITE_URL.length) || '/';
+        const hit = disallowed.find((prefix) => path.startsWith(prefix));
+        expect(hit, `${path} is in the sitemap and disallowed by "${hit}"`).toBeUndefined();
+      }
+    },
+  );
 });
 
 describe('/p/ marketing landing pages are not shadowed by the proposal viewer', () => {
@@ -127,11 +158,18 @@ describe('robots.txt while the site is closed', () => {
    * and so never sees the noindex meta, which leaves already-indexed URLs
    * indexed with no way to drop them. Let them crawl and read the noindex.
    */
-  it('does not block the whole site', () => {
-    const disallowAll = robots
-      .split('\n')
-      .some((line) => line.trim().replace(/\s+/g, ' ') === 'Disallow: /');
-    expect(disallowAll).toBe(false);
+  it('does not block search or AI-search crawlers', () => {
+    for (const agent of ['*', 'Googlebot', 'Bingbot', 'GPTBot', 'ClaudeBot', 'PerplexityBot']) {
+      expect(disallowFor(agent), `${agent} is blocked site-wide`).not.toContain('/');
+    }
+  });
+
+  it('still blocks the training-only crawlers', () => {
+    // ClaudeBot fetches a page to answer a question and cites it; anthropic-ai
+    // does not. Allowing one and blocking the other is deliberate.
+    for (const agent of ['CCBot', 'anthropic-ai', 'GPTBot-training', 'Bytespider', 'Diffbot']) {
+      expect(disallowFor(agent), `${agent} should be blocked`).toContain('/');
+    }
   });
 });
 

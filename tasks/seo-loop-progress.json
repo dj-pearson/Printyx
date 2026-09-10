@@ -41,6 +41,11 @@
       "element": "three root-admin buttons that reported success and did nothing",
       "prd": "tasks/prd-seo-dashboard-endpoints.json",
       "summary": "CORRECTS iteration 5: POST /api/seo/regenerate-{sitemap,robots,llms} were recorded as having no handler anywhere. They existed - registered with app.post inside registerSeoCoreRoutes, which a grep for router.post( misses, the same self-mounting blind spot check:shadowed-express documents. They were worse than missing: each returned '... regenerated successfully' and did nothing, as their own comments admitted, so three buttons on the routed root-admin SEO page showed a green toast for an action that never happened. Deleted endpoints and buttons rather than implementing them: the three GET handlers compose their response per request so there is no artifact to invalidate, and the files the public gets are static build output no runtime handler can rewrite. Also filed SEO-006 - the Express GET /sitemap.xml and /robots.txt disagree with the static build artifacts about what is published. SEO-004 down to 3. eslint 12->9 and 58->53 on the two files, edge-coverage 68 -> 65."
+    },
+    {
+      "iteration": 8,
+      "element": "SEO-006: two sitemaps and two robots.txt became one of each",
+      "summary": "registerSeoCoreRoutes runs before serveStatic, so Express's per-request /sitemap.xml and /robots.txt won wherever Express served the app, while Cloudflare Pages served the static files - two answers at one URL depending on host. The DB-derived sitemap was independently wrong: the boot seed puts /crm, /reports, /product-hub, /service-hub and /product-catalog into seo_pages, so it published five login-walled routes, one of which (/reports) the robots.txt beside it disallowed; it knew nothing about COMING_SOON; and it stamped lastmod with the clock. Express now serves the static artifacts from disk, NODE_ENV deciding whether dist or client/public wins so a stale dist cannot serve a weeks-old robots.txt in dev. Merged the Express robots.txt's AI-crawler directives into the static file first - 12 search/citation crawlers allowed, 5 training-only crawlers blocked - so nothing was lost. Also fixed my own tests, which read robots.txt flat and so counted 'Disallow: /' under CCBot as a site-wide block; they parse user-agent groups now."
     }
   ],
   "candidatesForLaterIterations": [
@@ -53,7 +58,6 @@
     "Contact emails disagree: sales@printyx.com vs support@printyx.net in the same JSON-LD block",
     "PRD-sized: prerendering/SSR for the public routes once the site opens - all title/description/canonical/JSON-LD is injected client-side today",
     "No guard checks a frontend /api URL against the EXPRESS router table - check:edge-coverage only does the edge half, which is how 12 URLs stayed dead in both environments",
-    "SEO-004 remaining (3): content/duplicates, content/optimize, links/analyze - all need a UI or backend decision, not a rename",
-    "SEO-006 (filed in the same PRD): two sitemaps and two robots.txt disagree - Express composes them from seo_pages per request, Cloudflare Pages serves the static build artifacts"
+    "SEO-004 remaining (3): content/duplicates, content/optimize, links/analyze - all need a UI or backend decision, not a rename"
   ]
 }

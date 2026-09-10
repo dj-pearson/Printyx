@@ -198,3 +198,51 @@ describe('no endpoint reports success for work it did not do (SEO-005)', () => {
     }
   });
 });
+
+describe('one sitemap and one robots.txt (SEO-006)', () => {
+  /**
+   * server/routes-seo-core.ts composed both files per request from seo_pages
+   * and seo_settings, and registerSeoCoreRoutes runs before serveStatic - so
+   * those handlers won wherever Express served the app, while Cloudflare Pages,
+   * which is what the public hits, served the static files. Two sitemaps and
+   * two robots.txt, one URL each, and nothing compared them.
+   *
+   * The DB-derived sitemap was also wrong on its own terms. The boot seed puts
+   * /crm, /reports, /product-hub, /service-hub and /product-catalog into
+   * seo_pages, so it published five login-walled routes - and /reports is
+   * disallowed by the robots.txt served beside it.
+   */
+  const core = readFileSync(join(root, 'server/routes-seo-core.ts'), 'utf8');
+  const coreCode = core.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  it('Express serves both files from disk rather than composing them', () => {
+    expect(coreCode).toContain("app.get('/sitemap.xml', publicFile('sitemap.xml'");
+    expect(coreCode).toContain("app.get('/robots.txt', publicFile('robots.txt'");
+  });
+
+  it('no longer builds a urlset or a User-agent block in code', () => {
+    expect(coreCode).not.toContain('<urlset');
+    expect(coreCode).not.toContain('GPTBot');
+    expect(coreCode).not.toContain('CCBot');
+  });
+
+  it('publishes none of the login-walled routes the boot seed puts in seo_pages', () => {
+    const sitemap = readFileSync(join(root, 'client/public/sitemap.xml'), 'utf8');
+    for (const appRoute of [
+      '/crm',
+      '/reports',
+      '/product-hub',
+      '/service-hub',
+      '/product-catalog',
+    ]) {
+      expect(sitemap, `${appRoute} is login-walled`).not.toContain(
+        `<loc>https://printyx.net${appRoute}</loc>`,
+      );
+    }
+  });
+
+  it('prefers client/public in development so a stale dist cannot win', () => {
+    // dist/ is whatever the last build left behind, which can be weeks old.
+    expect(coreCode).toContain("process.env.NODE_ENV === 'production'");
+  });
+});

@@ -26,6 +26,8 @@
  */
 import type { Express } from 'express';
 import { createHash } from 'crypto';
+import { existsSync, readFileSync } from 'fs';
+import path from 'path';
 import { db } from './db';
 import { eq, desc } from 'drizzle-orm';
 import { createModuleLogger } from './lib/logger';
@@ -137,186 +139,63 @@ export function registerSeoCoreRoutes(app: Express) {
   });
 
   // Public: generate sitemap.xml
-  app.get('/sitemap.xml', async (_req, res) => {
-    try {
-      const settingsRows = await db.select().from(seoSettings).limit(1);
-      const settings = settingsRows[0] as any;
-      const pages = await db
-        .select({
-          path: seoPages.path,
-          lastmod: seoPages.lastmod,
-          changefreq: seoPages.changefreq,
-          priority: seoPages.priority,
-          includeInSitemap: seoPages.includeInSitemap,
-        })
-        .from(seoPages);
-      const baseUrl = settings?.siteUrl?.replace(/\/$/, '') || 'https://printyx.net';
-      const urls = pages.filter((p: any) => p.includeInSitemap !== false);
-      const xml =
-        `<?xml version="1.0" encoding="UTF-8"?>\n` +
-        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
-        urls
-          .map((p: any) => {
-            const loc = `${baseUrl}${p.path.startsWith('/') ? p.path : `/${p.path}`}`;
-            const lastmod = (p.lastmod ? new Date(p.lastmod) : new Date()).toISOString();
-            const changefreq = p.changefreq || settings?.sitemapChangefreq || 'weekly';
-            const priority = p.priority || settings?.sitemapPriorityDefault || 0.5;
-            return `\n  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
-          })
-          .join('') +
-        '\n</urlset>';
-      const etag = createHash('sha1').update(xml).digest('hex');
-      res.setHeader('ETag', etag);
-      if (_req.headers['if-none-match'] === etag) {
-        return res.status(304).end();
-      }
-      res
-        .header('Content-Type', 'application/xml; charset=utf-8')
-        .header('Cache-Control', 'public, max-age=300, s-maxage=600')
-        .send(xml);
-    } catch (error) {
-      log.error('Error generating sitemap:', error);
-      res.status(500).send('Error generating sitemap');
+  /*
+   * /sitemap.xml and /robots.txt are STATIC BUILD ARTIFACTS (SEO-006). Both are
+   * served from disk here so that Express and Cloudflare Pages answer the same
+   * bytes at the same URL.
+   *
+   * They used to be composed per request from seo_pages and seo_settings, and
+   * because registerSeoCoreRoutes runs before serveStatic they won over the
+   * files wherever Express served the app - while Pages, which is what the
+   * public actually hits, served the files. Two sitemaps, two robots.txt, one
+   * URL each. The DB-derived sitemap was also wrong on its own terms: the boot
+   * seed puts /crm, /reports, /product-hub, /service-hub and /product-catalog
+   * in seo_pages, so it published five login-walled app routes, one of which
+   * (/reports) the very robots.txt beside it disallowed; it knew nothing about
+   * the COMING_SOON gate, so it listed 17 URLs that all serve the holding page;
+   * and it stamped lastmod with the current time for any row without one, which
+   * is a freshness claim made by the act of being asked.
+   *
+   * scripts/generate-sitemap.mts writes the sitemap from the route table.
+   * seo_pages keeps its real job: per-path title and description, served by
+   * /meta.json below.
+   */
+  const publicFile = (name: string, contentType: string) => async (req: any, res: any) => {
+    // Order matters, and first-found is the wrong rule. In production dist/ is
+    // the deployed build and must win. In development dist/ is whatever the
+    // last `npm run build` left behind, which can be weeks old - preferring it
+    // would serve a stale robots.txt while the real one sat in client/public.
+    const candidates =
+      process.env.NODE_ENV === 'production'
+        ? [
+            path.resolve(process.cwd(), 'dist', name),
+            path.resolve(process.cwd(), 'client/public', name),
+          ]
+        : [
+            path.resolve(process.cwd(), 'client/public', name),
+            path.resolve(process.cwd(), 'dist', name),
+          ];
+    const found = candidates.find((candidate) => existsSync(candidate));
+    if (!found) {
+      // A build artifact that is missing is a broken build, and saying so beats
+      // synthesising a plausible file that disagrees with what Pages serves.
+      log.error(`${name} is missing from dist/ and client/public/`);
+      return res.status(404).type('text/plain').send(`${name} has not been generated`);
     }
-  });
+    const body = readFileSync(found, 'utf8');
+    const etag = createHash('sha1').update(body).digest('hex');
+    res.setHeader('ETag', etag);
+    if (req.headers['if-none-match'] === etag) return res.status(304).end();
+    res
+      .header('Content-Type', contentType)
+      .header('Cache-Control', 'public, max-age=300, s-maxage=600')
+      .send(body);
+  };
+
+  app.get('/sitemap.xml', publicFile('sitemap.xml', 'application/xml; charset=utf-8'));
 
   // Public: robots.txt
-  app.get('/robots.txt', async (_req, res) => {
-    try {
-      const settingsRows = await db.select().from(seoSettings).limit(1);
-      const settings = settingsRows[0] as any;
-      const baseUrl = settings?.siteUrl?.replace(/\/$/, '') || 'https://printyx.net';
-      const allowIndexing = true; // If needed later, wire to settings
-      const lines = [
-        `# Traditional Search Engine Crawlers`,
-        `User-agent: *`,
-        allowIndexing ? `Allow: /` : `Disallow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        `Disallow: /root-admin/`,
-        `Disallow: /database-management`,
-        `Disallow: /role-management`,
-        `Disallow: /gpt5-dashboard`,
-        `Disallow: /settings`,
-        `Disallow: /customers`,
-        `Disallow: /crm`,
-        `Disallow: /service-dispatch`,
-        `Disallow: /service-hub`,
-        `Disallow: /quotes`,
-        `Disallow: /proposal-`,
-        `Disallow: /deals`,
-        `Disallow: /inventory`,
-        `Disallow: /billing`,
-        `Disallow: /invoices`,
-        `Disallow: /reports`,
-        `Disallow: /dashboard`,
-        `Disallow: /onboarding`,
-        `Disallow: /tenant-setup`,
-        ``,
-        `# AI Search Crawlers - ALLOW for citation and search`,
-        `User-agent: GPTBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        `Disallow: /dashboard`,
-        `Disallow: /settings`,
-        ``,
-        `User-agent: ChatGPT-User`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `User-agent: OAI-SearchBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `User-agent: ClaudeBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `User-agent: PerplexityBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `User-agent: Google-Extended`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `User-agent: Googlebot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `# Gemini / Google AI crawlers - ALLOW for citation and AI Overviews`,
-        `User-agent: GoogleOther`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `# Microsoft Copilot / Bing AI crawlers`,
-        `User-agent: Bingbot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `User-agent: MicrosoftPreview`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `# Meta AI crawler`,
-        `User-agent: FacebookBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `# Apple AI (Applebot for Siri/Apple Intelligence)`,
-        `User-agent: Applebot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `# You.com AI search`,
-        `User-agent: YouBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `# Block pure AI training bots (not search/citation)`,
-        `User-agent: CCBot`,
-        `Disallow: /`,
-        ``,
-        `User-agent: anthropic-ai`,
-        `Disallow: /`,
-        ``,
-        `User-agent: GPTBot-training`,
-        `Disallow: /`,
-        ``,
-        `User-agent: Bytespider`,
-        `Disallow: /`,
-        ``,
-        `User-agent: Diffbot`,
-        `Disallow: /`,
-        ``,
-        `Sitemap: ${baseUrl}/sitemap.xml`,
-        `LLMS: ${baseUrl}/llms.txt`,
-      ];
-      const body = lines.join('\n');
-      const etag = createHash('sha1').update(body).digest('hex');
-      res.setHeader('ETag', etag);
-      if (_req.headers['if-none-match'] === etag) {
-        return res.status(304).end();
-      }
-      res
-        .header('Content-Type', 'text/plain; charset=utf-8')
-        .header('Cache-Control', 'public, max-age=300, s-maxage=600')
-        .send(body);
-    } catch (_e) {
-      res
-        .header('Content-Type', 'text/plain')
-        .send(
-          'User-agent: *\nAllow: /\nSitemap: https://printyx.net/sitemap.xml\nLLMS: https://printyx.net/llms.txt\n',
-        );
-    }
-  });
+  app.get('/robots.txt', publicFile('robots.txt', 'text/plain; charset=utf-8'));
 
   // Public: meta.json — returns meta for a given path
   app.get('/meta.json', async (req, res) => {

@@ -1,40 +1,126 @@
 # Printyx - AI-Powered Copier Dealer Management
 # https://printyx.net
+#
+# This file is the ONE robots.txt (SEO-006). server/routes-seo-core.ts used to
+# compose a different one per request from seo_settings, and it won over this
+# file wherever Express served the app, while Cloudflare Pages served this one -
+# two answers at the same URL depending on host. Express now sends this file.
+#
+# Deliberately no "Disallow: /" while the public site is closed behind the
+# COMING_SOON gate. A blocked crawler never fetches the page and so never reads
+# the noindex meta, which leaves anything already indexed stuck there. Let them
+# crawl and read it.
 
+# Traditional search engine crawlers
 User-agent: *
-
-# Allow public/marketing pages
 Allow: /
-Allow: /pricing
-Allow: /features
-Allow: /about
-Allow: /contact
-Allow: /blog
-Allow: /legal/
-
-# Disallow application routes (require authentication)
-Disallow: /app/
+Disallow: /api/
 Disallow: /admin/
-Disallow: /dashboard
-Disallow: /leads
-Disallow: /customers
-Disallow: /deals
-Disallow: /quotes
-Disallow: /orders
-Disallow: /invoices
-Disallow: /equipment
-Disallow: /service
-Disallow: /reports
+Disallow: /root-admin/
+Disallow: /database-management
+Disallow: /role-management
+Disallow: /gpt5-dashboard
 Disallow: /settings
 Disallow: /profile
+Disallow: /dashboard
+Disallow: /onboarding
 Disallow: /tenant-setup
+Disallow: /customers
+Disallow: /leads
+Disallow: /crm
+Disallow: /deals
+Disallow: /quotes
+Disallow: /proposal-
+Disallow: /orders
+Disallow: /invoices
+Disallow: /billing
+Disallow: /equipment
+Disallow: /inventory
+Disallow: /service
+Disallow: /service-hub
+Disallow: /service-dispatch
+Disallow: /reports
 
-# Disallow API endpoints
+# AI search crawlers. Allowed: these fetch a page to answer a question and cite
+# it, which is a referral. The training-only bots at the bottom are not.
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /settings
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+User-agent: OAI-SearchBot
+Allow: /
 Disallow: /api/
 
-# Deliberately no "Disallow: /" while the public site is closed. A blocked
-# crawler never fetches the page and so never sees the noindex meta, which
-# leaves anything already indexed stuck there. Let them crawl and read it.
-#
-# Sitemap
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /api/
+
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+User-agent: GoogleOther
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+User-agent: MicrosoftPreview
+Allow: /
+Disallow: /api/
+
+User-agent: FacebookBot
+Allow: /
+Disallow: /api/
+
+User-agent: Applebot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+User-agent: YouBot
+Allow: /
+Disallow: /api/
+
+# Training-only crawlers. These do not send a referral, so there is nothing to
+# trade for the content. Note ClaudeBot above is allowed and anthropic-ai here
+# is not: they are different crawlers doing different jobs.
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: GPTBot-training
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Diffbot
+Disallow: /
+
 Sitemap: https://printyx.net/sitemap.xml
+LLMS: https://printyx.net/llms.txt
