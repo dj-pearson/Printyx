@@ -66,3 +66,18 @@ export function expiryDisplay(value: string | Date | null | undefined): {
   if (diffDays <= 30) return { text: `Expires in ${diffDays}d`, urgent: false };
   return { text: date.toLocaleDateString(), urgent: false };
 }
+
+/**
+ * Turn a UI time-range token ('7d' | '30d' | '90d' | '1y' | 'all') into the ISO
+ * startDate the platform-analytics endpoints filter on. Returns null for 'all'
+ * and for anything unrecognised, meaning "no lower bound".
+ *
+ * Day arithmetic rather than setMonth/setFullYear: setMonth overflows instead of
+ * clamping, so subtracting a year from Feb 29 lands on Mar 1.
+ */
+export function timeRangeStartDate(range: string): string | null {
+  const days: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
+  const n = days[range];
+  if (!n) return null;
+  return new Date(Date.now() - n * 86_400_000).toISOString();
+}

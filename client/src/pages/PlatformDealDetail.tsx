@@ -119,7 +119,7 @@ export default function PlatformDealDetail() {
 
   // Fetch activities
   const { data: activities } = useQuery<ActivityItem[]>({
-    queryKey: [`/api/platform-activities`, { dealId: id, limit: 50 }],
+    queryKey: [`/api/platform-activities?dealId=${id}&limit=50`],
     enabled: !!id,
   });
 

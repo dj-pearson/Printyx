@@ -72,11 +72,21 @@ export default function MarginAnalysisReport() {
   });
   const [expandedQuotes, setExpandedQuotes] = useState<Set<string>>(new Set());
 
+  // The default queryFn joins the key with '/', so passing the filter object
+  // here requested /api/pricing/margin-report/[object Object] - which is the
+  // fn's :id branch, not the report - and none of the four filters reached the
+  // server. They are query params.
+  const marginParams = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) {
+    if (v) marginParams.set(k, v);
+  }
+  const marginQuery = marginParams.toString();
+
   const { data: reportData, isLoading } = useQuery<{
     count: number;
     report: MarginReportItem[];
   }>({
-    queryKey: ['/api/pricing/margin-report', filters],
+    queryKey: [`/api/pricing/margin-report${marginQuery ? `?${marginQuery}` : ''}`],
     enabled: visibility?.showDealerCost === true, // Only managers can see this report
   });
 

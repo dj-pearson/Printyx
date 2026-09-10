@@ -116,8 +116,7 @@ export default function DealDeskDashboard() {
   // Fetch all approval requests
   const { data: allRequests = [], isLoading: allRequestsLoading } = useQuery<ApprovalRequest[]>({
     queryKey: [
-      '/api/deal-desk/requests',
-      { status: statusFilter !== 'all' ? statusFilter : undefined },
+      `/api/deal-desk/requests${statusFilter !== 'all' ? `?status=${encodeURIComponent(statusFilter)}` : ''}`,
     ],
     enabled: selectedTab === 'all' || selectedTab === 'completed',
     refetchInterval: 30000,

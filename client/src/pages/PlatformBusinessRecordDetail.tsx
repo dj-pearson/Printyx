@@ -142,19 +142,19 @@ export default function PlatformBusinessRecordDetail() {
 
   // Fetch deals
   const { data: deals } = useQuery<Deal[]>({
-    queryKey: [`/api/platform-deals`, { businessRecordId: id }],
+    queryKey: [`/api/platform-deals?businessRecordId=${id}`],
     enabled: !!id,
   });
 
   // Fetch activities
   const { data: activities } = useQuery<ActivityItem[]>({
-    queryKey: [`/api/platform-activities`, { businessRecordId: id, limit: 50 }],
+    queryKey: [`/api/platform-activities?businessRecordId=${id}&limit=50`],
     enabled: !!id,
   });
 
   // Fetch health score (if tenant)
   const { data: healthScore } = useQuery({
-    queryKey: [`/api/platform-cs/health-scores`, { businessRecordId: id }],
+    queryKey: [`/api/platform-cs/health-scores?businessRecordId=${id}`],
     enabled: !!id && record?.recordType === 'tenant',
   });
 

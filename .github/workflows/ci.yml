@@ -67,6 +67,8 @@ jobs:
         run: npm run check:orphans
       - name: Query loading/error-state ratchet (CR-033)
         run: npm run check:query-states
+      - name: Object-in-queryKey gate (QUERYKEY-001)
+        run: npm run check:query-keys
       - name: Fabricated-fallback ratchet (AUDIT-019)
         run: npm run check:fabricated
       - name: Static-posture gate for admin surfaces (AUDIT-019)

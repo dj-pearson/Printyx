@@ -52,6 +52,7 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
 import { useLocation } from 'wouter';
+import { timeRangeStartDate } from '@/lib/date-utils';
 
 interface ExecutiveMetrics {
   totalProspects: number;
@@ -102,10 +103,15 @@ export default function PlatformCRMDashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [timeRange, setTimeRange] = useState('30d');
+  // These endpoints filter on startDate, not timeRange, and the default queryFn
+  // joins the key with '/' - so `{ timeRange }` in a key requested
+  // .../revenue-metrics/[object Object] and the selector below moved nothing.
+  const analyticsStart = timeRangeStartDate(timeRange);
+  const rangeQuery = analyticsStart ? `?startDate=${encodeURIComponent(analyticsStart)}` : '';
 
   // Fetch executive metrics
   const { data: metrics, isLoading: metricsLoading } = useQuery<ExecutiveMetrics>({
-    queryKey: ['/api/platform-analytics/revenue-metrics', { timeRange }],
+    queryKey: [`/api/platform-analytics/revenue-metrics${rangeQuery}`],
     refetchInterval: 60000, // Refresh every minute
   });
 
@@ -133,7 +139,7 @@ export default function PlatformCRMDashboard() {
 
   // Fetch conversion funnel
   const { data: funnelData, isLoading: funnelLoading } = useQuery({
-    queryKey: ['/api/platform-analytics/conversion-funnel', { timeRange }],
+    queryKey: [`/api/platform-analytics/conversion-funnel${rangeQuery}`],
     refetchInterval: 60000,
   });
 
@@ -141,7 +147,7 @@ export default function PlatformCRMDashboard() {
   const { data: performance, isLoading: performanceLoading } = useQuery<{
     repPerformance: TopPerformer[];
   }>({
-    queryKey: [`/api/platform-analytics/sales-performance?timeRange=${timeRange}`],
+    queryKey: [`/api/platform-analytics/sales-performance${rangeQuery}`],
     refetchInterval: 60000,
   });
 

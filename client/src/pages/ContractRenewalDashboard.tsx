@@ -58,7 +58,10 @@ export default function ContractRenewalDashboard() {
 
   // Fetch expiring contracts
   const { data: expiringContracts, isLoading: expiringLoading } = useQuery<any[]>({
-    queryKey: ['/api/contract-renewal/expiring', { days: 90 }],
+    // The default queryFn joins the key with '/', so an object element here
+    // requested /api/contract-renewal/expiring/[object Object]. The window is a
+    // query param.
+    queryKey: ['/api/contract-renewal/expiring?days=90'],
   });
 
   // Fetch proposals

@@ -301,6 +301,8 @@ export default async function handler(req: Request) {
         const scoreLessThan = url.searchParams.get('scoreLessThan');
         const scoreGreaterThan = url.searchParams.get('scoreGreaterThan');
         const trend = url.searchParams.get('trend');
+        // PlatformBusinessRecordDetail asks for one account's score.
+        const businessRecordId = url.searchParams.get('businessRecordId');
 
         let query = admin
           .from('platform_health_scores')
@@ -312,6 +314,7 @@ export default async function handler(req: Request) {
         if (scoreLessThan) query = query.lte('overall_score', parseInt(scoreLessThan));
         if (scoreGreaterThan) query = query.gte('overall_score', parseInt(scoreGreaterThan));
         if (trend) query = query.eq('trend', trend);
+        if (businessRecordId) query = query.eq('business_record_id', businessRecordId);
 
         const { data: scores, error, count } = await query;
         if (error) {
