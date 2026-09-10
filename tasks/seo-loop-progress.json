@@ -1,0 +1,22 @@
+{
+  "loop": "SEO iterative improvement",
+  "branch": "claude/seo-iterative-loop-vc1ohz",
+  "totalIterations": 15,
+  "completed": [
+    {
+      "iteration": 1,
+      "element": "sitemap.xml",
+      "commit": "ad20be4",
+      "summary": "robots.txt advertised a sitemap that was never generated. Added scripts/generate-sitemap.mts (28 URLs from PUBLIC_ROUTES_SEO, noindex excluded, lastmod from the route table's commit date), npm run seo:sitemap / check:sitemap, CI gate, 8 tests. Also fixed /p/master-product-catalog-canon-imagerunner rendering the proposal viewer instead of the landing page - the /p/ marketing slug set now derives from the route table."
+    }
+  ],
+  "candidatesForLaterIterations": [
+    "client/index.html static meta vs SEOProvider runtime meta - crawlers that do not execute JS see only the static head",
+    "No prerendering/SSR for the 28 public routes: all title/description/JSON-LD is injected client-side",
+    "og-image.png referenced as DEFAULT_OG_IMAGE - confirm the asset exists in client/public",
+    "Blog posts in seoConfig are hardcoded (3); dynamic blog posts from blog_posts never reach the sitemap",
+    "Canonical tags, hreflang, and trailing-slash consistency",
+    "supabase/functions/seo + RootAdminSEO / SEODashboard: verify the tenant-facing SEO tooling reads real data",
+    "structured data validation for the FAQPage / HowTo / SoftwareApplication schemas SEOProvider emits"
+  ]
+}
