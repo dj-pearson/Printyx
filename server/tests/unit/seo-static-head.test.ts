@@ -67,9 +67,11 @@ describe('static <head> structured data', () => {
 
 describe('social card', () => {
   it('og:image and twitter:image both resolve to a real file', () => {
-    const refs = [...html.matchAll(/property="(og|twitter):image" content="([^"]+)"/g)].map(
-      (m) => m[2],
-    );
+    // og: uses `property`, twitter: uses `name`. That split is the spec, and
+    // the head disagreeing with SEOProvider about it is SEO-003 below.
+    const refs = [
+      ...html.matchAll(/(?:property|name)="(?:og|twitter):image" content="([^"]+)"/g),
+    ].map((m) => m[1]);
     expect(refs.length).toBe(2);
     for (const ref of refs) {
       const path = ref.replace('https://printyx.net', '');
@@ -87,5 +89,58 @@ describe('favicon', () => {
   it('uses the SVG attribute, not the React prop', () => {
     expect(favicon).not.toContain('stopColor');
     expect(favicon.match(/stop-color=/g)?.length).toBe(4);
+  });
+});
+
+describe('the static head and SEOProvider do not fight (SEO-003)', () => {
+  /**
+   * Every page shipped two twitter:title, two twitter:description and two
+   * twitter:image tags. index.html wrote them as `property=` (not what the
+   * Twitter Cards spec says) while SEOProvider's setMeta defaults to `name=`,
+   * so getOrCreateMeta's `meta[name="twitter:title"]` query never matched the
+   * static tag and appended a second one carrying the homepage's copy. Both
+   * tags are valid HTML and tsc cannot see a querySelector string, so nothing
+   * reported it until the built page was rendered in Chromium.
+   */
+  const provider = readFileSync(join(root, 'client/src/lib/seo/SEOProvider.tsx'), 'utf8');
+
+  it('agrees on name-vs-property for every meta tag both write', () => {
+    const providerAttr = new Map<string, 'name' | 'property'>();
+    for (const m of provider.matchAll(/setMeta\(\s*'([^']+)'\s*,[^;]*?\)\s*;/g)) {
+      providerAttr.set(m[1], /,\s*true\s*\)\s*;$/.test(m[0]) ? 'property' : 'name');
+    }
+    expect(providerAttr.size).toBeGreaterThan(5);
+
+    const mismatches: string[] = [];
+    for (const m of html.matchAll(/<meta\s+((?:name|property)="[^"]+")/g)) {
+      const [attr, key] = m[1].replace(/"/g, '').split('=');
+      const want = providerAttr.get(key);
+      if (want && want !== attr) mismatches.push(`${key}: head=${attr} provider=${want}`);
+    }
+    expect(mismatches).toEqual([]);
+  });
+
+  it('does not re-inject Organization or WebSite, which are already static', () => {
+    // Both are page-independent entities carried in index.html with stable @ids.
+    const providerNoComments = provider.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(providerNoComments).not.toContain('generateOrganizationSchema(');
+    expect(providerNoComments).not.toContain('generateWebSiteSchema(');
+  });
+
+  it('stamps no article:modified_time from the clock', () => {
+    // It was `new Date()` per render: every page claimed it was updated on the
+    // day it happened to be viewed, for content that had not changed.
+    const providerNoComments = provider.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(providerNoComments).not.toContain('article:modified_time');
+  });
+
+  it('publishes no telephone or priceRange it cannot back', () => {
+    const config = readFileSync(join(root, 'client/src/lib/seo/seoConfig.ts'), 'utf8');
+    const configNoComments = config.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    // '+1-800-PRINTYX' is not a dialable number and appears nowhere on the site.
+    expect(configNoComments).not.toContain('PRINTYX');
+    expect(configNoComments).not.toContain('telephone');
+    const providerNoComments = provider.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(providerNoComments).not.toContain('priceRange');
   });
 });

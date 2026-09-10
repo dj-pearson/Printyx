@@ -111,6 +111,33 @@ if (/aggregateRating/.test(withoutComments)) {
   );
 }
 
+// 7. The static head and SEOProvider must agree on meta ATTRIBUTE for every
+//    tag they both write. getOrCreateMeta queries `meta[name=X]` or
+//    `meta[property=X]` depending on its isProperty flag; when the static tag
+//    uses the other one the query misses, the provider appends a second tag,
+//    and the page ships two conflicting values for the same key. Invisible to
+//    tsc, invisible to any test that does not render the DOM, and invisible in
+//    the browser because both tags are valid HTML.
+const provider = readFileSync(
+  resolve(ROOT, 'client/src/lib/seo/SEOProvider.tsx'),
+  'utf8'
+);
+const providerAttr = new Map();
+for (const m of provider.matchAll(/setMeta\(\s*'([^']+)'\s*,[^;]*?\)\s*;/g)) {
+  // The third argument is isProperty; absent means `name`.
+  providerAttr.set(m[1], /,\s*true\s*\)\s*;$/.test(m[0]) ? 'property' : 'name');
+}
+for (const m of html.matchAll(/<meta\s+((?:name|property)="[^"]+")/g)) {
+  const [attr, key] = m[1].replace(/"/g, '').split('=');
+  const want = providerAttr.get(key);
+  if (want && want !== attr) {
+    failures.push(
+      `index.html: <meta ${attr}="${key}"> but SEOProvider writes ${want}="${key}" - ` +
+        'the provider will append a second tag instead of updating this one'
+    );
+  }
+}
+
 if (failures.length) {
   console.error('SEO asset check failed:\n' + failures.map((f) => `  - ${f}`).join('\n'));
   process.exit(1);

@@ -92,7 +92,10 @@ export const ORGANIZATION_DATA = {
     'https://www.youtube.com/@printyx',
   ],
   contactPoint: {
-    telephone: '+1-800-PRINTYX',
+    // No telephone. It was '+1-800-PRINTYX', which is not a dialable number -
+    // E.164 wants digits - and appears nowhere on the site, so it was a phone
+    // number published to search engines and to nobody else. support@ is real:
+    // the holding page already gives it out.
     contactType: 'customer service',
     email: 'support@printyx.net',
   },

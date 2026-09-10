@@ -40,18 +40,20 @@
     />
     <meta property="og:image" content="https://printyx.net/og-image.png" />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://printyx.net/" />
+    <!-- Twitter. `name`, not `property`: that is what the Twitter Cards spec
+         says, and more to the point it is the attribute SEOProvider writes at
+         runtime. These carried `property` and the provider queried `name`, so
+         it never found them and appended a SECOND set - every page shipped two
+         conflicting twitter:title/description/image pairs, one of them the
+         homepage's. No twitter:url either; the card reads og:url. -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@printyx" />
+    <meta name="twitter:title" content="Printyx - AI-Powered Copier Dealer Management Platform" />
     <meta
-      property="twitter:title"
-      content="Printyx - AI-Powered Copier Dealer Management Platform"
-    />
-    <meta
-      property="twitter:description"
+      name="twitter:description"
       content="Modern cloud platform for copier dealers with predictive AI, automated workflows, and intelligent pricing. Built on modern architecture with a 2-3 year technical advantage."
     />
-    <meta property="twitter:image" content="https://printyx.net/og-image.png" />
+    <meta name="twitter:image" content="https://printyx.net/og-image.png" />
 
     <!-- Canonical URL -->
     <link rel="canonical" href="https://printyx.net/" />

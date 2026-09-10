@@ -18,13 +18,15 @@
       "iteration": 3,
       "element": "the SEO surface now agrees with the coming-soon gate",
       "summary": "Rendered the built app in Chromium and found the public site is behind App.tsx's COMING_SOON holding page (default ON - VITE_COMING_SOON must be 'false' to open it). The holding page sets noindex through usePageSeo, at RUNTIME, while the static head hardcoded index,follow - so every non-JS crawler was told to index 24 marketing URLs that all render the same page. A vite transformIndexHtml plugin now rewrites the robots meta from the same variable the gate reads, verified in both states. getSitemapRoutes takes the same flag: the sitemap dropped from 28 URLs to the 5 that actually render themselves while closed (signup, eula, privacy, terms, accessibility), which also corrects iteration 1 - it had published 24 URLs that serve a noindex page. COMING_SOON_ROUTES is asserted against App.tsx's Switch so the two cannot drift. robots.txt deliberately keeps no Disallow: / - a blocked crawler never sees the noindex."
+    },
+    {
+      "iteration": 4,
+      "element": "duplicate and unbacked tags in the head",
+      "summary": "Every page shipped two twitter:title, two twitter:description and two twitter:image tags: index.html wrote them as property= (not the Twitter Cards spec) while SEOProvider's setMeta defaults to name=, so its meta[name=...] query missed the static tag and appended a second one carrying the homepage's copy. Switched the static tags to name=, dropped twitter:url (the card reads og:url). SEOProvider also re-injected Organization and WebSite on every Organization-schema route, entities the static head already carries with stable @ids - removed, along with the runtime WebSite's SearchAction pointing at the same dead /search. Dropped article:modified_time, which was new Date() per render: a freshness claim produced by the act of viewing the page. Removed ORGANIZATION_DATA.contactPoint.telephone ('+1-800-PRINTYX' is not dialable and appears nowhere on the site) and LocalBusiness's priceRange '$$'; LocalBusiness now emits nothing without an address. Verified by render: 5 twitter tags in one set (was 10 in two), 5 distinct JSON-LD entities (was 7 with Organization and WebSite twice). check:seo-assets now compares the name-vs-property attribute between index.html and every SEOProvider setMeta call."
     }
   ],
   "candidatesForLaterIterations": [
-    "Duplicate twitter tags: index.html uses property=\"twitter:*\" (static, homepage copy), SEOProvider writes name=\"twitter:*\" at runtime, so every page carries two conflicting sets",
-    "Duplicate JSON-LD entities: the static head ships Organization + WebSite and SEOProvider injects Organization + WebSite again on Organization-schema routes",
     "The 'Application not configured' boot-failure screen renders a full head; under a missing VITE_SUPABASE_* it would be the indexable page if the site were open",
-    "SEOProvider sets article:modified_time to new Date() on every render - a freshness claim generated at page-view time, for content that did not change",
     "Blog posts in seoConfig are hardcoded (3); dynamic blog posts from blog_posts never reach the sitemap",
     "Canonical tags, hreflang, and trailing-slash consistency",
     "supabase/functions/seo + RootAdminSEO / SEODashboard: verify the tenant-facing SEO tooling reads real data",
