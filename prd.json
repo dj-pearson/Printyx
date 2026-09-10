@@ -14599,6 +14599,39 @@
       "category": "correctness",
       "dependsOn": ["MONEY-FORMAT-001"],
       "notes": "NEXT ITERATION CANDIDATE. Group the baseline by behaviour first (fraction digits, coercion, null handling) rather than walking it file by file - the six behaviours are the real unit of work."
+    },
+    {
+      "id": "SEC-SVG-001",
+      "title": "A logo upload was stored XSS: SVG allow-listed into a public bucket, served as image/svg+xml",
+      "description": "branding-profiles accepts image/svg+xml, creates its bucket with public: true a hundred lines above, and stores the object with contentType: file.type. An SVG is an XML document, so any authenticated user who could edit a branding profile could upload a logo containing <script> and get back a public URL that executes it in the storage origin - and that URL is rendered in proposals and PDFs that go to customers. It never surfaced in the app because a browser does not run scripts in an SVG loaded through <img>; direct navigation is another matter, and so is anywhere the file is inlined. supabase/functions/_shared/svg-sanitize.ts strips the executable surface - script, foreignObject, iframe, embed, object, animation handlers, on* attributes in every quoting style, javascript:/vbscript:/data: URLs in href and xlink:href, and style blocks carrying a script URL or expression() - looping to a fixed point because a single pass can leave a nested construct behind, and REJECTING with 422 rather than storing a half-cleaned file if it cannot converge in five passes. SVG stays supported, because a logo is the one place vector earns its keep.",
+      "acceptanceCriteria": [
+        "An uploaded SVG is sanitised before it reaches storage",
+        "Script elements, event handlers, script URLs and foreignObject do not survive",
+        "A document that cannot be sanitised is rejected with 422, not stored",
+        "An ordinary logo passes through unchanged",
+        "What was stripped is logged for the audit trail"
+      ],
+      "priority": 1,
+      "passes": true,
+      "category": "security",
+      "dependsOn": [],
+      "notes": "The first cut of the sanitiser had a false negative its own tests caught: DANGEROUS_URL is anchored (correctly, for an attribute value) and was also being used to scan <style> bodies and the whole document, where it matched nothing. There are now two patterns, anchored and not, and the difference is commented. Without the style-block test the guard would have passed while missing that case."
+    },
+    {
+      "id": "SEC-SVG-002",
+      "title": "blog-assets issues signed upload URLs with no content validation at all",
+      "description": "blog-assets hands the client a createSignedUploadUrl for a tenant-scoped path and takes mime_type as a declared string on a separate metadata call. Nothing validates what is actually uploaded: not the type, not the size, not the content. The bucket is read back with getPublicUrl, so whatever lands there is publicly addressable. That is the same exposure SEC-SVG-001 closed on branding-profiles, one step earlier in the pipeline and wider - branding-profiles at least had an extension allow-list and a 2MB cap. Two things to establish before fixing, neither of which can be read from source: whether the blog-assets bucket is actually public (it is created out of band, unlike branding-profiles which creates its own), and whether Supabase storage is configured with allowedMimeTypes and a fileSizeLimit on it. Then decide the shape: validate server-side after upload and quarantine anything that fails, or stop issuing signed URLs and proxy the upload through the function so it can be checked before it is stored. Adopt sanitizeSvg from _shared either way.",
+      "acceptanceCriteria": [
+        "The blog-assets bucket policy is established empirically and written down",
+        "Uploads are constrained by type and size somewhere that the client cannot bypass",
+        "Any SVG reaching a public bucket goes through sanitizeSvg",
+        "The declared mime_type is verified against the stored object, or is not trusted"
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "security",
+      "dependsOn": ["SEC-SVG-001"],
+      "notes": "NEXT ITERATION CANDIDATE. AssetUploadDialog.tsx accepts image/svg+xml in its file picker, so this path is reachable from the UI today. Check meeting-transcription and onboarding for the same question while you are there - both write to storage."
     }
   ]
 }
