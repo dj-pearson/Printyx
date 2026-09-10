@@ -8,15 +8,22 @@
       "element": "sitemap.xml",
       "commit": "ad20be4",
       "summary": "robots.txt advertised a sitemap that was never generated. Added scripts/generate-sitemap.mts (28 URLs from PUBLIC_ROUTES_SEO, noindex excluded, lastmod from the route table's commit date), npm run seo:sitemap / check:sitemap, CI gate, 8 tests. Also fixed /p/master-product-catalog-canon-imagerunner rendering the proposal viewer instead of the landing page - the /p/ marketing slug set now derives from the route table."
+    },
+    {
+      "iteration": 2,
+      "element": "static <head>: structured data, social card, favicon",
+      "summary": "The static head made four false claims. Removed the fabricated aggregateRating (4.9 from 150 - LEGAL-002 removed the same fabrication from the runtime provider and missed this copy, the one crawlers read). Generated the 1200x630 og-image.png that og:image and twitter:image had pointed at since launch without either file existing. Repointed the Organization JSON-LD logo from the 404 /logo.png to /logos/logo.png and corrected its declared 512x512 to the real 2000x600. Dropped the SearchAction offering a sitelinks box at /search, which is not a route, and the msapplication-config pointing at a browserconfig.xml that does not exist. Separately, favicon.svg used React's stopColor instead of SVG's stop-color, so both gradients fell back to black - verified in Chromium, rgba(0,0,0,255) before, rgba(67,100,237,255) after. New guard: npm run check:seo-assets, CI-wired, zero-tolerance."
     }
   ],
   "candidatesForLaterIterations": [
     "client/index.html static meta vs SEOProvider runtime meta - crawlers that do not execute JS see only the static head",
     "No prerendering/SSR for the 28 public routes: all title/description/JSON-LD is injected client-side",
-    "og-image.png referenced as DEFAULT_OG_IMAGE - confirm the asset exists in client/public",
     "Blog posts in seoConfig are hardcoded (3); dynamic blog posts from blog_posts never reach the sitemap",
     "Canonical tags, hreflang, and trailing-slash consistency",
     "supabase/functions/seo + RootAdminSEO / SEODashboard: verify the tenant-facing SEO tooling reads real data",
-    "structured data validation for the FAQPage / HowTo / SoftwareApplication schemas SEOProvider emits"
+    "structured data validation for the FAQPage / HowTo / SoftwareApplication schemas SEOProvider emits",
+    "The product has no typeface at all - no font-family anywhere in index.css or tailwind.config.ts, so every surface renders in the Tailwind system default. The OG card vendors Manrope; the app does not.",
+    "sameAs in the Organization JSON-LD lists linkedin/twitter/youtube profiles nobody verified; a sameAs pointing at a 404 weakens entity resolution rather than helping it",
+    "Contact emails disagree: sales@printyx.com vs support@printyx.net in the same JSON-LD block"
   ]
 }

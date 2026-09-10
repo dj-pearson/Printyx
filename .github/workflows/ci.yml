@@ -61,6 +61,8 @@ jobs:
         run: npm run check:nav
       - name: Sitemap freshness (SEO-001)
         run: npm run check:sitemap
+      - name: SEO asset and JSON-LD gate (SEO-002)
+        run: npm run check:seo-assets
       - name: Orphaned-file ratchet (AUDIT-018)
         run: npm run check:orphans
       - name: Query loading/error-state ratchet (CR-033)

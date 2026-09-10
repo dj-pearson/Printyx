@@ -83,7 +83,7 @@ export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
 export const ORGANIZATION_DATA = {
   name: 'Printyx',
   url: SITE_URL,
-  logo: `${SITE_URL}/logo.png`,
+  logo: `${SITE_URL}/logos/logo.png`,
   description:
     'Printyx is a modern cloud platform for copier dealers and managed print service providers. Streamline your CRM, service dispatch, billing, and more.',
   sameAs: [

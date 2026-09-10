@@ -51,7 +51,7 @@
       property="twitter:description"
       content="Modern cloud platform for copier dealers with predictive AI, automated workflows, and intelligent pricing. Built on modern architecture with a 2-3 year technical advantage."
     />
-    <meta property="twitter:image" content="https://printyx.net/twitter-image.png" />
+    <meta property="twitter:image" content="https://printyx.net/og-image.png" />
 
     <!-- Canonical URL -->
     <link rel="canonical" href="https://printyx.net/" />
@@ -91,9 +91,14 @@
 
     <!-- Microsoft Tiles -->
     <meta name="msapplication-TileColor" content="#3b82f6" />
-    <meta name="msapplication-config" content="/browserconfig.xml" />
 
-    <!-- Structured Data (JSON-LD) -->
+    <!-- Structured Data (JSON-LD).
+         No aggregateRating here. LEGAL-002 removed a hardcoded 4.8-from-150 from
+         the runtime provider (client/src/lib/seo/SEOProvider.tsx) and missed this
+         static copy, which carried 4.9-from-150 and is the one crawlers read
+         without executing JS. No such reviews exist. Do not add one back without
+         real, countable reviews shown on the page: schema.org markup is a claim
+         to the public, and a fabricated star rating is a manual-action risk. -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -110,13 +115,6 @@
             "priceCurrency": "USD",
             "unitText": "per user per month"
           }
-        },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.9",
-          "ratingCount": "150",
-          "bestRating": "5",
-          "worstRating": "1"
         },
         "operatingSystem": "Web, iOS, Android",
         "description": "AI-powered copier dealer management platform with predictive intelligence, automated workflows, and modern cloud architecture. Replace legacy systems with intelligent, proactive operations.",
@@ -143,9 +141,9 @@
         "url": "https://printyx.net",
         "logo": {
           "@type": "ImageObject",
-          "url": "https://printyx.net/logo.png",
-          "width": 512,
-          "height": 512
+          "url": "https://printyx.net/logos/logo.png",
+          "width": 2000,
+          "height": 600
         },
         "description": "Modern cloud platform for copier dealer management with AI-powered predictive intelligence. Purpose-built for copier dealers and managed print service providers.",
         "foundingDate": "2024",
@@ -178,7 +176,8 @@
       }
     </script>
 
-    <!-- WebSite Schema with SearchAction for Sitelinks Search Box -->
+    <!-- WebSite Schema. No SearchAction: the sitelinks search box requires a
+         real search results URL and /search is not a registered route. -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -189,14 +188,6 @@
         "description": "AI-Powered Copier Dealer Management Platform",
         "publisher": {
           "@id": "https://printyx.net/#organization"
-        },
-        "potentialAction": {
-          "@type": "SearchAction",
-          "target": {
-            "@type": "EntryPoint",
-            "urlTemplate": "https://printyx.net/search?q={search_term_string}"
-          },
-          "query-input": "required name=search_term_string"
         },
         "inLanguage": "en-US"
       }
