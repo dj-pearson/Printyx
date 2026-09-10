@@ -46,7 +46,7 @@ import {
 } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 
 interface Role {
   id: string;
@@ -169,7 +169,7 @@ export default function RoleManagement() {
         title: 'RBAC System Initialized',
         description: 'Role-based access control system has been successfully set up.',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/rbac'] });
+      invalidateApiPath('/api/rbac');
     },
     onError: (error) => {
       toast({

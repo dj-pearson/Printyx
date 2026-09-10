@@ -451,3 +451,25 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+/**
+ * Invalidate every cached query whose URL sits under `prefix`.
+ *
+ * TanStack matches a queryKey filter element by element, and the first element
+ * of a key here is a whole URL. So `invalidateQueries({ queryKey: ['/api/rbac'] })`
+ * does NOT touch a query keyed `['/api/rbac/roles']` - the strings differ, and
+ * nothing refetches. That misfire is silent: the mutation succeeds, the toast
+ * says saved, and the list on screen keeps the old rows until a reload.
+ *
+ * This matches on the path instead: the prefix itself, or anything continuing
+ * with '/' or '?' (so a key carrying a query string is still covered).
+ */
+export function invalidateApiPath(prefix: string) {
+  return queryClient.invalidateQueries({
+    predicate: (query) => {
+      const first = query.queryKey?.[0];
+      if (typeof first !== 'string') return false;
+      return first === prefix || first.startsWith(`${prefix}/`) || first.startsWith(`${prefix}?`);
+    },
+  });
+}

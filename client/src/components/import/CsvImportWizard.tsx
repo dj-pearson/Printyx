@@ -76,7 +76,7 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { ColumnMappingInterface } from './ColumnMappingInterface';
-import { apiRequest, apiFormRequest } from '@/lib/queryClient';
+import { apiRequest, apiFormRequest, invalidateApiPath } from '@/lib/queryClient';
 import { getAccessToken } from '@/lib/supabase';
 import { config, getApiUrl } from '@/lib/config';
 import { clickableProps } from '@/lib/accessibility';
@@ -333,11 +333,17 @@ export function CsvImportWizard({
         setImportProgress({ current: data.totalRows, total: data.totalRows, percentage: 100 });
         refetchJob();
         setStep('complete');
-        queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/products'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/equipment'] });
+        // Prefix invalidation: the list pages key on a whole URL, often with a
+        // query string, and an exact-key filter matches none of those.
+        for (const prefix of [
+          '/api/business-records',
+          '/api/contacts',
+          '/api/products',
+          '/api/inventory',
+          '/api/equipment',
+        ]) {
+          invalidateApiPath(prefix);
+        }
         if (onImportComplete) {
           onImportComplete(data);
         }

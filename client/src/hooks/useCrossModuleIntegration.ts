@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 
 /**
  * Cross-Module Data Flow Integration Hook
@@ -110,7 +110,7 @@ export function useCrossModuleIntegration() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/service-tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle'] });
+      invalidateApiPath('/api/equipment-lifecycle');
     },
   });
 

@@ -14302,6 +14302,39 @@
       "category": "frontend-data-contracts",
       "dependsOn": [],
       "notes": "The guard was mutation-tested by re-introducing PlatformDealDetail's object key and confirming a non-zero exit."
+    },
+    {
+      "id": "INVALIDATE-001",
+      "title": "Nine mutations reported success and refreshed nothing",
+      "description": "TanStack matches a queryKey filter element by element, and element 0 of a key in this app is a whole URL. So invalidateQueries({ queryKey: ['/api/rbac'] }) does not touch a query keyed ['/api/rbac/roles'] - the strings differ and nothing refetches. The misfire is silent: the mutation succeeds, the toast says saved, the list keeps the old rows until a reload. Confirmed sites: all four assignment mutations on SalesRepAssignments (assign, unassign, reassign, bulk), the RBAC initialiser on RoleManagement, the cross-module equipment-lifecycle hook, PhoneInTicketCreator (invalidated /api/contacts/search while its picker is keyed on /api/phone-in-tickets/search-contacts, so a contact created there never appeared in the list that created it), and CsvImportWizard's five post-import invalidations. Two more were introduced by QUERYKEY-001 itself, which moved filters into the query string and so broke the exact-key match on ContractRenewalDashboard and DealDeskDashboard. Fixed with invalidateApiPath(prefix) in client/src/lib/queryClient.ts, which matches on the path (the prefix, or anything continuing with '/' or '?') via a predicate.",
+      "acceptanceCriteria": [
+        "invalidateApiPath exists in client/src/lib/queryClient.ts and matches prefix, prefix/... and prefix?...",
+        "A sibling sharing only a string prefix (/api/deals under /api/deal) is not swept away",
+        "The nine confirmed sites use it",
+        "Unit test locks the matching rule"
+      ],
+      "priority": 3,
+      "passes": true,
+      "category": "frontend-data-contracts",
+      "dependsOn": ["QUERYKEY-001"],
+      "notes": "Detector: collect every queryKey array literal that is not inside an invalidate/refetch/remove call, take element 0, and report any invalidation key that equals none of them. Watch three false-positive classes - a key held in a variable (useCrmNotes, useCustomFields), a generic with nested angle brackets defeating a naive useQuery<...> regex, and a doc comment naming an example key."
+    },
+    {
+      "id": "INVALIDATE-002",
+      "title": "Ten invalidation keys still match nothing, and no guard watches the shape",
+      "description": "After INVALIDATE-001 there are ten invalidateQueries calls whose key matches no query key in any client tree. Some are false positives of the detector rather than defects and need confirming by hand: useCrmNotes and useCustomFields both build their key in a variable whose element 0 does match. The rest look like genuine dead invalidations with small blast radius - EquipmentTransitionDialog and EquipmentLifecycleHub both invalidate /api/equipment-lifecycle/stages which nothing queries, ApolloLeadEnrichment invalidates /api/apollo/search twice (a mutation endpoint, so there is nothing cached to refresh), CustomReportBuilder invalidates /api/reports, BANTAssessment invalidates a bare 'lead-intelligence', and MeterReadReview builds a template key that may or may not line up with the query it means. Each needs the same triage: find the query it intended to refresh, repoint it, or delete it. Then the shape wants a guard, which is the harder half - it has to resolve keys held in variables before it can hard-gate at zero, or ship as a shrink-only baseline.",
+      "acceptanceCriteria": [
+        "Each of the ten is confirmed a defect or a detector false positive, and the finding recorded",
+        "Genuine dead invalidations are repointed at the query they meant to refresh, or deleted",
+        "A check:invalidation-keys guard resolves variable-held query keys and strips comments before matching",
+        "The guard is wired into CI at zero, or with a shrink-only baseline if any true positive is deferred",
+        "The guard is mutation-tested: re-introducing a known dead invalidation makes it exit non-zero"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "frontend-data-contracts",
+      "dependsOn": ["INVALIDATE-001"],
+      "notes": "NEXT ITERATION CANDIDATE. Start from the detector described in INVALIDATE-001's notes; it currently reports 10, one of which is queryClient.ts's own doc comment - strip comments on both sides, the lesson CLAUDE.md already records for check:edge-coverage."
     }
   ]
 }

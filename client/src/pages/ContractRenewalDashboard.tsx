@@ -22,6 +22,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { invalidateApiPath } from '@/lib/queryClient';
 
 /**
  * Contract Renewal Autopilot Dashboard
@@ -86,7 +87,7 @@ export default function ContractRenewalDashboard() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/contract-renewal/dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contract-renewal/at-risk'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/contract-renewal/expiring'] });
+      invalidateApiPath('/api/contract-renewal/expiring');
       queryClient.invalidateQueries({ queryKey: ['/api/contract-renewal/proposals'] });
       setIsAnalyzing(false);
     },

@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 import {
   CheckCircle2,
@@ -140,7 +140,7 @@ export default function DealDeskDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/my-approvals'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/requests'] });
+      invalidateApiPath('/api/deal-desk/requests');
       queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/dashboard'] });
       setQuickDecisionDialog({ open: false, requestId: null, decision: null });
       setDecisionComments('');

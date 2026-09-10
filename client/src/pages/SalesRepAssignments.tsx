@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -127,7 +127,7 @@ function RepOverviewTab({ reps, summary }: { reps: Rep[]; summary: RepsSummary }
     mutationFn: (data: { accountId: string; newRepId: string; reason?: string }) =>
       apiRequest('/api/sales-rep-assignments/assign', 'POST', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/sales-rep-assignments'] });
+      invalidateApiPath('/api/sales-rep-assignments');
       setReassignDialogOpen(false);
       setReassignTarget(null);
       setSelectedRepId('');
@@ -141,7 +141,7 @@ function RepOverviewTab({ reps, summary }: { reps: Rep[]; summary: RepsSummary }
     mutationFn: (data: { accountIds: string[]; newRepId: string; reason?: string }) =>
       apiRequest('/api/sales-rep-assignments/bulk-assign', 'POST', data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/sales-rep-assignments'] });
+      invalidateApiPath('/api/sales-rep-assignments');
       setBulkReassignOpen(false);
       setSelectedIds(new Set());
       setSelectedRepId('');
@@ -506,7 +506,7 @@ function TerritoryMapTab({ reps }: { reps: Rep[] }) {
     mutationFn: (data: { accountId: string; newRepId: string }) =>
       apiRequest('/api/sales-rep-assignments/assign', 'POST', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/sales-rep-assignments'] });
+      invalidateApiPath('/api/sales-rep-assignments');
       toast({ title: 'Account reassigned' });
     },
   });
@@ -662,7 +662,7 @@ function AreaAssignmentTab({ reps }: { reps: Rep[] }) {
         onlyUnassigned,
       }),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/sales-rep-assignments'] });
+      invalidateApiPath('/api/sales-rep-assignments');
       toast({ title: `${data.assignedCount} accounts assigned successfully` });
       setPreviewCount(null);
       setValues('');
