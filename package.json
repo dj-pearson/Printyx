@@ -24,6 +24,7 @@
     "check:margin-formula": "node scripts/check-margin-formula.mjs",
     "check:blob-downloads": "node scripts/check-blob-downloads.mjs",
     "check:local-dates": "node scripts/check-local-dates.mjs",
+    "check:currency-copies": "node scripts/check-currency-copies.mjs",
     "check:orphans": "node scripts/check-orphan-files.mjs",
     "check:query-states": "node scripts/check-query-states.mjs",
     "check:fabricated": "node scripts/check-fabricated-fallbacks.mjs",

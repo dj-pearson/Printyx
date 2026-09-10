@@ -14566,6 +14566,39 @@
       "category": "correctness",
       "dependsOn": ["DATE-LOCAL-001"],
       "notes": "NEXT ITERATION CANDIDATE. Note the tenant timezone may not be stored anywhere - check before assuming a per-tenant offset is available, because if it is not, that is the first piece of work."
+    },
+    {
+      "id": "MONEY-FORMAT-001",
+      "title": "Product prices displayed rounded to whole dollars, from one of 53 currency formatters",
+      "description": "client/src held 53 local formatCurrency definitions in six different behaviours, and the differences were not stylistic. Thirteen dropped cents. Three of those thirteen were byte-identical copies rendering dealer cost, rep cost, suggested retail and MSRP on ProductPricingDisplay (twice in the same file) and EnhancedProductModels - so a copier costing $3,499.50 showed as $3,500 to the rep quoting from it, and the same component computes margin off those values. Thirty-five of the 53 did not coerce a string, which matters because a Drizzle decimal column arrives from Express as a string and from PostgREST as a number: the same field is both, depending on which backend answered. Thirty-two had no null handling and rendered $NaN. The exported formatCurrency in lib/utils.ts was itself one of the whole-dollar variants, typed to accept only a number, and had no importers at all. It is now the one formatter: cents by default, string-coercing, and an em dash for a missing value rather than $0.00, because a missing price is not a free one.",
+      "acceptanceCriteria": [
+        "One exported formatCurrency, cents by default, string-coercing, absence-safe",
+        "The three copies rendering product prices are gone and prices show cents",
+        "A real zero is distinguishable from a missing value",
+        "check:currency-copies ratchets the remaining local copies shrink-only in CI",
+        "The ratchet is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "correctness",
+      "dependsOn": [],
+      "notes": "Whole dollars is not always wrong - an annual TCO or a dashboard aggregate can legitimately drop cents, which is why the helper takes { cents: false } and why the rest is a ratchet rather than a hard gate."
+    },
+    {
+      "id": "MONEY-FORMAT-002",
+      "title": "Forty-nine local currency formatters remain, each needing its call sites read",
+      "description": "MONEY-FORMAT-001 established the one formatter and removed the three copies that were demonstrably wrong. Forty-nine remain, recorded in docs/currency-copies-baseline.json. They cannot be replaced mechanically: ten drop cents on dashboard aggregates and annual totals where whole dollars may be the right call, and converting those blindly is churn rather than a fix. The work is per site - read what the number is, then either import the shared helper or pass { cents: false } deliberately. Two classes to prioritise: any copy without string coercion that renders a value from an Express route (a Drizzle decimal arrives as a string there and as a number from PostgREST, so the same field is both), and any copy that renders $0.00 for a null, which states a price of zero where there is no price. Tighten the ratchet as each batch lands.",
+      "acceptanceCriteria": [
+        "Each of the 49 is read at its call sites and either repointed or justified",
+        "No remaining copy renders $NaN or $0.00 for a missing value",
+        "Every copy that can receive a decimal-column string coerces it",
+        "The baseline shrinks to zero, or the survivors are annotated with why they differ"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "correctness",
+      "dependsOn": ["MONEY-FORMAT-001"],
+      "notes": "NEXT ITERATION CANDIDATE. Group the baseline by behaviour first (fraction digits, coercion, null handling) rather than walking it file by file - the six behaviours are the real unit of work."
     }
   ]
 }

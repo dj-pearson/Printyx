@@ -75,6 +75,8 @@ jobs:
         run: npm run check:blob-downloads
       - name: UTC-as-local-date gate (DATE-LOCAL-001)
         run: npm run check:local-dates
+      - name: Local formatCurrency ratchet (MONEY-FORMAT-001)
+        run: npm run check:currency-copies
       - name: Fabricated-fallback ratchet (AUDIT-019)
         run: npm run check:fabricated
       - name: Static-posture gate for admin surfaces (AUDIT-019)

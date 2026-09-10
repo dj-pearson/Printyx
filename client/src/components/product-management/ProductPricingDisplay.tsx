@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 import { lineMarginPct } from '@shared/quote-math';
+import { formatCurrency } from '@/lib/utils';
 
 interface PricingTierData {
   active?: boolean;
@@ -27,18 +28,6 @@ export function ProductPricingDisplay({
   compact = false,
 }: ProductPricingDisplayProps) {
   const { data: visibility } = usePricingVisibility();
-
-  const formatCurrency = (value?: string | number | null): string => {
-    if (value === null || value === undefined || value === '') return '—';
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    if (isNaN(num)) return '—';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(num);
-  };
 
   const calculateMargin = (
     dealerCost?: string | number | null,
@@ -174,18 +163,6 @@ export function ProductPricingDisplayCompact({
   tierName: string;
 }) {
   const { data: visibility } = usePricingVisibility();
-
-  const formatCurrency = (value?: string | number | null): string => {
-    if (value === null || value === undefined || value === '') return '—';
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    if (isNaN(num)) return '—';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(num);
-  };
 
   if (!tierData?.active) return null;
 
