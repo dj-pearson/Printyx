@@ -23,17 +23,24 @@
       "iteration": 4,
       "element": "duplicate and unbacked tags in the head",
       "summary": "Every page shipped two twitter:title, two twitter:description and two twitter:image tags: index.html wrote them as property= (not the Twitter Cards spec) while SEOProvider's setMeta defaults to name=, so its meta[name=...] query missed the static tag and appended a second one carrying the homepage's copy. Switched the static tags to name=, dropped twitter:url (the card reads og:url). SEOProvider also re-injected Organization and WebSite on every Organization-schema route, entities the static head already carries with stable @ids - removed, along with the runtime WebSite's SearchAction pointing at the same dead /search. Dropped article:modified_time, which was new Date() per render: a freshness claim produced by the act of viewing the page. Removed ORGANIZATION_DATA.contactPoint.telephone ('+1-800-PRINTYX' is not dialable and appears nowhere on the site) and LocalBusiness's priceRange '$$'; LocalBusiness now emits nothing without an address. Verified by render: 5 twitter tags in one set (was 10 in two), 5 distinct JSON-LD entities (was 7 with Organization and WebSite twice). check:seo-assets now compares the name-vs-property attribute between index.html and every SEOProvider setMeta call."
+    },
+    {
+      "iteration": 5,
+      "element": "the /seo dashboard's endpoints",
+      "prd": "tasks/prd-seo-dashboard-endpoints.json",
+      "summary": "SEODashboard (2333 lines, routed at /seo) was written against a /api/seo/<noun>/<verb> URL scheme; server/routes-seo.ts registers /api/seo/<verb>/<noun>. Twelve of its endpoints POST to a path no router has, so they fail in dev AND production. The Express implementations are genuine - real Drizzle tables, PageSpeed Insights for Core Web Vitals, which throws without a key rather than inventing numbers - so the two halves were simply never connected. Repointed the four that differ by URL alone (mobile/analyze, performance/check, security/analyze, semantic/analyze): body keys and response shapes already matched. The other eight need body-key or response-shape work, or have no backend at all, and the whole set is missing from supabase/functions/seo, which serves production - all filed as SEO-004. Corrected the edge-coverage baseline note, which recorded these as prod-only gaps when they are dead in dev too. Edge-coverage ratchet 72 -> 68."
     }
   ],
   "candidatesForLaterIterations": [
     "The 'Application not configured' boot-failure screen renders a full head; under a missing VITE_SUPABASE_* it would be the indexable page if the site were open",
     "Blog posts in seoConfig are hardcoded (3); dynamic blog posts from blog_posts never reach the sitemap",
     "Canonical tags, hreflang, and trailing-slash consistency",
-    "supabase/functions/seo + RootAdminSEO / SEODashboard: verify the tenant-facing SEO tooling reads real data",
     "structured data validation for the FAQPage / HowTo / SoftwareApplication schemas SEOProvider emits",
     "The product has no typeface at all - no font-family anywhere in index.css or tailwind.config.ts, so every surface renders in the Tailwind system default. The OG card vendors Manrope; the app does not.",
     "sameAs in the Organization JSON-LD lists linkedin/twitter/youtube profiles nobody verified; a sameAs pointing at a 404 weakens entity resolution rather than helping it",
     "Contact emails disagree: sales@printyx.com vs support@printyx.net in the same JSON-LD block",
-    "PRD-sized: prerendering/SSR for the public routes once the site opens - all title/description/canonical/JSON-LD is injected client-side today"
+    "PRD-sized: prerendering/SSR for the public routes once the site opens - all title/description/canonical/JSON-LD is injected client-side today",
+    "SEO-004 remaining work (see tasks/prd-seo-dashboard-endpoints.json): 8 endpoints plus the production port",
+    "No guard checks a frontend /api URL against the EXPRESS router table - check:edge-coverage only does the edge half, which is how 12 URLs stayed dead in both environments"
   ]
 }

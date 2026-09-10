@@ -1,0 +1,78 @@
+{
+  "id": "SEO-004",
+  "title": "The SEO dashboard calls URLs no backend registers",
+  "status": "open",
+  "openedBy": "SEO iteration 5",
+  "openedOn": "2026-09-10",
+  "problem": "client/src/pages/SEODashboard.tsx (2333 lines, routed at /seo) was written against a /api/seo/<noun>/<verb> URL scheme. server/routes-seo.ts registers /api/seo/<verb>/<noun>. Twelve of the page's twenty-one endpoints therefore POST to a path no router has, and fail in dev and production alike - the buttons report an error toast or nothing at all. The Express implementations behind the real URLs are genuine: real Drizzle tables (seoMobileAnalysis, seoImageAnalysis, seoCoreWebVitals, seoSecurityAnalysis, seoSemanticAnalysis), and checkCoreWebVitals calls the PageSpeed Insights API and throws without PAGESPEED_INSIGHTS_API_KEY rather than inventing numbers. This is a wiring gap, not a mock.",
+  "whyNothingCaughtIt": "check:edge-coverage already lists seo's content/images/links/performance/regenerate-*/security/semantic/structured-data segments in docs/edge-path-coverage-baseline.json - but that baseline records what the EDGE function does not serve, which reads as 'Express serves this and prod does not'. Here Express does not serve it either. No guard compares a frontend URL against the Express router table. check:nav watches navigation targets, not fetch URLs.",
+  "doneInIteration5": [
+    "mobile/analyze -> check/mobile",
+    "performance/check -> core-web-vitals",
+    "security/analyze -> check/security",
+    "semantic/analyze -> analyze/semantic"
+  ],
+  "doneNote": "Those four differ by URL only: body keys and response shapes already matched, so the change is mechanical and verifiable. They now work in dev. They still 404 in production - see productionPort below.",
+  "remaining": [
+    {
+      "frontend": "POST /api/seo/images/analyze { url }",
+      "express": "POST /api/seo/analyze/images { pageUrl }",
+      "work": "rename the body key, and the page reads data.images off a response that is a bare array"
+    },
+    {
+      "frontend": "POST /api/seo/links/broken { url }",
+      "express": "POST /api/seo/check/broken-links { sourceUrl }",
+      "work": "rename the body key; the page reads data.brokenLinks off a bare array"
+    },
+    {
+      "frontend": "POST /api/seo/redirects/check { url }",
+      "express": "POST /api/seo/detect/redirect-chains { sourceUrl }",
+      "work": "rename the body key; the page reads data.chains off a single row"
+    },
+    {
+      "frontend": "POST /api/seo/structured-data/validate { url }",
+      "express": "POST /api/seo/validate/structured-data { url }",
+      "work": "URL rename, but the page sets the result directly from a response that is an array of stored schemas - confirm what the render expects"
+    },
+    {
+      "frontend": "POST /api/seo/content/duplicates (no body)",
+      "express": "POST /api/seo/detect/duplicate-content { url1, url2 }",
+      "work": "genuinely incompatible. The page offers a 'scan for duplicates' button with no inputs; the server compares exactly two named URLs. Decide whether the button picks pairs from seo_pages or the UI grows two fields."
+    },
+    {
+      "frontend": "POST /api/seo/content/optimize { url }",
+      "express": "POST /api/seo/optimize/content { title, originalContent, targetKeyword, secondaryKeywords }",
+      "work": "genuinely incompatible. The page sends a URL; the server wants the content itself plus keywords. Either the server fetches the URL or the page sends what it has."
+    },
+    {
+      "frontend": "POST /api/seo/links/analyze { url }",
+      "express": "nothing",
+      "work": "no internal-link analysis endpoint exists anywhere. Either build it or delete the button - do not leave a control that cannot work (AUDIT-016)."
+    },
+    {
+      "frontend": "POST /api/seo/regenerate-llms",
+      "express": "nothing",
+      "work": "three buttons on the routed root-admin SEO page with no handler on either backend. Note that client/public/sitemap.xml and robots.txt are now build artifacts (SEO-001), so 'regenerate at runtime' may be the wrong shape entirely - a Cloudflare Pages deploy would overwrite whatever a handler wrote."
+    },
+    {
+      "frontend": "POST /api/seo/regenerate-robots",
+      "express": "nothing",
+      "work": "see regenerate-llms"
+    },
+    {
+      "frontend": "POST /api/seo/regenerate-sitemap",
+      "express": "nothing",
+      "work": "see regenerate-llms"
+    }
+  ],
+  "productionPort": {
+    "problem": "/api/seo is NOT in crmProxies, so dev is Express and production goes straight to supabase/functions/seo. That function serves 13 routes: audit/history, keywords, competitors, alerts, page-scores, crawl, crawl/results, settings (GET+PUT), pages (GET+PUT), analytics, sitemap/generate, redirects. None of the twelve above, and not POST /api/seo/audit either - so the audit button works in dev and 404s in production.",
+    "work": "Port the analysis endpoints to supabase/functions/seo, or proxy /api/seo to it and accept that only the ported ones survive. Do NOT add a bare crmProxies entry first: the proxy forwards the whole prefix and falls through only on a network error, so it would break the endpoints that currently work in dev.",
+    "alsoOnlyOnOneSide": [
+      "POST /api/seo/audit - Express only, 404s in prod",
+      "GET /api/seo/pages - edge only, so RootAdminSEO's page list is empty in dev",
+      "POST /api/seo/sitemap/generate - edge only"
+    ]
+  },
+  "suggestedGuard": "A check that every '/api/<x>' literal in a client page resolves to either an Express router registration or an edge-function branch. check:edge-coverage does half of it; nothing does the Express half, which is how twelve URLs stayed dead in both environments."
+}

@@ -504,10 +504,18 @@ export default function SEODashboard() {
     },
   });
 
+  // SEO-004: these four call the URLs server/routes-seo.ts actually registers.
+  // The page was written against a /api/seo/<noun>/<verb> scheme and the server
+  // against /api/seo/<verb>/<noun>, so every one of these buttons POSTed to a
+  // path no router had and failed in dev and production alike. Eight more are
+  // still wrong and need more than a rename - body keys or response shapes
+  // differ too - and none of the twelve exists in supabase/functions/seo, which
+  // is what serves production. tasks/prd-seo-dashboard-endpoints.json has the
+  // full table.
   // Security analysis mutation
   const analyzeSecurityMutation = useMutation({
     mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/security/analyze', 'POST', { url });
+      return apiRequest('/api/seo/check/security', 'POST', { url });
     },
     onSuccess: (data) => {
       setSecurityResults(data);
@@ -528,7 +536,7 @@ export default function SEODashboard() {
   // Mobile analysis mutation
   const analyzeMobileMutation = useMutation({
     mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/mobile/analyze', 'POST', { url });
+      return apiRequest('/api/seo/check/mobile', 'POST', { url });
     },
     onSuccess: (data) => {
       setMobileResults(data);
@@ -546,7 +554,7 @@ export default function SEODashboard() {
   // Performance check mutation
   const checkPerformanceMutation = useMutation({
     mutationFn: async (params: { url: string; device: string }) => {
-      return apiRequest('/api/seo/performance/check', 'POST', {
+      return apiRequest('/api/seo/core-web-vitals', 'POST', {
         url: params.url,
         device: params.device,
       });
@@ -609,7 +617,7 @@ export default function SEODashboard() {
   // Semantic analysis mutation
   const analyzeSemanticMutation = useMutation({
     mutationFn: async (keyword: string) => {
-      return apiRequest('/api/seo/semantic/analyze', 'POST', { keyword });
+      return apiRequest('/api/seo/analyze/semantic', 'POST', { keyword });
     },
     onSuccess: (data) => {
       setSemanticResults(data);
