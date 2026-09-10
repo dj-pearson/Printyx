@@ -14664,6 +14664,38 @@
       "category": "performance",
       "dependsOn": ["PERF-ROWCAP-001"],
       "notes": "NEXT ITERATION CANDIDATE. The report initially could not see its own fixes - the inner chain inside fetchAllRows(() => admin.from(...).select(...)) carries no .range of its own, so a corrected call still looked unbounded and the number would never have moved. It skips already-paged chains now; check that rule still holds if the helper is ever renamed."
+    },
+    {
+      "id": "SEC-TENANT-004",
+      "title": "Saving accessibility settings failed for every user the first time",
+      "description": "user_settings.tenant_id is NOT NULL and PUT /user/accessibility omitted it on the create branch, so the first save returned 500 with 'Failed to create accessibility settings'. Only a user who already had a user_settings row from another path could save at all - and the users this affects are the ones who need those settings most. The two sibling handlers in the same file, /preferences and /notification-preferences, both call resolveTenantId() and set the column; this one did not, which is the fifth time in this run that the correct answer sat next to the wrong copy. check:insert-tenant-id now gates the shape at zero across the edge tree. It RESOLVES SPREADS, which is the whole difficulty: two blog handlers build `const payload = { tenant_id, ... }` and insert `{ ...payload, created_by_user_id }`, and a guard reading only the inline literal reports both as defects - a baseline holding two known non-defects is where a real one hides. The platform_* tables are excluded by rule rather than baselined: they are Printyx's own CRM about its tenants, and platform_business_records.tenant_id is a linkage filled after a prospect converts, not a tenancy boundary.",
+      "acceptanceCriteria": [
+        "PUT /user/accessibility resolves the tenant and sets tenant_id on create",
+        "The guard resolves spread payloads so it does not report the two blog handlers",
+        "platform_* tables are excluded by rule with the reason stated, not baselined",
+        "The guard hard-gates at zero in CI and is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "security",
+      "dependsOn": [],
+      "notes": "Only one of the four raw hits was a real defect; the other three were a spread that carried the column and a table that is legitimately cross-tenant. That ratio is why the guard resolves spreads rather than baselining."
+    },
+    {
+      "id": "SEC-TENANT-005",
+      "title": "Updates and upserts are not covered by the insert guard, and a payload built by a function is invisible to it",
+      "description": "check:insert-tenant-id covers `.insert({...})` with an inline or single-spread payload. Three gaps remain, each of which can produce the same silent outcome. UPSERT is not checked at all, and an upsert missing tenant_id on a NOT NULL column fails exactly like an insert. UPDATE is a different failure: it does not need tenant_id in the payload, it needs it in the FILTER, or the write reaches another tenant's row - that is what SEC-TENANT-001 found in parts-orders and SEC-TENANT-002 still has 71 unreviewed instances of. And a payload assembled by a helper function or across branches is invisible to the spread resolution, so a clean run is not proof for those. Extend the guard to upserts, and settle whether the update case is better served by the ownership-check rule from SEC-TENANT-002 than by a payload scan.",
+      "acceptanceCriteria": [
+        "Upserts into tenant-scoped tables are covered by the same gate",
+        "The update case has a stated rule (filter, not payload) and something enforcing it",
+        "Payloads built by a helper function are either resolved or reported as unresolvable rather than passing silently",
+        "The guard reports what it could not resolve, so a clean run is not read as proof"
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "security",
+      "dependsOn": ["SEC-TENANT-004", "SEC-TENANT-002"],
+      "notes": "NEXT ITERATION CANDIDATE. Merge with SEC-TENANT-002 if taking both - the update half is the same work."
     }
   ]
 }

@@ -77,6 +77,8 @@ jobs:
         run: npm run check:local-dates
       - name: Local formatCurrency ratchet (MONEY-FORMAT-001)
         run: npm run check:currency-copies
+      - name: Insert-without-tenant_id gate (SEC-TENANT-004)
+        run: npm run check:insert-tenant-id
       - name: Fabricated-fallback ratchet (AUDIT-019)
         run: npm run check:fabricated
       - name: Static-posture gate for admin surfaces (AUDIT-019)

@@ -476,6 +476,18 @@ export default async function handler(req: Request) {
 
     // PUT /user/accessibility - Update accessibility settings
     if (req.method === 'PUT' && endpoint === 'accessibility') {
+      // user_settings.tenant_id is NOT NULL, and the create branch below omitted
+      // it - so the FIRST save of accessibility settings failed for every user,
+      // with a 500 reading "Failed to create accessibility settings". Only a
+      // user who already had a row from another path could save. The two
+      // sibling handlers in this file, /preferences and
+      // /notification-preferences, both resolve the tenant and set the column;
+      // this one did not.
+      const tenantId = await resolveTenantId();
+      if (!tenantId) {
+        return createCorsResponse({ error: 'No tenant ID found for user' }, 400, req);
+      }
+
       const body = await req.json();
 
       // Check if settings exist
@@ -508,6 +520,7 @@ export default async function handler(req: Request) {
           .from('user_settings')
           .insert({
             user_id: user.id,
+            tenant_id: tenantId,
             accessibility: body.accessibility || body,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
