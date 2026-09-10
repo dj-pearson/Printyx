@@ -14335,6 +14335,38 @@
       "category": "frontend-data-contracts",
       "dependsOn": ["INVALIDATE-001"],
       "notes": "NEXT ITERATION CANDIDATE. Start from the detector described in INVALIDATE-001's notes; it currently reports 10, one of which is queryClient.ts's own doc comment - strip comments on both sides, the lesson CLAUDE.md already records for check:edge-coverage."
+    },
+    {
+      "id": "SEC-TENANT-001",
+      "title": "parts-orders let one tenant read, extend and strip another tenant’s order lines",
+      "description": "parts_order_items is only reachable through its parent order, and the three /parts-orders/:id/items handlers plus DELETE /parts-orders/:id took that id straight from the URL and handed it to the service-role client, which bypasses RLS. Nothing checked whose order it was. GET returned another tenant's part numbers, quantities and unit prices. POST appended rows to their order (stamped with the CALLER's tenant_id, so the injected lines were invisible to a tenant-filtered read and the victim's own UI showed an order it could not fully account for). DELETE was the worst: the unscoped items delete ran BEFORE the tenant-scoped delete of the order row, so the order survived with every line stripped off it and the caller got { success: true }. One ownedOrder() resolution against tenant_id now gates all four, and the items delete carries the tenant filter too.",
+      "acceptanceCriteria": [
+        "GET, POST /:id/items and DELETE /:id resolve the order against the caller tenant first and 404 otherwise",
+        "Every parts_order_items chain carries a tenant filter, except the insert which sets tenant_id in the payload",
+        "A unit test locks all three gates and strips comments before asserting absence"
+      ],
+      "priority": 1,
+      "passes": true,
+      "category": "security",
+      "dependsOn": [],
+      "notes": "Found with scripts/report-untenanted-postgrest.mjs, added in the same commit."
+    },
+    {
+      "id": "SEC-TENANT-002",
+      "title": "469 PostgREST chains name a tenant-scoped table without a tenant filter",
+      "description": "scripts/report-untenanted-postgrest.mjs cross-references the 575 Drizzle tables carrying a tenant_id against every .from() chain in the edge tree and reports the ones that never mention tenant_id: 214 inserts, 164 selects, 71 updates, 17 deletes, 3 upserts. These functions use the service-role client, so a tenant filter is the only isolation there is. The number is NOT a defect count - most are guarded by an ownership fetch the script cannot see (saved-views checks the owner, monitoring-clients calls findClientForTenant, the knowledge-base handlers scope by user_id, several deletes are rollbacks of a row the same handler just created). SEC-TENANT-001 shows what a real one looks like. The work is to triage the list into three buckets - guarded by a preceding ownership check, genuinely unscoped, or a table that is not tenant-scoped in practice - fix the second bucket, and annotate the first so the next reader does not re-derive it. Start with the 71 updates and 17 deletes: a destructive write reached by a URL id is where an unguarded chain does the most damage, and it is also the smallest slice.",
+      "acceptanceCriteria": [
+        "The 71 update and 17 delete findings are each triaged and the verdict recorded",
+        "Every genuinely unscoped destructive write gains an ownership check or a tenant filter, with a test",
+        "The 164 selects are triaged for cross-tenant disclosure, prioritising handlers that take an id from the URL",
+        "The 214 inserts are triaged for rows written with a tenant_id the caller does not own",
+        "The report script grows an ownership-aware rule, or a reviewed baseline is committed so the number can only shrink"
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "security",
+      "dependsOn": ["SEC-TENANT-001"],
+      "notes": "NEXT ITERATION CANDIDATE - take the deletes and updates first. The script's own header records its three blind spots: the chain ends at the first ';' so a query built across statements looks unfiltered, a table name in a variable is invisible, and the 107 tables in no Drizzle schema are never classified as tenant-scoped. Do not treat a clean line as proof."
     }
   ]
 }

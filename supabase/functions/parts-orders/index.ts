@@ -172,12 +172,35 @@ export default async function handler(req: Request) {
       return createCorsResponse(order, 200, req);
     }
 
+    // The three /:id/items handlers below and the DELETE take an order id
+    // straight from the URL and hand it to the SERVICE-ROLE client, which
+    // bypasses RLS. None of them checked whose order it was, and
+    // parts_order_items is only ever reached through the parent - so a caller
+    // in one tenant could read another tenant's line items (part numbers,
+    // quantities, unit prices), append rows to their order, and delete every
+    // line off it. The delete was the worst of the three: it ran BEFORE the
+    // tenant-scoped delete of the order row, so the order survived, its lines
+    // did not, and the response still said { success: true }.
+    async function ownedOrder(id: string) {
+      const { data } = await admin
+        .from('parts_orders')
+        .select('id')
+        .eq('id', id)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      return data as { id: string } | null;
+    }
+    const notFound = () => createCorsResponse({ error: 'Parts order not found' }, 404, req);
+
     // GET /parts-orders/:id/items - Get order items
     if (req.method === 'GET' && orderId && subResource === 'items') {
+      if (!(await ownedOrder(orderId))) return notFound();
+
       const { data: items, error } = await admin
         .from('parts_order_items')
         .select('*')
-        .eq('order_id', orderId);
+        .eq('order_id', orderId)
+        .eq('tenant_id', tenantId);
 
       if (error) {
         return createCorsResponse({ error: 'Failed to fetch order items' }, 500, req);
@@ -188,6 +211,8 @@ export default async function handler(req: Request) {
 
     // POST /parts-orders/:id/items - Add order item
     if (req.method === 'POST' && orderId && subResource === 'items') {
+      if (!(await ownedOrder(orderId))) return notFound();
+
       const body = await req.json();
 
       // COP-M01, two faults. The columns: part_id, description, quantity,
@@ -236,8 +261,16 @@ export default async function handler(req: Request) {
 
     // DELETE /parts-orders/:id - Delete order
     if (req.method === 'DELETE' && orderId) {
-      // Delete items first
-      await admin.from('parts_order_items').delete().eq('order_id', orderId);
+      if (!(await ownedOrder(orderId))) return notFound();
+
+      // Items first - there is no FK cascade. Scoped to the tenant as well as
+      // the order, so a stray row written before this check existed cannot be
+      // reached from here either.
+      await admin
+        .from('parts_order_items')
+        .delete()
+        .eq('order_id', orderId)
+        .eq('tenant_id', tenantId);
 
       const { error } = await admin
         .from('parts_orders')
