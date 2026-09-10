@@ -14499,6 +14499,39 @@
       "category": "frontend",
       "dependsOn": ["EXPORT-DOWNLOAD-001"],
       "notes": "NEXT ITERATION CANDIDATE. Check the same question for /api/pricing/margin-report/export and /api/admin/knowledge-base/export: both exist in Express only, so they work in dev and 404 in production once getApiUrl sends the prefix to the functions host. That is the same defect one step less far along, and it was not fixed here."
+    },
+    {
+      "id": "PERF-NPLUS1-001",
+      "title": "Predictive failure ran two queries per machine, so it timed out for anyone with a fleet",
+      "description": "The predictive-failure engine behind /service/predictions loaded every active machine and then, inside the loop, issued one meter_readings query and one service_tickets query for each. A dealer with 800 active machines made 1,600 SEQUENTIAL PostgREST round trips inside a single edge-function invocation - at even 15ms each that is 24 seconds, past the timeout. The feature could not complete for exactly the customers it exists for, and it looked fine in testing because a seeded tenant has a dozen machines. Replaced with two batched reads through the new supabase/functions/_shared/batch-fetch.ts: chunked .in() lists, explicit paging past PostgREST's silent 1000-row cap, and grouping in memory. meter_readings keeps the last 12 per machine, which PostgREST cannot do per-group, so the batch is bounded by date (550 days, comfortably more than 12 periodic readings) and trimmed after grouping.",
+      "acceptanceCriteria": [
+        "The scoring pass issues a constant number of queries regardless of fleet size",
+        "Batched reads chunk their id lists and page past the 1000-row cap",
+        "A query error propagates rather than silently returning a short result",
+        "The last 12 readings per machine are still what the scorer sees",
+        "predictive-failure-scoring stays green and the helper has its own tests"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "performance",
+      "dependsOn": [],
+      "notes": "Found with scripts/report-nplus1-loops.mjs, added in the same commit. The helper is the fix shape for the rest."
+    },
+    {
+      "id": "PERF-NPLUS1-002",
+      "title": "A hundred more loops in the edge tree await a query per iteration",
+      "description": "scripts/report-nplus1-loops.mjs finds 100 loops in supabase/functions containing an awaited PostgREST call, 8 of them already wrapped in Promise.all. Most are fine and must not be 'fixed': explicit pagination loops, insert batching by chunk, and retry loops all match the shape. The ones that matter iterate over TENANT DATA, where the row count is the customer's business rather than a constant - and those are the ones that pass every test and fail in production, because a seeded tenant is small. Worth reading first, all confirmed loops over tenant rows: qbr (contracts per customer), renewal-autoquote (meter_readings per candidate), purchase-orders (equipment per plan line, inventory_items per movement), truck-stock (recommendations per technician), printer-monitoring (per device, then per metric), voice-ticket-close (truck_inventory per resolved part), and pipeline-config (tasks per pending row). Triage each against the row count a real dealer has, and convert the ones that scale with it using batch-fetch.ts.",
+      "acceptanceCriteria": [
+        "Each of the 100 is classified: bounded by a constant, deliberate batching or paging, or scales with tenant data",
+        "Every loop that scales with tenant data is converted to batched reads or justified in a comment",
+        "The report script gains a rule that recognises pagination and chunk-batching loops, so the number reflects real candidates",
+        "A representative large-tenant case is measured before and after, not assumed"
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "performance",
+      "dependsOn": ["PERF-NPLUS1-001"],
+      "notes": "NEXT ITERATION CANDIDATE. The script's header records its two blind spots: the loop body is read by indentation for 45 lines, so a longer body is missed, and a query behind a helper call is invisible. Do not read a clean line as proof."
     }
   ]
 }
