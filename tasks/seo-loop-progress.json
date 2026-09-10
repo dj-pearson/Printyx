@@ -35,6 +35,12 @@
       "element": "SEO-004 second tranche: four endpoints rebound to their real columns",
       "prd": "tasks/prd-seo-dashboard-endpoints.json",
       "summary": "images/analyze, links/broken, redirects/check and structured-data/validate needed more than a URL rename. The page's ImageAnalysis, BrokenLink and RedirectChain interfaces named fields no endpoint has ever returned (src/alt/dimensions, url/sourcePages/recommendation, url/finalUrl/redirectCount) and all four onSuccess handlers read a wrapper key off a bare array, so repointing alone would have given a working request and a blank panel. Rebound every field to the real seo_* columns, and the redirect endpoint returns ONE row rather than a list. Separately found a fabrication in server/services/seo-service.ts: checkBrokenLinks fetches only the first 20 links but initialised statusCode to 200 and isBroken to false, so every link past the twentieth was persisted as healthy without ever being requested - a 200-link page reported 180 working on no evidence. Those are null now, the page filters to confirmed-broken and says how many went unchecked. SEO-004 down to 6 remaining. eslint on SEODashboard 13 -> 11."
+    },
+    {
+      "iteration": 7,
+      "element": "three root-admin buttons that reported success and did nothing",
+      "prd": "tasks/prd-seo-dashboard-endpoints.json",
+      "summary": "CORRECTS iteration 5: POST /api/seo/regenerate-{sitemap,robots,llms} were recorded as having no handler anywhere. They existed - registered with app.post inside registerSeoCoreRoutes, which a grep for router.post( misses, the same self-mounting blind spot check:shadowed-express documents. They were worse than missing: each returned '... regenerated successfully' and did nothing, as their own comments admitted, so three buttons on the routed root-admin SEO page showed a green toast for an action that never happened. Deleted endpoints and buttons rather than implementing them: the three GET handlers compose their response per request so there is no artifact to invalidate, and the files the public gets are static build output no runtime handler can rewrite. Also filed SEO-006 - the Express GET /sitemap.xml and /robots.txt disagree with the static build artifacts about what is published. SEO-004 down to 3. eslint 12->9 and 58->53 on the two files, edge-coverage 68 -> 65."
     }
   ],
   "candidatesForLaterIterations": [
@@ -47,6 +53,7 @@
     "Contact emails disagree: sales@printyx.com vs support@printyx.net in the same JSON-LD block",
     "PRD-sized: prerendering/SSR for the public routes once the site opens - all title/description/canonical/JSON-LD is injected client-side today",
     "No guard checks a frontend /api URL against the EXPRESS router table - check:edge-coverage only does the edge half, which is how 12 URLs stayed dead in both environments",
-    "SEO-004 remaining (6): content/duplicates, content/optimize, links/analyze, and RootAdminSEO's three regenerate-* buttons, plus the production port to supabase/functions/seo"
+    "SEO-004 remaining (3): content/duplicates, content/optimize, links/analyze - all need a UI or backend decision, not a rename",
+    "SEO-006 (filed in the same PRD): two sitemaps and two robots.txt disagree - Express composes them from seo_pages per request, Cloudflare Pages serves the static build artifacts"
   ]
 }

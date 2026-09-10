@@ -43,18 +43,7 @@
     "mobile": ["dashboard", "jobs", "route-optimization", "service-report"],
     "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"],
     "onboarding": ["export", "getting-started", "wizard-state"],
-    "seo": [
-      "analyze",
-      "check",
-      "content",
-      "core-web-vitals",
-      "detect",
-      "links",
-      "regenerate-llms",
-      "regenerate-robots",
-      "regenerate-sitemap",
-      "validate"
-    ],
+    "seo": ["analyze", "check", "content", "core-web-vitals", "detect", "links", "validate"],
     "subscriptions": ["checkout", "portal", "preview-upgrade", "setup-intent", "stripe"],
     "technician-management": ["dashboard"]
   }

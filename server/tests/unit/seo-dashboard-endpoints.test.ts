@@ -157,3 +157,44 @@ describe('the broken-link checker does not report unchecked links as healthy', (
     expect(dash).toContain('link.isBroken === null');
   });
 });
+
+describe('no endpoint reports success for work it did not do (SEO-005)', () => {
+  /**
+   * POST /api/seo/regenerate-{sitemap,robots,llms} each answered
+   * "... regenerated successfully" and did nothing at all - their own comments
+   * said so. Three buttons on the routed root-admin SEO page showed a green
+   * toast for an action that never happened, which is worse than a 404 because
+   * a 404 gets reported and a success toast gets believed.
+   *
+   * They are deleted rather than implemented: GET /sitemap.xml, /robots.txt and
+   * /llms.txt compose their response per request so there is no cached artifact
+   * to invalidate, and the files the public actually receives are static build
+   * output that no runtime handler can rewrite.
+   *
+   * Comments are stripped: the notes left behind name the endpoints.
+   */
+  const strip = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  const core = strip(readFileSync(join(root, 'server/routes-seo-core.ts'), 'utf8'));
+  const admin = strip(readFileSync(join(root, 'client/src/pages/RootAdminSEO.tsx'), 'utf8'));
+
+  it.each(['regenerate-sitemap', 'regenerate-robots', 'regenerate-llms'])(
+    '%s is gone from the server',
+    (endpoint) => {
+      expect(core).not.toContain(endpoint);
+    },
+  );
+
+  it('the buttons that called them are gone from the page', () => {
+    expect(admin).not.toContain('regenerateSitemap');
+    expect(admin).not.toContain('regenerateRobots');
+    expect(admin).not.toContain('regenerateLlms');
+    expect(admin).not.toContain('Generate Sitemap');
+  });
+
+  it('the public read handlers those buttons pretended to refresh still work', () => {
+    // Deleting the no-ops must not take the real handlers with them.
+    for (const route of ["'/sitemap.xml'", "'/robots.txt'", "'/llms.txt'"]) {
+      expect(core).toContain(`app.get(${route}`);
+    }
+  });
+});

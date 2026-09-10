@@ -28,21 +28,6 @@
       "frontend": "POST /api/seo/links/analyze { url }",
       "express": "nothing",
       "work": "no internal-link analysis endpoint exists anywhere. Either build it or delete the button - do not leave a control that cannot work (AUDIT-016)."
-    },
-    {
-      "frontend": "POST /api/seo/regenerate-llms",
-      "express": "nothing",
-      "work": "three buttons on the routed root-admin SEO page with no handler on either backend. Note that client/public/sitemap.xml and robots.txt are now build artifacts (SEO-001), so 'regenerate at runtime' may be the wrong shape entirely - a Cloudflare Pages deploy would overwrite whatever a handler wrote."
-    },
-    {
-      "frontend": "POST /api/seo/regenerate-robots",
-      "express": "nothing",
-      "work": "see regenerate-llms"
-    },
-    {
-      "frontend": "POST /api/seo/regenerate-sitemap",
-      "express": "nothing",
-      "work": "see regenerate-llms"
     }
   ],
   "productionPort": {
@@ -61,5 +46,14 @@
     "redirects/check -> detect/redirect-chains, body url -> sourceUrl, response is ONE row not a list",
     "structured-data/validate -> validate/structured-data, response is a bare array"
   ],
-  "doneNote6": "These four needed more than a URL: the page's ImageAnalysis, BrokenLink, RedirectChain and structured-data shapes named fields no endpoint has ever returned, so repointing alone would have produced a working request and a blank panel. All four are rebound to the real seo_* columns. Separately, server/services/seo-service.ts checkBrokenLinks initialised statusCode to 200 and isBroken to false and only overwrote them for the first 20 links, so every link past the twentieth was PERSISTED as healthy without being requested; they are null now and the page says how many went unchecked."
+  "doneNote6": "These four needed more than a URL: the page's ImageAnalysis, BrokenLink, RedirectChain and structured-data shapes named fields no endpoint has ever returned, so repointing alone would have produced a working request and a blank panel. All four are rebound to the real seo_* columns. Separately, server/services/seo-service.ts checkBrokenLinks initialised statusCode to 200 and isBroken to false and only overwrote them for the first 20 links, so every link past the twentieth was PERSISTED as healthy without being requested; they are null now and the page says how many went unchecked.",
+  "doneInIteration7": [
+    "Deleted POST /api/seo/regenerate-{sitemap,robots,llms} and the three RootAdminSEO buttons that called them"
+  ],
+  "doneNote7": "CORRECTION to this PRD as first written: these three were recorded as having no handler on either backend. They DID exist, registered with app.post inside registerSeoCoreRoutes - a grep for router.post( misses a self-mounting module, the same blind spot check:shadowed-express documents. They were worse than missing: each returned a success message and did nothing, so the buttons showed a green toast for an action that never happened. Their own comments admitted it. There is nothing for them to do - GET /sitemap.xml, /robots.txt and /llms.txt compose their response per request, and the files the public gets are static build output no runtime handler can rewrite - so endpoints and buttons are both deleted.",
+  "newFinding": {
+    "id": "SEO-006",
+    "title": "Two sitemaps disagree about what is published",
+    "detail": "server/routes-seo-core.ts serves GET /sitemap.xml and GET /robots.txt from seo_pages and seo_settings, per request. client/public/sitemap.xml and robots.txt are static build artifacts (SEO-001/SEO-003) and are what Cloudflare Pages serves the public. The two do not agree: the static sitemap has the 5 routes that render while the site is closed, and the Express one lists every seo_pages row with includeInSitemap != false, stamping lastmod with the current time for any row that has none. Decide which is authoritative before the site opens. The same split applies to robots.txt: the Express version emits Allow: / with per-bot rules and no coming-soon awareness."
+  }
 }

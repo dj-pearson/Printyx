@@ -13,10 +13,16 @@
  * - GET  /schema.json
  * - GET  /api/seo/settings
  * - GET  /api/seo/pages
- * - POST /api/seo/regenerate-sitemap
- * - POST /api/seo/regenerate-robots
- * - POST /api/seo/regenerate-llms
  * - SEO bootstrap logic (seed baseline settings and core pages on boot)
+ *
+ * The three POST /api/seo/regenerate-* endpoints were deleted (SEO-005); see
+ * the note where they used to live for why there was nothing for them to do.
+ *
+ * NOTE ON MOUNTING: this module registers on `app` through the exported
+ * registerSeoCoreRoutes(), not on a `router`. A grep for `router.post(` finds
+ * none of these, which is how iteration 5 of the SEO loop concluded the
+ * regenerate endpoints did not exist anywhere. Same blind spot
+ * check:shadowed-express documents for self-mounting modules.
  */
 import type { Express } from 'express';
 import { createHash } from 'crypto';
@@ -494,56 +500,22 @@ Printyx serves the copier/printer dealer and managed print services industry, in
     }
   });
 
-  // Admin: regenerate sitemap endpoint
-  app.post('/api/seo/regenerate-sitemap', requireRootAdmin, async (req: any, res) => {
-    try {
-      const isPlatformUser = isPlatformAdmin(req);
-      if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
-
-      // This endpoint doesn't generate a new sitemap, just returns success
-      // The actual sitemap is generated dynamically via GET /sitemap.xml
-      res.json({ message: 'Sitemap regenerated successfully' });
-    } catch (error: any) {
-      res.status(500).json({
-        message: 'Failed to regenerate sitemap',
-        detail: error?.message,
-      });
-    }
-  });
-
-  // Admin: regenerate robots.txt endpoint
-  app.post('/api/seo/regenerate-robots', requireRootAdmin, async (req: any, res) => {
-    try {
-      const isPlatformUser = isPlatformAdmin(req);
-      if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
-
-      // This endpoint doesn't generate a new robots.txt, just returns success
-      // The actual robots.txt is generated dynamically via GET /robots.txt
-      res.json({ message: 'Robots.txt regenerated successfully' });
-    } catch (error: any) {
-      res.status(500).json({
-        message: 'Failed to regenerate robots.txt',
-        detail: error?.message,
-      });
-    }
-  });
-
-  // Admin: regenerate llms.txt endpoint
-  app.post('/api/seo/regenerate-llms', requireRootAdmin, async (req: any, res) => {
-    try {
-      const isPlatformUser = isPlatformAdmin(req);
-      if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
-
-      // This endpoint doesn't generate a new llms.txt, just returns success
-      // The actual llms.txt is generated dynamically via GET /llms.txt
-      res.json({ message: 'LLMs.txt regenerated successfully' });
-    } catch (error: any) {
-      res.status(500).json({
-        message: 'Failed to regenerate llms.txt',
-        detail: error?.message,
-      });
-    }
-  });
+  /*
+   * POST /api/seo/regenerate-{sitemap,robots,llms} lived here (SEO-005).
+   *
+   * All three answered `{ message: '... regenerated successfully' }` and did
+   * nothing - their own comments said so: "This endpoint doesn't generate a new
+   * sitemap, just returns success". The three buttons on RootAdminSEO that
+   * called them therefore showed a green toast for an action that had never
+   * happened, which is worse than a 404 because a 404 gets reported.
+   *
+   * There is nothing for them to do. GET /sitemap.xml, /robots.txt and
+   * /llms.txt below build their response per request from seo_pages and
+   * seo_settings, so there is no cached artifact to invalidate; and the files
+   * the public actually gets are static build output (client/public, written by
+   * npm run seo:sitemap), which no runtime handler can rewrite - a Cloudflare
+   * Pages deploy would overwrite whatever it wrote.
+   */
 
   // Seed baseline SEO settings and core pages on boot (non-blocking)
   (async () => {
