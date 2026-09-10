@@ -19,7 +19,7 @@
  * before and after: rgba(0,0,0,255) -> rgba(67,100,237,255).
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = process.cwd();
@@ -260,5 +260,61 @@ describe('the site names itself in one place (SEO-011)', () => {
     // the check silently match nothing. It passed like that until a mutation
     // test caught it.
     expect(guard).toContain('(^|[^:])\\/\\/.*$');
+  });
+});
+
+describe('one SEO writer, not three (SEO-014)', () => {
+  /**
+   * A third SEO system lived in client/src/lib/useSeo.tsx and ran on exactly
+   * the three /p/ marketing landing pages - the highest-priority programmatic
+   * pages in the route table, at 0.9.
+   *
+   * It fetched /meta.json and /schema.json with a RAW RELATIVE fetch. In
+   * production the frontend is Cloudflare Pages and those routes are Express,
+   * so Pages answered with the SPA shell, .json() threw, the catch produced {},
+   * and the hook then ran `document.title = meta?.title || 'Printyx'`. All
+   * three pages shipped <title>Printyx</title> and og:title "Printyx" - the
+   * bare word - overwriting the correct title SEOProvider had already applied,
+   * plus an empty <script type="application/ld+json"> tag.
+   *
+   * The description survived only by accident: setMeta returns early on empty
+   * content, so it never got overwritten with ''.
+   *
+   * Verified in Chromium against a server that mimics Pages' catch-all: before,
+   * both pages titled "Printyx"; after, their real titles.
+   */
+  it('useSeo is gone', () => {
+    expect(existsSync(join(root, 'client/src/lib/useSeo.tsx'))).toBe(false);
+  });
+
+  it('no marketing page fetches its own metadata', () => {
+    const dir = join(root, 'client/src/pages/marketing');
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.tsx'))) {
+      const code = readFileSync(join(dir, file), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1');
+      expect(code, `${file} still calls useSeo`).not.toContain('useSeo');
+      expect(code, `${file} fetches meta.json`).not.toContain('meta.json');
+    }
+  });
+
+  it('the three /p/ landing pages have real titles in the route table', () => {
+    const config = readFileSync(join(root, 'client/src/lib/seo/seoConfig.ts'), 'utf8');
+    for (const slug of [
+      'copier-dealer-crm',
+      'print-service-dispatch-mobile',
+      'master-product-catalog-canon-imagerunner',
+    ]) {
+      expect(config).toContain(`path: '/p/${slug}'`);
+    }
+  });
+
+  it('schema.json no longer offers the dead SearchAction either', () => {
+    // Third copy, after the static head (SEO-002) and the runtime WebSite
+    // (SEO-003). /search is not a registered route.
+    const core = readFileSync(join(root, 'server/routes-seo-core.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+    expect(core).not.toContain('SearchAction');
   });
 });

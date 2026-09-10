@@ -256,11 +256,10 @@ export function registerSeoCoreRoutes(app: Express) {
         '@type': 'WebSite',
         name: settings?.siteName || 'Printyx',
         url: settings?.siteUrl || 'https://printyx.net',
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: `${settings?.siteUrl || 'https://printyx.net'}/search?q={search_term_string}`,
-          'query-input': 'required name=search_term_string',
-        },
+        // No SearchAction. The sitelinks search box needs a real results URL and
+        // /search is not a registered route - this was the THIRD copy of that
+        // dead action, after the static head (SEO-002) and SEOProvider's
+        // runtime WebSite (SEO-003).
       };
       let payload = baseWebsite as any;
       if (page?.schemaType && page?.schemaData) {
