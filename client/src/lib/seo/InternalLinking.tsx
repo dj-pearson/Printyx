@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Link } from 'wouter';
-import { getRelatedPages, getSEOConfig, type SEORouteConfig } from './seoConfig';
+import { getRelatedPages, findSEOConfig, type SEORouteConfig } from './seoConfig';
 
 interface RelatedLinksProps {
   currentPath: string;
@@ -26,8 +26,9 @@ interface InternalLinkProps {
  * Adds proper attributes for SEO
  */
 export function InternalLink({ to, children, className, title }: InternalLinkProps) {
-  // Get SEO config for the destination to use as title if not provided
-  const config = getSEOConfig(to);
+  // findSEOConfig, not getSEOConfig: the latter always resolves now, so an
+  // unknown route would title every link 'Printyx' (SEO-013).
+  const config = findSEOConfig(to);
   const linkTitle = title || config?.title?.split(' | ')[0];
 
   return (

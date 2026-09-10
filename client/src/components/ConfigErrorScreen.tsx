@@ -11,6 +11,37 @@ import { pingSupabaseHealth } from '@/lib/config';
 export default function ConfigErrorScreen({ errors }: { errors: string[] }) {
   const [health, setHealth] = useState<string | null>(null);
 
+  /*
+   * SEO-012: keep this page out of the index, and do it here rather than
+   * relying on the head.
+   *
+   * main.tsx renders this INSTEAD of <App/>, so SEOProvider never mounts and
+   * nothing else writes a robots tag. The static head in client/index.html says
+   * `index, follow` whenever the site is open (the COMING_SOON build plugin
+   * only forces noindex while it is closed), and its title and og:description
+   * describe the homepage. A build that shipped without VITE_SUPABASE_ANON_KEY
+   * would therefore serve every URL on the site as this error screen, presented
+   * to crawlers as the Printyx homepage and marked indexable - an outage
+   * entering the index under the site's best keywords, exactly when nobody is
+   * looking at search results.
+   *
+   * Cloudflare Pages serves a static 200 for every path, so there is no status
+   * code to signal this with. The meta tag is the only lever.
+   */
+  useEffect(() => {
+    document.title = 'Printyx is temporarily unavailable';
+    let robots = document.querySelector('meta[name="robots"]');
+    if (!robots) {
+      robots = document.createElement('meta');
+      robots.setAttribute('name', 'robots');
+      document.head.appendChild(robots);
+    }
+    robots.setAttribute('content', 'noindex, nofollow');
+    // The head's og:* still describe the homepage; a scraper that does not run
+    // JS will use them, and that is the honest limit of a client-side fix.
+    document.querySelector('link[rel="canonical"]')?.remove();
+  }, []);
+
   useEffect(() => {
     let active = true;
     pingSupabaseHealth().then((r) => {

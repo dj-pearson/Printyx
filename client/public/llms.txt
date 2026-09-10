@@ -31,6 +31,11 @@ Prices are per tenant, not per seat.
 - Enterprise: $149/month or $1430/year, unlimited users, 30-day trial
 
 ## Pages
+- [Cookie Policy | Printyx](https://printyx.net/cookies)
+- [Do Not Sell or Share My Personal Information | Printyx](https://printyx.net/do-not-sell)
+- [Data Sources | Printyx](https://printyx.net/data-sources)
+- [Subprocessors | Printyx](https://printyx.net/subprocessors)
+- [Data Processing Agreement | Printyx](https://printyx.net/dpa)
 - [End User Licence Agreement](https://printyx.net/eula)
 - [Privacy Policy](https://printyx.net/privacy)
 - [Terms and Conditions](https://printyx.net/terms)

@@ -468,6 +468,52 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
   },
 
   // Legal Pages
+  // Legal pages. These five were in App.tsx and in COMING_SOON_ROUTES but not
+  // here, so getSEOConfig returned null for them and they fell through to the
+  // default config - which is now noindex (SEO-013). A published policy that a
+  // regulator or a customer is meant to be able to find must be indexable, so
+  // they are enumerated like every other public route.
+  {
+    path: '/cookies',
+    title: 'Cookie Policy | Printyx',
+    description: 'How Printyx uses cookies and similar technologies, and how to control them.',
+    priority: 0.3,
+    changefreq: 'yearly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Cookie Policy' }],
+  },
+  {
+    path: '/do-not-sell',
+    title: 'Do Not Sell or Share My Personal Information | Printyx',
+    description:
+      'Exercise your right to opt out of the sale or sharing of personal information under US state privacy laws.',
+    priority: 0.3,
+    changefreq: 'yearly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Do Not Sell or Share' }],
+  },
+  {
+    path: '/data-sources',
+    title: 'Data Sources | Printyx',
+    description: 'Where the data in Printyx comes from and how it is obtained.',
+    priority: 0.3,
+    changefreq: 'yearly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Data Sources' }],
+  },
+  {
+    path: '/subprocessors',
+    title: 'Subprocessors | Printyx',
+    description: 'The third parties Printyx uses to process customer data, and what each one does.',
+    priority: 0.3,
+    changefreq: 'yearly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Subprocessors' }],
+  },
+  {
+    path: '/dpa',
+    title: 'Data Processing Agreement | Printyx',
+    description: 'The data processing terms that apply between Printyx and its customers.',
+    priority: 0.3,
+    changefreq: 'yearly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Data Processing Agreement' }],
+  },
   {
     path: '/eula',
     title: 'End User License Agreement | Printyx',
@@ -852,7 +898,25 @@ export const APP_ROUTES_SEO: SEORouteConfig[] = [
  * Get SEO config for a given path
  * Supports exact match and pattern matching for dynamic routes
  */
-export function getSEOConfig(path: string): SEORouteConfig | null {
+/**
+ * An EXACT entry for a path, or null when there is none.
+ *
+ * Use this when "we have no metadata for this route" is the answer you need -
+ * a link title, a related-links list. getSEOConfig below never returns null
+ * any more (SEO-013), so `config?.title` there resolves to the literal
+ * 'Printyx' for every unknown route, which is a worse link label than none and
+ * would let a stale relatedPath render as a real destination.
+ */
+export function findSEOConfig(path: string): SEORouteConfig | null {
+  return (
+    PUBLIC_ROUTES_SEO.find((r) => r.path === path) ??
+    APP_ROUTES_SEO.find((r) => r.path === path) ??
+    null
+  );
+}
+
+/** Always resolves: an exact entry, a pattern match, or the noindex default. */
+export function getSEOConfig(path: string): SEORouteConfig {
   // First try exact match in public routes
   const publicMatch = PUBLIC_ROUTES_SEO.find((r) => r.path === path);
   if (publicMatch) return publicMatch;
@@ -918,42 +982,30 @@ export function getSEOConfig(path: string): SEORouteConfig | null {
     };
   }
 
-  // Index pruning: default noindex for any authenticated/internal paths
-  // This prevents thin or auto-generated pages from diluting domain quality signals
-  const noindexPrefixes = [
-    '/admin',
-    '/root-admin',
-    '/settings',
-    '/dashboard',
-    '/onboarding',
-    '/tenant-setup',
-    '/billing',
-    '/invoices',
-    '/quotes',
-    '/crm',
-    '/deals',
-    '/service-dispatch',
-    '/service-hub',
-    '/inventory',
-    '/reports',
-    '/database-management',
-    '/role-management',
-    '/gpt5-dashboard',
-    '/proposal-',
-    '/mobile-field-service',
-    '/ai-hub',
-    '/ai-',
-  ];
-  if (noindexPrefixes.some((prefix) => path.startsWith(prefix))) {
-    return {
-      path,
-      title: `Printyx`,
-      description: 'Printyx copier dealer management platform.',
-      noindex: true,
-    };
-  }
-
-  return null;
+  /*
+   * Anything not matched above is not public (SEO-013).
+   *
+   * This used to be a list of 22 noindex PREFIXES - /admin, /settings, /crm and
+   * so on - and any route outside it fell through to `null`, which SEOProvider
+   * turns into DEFAULT_SEO_CONFIG and a robots tag of
+   * `index, follow, max-image-preview:large`. The app has around 250
+   * authenticated routes and 189 of them were outside that list, so most of the
+   * product told crawlers to index it. Nothing to index is behind the login, but
+   * the URLs are still crawled, and robots.txt only disallows about 28 prefixes,
+   * so most were not blocked there either.
+   *
+   * An allowlist of what to HIDE can only ever lag the routes people add. The
+   * public surface is small and enumerated in PUBLIC_ROUTES_SEO; everything else
+   * is the application. Defaulting to noindex means a new app page is private on
+   * the day it is written, and a new PUBLIC page has to be added to the table -
+   * which it needs anyway, for its title, description and sitemap entry.
+   */
+  return {
+    path,
+    title: 'Printyx',
+    description: 'Printyx copier dealer management platform.',
+    noindex: true,
+  };
 }
 
 /**
@@ -971,7 +1023,7 @@ export function getRelatedPages(path: string, limit: number = 5): SEORouteConfig
   if (!config?.relatedPaths) return [];
 
   return config.relatedPaths
-    .map((p) => getSEOConfig(p))
+    .map((p) => findSEOConfig(p))
     .filter((c): c is SEORouteConfig => c !== null)
     .slice(0, limit);
 }

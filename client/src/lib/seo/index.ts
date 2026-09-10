@@ -11,6 +11,7 @@
 // Configuration
 export {
   getSEOConfig,
+  findSEOConfig,
   getAllSEOConfigs,
   getRelatedPages,
   PUBLIC_ROUTES_SEO,

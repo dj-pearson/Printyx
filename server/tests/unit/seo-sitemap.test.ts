@@ -20,6 +20,8 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  getSEOConfig,
+  findSEOConfig,
   PUBLIC_ROUTES_SEO,
   MARKETING_P_SLUGS,
   COMING_SOON_ROUTES,
@@ -179,5 +181,55 @@ describe('the static head agrees with the coming-soon gate', () => {
     expect(vite).toContain('printyx-robots-meta');
     expect(vite).toContain("process.env.VITE_COMING_SOON !== 'false'");
     expect(vite).toContain('noindex, nofollow');
+  });
+});
+
+describe('an unknown route is not public (SEO-013)', () => {
+  /**
+   * getSEOConfig used to fall through to `null` for any path outside a list of
+   * 22 noindex PREFIXES, and SEOProvider turns null into DEFAULT_SEO_CONFIG -
+   * which carries `index, follow, max-image-preview:large`. The app has around
+   * 250 authenticated routes and 189 of them were outside that list, so most of
+   * the product told crawlers to index it. robots.txt disallows about 28
+   * prefixes, so most were not blocked there either.
+   *
+   * An allowlist of what to HIDE always lags the routes people add. The public
+   * surface is small and enumerated; everything else defaults to noindex.
+   */
+  it('every registered app route resolves to noindex', () => {
+    const publicPaths = new Set(PUBLIC_ROUTES_SEO.map((r) => r.path));
+    const routes = [...new Set([...appSource.matchAll(/path="([^"]+)"/g)].map((m) => m[1]))].filter(
+      (r) => !r.includes(':'),
+    );
+    expect(routes.length).toBeGreaterThan(200);
+    const indexable = routes.filter((route) => {
+      if (publicPaths.has(route)) return false;
+      return getSEOConfig(route).noindex !== true;
+    });
+    expect(indexable).toEqual([]);
+  });
+
+  it('resolves rather than returning null, so a caller cannot forget the default', () => {
+    const config = getSEOConfig('/some-route-nobody-has-written-yet');
+    expect(config).not.toBeNull();
+    expect(config.noindex).toBe(true);
+  });
+
+  it('findSEOConfig still answers null, which link titles depend on', () => {
+    // getSEOConfig would title every unknown link 'Printyx'.
+    expect(findSEOConfig('/some-route-nobody-has-written-yet')).toBeNull();
+    expect(findSEOConfig('/pricing')).not.toBeNull();
+  });
+
+  it('the five legal pages are enumerated, so the inversion does not hide them', () => {
+    // They were routed and reachable but absent from the route table, so they
+    // would have been caught by the new default - and a published policy has to
+    // be findable.
+    for (const legal of ['/cookies', '/do-not-sell', '/data-sources', '/subprocessors', '/dpa']) {
+      const config = findSEOConfig(legal);
+      expect(config, `${legal} is missing from PUBLIC_ROUTES_SEO`).not.toBeNull();
+      expect(config!.noindex).not.toBe(true);
+      expect(locs).toContain(`${SITE_URL}${legal}`);
+    }
   });
 });
