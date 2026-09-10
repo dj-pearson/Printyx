@@ -14696,6 +14696,39 @@
       "category": "security",
       "dependsOn": ["SEC-TENANT-004", "SEC-TENANT-002"],
       "notes": "NEXT ITERATION CANDIDATE. Merge with SEC-TENANT-002 if taking both - the update half is the same work."
+    },
+    {
+      "id": "SHAPE-ENVELOPE-001",
+      "title": "Three platform record tabs rendered \"none\" no matter how much data the tenant had",
+      "description": "The platform CRM list endpoints answer with an envelope - { deals, pagination }, { activities, pagination }, { healthScores, pagination } - while the contacts endpoint next door returns a bare array. Both conventions live in the same feature. PlatformBusinessRecordDetail and PlatformDealDetail were typed and read as if every one returned an array, so `deals.length` was undefined, `undefined > 0` was false, and the Deals, Activities and Health tabs rendered their empty states regardless of the data. Nothing threw and nothing logged: the page simply looked like a record with no history. QUERYKEY-001 fixed the URLs these ask for and added the businessRecordId filter server-side; the shape was a second layer underneath it and stayed broken, which is why the test added here asserts BOTH halves - that the endpoints still send an envelope, and that the pages read the named key.",
+      "acceptanceCriteria": [
+        "Each query is typed to the envelope its endpoint actually sends",
+        "The pages read the named key rather than the response itself",
+        "A test asserts the endpoint shape and the page reading together, so a change to either fails",
+        "The contacts endpoint stays a bare array and the test records that both conventions coexist"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "frontend-data-contracts",
+      "dependsOn": ["QUERYKEY-001"],
+      "notes": "Fixing a URL is not fixing a data contract. Ten other sites the same scan flagged turned out to be correctly guarded by `!x || x.length === 0` before the map, and were left alone."
+    },
+    {
+      "id": "SHAPE-ENVELOPE-002",
+      "title": "Nothing compares the keys a page reads against the keys its endpoint sends",
+      "description": "PA-040 recorded this gap and it is still open: check:fabricated watches for a `|| literal`, check:no-static-posture watches for a literal in JSX, and check:no-random-metrics watches for Math.random() - none of them compares KEY NAMES across the seam. SHAPE-ENVELOPE-001 is the third instance found by hand (after PlatformCohortAnalysis and the analytics widgets), and the failure mode is always the same: the page renders an empty state or a fallback, nothing throws, and both environments agree because both are wrong. A guard is buildable but not small. It needs to resolve, for each useQuery, the URL its key produces, map that to the edge function and branch that serves it, collect the keys of the object literal that branch returns, and compare them against the properties the page reads off the query result. The pieces exist - check:edge-coverage already maps paths to functions, and check:phantom-cols already parses object literals in edge handlers. Start with list endpoints, where the envelope-versus-array question is the whole defect and the return literal is usually a single object.",
+      "acceptanceCriteria": [
+        "A guard resolves a queryKey URL to the edge branch that serves it",
+        "It compares the keys the branch returns against the properties the page reads",
+        "It reports what it could not resolve, so a clean run is never read as proof",
+        "It is mutation-tested by reverting SHAPE-ENVELOPE-001 and confirming a non-zero exit",
+        "Ships with a reviewed baseline if the first run finds more than a handful"
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "frontend-data-contracts",
+      "dependsOn": ["SHAPE-ENVELOPE-001"],
+      "notes": "NEXT ITERATION CANDIDATE, and the highest-leverage guard still missing - it is the only one that would have caught PA-040, the analytics widgets and SHAPE-ENVELOPE-001 without a person reading both files."
     }
   ]
 }

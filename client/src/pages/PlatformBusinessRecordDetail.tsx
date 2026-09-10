@@ -140,23 +140,35 @@ export default function PlatformBusinessRecordDetail() {
     enabled: !!id,
   });
 
-  // Fetch deals
-  const { data: deals } = useQuery<Deal[]>({
+  // These three list endpoints answer with an ENVELOPE - { deals, pagination },
+  // { activities, pagination }, { healthScores, pagination } - and the page was
+  // typed and read as if each returned a bare array. `deals.length` on an object
+  // is undefined, `undefined > 0` is false, so every tab rendered its empty
+  // state no matter how much data the tenant had. Nothing threw and nothing
+  // logged. QUERYKEY-001 fixed the URLs these ask for and added the
+  // businessRecordId filter server-side; the shape was a second layer under it
+  // and stayed broken.
+  //
+  // The contacts endpoint above returns a bare array, so the two conventions
+  // sit side by side in the same platform CRM. Read the named key rather than
+  // guessing at the first array-valued property.
+  const { data: dealsResponse } = useQuery<{ deals: Deal[] }>({
     queryKey: [`/api/platform-deals?businessRecordId=${id}`],
     enabled: !!id,
   });
+  const deals = dealsResponse?.deals;
 
-  // Fetch activities
-  const { data: activities } = useQuery<ActivityItem[]>({
+  const { data: activitiesResponse } = useQuery<{ activities: ActivityItem[] }>({
     queryKey: [`/api/platform-activities?businessRecordId=${id}&limit=50`],
     enabled: !!id,
   });
+  const activities = activitiesResponse?.activities;
 
-  // Fetch health score (if tenant)
-  const { data: healthScore } = useQuery({
+  const { data: healthResponse } = useQuery<{ healthScores: unknown[] }>({
     queryKey: [`/api/platform-cs/health-scores?businessRecordId=${id}`],
     enabled: !!id && record?.recordType === 'tenant',
   });
+  const healthScore = healthResponse?.healthScores?.[0];
 
   // Update mutation
   const updateMutation = useMutation({
