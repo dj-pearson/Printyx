@@ -954,3 +954,29 @@ export function getRelatedPages(path: string, limit: number = 5): SEORouteConfig
     .filter((c): c is SEORouteConfig => c !== null)
     .slice(0, limit);
 }
+
+/**
+ * Marketing landing-page slugs that live under `/p/`.
+ *
+ * `/p/:token` is the public proposal viewer (App.tsx), an early return above the
+ * auth gate. Marketing landing pages share that prefix, so App.tsx has to tell
+ * the two apart. It used to do that with a hardcoded set of two slugs plus a
+ * "share tokens are >= 20 chars" heuristic - and
+ * `/p/master-product-catalog-canon-imagerunner` is 39 characters, so that page
+ * rendered the proposal viewer instead of itself on every request, including
+ * for a crawler. Deriving the set from the SEO route table means adding a
+ * landing page can never re-open that hole.
+ */
+export const MARKETING_P_SLUGS: ReadonlySet<string> = new Set(
+  PUBLIC_ROUTES_SEO.filter((r) => r.path.startsWith('/p/')).map(
+    (r) => r.path.slice(3).split('/')[0],
+  ),
+);
+
+/**
+ * The public URLs that belong in sitemap.xml: every public route that is not
+ * noindex. `scripts/generate-sitemap.mts` is the only consumer.
+ */
+export function getSitemapRoutes(): SEORouteConfig[] {
+  return PUBLIC_ROUTES_SEO.filter((r) => !r.noindex);
+}
