@@ -14367,6 +14367,40 @@
       "category": "security",
       "dependsOn": ["SEC-TENANT-001"],
       "notes": "NEXT ITERATION CANDIDATE - take the deletes and updates first. The script's own header records its three blind spots: the chain ends at the first ';' so a query built across statements looks unfiltered, a table name in a variable is invisible, and the 107 tables in no Drizzle schema are never classified as tenant-scoped. Do not treat a clean line as proof."
+    },
+    {
+      "id": "SEC-PAYMENT-001",
+      "title": "A payment endpoint that contacted no processor could mark any tenant’s invoice paid",
+      "description": "POST /payment-processing/charge inserted a payments row, set it to 'completed' one statement later and answered \"Payment processed successfully\" - with no payment processor in the call at all. /history and /summary read that same table, so the fabricated settlement was indistinguishable from a real one downstream. It then updated invoices using an id taken straight from the request body, unfiltered by tenant on both the read and the update, through the service-role client that bypasses RLS: any authenticated user could set another tenant's invoice to paid with amount_paid raised by a number they chose. Two further faults in the same six lines - it wrote `status`, the LEGACY column, while every read path uses `invoice_status` (so a payment that 'succeeded' left the invoice showing open), and balance_due was never recomputed. /refund had the same fabrication (a negative payment inserted already marked completed) with correct tenant scoping. Both answer 501 now, naming StripeService as where capture actually lives. /void, /methods, /history, /transactions/:id and /summary are real reads and writes over real rows and are unchanged. The function has no caller in any client tree - it is in the AUDIT-024 unreferenced baseline - but it is deployed and reachable at functions.printyx.net by any authenticated user, so the cross-tenant write was live.",
+      "acceptanceCriteria": [
+        "charge and refund answer 501 and write nothing",
+        "The function no longer references the invoices table",
+        "No branch writes a payment already marked completed",
+        "void keeps its tenant filter and its pending-only guard",
+        "A unit test locks all of the above and strips comments before asserting absence"
+      ],
+      "priority": 1,
+      "passes": true,
+      "category": "security",
+      "dependsOn": [],
+      "notes": "Reached from the SEC-TENANT-002 triage: an ownership-aware pass over the report script narrowed 88 update/delete findings to 34 with no tenant_id within 45 lines, and this was the one that mattered."
+    },
+    {
+      "id": "SEC-TENANT-003",
+      "title": "157 edge functions accept the tenant id from a request header",
+      "description": "Tenant resolution in the edge tree reads app_metadata.tenantId from the JWT and falls back to req.headers.get('x-tenant-id') - a value the caller controls. For a user whose JWT carries a tenantId the fallback never fires and the resolution is sound, which is why this has held. The question nobody has answered is who reaches production WITHOUT one: newly provisioned users before their first tenant assignment, platform admins, service and cron callers, and anyone whose app_metadata was written by a path that does not set it. For those, the tenant filter throughout the function is attacker-supplied, and every .eq('tenant_id', tenantId) in it becomes a filter on a tenant of the caller's choosing rather than an isolation boundary. 157 functions resolve tenancy this way, so this is a shape to settle once in _shared and adopt, not a per-function fix. The resolution should verify the header names a tenant the user is actually a member of - the membership data exists - and fail closed when it does not.",
+      "acceptanceCriteria": [
+        "Establish empirically whether any production user can authenticate with no tenantId in app_metadata, and record the answer",
+        "A shared resolveTenant helper in supabase/functions/_shared verifies a header-supplied tenant against the caller membership and fails closed",
+        "The helper is adopted across the 157 functions, or the fallback is removed where the JWT is always authoritative",
+        "A guard reports any edge function resolving tenancy inline rather than through the helper",
+        "Tests cover: JWT tenant wins over a conflicting header; a header naming a non-member tenant is rejected; no tenant at all is a 400"
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "security",
+      "dependsOn": [],
+      "notes": "NEXT ITERATION CANDIDATE. Count with: grep -rn \"req.headers.get('x-tenant-id')\" supabase/functions --include=*.ts. Note CLAUDE.md documents the header as the FIRST link in the resolution chain for the Express side; in the edge functions the JWT is checked first and the header is the fallback, so the two backends do not agree about which wins - that disagreement is part of the story."
     }
   ]
 }
