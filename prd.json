@@ -14466,6 +14466,39 @@
       "category": "frontend",
       "dependsOn": ["REPORTS-CHARTS-001"],
       "notes": "Check what supabase/functions/reports/_queries already computes before adding anything - AUDIT-024 records that its headers name the unbacked tables honestly, so some of this may be underivable and should be said rather than filled in."
+    },
+    {
+      "id": "EXPORT-DOWNLOAD-001",
+      "title": "Three exports saved the error body to disk under the filename the user expected",
+      "description": "MarginAnalysisReport, PlatformBusinessRecords and KnowledgeBaseAdminDashboard each downloaded through a raw fetch() with no response.ok check, so a failed request was written to disk as margin-report-2026-09-10.csv or business-records-csv-1712.csv. The raw fetch is wrong twice more: it carries no Authorization header, and a relative path is never rewritten to the functions host, so all three fail the moment the request leaves dev. PlatformBusinessRecords is the worst of them - its endpoint, /api/platform-crm/business-records/export, exists on NO backend, not in the platform-crm edge function that prefix is proxied to and not in Express, so it 404s in dev as well as production; nothing threw, so the catch never fired and the handler went on to toast 'Success - Exported 47 records as CSV'. A platform admin was told the export worked and handed an error page with a spreadsheet's name on it. All three now go through downloadAuthedFile, which attaches the app's auth, rewrites the host, and throws with the server's own message on a non-2xx.",
+      "acceptanceCriteria": [
+        "All three exports use downloadAuthedFile from @/lib/authed-download",
+        "A failed export shows the server message and writes no file",
+        "No handler reports success for a download that did not happen",
+        "check:blob-downloads hard-gates the shape at zero and is wired into CI",
+        "The guard is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "error-handling",
+      "dependsOn": [],
+      "notes": "The helper already existed and already did all three things right (EDGE-023). These were the copies nobody repointed - the same shape as PRICING-MARGIN-001 two iterations earlier."
+    },
+    {
+      "id": "PLATFORM-EXPORT-001",
+      "title": "Platform business-records export has a button, three formats, and no endpoint",
+      "description": "PlatformBusinessRecords offers Export as CSV, Excel and PDF. /api/platform-crm/business-records/export is implemented nowhere - the platform-crm edge function that owns the proxied prefix has no export branch, and no Express router claims it either. EXPORT-DOWNLOAD-001 made the failure visible (it now shows the error instead of saving a 404 as a spreadsheet), which is honest but still three buttons that cannot work. Decide: implement export in the platform-crm edge function for the formats worth supporting, or remove the formats that are not. CSV is straightforward over the rows the list already queries; PDF is a different problem and PA-028 already flags synchronous PDF/XLSX generation as needing streaming or offloading, so do not add a fourth synchronous generator without reading that story first.",
+      "acceptanceCriteria": [
+        "Each offered format either downloads a real file or is removed from the menu",
+        "The export respects the filters the list is showing, not just the loaded page",
+        "Any generator added is bounded in rows and does not block the request thread (see PA-028)",
+        "check:blob-downloads and the route-ownership baseline both stay clean"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "frontend",
+      "dependsOn": ["EXPORT-DOWNLOAD-001"],
+      "notes": "NEXT ITERATION CANDIDATE. Check the same question for /api/pricing/margin-report/export and /api/admin/knowledge-base/export: both exist in Express only, so they work in dev and 404 in production once getApiUrl sends the prefix to the functions host. That is the same defect one step less far along, and it was not fixed here."
     }
   ]
 }

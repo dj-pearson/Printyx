@@ -29,6 +29,8 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import MainLayout from '@/components/layout/main-layout';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
+import { downloadAuthedFile } from '@/lib/authed-download';
+import { useToast } from '@/hooks/use-toast';
 
 interface LineItem {
   productName: string;
@@ -63,6 +65,7 @@ interface MarginReportItem {
 }
 
 export default function MarginAnalysisReport() {
+  const { toast } = useToast();
   const { data: visibility } = usePricingVisibility();
   const [filters, setFilters] = useState({
     startDate: '',
@@ -138,22 +141,30 @@ export default function MarginAnalysisReport() {
     setExpandedQuotes(newExpanded);
   };
 
+  // Raw fetch() twice over: no Authorization header, so this 401s once the
+  // request goes to the functions host, and no response.ok check, so the 401
+  // body was written to disk as margin-report-<date>.csv. A file named like a
+  // report containing {"error":"Unauthorized"} is worse than no download.
+  // downloadAuthedFile attaches the app's auth, rewrites the host, and throws
+  // with the server's own message on a non-2xx.
   const handleExport = async () => {
     const queryParams = new URLSearchParams();
     if (filters.startDate) queryParams.append('startDate', filters.startDate);
     if (filters.endDate) queryParams.append('endDate', filters.endDate);
     if (filters.salesRepId) queryParams.append('salesRepId', filters.salesRepId);
 
-    const response = await fetch(`/api/pricing/margin-report/export?${queryParams.toString()}`);
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `margin-report-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    try {
+      await downloadAuthedFile(
+        `/api/pricing/margin-report/export?${queryParams.toString()}`,
+        `margin-report-${new Date().toISOString().split('T')[0]}.csv`,
+      );
+    } catch (error) {
+      toast({
+        title: 'Export failed',
+        description: error instanceof Error ? error.message : 'Could not export the margin report.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Calculate summary statistics

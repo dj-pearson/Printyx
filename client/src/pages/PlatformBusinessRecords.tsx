@@ -70,6 +70,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { downloadAuthedFile } from '@/lib/authed-download';
 
 interface BusinessRecord {
   id: string;
@@ -244,28 +245,30 @@ export default function PlatformBusinessRecords() {
     setSelectedRecords(newSelected);
   };
 
+  // This asked for /api/platform-crm/business-records/export, which exists on
+  // NO backend - not in the platform-crm edge function that /api/platform-crm
+  // is proxied to, and not in Express either, so it 404s in dev as well as
+  // production. Nothing threw: the 404 body went to disk as
+  // business-records-csv-<ts>.csv and the toast below said
+  // "Success - Exported N records as CSV". A platform admin was told the export
+  // worked and handed an error page with a spreadsheet's name on it.
+  // downloadAuthedFile throws on a non-2xx, so the catch fires and the failure
+  // is visible. Building the endpoint is PLATFORM-EXPORT-001.
   const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
     try {
-      const response = await fetch(
+      await downloadAuthedFile(
         `/api/platform-crm/business-records/export?${queryParams.toString()}&format=${format}`,
+        `business-records-${format}-${Date.now()}.${format === 'excel' ? 'xlsx' : format}`,
       );
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `business-records-${format}-${Date.now()}.${format === 'excel' ? 'xlsx' : format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
       toast({
-        title: 'Success',
-        description: `Exported ${records.length} records as ${format.toUpperCase()}`,
+        title: 'Export ready',
+        description: `Downloaded business records as ${format.toUpperCase()}`,
       });
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to export records',
+        title: 'Export failed',
+        description:
+          error instanceof Error ? error.message : 'Could not export the business records.',
         variant: 'destructive',
       });
     }

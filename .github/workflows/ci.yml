@@ -71,6 +71,8 @@ jobs:
         run: npm run check:query-keys
       - name: Markup-as-margin gate (PRICING-MARGIN-001)
         run: npm run check:margin-formula
+      - name: Unchecked blob-download gate (EXPORT-DOWNLOAD-001)
+        run: npm run check:blob-downloads
       - name: Fabricated-fallback ratchet (AUDIT-019)
         run: npm run check:fabricated
       - name: Static-posture gate for admin surfaces (AUDIT-019)
