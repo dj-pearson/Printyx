@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { TaskTimeTracker } from './TaskTimeTracker';
 import { format } from 'date-fns';
+import { toDateInputValue } from '@/lib/date-utils';
 
 /**
  * WF-P-08. This interface used to carry parentTaskId, startDate, customFields
@@ -465,7 +466,7 @@ export function CreateTaskDialog({
                         onSelect={(date) =>
                           setFormData((prev) => ({
                             ...prev,
-                            dueDate: date ? date.toISOString().split('T')[0] : '',
+                            dueDate: toDateInputValue(date) ?? '',
                           }))
                         }
                         initialFocus

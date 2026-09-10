@@ -14532,6 +14532,40 @@
       "category": "performance",
       "dependsOn": ["PERF-NPLUS1-001"],
       "notes": "NEXT ITERATION CANDIDATE. The script's header records its two blind spots: the loop body is read by indentation for 45 lines, so a longer body is missed, and a query behind a helper call is invisible. Do not read a clean line as proof."
+    },
+    {
+      "id": "DATE-LOCAL-001",
+      "title": "Meter readings, payments and journal entries were dated in UTC, so they were a day out for most of the working day",
+      "description": "new Date().toISOString().split('T')[0] is today in UTC, not today where the user is. For a dealer anywhere in the US it is TOMORROW from late afternoon onward: a technician submitting a meter reading at 5pm Pacific dated it into the next day, and at month end into the next BILLING PERIOD; a payment recorded after 7pm Eastern landed on the wrong day for aging and month-end close; a journal entry could post to the wrong accounting period. The same call ran in the other direction on the two task date pickers - the calendar hands back local midnight, and toISOString walks that back across the boundary for any positive UTC offset, so a due date picked in Europe saved as YESTERDAY. Nine sites in all: MeterReadings (the field default and the Today button), MeterBilling, Invoices (payment date), JournalEntries (entry date), billing-rule-dialog (effective start and end), InlineEditors and TaskDialogs (due dates), and a Contacts activity date. todayLocalDate() and toDateInputValue() in client/src/lib/date-utils.ts read the local calendar; the tests pass under America/Los_Angeles, Europe/Berlin, Asia/Tokyo, Pacific/Auckland and UTC.",
+      "acceptanceCriteria": [
+        "Every date-only business value is taken from the local calendar, not from UTC",
+        "The two calendar pickers store the day the user actually clicked",
+        "Tests pass in negative-offset, positive-offset and UTC timezones",
+        "check:local-dates hard-gates the shape at zero and is wired into CI",
+        "Export filenames are exempt by rule rather than baselined",
+        "The guard is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "correctness",
+      "dependsOn": [],
+      "notes": "The correct idiom, date-fns format(d, 'yyyy-MM-dd'), was already in use in contracts.tsx, DocumentBuilder, TaskTimeTracker and MaintenanceSchedulingComponent - so the codebase had the right answer and the wrong copies side by side, the same shape as PRICING-MARGIN-001 and EXPORT-DOWNLOAD-001."
+    },
+    {
+      "id": "DATE-LOCAL-002",
+      "title": "Server and edge date handling has not been checked for the same UTC-vs-local split",
+      "description": "DATE-LOCAL-001 fixed the client. The question it raises and does not answer is what the OTHER side does with the same values. A date-only column (meter_readings.reading_date, invoices.paid_date, journal entry dates, contract start and end) is a calendar date, but every server and edge comparison against it uses new Date() or toISOString(), which is an instant in UTC. Two things to establish: whether a report filtered 'this month' agrees with what a user in UTC-8 considers this month, and whether a billing period boundary computed server-side lines up with the reading dates the client now writes locally. Related and already filed: DATE-SETMONTH-001 records that Date.setMonth overflows rather than clamping, with a dozen call sites relying on it - the two want fixing in one pass, since both are about a date arithmetic that is almost right. Decide the rule first (store and compare date-only values as calendar dates; reserve instants for timestamps) and write it into CLAUDE.md, because this is the kind of thing that gets re-litigated per file.",
+      "acceptanceCriteria": [
+        "The rule for date-only vs instant columns is written down and applied consistently",
+        "Period boundaries used by billing and reports are checked against a non-UTC tenant",
+        "DATE-SETMONTH-001 is resolved in the same pass",
+        "A guard or test covers the boundary cases rather than relying on review"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "correctness",
+      "dependsOn": ["DATE-LOCAL-001"],
+      "notes": "NEXT ITERATION CANDIDATE. Note the tenant timezone may not be stored anywhere - check before assuming a per-tenant offset is available, because if it is not, that is the first piece of work."
     }
   ]
 }

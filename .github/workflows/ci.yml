@@ -73,6 +73,8 @@ jobs:
         run: npm run check:margin-formula
       - name: Unchecked blob-download gate (EXPORT-DOWNLOAD-001)
         run: npm run check:blob-downloads
+      - name: UTC-as-local-date gate (DATE-LOCAL-001)
+        run: npm run check:local-dates
       - name: Fabricated-fallback ratchet (AUDIT-019)
         run: npm run check:fabricated
       - name: Static-posture gate for admin surfaces (AUDIT-019)

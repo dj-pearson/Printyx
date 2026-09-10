@@ -55,6 +55,7 @@ import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useActionParam } from '@/hooks/use-action-param';
+import { todayLocalDate } from '@/lib/date-utils';
 
 // tenantId + createdBy are injected server-side; the form never supplies them.
 const createMeterReadingSchema = insertMeterReadingSchema
@@ -216,7 +217,7 @@ export default function MeterReadings() {
   const form = useForm<CreateMeterReadingInput>({
     resolver: zodResolver(createMeterReadingSchema),
     defaultValues: {
-      readingDate: new Date().toISOString().split('T')[0],
+      readingDate: todayLocalDate(),
       bwMeterReading: 0,
       colorMeterReading: 0,
       collectionMethod: 'manual',
@@ -599,7 +600,7 @@ export default function MeterReadings() {
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={() => field.onChange(new Date().toISOString().split('T')[0])}
+                            onClick={() => field.onChange(todayLocalDate())}
                             className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                           >
                             Today

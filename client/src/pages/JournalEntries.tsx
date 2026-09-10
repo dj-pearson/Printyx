@@ -36,6 +36,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import type { JournalEntry } from '@shared/schema';
+import { todayLocalDate } from '@/lib/date-utils';
 
 // Form schema for journal entries
 const journalEntrySchema = z
@@ -86,7 +87,7 @@ export default function JournalEntries() {
     defaultValues: {
       entryNumber: '',
       description: '',
-      entryDate: new Date().toISOString().split('T')[0],
+      entryDate: todayLocalDate(),
       reference: '',
       totalDebit: 0,
       totalCredit: 0,
