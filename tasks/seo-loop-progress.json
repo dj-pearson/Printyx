@@ -79,6 +79,11 @@
       "element": "a third SEO system that titled three landing pages 'Printyx'",
       "prd": "tasks/prd-seo-prerendering.json",
       "summary": "client/src/lib/useSeo.tsx was a third independent SEO writer, live on exactly the three /p/ marketing landing pages - the highest-priority programmatic pages in the route table at 0.9. It fetched /meta.json and /schema.json with a raw relative fetch; in production the frontend is Cloudflare Pages and those routes are Express, so Pages answered with the SPA shell, .json() threw, the catch produced {}, and the hook ran document.title = meta?.title || 'Printyx'. All three shipped <title>Printyx</title> and og:title 'Printyx' - the bare word - overwriting the title SEOProvider had already set, plus an empty ld+json tag. The description survived only because setMeta returns early on empty content. Verified in Chromium against a server mimicking Pages' catch-all, before and after. Deleted the hook and its three call sites; SEOProvider covers all three routes. Also removed the THIRD copy of the dead /search SearchAction, in schema.json. Filed SEO-015: the static head describes the homepage on every URL and per-route metadata only exists after JS runs, which is masked today by the coming-soon gate and stops being masked the day the site opens."
+    },
+    {
+      "iteration": 15,
+      "element": "the last duplicate writer, and the loop's findings into repo memory",
+      "summary": "SmartBreadcrumb injected its own BreadcrumbList beside SEOProvider's, so any page with both shipped two entities for one trail - the third and last duplicate writer, after BlogPostLayout (SEO-009) and useSeo (SEO-014). Removed; SEOProvider is the single owner of structured data everywhere now. Then wrote the loop's findings into CLAUDE.md as an 'SEO surface' section: the coming-soon gate and what it makes untrue, the three build artifacts and why a per-request rival must not come back, one-writer-reads-the-route-table, dates and prices as claims, unknown-route-is-not-public, url-fix-is-not-feature-fix, and the guards - including that the asset walk passed while matching nothing until a mutation test caught its comment-stripper eating every https:// line."
     }
   ],
   "candidatesForLaterIterations": [
@@ -91,5 +96,7 @@
     "Contact emails disagree: sales@printyx.com vs support@printyx.net in the same JSON-LD block",
     "PRD-sized: prerendering/SSR for the public routes once the site opens - all title/description/canonical/JSON-LD is injected client-side today",
     "No guard checks a frontend /api URL against the EXPRESS router table - check:edge-coverage only does the edge half, which is how 12 URLs stayed dead in both environments"
-  ]
+  ],
+  "status": "complete",
+  "summary": "15 iterations. 16 numbered fixes (SEO-001..016), two PRDs left open (prd-public-blog-disconnect, prd-seo-prerendering), one closed (prd-seo-dashboard-endpoints). tsc 288 -> 284, edge-coverage 72 -> 63, nav baseline 8 -> 6, sitemap 0 -> 10 URLs, 5066 unit tests passing."
 }
