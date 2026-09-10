@@ -20,6 +20,14 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SITE_URL, getSitemapRoutes } from '../client/src/lib/seo/seoConfig.js';
 
+/**
+ * Mirrors App.tsx's COMING_SOON gate: the public site is closed unless the
+ * build explicitly opens it. While closed, every marketing route serves a
+ * noindex holding page, so only the handful of routes that still render
+ * themselves belong in the sitemap.
+ */
+const CLOSED = process.env.VITE_COMING_SOON !== 'false';
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(ROOT, 'client/public/sitemap.xml');
 
@@ -34,7 +42,7 @@ function xmlEscape(value: string): string {
 }
 
 export function buildSitemap(lastmod: string): string {
-  const routes = [...getSitemapRoutes()].sort((a, b) => {
+  const routes = [...getSitemapRoutes(CLOSED)].sort((a, b) => {
     const byPriority = (b.priority ?? 0.5) - (a.priority ?? 0.5);
     return byPriority !== 0 ? byPriority : a.path.localeCompare(b.path);
   });
@@ -101,5 +109,7 @@ if (check) {
   console.log(`sitemap: up to date (${locs(generated).split('\n').length} URLs)`);
 } else {
   writeFileSync(OUT, generated, 'utf8');
-  console.log(`sitemap: wrote ${OUT} (${generated.match(/<loc>/g)?.length ?? 0} URLs)`);
+  console.log(
+    `sitemap: wrote ${OUT} (${generated.match(/<loc>/g)?.length ?? 0} URLs, site ${CLOSED ? 'CLOSED' : 'open'})`
+  );
 }

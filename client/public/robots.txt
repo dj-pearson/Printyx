@@ -32,5 +32,9 @@ Disallow: /tenant-setup
 # Disallow API endpoints
 Disallow: /api/
 
+# Deliberately no "Disallow: /" while the public site is closed. A blocked
+# crawler never fetches the page and so never sees the noindex meta, which
+# leaves anything already indexed stuck there. Let them crawl and read it.
+#
 # Sitemap
 Sitemap: https://printyx.net/sitemap.xml

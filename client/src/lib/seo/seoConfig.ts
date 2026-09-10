@@ -974,9 +974,51 @@ export const MARKETING_P_SLUGS: ReadonlySet<string> = new Set(
 );
 
 /**
- * The public URLs that belong in sitemap.xml: every public route that is not
- * noindex. `scripts/generate-sitemap.mts` is the only consumer.
+ * The public URLs that belong in sitemap.xml.
+ *
+ * Two exclusions, and the second is the one that bites. A noindex route must
+ * not be listed: telling a crawler to fetch a page and then not to index it is
+ * a contradiction it resolves by trusting neither signal. And while the site is
+ * closed, every marketing route serves the holding page - which is itself
+ * noindex - so publishing those URLs would file 24 "Submitted URL marked
+ * noindex" errors in Search Console against pages that are all the same page.
+ * A sitemap describes what is live, not what is planned.
+ *
+ * `closed` mirrors App.tsx's COMING_SOON: closed unless explicitly opened.
  */
-export function getSitemapRoutes(): SEORouteConfig[] {
-  return PUBLIC_ROUTES_SEO.filter((r) => !r.noindex);
+export function getSitemapRoutes(
+  closed: boolean = import.meta.env?.VITE_COMING_SOON !== 'false',
+): SEORouteConfig[] {
+  const live = closed
+    ? PUBLIC_ROUTES_SEO.filter((r) => COMING_SOON_ROUTES.includes(r.path))
+    : PUBLIC_ROUTES_SEO;
+  return live.filter((r) => !r.noindex);
 }
+
+/**
+ * The public site is closed while the product is built (`COMING_SOON` in
+ * App.tsx, default on). While it is closed, only these routes render
+ * themselves; every other marketing URL serves the holding page, which sets
+ * noindex.
+ *
+ * Kept here rather than derived from App.tsx because a sitemap generator must
+ * not parse JSX to decide what to publish. `seo-sitemap.test.ts` asserts this
+ * list against App.tsx's closed-site Switch, so the two cannot drift.
+ */
+export const COMING_SOON_ROUTES: readonly string[] = [
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/auth/callback',
+  '/eula',
+  '/privacy',
+  '/terms',
+  '/accessibility',
+  '/do-not-sell',
+  '/data-sources',
+  '/cookies',
+  '/subprocessors',
+  '/dpa',
+];

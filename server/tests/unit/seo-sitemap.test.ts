@@ -22,6 +22,7 @@ import { join } from 'node:path';
 import {
   PUBLIC_ROUTES_SEO,
   MARKETING_P_SLUGS,
+  COMING_SOON_ROUTES,
   getSitemapRoutes,
   SITE_URL,
 } from '../../../client/src/lib/seo/seoConfig';
@@ -40,11 +41,18 @@ describe('sitemap.xml', () => {
     expect(locs.length).toBeGreaterThan(0);
   });
 
-  it('lists exactly the indexable public routes', () => {
-    const expected = getSitemapRoutes()
+  it('lists exactly the routes that are live and indexable while the site is closed', () => {
+    const expected = getSitemapRoutes(true)
       .map((r) => `${SITE_URL}${r.canonicalPath ?? r.path}`)
       .sort();
     expect([...locs].sort()).toEqual(expected);
+  });
+
+  it('lists no route that serves the holding page', () => {
+    for (const loc of locs) {
+      const path = loc.slice(SITE_URL.length) || '/';
+      expect(COMING_SOON_ROUTES, `${path} serves the noindex holding page`).toContain(path);
+    }
   });
 
   it('excludes every noindex route', () => {
@@ -93,5 +101,45 @@ describe('/p/ marketing landing pages are not shadowed by the proposal viewer', 
       pRoutes.some((r) => r.path.slice(3).length >= 20),
       'the >= 20 char case is what broke; keep a long slug in this assertion',
     ).toBe(true);
+  });
+});
+
+describe('the closed-site route list matches App.tsx', () => {
+  /**
+   * COMING_SOON_ROUTES drives what the sitemap publishes; App.tsx's Switch
+   * decides what actually renders. If someone routes a new page while the site
+   * is closed and does not add it here, the sitemap silently omits a live page;
+   * if they remove one, the sitemap publishes a URL that serves the holding
+   * page. Neither shows up anywhere else.
+   */
+  it('has the same paths as the closed-site Switch', () => {
+    const start = appSource.indexOf('if (COMING_SOON) {');
+    expect(start).toBeGreaterThan(-1);
+    const block = appSource.slice(start, appSource.indexOf('</Switch>', start));
+    const routed = [...block.matchAll(/path="([^"]+)"/g)].map((m) => m[1]);
+    expect([...routed].sort()).toEqual([...COMING_SOON_ROUTES].sort());
+  });
+});
+
+describe('robots.txt while the site is closed', () => {
+  /**
+   * Deliberately NOT `Disallow: /`. A blocked crawler never fetches the page
+   * and so never sees the noindex meta, which leaves already-indexed URLs
+   * indexed with no way to drop them. Let them crawl and read the noindex.
+   */
+  it('does not block the whole site', () => {
+    const disallowAll = robots
+      .split('\n')
+      .some((line) => line.trim().replace(/\s+/g, ' ') === 'Disallow: /');
+    expect(disallowAll).toBe(false);
+  });
+});
+
+describe('the static head agrees with the coming-soon gate', () => {
+  it('vite rewrites the robots meta to noindex when the site is closed', () => {
+    const vite = readFileSync(join(root, 'vite.config.ts'), 'utf8');
+    expect(vite).toContain('printyx-robots-meta');
+    expect(vite).toContain("process.env.VITE_COMING_SOON !== 'false'");
+    expect(vite).toContain('noindex, nofollow');
   });
 });

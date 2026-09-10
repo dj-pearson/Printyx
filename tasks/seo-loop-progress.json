@@ -13,17 +13,25 @@
       "iteration": 2,
       "element": "static <head>: structured data, social card, favicon",
       "summary": "The static head made four false claims. Removed the fabricated aggregateRating (4.9 from 150 - LEGAL-002 removed the same fabrication from the runtime provider and missed this copy, the one crawlers read). Generated the 1200x630 og-image.png that og:image and twitter:image had pointed at since launch without either file existing. Repointed the Organization JSON-LD logo from the 404 /logo.png to /logos/logo.png and corrected its declared 512x512 to the real 2000x600. Dropped the SearchAction offering a sitelinks box at /search, which is not a route, and the msapplication-config pointing at a browserconfig.xml that does not exist. Separately, favicon.svg used React's stopColor instead of SVG's stop-color, so both gradients fell back to black - verified in Chromium, rgba(0,0,0,255) before, rgba(67,100,237,255) after. New guard: npm run check:seo-assets, CI-wired, zero-tolerance."
+    },
+    {
+      "iteration": 3,
+      "element": "the SEO surface now agrees with the coming-soon gate",
+      "summary": "Rendered the built app in Chromium and found the public site is behind App.tsx's COMING_SOON holding page (default ON - VITE_COMING_SOON must be 'false' to open it). The holding page sets noindex through usePageSeo, at RUNTIME, while the static head hardcoded index,follow - so every non-JS crawler was told to index 24 marketing URLs that all render the same page. A vite transformIndexHtml plugin now rewrites the robots meta from the same variable the gate reads, verified in both states. getSitemapRoutes takes the same flag: the sitemap dropped from 28 URLs to the 5 that actually render themselves while closed (signup, eula, privacy, terms, accessibility), which also corrects iteration 1 - it had published 24 URLs that serve a noindex page. COMING_SOON_ROUTES is asserted against App.tsx's Switch so the two cannot drift. robots.txt deliberately keeps no Disallow: / - a blocked crawler never sees the noindex."
     }
   ],
   "candidatesForLaterIterations": [
-    "client/index.html static meta vs SEOProvider runtime meta - crawlers that do not execute JS see only the static head",
-    "No prerendering/SSR for the 28 public routes: all title/description/JSON-LD is injected client-side",
+    "Duplicate twitter tags: index.html uses property=\"twitter:*\" (static, homepage copy), SEOProvider writes name=\"twitter:*\" at runtime, so every page carries two conflicting sets",
+    "Duplicate JSON-LD entities: the static head ships Organization + WebSite and SEOProvider injects Organization + WebSite again on Organization-schema routes",
+    "The 'Application not configured' boot-failure screen renders a full head; under a missing VITE_SUPABASE_* it would be the indexable page if the site were open",
+    "SEOProvider sets article:modified_time to new Date() on every render - a freshness claim generated at page-view time, for content that did not change",
     "Blog posts in seoConfig are hardcoded (3); dynamic blog posts from blog_posts never reach the sitemap",
     "Canonical tags, hreflang, and trailing-slash consistency",
     "supabase/functions/seo + RootAdminSEO / SEODashboard: verify the tenant-facing SEO tooling reads real data",
     "structured data validation for the FAQPage / HowTo / SoftwareApplication schemas SEOProvider emits",
     "The product has no typeface at all - no font-family anywhere in index.css or tailwind.config.ts, so every surface renders in the Tailwind system default. The OG card vendors Manrope; the app does not.",
     "sameAs in the Organization JSON-LD lists linkedin/twitter/youtube profiles nobody verified; a sameAs pointing at a 404 weakens entity resolution rather than helping it",
-    "Contact emails disagree: sales@printyx.com vs support@printyx.net in the same JSON-LD block"
+    "Contact emails disagree: sales@printyx.com vs support@printyx.net in the same JSON-LD block",
+    "PRD-sized: prerendering/SSR for the public routes once the site opens - all title/description/canonical/JSON-LD is injected client-side today"
   ]
 }
