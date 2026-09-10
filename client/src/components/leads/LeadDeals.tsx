@@ -585,11 +585,21 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
         </div>
       )}
 
-      {/* Enhanced Summary Stats with Goal Attainment */}
+      {/* Summary stats.
+          The two cards that used to sit beside these - "Goal Attainment" and
+          "Remaining to Goal" - measured against `const monthlyGoal = 50000`,
+          written inline four times and commented "Lead-specific goal". Nothing
+          sets a goal per lead; there is no such column, no such setting and no
+          such concept in the data model. Every lead in every tenant was being
+          scored against the same invented $50,000, and a badge underneath called
+          the result On Track, At Risk or Behind. Deleted rather than relabelled:
+          real quota attainment lives on the Sales Command Center, which reads
+          /api/crm/goal-progress. Average deal size replaces them because it is
+          arithmetic over the deals already listed above. */}
       {deals.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-blue-600">{deals.length}</div>
                 <div className="text-sm text-gray-600">Total Deals</div>
@@ -603,53 +613,13 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
               <div>
                 <div className="text-2xl font-bold text-purple-600">
                   {(() => {
-                    const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
-                    const monthlyGoal = 50000; // Lead-specific goal (smaller than company-wide)
-                    const attainmentPct = Math.min(
-                      100,
-                      Math.round((totalValue / monthlyGoal) * 100),
-                    );
-                    return `${attainmentPct}%`;
+                    const withAmount = deals.filter((deal) => (deal.amount ?? 0) > 0);
+                    if (withAmount.length === 0) return '--';
+                    const total = withAmount.reduce((sum, deal) => sum + (deal.amount || 0), 0);
+                    return `$${Math.round(total / withAmount.length).toLocaleString()}`;
                   })()}
                 </div>
-                <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
-                  Goal Attainment
-                  <Badge
-                    variant={(() => {
-                      const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
-                      const monthlyGoal = 50000;
-                      const attainment = (totalValue / monthlyGoal) * 100;
-                      return attainment >= 90
-                        ? 'default'
-                        : attainment >= 70
-                          ? 'secondary'
-                          : 'destructive';
-                    })()}
-                    className="text-xs ml-1"
-                  >
-                    {(() => {
-                      const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
-                      const monthlyGoal = 50000;
-                      const attainment = (totalValue / monthlyGoal) * 100;
-                      return attainment >= 90
-                        ? 'On Track'
-                        : attainment >= 70
-                          ? 'At Risk'
-                          : 'Behind';
-                    })()}
-                  </Badge>
-                </div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-orange-600">
-                  {(() => {
-                    const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
-                    const monthlyGoal = 50000;
-                    const remaining = Math.max(0, monthlyGoal - totalValue);
-                    return `$${remaining.toLocaleString()}`;
-                  })()}
-                </div>
-                <div className="text-sm text-gray-600">Remaining to Goal</div>
+                <div className="text-sm text-gray-600">Average Deal Size</div>
               </div>
             </div>
           </CardContent>

@@ -14433,6 +14433,39 @@
       "category": "correctness",
       "dependsOn": ["PRICING-MARGIN-001"],
       "notes": "NEXT ITERATION CANDIDATE. Find them with: grep -rnE '/ *[a-zA-Z_][a-zA-Z0-9_.?]*\\) *\\* *100' client/src. Divisors that are a .length of a rendered list are fine and should be excluded by rule, not baselined."
+    },
+    {
+      "id": "REPORTS-CHARTS-001",
+      "title": "Three charts on the routed /reports page were Math.random(), and no guard watched the client",
+      "description": "EnhancedReportsHub, which /reports resolves to, rendered 'Performance Trends', 'Distribution Analysis' and 'Period Comparison' from generateMockChartData - twelve months of Math.random() * 50000 laid over a hardcoded target of 40000, plus invented locations and regions for the filters. The values moved on every render, which is what real telemetry does, so refreshing appeared to confirm them. The panel is replaced with NotConnectedState and the generator deleted; the reports catalog below it is the real part of the page. Two more in the same class: LeadDeals scored every lead against `const monthlyGoal = 50000` written inline four times and commented 'Lead-specific goal', driving a Goal Attainment percentage, a Remaining to Goal figure and an On Track / At Risk / Behind badge - there is no per-lead goal column, setting or concept anywhere, so all of it was measured against an invented number; and DatabaseManagement showed a per-query duration in milliseconds from Math.random() beside a real query and a real user off audit_logs, which has no timing column, plus one hand-written backup row claiming a completed backup six hours old at a real size. THE REASON THESE SURVIVED: check:no-random-metrics scoped to server/ and supabase/functions/ only, because that is where the offenders it was written for lived. Nothing watched the render path - check:fabricated needs a `|| literal`, check:no-static-posture needs a literal in JSX and excludes components by design. The guard now walks client/src and .tsx, and found DatabaseManagement itself the moment it did.",
+      "acceptanceCriteria": [
+        "The three mock charts and generateMockChartData are gone; the panel says it is not connected",
+        "LeadDeals shows only figures derived from the deals it lists",
+        "DatabaseManagement reports query timing as not recorded, and claims no backup it cannot see",
+        "check:no-random-metrics walks client/src and .tsx files",
+        "The widened guard is mutation-tested"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "data-integrity",
+      "dependsOn": [],
+      "notes": "The guard-scope lesson for the third time in this repo: a guard scoped to where the last batch of offenders lived misses the next surface. Widening check:no-random-metrics cost one line and immediately found a defect nobody had reported."
+    },
+    {
+      "id": "REPORTS-CHARTS-002",
+      "title": "The /reports dashboard panel needs a real aggregation endpoint",
+      "description": "With the fabricated charts removed, /reports shows a working catalog and an honest not-connected panel where the trend, distribution and period-comparison charts were. The supabase/functions/reports function exists and its _queries/ modules build real statements through the PostgREST builder - AUDIT-024 established it as the live implementation that superseded ten server/services/*-reporting-service.ts files - but it serves report DEFINITIONS and runs, not the three dashboard aggregations this panel wants. Decide whether the panel is worth building: a trend series over a period, a distribution by category, and a period-over-period comparison, each scoped to the selected category and tenant. If it is not, delete the panel rather than leaving a not-connected state on the page indefinitely.",
+      "acceptanceCriteria": [
+        "Decide: build the three aggregations in the reports edge function, or remove the panel",
+        "If built, each chart reads a real endpoint and renders an empty state when the tenant has no data",
+        "If built, the hardcoded target line is either a real per-tenant goal or absent",
+        "The NotConnectedState placeholder does not outlive the decision"
+      ],
+      "priority": 4,
+      "passes": false,
+      "category": "frontend",
+      "dependsOn": ["REPORTS-CHARTS-001"],
+      "notes": "Check what supabase/functions/reports/_queries already computes before adding anything - AUDIT-024 records that its headers name the unbacked tables honestly, so some of this may be underivable and should be said rather than filled in."
     }
   ]
 }
