@@ -14632,6 +14632,38 @@
       "category": "security",
       "dependsOn": ["SEC-SVG-001"],
       "notes": "NEXT ITERATION CANDIDATE. AssetUploadDialog.tsx accepts image/svg+xml in its file picker, so this path is reachable from the UI today. Check meeting-transcription and onboarding for the same question while you are there - both write to storage."
+    },
+    {
+      "id": "PERF-ROWCAP-001",
+      "title": "The financial dashboard, P&L and MRR analysis stopped counting at row 1000",
+      "description": "PostgREST truncates a response at db-max-rows (1000) WITHOUT erroring and with no marker in the payload. Five endpoints in the financial edge function summed a plain .select(): /metrics (the revenue dashboard - total revenue, MRR, won-deal value), /expenses, /forecasts (a twelve-month invoice history feeding every projection), and the profit-loss and mrr-analysis reports. A dealer billing more than a thousand invoices in the selected period got a total that stopped partway through - quietly, and always in the direction of business being smaller than it is. mrr-analysis was the first to cross it: it reads EVERY contract the tenant has ever had, with no date bound at all. supabase/functions/_shared/paged-select.ts pages explicitly, propagates an error rather than returning a short result that looks complete, and builds a fresh query per page because a PostgREST builder accumulates its filters.",
+      "acceptanceCriteria": [
+        "All five financial endpoints read every matching row",
+        "An error propagates rather than yielding a partial sum",
+        "A full last page triggers one more request rather than an assumption",
+        "The helper is shared, not local to one function"
+      ],
+      "priority": 2,
+      "passes": true,
+      "category": "performance",
+      "dependsOn": [],
+      "notes": "platform-analytics had already solved this for itself under AUDIT-006 with a local fetchAllRows and a comment explaining the cap - the fourth time in this run that the right answer was already in the tree beside the wrong copies. A helper inside one function cannot be reused by the next one that needs it."
+    },
+    {
+      "id": "PERF-ROWCAP-002",
+      "title": "Thirty-three more sums read at most a thousand rows",
+      "description": "scripts/report-unbounded-sums.mjs finds 33 remaining unbounded .select() calls on high-volume tables whose result is summed with .reduce(). The reporting surfaces are the ones to take first, because a wrong total there is quoted: reports/handlers (dashboards, second-tier, frontend-stubs) across service_tickets, invoices, deals and business_records; sales-reports (three sums over deals); team-reports (four over business_records); service-analytics and technicians over service_tickets; today-dashboard over deals; and crm-goals, which sums deals AND activities to score goal attainment. Convert each with fetchAllRows from _shared/paged-select.ts, or switch to a HEAD count where only the number is wanted - that transfers no rows at all and is strictly better than paging to count. The report's own limits are in its header: the .reduce() must be within 30 lines of the .from(), a sum written as a for-loop is invisible to it, and the high-volume table list is hand-maintained, so a clean line is not proof.",
+      "acceptanceCriteria": [
+        "Each of the 33 is converted, switched to a HEAD count, or justified as bounded",
+        "Counting paths use { count: exact, head: true } rather than paging rows to length them",
+        "The report reaches zero, or the survivors carry a comment saying why they are bounded",
+        "A large-tenant case is measured rather than assumed"
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "performance",
+      "dependsOn": ["PERF-ROWCAP-001"],
+      "notes": "NEXT ITERATION CANDIDATE. The report initially could not see its own fixes - the inner chain inside fetchAllRows(() => admin.from(...).select(...)) carries no .range of its own, so a corrected call still looked unbounded and the number would never have moved. It skips already-paged chains now; check that rule still holds if the helper is ever renamed."
     }
   ]
 }

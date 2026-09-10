@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 import { subtractMonths, monthsBetween } from '../_shared/date-months.ts';
 
 export default async function handler(req: Request) {
@@ -105,40 +106,45 @@ export default async function handler(req: Request) {
     // GET /financial/metrics - Get financial metrics (revenue, expenses, profit, cash flow)
     // =============================================================================
     if (req.method === 'GET' && resource === 'metrics') {
-      const [invoicesResult, quotesResult, contractsResult] = await Promise.all([
-        // Get all invoices for the period
-        admin
-          .from('invoices')
-          .select(
-            'id, total_amount, amount_paid, balance_due, invoice_status, invoice_date, invoice_type',
-          )
-          .eq('tenant_id', tenantId)
-          .gte('invoice_date', startDate.toISOString())
-          .lte('invoice_date', endDate.toISOString()),
-        // Get accepted quotes (won deals) for the period
-        admin
-          .from('quotes')
-          .select('id, total_amount, accepted_date, status')
-          .eq('tenant_id', tenantId)
-          .eq('status', 'accepted')
-          .gte('accepted_date', startDate.toISOString())
-          .lte('accepted_date', endDate.toISOString()),
-        // Get active contracts for MRR calculation
-        admin
-          .from('contracts')
-          .select('id, monthly_base, status')
-          .eq('tenant_id', tenantId)
-          .eq('status', 'active'),
-      ]);
-
-      if (invoicesResult.error) {
-        console.error('Error fetching invoices:', invoicesResult.error);
+      // Paged: PostgREST caps a response at 1000 rows without erroring, so
+      // every total below was summed over a partial set once the tenant passed
+      // that line - quietly, and always downward.
+      let invoices: any[];
+      let quotes: any[];
+      let contracts: any[];
+      try {
+        [invoices, quotes, contracts] = await Promise.all([
+          fetchAllRows<any>(() =>
+            admin
+              .from('invoices')
+              .select(
+                'id, total_amount, amount_paid, balance_due, invoice_status, invoice_date, invoice_type',
+              )
+              .eq('tenant_id', tenantId)
+              .gte('invoice_date', startDate.toISOString())
+              .lte('invoice_date', endDate.toISOString()),
+          ),
+          fetchAllRows<any>(() =>
+            admin
+              .from('quotes')
+              .select('id, total_amount, accepted_date, status')
+              .eq('tenant_id', tenantId)
+              .eq('status', 'accepted')
+              .gte('accepted_date', startDate.toISOString())
+              .lte('accepted_date', endDate.toISOString()),
+          ),
+          fetchAllRows<any>(() =>
+            admin
+              .from('contracts')
+              .select('id, monthly_base, status')
+              .eq('tenant_id', tenantId)
+              .eq('status', 'active'),
+          ),
+        ]);
+      } catch (err) {
+        console.error('Error fetching invoices:', err);
         return createCorsResponse({ error: 'Failed to fetch financial metrics' }, 500, req);
       }
-
-      const invoices = invoicesResult.data || [];
-      const quotes = quotesResult.data || [];
-      const contracts = contractsResult.data || [];
 
       // Calculate revenue metrics
       let totalRevenue = 0;
@@ -526,27 +532,33 @@ export default async function handler(req: Request) {
     // =============================================================================
     if (req.method === 'GET' && resource === 'expenses') {
       // Since we don't have a dedicated expenses table, we estimate from invoices and contracts
-      const [invoicesResult, contractsResult] = await Promise.all([
-        admin
-          .from('invoices')
-          .select('id, total_amount, invoice_date, invoice_type')
-          .eq('tenant_id', tenantId)
-          .gte('invoice_date', startDate.toISOString())
-          .lte('invoice_date', endDate.toISOString()),
-        admin
-          .from('contracts')
-          .select('id, monthly_base, status')
-          .eq('tenant_id', tenantId)
-          .eq('status', 'active'),
-      ]);
-
-      if (invoicesResult.error) {
-        console.error('Error fetching expense data:', invoicesResult.error);
+      // Paged: PostgREST caps a response at 1000 rows without erroring, so a
+      // dealer past that line had revenue summed over a partial set - quietly,
+      // and always downward.
+      let invoices: any[];
+      let contracts: any[];
+      try {
+        [invoices, contracts] = await Promise.all([
+          fetchAllRows<any>(() =>
+            admin
+              .from('invoices')
+              .select('id, total_amount, invoice_date, invoice_type')
+              .eq('tenant_id', tenantId)
+              .gte('invoice_date', startDate.toISOString())
+              .lte('invoice_date', endDate.toISOString()),
+          ),
+          fetchAllRows<any>(() =>
+            admin
+              .from('contracts')
+              .select('id, monthly_base, status')
+              .eq('tenant_id', tenantId)
+              .eq('status', 'active'),
+          ),
+        ]);
+      } catch (err) {
+        console.error('Error fetching expense data:', err);
         return createCorsResponse({ error: 'Failed to fetch expense data' }, 500, req);
       }
-
-      const invoices = invoicesResult.data || [];
-      const contracts = contractsResult.data || [];
 
       // Calculate revenue for expense estimation
       const totalRevenue = invoices.reduce(
@@ -618,32 +630,40 @@ export default async function handler(req: Request) {
       // Get historical data for trend analysis
       const historicalStart = subtractMonths(new Date(), 12); // Last 12 months
 
-      const [invoicesResult, contractsResult, quotesResult] = await Promise.all([
-        admin
-          .from('invoices')
-          .select('id, total_amount, amount_paid, invoice_date, invoice_status')
-          .eq('tenant_id', tenantId)
-          .gte('invoice_date', historicalStart.toISOString())
-          .order('invoice_date', { ascending: true }),
-        admin
-          .from('contracts')
-          .select('id, monthly_base, status, start_date, end_date')
-          .eq('tenant_id', tenantId),
-        admin
-          .from('quotes')
-          .select('id, total_amount, status, created_at')
-          .eq('tenant_id', tenantId)
-          .gte('created_at', historicalStart.toISOString()),
-      ]);
-
-      if (invoicesResult.error) {
-        console.error('Error fetching forecast data:', invoicesResult.error);
+      // Paged - see the note on /metrics. A twelve-month invoice history is the
+      // largest read in this function and crosses the cap first; truncating it
+      // silently biases every projection built on the trend downward.
+      let invoices: any[];
+      let contracts: any[];
+      let quotes: any[];
+      try {
+        [invoices, contracts, quotes] = await Promise.all([
+          fetchAllRows<any>(() =>
+            admin
+              .from('invoices')
+              .select('id, total_amount, amount_paid, invoice_date, invoice_status')
+              .eq('tenant_id', tenantId)
+              .gte('invoice_date', historicalStart.toISOString())
+              .order('invoice_date', { ascending: true }),
+          ),
+          fetchAllRows<any>(() =>
+            admin
+              .from('contracts')
+              .select('id, monthly_base, status, start_date, end_date')
+              .eq('tenant_id', tenantId),
+          ),
+          fetchAllRows<any>(() =>
+            admin
+              .from('quotes')
+              .select('id, total_amount, status, created_at')
+              .eq('tenant_id', tenantId)
+              .gte('created_at', historicalStart.toISOString()),
+          ),
+        ]);
+      } catch (err) {
+        console.error('Error fetching forecast data:', err);
         return createCorsResponse({ error: 'Failed to fetch forecast data' }, 500, req);
       }
-
-      const invoices = invoicesResult.data || [];
-      const contracts = contractsResult.data || [];
-      const quotes = quotesResult.data || [];
 
       // Calculate historical monthly revenue
       const monthlyRevenue: Record<string, number> = {};
@@ -840,22 +860,25 @@ export default async function handler(req: Request) {
       // Generate report based on type
       switch (reportType) {
         case 'profit-loss': {
-          const [invoicesResult, contractsResult] = await Promise.all([
-            admin
-              .from('invoices')
-              .select('id, total_amount, amount_paid, invoice_date, invoice_type, invoice_status')
-              .eq('tenant_id', tenantId)
-              .gte('invoice_date', startDate.toISOString())
-              .lte('invoice_date', endDate.toISOString()),
-            admin
-              .from('contracts')
-              .select('id, monthly_base, status')
-              .eq('tenant_id', tenantId)
-              .eq('status', 'active'),
+          // Paged - see the note on /expenses. A P&L that stops counting at
+          // row 1000 is worse than no P&L.
+          const [invoices, contracts] = await Promise.all([
+            fetchAllRows<any>(() =>
+              admin
+                .from('invoices')
+                .select('id, total_amount, amount_paid, invoice_date, invoice_type, invoice_status')
+                .eq('tenant_id', tenantId)
+                .gte('invoice_date', startDate.toISOString())
+                .lte('invoice_date', endDate.toISOString()),
+            ),
+            fetchAllRows<any>(() =>
+              admin
+                .from('contracts')
+                .select('id, monthly_base, status')
+                .eq('tenant_id', tenantId)
+                .eq('status', 'active'),
+            ),
           ]);
-
-          const invoices = invoicesResult.data || [];
-          const contracts = contractsResult.data || [];
 
           const totalRevenue = invoices.reduce(
             (sum, inv) => sum + parseFloat(inv.total_amount || '0'),
@@ -1032,23 +1055,27 @@ export default async function handler(req: Request) {
         }
 
         case 'mrr-analysis': {
-          const [contractsResult, invoicesResult] = await Promise.all([
-            admin
-              .from('contracts')
-              .select(
-                'id, contract_number, monthly_base, status, start_date, end_date, customer_id',
-              )
-              .eq('tenant_id', tenantId),
-            admin
-              .from('invoices')
-              .select('id, total_amount, invoice_date, contract_id')
-              .eq('tenant_id', tenantId)
-              .gte('invoice_date', startDate.toISOString())
-              .lte('invoice_date', endDate.toISOString()),
+          // Paged - see the note on /expenses. This one reads EVERY contract
+          // the tenant has ever had, with no date bound, so it is the first to
+          // cross the cap.
+          const [contracts, invoices] = await Promise.all([
+            fetchAllRows<any>(() =>
+              admin
+                .from('contracts')
+                .select(
+                  'id, contract_number, monthly_base, status, start_date, end_date, customer_id',
+                )
+                .eq('tenant_id', tenantId),
+            ),
+            fetchAllRows<any>(() =>
+              admin
+                .from('invoices')
+                .select('id, total_amount, invoice_date, contract_id')
+                .eq('tenant_id', tenantId)
+                .gte('invoice_date', startDate.toISOString())
+                .lte('invoice_date', endDate.toISOString()),
+            ),
           ]);
-
-          const contracts = contractsResult.data || [];
-          const invoices = invoicesResult.data || [];
 
           const activeContracts = contracts.filter((c) => c.status === 'active');
           const currentMRR = activeContracts.reduce(
