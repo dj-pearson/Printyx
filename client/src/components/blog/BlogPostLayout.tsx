@@ -2,7 +2,6 @@ import { ReactNode } from 'react';
 import { ArrowLeft, Calendar, Clock, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { usePageSeo, BreadcrumbSchemaScript } from '@/lib/seoUtils';
 
 interface BlogPostLayoutProps {
   title: string;
@@ -12,12 +11,13 @@ interface BlogPostLayoutProps {
   readTime: string;
   category: string;
   children: ReactNode;
-  // SEO-specific props
+  /**
+   * The post's URL slug. Nothing in this component reads it - PUBLIC_ROUTES_SEO
+   * owns every SEO field for these routes - but the pages pass it and
+   * seo-blog-metadata.test.ts asserts each one has a matching route-table entry,
+   * so it is the handle that ties a page to its metadata.
+   */
   slug: string;
-  featuredImage?: string;
-  keywords?: string[];
-  publishedDate?: string; // ISO date string (e.g., "2025-01-10")
-  modifiedDate?: string; // ISO date string
 }
 
 const BlogPostLayout = ({
@@ -28,70 +28,28 @@ const BlogPostLayout = ({
   readTime,
   category,
   children,
-  slug,
-  featuredImage,
-  keywords,
-  publishedDate,
-  modifiedDate,
 }: BlogPostLayoutProps) => {
-  const baseUrl = 'https://printyx.com';
-  const canonicalUrl = `${baseUrl}/blog/${slug}`;
-
-  // Build Article schema for structured data
-  const articleSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: title,
-    description: description,
-    author: {
-      '@type': 'Organization',
-      name: author,
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'Printyx',
-      logo: {
-        '@type': 'ImageObject',
-        url: `${baseUrl}/logo.png`,
-      },
-    },
-    datePublished: publishedDate,
-    dateModified: modifiedDate || publishedDate,
-    mainEntityOfPage: {
-      '@type': 'WebPage',
-      '@id': canonicalUrl,
-    },
-    articleSection: category,
-    ...(featuredImage && {
-      image: {
-        '@type': 'ImageObject',
-        url: featuredImage.startsWith('http') ? featuredImage : `${baseUrl}${featuredImage}`,
-      },
-    }),
-    ...(keywords && { keywords: keywords.join(', ') }),
-  };
-
-  // Apply SEO meta tags
-  usePageSeo({
-    title: `${title} | Printyx Blog`,
-    description,
-    keywords,
-    ogImage: featuredImage,
-    ogType: 'article',
-    canonicalUrl,
-    schema: articleSchema,
-  });
-
-  // Breadcrumb data for structured navigation
-  const breadcrumbs = [
-    { name: 'Home', url: baseUrl },
-    { name: 'Blog', url: `${baseUrl}/blog` },
-    { name: title },
-  ];
+  /*
+   * SEO-009: this component used to run a SECOND, independent SEO system on
+   * every blog post - usePageSeo with its own Article schema, plus a
+   * BreadcrumbSchemaScript - while SEOProvider was already emitting BlogPosting
+   * and BreadcrumbList for the same route from the route table. Both wrote the
+   * meta tags too, and usePageSeo's effect ran last, so it won.
+   *
+   * That mattered because its `baseUrl` was 'https://printyx.com'. The site is
+   * printyx.net. Every blog post therefore shipped
+   * <link rel="canonical" href="https://printyx.com/blog/..."> and a matching
+   * og:url - a cross-domain canonical, which tells a search engine not to index
+   * this URL and to credit that one instead. Verified in Chromium before the
+   * fix: canonical and og:url both on the .com.
+   *
+   * The route table is the single owner now. It carries the real title,
+   * description, keywords, breadcrumbs and datePublished for all three posts,
+   * on the right domain. The props below stay because the page DISPLAYS them.
+   */
 
   return (
     <div className="min-h-screen bg-white">
-      <BreadcrumbSchemaScript breadcrumbs={breadcrumbs} />
       {/* Header */}
       <nav className="border-b border-gray-200 bg-white sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

@@ -4,6 +4,8 @@
  * in search engines and AI-powered search platforms
  */
 
+import { ORGANIZATION_DATA } from './seo/seoConfig';
+
 export interface ArticleSchema {
   '@context': string;
   '@type': 'Article' | 'BlogPosting' | 'TechArticle' | 'NewsArticle';
@@ -327,13 +329,17 @@ export function generateArticleSchema(params: {
     };
   }
 
-  // Publisher (Printyx)
+  // Publisher (Printyx). The logo comes from ORGANIZATION_DATA rather than a
+  // literal: this said 'https://printyx.net/logo.png', which is a 404 - the
+  // asset is at /logos/logo.png. SEO-002 corrected two other copies of that
+  // path and missed this one, because check:seo-assets only read index.html
+  // and seoConfig (SEO-011).
   schema.publisher = {
     '@type': 'Organization',
-    name: 'Printyx',
+    name: ORGANIZATION_DATA.name,
     logo: {
       '@type': 'ImageObject',
-      url: 'https://printyx.net/logo.png',
+      url: ORGANIZATION_DATA.logo,
     },
   };
 

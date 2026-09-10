@@ -1,0 +1,102 @@
+{
+  "loop": "SEO iterative improvement",
+  "branch": "claude/seo-iterative-loop-vc1ohz",
+  "totalIterations": 15,
+  "completed": [
+    {
+      "iteration": 1,
+      "element": "sitemap.xml",
+      "commit": "ad20be4",
+      "summary": "robots.txt advertised a sitemap that was never generated. Added scripts/generate-sitemap.mts (28 URLs from PUBLIC_ROUTES_SEO, noindex excluded, lastmod from the route table's commit date), npm run seo:sitemap / check:sitemap, CI gate, 8 tests. Also fixed /p/master-product-catalog-canon-imagerunner rendering the proposal viewer instead of the landing page - the /p/ marketing slug set now derives from the route table."
+    },
+    {
+      "iteration": 2,
+      "element": "static <head>: structured data, social card, favicon",
+      "summary": "The static head made four false claims. Removed the fabricated aggregateRating (4.9 from 150 - LEGAL-002 removed the same fabrication from the runtime provider and missed this copy, the one crawlers read). Generated the 1200x630 og-image.png that og:image and twitter:image had pointed at since launch without either file existing. Repointed the Organization JSON-LD logo from the 404 /logo.png to /logos/logo.png and corrected its declared 512x512 to the real 2000x600. Dropped the SearchAction offering a sitelinks box at /search, which is not a route, and the msapplication-config pointing at a browserconfig.xml that does not exist. Separately, favicon.svg used React's stopColor instead of SVG's stop-color, so both gradients fell back to black - verified in Chromium, rgba(0,0,0,255) before, rgba(67,100,237,255) after. New guard: npm run check:seo-assets, CI-wired, zero-tolerance."
+    },
+    {
+      "iteration": 3,
+      "element": "the SEO surface now agrees with the coming-soon gate",
+      "summary": "Rendered the built app in Chromium and found the public site is behind App.tsx's COMING_SOON holding page (default ON - VITE_COMING_SOON must be 'false' to open it). The holding page sets noindex through usePageSeo, at RUNTIME, while the static head hardcoded index,follow - so every non-JS crawler was told to index 24 marketing URLs that all render the same page. A vite transformIndexHtml plugin now rewrites the robots meta from the same variable the gate reads, verified in both states. getSitemapRoutes takes the same flag: the sitemap dropped from 28 URLs to the 5 that actually render themselves while closed (signup, eula, privacy, terms, accessibility), which also corrects iteration 1 - it had published 24 URLs that serve a noindex page. COMING_SOON_ROUTES is asserted against App.tsx's Switch so the two cannot drift. robots.txt deliberately keeps no Disallow: / - a blocked crawler never sees the noindex."
+    },
+    {
+      "iteration": 4,
+      "element": "duplicate and unbacked tags in the head",
+      "summary": "Every page shipped two twitter:title, two twitter:description and two twitter:image tags: index.html wrote them as property= (not the Twitter Cards spec) while SEOProvider's setMeta defaults to name=, so its meta[name=...] query missed the static tag and appended a second one carrying the homepage's copy. Switched the static tags to name=, dropped twitter:url (the card reads og:url). SEOProvider also re-injected Organization and WebSite on every Organization-schema route, entities the static head already carries with stable @ids - removed, along with the runtime WebSite's SearchAction pointing at the same dead /search. Dropped article:modified_time, which was new Date() per render: a freshness claim produced by the act of viewing the page. Removed ORGANIZATION_DATA.contactPoint.telephone ('+1-800-PRINTYX' is not dialable and appears nowhere on the site) and LocalBusiness's priceRange '$$'; LocalBusiness now emits nothing without an address. Verified by render: 5 twitter tags in one set (was 10 in two), 5 distinct JSON-LD entities (was 7 with Organization and WebSite twice). check:seo-assets now compares the name-vs-property attribute between index.html and every SEOProvider setMeta call."
+    },
+    {
+      "iteration": 5,
+      "element": "the /seo dashboard's endpoints",
+      "prd": "tasks/prd-seo-dashboard-endpoints.json",
+      "summary": "SEODashboard (2333 lines, routed at /seo) was written against a /api/seo/<noun>/<verb> URL scheme; server/routes-seo.ts registers /api/seo/<verb>/<noun>. Twelve of its endpoints POST to a path no router has, so they fail in dev AND production. The Express implementations are genuine - real Drizzle tables, PageSpeed Insights for Core Web Vitals, which throws without a key rather than inventing numbers - so the two halves were simply never connected. Repointed the four that differ by URL alone (mobile/analyze, performance/check, security/analyze, semantic/analyze): body keys and response shapes already matched. The other eight need body-key or response-shape work, or have no backend at all, and the whole set is missing from supabase/functions/seo, which serves production - all filed as SEO-004. Corrected the edge-coverage baseline note, which recorded these as prod-only gaps when they are dead in dev too. Edge-coverage ratchet 72 -> 68."
+    },
+    {
+      "iteration": 6,
+      "element": "SEO-004 second tranche: four endpoints rebound to their real columns",
+      "prd": "tasks/prd-seo-dashboard-endpoints.json",
+      "summary": "images/analyze, links/broken, redirects/check and structured-data/validate needed more than a URL rename. The page's ImageAnalysis, BrokenLink and RedirectChain interfaces named fields no endpoint has ever returned (src/alt/dimensions, url/sourcePages/recommendation, url/finalUrl/redirectCount) and all four onSuccess handlers read a wrapper key off a bare array, so repointing alone would have given a working request and a blank panel. Rebound every field to the real seo_* columns, and the redirect endpoint returns ONE row rather than a list. Separately found a fabrication in server/services/seo-service.ts: checkBrokenLinks fetches only the first 20 links but initialised statusCode to 200 and isBroken to false, so every link past the twentieth was persisted as healthy without ever being requested - a 200-link page reported 180 working on no evidence. Those are null now, the page filters to confirmed-broken and says how many went unchecked. SEO-004 down to 6 remaining. eslint on SEODashboard 13 -> 11."
+    },
+    {
+      "iteration": 7,
+      "element": "three root-admin buttons that reported success and did nothing",
+      "prd": "tasks/prd-seo-dashboard-endpoints.json",
+      "summary": "CORRECTS iteration 5: POST /api/seo/regenerate-{sitemap,robots,llms} were recorded as having no handler anywhere. They existed - registered with app.post inside registerSeoCoreRoutes, which a grep for router.post( misses, the same self-mounting blind spot check:shadowed-express documents. They were worse than missing: each returned '... regenerated successfully' and did nothing, as their own comments admitted, so three buttons on the routed root-admin SEO page showed a green toast for an action that never happened. Deleted endpoints and buttons rather than implementing them: the three GET handlers compose their response per request so there is no artifact to invalidate, and the files the public gets are static build output no runtime handler can rewrite. Also filed SEO-006 - the Express GET /sitemap.xml and /robots.txt disagree with the static build artifacts about what is published. SEO-004 down to 3. eslint 12->9 and 58->53 on the two files, edge-coverage 68 -> 65."
+    },
+    {
+      "iteration": 8,
+      "element": "SEO-006: two sitemaps and two robots.txt became one of each",
+      "summary": "registerSeoCoreRoutes runs before serveStatic, so Express's per-request /sitemap.xml and /robots.txt won wherever Express served the app, while Cloudflare Pages served the static files - two answers at one URL depending on host. The DB-derived sitemap was independently wrong: the boot seed puts /crm, /reports, /product-hub, /service-hub and /product-catalog into seo_pages, so it published five login-walled routes, one of which (/reports) the robots.txt beside it disallowed; it knew nothing about COMING_SOON; and it stamped lastmod with the clock. Express now serves the static artifacts from disk, NODE_ENV deciding whether dist or client/public wins so a stale dist cannot serve a weeks-old robots.txt in dev. Merged the Express robots.txt's AI-crawler directives into the static file first - 12 search/citation crawlers allowed, 5 training-only crawlers blocked - so nothing was lost. Also fixed my own tests, which read robots.txt flat and so counted 'Disallow: /' under CCBot as a site-wide block; they parse user-agent groups now."
+    },
+    {
+      "iteration": 9,
+      "element": "llms.txt, and the prices published to AI crawlers",
+      "summary": "llms.txt existed only as an Express handler, so printyx.net/llms.txt 404d on Cloudflare Pages - the SEO-001 defect again, and iteration 8's robots.txt points at it with LLMS:. It is a build artifact now (scripts/generate-llms-txt.mts), served from disk by Express like sitemap.xml and robots.txt. What it SAID mattered more: an AI crawler repeats this file verbatim, and it advertised Starter at $49/user/month and Professional at $79/user/month with Enterprise custom-priced, against real Stripe products at a flat $79, $99 and $149 with user caps - wrong amount, wrong unit, wrong that Enterprise has no list price. index.html's JSON-LD offer had the right number with the wrong unit, 'per user per month', which is the one a rich result would have shown. shared/pricing-plans.ts is now the single source: setup-stripe-products.ts builds the Stripe products from it and the generator publishes it. Also removed 'reduce downtime by up to 40%', '2-3 year technical advantage', '30+ years of combined experience' and 'no credit card required' - none of them measured - and the fifteen resource links that all serve the holding page; while the site is closed llms.txt says so. check:seo-assets now fails if a published price or unit disagrees with the plan module, proven by mutating both."
+    },
+    {
+      "iteration": 10,
+      "element": "SEO-008: endpoints that stored invented scores",
+      "prd": "tasks/prd-seo-dashboard-endpoints.json (now closed)",
+      "summary": "Going after SEO-004's last three found something bigger: five functions in routes-seo.ts were TODO stubs returning made-up numbers that their handlers STORED and served - analyzePage (title 'Page Title', readingLevel 8.5, uniqueContentPercentage 90), optimizeContent (readabilityScore 75, seoScore 80), analyzeSemanticKeywords (intentConfidence 80, always 'informational'), detectDuplicateContent (similarityScore 0, asserting two pages are not duplicates without comparing them) and analyzeCompetitor (domain authority and backlinks as 0). One of them was LIVE because iteration 5 of this loop repointed the semantic button at the correct URL and connected it to the fabricator. All five deleted, all five endpoints 501 with the missing integration named, three panels gated as Not implemented. links/analyze was wired for real instead: check/broken-links already returns every link with linkType and isNoFollow, so no new endpoint was needed. The real analysers in seo-service.ts are untouched - they fetch the page and measure it, and PageSpeed refuses without a key rather than guessing. tsc 288 -> 284, edge-coverage 65 -> 63, both ratchets tightened."
+    },
+    {
+      "iteration": 11,
+      "element": "blog post metadata: cross-domain canonical and a clock-stamped publish date",
+      "prd": "tasks/prd-public-blog-disconnect.json",
+      "summary": "Two independent SEO systems ran on every blog post. SEOProvider emitted BlogPosting + BreadcrumbList from the route table; BlogPostLayout also ran usePageSeo with its own Article schema and a second BreadcrumbSchemaScript, and both wrote the meta tags. usePageSeo ran last and won - and its baseUrl was 'https://printyx.com' while the site is printyx.net, so every post shipped a cross-domain rel=canonical and og:url, asking search engines not to index the page they were looking at. Verified in Chromium both ways. Removed the duplicate system; the route table is the single owner. Separately, generateArticleSchema stamped datePublished and dateModified with new Date(), so every article claimed it was published at the instant it was viewed - the field Google prints beside a result. The three real dates now live in the route table and dateModified falls back to datePublished rather than to the clock. Render went from four article-ish JSON-LD blocks to two. Filed SEO-010: the public blog is entirely static while the blog platform publishes to blog_posts, which nothing public reads."
+    },
+    {
+      "iteration": 12,
+      "element": "one source for the site's own identity",
+      "summary": "SEO-009's root cause was a component hardcoding a hostname, so I swept for the rest of that class. Four dead same-origin asset URLs turned up that check:seo-assets could not see, because it only read index.html and seoConfig: the homepage's og:image pointed at og-image-homepage.jpg, a file that has never existed, on the most-shared URL of the site; the homepage's Organization logoUrl and schemaMarkup.ts's publisher logo both pointed at /logo.png, a third and fourth copy of the dead path SEO-002 corrected twice; and a BlogSettings placeholder taught an admin that same dead path. The homepage also advertised 'Contact for pricing' for a product with a published price list. All derive from SITE_URL, DEFAULT_OG_IMAGE, ORGANIZATION_DATA and ENTRY_MONTHLY_PRICE_USD now, verified in a render. The crawler's User-Agent said +https://printyx.com/seo - wrong domain, nonexistent path - which is what other sites see in their logs. check:seo-assets walks all of client/src now; its first version silently matched nothing because a naive line-comment strip ate every line containing https://, and only a mutation test caught that."
+    },
+    {
+      "iteration": 13,
+      "element": "index posture: an unknown route is not public",
+      "summary": "Two fixes. ConfigErrorScreen is rendered by main.tsx INSTEAD of <App/>, so SEOProvider never mounts and nothing writes a robots tag - a build shipped without VITE_SUPABASE_ANON_KEY would have served every URL as that error screen, presented as the Printyx homepage and marked index,follow. Cloudflare Pages returns 200 for every path so there is no status code to signal with; it now sets noindex,nofollow and a truthful title itself, verified by building without the key. Second and larger: getSEOConfig fell through to null for any path outside a list of 22 noindex PREFIXES, and SEOProvider turns null into an indexable default - so 189 of the app's ~250 authenticated routes told crawlers to index them, and robots.txt only disallows about 28 prefixes. An allowlist of what to hide always lags the routes people add, so the default is inverted: the public surface is enumerated in PUBLIC_ROUTES_SEO and everything else is noindex. That first caught five published legal pages (cookies, do-not-sell, data-sources, subprocessors, dpa) which were routed and reachable but absent from the route table - they are enumerated now and the sitemap went from 5 URLs to 10. Split findSEOConfig out for callers that need 'no metadata' to stay null: getSEOConfig always resolving would have titled every internal link 'Printyx'."
+    },
+    {
+      "iteration": 14,
+      "element": "a third SEO system that titled three landing pages 'Printyx'",
+      "prd": "tasks/prd-seo-prerendering.json",
+      "summary": "client/src/lib/useSeo.tsx was a third independent SEO writer, live on exactly the three /p/ marketing landing pages - the highest-priority programmatic pages in the route table at 0.9. It fetched /meta.json and /schema.json with a raw relative fetch; in production the frontend is Cloudflare Pages and those routes are Express, so Pages answered with the SPA shell, .json() threw, the catch produced {}, and the hook ran document.title = meta?.title || 'Printyx'. All three shipped <title>Printyx</title> and og:title 'Printyx' - the bare word - overwriting the title SEOProvider had already set, plus an empty ld+json tag. The description survived only because setMeta returns early on empty content. Verified in Chromium against a server mimicking Pages' catch-all, before and after. Deleted the hook and its three call sites; SEOProvider covers all three routes. Also removed the THIRD copy of the dead /search SearchAction, in schema.json. Filed SEO-015: the static head describes the homepage on every URL and per-route metadata only exists after JS runs, which is masked today by the coming-soon gate and stops being masked the day the site opens."
+    },
+    {
+      "iteration": 15,
+      "element": "the last duplicate writer, and the loop's findings into repo memory",
+      "summary": "SmartBreadcrumb injected its own BreadcrumbList beside SEOProvider's, so any page with both shipped two entities for one trail - the third and last duplicate writer, after BlogPostLayout (SEO-009) and useSeo (SEO-014). Removed; SEOProvider is the single owner of structured data everywhere now. Then wrote the loop's findings into CLAUDE.md as an 'SEO surface' section: the coming-soon gate and what it makes untrue, the three build artifacts and why a per-request rival must not come back, one-writer-reads-the-route-table, dates and prices as claims, unknown-route-is-not-public, url-fix-is-not-feature-fix, and the guards - including that the asset walk passed while matching nothing until a mutation test caught its comment-stripper eating every https:// line."
+    }
+  ],
+  "candidatesForLaterIterations": [
+    "The 'Application not configured' boot-failure screen renders a full head; under a missing VITE_SUPABASE_* it would be the indexable page if the site were open",
+    "Blog posts in seoConfig are hardcoded (3); dynamic blog posts from blog_posts never reach the sitemap",
+    "Canonical tags, hreflang, and trailing-slash consistency",
+    "structured data validation for the FAQPage / HowTo / SoftwareApplication schemas SEOProvider emits",
+    "The product has no typeface at all - no font-family anywhere in index.css or tailwind.config.ts, so every surface renders in the Tailwind system default. The OG card vendors Manrope; the app does not.",
+    "sameAs in the Organization JSON-LD lists linkedin/twitter/youtube profiles nobody verified; a sameAs pointing at a 404 weakens entity resolution rather than helping it",
+    "Contact emails disagree: sales@printyx.com vs support@printyx.net in the same JSON-LD block",
+    "PRD-sized: prerendering/SSR for the public routes once the site opens - all title/description/canonical/JSON-LD is injected client-side today",
+    "No guard checks a frontend /api URL against the EXPRESS router table - check:edge-coverage only does the edge half, which is how 12 URLs stayed dead in both environments"
+  ],
+  "status": "complete",
+  "summary": "15 iterations. 16 numbered fixes (SEO-001..016), two PRDs left open (prd-public-blog-disconnect, prd-seo-prerendering), one closed (prd-seo-dashboard-endpoints). tsc 288 -> 284, edge-coverage 72 -> 63, nav baseline 8 -> 6, sitemap 0 -> 10 URLs, 5066 unit tests passing."
+}

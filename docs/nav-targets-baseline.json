@@ -5,9 +5,7 @@
     "client/src/components/layout/smart-breadcrumb.tsx:/equipment",
     "client/src/components/layout/smart-breadcrumb.tsx:/warehouse",
     "client/src/lib/auth-utils.ts:/auth/",
-    "client/src/lib/seo/seoConfig.ts:/ai-",
     "client/src/lib/seo/seoConfig.ts:/knowledge-base/article/",
-    "client/src/lib/seo/seoConfig.ts:/proposal-",
     "client/src/lib/validations.ts:/auth/"
   ]
 }

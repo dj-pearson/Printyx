@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useLocation, Link } from 'wouter';
 import {
   Breadcrumb,
@@ -8,7 +8,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { generateBreadcrumbSchema } from '@/lib/schemaMarkup';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -212,39 +211,21 @@ export function SmartBreadcrumb({ customSegments, quickActions }: SmartBreadcrum
   }, [location, quickActions]);
 
   // Inject breadcrumb schema markup for SEO
-  useEffect(() => {
-    if (segments.length > 1) {
-      // Generate full URLs for schema
-      const baseUrl = window.location.origin;
-      const breadcrumbsWithUrls = segments.map((segment) => ({
-        name: segment.label,
-        url: segment.href ? `${baseUrl}${segment.href}` : undefined,
-      }));
-
-      const schema = generateBreadcrumbSchema(breadcrumbsWithUrls);
-
-      // Inject schema into page
-      const scriptId = 'breadcrumb-schema';
-      let script = document.getElementById(scriptId) as HTMLScriptElement;
-
-      if (!script) {
-        script = document.createElement('script');
-        script.id = scriptId;
-        script.type = 'application/ld+json';
-        document.head.appendChild(script);
-      }
-
-      script.textContent = JSON.stringify(schema);
-    }
-
-    // Cleanup on unmount
-    return () => {
-      const script = document.getElementById('breadcrumb-schema');
-      if (script) {
-        script.remove();
-      }
-    };
-  }, [segments]);
+  /*
+   * SEO-016: this used to inject its own BreadcrumbList JSON-LD under the id
+   * 'breadcrumb-schema', while SEOProvider was already emitting one for the
+   * same page from the route table's `breadcrumbs`. Every page that had both
+   * shipped two BreadcrumbList entities describing one trail, which a consumer
+   * has to reconcile rather than read.
+   *
+   * SEOProvider is the single owner, consistent with SEO-009 (blog posts) and
+   * SEO-014 (the /p/ landing pages): one writer for structured data, and it
+   * reads the route table. This component renders the visible breadcrumb, which
+   * is the job its name describes. Note the pages it appears on are all inside
+   * MainLayout and therefore noindex since SEO-013, so the duplicate had no
+   * consumer either way - but two entities for one trail is wrong regardless of
+   * who is reading.
+   */
 
   // Don't show breadcrumbs on home/dashboard
   if (location === '/' || location === '/dashboard') {

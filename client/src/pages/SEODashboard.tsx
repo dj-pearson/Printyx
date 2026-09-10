@@ -162,42 +162,80 @@ interface CrawlResult {
   crawledAt: string;
 }
 
+/**
+ * SEO-004: these three mirror the columns seo_image_analysis,
+ * seo_link_analysis and seo_redirect_analysis actually have. They used to
+ * describe a shape no endpoint has ever returned (src/alt/dimensions,
+ * url/sourcePages/recommendation, url/finalUrl/redirectCount), so even once the
+ * URLs were fixed the tables would have rendered blank.
+ */
 interface ImageAnalysis {
-  src: string;
-  alt?: string;
+  imageUrl: string;
+  altText?: string | null;
   hasAltText: boolean;
   isOptimized: boolean;
-  fileSize?: number;
-  dimensions?: { width: number; height: number };
+  fileSize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  format?: string | null;
+  potentialSavings?: number | null;
 }
 
+/**
+ * A seo_link_analysis row. There is no separate link-analysis endpoint and
+ * there does not need to be: POST /api/seo/check/broken-links returns EVERY
+ * link it found on the page, with linkType and isNoFollow already set, and
+ * stores them. The Broken Links panel filters that to isBroken; this panel
+ * shows the whole profile.
+ */
 interface LinkAnalysis {
-  url: string;
-  text: string;
-  type: 'internal' | 'external';
-  isNofollow: boolean;
-  statusCode?: number;
+  sourceUrl: string;
+  targetUrl: string;
+  anchorText?: string | null;
+  linkType?: string | null;
+  isNoFollow?: boolean | null;
+  isBroken: boolean | null;
+  statusCode: number | null;
+}
+
+/**
+ * Mirrors CHECKED_LINK_LIMIT in server/services/seo-service.ts. The client
+ * cannot import from server/, and the number is user-visible: it is the
+ * difference between "no broken links" and "no broken links among the ones we
+ * looked at".
+ */
+const CHECKED_LINK_LIMIT = 20;
+
+interface StructuredDataResult {
+  schemaType: string;
+  schemaFormat?: string | null;
+  isValid: boolean | null;
+  validationErrors?: Array<{ property: string; message: string }> | null;
+  validationWarnings?: string[] | null;
+  richResultsEligible?: boolean | null;
+  richResultTypes?: string[] | null;
 }
 
 interface BrokenLink {
-  url: string;
-  statusCode: number;
-  sourcePages: string[];
-  recommendation: string;
+  sourceUrl: string;
+  targetUrl: string;
+  anchorText?: string | null;
+  linkType?: string | null;
+  /** null when the link was past the fetch limit and never requested. */
+  isBroken: boolean | null;
+  statusCode: number | null;
+  errorMessage?: string | null;
 }
 
 interface RedirectChain {
-  url: string;
-  redirects: Array<{ from: string; to: string; statusCode: number }>;
-  finalUrl: string;
-  redirectCount: number;
-}
-
-interface DuplicateContent {
-  url1: string;
-  url2: string;
-  similarityScore: number;
-  duplicatedSections: string[];
+  sourceUrl: string;
+  destinationUrl: string;
+  /** One entry per hop, in order. */
+  redirectChain?: Array<{ url: string; statusCode: number }> | null;
+  chainLength?: number | null;
+  redirectType?: string | null;
+  hasRedirectLoop?: boolean | null;
+  issues?: string[] | null;
 }
 
 interface SecurityAnalysis {
@@ -236,14 +274,15 @@ export default function SEODashboard() {
   const [imageAnalysisResults, setImageAnalysisResults] = useState<ImageAnalysis[]>([]);
   const [linkAnalysisResults, setLinkAnalysisResults] = useState<LinkAnalysis[]>([]);
   const [brokenLinksResults, setBrokenLinksResults] = useState<BrokenLink[]>([]);
+  /** Links the server found but never fetched, so their status is unknown. */
+  const [uncheckedLinkCount, setUncheckedLinkCount] = useState(0);
   const [redirectResults, setRedirectResults] = useState<RedirectChain[]>([]);
-  const [duplicateContentResults, setDuplicateContentResults] = useState<DuplicateContent[]>([]);
   const [securityResults, setSecurityResults] = useState<SecurityAnalysis | null>(null);
   const [mobileResults, setMobileResults] = useState<MobileAnalysis | null>(null);
   const [performanceResults, setPerformanceResults] = useState<any>(null);
-  const [structuredDataResults, setStructuredDataResults] = useState<any>(null);
-  const [contentResults, setContentResults] = useState<any>(null);
-  const [semanticResults, setSemanticResults] = useState<any>(null);
+  const [structuredDataResults, setStructuredDataResults] = useState<StructuredDataResult[] | null>(
+    null,
+  );
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -405,13 +444,16 @@ export default function SEODashboard() {
   // Image analysis mutation
   const analyzeImagesMutation = useMutation({
     mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/images/analyze', 'POST', { url });
+      return apiRequest('/api/seo/analyze/images', 'POST', { pageUrl: url });
     },
-    onSuccess: (data) => {
-      setImageAnalysisResults(data.images || []);
+    onSuccess: (data: ImageAnalysis[]) => {
+      // The endpoint returns the stored rows as a bare array. The page used to
+      // read `data.images`, which is undefined on an array.
+      const images = Array.isArray(data) ? data : [];
+      setImageAnalysisResults(images);
       toast({
         title: 'Analysis complete',
-        description: `Found ${data.images?.length || 0} images`,
+        description: `Found ${images.length} images`,
       });
     },
     onError: (error: Error) => {
@@ -426,11 +468,13 @@ export default function SEODashboard() {
   // Links analysis mutation
   const analyzeLinksMutation = useMutation({
     mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/links/analyze', 'POST', { url });
+      return apiRequest('/api/seo/check/broken-links', 'POST', { sourceUrl: url });
     },
-    onSuccess: (data) => {
-      setLinkAnalysisResults(data.links || []);
-      toast({ title: 'Analysis complete', description: `Found ${data.links?.length || 0} links` });
+    onSuccess: (data: LinkAnalysis[]) => {
+      // Bare array of stored rows; `data.links` was undefined on it.
+      const links = Array.isArray(data) ? data : [];
+      setLinkAnalysisResults(links);
+      toast({ title: 'Analysis complete', description: `Found ${links.length} links` });
     },
     onError: (error: Error) => {
       toast({
@@ -444,13 +488,22 @@ export default function SEODashboard() {
   // Broken links check mutation
   const checkBrokenLinksMutation = useMutation({
     mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/links/broken', 'POST', { url });
+      return apiRequest('/api/seo/check/broken-links', 'POST', { sourceUrl: url });
     },
-    onSuccess: (data) => {
-      setBrokenLinksResults(data.brokenLinks || []);
+    onSuccess: (data: BrokenLink[]) => {
+      // The endpoint returns EVERY link it found, with isBroken null for the
+      // ones past the fetch limit. Only the confirmed-broken ones belong under
+      // a heading that says "broken links".
+      const all = Array.isArray(data) ? data : [];
+      const broken = all.filter((link) => link.isBroken === true);
+      const unchecked = all.filter((link) => link.isBroken === null).length;
+      setBrokenLinksResults(broken);
+      setUncheckedLinkCount(unchecked);
       toast({
         title: 'Check complete',
-        description: `Found ${data.brokenLinks?.length || 0} broken links`,
+        description:
+          `${broken.length} broken of ${all.length} links` +
+          (unchecked ? `, ${unchecked} not checked` : ''),
       });
     },
     onError: (error: Error) => {
@@ -465,13 +518,17 @@ export default function SEODashboard() {
   // Redirect check mutation
   const checkRedirectsMutation = useMutation({
     mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/redirects/check', 'POST', { url });
+      return apiRequest('/api/seo/detect/redirect-chains', 'POST', { sourceUrl: url });
     },
-    onSuccess: (data) => {
-      setRedirectResults(data.chains || []);
+    onSuccess: (data: RedirectChain | null) => {
+      // One row per checked URL, not a list. The page read `data.chains`.
+      const chains = data ? [data] : [];
+      setRedirectResults(chains);
       toast({
         title: 'Check complete',
-        description: `Found ${data.chains?.length || 0} redirect chains`,
+        description: chains.length
+          ? `${data?.chainLength ?? 0} redirect(s) to ${data?.destinationUrl ?? 'the final URL'}`
+          : 'No redirects found',
       });
     },
     onError: (error: Error) => {
@@ -483,31 +540,18 @@ export default function SEODashboard() {
     },
   });
 
-  // Duplicate content scan mutation
-  const scanDuplicatesMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('/api/seo/content/duplicates', 'POST');
-    },
-    onSuccess: (data) => {
-      setDuplicateContentResults(data.duplicates || []);
-      toast({
-        title: 'Scan complete',
-        description: `Found ${data.duplicates?.length || 0} duplicate pairs`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Duplicate-content scan failed',
-        description: error.message || 'Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
-
+  // SEO-004: these four call the URLs server/routes-seo.ts actually registers.
+  // The page was written against a /api/seo/<noun>/<verb> scheme and the server
+  // against /api/seo/<verb>/<noun>, so every one of these buttons POSTed to a
+  // path no router had and failed in dev and production alike. Eight more are
+  // still wrong and need more than a rename - body keys or response shapes
+  // differ too - and none of the twelve exists in supabase/functions/seo, which
+  // is what serves production. tasks/prd-seo-dashboard-endpoints.json has the
+  // full table.
   // Security analysis mutation
   const analyzeSecurityMutation = useMutation({
     mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/security/analyze', 'POST', { url });
+      return apiRequest('/api/seo/check/security', 'POST', { url });
     },
     onSuccess: (data) => {
       setSecurityResults(data);
@@ -528,7 +572,7 @@ export default function SEODashboard() {
   // Mobile analysis mutation
   const analyzeMobileMutation = useMutation({
     mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/mobile/analyze', 'POST', { url });
+      return apiRequest('/api/seo/check/mobile', 'POST', { url });
     },
     onSuccess: (data) => {
       setMobileResults(data);
@@ -546,7 +590,7 @@ export default function SEODashboard() {
   // Performance check mutation
   const checkPerformanceMutation = useMutation({
     mutationFn: async (params: { url: string; device: string }) => {
-      return apiRequest('/api/seo/performance/check', 'POST', {
+      return apiRequest('/api/seo/core-web-vitals', 'POST', {
         url: params.url,
         device: params.device,
       });
@@ -570,57 +614,21 @@ export default function SEODashboard() {
   // Structured data validation mutation
   const validateStructuredDataMutation = useMutation({
     mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/structured-data/validate', 'POST', { url });
+      return apiRequest('/api/seo/validate/structured-data', 'POST', { url });
     },
-    onSuccess: (data) => {
-      setStructuredDataResults(data);
+    onSuccess: (data: StructuredDataResult[]) => {
+      // A bare array of stored seo_structured_data rows. The page read
+      // `data.schemas`, so the results panel never rendered.
+      const schemas = Array.isArray(data) ? data : [];
+      setStructuredDataResults(schemas);
       toast({
         title: 'Validation complete',
-        description: `Found ${data.schemas?.length || 0} schemas`,
+        description: `Found ${schemas.length} schemas`,
       });
     },
     onError: (error: Error) => {
       toast({
         title: 'Structured-data validation failed',
-        description: error.message || 'Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  // Content optimization mutation
-  const optimizeContentMutation = useMutation({
-    mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/content/optimize', 'POST', { url });
-    },
-    onSuccess: (data) => {
-      setContentResults(data);
-      toast({ title: 'Analysis complete', description: 'Content optimization suggestions ready' });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Content optimization failed',
-        description: error.message || 'Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  // Semantic analysis mutation
-  const analyzeSemanticMutation = useMutation({
-    mutationFn: async (keyword: string) => {
-      return apiRequest('/api/seo/semantic/analyze', 'POST', { keyword });
-    },
-    onSuccess: (data) => {
-      setSemanticResults(data);
-      toast({
-        title: 'Analysis complete',
-        description: `Found ${data.relatedKeywords?.length || 0} related keywords`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Semantic analysis failed',
         description: error.message || 'Please try again.',
         variant: 'destructive',
       });
@@ -1451,41 +1459,48 @@ export default function SEODashboard() {
                         {validateStructuredDataMutation.isPending ? 'Validating...' : 'Validate'}
                       </Button>
                     </div>
-                    {structuredDataResults &&
-                      structuredDataResults.schemas &&
-                      structuredDataResults.schemas.length > 0 && (
-                        <div className="space-y-2">
-                          <h4 className="font-medium">
-                            Found {structuredDataResults.schemas.length} schemas
-                          </h4>
-                          <ScrollArea className="h-96">
-                            {structuredDataResults.schemas.map((schema: any, idx: number) => (
-                              <Card key={idx} className="mb-2">
-                                <CardContent className="p-3">
-                                  <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                      <Badge>{schema['@type'] || 'Schema'}</Badge>
-                                      <Badge variant={schema.valid ? 'default' : 'destructive'}>
-                                        {schema.valid ? 'Valid' : 'Invalid'}
-                                      </Badge>
-                                    </div>
-                                    {schema.errors && schema.errors.length > 0 && (
-                                      <div className="space-y-1">
-                                        {schema.errors.map((err: string, i: number) => (
-                                          <p key={i} className="text-xs text-red-600">
-                                            • {err}
-                                          </p>
-                                        ))}
-                                      </div>
-                                    )}
+                    {structuredDataResults && structuredDataResults.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="font-medium">
+                          Found {structuredDataResults.length} schemas
+                        </h4>
+                        <ScrollArea className="h-96">
+                          {structuredDataResults.map((schema, idx) => (
+                            <Card key={idx} className="mb-2">
+                              <CardContent className="p-3">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <Badge>{schema.schemaType}</Badge>
+                                    <Badge variant={schema.isValid ? 'default' : 'destructive'}>
+                                      {schema.isValid ? 'Valid' : 'Invalid'}
+                                    </Badge>
                                   </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </ScrollArea>
-                        </div>
-                      )}
-                    {(!structuredDataResults || !structuredDataResults.schemas) &&
+                                  {schema.richResultsEligible && (
+                                    <p className="text-xs text-green-600">
+                                      Eligible for rich results
+                                      {schema.richResultTypes?.length
+                                        ? `: ${schema.richResultTypes.join(', ')}`
+                                        : ''}
+                                    </p>
+                                  )}
+                                  {schema.validationErrors?.map((err, i) => (
+                                    <p key={i} className="text-xs text-red-600">
+                                      &bull; {err.property}: {err.message}
+                                    </p>
+                                  ))}
+                                  {schema.validationWarnings?.map((warning, i) => (
+                                    <p key={i} className="text-xs text-amber-600">
+                                      &bull; {warning}
+                                    </p>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </ScrollArea>
+                      </div>
+                    )}
+                    {(!structuredDataResults || structuredDataResults.length === 0) &&
                       !validateStructuredDataMutation.isPending && (
                         <div className="rounded-md bg-muted p-4">
                           <p className="text-sm text-muted-foreground">
@@ -1717,17 +1732,30 @@ export default function SEODashboard() {
                                 <div className="flex items-start gap-2">
                                   <Image className="h-4 w-4 mt-1" />
                                   <div className="flex-1">
-                                    <p className="text-sm font-medium truncate">{img.src}</p>
-                                    <div className="flex gap-2 mt-1">
+                                    <p className="text-sm font-medium truncate">{img.imageUrl}</p>
+                                    <div className="flex flex-wrap items-center gap-2 mt-1">
                                       <Badge variant={img.hasAltText ? 'default' : 'destructive'}>
                                         {img.hasAltText ? 'Has Alt' : 'Missing Alt'}
                                       </Badge>
                                       <Badge variant={img.isOptimized ? 'default' : 'secondary'}>
                                         {img.isOptimized ? 'Optimized' : 'Needs Optimization'}
                                       </Badge>
-                                      {img.fileSize && (
+                                      {img.format && (
+                                        <Badge variant="outline">{img.format.toUpperCase()}</Badge>
+                                      )}
+                                      {img.width && img.height && (
+                                        <span className="text-xs text-muted-foreground">
+                                          {img.width}&times;{img.height}
+                                        </span>
+                                      )}
+                                      {img.fileSize != null && (
                                         <span className="text-xs text-muted-foreground">
                                           {(img.fileSize / 1024).toFixed(1)}KB
+                                        </span>
+                                      )}
+                                      {img.potentialSavings != null && img.potentialSavings > 0 && (
+                                        <span className="text-xs text-green-600">
+                                          save {(img.potentialSavings / 1024).toFixed(1)}KB
                                         </span>
                                       )}
                                     </div>
@@ -1782,22 +1810,26 @@ export default function SEODashboard() {
                                 <div className="flex items-start gap-2">
                                   <LinkIcon className="h-4 w-4 mt-1" />
                                   <div className="flex-1">
-                                    <p className="text-sm font-medium truncate">{link.url}</p>
-                                    <p className="text-xs text-muted-foreground">{link.text}</p>
-                                    <div className="flex gap-2 mt-1">
+                                    <p className="text-sm font-medium truncate">{link.targetUrl}</p>
+                                    {link.anchorText && (
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        {link.anchorText}
+                                      </p>
+                                    )}
+                                    <div className="flex flex-wrap gap-2 mt-1">
                                       <Badge
-                                        variant={link.type === 'internal' ? 'default' : 'secondary'}
+                                        variant={
+                                          link.linkType === 'internal' ? 'default' : 'secondary'
+                                        }
                                       >
-                                        {link.type}
+                                        {link.linkType ?? 'unknown'}
                                       </Badge>
-                                      {link.isNofollow && <Badge variant="outline">nofollow</Badge>}
-                                      {link.statusCode && (
-                                        <Badge
-                                          variant={
-                                            link.statusCode === 200 ? 'default' : 'destructive'
-                                          }
-                                        >
-                                          {link.statusCode}
+                                      {link.isNoFollow && <Badge variant="outline">nofollow</Badge>}
+                                      {link.statusCode === null ? (
+                                        <Badge variant="outline">not checked</Badge>
+                                      ) : (
+                                        <Badge variant={link.isBroken ? 'destructive' : 'default'}>
+                                          {link.statusCode === 0 ? 'no response' : link.statusCode}
                                         </Badge>
                                       )}
                                     </div>
@@ -1844,9 +1876,18 @@ export default function SEODashboard() {
                     </div>
                     {brokenLinksResults.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="font-medium text-red-600">
-                          Found {brokenLinksResults.length} broken links
-                        </h4>
+                        <div>
+                          <h4 className="font-medium text-red-600">
+                            Found {brokenLinksResults.length} broken links
+                          </h4>
+                          {uncheckedLinkCount > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              {uncheckedLinkCount} further link(s) were found but not requested -
+                              the checker fetches the first {CHECKED_LINK_LIMIT} per page. Their
+                              status is unknown, not healthy.
+                            </p>
+                          )}
+                        </div>
                         <ScrollArea className="h-96">
                           {brokenLinksResults.map((link, idx) => (
                             <Card key={idx} className="mb-2 border-red-200">
@@ -1854,14 +1895,19 @@ export default function SEODashboard() {
                                 <div className="space-y-2">
                                   <div className="flex items-start justify-between">
                                     <p className="text-sm font-medium truncate flex-1">
-                                      {link.url}
+                                      {link.targetUrl}
                                     </p>
-                                    <Badge variant="destructive">{link.statusCode}</Badge>
+                                    <Badge variant="destructive">
+                                      {link.statusCode === 0 ? 'no response' : link.statusCode}
+                                    </Badge>
                                   </div>
-                                  <p className="text-xs text-muted-foreground">
-                                    Found on {link.sourcePages.length} page(s)
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    Found on {link.sourceUrl}
+                                    {link.anchorText ? ` - "${link.anchorText}"` : ''}
                                   </p>
-                                  <p className="text-sm text-green-600">{link.recommendation}</p>
+                                  {link.errorMessage && (
+                                    <p className="text-xs text-red-600">{link.errorMessage}</p>
+                                  )}
                                 </div>
                               </CardContent>
                             </Card>
@@ -1872,8 +1918,9 @@ export default function SEODashboard() {
                     {brokenLinksResults.length === 0 && !checkBrokenLinksMutation.isPending && (
                       <div className="rounded-md bg-muted p-4">
                         <p className="text-sm text-muted-foreground">
-                          Check all links on a page for broken or dead links. We'll identify 404s,
-                          500s, and provide recommendations for fixes.
+                          Check a page's links for 404s, 500s and dead hosts. The first{' '}
+                          {CHECKED_LINK_LIMIT} links on the page are requested; anything beyond that
+                          is recorded as unchecked rather than assumed healthy.
                         </p>
                       </div>
                     )}
@@ -1913,23 +1960,26 @@ export default function SEODashboard() {
                               <CardContent className="p-3">
                                 <div className="space-y-2">
                                   <div className="flex items-start justify-between">
-                                    <p className="text-sm font-medium">{chain.url}</p>
-                                    <Badge>{chain.redirectCount} redirects</Badge>
+                                    <p className="text-sm font-medium">{chain.sourceUrl}</p>
+                                    <Badge>{chain.chainLength ?? 0} redirects</Badge>
                                   </div>
+                                  {chain.hasRedirectLoop && (
+                                    <Badge variant="destructive">Redirect loop</Badge>
+                                  )}
                                   <div className="space-y-1">
-                                    {chain.redirects.map((r, i) => (
+                                    {(chain.redirectChain ?? []).map((hop, i) => (
                                       <div key={i} className="text-xs">
-                                        <span className="text-muted-foreground">{r.from}</span>
-                                        <span className="mx-2">→</span>
                                         <Badge variant="outline" className="text-xs">
-                                          {r.statusCode}
+                                          {hop.statusCode}
                                         </Badge>
                                         <span className="mx-2">→</span>
-                                        <span>{r.to}</span>
+                                        <span className="text-muted-foreground">{hop.url}</span>
                                       </div>
                                     ))}
                                   </div>
-                                  <p className="text-xs font-medium">Final: {chain.finalUrl}</p>
+                                  <p className="text-xs font-medium">
+                                    Final: {chain.destinationUrl}
+                                  </p>
                                 </div>
                               </CardContent>
                             </Card>
@@ -1957,43 +2007,19 @@ export default function SEODashboard() {
                     <CardDescription>Identify duplicate content across your site</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <Button
-                      onClick={() => scanDuplicatesMutation.mutate()}
-                      disabled={scanDuplicatesMutation.isPending}
-                    >
-                      {scanDuplicatesMutation.isPending ? 'Scanning...' : 'Scan for Duplicates'}
-                    </Button>
-                    {duplicateContentResults.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="font-medium">
-                          Found {duplicateContentResults.length} duplicate pairs
-                        </h4>
-                        <ScrollArea className="h-96">
-                          {duplicateContentResults.map((dup, idx) => (
-                            <Card key={idx} className="mb-2">
-                              <CardContent className="p-3">
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-xs">Similarity</span>
-                                    <Badge>{dup.similarityScore}%</Badge>
-                                  </div>
-                                  <p className="text-sm truncate">{dup.url1}</p>
-                                  <p className="text-sm truncate">{dup.url2}</p>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </ScrollArea>
-                      </div>
-                    )}
-                    {duplicateContentResults.length === 0 && !scanDuplicatesMutation.isPending && (
-                      <div className="rounded-md bg-muted p-4">
-                        <p className="text-sm text-muted-foreground">
-                          Scan your site to find pages with duplicate or very similar content.
-                          Duplicate content can harm your SEO rankings.
-                        </p>
-                      </div>
-                    )}
+                    {/* SEO-008: no scan button. detectDuplicateContent was a TODO stub
+                        that returned similarityScore 0 for every pair, so a scan
+                        would have reported "no duplicates" without comparing
+                        anything. The endpoint answers 501 until a real similarity
+                        implementation exists. */}
+                    <div className="rounded-md border border-dashed p-4">
+                      <p className="text-sm font-medium">Not implemented</p>
+                      <p className="text-sm text-muted-foreground">
+                        Duplicate detection needs a content similarity implementation. Until then
+                        this reports nothing rather than reporting no duplicates, which is a
+                        different claim.
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -2218,55 +2244,19 @@ export default function SEODashboard() {
                     <CardDescription>AI-powered content optimization suggestions</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="https://example.com"
-                        value={analyzeUrl}
-                        onChange={(e) => setAnalyzeUrl(e.target.value)}
-                      />
-                      <Button
-                        onClick={() => optimizeContentMutation.mutate(analyzeUrl)}
-                        disabled={!analyzeUrl || optimizeContentMutation.isPending}
-                      >
-                        {optimizeContentMutation.isPending ? 'Analyzing...' : 'Analyze Content'}
-                      </Button>
+                    {/* SEO-008: optimizeContent was a TODO stub returning
+                        readabilityScore 75 and seoScore 80 for any input, and the
+                        handler wrote them to seo_content_optimization where they
+                        looked like history. The endpoint answers 501 until an LLM
+                        is wired. The URL field is gone too: the endpoint takes the
+                        content itself, not a URL, so the form never matched it. */}
+                    <div className="rounded-md border border-dashed p-4">
+                      <p className="text-sm font-medium">Not implemented</p>
+                      <p className="text-sm text-muted-foreground">
+                        Content scoring needs an LLM. No readability or SEO score is shown here
+                        because none is measured.
+                      </p>
                     </div>
-                    {contentResults && (
-                      <div className="space-y-4">
-                        <div className="rounded-md bg-muted p-4">
-                          <p className="text-sm">
-                            <strong>Word Count:</strong> {contentResults.wordCount || 'N/A'}
-                          </p>
-                          <p className="text-sm">
-                            <strong>Reading Time:</strong> {contentResults.readingTime || 'N/A'}
-                          </p>
-                          <p className="text-sm">
-                            <strong>Keyword Density:</strong>{' '}
-                            {contentResults.keywordDensity || 'N/A'}
-                          </p>
-                        </div>
-                        {contentResults.suggestions && contentResults.suggestions.length > 0 && (
-                          <div className="space-y-2">
-                            <h4 className="font-medium">Optimization Suggestions</h4>
-                            <ScrollArea className="h-64">
-                              {contentResults.suggestions.map((suggestion: string, idx: number) => (
-                                <p key={idx} className="text-sm text-muted-foreground mb-2">
-                                  • {suggestion}
-                                </p>
-                              ))}
-                            </ScrollArea>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {!contentResults && !optimizeContentMutation.isPending && (
-                      <div className="rounded-md bg-muted p-4">
-                        <p className="text-sm text-muted-foreground">
-                          Get AI-powered suggestions for improving your content for SEO, including
-                          keyword usage, readability, structure, and more.
-                        </p>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -2281,46 +2271,20 @@ export default function SEODashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Enter primary keyword"
-                        value={analyzeUrl}
-                        onChange={(e) => setAnalyzeUrl(e.target.value)}
-                      />
-                      <Button
-                        onClick={() => analyzeSemanticMutation.mutate(analyzeUrl)}
-                        disabled={!analyzeUrl || analyzeSemanticMutation.isPending}
-                      >
-                        {analyzeSemanticMutation.isPending ? 'Analyzing...' : 'Analyze'}
-                      </Button>
+                    {/* SEO-008: analyzeSemanticKeywords was a TODO stub that
+                        returned searchIntent 'informational' with
+                        intentConfidence 80 for every keyword submitted, and the
+                        handler stored that in seo_semantic_analysis. Iteration 5
+                        of this loop repointed the button at the correct URL,
+                        which connected it to the fabricator; the endpoint answers
+                        501 now. */}
+                    <div className="rounded-md border border-dashed p-4">
+                      <p className="text-sm font-medium">Not implemented</p>
+                      <p className="text-sm text-muted-foreground">
+                        Semantic keyword analysis needs an NLP or LLM provider. No related keywords,
+                        clusters or search intent are shown because none are derived.
+                      </p>
                     </div>
-                    {semanticResults &&
-                      semanticResults.relatedKeywords &&
-                      semanticResults.relatedKeywords.length > 0 && (
-                        <div className="space-y-2">
-                          <h4 className="font-medium">
-                            Related Keywords ({semanticResults.relatedKeywords.length})
-                          </h4>
-                          <ScrollArea className="h-96">
-                            <div className="flex flex-wrap gap-2">
-                              {semanticResults.relatedKeywords.map((kw: any, idx: number) => (
-                                <Badge key={idx} variant="secondary">
-                                  {kw.keyword || kw}
-                                </Badge>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        </div>
-                      )}
-                    {(!semanticResults || !semanticResults.relatedKeywords) &&
-                      !analyzeSemanticMutation.isPending && (
-                        <div className="rounded-md bg-muted p-4">
-                          <p className="text-sm text-muted-foreground">
-                            Discover semantically related keywords and create keyword clusters to
-                            improve your content strategy and topical authority.
-                          </p>
-                        </div>
-                      )}
                   </CardContent>
                 </Card>
               </TabsContent>

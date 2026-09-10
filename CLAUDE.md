@@ -369,6 +369,88 @@ Meeting transcription (AUDIT-019 / LEGAL-009): the five `meeting_*` tables are D
 
 WHEN THE TYPECHECK RATCHET IMPROVES A LOT, SUSPECT A SYNTAX ERROR: a broken JSX tag made `scripts/check-types.mjs` report 415 -> 20 and exit 0. tsc had bailed at the parse error and never typechecked the rest. The script guards against an EMPTY node_modules, not against a file it cannot parse. Confirm a drop by looking at which files the remaining errors are in (`npx tsc --noEmit --pretty false | grep ': error TS'`), not at the count.
 
+## SEO surface (SEO-001..016)
+
+THE PUBLIC SITE IS CLOSED AND THAT CHANGES WHAT IS TRUE. `App.tsx`'s `COMING_SOON`
+gate defaults to ON (`VITE_COMING_SOON` must be the string `'false'` to open it), so
+every marketing route serves `pages/marketing/ComingSoon.tsx` and only 10 routes
+render themselves: the five auth pages, and `signup` + the eight legal pages. Anything
+you conclude by reading the marketing pages is about a page nobody is being served.
+The gate's `noindex` is applied at RUNTIME by `usePageSeo`; the STATIC head is
+rewritten to `noindex, nofollow` at build time by the `printyx-robots-meta` plugin in
+`vite.config.ts`, from the same variable. Both halves are needed - before SEO-003 the
+static head said `index, follow` on 24 URLs that are all one holding page.
+
+**Three build artifacts, one source each.** `client/public/{sitemap.xml,robots.txt,llms.txt}`
+are generated, committed and served from disk by Express (`publicFile()` in
+`routes-seo-core.ts`, NODE_ENV picking dist-vs-client/public so a stale `dist` cannot
+win in dev). Regenerate with `npm run seo:sitemap` / `seo:llms`; `npm run check:sitemap`
+fails when the committed sitemap is stale. Do NOT reintroduce a per-request version of
+any of them: `routes-seo-core.ts` used to compose sitemap.xml and robots.txt from
+`seo_pages`, and because `registerSeoCoreRoutes` runs before `serveStatic` those won
+wherever Express served the app while Cloudflare Pages served the files - two answers
+per URL, decided by host (SEO-006). The DB-derived sitemap also published `/crm`,
+`/reports`, `/product-hub`, `/service-hub` and `/product-catalog`, five login-walled
+routes, one of which the robots.txt beside it disallowed.
+
+**ONE WRITER FOR STRUCTURED DATA, AND IT READS THE ROUTE TABLE.** `PUBLIC_ROUTES_SEO`
+in `client/src/lib/seo/seoConfig.ts` is the single source; `SEOProvider` applies it.
+Three separate systems had grown alongside it and each one caused a distinct defect:
+`usePageSeo` in `BlogPostLayout` (SEO-009) hardcoded `baseUrl = 'https://printyx.com'`
+and, running last, gave every blog post a CROSS-DOMAIN `rel=canonical` - asking Google
+not to index printyx.net's blog at all; `useSeo` (SEO-014) fetched `/meta.json` with a
+raw relative fetch that Cloudflare Pages answers with the SPA shell, so its
+`meta?.title || 'Printyx'` fallback titled the three highest-priority `/p/` landing
+pages the bare word "Printyx"; and `SmartBreadcrumb` (SEO-016) injected a second
+`BreadcrumbList` beside SEOProvider's. All three are gone. A component that hardcodes
+a hostname is how the worst of these happened - `check:seo-assets` now walks all of
+`client/src` and every same-origin asset URL must resolve.
+
+**A DATE OR A PRICE IN STRUCTURED DATA IS A CLAIM.** `generateArticleSchema` set
+`datePublished`/`dateModified` to `new Date()`, so every article reported it was
+published at the instant it was viewed - the field Google prints beside a result
+(SEO-009). Both are optional now: no date beats a wrong one. `llms.txt` advertised
+`$49/user/month` against flat $79/$99/$149 Stripe products and the head's offer said
+"per user per month" (SEO-007); `shared/pricing-plans.ts` is the one source, read by
+`scripts/setup-stripe-products.ts` AND the llms generator, and `check:seo-assets`
+fails when a published price or unit disagrees with it. The static head also carried
+a hardcoded `aggregateRating` of 4.9 from 150 ratings that LEGAL-002 had removed from
+the runtime provider and missed - fixing the runtime copy of a fabrication is not
+fixing it.
+
+**AN UNKNOWN ROUTE IS NOT PUBLIC (SEO-013).** `getSEOConfig` used to fall through to
+`null` for anything outside a list of 22 noindex PREFIXES, and `SEOProvider` turns
+null into an indexable default - 189 of ~250 app routes told crawlers to index them.
+The default is inverted: anything not in `PUBLIC_ROUTES_SEO` is noindex. Adding a
+PUBLIC page means adding a route-table entry, which it needs anyway. `getSEOConfig`
+therefore never returns null; use `findSEOConfig` where "no metadata" must stay null
+(link titles, related links), or every unknown link gets titled "Printyx".
+
+**A URL FIX IS NOT A FEATURE FIX (SEO-004, SEO-008).** `SEODashboard` was written
+against `/api/seo/<noun>/<verb>` and `routes-seo.ts` registers `/api/seo/<verb>/<noun>`,
+so twelve endpoints hit no router in dev OR prod. Repointing four of them connected one
+to `analyzeSemanticKeywords`, a TODO stub returning `intentConfidence: 80` for every
+keyword - one of five stubs whose handlers STORED invented scores (`readabilityScore: 75`,
+`seoScore: 80`, `readingLevel: 8.5`, `similarityScore: 0`) into the `seo_*` tables. All
+five answer 501 now. Check what is behind a URL before wiring it. The real analysers in
+`server/services/seo-service.ts` fetch the page and measure it, and `checkCoreWebVitals`
+throws without a PageSpeed key rather than guessing. `checkBrokenLinks` fetches only the
+first `CHECKED_LINK_LIMIT` links and records the rest as UNCHECKED (null), not as 200.
+
+**Guards.** `check:sitemap`, `check:seo-assets` (asset URLs across all of `client/src`,
+JSON-LD parses, declared image dimensions vs the real PNG, no `aggregateRating`,
+name-vs-property agreement between the head and every `setMeta` call, published price
+vs the plan module). Both are zero-tolerance, not ratchets. MUTATION-TEST A NEW GUARD:
+the first version of the asset walk passed cleanly while matching nothing, because its
+comment-stripper used `/\/\/.*$/` which finds the `//` inside `https://` and deletes
+the rest of the line. It looked healthy. Only mutating a URL and watching it NOT fail
+exposed it.
+
+**Open**: `tasks/prd-public-blog-disconnect.json` (the public blog is three .tsx files
+and reads `blog_posts` nowhere, while the blog platform publishes there) and
+`tasks/prd-seo-prerendering.json` (one static head describes the homepage on every
+URL; masked entirely by the coming-soon gate and unmasked the day it lifts).
+
 ## Pre-Flight & Pitfalls
 
 **Node 20 is mandatory — check this before believing any failure.** `engines.node` is `20.x` and

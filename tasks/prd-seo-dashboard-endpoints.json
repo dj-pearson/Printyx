@@ -1,0 +1,51 @@
+{
+  "id": "SEO-004",
+  "title": "The SEO dashboard calls URLs no backend registers",
+  "status": "closed",
+  "openedBy": "SEO iteration 5",
+  "openedOn": "2026-09-10",
+  "problem": "client/src/pages/SEODashboard.tsx (2333 lines, routed at /seo) was written against a /api/seo/<noun>/<verb> URL scheme. server/routes-seo.ts registers /api/seo/<verb>/<noun>. Twelve of the page's twenty-one endpoints therefore POST to a path no router has, and fail in dev and production alike - the buttons report an error toast or nothing at all. The Express implementations behind the real URLs are genuine: real Drizzle tables (seoMobileAnalysis, seoImageAnalysis, seoCoreWebVitals, seoSecurityAnalysis, seoSemanticAnalysis), and checkCoreWebVitals calls the PageSpeed Insights API and throws without PAGESPEED_INSIGHTS_API_KEY rather than inventing numbers. This is a wiring gap, not a mock.",
+  "whyNothingCaughtIt": "check:edge-coverage already lists seo's content/images/links/performance/regenerate-*/security/semantic/structured-data segments in docs/edge-path-coverage-baseline.json - but that baseline records what the EDGE function does not serve, which reads as 'Express serves this and prod does not'. Here Express does not serve it either. No guard compares a frontend URL against the Express router table. check:nav watches navigation targets, not fetch URLs.",
+  "doneInIteration5": [
+    "mobile/analyze -> check/mobile",
+    "performance/check -> core-web-vitals",
+    "security/analyze -> check/security",
+    "semantic/analyze -> analyze/semantic"
+  ],
+  "doneNote": "Those four differ by URL only: body keys and response shapes already matched, so the change is mechanical and verifiable. They now work in dev. They still 404 in production - see productionPort below.",
+  "remaining": [],
+  "productionPort": {
+    "problem": "/api/seo is NOT in crmProxies, so dev is Express and production goes straight to supabase/functions/seo. That function serves 13 routes: audit/history, keywords, competitors, alerts, page-scores, crawl, crawl/results, settings (GET+PUT), pages (GET+PUT), analytics, sitemap/generate, redirects. None of the twelve above, and not POST /api/seo/audit either - so the audit button works in dev and 404s in production.",
+    "work": "Port the analysis endpoints to supabase/functions/seo, or proxy /api/seo to it and accept that only the ported ones survive. Do NOT add a bare crmProxies entry first: the proxy forwards the whole prefix and falls through only on a network error, so it would break the endpoints that currently work in dev.",
+    "alsoOnlyOnOneSide": [
+      "POST /api/seo/audit - Express only, 404s in prod",
+      "GET /api/seo/pages - edge only, so RootAdminSEO's page list is empty in dev",
+      "POST /api/seo/sitemap/generate - edge only"
+    ]
+  },
+  "suggestedGuard": "A check that every '/api/<x>' literal in a client page resolves to either an Express router registration or an edge-function branch. check:edge-coverage does half of it; nothing does the Express half, which is how twelve URLs stayed dead in both environments.",
+  "doneInIteration6": [
+    "images/analyze -> analyze/images, body url -> pageUrl, response is a bare array",
+    "links/broken -> check/broken-links, body url -> sourceUrl, filter isBroken, surface the unchecked count",
+    "redirects/check -> detect/redirect-chains, body url -> sourceUrl, response is ONE row not a list",
+    "structured-data/validate -> validate/structured-data, response is a bare array"
+  ],
+  "doneNote6": "These four needed more than a URL: the page's ImageAnalysis, BrokenLink, RedirectChain and structured-data shapes named fields no endpoint has ever returned, so repointing alone would have produced a working request and a blank panel. All four are rebound to the real seo_* columns. Separately, server/services/seo-service.ts checkBrokenLinks initialised statusCode to 200 and isBroken to false and only overwrote them for the first 20 links, so every link past the twentieth was PERSISTED as healthy without being requested; they are null now and the page says how many went unchecked.",
+  "doneInIteration7": [
+    "Deleted POST /api/seo/regenerate-{sitemap,robots,llms} and the three RootAdminSEO buttons that called them"
+  ],
+  "doneNote7": "CORRECTION to this PRD as first written: these three were recorded as having no handler on either backend. They DID exist, registered with app.post inside registerSeoCoreRoutes - a grep for router.post( misses a self-mounting module, the same blind spot check:shadowed-express documents. They were worse than missing: each returned a success message and did nothing, so the buttons showed a green toast for an action that never happened. Their own comments admitted it. There is nothing for them to do - GET /sitemap.xml, /robots.txt and /llms.txt compose their response per request, and the files the public gets are static build output no runtime handler can rewrite - so endpoints and buttons are both deleted.",
+  "newFinding": {
+    "id": "SEO-006",
+    "title": "Two sitemaps disagree about what is published",
+    "detail": "server/routes-seo-core.ts serves GET /sitemap.xml and GET /robots.txt from seo_pages and seo_settings, per request. client/public/sitemap.xml and robots.txt are static build artifacts (SEO-001/SEO-003) and are what Cloudflare Pages serves the public. The two do not agree: the static sitemap has the 5 routes that render while the site is closed, and the Express one lists every seo_pages row with includeInSitemap != false, stamping lastmod with the current time for any row that has none. Decide which is authoritative before the site opens. The same split applies to robots.txt: the Express version emits Allow: / with per-bot rules and no coming-soon awareness.",
+    "status": "closed in iteration 8",
+    "resolution": "The static build artifacts are authoritative. Express now serves client/public/sitemap.xml and robots.txt from disk (dist/ first in production, client/public first in development so a stale dist cannot win) rather than composing rivals from seo_pages. The AI-crawler directives the Express robots.txt carried and the static one lacked - GPTBot, ChatGPT-User, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended, GoogleOther, Bingbot, MicrosoftPreview, FacebookBot, Applebot, YouBot allowed; CCBot, anthropic-ai, GPTBot-training, Bytespider, Diffbot blocked - were merged into the static file first, so nothing was lost. seo_pages keeps its real job: per-path title and description for /meta.json."
+  },
+  "doneInIteration10": [
+    "links/analyze -> check/broken-links (that endpoint already returns EVERY link, not just broken ones), rebound to seo_link_analysis columns",
+    "content/duplicates, content/optimize: NOT wired. Their backends are TODO stubs; both panels now say Not implemented",
+    "SEO-008: five stub functions deleted, their five endpoints answer 501"
+  ],
+  "closingNote": "SEO-004 is closed, but not the way it was written. Four of the twelve endpoints were URL renames (iteration 5), four needed shape work (iteration 6), three were the no-op regenerate buttons (iteration 7), and the last three turned out to sit on TODO stubs that fabricated scores - so the right outcome for two of them was a 501 and a gated panel, not a wiring fix. The audit that found this (SEO-008) also caught one I had wired in iteration 5: analyze/semantic returned intentConfidence 80 for every keyword. Fixing a URL is not the same as checking what is behind it."
+}

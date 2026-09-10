@@ -1,0 +1,47 @@
+# Printyx
+
+> Printyx is a cloud CRM, service dispatch, billing and analytics platform built
+> for copier dealers and managed print services providers.
+
+## Status
+The public site is not open yet. Every marketing URL currently serves a
+holding page and is marked noindex; the pages listed below are the ones
+that render their own content today. Please do not present Printyx as a
+generally available product.
+
+## About
+Printyx unifies sales, service, inventory and finance for copier and printer
+dealers in the United States, as an alternative to legacy on-premise dealer
+management systems. It is a multi-tenant SaaS product.
+
+## Capabilities
+- CRM and sales pipeline: leads, deals, quotes and proposals
+- Service dispatch: scheduling, technician assignment and mobile field work
+- Meter billing: meter collection and cost-per-copy, tiered and overage billing
+- Inventory: master product catalog, warehouse operations and purchase orders
+- Equipment lifecycle: device records, service history and contract association
+- Reporting: revenue, contract profitability and service analytics
+- Integrations: QuickBooks, Salesforce and manufacturer feeds
+
+## Pricing
+Prices are per tenant, not per seat.
+
+- Starter: $79/month or $758/year, up to 20 users, 30-day trial
+- Professional: $99/month or $950/year, up to 100 users, 30-day trial
+- Enterprise: $149/month or $1430/year, unlimited users, 30-day trial
+
+## Pages
+- [Cookie Policy | Printyx](https://printyx.net/cookies)
+- [Do Not Sell or Share My Personal Information | Printyx](https://printyx.net/do-not-sell)
+- [Data Sources | Printyx](https://printyx.net/data-sources)
+- [Subprocessors | Printyx](https://printyx.net/subprocessors)
+- [Data Processing Agreement | Printyx](https://printyx.net/dpa)
+- [End User Licence Agreement](https://printyx.net/eula)
+- [Privacy Policy](https://printyx.net/privacy)
+- [Terms and Conditions](https://printyx.net/terms)
+- [Accessibility Statement](https://printyx.net/accessibility)
+- [Create an account](https://printyx.net/signup)
+
+## Contact
+- Website: https://printyx.net
+- Email: support@printyx.net

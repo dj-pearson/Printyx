@@ -4,12 +4,42 @@ import path from 'path';
 import { fileURLToPath, URL } from 'node:url';
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
+/**
+ * The public marketing site is closed while the product is built: App.tsx's
+ * COMING_SOON gate serves the holding page for every marketing route, and that
+ * page sets `noindex` through usePageSeo - at RUNTIME. The static <head> said
+ * `index, follow, max-image-preview:large` regardless, so anything that does
+ * not execute JS (every social scraper, and a crawler on its first pass) was
+ * told to index 24 marketing URLs that all render the same holding page.
+ *
+ * This rewrites the robots meta at build time from the same variable the gate
+ * reads, so the static head and the rendered page agree. Same default as the
+ * gate: closed unless VITE_COMING_SOON is explicitly 'false', so a deploy that
+ * forgets the variable stays closed rather than opening by accident.
+ */
+const COMING_SOON = process.env.VITE_COMING_SOON !== 'false';
+
+const robotsMetaPlugin = {
+  name: 'printyx-robots-meta',
+  transformIndexHtml(html: string) {
+    if (!COMING_SOON) return html;
+    const robotsMeta = /<meta\s[^>]*name="robots"[^>]*>/;
+    if (!robotsMeta.test(html)) {
+      // Failing the build beats shipping index,follow on a closed site because
+      // a prettier reflow moved an attribute.
+      throw new Error('printyx-robots-meta: no robots meta found in client/index.html');
+    }
+    return html.replace(robotsMeta, '<meta name="robots" content="noindex, nofollow" />');
+  },
+};
+
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
   },
   plugins: [
     react(),
+    robotsMetaPlugin,
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== 'production' && process.env.REPL_ID !== undefined
       ? [await import('@replit/vite-plugin-cartographer').then((m) => m.cartographer())]

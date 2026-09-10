@@ -1,0 +1,36 @@
+{
+  "id": "SEO-015",
+  "title": "Every public page's SEO exists only after JavaScript runs",
+  "status": "open",
+  "openedBy": "SEO iteration 14",
+  "openedOn": "2026-09-10",
+  "problem": "client/index.html ships ONE static head, and it describes the homepage: its title, description, og:title, og:description, canonical and og:url are all homepage values, on every URL. Per-route metadata is applied by SEOProvider in a useEffect after the bundle loads. Google renders JavaScript and will usually see the corrected head, but social scrapers do not - Slack, LinkedIn, X, iMessage, Discord all read the raw HTML - and neither do several AI crawlers. So today every shared Printyx link previews as the homepage regardless of which page was shared.",
+  "whyItMattersNow": "It is currently masked. The COMING_SOON gate means every marketing URL serves the same holding page anyway, and SEO-003 makes the static head noindex while closed, so there is nothing to get wrong. The day VITE_COMING_SOON=false ships, 28 public URLs go live sharing one head.",
+  "alreadyDone": [
+    "SEO-002: the static head's og:image and twitter:image resolve to a real 1200x630 card, so a preview is at least branded",
+    "SEO-003: the robots meta is rewritten at build time from the coming-soon flag, which proves a vite transformIndexHtml plugin can vary the static head per build",
+    "SEO-013: PUBLIC_ROUTES_SEO enumerates every public route with title, description, priority, changefreq and breadcrumbs - the data a prerenderer needs is already there and already the single source of truth"
+  ],
+  "options": [
+    {
+      "name": "Build-time prerender of the public routes",
+      "how": "After vite build, for each route in PUBLIC_ROUTES_SEO emit dist/<route>/index.html - a copy of index.html with title, description, canonical, og:* and the route's JSON-LD substituted from the route table. Cloudflare Pages serves the per-route file for that path and the SPA takes over on hydration. No SSR runtime, no server to operate.",
+      "cost": "One script, roughly the shape of scripts/generate-sitemap.mts, plus a check that the emitted head matches the route table. 28 files today.",
+      "limits": "Static content only. Anything derived at request time (a blog post from blog_posts, per-tenant content) needs SEO-010 resolved first."
+    },
+    {
+      "name": "SSR",
+      "how": "Run the app on a server and render per request.",
+      "cost": "A server to operate for the marketing site, which is currently a static Pages deploy. Large change for 28 mostly-static pages.",
+      "limits": "Only worth it if the public surface becomes dynamic."
+    },
+    {
+      "name": "Do nothing and accept it",
+      "how": "Rely on Google rendering JS.",
+      "cost": "Every social share of a non-homepage URL previews as the homepage. AI crawlers that do not execute JS see homepage metadata for all 28 pages.",
+      "limits": "Defensible only while the site is closed."
+    }
+  ],
+  "recommendation": "Build-time prerender. The route table already holds everything needed, the vite plugin from SEO-003 proves the mechanism, and it keeps the deploy a static one.",
+  "doNotForget": "Whatever is emitted must agree with client/public/sitemap.xml and with the COMING_SOON flag - SEO-006 was two sitemaps disagreeing, and a prerenderer is a third place the site's metadata could diverge. Generate all of it from getSitemapRoutes()."
+}

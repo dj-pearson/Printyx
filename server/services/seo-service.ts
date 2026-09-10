@@ -89,7 +89,7 @@ export async function performComprehensiveSEOAudit(url: string): Promise<AuditRe
     // Fetch the page
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; PrintyxSEOBot/1.0; +https://printyx.com/seo)',
+        'User-Agent': 'Mozilla/5.0 (compatible; PrintyxSEOBot/1.0; +https://printyx.net)',
       },
     });
 
@@ -656,6 +656,12 @@ export async function analyzePageImages(pageUrl: string) {
 
 // ============= BROKEN LINK CHECKER =============
 
+/**
+ * How many of a page's links are actually fetched. Everything past this is
+ * stored unchecked rather than assumed healthy - see the note inside.
+ */
+export const CHECKED_LINK_LIMIT = 20;
+
 export async function checkBrokenLinks(sourceUrl: string) {
   try {
     const response = await fetch(sourceUrl);
@@ -681,12 +687,17 @@ export async function checkBrokenLinks(sourceUrl: string) {
         const targetHost = new URL(targetUrl).hostname;
         const linkType = sourceHost === targetHost ? 'internal' : 'external';
 
-        // Check if link is broken (only for first 20 links to avoid overwhelming servers)
-        let statusCode = 200;
-        let isBroken = false;
+        // Only the first 20 links are fetched, to avoid hammering the target
+        // site. The rest are recorded as UNCHECKED - statusCode null, isBroken
+        // null - not as 200/false. They used to be initialised to 200 and
+        // `false` and stored that way, so every link past the twentieth was
+        // persisted as a working link that nothing had ever requested, and a
+        // page with 200 links reported 180 of them healthy on no evidence.
+        let statusCode: number | null = null;
+        let isBroken: boolean | null = null;
         let errorMessage: string | undefined;
 
-        if (i < 20) {
+        if (i < CHECKED_LINK_LIMIT) {
           try {
             const linkResponse = await fetch(targetUrl, {
               method: 'HEAD',
@@ -719,7 +730,7 @@ export async function checkBrokenLinks(sourceUrl: string) {
         });
 
         // Rate limiting
-        if (i < 20) {
+        if (i < CHECKED_LINK_LIMIT) {
           await new Promise((resolve) => setTimeout(resolve, 200));
         }
       } catch (error) {

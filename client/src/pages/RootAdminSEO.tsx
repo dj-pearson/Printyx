@@ -72,54 +72,14 @@ export default function RootAdminSEO() {
     },
   });
 
-  // Add mutations for regenerating static files
-  const regenerateSitemap = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('/api/seo/regenerate-sitemap', 'POST');
-    },
-    onSuccess: () => {
-      toast({ title: 'Sitemap regenerated successfully!' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error regenerating sitemap',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const regenerateRobots = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('/api/seo/regenerate-robots', 'POST');
-    },
-    onSuccess: () => {
-      toast({ title: 'Robots.txt regenerated successfully!' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error regenerating robots.txt',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const regenerateLlms = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('/api/seo/regenerate-llms', 'POST');
-    },
-    onSuccess: () => {
-      toast({ title: 'LLMs.txt regenerated successfully!' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Error regenerating llms.txt',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
+  /*
+   * SEO-005: the "Generate Sitemap", "Generate Robots.txt" and "Generate
+   * LLMs.txt" buttons were here. Their three endpoints returned a success
+   * message and did nothing - a green toast for an action that never happened.
+   * The files have no runtime artifact to rebuild: the public ones are static
+   * build output and the Express ones are composed per request. Removed rather
+   * than reworded; the links below show what is actually being served.
+   */
 
   const [newPath, setNewPath] = useState('/product-catalog');
   const [newTitle, setNewTitle] = useState('');
@@ -273,41 +233,6 @@ export default function RootAdminSEO() {
               >
                 {upsertSettings.isPending ? 'Saving...' : 'Save Settings'}
               </Button>
-
-              <div className="flex gap-2 ml-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => regenerateSitemap.mutate()}
-                  disabled={regenerateSitemap.isPending}
-                  className="flex items-center gap-1"
-                >
-                  <FileText className="h-4 w-4" />
-                  {regenerateSitemap.isPending ? 'Generating...' : 'Generate Sitemap'}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => regenerateRobots.mutate()}
-                  disabled={regenerateRobots.isPending}
-                  className="flex items-center gap-1"
-                >
-                  <Bot className="h-4 w-4" />
-                  {regenerateRobots.isPending ? 'Generating...' : 'Generate Robots.txt'}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => regenerateLlms.mutate()}
-                  disabled={regenerateLlms.isPending}
-                  className="flex items-center gap-1"
-                >
-                  <Brain className="h-4 w-4" />
-                  {regenerateLlms.isPending ? 'Generating...' : 'Generate LLMs.txt'}
-                </Button>
-              </div>
             </div>
 
             <div className="flex gap-4 text-sm">

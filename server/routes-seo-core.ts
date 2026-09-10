@@ -13,13 +13,21 @@
  * - GET  /schema.json
  * - GET  /api/seo/settings
  * - GET  /api/seo/pages
- * - POST /api/seo/regenerate-sitemap
- * - POST /api/seo/regenerate-robots
- * - POST /api/seo/regenerate-llms
  * - SEO bootstrap logic (seed baseline settings and core pages on boot)
+ *
+ * The three POST /api/seo/regenerate-* endpoints were deleted (SEO-005); see
+ * the note where they used to live for why there was nothing for them to do.
+ *
+ * NOTE ON MOUNTING: this module registers on `app` through the exported
+ * registerSeoCoreRoutes(), not on a `router`. A grep for `router.post(` finds
+ * none of these, which is how iteration 5 of the SEO loop concluded the
+ * regenerate endpoints did not exist anywhere. Same blind spot
+ * check:shadowed-express documents for self-mounting modules.
  */
 import type { Express } from 'express';
 import { createHash } from 'crypto';
+import { existsSync, readFileSync } from 'fs';
+import path from 'path';
 import { db } from './db';
 import { eq, desc } from 'drizzle-orm';
 import { createModuleLogger } from './lib/logger';
@@ -131,186 +139,63 @@ export function registerSeoCoreRoutes(app: Express) {
   });
 
   // Public: generate sitemap.xml
-  app.get('/sitemap.xml', async (_req, res) => {
-    try {
-      const settingsRows = await db.select().from(seoSettings).limit(1);
-      const settings = settingsRows[0] as any;
-      const pages = await db
-        .select({
-          path: seoPages.path,
-          lastmod: seoPages.lastmod,
-          changefreq: seoPages.changefreq,
-          priority: seoPages.priority,
-          includeInSitemap: seoPages.includeInSitemap,
-        })
-        .from(seoPages);
-      const baseUrl = settings?.siteUrl?.replace(/\/$/, '') || 'https://printyx.net';
-      const urls = pages.filter((p: any) => p.includeInSitemap !== false);
-      const xml =
-        `<?xml version="1.0" encoding="UTF-8"?>\n` +
-        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
-        urls
-          .map((p: any) => {
-            const loc = `${baseUrl}${p.path.startsWith('/') ? p.path : `/${p.path}`}`;
-            const lastmod = (p.lastmod ? new Date(p.lastmod) : new Date()).toISOString();
-            const changefreq = p.changefreq || settings?.sitemapChangefreq || 'weekly';
-            const priority = p.priority || settings?.sitemapPriorityDefault || 0.5;
-            return `\n  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
-          })
-          .join('') +
-        '\n</urlset>';
-      const etag = createHash('sha1').update(xml).digest('hex');
-      res.setHeader('ETag', etag);
-      if (_req.headers['if-none-match'] === etag) {
-        return res.status(304).end();
-      }
-      res
-        .header('Content-Type', 'application/xml; charset=utf-8')
-        .header('Cache-Control', 'public, max-age=300, s-maxage=600')
-        .send(xml);
-    } catch (error) {
-      log.error('Error generating sitemap:', error);
-      res.status(500).send('Error generating sitemap');
+  /*
+   * /sitemap.xml and /robots.txt are STATIC BUILD ARTIFACTS (SEO-006). Both are
+   * served from disk here so that Express and Cloudflare Pages answer the same
+   * bytes at the same URL.
+   *
+   * They used to be composed per request from seo_pages and seo_settings, and
+   * because registerSeoCoreRoutes runs before serveStatic they won over the
+   * files wherever Express served the app - while Pages, which is what the
+   * public actually hits, served the files. Two sitemaps, two robots.txt, one
+   * URL each. The DB-derived sitemap was also wrong on its own terms: the boot
+   * seed puts /crm, /reports, /product-hub, /service-hub and /product-catalog
+   * in seo_pages, so it published five login-walled app routes, one of which
+   * (/reports) the very robots.txt beside it disallowed; it knew nothing about
+   * the COMING_SOON gate, so it listed 17 URLs that all serve the holding page;
+   * and it stamped lastmod with the current time for any row without one, which
+   * is a freshness claim made by the act of being asked.
+   *
+   * scripts/generate-sitemap.mts writes the sitemap from the route table.
+   * seo_pages keeps its real job: per-path title and description, served by
+   * /meta.json below.
+   */
+  const publicFile = (name: string, contentType: string) => async (req: any, res: any) => {
+    // Order matters, and first-found is the wrong rule. In production dist/ is
+    // the deployed build and must win. In development dist/ is whatever the
+    // last `npm run build` left behind, which can be weeks old - preferring it
+    // would serve a stale robots.txt while the real one sat in client/public.
+    const candidates =
+      process.env.NODE_ENV === 'production'
+        ? [
+            path.resolve(process.cwd(), 'dist', name),
+            path.resolve(process.cwd(), 'client/public', name),
+          ]
+        : [
+            path.resolve(process.cwd(), 'client/public', name),
+            path.resolve(process.cwd(), 'dist', name),
+          ];
+    const found = candidates.find((candidate) => existsSync(candidate));
+    if (!found) {
+      // A build artifact that is missing is a broken build, and saying so beats
+      // synthesising a plausible file that disagrees with what Pages serves.
+      log.error(`${name} is missing from dist/ and client/public/`);
+      return res.status(404).type('text/plain').send(`${name} has not been generated`);
     }
-  });
+    const body = readFileSync(found, 'utf8');
+    const etag = createHash('sha1').update(body).digest('hex');
+    res.setHeader('ETag', etag);
+    if (req.headers['if-none-match'] === etag) return res.status(304).end();
+    res
+      .header('Content-Type', contentType)
+      .header('Cache-Control', 'public, max-age=300, s-maxage=600')
+      .send(body);
+  };
+
+  app.get('/sitemap.xml', publicFile('sitemap.xml', 'application/xml; charset=utf-8'));
 
   // Public: robots.txt
-  app.get('/robots.txt', async (_req, res) => {
-    try {
-      const settingsRows = await db.select().from(seoSettings).limit(1);
-      const settings = settingsRows[0] as any;
-      const baseUrl = settings?.siteUrl?.replace(/\/$/, '') || 'https://printyx.net';
-      const allowIndexing = true; // If needed later, wire to settings
-      const lines = [
-        `# Traditional Search Engine Crawlers`,
-        `User-agent: *`,
-        allowIndexing ? `Allow: /` : `Disallow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        `Disallow: /root-admin/`,
-        `Disallow: /database-management`,
-        `Disallow: /role-management`,
-        `Disallow: /gpt5-dashboard`,
-        `Disallow: /settings`,
-        `Disallow: /customers`,
-        `Disallow: /crm`,
-        `Disallow: /service-dispatch`,
-        `Disallow: /service-hub`,
-        `Disallow: /quotes`,
-        `Disallow: /proposal-`,
-        `Disallow: /deals`,
-        `Disallow: /inventory`,
-        `Disallow: /billing`,
-        `Disallow: /invoices`,
-        `Disallow: /reports`,
-        `Disallow: /dashboard`,
-        `Disallow: /onboarding`,
-        `Disallow: /tenant-setup`,
-        ``,
-        `# AI Search Crawlers - ALLOW for citation and search`,
-        `User-agent: GPTBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        `Disallow: /dashboard`,
-        `Disallow: /settings`,
-        ``,
-        `User-agent: ChatGPT-User`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `User-agent: OAI-SearchBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `User-agent: ClaudeBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `User-agent: PerplexityBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `User-agent: Google-Extended`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `User-agent: Googlebot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `# Gemini / Google AI crawlers - ALLOW for citation and AI Overviews`,
-        `User-agent: GoogleOther`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `# Microsoft Copilot / Bing AI crawlers`,
-        `User-agent: Bingbot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `User-agent: MicrosoftPreview`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `# Meta AI crawler`,
-        `User-agent: FacebookBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `# Apple AI (Applebot for Siri/Apple Intelligence)`,
-        `User-agent: Applebot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        `Disallow: /admin/`,
-        ``,
-        `# You.com AI search`,
-        `User-agent: YouBot`,
-        `Allow: /`,
-        `Disallow: /api/`,
-        ``,
-        `# Block pure AI training bots (not search/citation)`,
-        `User-agent: CCBot`,
-        `Disallow: /`,
-        ``,
-        `User-agent: anthropic-ai`,
-        `Disallow: /`,
-        ``,
-        `User-agent: GPTBot-training`,
-        `Disallow: /`,
-        ``,
-        `User-agent: Bytespider`,
-        `Disallow: /`,
-        ``,
-        `User-agent: Diffbot`,
-        `Disallow: /`,
-        ``,
-        `Sitemap: ${baseUrl}/sitemap.xml`,
-        `LLMS: ${baseUrl}/llms.txt`,
-      ];
-      const body = lines.join('\n');
-      const etag = createHash('sha1').update(body).digest('hex');
-      res.setHeader('ETag', etag);
-      if (_req.headers['if-none-match'] === etag) {
-        return res.status(304).end();
-      }
-      res
-        .header('Content-Type', 'text/plain; charset=utf-8')
-        .header('Cache-Control', 'public, max-age=300, s-maxage=600')
-        .send(body);
-    } catch (_e) {
-      res
-        .header('Content-Type', 'text/plain')
-        .send(
-          'User-agent: *\nAllow: /\nSitemap: https://printyx.net/sitemap.xml\nLLMS: https://printyx.net/llms.txt\n',
-        );
-    }
-  });
+  app.get('/robots.txt', publicFile('robots.txt', 'text/plain; charset=utf-8'));
 
   // Public: meta.json — returns meta for a given path
   app.get('/meta.json', async (req, res) => {
@@ -340,93 +225,24 @@ export function registerSeoCoreRoutes(app: Express) {
     }
   });
 
-  // Public: AI/LLM crawler directives (llms.txt)
-  // Handler function for llms.txt content
-  const handleLlmsTxt = async (_req: any, res: any) => {
-    try {
-      const settingsRows = await db.select().from(seoSettings).limit(1);
-      const settings = settingsRows[0] as any;
-      const baseUrl = process.env.BASE_URL || 'https://printyx.net';
-
-      // Enhanced llms.txt with comprehensive platform information for AI citation
-      const llmsTxt = `# Printyx
-
-> Printyx is a modern cloud-based CRM, service dispatch, billing, and analytics platform built specifically for copier dealers and managed print services (MPS) providers.
-
-## About
-Printyx replaces legacy dealer management systems like E-Automate with a modern cloud platform. Built by copier industry veterans with 30+ years of combined experience, Printyx provides AI-powered predictive intelligence, mobile-first field service tools, and unified workflows for sales, service, inventory, and finance. The platform serves copier/printer dealers, MPS providers, and office technology companies across the United States.
-
-## Key Features
-- **CRM & Sales Pipeline**: Lead scoring, deal management, quote generation, and proposal builder with AI-powered sales forecasting
-- **Service Dispatch**: Mobile-first field service with GPS routing, real-time job updates, parts inventory, and customer e-signatures
-- **Predictive Maintenance**: AI-driven equipment failure prediction and proactive service scheduling to reduce downtime by up to 40%
-- **Meter Billing**: Automated meter reading collection and billing with support for cost-per-copy, tiered, and overage pricing models
-- **Inventory Management**: Master product catalog, warehouse operations, purchase orders, and automated supply replenishment
-- **Equipment Lifecycle**: Track devices from deployment through retirement with full service history and contract association
-- **Financial Analytics**: Revenue intelligence dashboards, contract profitability analysis, and dynamic pricing optimization
-- **Integration Marketplace**: Pre-built integrations with QuickBooks, Salesforce, Microsoft 365, and manufacturer APIs (Canon, Ricoh, HP)
-- **Mobile-First Design**: Offline-capable mobile app for field technicians with real-time sync
-
-## Why Copier Dealers Choose Printyx Over E-Automate
-- Modern cloud architecture vs legacy on-premise infrastructure
-- AI-powered predictive intelligence vs reactive workflows
-- Mobile-first technician app vs desktop-only interface
-- Real-time dashboards and analytics vs static reporting
-- No server maintenance or IT overhead required
-- 2-3 year technical advantage in cloud, AI, and mobile capabilities
-
-## Pricing
-- Starter: $49/user/month for small dealers (up to 10 users)
-- Professional: $79/user/month for mid-size dealers with full feature access
-- Enterprise: Custom pricing for large multi-location operations
-- Free trial available with no credit card required
-
-## Industry Focus
-Printyx serves the copier/printer dealer and managed print services industry, including:
-- Independent copier dealers
-- Multi-brand office technology dealers
-- Managed print services providers
-- Copier/printer service organizations
-- Office equipment leasing companies
-
-## Comparison Pages
-- [Printyx vs E-Automate](${baseUrl}/compare-eautomate): Side-by-side feature comparison
-- [Competitive Battle Card](${baseUrl}/battle-card): Why modern dealers are switching
-- [ROI Calculator](${baseUrl}/roi-calculator): Calculate savings from switching
-
-## Resources
-- [Product Overview](${baseUrl}/p/copier-dealer-crm)
-- [Mobile Service Dispatch](${baseUrl}/p/print-service-dispatch-mobile)
-- [Predictive Intelligence](${baseUrl}/predictive-intelligence)
-- [Modern Architecture](${baseUrl}/modern-architecture)
-- [Integration Marketplace](${baseUrl}/integration-marketplace)
-- [Case Studies](${baseUrl}/case-studies)
-- [Blog](${baseUrl}/blog)
-- [Knowledge Base](${baseUrl}/knowledge-base)
-
-## Contact
-- Website: ${baseUrl}
-- Email: support@printyx.net
-- Sales: sales@printyx.com
-`;
-
-      const etag = createHash('sha1').update(llmsTxt).digest('hex');
-      res.setHeader('ETag', etag);
-      if (_req.headers['if-none-match'] === etag) {
-        return res.status(304).end();
-      }
-      res
-        .header('Content-Type', 'text/plain; charset=utf-8')
-        .header('Cache-Control', 'public, max-age=3600, s-maxage=7200')
-        .send(llmsTxt);
-    } catch (error) {
-      res.header('Content-Type', 'text/plain; charset=utf-8').send('Allow: /\n');
-    }
-  };
-
-  // Serve llms.txt at both locations for maximum compatibility
-  app.get('/llms.txt', handleLlmsTxt);
-  app.get('/.well-known/llms.txt', handleLlmsTxt);
+  /*
+   * llms.txt is a static build artifact too (SEO-007), for the same reason as
+   * sitemap.xml and robots.txt above: it only ever existed as a handler here,
+   * so printyx.net/llms.txt was a 404 on Cloudflare Pages while robots.txt
+   * pointed at it with `LLMS:`.
+   *
+   * The text it used to compose is worth remembering, because an AI crawler
+   * repeats this file verbatim. It advertised "$49/user/month" and
+   * "$79/user/month" against Stripe products at a flat $79, $99 and $149, and
+   * called Enterprise custom-priced when it has a list price; it claimed the
+   * product reduces downtime "by up to 40%", holds a "2-3 year technical
+   * advantage" and was built by people with "30+ years of combined experience",
+   * none of which anything measures; and it listed fifteen pages that all serve
+   * the coming-soon holding page. scripts/generate-llms-txt.mts writes it from
+   * shared/pricing-plans.ts and the route table instead.
+   */
+  app.get('/llms.txt', publicFile('llms.txt', 'text/plain; charset=utf-8'));
+  app.get('/.well-known/llms.txt', publicFile('llms.txt', 'text/plain; charset=utf-8'));
 
   // Public: dynamic schema.json endpoint per path
   app.get('/schema.json', async (req, res) => {
@@ -440,11 +256,10 @@ Printyx serves the copier/printer dealer and managed print services industry, in
         '@type': 'WebSite',
         name: settings?.siteName || 'Printyx',
         url: settings?.siteUrl || 'https://printyx.net',
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: `${settings?.siteUrl || 'https://printyx.net'}/search?q={search_term_string}`,
-          'query-input': 'required name=search_term_string',
-        },
+        // No SearchAction. The sitelinks search box needs a real results URL and
+        // /search is not a registered route - this was the THIRD copy of that
+        // dead action, after the static head (SEO-002) and SEOProvider's
+        // runtime WebSite (SEO-003).
       };
       let payload = baseWebsite as any;
       if (page?.schemaType && page?.schemaData) {
@@ -494,56 +309,22 @@ Printyx serves the copier/printer dealer and managed print services industry, in
     }
   });
 
-  // Admin: regenerate sitemap endpoint
-  app.post('/api/seo/regenerate-sitemap', requireRootAdmin, async (req: any, res) => {
-    try {
-      const isPlatformUser = isPlatformAdmin(req);
-      if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
-
-      // This endpoint doesn't generate a new sitemap, just returns success
-      // The actual sitemap is generated dynamically via GET /sitemap.xml
-      res.json({ message: 'Sitemap regenerated successfully' });
-    } catch (error: any) {
-      res.status(500).json({
-        message: 'Failed to regenerate sitemap',
-        detail: error?.message,
-      });
-    }
-  });
-
-  // Admin: regenerate robots.txt endpoint
-  app.post('/api/seo/regenerate-robots', requireRootAdmin, async (req: any, res) => {
-    try {
-      const isPlatformUser = isPlatformAdmin(req);
-      if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
-
-      // This endpoint doesn't generate a new robots.txt, just returns success
-      // The actual robots.txt is generated dynamically via GET /robots.txt
-      res.json({ message: 'Robots.txt regenerated successfully' });
-    } catch (error: any) {
-      res.status(500).json({
-        message: 'Failed to regenerate robots.txt',
-        detail: error?.message,
-      });
-    }
-  });
-
-  // Admin: regenerate llms.txt endpoint
-  app.post('/api/seo/regenerate-llms', requireRootAdmin, async (req: any, res) => {
-    try {
-      const isPlatformUser = isPlatformAdmin(req);
-      if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
-
-      // This endpoint doesn't generate a new llms.txt, just returns success
-      // The actual llms.txt is generated dynamically via GET /llms.txt
-      res.json({ message: 'LLMs.txt regenerated successfully' });
-    } catch (error: any) {
-      res.status(500).json({
-        message: 'Failed to regenerate llms.txt',
-        detail: error?.message,
-      });
-    }
-  });
+  /*
+   * POST /api/seo/regenerate-{sitemap,robots,llms} lived here (SEO-005).
+   *
+   * All three answered `{ message: '... regenerated successfully' }` and did
+   * nothing - their own comments said so: "This endpoint doesn't generate a new
+   * sitemap, just returns success". The three buttons on RootAdminSEO that
+   * called them therefore showed a green toast for an action that had never
+   * happened, which is worse than a 404 because a 404 gets reported.
+   *
+   * There is nothing for them to do. GET /sitemap.xml, /robots.txt and
+   * /llms.txt below build their response per request from seo_pages and
+   * seo_settings, so there is no cached artifact to invalidate; and the files
+   * the public actually gets are static build output (client/public, written by
+   * npm run seo:sitemap), which no runtime handler can rewrite - a Cloudflare
+   * Pages deploy would overwrite whatever it wrote.
+   */
 
   // Seed baseline SEO settings and core pages on boot (non-blocking)
   (async () => {

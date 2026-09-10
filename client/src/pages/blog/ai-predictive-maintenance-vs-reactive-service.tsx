@@ -12,15 +12,6 @@ const AIPredictiveMaintenanceBlogPost = () => {
       readTime="12 min read"
       category="AI & Technology"
       slug="ai-predictive-maintenance-vs-reactive-service"
-      publishedDate="2025-01-15"
-      modifiedDate="2025-01-15"
-      keywords={[
-        'AI predictive maintenance',
-        'reactive service',
-        'copier dealer',
-        'equipment failure prediction',
-        'service optimization',
-      ]}
     >
       <div className="space-y-8">
         {/* Introduction */}

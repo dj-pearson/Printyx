@@ -4,6 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { useLocation } from 'wouter';
 import { SEOProvider } from '@/lib/seo/SEOProvider';
+import { MARKETING_P_SLUGS } from '@/lib/seo/seoConfig';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SubscriptionBanner } from '@/components/SubscriptionBanner';
@@ -476,12 +477,15 @@ function Router() {
   }, [isAuthenticated]);
 
   // PROP-008: public proposal view (/p/:token) — no auth, no app shell. Marketing
-  // landing pages also live under /p/<slug>, but share tokens are long random
-  // strings, so they never collide with those short kebab slugs.
+  // landing pages also live under /p/<slug>. The slug set comes from the SEO
+  // route table (MARKETING_P_SLUGS), not a literal written here: the literal
+  // listed two of the three slugs, and the third
+  // (/p/master-product-catalog-canon-imagerunner) is 39 characters, so the
+  // ">= 20 chars means share token" heuristic sent that landing page to the
+  // proposal viewer for every visitor and every crawler.
   if (pathname.startsWith('/p/')) {
     const seg = pathname.slice(3).split('/')[0];
-    const marketingSlugs = new Set(['copier-dealer-crm', 'print-service-dispatch-mobile']);
-    if (seg.length >= 20 && !marketingSlugs.has(seg)) {
+    if (seg.length >= 20 && !MARKETING_P_SLUGS.has(seg)) {
       return (
         <React.Suspense fallback={null}>
           <ProposalPublicView />

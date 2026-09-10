@@ -47,6 +47,16 @@ export interface SEORouteConfig {
   breadcrumbs?: BreadcrumbItem[];
   relatedPaths?: string[]; // For internal linking
   canonicalPath?: string; // If different from path
+  /**
+   * ISO date the article was published, and last substantively changed.
+   * BOTH ARE OPTIONAL AND MUST STAY THAT WAY. generateArticleSchema used to
+   * emit `new Date().toISOString()` for each, so every post told every crawler
+   * it had been published moments ago - and datePublished is the date Google
+   * prints beside an article in results. A post with no known date now emits no
+   * date, which is a smaller claim than the wrong one.
+   */
+  datePublished?: string;
+  dateModified?: string;
   // JSON-LD schema data for rich results
   faqItems?: FAQItem[]; // For FAQPage schema
   howToSteps?: HowToStep[]; // For HowTo schema
@@ -83,7 +93,7 @@ export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
 export const ORGANIZATION_DATA = {
   name: 'Printyx',
   url: SITE_URL,
-  logo: `${SITE_URL}/logo.png`,
+  logo: `${SITE_URL}/logos/logo.png`,
   description:
     'Printyx is a modern cloud platform for copier dealers and managed print service providers. Streamline your CRM, service dispatch, billing, and more.',
   sameAs: [
@@ -92,7 +102,10 @@ export const ORGANIZATION_DATA = {
     'https://www.youtube.com/@printyx',
   ],
   contactPoint: {
-    telephone: '+1-800-PRINTYX',
+    // No telephone. It was '+1-800-PRINTYX', which is not a dialable number -
+    // E.164 wants digits - and appears nowhere on the site, so it was a phone
+    // number published to search engines and to nobody else. support@ is real:
+    // the holding page already gives it out.
     contactType: 'customer service',
     email: 'support@printyx.net',
   },
@@ -386,6 +399,7 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
   // Blog Posts (programmatic - these would be generated from CMS)
   {
     path: '/blog/ai-predictive-maintenance-vs-reactive-service',
+    datePublished: '2025-01-15',
     title: 'AI Predictive Maintenance vs Reactive Service | Printyx Blog',
     description:
       'Learn how AI-powered predictive maintenance outperforms reactive service models. Reduce downtime, cut costs, and improve customer satisfaction.',
@@ -408,6 +422,7 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
   },
   {
     path: '/blog/e-automate-vs-modern-cloud-platforms',
+    datePublished: '2025-01-12',
     title: 'E-Automate vs Modern Cloud Platforms | Time to Upgrade?',
     description:
       'Is it time to move beyond E-Automate? Compare legacy on-premise software to modern cloud platforms designed for today`s copier dealers.',
@@ -430,6 +445,7 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
   },
   {
     path: '/blog/dynamic-pricing-ai-copier-dealers',
+    datePublished: '2025-01-10',
     title: 'Dynamic Pricing with AI for Copier Dealers | Maximize Margins',
     description:
       'Use AI to optimize your pricing strategy. Dynamic pricing tools help copier dealers maximize margins while staying competitive.',
@@ -452,6 +468,52 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
   },
 
   // Legal Pages
+  // Legal pages. These five were in App.tsx and in COMING_SOON_ROUTES but not
+  // here, so getSEOConfig returned null for them and they fell through to the
+  // default config - which is now noindex (SEO-013). A published policy that a
+  // regulator or a customer is meant to be able to find must be indexable, so
+  // they are enumerated like every other public route.
+  {
+    path: '/cookies',
+    title: 'Cookie Policy | Printyx',
+    description: 'How Printyx uses cookies and similar technologies, and how to control them.',
+    priority: 0.3,
+    changefreq: 'yearly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Cookie Policy' }],
+  },
+  {
+    path: '/do-not-sell',
+    title: 'Do Not Sell or Share My Personal Information | Printyx',
+    description:
+      'Exercise your right to opt out of the sale or sharing of personal information under US state privacy laws.',
+    priority: 0.3,
+    changefreq: 'yearly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Do Not Sell or Share' }],
+  },
+  {
+    path: '/data-sources',
+    title: 'Data Sources | Printyx',
+    description: 'Where the data in Printyx comes from and how it is obtained.',
+    priority: 0.3,
+    changefreq: 'yearly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Data Sources' }],
+  },
+  {
+    path: '/subprocessors',
+    title: 'Subprocessors | Printyx',
+    description: 'The third parties Printyx uses to process customer data, and what each one does.',
+    priority: 0.3,
+    changefreq: 'yearly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Subprocessors' }],
+  },
+  {
+    path: '/dpa',
+    title: 'Data Processing Agreement | Printyx',
+    description: 'The data processing terms that apply between Printyx and its customers.',
+    priority: 0.3,
+    changefreq: 'yearly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Data Processing Agreement' }],
+  },
   {
     path: '/eula',
     title: 'End User License Agreement | Printyx',
@@ -836,7 +898,25 @@ export const APP_ROUTES_SEO: SEORouteConfig[] = [
  * Get SEO config for a given path
  * Supports exact match and pattern matching for dynamic routes
  */
-export function getSEOConfig(path: string): SEORouteConfig | null {
+/**
+ * An EXACT entry for a path, or null when there is none.
+ *
+ * Use this when "we have no metadata for this route" is the answer you need -
+ * a link title, a related-links list. getSEOConfig below never returns null
+ * any more (SEO-013), so `config?.title` there resolves to the literal
+ * 'Printyx' for every unknown route, which is a worse link label than none and
+ * would let a stale relatedPath render as a real destination.
+ */
+export function findSEOConfig(path: string): SEORouteConfig | null {
+  return (
+    PUBLIC_ROUTES_SEO.find((r) => r.path === path) ??
+    APP_ROUTES_SEO.find((r) => r.path === path) ??
+    null
+  );
+}
+
+/** Always resolves: an exact entry, a pattern match, or the noindex default. */
+export function getSEOConfig(path: string): SEORouteConfig {
   // First try exact match in public routes
   const publicMatch = PUBLIC_ROUTES_SEO.find((r) => r.path === path);
   if (publicMatch) return publicMatch;
@@ -848,6 +928,11 @@ export function getSEOConfig(path: string): SEORouteConfig | null {
   // Handle dynamic routes with patterns
   // Blog post pattern: /blog/:slug
   if (path.startsWith('/blog/') && path !== '/blog') {
+    // Unreachable today - App.tsx routes the three published posts explicitly
+    // and there is no /blog/:slug route - but if one is added, this generic
+    // title and description would be identical on every post. Carry no date
+    // either: a BlogPosting with no datePublished is honest about not knowing,
+    // and this fallback cannot know.
     return {
       path,
       title: 'Blog Post | Printyx',
@@ -897,42 +982,30 @@ export function getSEOConfig(path: string): SEORouteConfig | null {
     };
   }
 
-  // Index pruning: default noindex for any authenticated/internal paths
-  // This prevents thin or auto-generated pages from diluting domain quality signals
-  const noindexPrefixes = [
-    '/admin',
-    '/root-admin',
-    '/settings',
-    '/dashboard',
-    '/onboarding',
-    '/tenant-setup',
-    '/billing',
-    '/invoices',
-    '/quotes',
-    '/crm',
-    '/deals',
-    '/service-dispatch',
-    '/service-hub',
-    '/inventory',
-    '/reports',
-    '/database-management',
-    '/role-management',
-    '/gpt5-dashboard',
-    '/proposal-',
-    '/mobile-field-service',
-    '/ai-hub',
-    '/ai-',
-  ];
-  if (noindexPrefixes.some((prefix) => path.startsWith(prefix))) {
-    return {
-      path,
-      title: `Printyx`,
-      description: 'Printyx copier dealer management platform.',
-      noindex: true,
-    };
-  }
-
-  return null;
+  /*
+   * Anything not matched above is not public (SEO-013).
+   *
+   * This used to be a list of 22 noindex PREFIXES - /admin, /settings, /crm and
+   * so on - and any route outside it fell through to `null`, which SEOProvider
+   * turns into DEFAULT_SEO_CONFIG and a robots tag of
+   * `index, follow, max-image-preview:large`. The app has around 250
+   * authenticated routes and 189 of them were outside that list, so most of the
+   * product told crawlers to index it. Nothing to index is behind the login, but
+   * the URLs are still crawled, and robots.txt only disallows about 28 prefixes,
+   * so most were not blocked there either.
+   *
+   * An allowlist of what to HIDE can only ever lag the routes people add. The
+   * public surface is small and enumerated in PUBLIC_ROUTES_SEO; everything else
+   * is the application. Defaulting to noindex means a new app page is private on
+   * the day it is written, and a new PUBLIC page has to be added to the table -
+   * which it needs anyway, for its title, description and sitemap entry.
+   */
+  return {
+    path,
+    title: 'Printyx',
+    description: 'Printyx copier dealer management platform.',
+    noindex: true,
+  };
 }
 
 /**
@@ -950,7 +1023,75 @@ export function getRelatedPages(path: string, limit: number = 5): SEORouteConfig
   if (!config?.relatedPaths) return [];
 
   return config.relatedPaths
-    .map((p) => getSEOConfig(p))
+    .map((p) => findSEOConfig(p))
     .filter((c): c is SEORouteConfig => c !== null)
     .slice(0, limit);
 }
+
+/**
+ * Marketing landing-page slugs that live under `/p/`.
+ *
+ * `/p/:token` is the public proposal viewer (App.tsx), an early return above the
+ * auth gate. Marketing landing pages share that prefix, so App.tsx has to tell
+ * the two apart. It used to do that with a hardcoded set of two slugs plus a
+ * "share tokens are >= 20 chars" heuristic - and
+ * `/p/master-product-catalog-canon-imagerunner` is 39 characters, so that page
+ * rendered the proposal viewer instead of itself on every request, including
+ * for a crawler. Deriving the set from the SEO route table means adding a
+ * landing page can never re-open that hole.
+ */
+export const MARKETING_P_SLUGS: ReadonlySet<string> = new Set(
+  PUBLIC_ROUTES_SEO.filter((r) => r.path.startsWith('/p/')).map(
+    (r) => r.path.slice(3).split('/')[0],
+  ),
+);
+
+/**
+ * The public URLs that belong in sitemap.xml.
+ *
+ * Two exclusions, and the second is the one that bites. A noindex route must
+ * not be listed: telling a crawler to fetch a page and then not to index it is
+ * a contradiction it resolves by trusting neither signal. And while the site is
+ * closed, every marketing route serves the holding page - which is itself
+ * noindex - so publishing those URLs would file 24 "Submitted URL marked
+ * noindex" errors in Search Console against pages that are all the same page.
+ * A sitemap describes what is live, not what is planned.
+ *
+ * `closed` mirrors App.tsx's COMING_SOON: closed unless explicitly opened.
+ */
+export function getSitemapRoutes(
+  closed: boolean = import.meta.env?.VITE_COMING_SOON !== 'false',
+): SEORouteConfig[] {
+  const live = closed
+    ? PUBLIC_ROUTES_SEO.filter((r) => COMING_SOON_ROUTES.includes(r.path))
+    : PUBLIC_ROUTES_SEO;
+  return live.filter((r) => !r.noindex);
+}
+
+/**
+ * The public site is closed while the product is built (`COMING_SOON` in
+ * App.tsx, default on). While it is closed, only these routes render
+ * themselves; every other marketing URL serves the holding page, which sets
+ * noindex.
+ *
+ * Kept here rather than derived from App.tsx because a sitemap generator must
+ * not parse JSX to decide what to publish. `seo-sitemap.test.ts` asserts this
+ * list against App.tsx's closed-site Switch, so the two cannot drift.
+ */
+export const COMING_SOON_ROUTES: readonly string[] = [
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/auth/callback',
+  '/eula',
+  '/privacy',
+  '/terms',
+  '/accessibility',
+  '/do-not-sell',
+  '/data-sources',
+  '/cookies',
+  '/subprocessors',
+  '/dpa',
+];

@@ -12,16 +12,6 @@ const DynamicPricingAIBlogPost = () => {
       readTime="14 min read"
       category="Revenue Optimization"
       slug="dynamic-pricing-ai-copier-dealers"
-      publishedDate="2025-01-10"
-      modifiedDate="2025-01-10"
-      keywords={[
-        'dynamic pricing',
-        'AI pricing',
-        'copier dealer profitability',
-        'contract pricing',
-        'margin optimization',
-        'revenue management',
-      ]}
     >
       <div className="space-y-8">
         {/* Introduction */}

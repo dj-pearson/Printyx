@@ -180,7 +180,12 @@
     "check:stage-resolution": "node scripts/check-stage-resolution.mjs",
     "manifest:schema-of-record": "node scripts/build-schema-of-record-manifest.mjs",
     "check:error-shape": "node scripts/check-error-shape.mjs",
-    "check:month-arithmetic": "node scripts/check-month-arithmetic.mjs"
+    "check:month-arithmetic": "node scripts/check-month-arithmetic.mjs",
+    "seo:sitemap": "tsx scripts/generate-sitemap.mts",
+    "check:sitemap": "tsx scripts/generate-sitemap.mts --check",
+    "seo:social-images": "node scripts/generate-social-images.mjs",
+    "check:seo-assets": "node scripts/check-seo-assets.mjs",
+    "seo:llms": "tsx scripts/generate-llms-txt.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

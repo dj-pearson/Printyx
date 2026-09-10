@@ -598,35 +598,12 @@ router.get('/api/seo/core-web-vitals', async (req: any, res) => {
 
 // Analyze page
 router.post('/api/seo/analyze/page', async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
-    }
-
-    const { url } = req.body;
-
-    if (!url) {
-      return res.status(400).json({ message: 'URL is required' });
-    }
-
-    const analysis = await analyzePage(url);
-
-    const [stored] = await db
-      .insert(seoPageScores)
-      .values({
-        tenantId,
-        url,
-        ...analysis,
-        lastAnalyzed: new Date(),
-      })
-      .returning();
-
-    res.json(stored);
-  } catch (error: any) {
-    log.error('Error analyzing page:', error);
-    res.status(500).json({ message: 'An internal error occurred' });
-  }
+  // SEO-008: not implemented. See the note above checkKeywordPosition.
+  return res.status(501).json({
+    message:
+      'Page analysis is not implemented. It needs a real analyser; see SEO-008 in server/routes-seo.ts.',
+    code: 'NOT_IMPLEMENTED',
+  });
 });
 
 // Get page scores
@@ -931,69 +908,24 @@ router.post('/api/seo/detect/redirect-chains', async (req: any, res) => {
 
 // Detect duplicate content
 router.post('/api/seo/detect/duplicate-content', async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
-    }
-
-    const { url1, url2 } = req.body;
-
-    if (!url1 || !url2) {
-      return res.status(400).json({ message: 'Both URLs are required' });
-    }
-
-    const duplicate = await detectDuplicateContent(url1, url2);
-
-    const [stored] = await db
-      .insert(seoDuplicateContent)
-      .values({
-        tenantId,
-        url1,
-        url2,
-        ...duplicate,
-        detectedAt: new Date(),
-      })
-      .returning();
-
-    res.json(stored);
-  } catch (error: any) {
-    log.error('Error detecting duplicate content:', error);
-    res.status(500).json({ message: 'An internal error occurred' });
-  }
+  // SEO-008: not implemented. See the note above checkKeywordPosition.
+  return res.status(501).json({
+    message:
+      'Duplicate detection is not implemented. It needs a content similarity implementation; see SEO-008 in server/routes-seo.ts.',
+    code: 'NOT_IMPLEMENTED',
+  });
 });
 
 // ============= CONTENT OPTIMIZATION =============
 
 // Optimize content
 router.post('/api/seo/optimize/content', async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
-    }
-
-    const { title, originalContent, targetKeyword, secondaryKeywords } = req.body;
-
-    const optimization = await optimizeContent(originalContent, targetKeyword, secondaryKeywords);
-
-    const [stored] = await db
-      .insert(seoContentOptimization)
-      .values({
-        tenantId,
-        title,
-        originalContent,
-        targetKeyword,
-        secondaryKeywords,
-        ...optimization,
-      })
-      .returning();
-
-    res.json(stored);
-  } catch (error: any) {
-    log.error('Error optimizing content:', error);
-    res.status(500).json({ message: 'An internal error occurred' });
-  }
+  // SEO-008: not implemented. See the note above checkKeywordPosition.
+  return res.status(501).json({
+    message:
+      'Content optimisation is not implemented. It needs an LLM provider; see SEO-008 in server/routes-seo.ts.',
+    code: 'NOT_IMPLEMENTED',
+  });
 });
 
 // Get content optimizations
@@ -1022,35 +954,12 @@ router.get('/api/seo/content-optimizations', async (req: any, res) => {
 
 // Analyze semantic keywords
 router.post('/api/seo/analyze/semantic', async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
-    }
-
-    const { keyword } = req.body;
-
-    if (!keyword) {
-      return res.status(400).json({ message: 'Keyword is required' });
-    }
-
-    const semantic = await analyzeSemanticKeywords(keyword);
-
-    const [stored] = await db
-      .insert(seoSemanticAnalysis)
-      .values({
-        tenantId,
-        keyword,
-        ...semantic,
-        analyzedAt: new Date(),
-      })
-      .returning();
-
-    res.json(stored);
-  } catch (error: any) {
-    log.error('Error analyzing semantic keywords:', error);
-    res.status(500).json({ message: 'An internal error occurred' });
-  }
+  // SEO-008: not implemented. See the note above checkKeywordPosition.
+  return res.status(501).json({
+    message:
+      'Semantic keyword analysis is not implemented. It needs an NLP or LLM provider; see SEO-008 in server/routes-seo.ts.',
+    code: 'NOT_IMPLEMENTED',
+  });
 });
 
 // ============= ALERTS & NOTIFICATIONS =============
@@ -1181,36 +1090,12 @@ router.get('/api/seo/monitoring/log', async (req: any, res) => {
 
 // Analyze competitor
 router.post('/api/seo/analyze/competitor', async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
-    }
-
-    const { competitorUrl, competitorName } = req.body;
-
-    if (!competitorUrl) {
-      return res.status(400).json({ message: 'Competitor URL is required' });
-    }
-
-    const analysis = await analyzeCompetitor(competitorUrl);
-
-    const [stored] = await db
-      .insert(seoCompetitorAnalysis)
-      .values({
-        tenantId,
-        competitorUrl,
-        competitorName,
-        ...analysis,
-        analyzedAt: new Date(),
-      })
-      .returning();
-
-    res.json(stored);
-  } catch (error: any) {
-    log.error('Error analyzing competitor:', error);
-    res.status(500).json({ message: 'An internal error occurred' });
-  }
+  // SEO-008: not implemented. See the note above checkKeywordPosition.
+  return res.status(501).json({
+    message:
+      'Competitor analysis is not implemented. It needs a backlink provider such as Ahrefs, Moz or Semrush; see SEO-008 in server/routes-seo.ts.',
+    code: 'NOT_IMPLEMENTED',
+  });
 });
 
 // Get competitor analyses
@@ -1249,6 +1134,33 @@ const validateStructuredData = seoService.validateStructuredData;
 const detectRedirectChains = seoService.detectRedirectChains;
 
 // Simplified implementations for functions not yet in service layer
+/*
+ * SEO-008: five "analysis" functions lived here and every one was a TODO stub
+ * that returned invented numbers, which the handlers then STORED as
+ * measurements and served as results:
+ *
+ *   analyzePage             title: 'Page Title', readingLevel: 8.5,
+ *                           uniqueContentPercentage: 90
+ *   optimizeContent         readabilityScore: 75, seoScore: 80, plus one canned
+ *                           suggestion built by interpolating the keyword
+ *   analyzeSemanticKeywords intentConfidence: 80 and searchIntent
+ *                           'informational', for every keyword ever submitted
+ *   detectDuplicateContent  similarityScore: 0 - which reads as "these pages
+ *                           are not duplicates", asserted without comparing them
+ *   analyzeCompetitor       domainAuthority, estimatedTraffic and backlinks all
+ *                           0, presented as a competitor's figures
+ *
+ * A stub that throws gets fixed. A stub that returns 75 gets believed, and this
+ * one wrote its numbers to seo_content_optimization and seo_semantic_analysis,
+ * where they outlive the request and look like history.
+ *
+ * The five endpoints answer 501 now, naming the integration each needs. The
+ * real analysers - core web vitals via PageSpeed Insights, images, links,
+ * redirects, structured data, mobile, security - are in
+ * server/services/seo-service.ts and are untouched: they fetch the page and
+ * measure it.
+ */
+
 async function checkKeywordPosition(keyword: string, targetUrl: string | null, tenantId?: string) {
   // Query stored position from database
   if (tenantId) {
@@ -1277,88 +1189,6 @@ async function checkKeywordPosition(keyword: string, targetUrl: string | null, t
   // NOTE: Real-time SERP position tracking requires integration with SERP API (SERPApi or DataForSEO)
   // Positions can be updated via Google Search Console integration or manual tracking
   return null;
-}
-
-async function analyzePage(url: string) {
-  // Uses comprehensive audit under the hood
-  const audit = await performSEOAudit(url);
-  return {
-    title: 'Page Title',
-    seoScore: audit.overallScore,
-    contentQuality: audit.contentScore,
-    technicalSeo: audit.technicalScore,
-    userExperience: audit.performanceScore,
-    wordCount: 0,
-    readingLevel: 8.5,
-    uniqueContentPercentage: 90,
-    loadTime: 0,
-    mobileScore: 0,
-    accessibilityScore: 0,
-    issues: audit.issues,
-  };
-}
-
-async function detectDuplicateContent(url1: string, url2: string) {
-  // TODO: Implement content similarity algorithm
-  // For now, return basic structure
-  return {
-    similarityScore: 0,
-    duplicatePercentage: 0,
-    sharedPhrases: [],
-    uniqueContent1: 0,
-    uniqueContent2: 0,
-    canonicalSet: false,
-    recommendation: 'Check canonical tags',
-  };
-}
-
-async function optimizeContent(
-  content: string,
-  targetKeyword: string,
-  secondaryKeywords: string[],
-) {
-  // TODO: Integrate with AI (OpenAI/Anthropic)
-  // For now, return basic analysis
-  const wordCount = content.split(' ').length;
-  return {
-    optimizedContent: content,
-    keywordDensity: 0,
-    readabilityScore: 75,
-    seoScore: 80,
-    wordCount,
-    aiSuggestions: [
-      {
-        type: 'keyword',
-        suggestion: `Include "${targetKeyword}" in the first paragraph`,
-        priority: 'high',
-      },
-    ],
-  };
-}
-
-async function analyzeSemanticKeywords(keyword: string) {
-  // TODO: Integrate with NLP API or AI
-  return {
-    relatedKeywords: [],
-    semanticClusters: [],
-    searchIntent: 'informational',
-    intentConfidence: 80,
-    recommendedTopics: [],
-    recommendedQuestions: [],
-  };
-}
-
-async function analyzeCompetitor(competitorUrl: string) {
-  // TODO: Integrate with Ahrefs/Moz/Semrush API
-  return {
-    estimatedTraffic: 0,
-    domainAuthority: 0,
-    pageAuthority: 0,
-    rankingKeywords: 0,
-    topRankingKeywords: [],
-    totalBacklinks: 0,
-    referringDomains: 0,
-  };
 }
 
 // ============= SITEMAP GENERATION =============
