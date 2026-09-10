@@ -1,0 +1,31 @@
+{
+  "id": "SEO-010",
+  "title": "The blog platform publishes to a table the public blog never reads",
+  "status": "open",
+  "openedBy": "SEO iteration 11",
+  "openedOn": "2026-09-10",
+  "problem": "The public blog is entirely static. Three posts exist as three .tsx files under client/src/pages/blog, three explicit <Route> lines in App.tsx, three entries in PUBLIC_ROUTES_SEO and a hardcoded array in client/src/pages/blog/index.tsx. Nothing reads shared/blog-schema.ts's blog_posts. Meanwhile the Platform Admin Blog System (US-BLOG-001..086, 15 tables, 37 blog-* edge functions, an auto-refresh agent that runs without human review by default) writes posts to that table. Anything it publishes produces no public page, no sitemap entry and no SEO value at all.",
+  "evidence": [
+    "client/src/pages/blog/index.tsx line 7: const blogPosts = [ ... ] - three literals, no query",
+    "App.tsx routes /blog plus exactly three /blog/<slug> paths; there is no /blog/:slug route",
+    "getSEOConfig has a /blog/:slug fallback returning the generic title 'Blog Post | Printyx' for any other slug, which is unreachable today and would give every dynamically published post the same title and description if a route were added",
+    "AUDIT-025 already recorded that 19 of the 37 blog-* edge functions are reachable by nothing"
+  ],
+  "decision_required": "Whether the public blog should render from blog_posts at all. Both answers are defensible and they lead to very different work.",
+  "options": [
+    {
+      "name": "Render the public blog from blog_posts",
+      "work": "A /blog/:slug route, a page that fetches by slug, a blog index that queries instead of holding literals, per-post SEO derived from the row (title, description, datePublished, dateModified, author, ogImage) rather than from PUBLIC_ROUTES_SEO, and sitemap generation that includes published slugs - which means the sitemap stops being a pure build artifact, or the build queries the database. Note SEO-006: the sitemap is currently generated at build time from the route table, and a database-backed sitemap reopens exactly the two-sources problem that closed.",
+      "risk": "The auto-refresh agent is autonomous by default (scope decision 5D). Publishing straight to a public, indexed surface with no human review is a policy question, not just an engineering one."
+    },
+    {
+      "name": "Keep the public blog hand-written",
+      "work": "Say so explicitly - a header in client/src/pages/blog/index.tsx and a note in the blog PRD - and stop the blog platform implying it publishes to printyx.net. The three static posts stay; new ones are new .tsx files plus a route plus a route-table entry, which seo-blog-metadata.test.ts now enforces as a set.",
+      "risk": "The blog platform's whole point is autonomous content marketing. This makes it a tool that drafts for somewhere else."
+    }
+  ],
+  "doneInIteration11": [
+    "Blog post metadata is correct and single-sourced regardless of which option is chosen: cross-domain canonical fixed, duplicate Article schema removed, real datePublished per post",
+    "seo-blog-metadata.test.ts asserts the three slugs agree across page files, App routes and PUBLIC_ROUTES_SEO, so adding a fourth static post cannot silently miss one of the three places"
+  ]
+}

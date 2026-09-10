@@ -47,6 +47,16 @@ export interface SEORouteConfig {
   breadcrumbs?: BreadcrumbItem[];
   relatedPaths?: string[]; // For internal linking
   canonicalPath?: string; // If different from path
+  /**
+   * ISO date the article was published, and last substantively changed.
+   * BOTH ARE OPTIONAL AND MUST STAY THAT WAY. generateArticleSchema used to
+   * emit `new Date().toISOString()` for each, so every post told every crawler
+   * it had been published moments ago - and datePublished is the date Google
+   * prints beside an article in results. A post with no known date now emits no
+   * date, which is a smaller claim than the wrong one.
+   */
+  datePublished?: string;
+  dateModified?: string;
   // JSON-LD schema data for rich results
   faqItems?: FAQItem[]; // For FAQPage schema
   howToSteps?: HowToStep[]; // For HowTo schema
@@ -389,6 +399,7 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
   // Blog Posts (programmatic - these would be generated from CMS)
   {
     path: '/blog/ai-predictive-maintenance-vs-reactive-service',
+    datePublished: '2025-01-15',
     title: 'AI Predictive Maintenance vs Reactive Service | Printyx Blog',
     description:
       'Learn how AI-powered predictive maintenance outperforms reactive service models. Reduce downtime, cut costs, and improve customer satisfaction.',
@@ -411,6 +422,7 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
   },
   {
     path: '/blog/e-automate-vs-modern-cloud-platforms',
+    datePublished: '2025-01-12',
     title: 'E-Automate vs Modern Cloud Platforms | Time to Upgrade?',
     description:
       'Is it time to move beyond E-Automate? Compare legacy on-premise software to modern cloud platforms designed for today`s copier dealers.',
@@ -433,6 +445,7 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
   },
   {
     path: '/blog/dynamic-pricing-ai-copier-dealers',
+    datePublished: '2025-01-10',
     title: 'Dynamic Pricing with AI for Copier Dealers | Maximize Margins',
     description:
       'Use AI to optimize your pricing strategy. Dynamic pricing tools help copier dealers maximize margins while staying competitive.',
@@ -851,6 +864,11 @@ export function getSEOConfig(path: string): SEORouteConfig | null {
   // Handle dynamic routes with patterns
   // Blog post pattern: /blog/:slug
   if (path.startsWith('/blog/') && path !== '/blog') {
+    // Unreachable today - App.tsx routes the three published posts explicitly
+    // and there is no /blog/:slug route - but if one is added, this generic
+    // title and description would be identical on every post. Carry no date
+    // either: a BlogPosting with no datePublished is honest about not knowing,
+    // and this fallback cannot know.
     return {
       path,
       title: 'Blog Post | Printyx',

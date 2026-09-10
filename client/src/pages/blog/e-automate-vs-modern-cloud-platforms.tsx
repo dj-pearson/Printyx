@@ -12,16 +12,6 @@ const EAutomateVsModernPlatformsBlogPost = () => {
       readTime="15 min read"
       category="Platform Comparison"
       slug="e-automate-vs-modern-cloud-platforms"
-      publishedDate="2025-01-12"
-      modifiedDate="2025-01-12"
-      keywords={[
-        'e-automate',
-        'dealer management system',
-        'cloud platform',
-        'legacy software',
-        'copier dealer software',
-        'modern architecture',
-      ]}
     >
       <div className="space-y-8">
         {/* Introduction */}

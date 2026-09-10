@@ -164,8 +164,16 @@ function generateArticleSchema(
       '@type': 'WebPage',
       '@id': `${SITE_URL}${config.path}`,
     },
-    datePublished: new Date().toISOString(),
-    dateModified: new Date().toISOString(),
+    // No date unless the route table carries one. These were both
+    // `new Date().toISOString()`, so every article reported it had been
+    // published at the instant it was viewed - and datePublished is the date
+    // Google prints beside an article in results. dateModified falls back to
+    // datePublished rather than to the clock: an article that has not been
+    // revised was last modified when it was written.
+    ...(config.datePublished && { datePublished: config.datePublished }),
+    ...((config.dateModified || config.datePublished) && {
+      dateModified: config.dateModified || config.datePublished,
+    }),
     speakable: {
       '@type': 'SpeakableSpecification',
       cssSelector: ['h1', 'h2', '[data-speakable]', '.article-summary'],
