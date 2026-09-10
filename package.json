@@ -184,7 +184,8 @@
     "seo:sitemap": "tsx scripts/generate-sitemap.mts",
     "check:sitemap": "tsx scripts/generate-sitemap.mts --check",
     "seo:social-images": "node scripts/generate-social-images.mjs",
-    "check:seo-assets": "node scripts/check-seo-assets.mjs"
+    "check:seo-assets": "node scripts/check-seo-assets.mjs",
+    "seo:llms": "tsx scripts/generate-llms-txt.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

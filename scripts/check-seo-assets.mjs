@@ -138,6 +138,51 @@ for (const m of html.matchAll(/<meta\s+((?:name|property)="[^"]+")/g)) {
   }
 }
 
+// 8. A published price must match the plan that is actually sold. llms.txt
+//    advertised $49 and $79 per USER per month against flat $79/$99/$149
+//    Stripe products, and the head's offer had the right number with the wrong
+//    unit - the unit a rich result would have shown (SEO-007).
+const plansSource = readFileSync(resolve(ROOT, 'shared/pricing-plans.ts'), 'utf8');
+const monthlyPrices = [...plansSource.matchAll(/monthlyPrice:\s*(\d+)/g)].map((m) =>
+  Number(m[1])
+);
+if (monthlyPrices.length === 0) {
+  failures.push('shared/pricing-plans.ts: no monthlyPrice entries found');
+} else {
+  const entryDollars = Math.min(...monthlyPrices) / 100;
+  for (const block of blocks) {
+    for (const m of block[1].matchAll(
+      /"@type":\s*"UnitPriceSpecification"[\s\S]{0,400}?"price":\s*"(\d+(?:\.\d+)?)"[\s\S]{0,400}?"unitText":\s*"([^"]+)"/g
+    )) {
+      if (Number(m[1]) !== entryDollars) {
+        failures.push(
+          `index.html: offer price $${m[1]} does not match the cheapest plan ($${entryDollars})`
+        );
+      }
+      if (/per user/i.test(m[2])) {
+        failures.push(
+          `index.html: offer unit "${m[2]}" - these plans are flat per tenant, not per seat`
+        );
+      }
+    }
+  }
+  const llmsPath = resolve(PUBLIC_DIR, 'llms.txt');
+  if (!existsSync(llmsPath)) {
+    failures.push('client/public/llms.txt is missing. Run `npm run seo:llms`.');
+  } else {
+    const llms = readFileSync(llmsPath, 'utf8');
+    if (/per user|\/user\//i.test(llms)) {
+      failures.push('llms.txt: advertises a per-user price; these plans are per tenant');
+    }
+    for (const cents of monthlyPrices) {
+      const dollars = `$${cents / 100}`;
+      if (!llms.includes(dollars)) {
+        failures.push(`llms.txt: does not publish the ${dollars}/month plan`);
+      }
+    }
+  }
+}
+
 if (failures.length) {
   console.error('SEO asset check failed:\n' + failures.map((f) => `  - ${f}`).join('\n'));
   process.exit(1);

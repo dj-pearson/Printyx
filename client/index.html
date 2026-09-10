@@ -95,6 +95,10 @@
     <meta name="msapplication-TileColor" content="#3b82f6" />
 
     <!-- Structured Data (JSON-LD).
+         The offer is $79 PER MONTH for the whole tenant, matching the Starter
+         plan in shared/pricing-plans.ts and the Stripe product built from it.
+         It said "per user per month", which is the unit a rich result would
+         have shown and is not what anyone is charged (SEO-007).
          No aggregateRating here. LEGAL-002 removed a hardcoded 4.8-from-150 from
          the runtime provider (client/src/lib/seo/SEOProvider.tsx) and missed this
          static copy, which carried 4.9-from-150 and is the one crawlers read
@@ -115,7 +119,12 @@
             "@type": "UnitPriceSpecification",
             "price": "79",
             "priceCurrency": "USD",
-            "unitText": "per user per month"
+            "referenceQuantity": {
+              "@type": "QuantitativeValue",
+              "value": "1",
+              "unitCode": "MON"
+            },
+            "unitText": "per month"
           }
         },
         "operatingSystem": "Web, iOS, Android",

@@ -144,3 +144,64 @@ describe('the static head and SEOProvider do not fight (SEO-003)', () => {
     expect(providerNoComments).not.toContain('priceRange');
   });
 });
+
+describe('published prices match the plans that are sold (SEO-007)', () => {
+  /**
+   * llms.txt advertised "Starter: $49/user/month" and "Professional:
+   * $79/user/month" with Enterprise as custom-priced, against real Stripe
+   * products at a flat $79, $99 and $149 with a user cap. Wrong amounts, wrong
+   * unit, wrong that Enterprise has no list price. index.html's offer had the
+   * right number with the wrong unit - "per user per month" is what a rich
+   * result would have shown, and is not what anyone is charged.
+   *
+   * shared/pricing-plans.ts is the one source now: scripts/setup-stripe-products.ts
+   * builds the Stripe products from it and scripts/generate-llms-txt.mts
+   * publishes it.
+   */
+  const plans = readFileSync(join(root, 'shared/pricing-plans.ts'), 'utf8');
+  const llms = readFileSync(join(root, 'client/public/llms.txt'), 'utf8');
+  const stripeScript = readFileSync(join(root, 'scripts/setup-stripe-products.ts'), 'utf8');
+  const monthly = [...plans.matchAll(/monthlyPrice:\s*(\d+)/g)].map((m) => Number(m[1]));
+
+  it('has three plans with real monthly prices', () => {
+    expect(monthly).toEqual([7900, 9900, 14900]);
+  });
+
+  it('the Stripe setup script builds its plans from that module', () => {
+    expect(stripeScript).toContain("from '../shared/pricing-plans'");
+    expect(stripeScript).toContain('PRICING_PLANS.map');
+    // The literals it used to carry are gone, so there is nothing to drift.
+    expect(stripeScript).not.toContain("name: 'Printyx Starter'");
+  });
+
+  it('llms.txt publishes every plan and no per-seat price', () => {
+    for (const cents of monthly) {
+      expect(llms).toContain(`$${cents / 100}/month`);
+    }
+    expect(llms).not.toMatch(/per user|\/user\//i);
+    expect(llms).not.toContain('Custom pricing');
+  });
+
+  it('the head offer is the cheapest plan, priced per month', () => {
+    const offer = html.match(
+      /"@type": "UnitPriceSpecification"[\s\S]*?"price": "(\d+)"[\s\S]*?"unitText": "([^"]+)"/,
+    );
+    expect(offer).not.toBeNull();
+    expect(Number(offer![1])).toBe(Math.min(...monthly) / 100);
+    expect(offer![2]).toBe('per month');
+  });
+
+  it('llms.txt makes no claim nothing measures', () => {
+    for (const claim of ['40%', '2-3 year', '30+ years', 'no credit card']) {
+      expect(llms, `"${claim}" is not a measurement anything takes`).not.toContain(claim);
+    }
+  });
+
+  it('says the site is closed rather than listing pages that are not live', () => {
+    expect(llms).toContain('not open yet');
+    // Every marketing URL serves the holding page while COMING_SOON is on.
+    for (const closed of ['/pricing', '/blog', '/case-studies', '/roi-calculator']) {
+      expect(llms).not.toContain(`https://printyx.net${closed})`);
+    }
+  });
+});

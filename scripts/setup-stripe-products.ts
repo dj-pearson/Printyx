@@ -17,6 +17,7 @@
 import Stripe from 'stripe';
 import * as fs from 'fs';
 import * as path from 'path';
+import { PRICING_PLANS } from '../shared/pricing-plans';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -104,55 +105,24 @@ interface CreatedPlan {
   annualPaymentLink: string;
 }
 
-// Plan configurations
-const plans: PlanConfig[] = [
-  {
-    name: 'Printyx Starter',
-    slug: 'starter',
-    description:
-      'Perfect for small copier dealers (5-20 employees) with core contract management and meter billing',
-    monthlyPrice: 7900, // $79.00
-    annualPrice: 75800, // $758.00
-    metadata: {
-      tier: 'starter',
-      maxUsers: '20',
-      maxLocations: '3',
-      maxStorage: '100',
-      trialDays: '30',
-    },
+// Plan configurations come from shared/pricing-plans.ts so that the prices
+// Stripe charges and the prices the marketing surfaces publish cannot drift.
+// They had: llms.txt was advertising $49 and $79 per user per month against
+// these flat $79/$99/$149 products (SEO-007).
+const plans: PlanConfig[] = PRICING_PLANS.map((plan) => ({
+  name: plan.name,
+  slug: plan.slug,
+  description: plan.description,
+  monthlyPrice: plan.monthlyPrice,
+  annualPrice: plan.annualPrice,
+  metadata: {
+    tier: plan.slug,
+    maxUsers: plan.maxUsers,
+    maxLocations: plan.maxLocations,
+    ...(plan.popular ? { popular: 'true' } : {}),
+    trialDays: String(plan.trialDays),
   },
-  {
-    name: 'Printyx Professional',
-    slug: 'professional',
-    description:
-      'For growing copier dealers (20-100 employees) with service dispatch, mobile app, and advanced inventory',
-    monthlyPrice: 9900, // $99.00
-    annualPrice: 95000, // $950.00
-    metadata: {
-      tier: 'professional',
-      maxUsers: '100',
-      maxLocations: '10',
-      popular: 'true',
-      trialDays: '30',
-    },
-  },
-  {
-    name: 'Printyx Enterprise',
-    slug: 'enterprise',
-    description:
-      'For large copier dealers (100+ employees) with dedicated account manager, API access, and SLA guarantees',
-    monthlyPrice: 14900, // $149.00
-    annualPrice: 143000, // $1,430.00
-    metadata: {
-      tier: 'enterprise',
-      maxUsers: 'unlimited',
-      maxLocations: 'unlimited',
-      sla: 'true',
-      dedicatedSupport: 'true',
-      trialDays: '30',
-    },
-  },
-];
+}));
 
 // Helper function to format currency
 function formatCurrency(cents: number): string {
