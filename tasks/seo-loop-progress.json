@@ -51,6 +51,12 @@
       "iteration": 9,
       "element": "llms.txt, and the prices published to AI crawlers",
       "summary": "llms.txt existed only as an Express handler, so printyx.net/llms.txt 404d on Cloudflare Pages - the SEO-001 defect again, and iteration 8's robots.txt points at it with LLMS:. It is a build artifact now (scripts/generate-llms-txt.mts), served from disk by Express like sitemap.xml and robots.txt. What it SAID mattered more: an AI crawler repeats this file verbatim, and it advertised Starter at $49/user/month and Professional at $79/user/month with Enterprise custom-priced, against real Stripe products at a flat $79, $99 and $149 with user caps - wrong amount, wrong unit, wrong that Enterprise has no list price. index.html's JSON-LD offer had the right number with the wrong unit, 'per user per month', which is the one a rich result would have shown. shared/pricing-plans.ts is now the single source: setup-stripe-products.ts builds the Stripe products from it and the generator publishes it. Also removed 'reduce downtime by up to 40%', '2-3 year technical advantage', '30+ years of combined experience' and 'no credit card required' - none of them measured - and the fifteen resource links that all serve the holding page; while the site is closed llms.txt says so. check:seo-assets now fails if a published price or unit disagrees with the plan module, proven by mutating both."
+    },
+    {
+      "iteration": 10,
+      "element": "SEO-008: endpoints that stored invented scores",
+      "prd": "tasks/prd-seo-dashboard-endpoints.json (now closed)",
+      "summary": "Going after SEO-004's last three found something bigger: five functions in routes-seo.ts were TODO stubs returning made-up numbers that their handlers STORED and served - analyzePage (title 'Page Title', readingLevel 8.5, uniqueContentPercentage 90), optimizeContent (readabilityScore 75, seoScore 80), analyzeSemanticKeywords (intentConfidence 80, always 'informational'), detectDuplicateContent (similarityScore 0, asserting two pages are not duplicates without comparing them) and analyzeCompetitor (domain authority and backlinks as 0). One of them was LIVE because iteration 5 of this loop repointed the semantic button at the correct URL and connected it to the fabricator. All five deleted, all five endpoints 501 with the missing integration named, three panels gated as Not implemented. links/analyze was wired for real instead: check/broken-links already returns every link with linkType and isNoFollow, so no new endpoint was needed. The real analysers in seo-service.ts are untouched - they fetch the page and measure it, and PageSpeed refuses without a key rather than guessing. tsc 288 -> 284, edge-coverage 65 -> 63, both ratchets tightened."
     }
   ],
   "candidatesForLaterIterations": [
@@ -62,7 +68,6 @@
     "sameAs in the Organization JSON-LD lists linkedin/twitter/youtube profiles nobody verified; a sameAs pointing at a 404 weakens entity resolution rather than helping it",
     "Contact emails disagree: sales@printyx.com vs support@printyx.net in the same JSON-LD block",
     "PRD-sized: prerendering/SSR for the public routes once the site opens - all title/description/canonical/JSON-LD is injected client-side today",
-    "No guard checks a frontend /api URL against the EXPRESS router table - check:edge-coverage only does the edge half, which is how 12 URLs stayed dead in both environments",
-    "SEO-004 remaining (3): content/duplicates, content/optimize, links/analyze - all need a UI or backend decision, not a rename"
+    "No guard checks a frontend /api URL against the EXPRESS router table - check:edge-coverage only does the edge half, which is how 12 URLs stayed dead in both environments"
   ]
 }

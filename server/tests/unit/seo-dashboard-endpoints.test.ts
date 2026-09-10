@@ -63,12 +63,18 @@ describe.each(['client/src/pages/SEODashboard.tsx', 'client/src/pages/RootAdminS
   },
 );
 
-describe('the four endpoints SEO-004 repointed', () => {
+describe('the endpoints SEO-004 repointed', () => {
+  /**
+   * semantic/analyze was in this list until SEO-008. Repointing it at
+   * /api/seo/analyze/semantic connected the button to a TODO stub that returned
+   * intentConfidence 80 for every keyword, so the endpoint answers 501 now and
+   * the panel is gated rather than wired. Fixing a URL is not the same as
+   * checking what is behind it, and that is the lesson.
+   */
   it.each([
     ['/api/seo/check/mobile', 'mobile/analyze'],
     ['/api/seo/core-web-vitals', 'performance/check'],
     ['/api/seo/check/security', 'security/analyze'],
-    ['/api/seo/analyze/semantic', 'semantic/analyze'],
   ])('%s is registered and the dead %s is gone', (real, dead) => {
     expect(registered.has(real)).toBe(true);
     const dash = readFileSync(join(root, 'client/src/pages/SEODashboard.tsx'), 'utf8');
@@ -244,5 +250,96 @@ describe('one sitemap and one robots.txt (SEO-006)', () => {
   it('prefers client/public in development so a stale dist cannot win', () => {
     // dist/ is whatever the last build left behind, which can be weeks old.
     expect(coreCode).toContain("process.env.NODE_ENV === 'production'");
+  });
+});
+
+describe('no SEO endpoint stores an invented measurement (SEO-008)', () => {
+  /**
+   * Five functions in routes-seo.ts were TODO stubs that returned made-up
+   * numbers, and their handlers STORED those numbers and served them as results:
+   *
+   *   analyzePage             title 'Page Title', readingLevel 8.5,
+   *                           uniqueContentPercentage 90
+   *   optimizeContent         readabilityScore 75, seoScore 80
+   *   analyzeSemanticKeywords intentConfidence 80, searchIntent 'informational'
+   *   detectDuplicateContent  similarityScore 0 - which asserts two pages are
+   *                           not duplicates without comparing them
+   *   analyzeCompetitor       domain authority, traffic and backlinks all 0
+   *
+   * A stub that throws gets fixed; a stub that returns 75 gets believed. Worse,
+   * iteration 5 of this loop repointed the semantic button at the correct URL
+   * and so connected a live button to the fabricator - which is why the audit
+   * exists at all. All five answer 501 now.
+   */
+  const routes = readFileSync(join(root, 'server/routes-seo.ts'), 'utf8');
+  const code = routes.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  it.each([
+    'detectDuplicateContent',
+    'optimizeContent',
+    'analyzeSemanticKeywords',
+    'analyzeCompetitor',
+    'analyzePage',
+  ])('%s no longer exists', (fn) => {
+    expect(code).not.toContain(`async function ${fn}(`);
+    expect(code).not.toContain(`await ${fn}(`);
+  });
+
+  it('the values they invented appear nowhere', () => {
+    for (const invented of [
+      "'Page Title'",
+      'readingLevel: 8.5',
+      'uniqueContentPercentage: 90',
+      'readabilityScore: 75',
+      'seoScore: 80',
+      'intentConfidence: 80',
+    ]) {
+      expect(code, `${invented} was a fabricated measurement`).not.toContain(invented);
+    }
+  });
+
+  it('all five endpoints answer 501', () => {
+    expect(code.match(/NOT_IMPLEMENTED/g)?.length).toBe(5);
+    for (const route of [
+      '/api/seo/analyze/page',
+      '/api/seo/detect/duplicate-content',
+      '/api/seo/optimize/content',
+      '/api/seo/analyze/semantic',
+      '/api/seo/analyze/competitor',
+    ]) {
+      expect(code).toContain(route);
+    }
+  });
+
+  it('the real analysers are untouched - they fetch the page and measure it', () => {
+    const service = readFileSync(join(root, 'server/services/seo-service.ts'), 'utf8');
+    for (const fn of [
+      'checkBrokenLinks',
+      'checkSecurityHeaders',
+      'validateStructuredData',
+      'detectRedirectChains',
+      'checkCoreWebVitalsWithAPI',
+    ]) {
+      expect(service).toContain(`export async function ${fn}`);
+    }
+    // PageSpeed refuses rather than guessing when it has no key.
+    expect(service).toContain('PageSpeed Insights API key not configured');
+  });
+
+  it('the three panels behind those endpoints say so instead of offering a scan', () => {
+    const dash = readFileSync(join(root, 'client/src/pages/SEODashboard.tsx'), 'utf8');
+    expect(dash.match(/Not implemented/g)?.length).toBe(3);
+    const dashCode = dash.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+    expect(dashCode).not.toContain('Scan for Duplicates');
+    expect(dashCode).not.toContain('optimizeContentMutation');
+    expect(dashCode).not.toContain('analyzeSemanticMutation');
+  });
+
+  it('link analysis uses the endpoint that already returns every link', () => {
+    // There was never a links/analyze endpoint, and there does not need to be:
+    // check/broken-links stores the whole link profile, not just the broken ones.
+    const dash = readFileSync(join(root, 'client/src/pages/SEODashboard.tsx'), 'utf8');
+    expect(dash.replace(/\/\/.*$/gm, '')).not.toContain('/api/seo/links/analyze');
+    expect(dash.match(/'\/api\/seo\/check\/broken-links'/g)?.length).toBe(2);
   });
 });

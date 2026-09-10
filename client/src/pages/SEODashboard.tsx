@@ -181,12 +181,21 @@ interface ImageAnalysis {
   potentialSavings?: number | null;
 }
 
+/**
+ * A seo_link_analysis row. There is no separate link-analysis endpoint and
+ * there does not need to be: POST /api/seo/check/broken-links returns EVERY
+ * link it found on the page, with linkType and isNoFollow already set, and
+ * stores them. The Broken Links panel filters that to isBroken; this panel
+ * shows the whole profile.
+ */
 interface LinkAnalysis {
-  url: string;
-  text: string;
-  type: 'internal' | 'external';
-  isNofollow: boolean;
-  statusCode?: number;
+  sourceUrl: string;
+  targetUrl: string;
+  anchorText?: string | null;
+  linkType?: string | null;
+  isNoFollow?: boolean | null;
+  isBroken: boolean | null;
+  statusCode: number | null;
 }
 
 /**
@@ -229,13 +238,6 @@ interface RedirectChain {
   issues?: string[] | null;
 }
 
-interface DuplicateContent {
-  url1: string;
-  url2: string;
-  similarityScore: number;
-  duplicatedSections: string[];
-}
-
 interface SecurityAnalysis {
   url: string;
   https: boolean;
@@ -275,15 +277,12 @@ export default function SEODashboard() {
   /** Links the server found but never fetched, so their status is unknown. */
   const [uncheckedLinkCount, setUncheckedLinkCount] = useState(0);
   const [redirectResults, setRedirectResults] = useState<RedirectChain[]>([]);
-  const [duplicateContentResults, setDuplicateContentResults] = useState<DuplicateContent[]>([]);
   const [securityResults, setSecurityResults] = useState<SecurityAnalysis | null>(null);
   const [mobileResults, setMobileResults] = useState<MobileAnalysis | null>(null);
   const [performanceResults, setPerformanceResults] = useState<any>(null);
   const [structuredDataResults, setStructuredDataResults] = useState<StructuredDataResult[] | null>(
     null,
   );
-  const [contentResults, setContentResults] = useState<any>(null);
-  const [semanticResults, setSemanticResults] = useState<any>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -469,11 +468,13 @@ export default function SEODashboard() {
   // Links analysis mutation
   const analyzeLinksMutation = useMutation({
     mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/links/analyze', 'POST', { url });
+      return apiRequest('/api/seo/check/broken-links', 'POST', { sourceUrl: url });
     },
-    onSuccess: (data) => {
-      setLinkAnalysisResults(data.links || []);
-      toast({ title: 'Analysis complete', description: `Found ${data.links?.length || 0} links` });
+    onSuccess: (data: LinkAnalysis[]) => {
+      // Bare array of stored rows; `data.links` was undefined on it.
+      const links = Array.isArray(data) ? data : [];
+      setLinkAnalysisResults(links);
+      toast({ title: 'Analysis complete', description: `Found ${links.length} links` });
     },
     onError: (error: Error) => {
       toast({
@@ -533,27 +534,6 @@ export default function SEODashboard() {
     onError: (error: Error) => {
       toast({
         title: 'Redirect check failed',
-        description: error.message || 'Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  // Duplicate content scan mutation
-  const scanDuplicatesMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('/api/seo/content/duplicates', 'POST');
-    },
-    onSuccess: (data) => {
-      setDuplicateContentResults(data.duplicates || []);
-      toast({
-        title: 'Scan complete',
-        description: `Found ${data.duplicates?.length || 0} duplicate pairs`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Duplicate-content scan failed',
         description: error.message || 'Please try again.',
         variant: 'destructive',
       });
@@ -649,45 +629,6 @@ export default function SEODashboard() {
     onError: (error: Error) => {
       toast({
         title: 'Structured-data validation failed',
-        description: error.message || 'Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  // Content optimization mutation
-  const optimizeContentMutation = useMutation({
-    mutationFn: async (url: string) => {
-      return apiRequest('/api/seo/content/optimize', 'POST', { url });
-    },
-    onSuccess: (data) => {
-      setContentResults(data);
-      toast({ title: 'Analysis complete', description: 'Content optimization suggestions ready' });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Content optimization failed',
-        description: error.message || 'Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  // Semantic analysis mutation
-  const analyzeSemanticMutation = useMutation({
-    mutationFn: async (keyword: string) => {
-      return apiRequest('/api/seo/analyze/semantic', 'POST', { keyword });
-    },
-    onSuccess: (data) => {
-      setSemanticResults(data);
-      toast({
-        title: 'Analysis complete',
-        description: `Found ${data.relatedKeywords?.length || 0} related keywords`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Semantic analysis failed',
         description: error.message || 'Please try again.',
         variant: 'destructive',
       });
@@ -1869,22 +1810,26 @@ export default function SEODashboard() {
                                 <div className="flex items-start gap-2">
                                   <LinkIcon className="h-4 w-4 mt-1" />
                                   <div className="flex-1">
-                                    <p className="text-sm font-medium truncate">{link.url}</p>
-                                    <p className="text-xs text-muted-foreground">{link.text}</p>
-                                    <div className="flex gap-2 mt-1">
+                                    <p className="text-sm font-medium truncate">{link.targetUrl}</p>
+                                    {link.anchorText && (
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        {link.anchorText}
+                                      </p>
+                                    )}
+                                    <div className="flex flex-wrap gap-2 mt-1">
                                       <Badge
-                                        variant={link.type === 'internal' ? 'default' : 'secondary'}
+                                        variant={
+                                          link.linkType === 'internal' ? 'default' : 'secondary'
+                                        }
                                       >
-                                        {link.type}
+                                        {link.linkType ?? 'unknown'}
                                       </Badge>
-                                      {link.isNofollow && <Badge variant="outline">nofollow</Badge>}
-                                      {link.statusCode && (
-                                        <Badge
-                                          variant={
-                                            link.statusCode === 200 ? 'default' : 'destructive'
-                                          }
-                                        >
-                                          {link.statusCode}
+                                      {link.isNoFollow && <Badge variant="outline">nofollow</Badge>}
+                                      {link.statusCode === null ? (
+                                        <Badge variant="outline">not checked</Badge>
+                                      ) : (
+                                        <Badge variant={link.isBroken ? 'destructive' : 'default'}>
+                                          {link.statusCode === 0 ? 'no response' : link.statusCode}
                                         </Badge>
                                       )}
                                     </div>
@@ -2062,43 +2007,19 @@ export default function SEODashboard() {
                     <CardDescription>Identify duplicate content across your site</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <Button
-                      onClick={() => scanDuplicatesMutation.mutate()}
-                      disabled={scanDuplicatesMutation.isPending}
-                    >
-                      {scanDuplicatesMutation.isPending ? 'Scanning...' : 'Scan for Duplicates'}
-                    </Button>
-                    {duplicateContentResults.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="font-medium">
-                          Found {duplicateContentResults.length} duplicate pairs
-                        </h4>
-                        <ScrollArea className="h-96">
-                          {duplicateContentResults.map((dup, idx) => (
-                            <Card key={idx} className="mb-2">
-                              <CardContent className="p-3">
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-xs">Similarity</span>
-                                    <Badge>{dup.similarityScore}%</Badge>
-                                  </div>
-                                  <p className="text-sm truncate">{dup.url1}</p>
-                                  <p className="text-sm truncate">{dup.url2}</p>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </ScrollArea>
-                      </div>
-                    )}
-                    {duplicateContentResults.length === 0 && !scanDuplicatesMutation.isPending && (
-                      <div className="rounded-md bg-muted p-4">
-                        <p className="text-sm text-muted-foreground">
-                          Scan your site to find pages with duplicate or very similar content.
-                          Duplicate content can harm your SEO rankings.
-                        </p>
-                      </div>
-                    )}
+                    {/* SEO-008: no scan button. detectDuplicateContent was a TODO stub
+                        that returned similarityScore 0 for every pair, so a scan
+                        would have reported "no duplicates" without comparing
+                        anything. The endpoint answers 501 until a real similarity
+                        implementation exists. */}
+                    <div className="rounded-md border border-dashed p-4">
+                      <p className="text-sm font-medium">Not implemented</p>
+                      <p className="text-sm text-muted-foreground">
+                        Duplicate detection needs a content similarity implementation. Until then
+                        this reports nothing rather than reporting no duplicates, which is a
+                        different claim.
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -2323,55 +2244,19 @@ export default function SEODashboard() {
                     <CardDescription>AI-powered content optimization suggestions</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="https://example.com"
-                        value={analyzeUrl}
-                        onChange={(e) => setAnalyzeUrl(e.target.value)}
-                      />
-                      <Button
-                        onClick={() => optimizeContentMutation.mutate(analyzeUrl)}
-                        disabled={!analyzeUrl || optimizeContentMutation.isPending}
-                      >
-                        {optimizeContentMutation.isPending ? 'Analyzing...' : 'Analyze Content'}
-                      </Button>
+                    {/* SEO-008: optimizeContent was a TODO stub returning
+                        readabilityScore 75 and seoScore 80 for any input, and the
+                        handler wrote them to seo_content_optimization where they
+                        looked like history. The endpoint answers 501 until an LLM
+                        is wired. The URL field is gone too: the endpoint takes the
+                        content itself, not a URL, so the form never matched it. */}
+                    <div className="rounded-md border border-dashed p-4">
+                      <p className="text-sm font-medium">Not implemented</p>
+                      <p className="text-sm text-muted-foreground">
+                        Content scoring needs an LLM. No readability or SEO score is shown here
+                        because none is measured.
+                      </p>
                     </div>
-                    {contentResults && (
-                      <div className="space-y-4">
-                        <div className="rounded-md bg-muted p-4">
-                          <p className="text-sm">
-                            <strong>Word Count:</strong> {contentResults.wordCount || 'N/A'}
-                          </p>
-                          <p className="text-sm">
-                            <strong>Reading Time:</strong> {contentResults.readingTime || 'N/A'}
-                          </p>
-                          <p className="text-sm">
-                            <strong>Keyword Density:</strong>{' '}
-                            {contentResults.keywordDensity || 'N/A'}
-                          </p>
-                        </div>
-                        {contentResults.suggestions && contentResults.suggestions.length > 0 && (
-                          <div className="space-y-2">
-                            <h4 className="font-medium">Optimization Suggestions</h4>
-                            <ScrollArea className="h-64">
-                              {contentResults.suggestions.map((suggestion: string, idx: number) => (
-                                <p key={idx} className="text-sm text-muted-foreground mb-2">
-                                  • {suggestion}
-                                </p>
-                              ))}
-                            </ScrollArea>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {!contentResults && !optimizeContentMutation.isPending && (
-                      <div className="rounded-md bg-muted p-4">
-                        <p className="text-sm text-muted-foreground">
-                          Get AI-powered suggestions for improving your content for SEO, including
-                          keyword usage, readability, structure, and more.
-                        </p>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -2386,46 +2271,20 @@ export default function SEODashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Enter primary keyword"
-                        value={analyzeUrl}
-                        onChange={(e) => setAnalyzeUrl(e.target.value)}
-                      />
-                      <Button
-                        onClick={() => analyzeSemanticMutation.mutate(analyzeUrl)}
-                        disabled={!analyzeUrl || analyzeSemanticMutation.isPending}
-                      >
-                        {analyzeSemanticMutation.isPending ? 'Analyzing...' : 'Analyze'}
-                      </Button>
+                    {/* SEO-008: analyzeSemanticKeywords was a TODO stub that
+                        returned searchIntent 'informational' with
+                        intentConfidence 80 for every keyword submitted, and the
+                        handler stored that in seo_semantic_analysis. Iteration 5
+                        of this loop repointed the button at the correct URL,
+                        which connected it to the fabricator; the endpoint answers
+                        501 now. */}
+                    <div className="rounded-md border border-dashed p-4">
+                      <p className="text-sm font-medium">Not implemented</p>
+                      <p className="text-sm text-muted-foreground">
+                        Semantic keyword analysis needs an NLP or LLM provider. No related keywords,
+                        clusters or search intent are shown because none are derived.
+                      </p>
                     </div>
-                    {semanticResults &&
-                      semanticResults.relatedKeywords &&
-                      semanticResults.relatedKeywords.length > 0 && (
-                        <div className="space-y-2">
-                          <h4 className="font-medium">
-                            Related Keywords ({semanticResults.relatedKeywords.length})
-                          </h4>
-                          <ScrollArea className="h-96">
-                            <div className="flex flex-wrap gap-2">
-                              {semanticResults.relatedKeywords.map((kw: any, idx: number) => (
-                                <Badge key={idx} variant="secondary">
-                                  {kw.keyword || kw}
-                                </Badge>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        </div>
-                      )}
-                    {(!semanticResults || !semanticResults.relatedKeywords) &&
-                      !analyzeSemanticMutation.isPending && (
-                        <div className="rounded-md bg-muted p-4">
-                          <p className="text-sm text-muted-foreground">
-                            Discover semantically related keywords and create keyword clusters to
-                            improve your content strategy and topical authority.
-                          </p>
-                        </div>
-                      )}
                   </CardContent>
                 </Card>
               </TabsContent>
