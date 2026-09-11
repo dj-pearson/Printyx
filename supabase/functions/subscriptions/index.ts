@@ -74,7 +74,27 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch subscription plans' }, 500, req);
       }
 
-      return createCorsResponse({ data: plans || [] }, 200, req);
+      // PROD-013. The shape is { plans, features }, matching the Express
+      // handler this replaces and the one consumer, useSubscriptionPlans, which
+      // reads both keys. It used to answer `{ data: plans }`, so the pricing
+      // page would have rendered no plans and no feature comparison in
+      // production even once its raw fetch was corrected - the URL and the
+      // shape were two separate breakages on the same call.
+      //
+      // `features` here is the CATALOGUE, every row of subscription_features
+      // in display order. It is not the /features branch below, which answers
+      // what the CURRENT subscription entitles a tenant to.
+      const { data: features, error: featuresError } = await admin
+        .from('subscription_features')
+        .select('*')
+        .order('display_order', { ascending: true });
+
+      if (featuresError) {
+        console.error('Error fetching subscription features:', featuresError);
+        return createCorsResponse({ error: 'Failed to fetch subscription features' }, 500, req);
+      }
+
+      return createCorsResponse({ plans: plans || [], features: features || [] }, 200, req);
     }
 
     // ========================================================================

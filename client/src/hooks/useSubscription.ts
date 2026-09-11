@@ -5,6 +5,24 @@ import { apiRequest } from '@/lib/queryClient';
  * Subscription Hook
  *
  * Manages subscription state and operations throughout the app.
+ *
+ * PROD-013. Every call here used to be a bare `fetch('/api/subscriptions/...')`
+ * with `credentials: 'include'`, which is broken in production twice over: it
+ * skips getApiUrl, so the request goes to whatever origin serves the static
+ * bundle rather than to the API, and it sends cookies where an edge function
+ * wants a Bearer JWT. Nine call sites, and between them they are the entire
+ * billing surface - the plan list, checkout, the Stripe customer portal, adding
+ * a payment method, previewing an upgrade and verifying a completed checkout.
+ *
+ * They go through apiRequest now, which attaches both. That fixes the
+ * ADDRESSING. It does not make them all work: only `plans` and `usage` have a
+ * branch in supabase/functions/subscriptions/, so the seven Stripe paths -
+ * checkout, checkout/addon, checkout/session/:id, portal, setup-intent,
+ * preview-upgrade and stripe/config - exist on the Express side alone and 404
+ * in production. That is PROD-STRIPE-001, and it means a customer cannot
+ * subscribe or manage payment there at all. A visible 404 beats a request that
+ * quietly dissolves into the static origin, which is why this is still worth
+ * doing on its own.
  */
 
 export interface SubscriptionPlan {
@@ -72,25 +90,39 @@ export interface SubscriptionStatus {
 }
 
 /**
- * PROD-014 — READ BEFORE "FIXING" THE FETCHES BELOW.
+ * PROD-014 / PROD-013 — READ BEFORE "FIXING" THE FETCHES BELOW.
  *
  * Every call in this file is a bare relative fetch, so in production it resolves
  * against the origin serving the static bundle rather than the API. SubscriptionBanner
  * is mounted in App.tsx itself, so this runs on every page and none of it answers
  * in production.
  *
- * The obvious repair — swap fetch for apiRequest — makes it WORSE for most of
- * these, because apiRequest routes to the edge function host and the
- * subscriptions edge function does not implement most of these paths. It serves
- * plans, usage, invoices, features, change-plan, the root list/create,
- * :id / :id/cancel / :id/resume, and — ported under PROD-014 — current,
- * notifications, notifications/:id/dismiss, the bare cancel path,
- * convert-trial, create and upgrade. Those go through apiRequest.
+ * CORRECTED 2026-09-11 (PROD-013). This note used to say the obvious repair -
+ * swap fetch for apiRequest - would make things WORSE, taking the Stripe paths
+ * from "works in dev, 404 in prod" to "404 in both". That is not what happens.
+ * getApiUrl returns a RELATIVE path whenever config.apiBaseUrl is empty, and it
+ * is empty in development (client/src/lib/config.ts: no VITE_API_BASE_URL, and
+ * import.meta.env.PROD false), so apiRequest in dev addresses Express exactly
+ * as the bare fetch did. Dev is unchanged; the only difference is that a Bearer
+ * token and the tenant header now go with the request.
  *
- * It still has NO stripe/config or checkout, which need Stripe credentials in
- * the edge environment — a deployment decision rather than code. Converting
- * those two call sites would take them from "works in dev, 404 in prod" to
- * "404 in both".
+ * So all nine were converted. In production they now address the functions
+ * host, which means `plans` and `usage` WORK where they previously dissolved
+ * into the static origin, and the seven Stripe paths - checkout,
+ * checkout/addon, checkout/session/:id, portal, setup-intent, preview-upgrade
+ * and stripe/config - fail with a visible 404 instead of silently. A request
+ * that fails loudly is the better of the two: the previous state was
+ * indistinguishable from a backend that simply had nothing to say.
+ *
+ * The subscriptions edge function serves plans, usage, invoices, features,
+ * change-plan, the root list/create, :id / :id/cancel / :id/resume, and - ported
+ * under PROD-014 - current, notifications, notifications/:id/dismiss, the bare
+ * cancel path, convert-trial, create and upgrade.
+ *
+ * It still has NO Stripe paths, which need Stripe credentials in the edge
+ * environment - a deployment decision rather than code. Until they are ported,
+ * a customer cannot subscribe or manage payment in production at all. That is
+ * PROD-STRIPE-001.
  *
  * Express (server/routes-subscriptions.ts) is the complete implementation, and
  * /api/subscriptions is not proxied, so dev works and only production is blind.
@@ -124,13 +156,7 @@ export function useSubscriptionPlans() {
   return useQuery<{ plans: SubscriptionPlan[]; features: SubscriptionFeature[] }>({
     queryKey: ['subscription', 'plans'],
     queryFn: async () => {
-      const response = await fetch('/api/subscriptions/plans');
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch plans');
-      }
-
-      return response.json();
+      return await apiRequest('/api/subscriptions/plans');
     },
     staleTime: 30 * 60 * 1000, // 30 minutes (plans change rarely)
   });
@@ -143,15 +169,7 @@ export function useUsageStats() {
   return useQuery({
     queryKey: ['subscription', 'usage'],
     queryFn: async () => {
-      const response = await fetch('/api/subscriptions/usage', {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch usage');
-      }
-
-      return response.json();
+      return await apiRequest('/api/subscriptions/usage');
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
@@ -330,13 +348,7 @@ export function useStripeConfig() {
   return useQuery<{ publishableKey: string }>({
     queryKey: ['stripe', 'config'],
     queryFn: async () => {
-      const response = await fetch('/api/subscriptions/stripe/config');
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch Stripe configuration');
-      }
-
-      return response.json();
+      return await apiRequest('/api/subscriptions/stripe/config');
     },
     staleTime: Infinity, // Config doesn't change
     retry: false, // Don't retry if Stripe is not configured
@@ -356,19 +368,7 @@ export function useCheckout() {
     { planSlug: string; billingCycle: 'monthly' | 'annual'; discountCode?: string }
   >({
     mutationFn: async (data) => {
-      const response = await fetch('/api/subscriptions/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create checkout session');
-      }
-
-      return response.json();
+      return await apiRequest('/api/subscriptions/checkout', 'POST', data);
     },
     onSuccess: (data) => {
       // Redirect to Stripe Checkout
@@ -389,19 +389,7 @@ export function useAddonCheckout() {
     { addonSlug: string; quantity?: number }
   >({
     mutationFn: async (data) => {
-      const response = await fetch('/api/subscriptions/checkout/addon', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create checkout session');
-      }
-
-      return response.json();
+      return await apiRequest('/api/subscriptions/checkout/addon', 'POST', data);
     },
     onSuccess: (data) => {
       // Redirect to Stripe Checkout
@@ -418,17 +406,7 @@ export function useAddonCheckout() {
 export function useCustomerPortal() {
   return useMutation<{ url: string }, Error, void>({
     mutationFn: async () => {
-      const response = await fetch('/api/subscriptions/portal', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create portal session');
-      }
-
-      return response.json();
+      return await apiRequest('/api/subscriptions/portal', 'POST');
     },
     onSuccess: (data) => {
       // Redirect to Stripe Customer Portal
@@ -460,16 +438,7 @@ export function usePreviewUpgrade(newPlanSlug: string, billingCycle?: 'monthly' 
         params.append('billingCycle', billingCycle);
       }
 
-      const response = await fetch(`/api/subscriptions/preview-upgrade?${params}`, {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to preview upgrade');
-      }
-
-      return response.json();
+      return await apiRequest(`/api/subscriptions/preview-upgrade?${params}`);
     },
     enabled: !!newPlanSlug,
     staleTime: 1 * 60 * 1000, // 1 minute
@@ -493,15 +462,7 @@ export function useVerifyCheckoutSession(sessionId: string | null) {
     queryFn: async () => {
       if (!sessionId) throw new Error('No session ID provided');
 
-      const response = await fetch(`/api/subscriptions/checkout/session/${sessionId}`, {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to verify checkout session');
-      }
-
-      return response.json();
+      return await apiRequest(`/api/subscriptions/checkout/session/${sessionId}`);
     },
     enabled: !!sessionId,
     onSuccess: () => {
@@ -517,16 +478,7 @@ export function useVerifyCheckoutSession(sessionId: string | null) {
 export function useSetupIntent() {
   return useMutation<{ clientSecret: string }, Error, void>({
     mutationFn: async () => {
-      const response = await fetch('/api/subscriptions/setup-intent', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create setup intent');
-      }
-
-      return response.json();
+      return await apiRequest('/api/subscriptions/setup-intent', 'POST');
     },
   });
 }

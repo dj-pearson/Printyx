@@ -14794,6 +14794,23 @@
       "category": "unconnected-feature",
       "dependsOn": [],
       "notes": "FILED 2026-09-11 (loop iteration 10). Consider retiring rather than building: the tenant half already exists at /api/admin/settings, and the platform half may belong in deployment config rather than in a screen."
+    },
+    {
+      "id": "PROD-STRIPE-001",
+      "title": "Nobody can subscribe or manage payment in production",
+      "description": "Seven Stripe paths exist only in server/routes-subscriptions.ts and have no branch in supabase/functions/subscriptions/: checkout, checkout/addon, checkout/session/:id, portal, setup-intent, preview-upgrade and stripe/config. /api/subscriptions is not proxied, so dev is served by Express and works; production sends the prefix to the functions host, where none of those paths exists. Between them they are the whole payment surface - starting a checkout, opening the Stripe customer portal, adding a payment method, previewing an upgrade cost, verifying a completed checkout, and fetching the publishable key the Stripe.js widget needs to render at all. Until PROD-013 this was invisible: every call was a bare relative fetch that resolved against the static origin, so the requests never reached any API and failed the same way whether or not an endpoint existed. They now address the functions host and 404 visibly. Porting them is not a call-site edit - it needs the Stripe secret key and webhook secret in the edge environment, a Deno Stripe client, and a decision about which host owns the webhook (INTEG-WEBHOOK-001 put the live receiver on Express at /api/webhooks/stripe, mounted BEFORE the proxy specifically so a provider POST is not sent to an edge function that demands a JWT). Retiring is not an option here the way it is for a reporting screen: this is how the business is paid.",
+      "acceptanceCriteria": [
+        "A decision is recorded on which host owns the Stripe paths, consistent with where the webhook receiver already lives",
+        "A customer can complete a checkout and open the billing portal in production",
+        "stripe/config resolves, or the pricing page says plainly that payment is unavailable rather than rendering a dead button",
+        "The webhook path and the checkout path agree about which host holds the Stripe credentials",
+        "The hook's header note is corrected when the paths move"
+      ],
+      "priority": 1,
+      "passes": false,
+      "category": "production-only-breakage",
+      "dependsOn": [],
+      "notes": "FILED 2026-09-11 (loop iteration 12). Two things to check before scoping. First, the shape trap this pass already hit once: the edge plans branch answered { data: plans } while the hook reads { plans, features }, so correcting a URL is not the same as making a call work - check the response keys of every path as it is ported. Second, the reachability question - /pricing is routed and is the only consumer of useSubscriptionPlans, but SubscriptionBanner is mounted in App.tsx itself, so the status call runs on every page."
     }
   ]
 }
