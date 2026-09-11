@@ -1,0 +1,24 @@
+{
+  "note": "update/delete on a tenant-scoped table with no tenant_id filter, no user scope and no preceding ownership read. SHRINK ONLY.",
+  "entries": {
+    "supabase/functions/blog-jobs/index.ts  blog_jobs.update": 2,
+    "supabase/functions/blog-pipeline/index.ts  blog_pipeline_runs.update": 4,
+    "supabase/functions/blog-pipeline/index.ts  blog_pipeline_stages.update": 4,
+    "supabase/functions/blog-platform-api/index.ts  blog_api_usage.update": 1,
+    "supabase/functions/companies/index.ts  companies.delete": 1,
+    "supabase/functions/knowledge-base/handlers/bookmarks.ts  article_bookmarks.delete": 1,
+    "supabase/functions/knowledge-base/handlers/ratings.ts  article_ratings.update": 1,
+    "supabase/functions/knowledge-base/handlers/ratings.ts  article_votes.update": 1,
+    "supabase/functions/knowledge-base/handlers/reading-history.ts  reading_history.update": 1,
+    "supabase/functions/knowledge-base/index.ts  article_votes.update": 1,
+    "supabase/functions/lead-assignment/handlers/assign.ts  lead_assignment_rules.update": 1,
+    "supabase/functions/meeting-transcription/handlers/recordings.ts  consent_records.delete": 1,
+    "supabase/functions/mfa/index.ts  mfa_backup_codes.delete": 3,
+    "supabase/functions/mfa/index.ts  mfa_backup_codes.update": 1,
+    "supabase/functions/pipeline-config/index.ts  pipeline_automation_logs.update": 1,
+    "supabase/functions/public-booking/index.ts  booking_page_bookings.update": 2,
+    "supabase/functions/public-booking/index.ts  business_record_activities.update": 2,
+    "supabase/functions/rbac/index.ts  users.update": 1,
+    "supabase/functions/sso/index.ts  sso_sessions.delete": 1
+  }
+}

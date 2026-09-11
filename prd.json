@@ -14692,10 +14692,10 @@
         "The guard reports what it could not resolve, so a clean run is not read as proof"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "category": "security",
       "dependsOn": ["SEC-TENANT-004", "SEC-TENANT-002"],
-      "notes": "NEXT ITERATION CANDIDATE. Merge with SEC-TENANT-002 if taking both - the update half is the same work."
+      "notes": "DONE 2026-09-11 (loop iteration 5/15). The story asked whether the update case is better served by the ownership-check rule than by a payload scan and the answer is that it is a FILTER rule, not a payload rule at all, with three acceptable bindings: a tenant_id filter, a write scoped to the authenticated user, or a preceding tenant-filtered read of the same row that 404s. Implemented all three, because with only the first the guard reported 79 sites and most were correct - saved-views reads the row filtered by id AND tenant_id, 404s, checks the owner, then writes by id, which IS an authorisation check. 46 after the ownership rule, 40 after the user-scope rule, 30 after fixing eleven by hand (phone-in-tickets x2, monitoring-clients x2, printer-monitoring, maintenance, geocode-leads, customer-portal, import x2 - all trivially in scope of a tenantId, and adding the filter is defence in depth as well as making the guard decidable). Those 30 are a shrink-only ratchet, PRINTED every run, not a silent baseline. Upserts are covered by the insert rule and it is still a hard gate at zero. The payload half gained identifier resolution, which is the bigger finding: .insert(payloadVariable) is the commonest shape in this tree and the old version matched only an inline literal, so it had never looked at any of them - 107 remain unresolvable and are now listed with locations rather than silently passing. Mutation-tested on both new rules."
     },
     {
       "id": "SHAPE-ENVELOPE-001",

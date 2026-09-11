@@ -494,7 +494,8 @@ export default async function handler(req: Request) {
           next_due_date: nextDueDate.toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', resourceId);
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId);
 
       return createCorsResponse(
         {

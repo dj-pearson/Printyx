@@ -889,7 +889,8 @@ export default async function handler(req: Request) {
                             phone: phone || null,
                             updated_at: new Date().toISOString(),
                           })
-                          .eq('id', existingContact.id);
+                          .eq('id', existingContact.id)
+                          .eq('tenant_id', tenantId);
 
                         if (!updateError) {
                           contactCreated = true; // Mark as created for tracking
@@ -1049,7 +1050,8 @@ export default async function handler(req: Request) {
                   const { error: updateError } = await admin
                     .from('companies')
                     .update(updateData)
-                    .eq('id', existingCompany.id);
+                    .eq('id', existingCompany.id)
+                    .eq('tenant_id', tenantId);
 
                   if (updateError) {
                     console.error('Update error:', updateError);
