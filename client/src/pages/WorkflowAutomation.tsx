@@ -65,6 +65,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatCurrencyWhole as formatCurrency } from '@/lib/utils';
 
 interface WorkflowAutomationData {
   automationOverview: {
@@ -279,15 +280,6 @@ const getTrendIcon = (trend: string) => {
 
 const formatPercentage = (value: number) => {
   return `${value.toFixed(1)}%`;
-};
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
 };
 
 const formatDuration = (ms: number) => {

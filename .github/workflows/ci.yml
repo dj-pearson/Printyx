@@ -115,6 +115,8 @@ jobs:
         run: npm run check:phantom-tables
       - name: Unbounded summed selects (row cap, hard gate at zero)
         run: npm run check:row-caps
+      - name: Shared helper called without importing it (hard gate at zero)
+        run: npm run check:shared-helper-imports
       - name: Duplicate object-literal keys in edge functions (hard gate at zero)
         run: npm run check:dupe-keys
       - name: Spread-insert key ratchet (hard gate at zero)

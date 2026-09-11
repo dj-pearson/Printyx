@@ -13,6 +13,7 @@
  */
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 /** Signal keys. `email_sentiment` is intentionally absent (v2 STUB). */
 export type SignalKey = 'ticket_delta' | 'ar_past_due' | 'meter_trend' | 'renewal_proximity';

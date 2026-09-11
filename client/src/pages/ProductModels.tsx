@@ -53,6 +53,7 @@ import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import ManagementToolbar from '@/components/product-management/ManagementToolbar';
+import { formatCurrency } from '@/lib/utils';
 
 export default function ProductModels() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -281,14 +282,6 @@ export default function ProductModels() {
   const categories = Array.from(new Set(models.map((m) => m.category))).filter((c): c is string =>
     Boolean(c),
   );
-
-  const formatCurrency = (value: string | null) => {
-    if (!value) return '$0.00';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(parseFloat(value));
-  };
 
   const ModelCard = ({ model }: { model: ProductModel }) => (
     <Card className="hover:shadow-md transition-shadow">

@@ -40,6 +40,7 @@ import {
   scoreMachine,
   type ScoredMachine,
 } from './scoring.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 const DAY_MS = 86_400_000;
 /** The scorer's deltas need the last 12 readings per machine. */

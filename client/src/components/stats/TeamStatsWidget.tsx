@@ -19,7 +19,7 @@ import {
   DollarSign,
   RefreshCw,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrencyCompact as formatCurrency } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
 import { useState } from 'react';
 
@@ -108,12 +108,6 @@ export function TeamStatsWidget({
       </Card>
     );
   }
-
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-    return `$${value.toFixed(0)}`;
-  };
 
   const getQuotaAttainmentColor = (attainment: number) => {
     if (attainment >= 100) return 'text-green-600';

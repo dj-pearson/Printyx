@@ -24,6 +24,7 @@ import {
   FREQUENCY_LABELS,
 } from '@shared/quote-math';
 import { Textarea } from '@/components/ui/textarea';
+import { formatCurrency } from '@/lib/utils';
 
 interface LineItem {
   id?: string;
@@ -202,13 +203,6 @@ export default function PricingCalculator({
       }
     }
   }, [afterDiscountTotal, taxRate, taxAmount, initialTaxAmount, onTaxChange]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
 
   const formatPercentage = (percentage: number) => {
     return `${percentage.toFixed(2)}%`;

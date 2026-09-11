@@ -188,6 +188,7 @@
     "check:error-shape": "node scripts/check-error-shape.mjs",
     "check:month-arithmetic": "node scripts/check-month-arithmetic.mjs",
     "seo:sitemap": "tsx scripts/generate-sitemap.mts",
+    "check:shared-helper-imports": "node scripts/check-shared-helper-imports.mjs",
     "check:row-caps": "node scripts/report-unbounded-sums.mjs",
     "check:sitemap": "tsx scripts/generate-sitemap.mts --check",
     "seo:social-images": "node scripts/generate-social-images.mjs",

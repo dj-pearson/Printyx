@@ -58,6 +58,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, apiFormRequest } from '@/lib/queryClient';
 import { type MasterProductModel, type EnabledProduct } from '@shared/schema';
+import { formatCurrency } from '@/lib/utils';
 
 // Product module definitions
 interface ProductModule {
@@ -351,15 +352,6 @@ export default function ProductHubUnified() {
   // Helper functions
   const calculateCompanyPrice = (dealerCost: number, markupPercentage: number): number => {
     return dealerCost * (1 + markupPercentage / 100);
-  };
-
-  const formatCurrency = (value: string | number | null | undefined): string => {
-    if (!value) return '$0.00';
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(num);
   };
 
   const isProductEnabled = (productId: string) => {

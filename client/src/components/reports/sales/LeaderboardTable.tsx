@@ -9,6 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { formatCurrencyCompact as formatCurrency } from '@/lib/utils';
 
 interface LeaderboardEntry {
   userId: string;
@@ -111,16 +112,6 @@ export default function LeaderboardTable({
           </div>
         );
     }
-  };
-
-  // Format currency
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(2)}M`;
-    } else if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
-    }
-    return `$${value.toFixed(0)}`;
   };
 
   if (leaderboard.length === 0) {

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Target, TrendingUp, TrendingDown } from 'lucide-react';
+import { formatCurrencyCompact as formatCurrency } from '@/lib/utils';
 
 interface QuotaGaugeProps {
   current: number;
@@ -44,16 +45,6 @@ export default function QuotaGauge({ current, target, percent }: QuotaGaugeProps
       status,
     };
   }, [percent]);
-
-  // Format currency
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(2)}M`;
-    } else if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
-    }
-    return `$${value.toFixed(0)}`;
-  };
 
   const gap = target - current;
   const isOnTarget = percent >= 100;

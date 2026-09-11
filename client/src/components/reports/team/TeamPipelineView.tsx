@@ -1,5 +1,6 @@
 import PipelineFunnel from '@/components/reports/sales/PipelineFunnel';
 import { Trophy } from 'lucide-react';
+import { formatCurrencyCompact as formatCurrency } from '@/lib/utils';
 
 interface PipelineStage {
   stage: string;
@@ -30,12 +31,6 @@ export default function TeamPipelineView({
   summary,
   metrics,
 }: TeamPipelineViewProps) {
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-    return `$${value.toFixed(0)}`;
-  };
-
   return (
     <div className="space-y-6">
       {/* Team Aggregate Pipeline */}

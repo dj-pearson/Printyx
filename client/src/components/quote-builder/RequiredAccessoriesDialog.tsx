@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Wrench, Lock } from 'lucide-react';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
+import { formatCurrency } from '@/lib/utils';
 
 // QUOTE-014: confirmation list shown when a selected product model resolves
 // required/suggested accessories. Replaces the old silent auto-add — the rep
@@ -53,9 +54,6 @@ interface RequiredAccessoriesDialogProps {
   itemNoun?: { singular: string; plural: string };
   cancelLabel?: string;
 }
-
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 
 export default function RequiredAccessoriesDialog({
   open,

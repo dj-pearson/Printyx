@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import MainLayout from '@/components/layout/main-layout';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
+import { formatCurrency } from '@/lib/utils';
 
 type Lease = {
   id: string;
@@ -129,13 +130,6 @@ export default function Leases() {
     if (health === 'good') return <CheckCircle className="h-4 w-4 text-green-600" />;
     if (health === 'warning') return <AlertCircle className="h-4 w-4 text-yellow-600" />;
     return <AlertCircle className="h-4 w-4 text-red-600" />;
-  };
-
-  const formatCurrency = (amount: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(parseFloat(amount));
   };
 
   const formatDate = (date: string) => {

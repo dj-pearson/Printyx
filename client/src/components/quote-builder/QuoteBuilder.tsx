@@ -53,6 +53,7 @@ import LineItemManager from './LineItemManager';
 import PricingCalculator from './PricingCalculator';
 import { QuoteWizardProgress, DEFAULT_QUOTE_STEPS } from '@/components/quotes/QuoteWizardProgress';
 import GenerateProposalDialog from '@/components/proposal-builder/GenerateProposalDialog';
+import { formatCurrency } from '@/lib/utils';
 
 // Quote form schema
 const quoteSchema = z.object({
@@ -897,9 +898,6 @@ export default function QuoteBuilder({
     guardrailTotalCost > 0 && minMargin != null && minMargin > 0 && overallMargin < minMargin;
   const overMaxDiscount = maxDiscount != null && maxDiscount > 0 && effectiveDiscount > maxDiscount;
   const guardrailViolated = belowMinMargin || overMaxDiscount;
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
 
   // ─── QUOTE-018: draft autosave ────────────────────────────────────────────
   // Keep the latest line items in a ref so a serialized re-run saves current state.

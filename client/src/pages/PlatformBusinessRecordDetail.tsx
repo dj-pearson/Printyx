@@ -57,6 +57,7 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
+import { formatCurrency } from '@/lib/utils';
 
 interface BusinessRecord {
   id: string;
@@ -309,15 +310,6 @@ export default function PlatformBusinessRecordDetail() {
   const handleCancel = () => {
     setIsEditing(false);
     setFormData({});
-  };
-
-  const formatCurrency = (value?: string) => {
-    if (!value) return '-';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(parseFloat(value));
   };
 
   return (

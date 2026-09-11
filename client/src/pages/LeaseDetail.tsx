@@ -26,6 +26,7 @@ import {
   CheckCircle,
   Edit,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 type Lease = {
   id: string;
@@ -133,13 +134,6 @@ export default function LeaseDetail() {
       </div>
     );
   }
-
-  const formatCurrency = (amount: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(parseFloat(amount));
-  };
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {

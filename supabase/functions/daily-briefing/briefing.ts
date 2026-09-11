@@ -12,6 +12,7 @@
  */
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 const DAY_MS = 86_400_000;
 

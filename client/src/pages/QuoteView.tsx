@@ -32,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
+import { formatCurrency } from '@/lib/utils';
 
 interface Quote {
   id: string;
@@ -174,14 +175,6 @@ export default function QuoteView() {
 
   // Line items come from the quote response
   const lineItems = quote?.lineItems || [];
-
-  const formatCurrency = (amount: string | number) => {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(num || 0);
-  };
 
   const formatPercentage = (percentage: string | number) => {
     const num = typeof percentage === 'string' ? parseFloat(percentage) : percentage;

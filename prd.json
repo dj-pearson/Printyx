@@ -14595,10 +14595,10 @@
         "The baseline shrinks to zero, or the survivors are annotated with why they differ"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "category": "correctness",
       "dependsOn": ["MONEY-FORMAT-001"],
-      "notes": "NEXT ITERATION CANDIDATE. Group the baseline by behaviour first (fraction digits, coercion, null handling) rather than walking it file by file - the six behaviours are the real unit of work."
+      "notes": "DONE 2026-09-11 (loop iteration 6/15). 49 became 1, and the story note was right that grouping by behaviour first was the unit of work - but the classifier found a SEVENTH behaviour it did not predict and that one is not a defect: ten components (all the report and stats widgets) formatted compactly, $1.2M / $45K, because the shared formatter had no compact mode. Converting those to full currency would have blown out every table column, so they got formatCurrencyCompact instead. Eight aggregate dashboards got formatCurrencyWhole. Both are named exports rather than formatCurrency(v, {cents:false}) because these are passed BY REFERENCE to a recharts tickFormatter or to metricOrDash, where there is no argument list to add an option to. export-utils keeps its own entry point, delegating with { absent: '' }: a missing value in a CSV cell is empty, not an em dash and not the $0.00 it wrote, which is a claim the row is free and survives being summed. Three traps worth carrying forward. A migration script that ends a definition by balancing braces breaks on a multi-line arrow with no braces - it left two files unparseable, and tsc then reported 284 errors as 2 because it BAILED, exactly the drop CLAUDE.md warns about. tickFormatter={formatCurrency} stops typechecking once the formatter takes a second parameter, because recharts passes an index. And running the full unit suite surfaced twelve failures this story did not cause: PERF-ROWCAP-002 had left eight files calling fetchAllRows without importing it, which nothing typechecks because the edge tree is outside the tsc project - fixed here, and check:shared-helper-imports is a new hard gate so it cannot recur."
     },
     {
       "id": "SEC-SVG-001",

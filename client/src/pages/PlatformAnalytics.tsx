@@ -41,6 +41,7 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
+import { formatCurrencyWhole as formatCurrency } from '@/lib/utils';
 
 // Chart row shapes returned (or mocked) for the analytics charts.
 interface RevenueDatum {
@@ -196,15 +197,6 @@ export default function PlatformAnalytics() {
   const conversionFunnelData = conversionMetrics?.funnelData ?? [];
   const pipelineDistributionData = pipelineMetrics?.distributionData ?? [];
   const leadSourceData = performanceMetrics?.sourceData ?? [];
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
 
   const formatPercent = (value: number) => {
     return `${value.toFixed(1)}%`;

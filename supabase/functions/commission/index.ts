@@ -6,6 +6,7 @@ import { toNumber } from '../_shared/quote-math.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 /**
  * A deal's amount as a number.

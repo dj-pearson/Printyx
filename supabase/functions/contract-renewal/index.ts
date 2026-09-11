@@ -16,6 +16,7 @@ import {
   type ProposalContractInput,
   type RenewalAnalysisInput,
 } from '../_shared/renewal-analysis.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);

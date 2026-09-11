@@ -19,6 +19,7 @@
  */
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 // ---------------------------------------------------------------------------
 // Types (mirror the Express QbrContent shape — this is what the page reads)

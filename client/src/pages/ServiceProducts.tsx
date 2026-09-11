@@ -41,6 +41,7 @@ import {
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
+import { formatCurrency } from '@/lib/utils';
 
 export default function ServiceProducts() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -129,14 +130,6 @@ export default function ServiceProducts() {
 
     return matchesSearch && matchesType;
   });
-
-  const formatCurrency = (value: string | null) => {
-    if (!value) return '$0.00';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(parseFloat(value));
-  };
 
   const ServiceCard = ({ service }: { service: ServiceProduct }) => {
     return (

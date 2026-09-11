@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { formatCurrencyWhole as formatCurrency } from '@/lib/utils';
 
 interface Deal {
   id: string;
@@ -133,16 +134,6 @@ export default function PlatformDealsPipeline() {
   });
 
   const pipeline = pipelineData?.pipeline || [];
-
-  const formatCurrency = (value: number | string) => {
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(num);
-  };
 
   const totalPipelineValue = pipeline.reduce((sum, stage) => sum + stage.totalValue, 0);
   const totalWeightedValue = pipeline.reduce((sum, stage) => sum + stage.weightedValue, 0);

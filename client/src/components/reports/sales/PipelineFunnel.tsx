@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { TrendingDown } from 'lucide-react';
+import { formatCurrencyCompact as formatCurrency } from '@/lib/utils';
 
 /**
  * CR-034: averageDealSize and conversionRate are OPTIONAL, because the report
@@ -53,16 +54,6 @@ export default function PipelineFunnel({ stages, detailed = false }: PipelineFun
   // Calculate width percentage for each stage
   const getWidthPercent = (value: number) => {
     return Math.max((value / maxValue) * 100, 10); // Minimum 10% width
-  };
-
-  // Format currency
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    } else if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
-    }
-    return `$${value.toFixed(0)}`;
   };
 
   // Stage colors

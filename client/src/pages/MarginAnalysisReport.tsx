@@ -31,6 +31,7 @@ import MainLayout from '@/components/layout/main-layout';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 import { downloadAuthedFile } from '@/lib/authed-download';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/lib/utils';
 
 interface LineItem {
   productName: string;
@@ -92,14 +93,6 @@ export default function MarginAnalysisReport() {
     queryKey: [`/api/pricing/margin-report${marginQuery ? `?${marginQuery}` : ''}`],
     enabled: visibility?.showDealerCost === true, // Only managers can see this report
   });
-
-  const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(value);
-  };
 
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('en-US', {

@@ -28,6 +28,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { pickTier, num, type CpcTier } from '../_shared/renewal-retier.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 type Row = Record<string, any>;
 

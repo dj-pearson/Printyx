@@ -59,6 +59,7 @@ import { apiRequest, apiFormRequest } from '@/lib/queryClient';
 import { SOFTWARE_IMPORT_FIELDS, suggestFieldForHeader } from '@shared/software-import-fields';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
+import { formatCurrency } from '@/lib/utils';
 
 // Normalize an API row (snake or camel) into the SoftwareProduct shape the UI uses.
 function mapSoftwareProduct(product: any): any {
@@ -639,16 +640,6 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
 
   // Server already filters + paginates; render the current page directly.
   const filteredProducts = products;
-
-  const formatCurrency = (value: string | number | null | undefined) => {
-    if (!value || value === null || value === undefined) return '$0.00';
-    const numericValue = typeof value === 'string' ? parseFloat(value) : value;
-    if (isNaN(numericValue)) return '$0.00';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(numericValue);
-  };
 
   const ProductCard = ({ product }: { product: SoftwareProduct }) => {
     return (
