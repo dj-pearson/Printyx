@@ -64,7 +64,26 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiFormRequest, apiRequest } from '@/lib/queryClient';
+
+/**
+ * PROD-013. The three upload steps - upload, preview-mapping and the AI column
+ * mapper - were bare relative fetches, so in production they resolved against
+ * the origin serving the static bundle rather than the API and the wizard could
+ * not import anything at all.
+ *
+ * They go through apiFormRequest, not apiRequest: all three send FormData, and
+ * apiRequest JSON-stringifies its body, which would post the string
+ * "[object FormData]" and lose the file. apiFormRequest also deletes the
+ * Content-Type header so the browser can set the multipart boundary itself.
+ *
+ * All three have branches in supabase/functions/import/ whose response keys
+ * already match what this page reads - jobId, columnMappings and totalRows for
+ * the upload, mappings for the other two - which was checked before converting
+ * rather than after. The AI branch answers 503 by design: there is no AI client
+ * in that runtime, and the wizard now shows that message instead of a silent
+ * failure.
+ */
 import { cn } from '@/lib/utils';
 
 // Product type definitions with metadata
@@ -251,16 +270,7 @@ export default function UniversalProductImport() {
   // Upload file mutation
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch('/api/import/upload', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Upload failed');
-      }
-      return response.json();
+      return await apiFormRequest('/api/import/upload', 'POST', formData);
     },
     onSuccess: (data) => {
       setJobId(data.jobId);
@@ -283,16 +293,7 @@ export default function UniversalProductImport() {
   // Preview mapping mutation
   const previewMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch('/api/import/preview-mapping', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Preview failed');
-      }
-      return response.json();
+      return await apiFormRequest('/api/import/preview-mapping', 'POST', formData);
     },
     onSuccess: (data) => {
       setPreviewData(data);
@@ -315,16 +316,7 @@ export default function UniversalProductImport() {
   // AI mapping mutation
   const aiMappingMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch('/api/import/ai/map-columns', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'AI mapping failed');
-      }
-      return response.json();
+      return await apiFormRequest('/api/import/ai/map-columns', 'POST', formData);
     },
     onSuccess: (data) => {
       setMappings(data.mappings || []);

@@ -7,20 +7,11 @@
     "client/src/pages/DeviceMonitoring.tsx:/api/device-monitoring/alerts/__DYN__/__DYN__",
     "client/src/pages/IntegrationHub.tsx:/api/integrations/oauth/init",
     "client/src/pages/LeadMapViewer.tsx:/api/leads/import-eda",
-    "client/src/pages/OidManagement.tsx:/api/oid-mappings",
-    "client/src/pages/OidManagement.tsx:/api/oid-mappings/__DYN__",
-    "client/src/pages/OidManagement.tsx:/api/oid-mappings/export",
-    "client/src/pages/OidManagement.tsx:/api/oid-mappings/import",
-    "client/src/pages/OidManagement.tsx:/api/oid-mappings/test",
-    "client/src/pages/OidManagement.tsx:/api/oid-mappings?__DYN__",
     "client/src/pages/PlatformBusinessRecords.tsx:/api/platform-crm/business-records/bulk/assign",
     "client/src/pages/ProposalBuilder.tsx:/api/validate/proposal-to-contract/__DYN__",
     "client/src/pages/QuoteProposalGeneration.tsx:/api/validate/quote-to-proposal/__DYN__",
     "client/src/pages/SupplyOrders.tsx:/api/device-monitoring/supply-orders/__DYN__/__DYN__",
     "client/src/pages/SupplyRunway.tsx:/api/device-monitoring/supply-forecast?__DYN__",
-    "client/src/pages/UniversalProductImport.tsx:/api/import/ai/map-columns",
-    "client/src/pages/UniversalProductImport.tsx:/api/import/preview-mapping",
-    "client/src/pages/UniversalProductImport.tsx:/api/import/upload",
     "client/src/pages/admin/TenantManagement.tsx:/api/admin/tenants"
   ]
 }
