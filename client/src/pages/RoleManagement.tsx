@@ -104,9 +104,7 @@ export default function RoleManagement() {
   const { data: rbacStatus, isLoading: statusLoading } = useQuery({
     queryKey: ['/api/rbac/status'],
     queryFn: async () => {
-      const response = await fetch('/api/rbac/status');
-      if (!response.ok) throw new Error('Failed to check RBAC status');
-      return response.json();
+      return await apiRequest('/api/rbac/status');
     },
   });
 
@@ -119,9 +117,7 @@ export default function RoleManagement() {
       if (selectedDepartment !== 'all') params.set('department', selectedDepartment);
       if (selectedTier !== 'all') params.set('organizationalTier', selectedTier);
 
-      const response = await fetch(`/api/rbac/roles?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch roles');
-      return response.json();
+      return await apiRequest(`/api/rbac/roles?${params}`);
     },
     enabled: rbacStatus?.initialized !== false,
   });
@@ -130,9 +126,7 @@ export default function RoleManagement() {
   const { data: permissionsData } = useQuery({
     queryKey: ['/api/rbac/permissions'],
     queryFn: async () => {
-      const response = await fetch('/api/rbac/permissions');
-      if (!response.ok) throw new Error('Failed to fetch permissions');
-      return response.json();
+      return await apiRequest('/api/rbac/permissions');
     },
     enabled: rbacStatus?.initialized !== false,
   });
@@ -141,9 +135,7 @@ export default function RoleManagement() {
   const { data: orgUnitsData } = useQuery({
     queryKey: ['/api/rbac/organizational-units'],
     queryFn: async () => {
-      const response = await fetch('/api/rbac/organizational-units');
-      if (!response.ok) throw new Error('Failed to fetch organizational units');
-      return response.json();
+      return await apiRequest('/api/rbac/organizational-units');
     },
     enabled: rbacStatus?.initialized !== false,
   });
@@ -152,9 +144,7 @@ export default function RoleManagement() {
   const { data: roleDetails } = useQuery({
     queryKey: ['/api/rbac/roles', selectedRoleId],
     queryFn: async () => {
-      const response = await fetch(`/api/rbac/roles/${selectedRoleId}`);
-      if (!response.ok) throw new Error('Failed to fetch role details');
-      return response.json();
+      return await apiRequest(`/api/rbac/roles/${selectedRoleId}`);
     },
     enabled: !!selectedRoleId,
   });

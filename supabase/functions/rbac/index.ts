@@ -42,34 +42,76 @@ export default async function handler(req: Request) {
     const endpoint = parts[0];
     const resourceId = parts[1];
 
-    // GET /rbac/roles - List all roles
-    if (req.method === 'GET' && endpoint === 'roles') {
-      const { data: roles, error } = await admin
-        .from('roles')
+    // GET /rbac/roles/:id - Get single role.
+    //
+    // ORDER MATTERS AND IT WAS WRONG. This branch used to sit BELOW the list,
+    // which tests `endpoint === 'roles'` with no !resourceId guard - so
+    // /rbac/roles/<id> matched the list first and answered with every role.
+    // Unreachable code that returns a plausible 200 is worse than a 404.
+    if (req.method === 'GET' && endpoint === 'roles' && resourceId) {
+      const { data: role, error } = await admin
+        .from('enhanced_roles')
         .select('*')
-        .order('level', { ascending: false });
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (error || !role) {
+        return createCorsResponse({ error: 'Role not found' }, 404, req);
+      }
+
+      return createCorsResponse(role, 200, req);
+    }
+
+    // GET /rbac/roles - List the tenant's roles.
+    //
+    // TWO CORRECTIONS, and the first is the one that mattered. This read
+    // `roles`, the GLOBAL role catalogue, while the /status branch beside it
+    // counts `enhanced_roles`, which is the tenant's own role tree and what the
+    // Express handler this replaces reads. RoleManagement therefore showed a
+    // "Total roles" tile counting one table and a list drawn from another.
+    //
+    // Second, the shape: it answered a bare array, and the page reads
+    // `rolesData.roles`, so every row would have been invisible anyway. It also
+    // sends search, department and organizationalTier, none of which was
+    // honoured - the filters looked live and changed nothing.
+    if (req.method === 'GET' && endpoint === 'roles') {
+      const search = url.searchParams.get('search');
+      const department = url.searchParams.get('department');
+      const organizationalTier = url.searchParams.get('organizationalTier');
+
+      let query = admin
+        .from('enhanced_roles')
+        .select('*', { count: 'exact' })
+        .eq('tenant_id', tenantId)
+        // lft is the nested-set left bound, so this is the hierarchy's order.
+        .order('lft', { ascending: true });
+
+      if (department) query = query.eq('department', department);
+      if (organizationalTier) query = query.eq('organizational_tier', organizationalTier);
+      if (search) {
+        const pattern = `%${search.replace(/[%_]/g, (m) => `\\${m}`)}%`;
+        query = query.or(
+          `name.ilike.${pattern},code.ilike.${pattern},description.ilike.${pattern}`,
+        );
+      }
+
+      const { data: roles, error, count } = await query;
 
       if (error) {
         console.error('Error fetching roles:', error);
         return createCorsResponse({ error: 'Failed to fetch roles' }, 500, req);
       }
 
-      return createCorsResponse(roles || [], 200, req);
-    }
-
-    // GET /rbac/roles/:id - Get single role
-    if (req.method === 'GET' && endpoint === 'roles' && resourceId) {
-      const { data: role, error } = await admin
-        .from('roles')
-        .select('*')
-        .eq('id', resourceId)
-        .single();
-
-      if (error) {
-        return createCorsResponse({ error: 'Role not found' }, 404, req);
-      }
-
-      return createCorsResponse(role, 200, req);
+      const total = count ?? roles?.length ?? 0;
+      return createCorsResponse(
+        {
+          roles: roles || [],
+          pagination: { page: 1, limit: total, total, totalPages: total > 0 ? 1 : 0 },
+        },
+        200,
+        req,
+      );
     }
 
     // GET /rbac/permissions - List all permissions
@@ -84,7 +126,22 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch permissions' }, 500, req);
       }
 
-      return createCorsResponse(permissions || [], 200, req);
+      // The page reads permissionsData.totalCount and .groupedPermissions and
+      // would have found neither on a bare array - its permission count tile
+      // showed 0 and its module accordion rendered nothing. Grouped by module,
+      // matching the Express handler.
+      const rows = permissions || [];
+      const groupedPermissions: Record<string, unknown[]> = {};
+      for (const permission of rows) {
+        const module = (permission as { module?: string }).module ?? 'other';
+        (groupedPermissions[module] ??= []).push(permission);
+      }
+
+      return createCorsResponse(
+        { permissions: rows, groupedPermissions, totalCount: rows.length },
+        200,
+        req,
+      );
     }
 
     // GET /rbac/user-permissions - Get current user's permissions
