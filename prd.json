@@ -14628,10 +14628,10 @@
         "The declared mime_type is verified against the stored object, or is not trusted"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "category": "security",
       "dependsOn": ["SEC-SVG-001"],
-      "notes": "NEXT ITERATION CANDIDATE. AssetUploadDialog.tsx accepts image/svg+xml in its file picker, so this path is reachable from the UI today. Check meeting-transcription and onboarding for the same question while you are there - both write to storage."
+      "notes": "DONE 2026-09-11 (loop iteration 2/15). Shape chosen: proxy the upload, do not validate after the fact. The two questions the story said to establish first could not be answered empirically from here - nothing in this repo creates the blog-assets bucket, and its allowedMimeTypes/fileSizeLimit live on the deployed stack - so the code no longer depends on either: an ensureBucket creates it with a cap and an allow-list if it is missing, and that is documented as a SECOND line, not the control. The control is that the bytes come through the function. Worth carrying forward: validating after a signed upload cannot work at all, because the client can simply never call the metadata endpoint and the object is already public. Also fixed in the same pass: branding-profiles picked its stored content type, its extension and its is-this-an-SVG decision from file.type, which the browser sets from the extension - it sniffs now. Left open deliberately - /api/blog-assets has no crmProxies entry, so the whole blog admin surface 404s in dev and only works in production; that is a separate finding, not an upload one."
     },
     {
       "id": "PERF-ROWCAP-001",

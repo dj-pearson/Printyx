@@ -23,6 +23,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { sanitizeSvg } from '../_shared/svg-sanitize.ts';
+import { sniffUpload } from '../_shared/upload-validation.ts';
 import { removeStoragePrefix } from '../_shared/storage-delete.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
@@ -461,19 +462,25 @@ async function uploadLogo(admin: Admin, tenantId: string, id: string, req: Reque
     return createCorsResponse({ error: 'Missing "file" field' }, 400, req);
   }
 
-  const ext = LOGO_EXT_BY_MIME[file.type];
-  if (!ext) {
+  if (file.size > MAX_LOGO_BYTES) {
+    return createCorsResponse({ error: 'Logo exceeds 2MB limit' }, 413, req);
+  }
+
+  let bytes = new Uint8Array(await file.arrayBuffer());
+
+  // SEC-SVG-002: this used to key off `file.type`, which the browser sets from
+  // the extension and any other client sets to whatever it likes - so the
+  // stored object's content type, and the decision about whether to sanitise it
+  // as an SVG, both came from the caller. Sniff the bytes instead.
+  const sniffed = sniffUpload(bytes, ['image/svg+xml']);
+  const ext = sniffed.mime ? LOGO_EXT_BY_MIME[sniffed.mime] : undefined;
+  if (!sniffed.mime || !ext) {
     return createCorsResponse(
       { error: 'Unsupported type. Allowed: png, jpg, svg, webp' },
       415,
       req,
     );
   }
-  if (file.size > MAX_LOGO_BYTES) {
-    return createCorsResponse({ error: 'Logo exceeds 2MB limit' }, 413, req);
-  }
-
-  let bytes = new Uint8Array(await file.arrayBuffer());
 
   // An SVG is an XML document, not an image format. This bucket is created with
   // public: true and the object is stored with the caller's own content type,
@@ -483,7 +490,7 @@ async function uploadLogo(admin: Admin, tenantId: string, id: string, req: Reque
   // which is why it never surfaced in the app; direct navigation is another
   // matter. Strip the executable surface, and refuse the file if that cannot be
   // done confidently.
-  if (file.type === 'image/svg+xml') {
+  if (sniffed.mime === 'image/svg+xml') {
     const cleaned = sanitizeSvg(new TextDecoder().decode(bytes));
     if (!cleaned.ok) {
       return createCorsResponse(
@@ -507,7 +514,7 @@ async function uploadLogo(admin: Admin, tenantId: string, id: string, req: Reque
   await ensureBucket(admin);
 
   const { error: upErr } = await admin.storage.from(BUCKET).upload(path, bytes, {
-    contentType: file.type,
+    contentType: sniffed.mime,
     upsert: true,
   });
   if (upErr) {

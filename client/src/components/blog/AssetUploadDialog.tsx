@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Upload as UploadIcon } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, apiFormRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,11 +25,12 @@ import {
 
 type AssetType = 'image' | 'quote' | 'data' | 'expert_contact' | 'file';
 
-interface UploadUrlResponse {
-  signed_url: string;
-  token: string;
+interface UploadResponse {
   storage_path: string;
   bucket: string;
+  /** Sniffed from the bytes by the edge function, not from the picked file. */
+  mime_type: string;
+  file_size_bytes: number;
 }
 
 interface AssetCreateResponse {
@@ -130,23 +131,21 @@ export function AssetUploadDialog({
         if (file.size > MAX_BYTES) {
           throw new Error(`File too large (max ${MAX_BYTES / 1024 / 1024} MB)`);
         }
-        // Step 1 — get signed upload URL
-        const upload = await apiRequest<UploadUrlResponse>('/api/blog-assets/upload-url', 'POST', {
-          filename: file.name,
-          mime_type: file.type || 'application/octet-stream',
-        });
-        // Step 2 — PUT file directly to storage
-        const putRes = await fetch(upload.signed_url, {
-          method: 'PUT',
-          headers: { 'Content-Type': file.type || 'application/octet-stream' },
-          body: file,
-        });
-        if (!putRes.ok) {
-          throw new Error(`Storage upload failed (${putRes.status})`);
-        }
+        // SEC-SVG-002: the bytes go THROUGH the edge function, which sniffs the
+        // real type, caps the size and sanitises SVG before anything is stored.
+        // The previous flow PUT the file straight at a signed storage URL, so
+        // nothing ever looked at it. The type and size below are the server's
+        // reading of the object, not this file picker's.
+        const form = new FormData();
+        form.append('file', file);
+        const upload: UploadResponse = await apiFormRequest(
+          '/api/blog-assets/upload',
+          'POST',
+          form,
+        );
         storagePath = upload.storage_path;
-        mimeType = file.type || 'application/octet-stream';
-        fileSizeBytes = file.size;
+        mimeType = upload.mime_type;
+        fileSizeBytes = upload.file_size_bytes;
       } else if (FILE_REQUIRED[type]) {
         throw new Error(`A file is required for ${TYPE_LABELS[type]} assets`);
       }
