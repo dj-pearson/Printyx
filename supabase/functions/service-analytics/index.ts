@@ -149,8 +149,25 @@ export default async function handler(req: Request) {
         }
       });
 
+      // Resolve names. Without this the technician table is a list of uuids,
+      // which is not a report anybody can act on. `users` has first_name and
+      // last_name, NOT name or full_name.
+      const technicianIds = Array.from(technicianMap.keys());
+      const nameById = new Map<string, string>();
+      if (technicianIds.length > 0) {
+        const { data: userRows } = await admin
+          .from('users')
+          .select('id, first_name, last_name')
+          .in('id', technicianIds);
+        for (const u of userRows ?? []) {
+          const full = [u.first_name, u.last_name].filter(Boolean).join(' ').trim();
+          if (full) nameById.set(u.id, full);
+        }
+      }
+
       const technicians = Array.from(technicianMap.entries()).map(([id, stats]) => ({
         technicianId: id,
+        technicianName: nameById.get(id) ?? null,
         assignedTickets: stats.assigned,
         completedTickets: stats.completed,
         completionRate:
@@ -163,15 +180,24 @@ export default async function handler(req: Request) {
             totalTickets,
             openTickets,
             closedTickets,
-            avgResolutionTime,
-            customerSatisfaction: 85, // Placeholder - would need actual CSAT data
+            avgResolutionTime: resolvedTickets.length > 0 ? avgResolutionTime : null,
+            // Was a hardcoded 85. Nothing in this tenant's data measures
+            // satisfaction - there is no CSAT column on service_tickets and no
+            // survey joined here - and a made-up 85% on a service dashboard
+            // reads as a measurement. Null, and named in `unbacked` below.
+            customerSatisfaction: null,
           },
           byPriority,
           byStatus,
           trends: weeklyTrend,
           technicians,
-          categories: [], // Would need category data in tickets
           lastUpdated: new Date().toISOString(),
+          // What this endpoint cannot answer, said plainly rather than zeroed.
+          unbacked: [
+            'customerSatisfaction - service_tickets carries no CSAT score and no survey is joined here',
+            'ticket categories - service_tickets has no category column',
+            'first-call resolution, utilisation and revenue per technician - none has a source table',
+          ],
         },
         200,
         req,
@@ -190,15 +216,42 @@ export default async function handler(req: Request) {
 
       const startDate = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
 
-      const { data: tickets, error } = await admin
-        .from('service_tickets')
-        .select('id, status, created_at, resolved_at')
-        .eq('tenant_id', tenantId)
-        .gte('created_at', startDate.toISOString());
-
-      if (error) {
+      // This used to return the raw ticket rows and length them. Two problems
+      // at once: PostgREST caps the response at 1000 rows without erroring, so
+      // a busy quarter reported "1000 created" forever, and a trend chart does
+      // not need the tickets - it needs the series. Page for the series, and
+      // count with HEAD, which transfers no rows at all.
+      let tickets: Array<{ created_at: string; resolved_at: string | null }>;
+      try {
+        tickets = await fetchAllRows<{ created_at: string; resolved_at: string | null }>(() =>
+          admin
+            .from('service_tickets')
+            .select('created_at, resolved_at')
+            .eq('tenant_id', tenantId)
+            .gte('created_at', startDate.toISOString()),
+        );
+      } catch (error) {
         console.error('Error fetching trends:', error);
         return createCorsResponse({ error: 'Failed to fetch trends' }, 500, req);
+      }
+
+      const dayKey = (iso: string) => new Date(iso).toISOString().split('T')[0];
+      const series = new Map<string, { created: number; resolved: number }>();
+      for (let i = daysBack - 1; i >= 0; i--) {
+        series.set(dayKey(new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString()), {
+          created: 0,
+          resolved: 0,
+        });
+      }
+      let totalResolved = 0;
+      for (const t of tickets) {
+        const created = series.get(dayKey(t.created_at));
+        if (created) created.created++;
+        if (t.resolved_at) {
+          totalResolved++;
+          const resolved = series.get(dayKey(t.resolved_at));
+          if (resolved) resolved.resolved++;
+        }
       }
 
       return createCorsResponse(
@@ -206,10 +259,10 @@ export default async function handler(req: Request) {
           period,
           startDate: startDate.toISOString(),
           endDate: new Date().toISOString(),
-          data: tickets || [],
+          series: Array.from(series.entries()).map(([date, counts]) => ({ date, ...counts })),
           summary: {
-            totalCreated: tickets?.length || 0,
-            totalResolved: tickets?.filter((t) => t.resolved_at).length || 0,
+            totalCreated: tickets.length,
+            totalResolved,
           },
         },
         200,

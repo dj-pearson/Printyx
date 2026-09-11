@@ -14741,10 +14741,10 @@
         "The report reaches zero or its survivors are annotated"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "category": "frontend-data-contracts",
       "dependsOn": ["SHAPE-ENVELOPE-002"],
-      "notes": "NEXT ITERATION CANDIDATE. Check reachability before building: two of the eleven are already in docs/orphan-files-baseline.json and three are a feature AUDIT-033 retired. The branch scan is lenient by design, so a clean line is not proof - it cannot see a path assembled at runtime."
+      "notes": "DONE 2026-09-11 (loop iteration 4/15). Verdicts on all eleven. Two are orphan files already in docs/orphan-files-baseline.json (dashboard/service-tickets, dashboard/top-customers). Three belong to MobileFieldOperations, which is still ROUTED at /mobile-field-operations but 404s deliberately per AUDIT-033 over three tables that never existed - left alone, it is that story and not this one. Three (CrmGoalsDashboard manager-insights and analytics, RootAdminSecurity audit-logs) are genuinely unserved but already carry CR-033 wrappers that tell a failed request apart from an empty one, so they report honestly rather than showing a false all-clear; they need endpoints built, which is a feature and not a repair. ServiceAnalytics was the one worth doing and the fix was not to build six endpoints: the real backend was next door under a different prefix, which is AUDIT-019s fixture-twin trap at route level - supabase/functions/service-analytics/ derives everything from service_tickets. The page went from 1,491 lines to 350 and now calls it. The five sections with no table anywhere (BI dashboards, performance benchmarks, per-customer churn and upsell, forecast confidence) were DELETED, along with two create dialogs that posted into tables in no schema and no migration. Three defects in the endpoint came out with it: customerSatisfaction was a hardcoded 85 on a service dashboard with no CSAT column anywhere; avgResolutionTime was 0 rather than null when nothing had resolved; and /trends returned raw ticket rows and lengthed them, so totalCreated read 1000 forever past PostgREST s silent cap - it sends a daily series now. Technicians were a list of uuids and now carry names. Deleting the page orphaned client/src/components/charts/InteractiveCharts.tsx, 424 presentational lines with no other importer, which went too."
     }
   ]
 }
