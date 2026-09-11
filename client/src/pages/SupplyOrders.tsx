@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiRequest } from '@/lib/queryClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,27 +71,16 @@ export default function SupplyOrders() {
   const { data, isLoading } = useQuery<{ orders: SupplyOrder[] }>({
     queryKey: ['/api/device-monitoring/supply-orders', statusFilter],
     queryFn: async () => {
-      const res = await fetch(
+      return await apiRequest(
         `/api/device-monitoring/supply-orders${params.toString() ? '?' + params : ''}`,
-        { credentials: 'include' },
       );
-      if (!res.ok) throw new Error('Failed to fetch supply orders');
-      return res.json();
     },
     refetchInterval: 60_000,
   });
 
   const orderActionMutation = useMutation({
     mutationFn: async ({ orderId, action }: { orderId: string; action: 'approve' | 'cancel' }) => {
-      const res = await fetch(`/api/device-monitoring/supply-orders/${orderId}/${action}`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || `Failed to ${action} order`);
-      }
-      return res.json();
+      return await apiRequest(`/api/device-monitoring/supply-orders/${orderId}/${action}`, 'POST');
     },
     onSuccess: (_data, vars) => {
       toast({

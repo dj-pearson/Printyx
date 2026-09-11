@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiRequest } from '@/lib/queryClient';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -68,11 +69,7 @@ export default function SupplyRunway() {
   const { data, isLoading } = useQuery<ForecastResponse>({
     queryKey: ['/api/device-monitoring/supply-forecast', windowDays, filter],
     queryFn: async () => {
-      const res = await fetch(`/api/device-monitoring/supply-forecast?${params}`, {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to fetch forecast');
-      return res.json();
+      return await apiRequest(`/api/device-monitoring/supply-forecast?${params}`);
     },
     refetchInterval: 60_000,
   });

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiRequest } from '@/lib/queryClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -107,18 +108,11 @@ export default function DeviceMonitoring() {
       action: 'acknowledge' | 'snooze' | 'resolve';
       hours?: number;
     }) => {
-      const body = action === 'snooze' ? JSON.stringify({ hours }) : undefined;
-      const response = await fetch(`/api/device-monitoring/alerts/${alertId}/${action}`, {
-        method: 'POST',
-        headers: body ? { 'Content-Type': 'application/json' } : undefined,
-        body,
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.message || `Failed to ${action} alert`);
-      }
-      return response.json();
+      return await apiRequest(
+        `/api/device-monitoring/alerts/${alertId}/${action}`,
+        'POST',
+        action === 'snooze' ? { hours } : undefined,
+      );
     },
     onSuccess: (_data, vars) => {
       const labels = {
