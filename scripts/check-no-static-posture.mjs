@@ -149,7 +149,21 @@ function recordArrays(code) {
 
 function fabricatedRecordArrays(code) {
   // A page that fetches ANYTHING is out of scope - see the header.
-  if (/\buseQuery\b|\buseMutation\b|\bapiRequest\b|\bfetch\s*\(/.test(code)) return [];
+  //
+  // THE ESCAPE MUST BE A CALL, NOT A MENTION. SystemMonitoring.tsx imported
+  // useQuery and never called it, so this bailed on the import line and the
+  // whole 517-line page went unexamined: CPU at 23.5%, memory at 68.2% flagged
+  // as a warning, four services with invented uptimes, and a SECURITY alert
+  // reading "Multiple failed login attempts detected" - all under a
+  // `// Mock data for demonstration` comment, on a routed page. An unused
+  // import is the easiest thing in the world to leave behind, which makes it a
+  // poor thing to take as evidence.
+  const withoutImports = code.replace(/^\s*import[\s\S]*?;\s*$/gm, '');
+  if (
+    /\buseQuery\s*[(<]|\buseMutation\s*[(<]|\bapiRequest\s*[(<]|\bfetch\s*\(/.test(withoutImports)
+  ) {
+    return [];
+  }
 
   const candidates = [];
   for (const { name, body, at } of recordArrays(code)) {

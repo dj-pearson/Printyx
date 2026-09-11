@@ -14762,6 +14762,38 @@
       "category": "unconnected-feature",
       "dependsOn": [],
       "notes": "FILED 2026-09-11 (loop iteration 9). Found while making the customer-success dashboard honest. The write paths that DO exist are a trap for anyone scoping this: satisfaction.ts has four handlers and three of them write, so a grep for inserts makes the feature look connected - the missing one is the row everything else hangs off. Check customer-success/handlers/analytics-frontend-stubs.ts too: its satisfaction endpoint is a stub whose reason string now names this gap."
+    },
+    {
+      "id": "CONNECT-DASH-001",
+      "title": "The Customer Connect dashboard named three customers that do not exist",
+      "description": "/connect is routed and made no request of any kind. It asserted a 5.2% churn rate, 64% portal adoption, 127 active sessions, satisfaction 4.3 and NPS 42, then listed three NAMED at-risk customers - Acme Corporation at 68% churn probability on $2,400 MRR, Global Tech Solutions at 82% on $5,200 with 'Immediate outreach required', Midwest Manufacturing at 51 health - each with issues and a recommended action. A named account with a churn probability and a next step is a work item, not a placeholder: someone schedules the executive review. The page is gated behind NotConnectedState now. Building it for real needs sources that do not exist - nothing records a portal session, so adoption and session counts are underivable, and no satisfaction survey can be created (CSAT-PRODUCER-001), so NPS and CSAT have nothing behind them. Health and churn risk are the one part that could be real today, because customer_health_scores holds rows, but AUDIT-028 found nothing computes a score, so what is stored is whatever last wrote it.",
+      "acceptanceCriteria": [
+        "Portal sessions are recorded somewhere, or adoption and session count are dropped",
+        "Churn risk comes from a scoring engine that actually runs, or the panel stays gated",
+        "Any named customer on the page is a real row",
+        "The page states what it cannot measure rather than filling the gap"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "unconnected-feature",
+      "dependsOn": ["CSAT-PRODUCER-001"],
+      "notes": "FILED 2026-09-11 (loop iteration 10). Found by fixing check:no-static-posture rather than by reading the page - the guard had been bailing on an unused useQuery import, so the whole file went unexamined."
+    },
+    {
+      "id": "PLATFORM-CONFIG-001",
+      "title": "A platform-admin configuration screen showed 22 sections of invented settings",
+      "description": "/platform-configuration is platform-admin only and opened with a '// Mock configuration data' comment. It drew 22 configuration sections - SMTP hosts, rate limits, feature flags, retention periods - as the live platform configuration, with a 'show sensitive values' toggle beside them, and nothing was editable: the controls held local state and no save path existed. A fabricated configuration screen is a particular kind of dangerous, because every other fabrication here misreports the business while this one misreports the SYSTEM, to the one person who would act on it. An admin reading 'session timeout: 30 minutes' cannot tell it from the real setting, and AUDIT-034 records that session timeout is not enforced at all. Gated behind NotConnectedState. A real version needs a decision about what a PLATFORM setting even is here: tenants.metadata is the tenant config bag and /api/admin/settings already serves it, but platform-wide values live in environment variables and deployment config that the application cannot read.",
+      "acceptanceCriteria": [
+        "A decision is recorded on where platform-level settings would be stored",
+        "Anything displayed as a setting is read from that store",
+        "A setting shown as editable can actually be saved",
+        "Values the application cannot see are named as such rather than drawn"
+      ],
+      "priority": 3,
+      "passes": false,
+      "category": "unconnected-feature",
+      "dependsOn": [],
+      "notes": "FILED 2026-09-11 (loop iteration 10). Consider retiring rather than building: the tenant half already exists at /api/admin/settings, and the platform half may belong in deployment config rather than in a screen."
     }
   ]
 }

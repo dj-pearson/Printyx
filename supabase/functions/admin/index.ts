@@ -11,6 +11,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
 import { buildRoleClaims, claimsPatch, syncRoleClaims } from '../_shared/role-claims.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 // Helper to check if user has admin permissions
 async function checkAdminPermission(
@@ -1275,14 +1276,19 @@ export default async function handler(req: Request) {
         .eq('is_active', true);
 
       // Failed login attempts last 24h
-      const { data: failedLogins } = await admin
-        .from('security_sessions')
-        .select('failed_login_attempts')
-        .eq('tenant_id', tenantId)
-        .gte('created_at', last24Hours);
+      // Paged: PostgREST caps a response at 1000 rows without erroring, and a
+      // busy tenant has more sessions than that in a day - which would under-
+      // count the one figure on this endpoint that raises a security alert.
+      const failedLogins = await fetchAllRows<{ failed_login_attempts: number | null }>(() =>
+        admin
+          .from('security_sessions')
+          .select('failed_login_attempts')
+          .eq('tenant_id', tenantId)
+          .gte('created_at', last24Hours),
+      );
 
-      const totalFailedLogins = (failedLogins || []).reduce(
-        (sum: number, s: any) => sum + (s.failed_login_attempts || 0),
+      const totalFailedLogins = failedLogins.reduce(
+        (sum: number, s) => sum + (s.failed_login_attempts || 0),
         0,
       );
 
