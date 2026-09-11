@@ -14363,10 +14363,10 @@
         "The report script grows an ownership-aware rule, or a reviewed baseline is committed so the number can only shrink"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "category": "security",
       "dependsOn": ["SEC-TENANT-001"],
-      "notes": "NEXT ITERATION CANDIDATE - take the deletes and updates first. The script's own header records its three blind spots: the chain ends at the first ';' so a query built across statements looks unfiltered, a table name in a variable is invisible, and the 107 tables in no Drizzle schema are never classified as tenant-scoped. Do not treat a clean line as proof."
+      "notes": "DONE 2026-09-11 (loop iteration 8/15). The story asked for the 71 updates and 17 deletes to be triaged into three buckets, and SEC-TENANT-005 had already done the mechanical half of that: 32 are guarded by a preceding ownership read, 12 are bound to the authenticated user, and 26 remain. Reading all 26 found TWO genuine cross-tenant writes, both privileged, both behind an admin gate that is exactly why they read as safe - the gate proves the CALLER is an admin and says nothing about whose user the target is. POST /mfa/admin/reset/:userId deleted a target user's enrolment, backup codes and OTP tokens with the id taken straight off the URL, so an admin in one tenant could strip MFA from a user in another; the audit row it writes stamps the CALLER's tenant_id, so the victim's tenant kept no record of it either. It 404s now rather than 403, because whether a uuid belongs to some other tenant is not something that endpoint should confirm. And rbac assign-role updated users.role_id filtered by id alone; the level check beside it does not help, because roles has NO tenant_id and therefore constrains which role, never whose user. The remaining 26 are three shapes, all annotated in the baseline note: an internal job runner writing a row it already claimed (blog-pipeline, blog-jobs, 12), a knowledge-base write preceded by a select filtered on user_id - a tighter boundary than tenant, just further back than the 1800-character lookback sees (5), and public-booking, which is UNAUTHENTICATED by design and reaches the row through a manage token that IS the credential (4). The guard also learned auth.userId as a user-scope binding; without it sso logout and mfa self-disable were reported, and a reported non-defect is how a real one gets waved through."
     },
     {
       "id": "SEC-PAYMENT-001",

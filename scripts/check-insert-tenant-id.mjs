@@ -192,9 +192,11 @@ for (const file of files) {
     // the user cannot be in two. The value has to come from the token, not from
     // the request - a `user_id` read off the body would be the defect this
     // exists to catch, so the pattern is anchored to the names the auth layer
-    // produces.
+    // produces. `auth.userId` is one of them: sso's own logout and mfa's
+    // self-disable were reported until it was listed, and a reported non-defect
+    // is how a real one gets waved through.
     if (
-      /\.eq\(\s*['"](?:user_id|id)['"]\s*,\s*(?:user\.id|userId|authUserId|currentUserId|user\?\.id)\s*\)/.test(
+      /\.eq\(\s*['"](?:user_id|id)['"]\s*,\s*(?:user\.id|user\?\.id|userId|authUserId|currentUserId|auth\.userId|auth\.user\.id|ctx\.userId)\s*\)/.test(
         chain,
       )
     ) {

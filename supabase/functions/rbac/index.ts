@@ -183,10 +183,15 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Cannot assign role at or above your level' }, 403, req);
       }
 
+      // SEC-TENANT-002. targetUserId comes from the request and nothing bound
+      // it to a tenant, so an admin could grant a role to a user in ANOTHER
+      // tenant. The level check above does not help: `roles` has no tenant_id,
+      // so it constrains which role, never whose user.
       const { error } = await admin
         .from('users')
         .update({ role_id: roleId, updated_at: new Date().toISOString() })
-        .eq('id', targetUserId);
+        .eq('id', targetUserId)
+        .eq('tenant_id', tenantId);
 
       if (error) {
         return createCorsResponse({ error: 'Failed to assign role' }, 500, req);

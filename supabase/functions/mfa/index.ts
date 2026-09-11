@@ -315,6 +315,22 @@ export default async function handler(req: Request) {
 
       if (method === 'POST' && p1 === 'reset' && p2) {
         const targetUserId = p2;
+        // SEC-TENANT-002. The admin gate above proves the CALLER is an admin
+        // and nothing else: the target came straight off the URL, so an admin
+        // in one tenant could strip MFA from a user in another - a security
+        // control removed across a tenancy boundary, and the audit row below
+        // stamps the CALLER's tenant_id, so the victim's tenant kept no record
+        // of it either. 404 rather than 403: whether a uuid belongs to some
+        // other tenant is not something this endpoint should confirm.
+        const { data: target } = await db
+          .from('users')
+          .select('id')
+          .eq('id', targetUserId)
+          .eq('tenant_id', auth.tenantId)
+          .maybeSingle();
+        if (!target) {
+          return errorResponse(404, 'User not found', req, { code: 'NOT_FOUND', requestId });
+        }
         await db.from('mfa_enrollments').delete().eq('user_id', targetUserId);
         await db.from('mfa_backup_codes').delete().eq('user_id', targetUserId);
         await db.from('mfa_otp_tokens').delete().eq('user_id', targetUserId);
