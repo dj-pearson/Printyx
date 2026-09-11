@@ -226,6 +226,12 @@ for (const rel of [...DIRS, ...FILES].flatMap(collect)) {
   const code = stripComments(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
   code.split('\n').forEach((line, i) => {
+    // A control whose LABEL IS ITS OWN VALUE is an option, not a measurement:
+    // `<SelectItem value="25">25</SelectItem>` is a page-size picker. Four of
+    // those sat in the baseline as known non-defects, which is precisely where
+    // a real one hides - so this is excluded by rule, the same way marketing
+    // copy is.
+    if (/<(?:SelectItem|option)\b[^>]*\bvalue=["']([^"']+)["'][^>]*>\s*\1\s*</.test(line)) return;
     for (const [re, why] of RULES) {
       re.lastIndex = 0;
       if (re.test(line)) {

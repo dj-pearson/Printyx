@@ -902,48 +902,13 @@ export default function ExecutiveDashboard() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Cross-Functional Impact</CardTitle>
-                    <CardDescription>
-                      How each department contributes to overall success
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="p-3 border rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-medium">Sales Impact on Revenue</span>
-                          <span className="font-bold">78%</span>
-                        </div>
-                        <Progress value={78} />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Direct sales contribution to total revenue growth
-                        </p>
-                      </div>
-                      <div className="p-3 border rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-medium">Service Impact on Retention</span>
-                          <span className="font-bold">85%</span>
-                        </div>
-                        <Progress value={85} />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Service quality correlation with customer retention
-                        </p>
-                      </div>
-                      <div className="p-3 border rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-medium">Marketing Impact on Pipeline</span>
-                          <span className="font-bold">62%</span>
-                        </div>
-                        <Progress value={62} />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Marketing-generated leads in sales pipeline
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* AUDIT-019. A "Cross-Functional Impact" card claiming sales
+                    drove 78% of revenue growth, service quality correlated 85%
+                    with retention and marketing generated 62% of pipeline -
+                    three typed-in percentages sitting beside six real queries,
+                    which is what made them credible. None is derivable: there is
+                    no attribution model, no retention correlation and no
+                    marketing source on a pipeline row. */}
               </div>
             </TabsContent>
           </Tabs>

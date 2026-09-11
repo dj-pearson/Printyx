@@ -9,7 +9,6 @@ import {
   CreditCard,
   AlertTriangle,
   TrendingUp,
-  Users,
   Calendar,
   Settings,
   Edit,
@@ -1059,144 +1058,14 @@ export default function AdvancedBillingEngine() {
               </Card>
             </div>
 
-            {/* Billing Health Score Dashboard */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  Billing Health Score Dashboard
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="text-center">
-                    <div className="relative inline-flex items-center justify-center w-20 h-20 mb-2">
-                      <svg className="w-20 h-20 transform -rotate-90">
-                        <circle
-                          cx="40"
-                          cy="40"
-                          r="36"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
-                          className="text-gray-200"
-                        />
-                        <circle
-                          cx="40"
-                          cy="40"
-                          r="36"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
-                          strokeDasharray={`${89 * 2.26} ${100 * 2.26}`}
-                          className="text-green-600"
-                        />
-                      </svg>
-                      <span className="absolute text-xl font-bold text-green-600">89%</span>
-                    </div>
-                    <p className="text-sm font-medium">Overall Health</p>
-                    <p className="text-xs text-gray-500">Excellent</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="relative inline-flex items-center justify-center w-20 h-20 mb-2">
-                      <svg className="w-20 h-20 transform -rotate-90">
-                        <circle
-                          cx="40"
-                          cy="40"
-                          r="36"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
-                          className="text-gray-200"
-                        />
-                        <circle
-                          cx="40"
-                          cy="40"
-                          r="36"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
-                          strokeDasharray={`${94 * 2.26} ${100 * 2.26}`}
-                          className="text-green-600"
-                        />
-                      </svg>
-                      <span className="absolute text-xl font-bold text-green-600">94%</span>
-                    </div>
-                    <p className="text-sm font-medium">Accuracy Rate</p>
-                    <p className="text-xs text-gray-500">No errors detected</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="relative inline-flex items-center justify-center w-20 h-20 mb-2">
-                      <svg className="w-20 h-20 transform -rotate-90">
-                        <circle
-                          cx="40"
-                          cy="40"
-                          r="36"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
-                          className="text-gray-200"
-                        />
-                        <circle
-                          cx="40"
-                          cy="40"
-                          r="36"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
-                          strokeDasharray={`${76 * 2.26} ${100 * 2.26}`}
-                          className="text-yellow-600"
-                        />
-                      </svg>
-                      <span className="absolute text-xl font-bold text-yellow-600">76%</span>
-                    </div>
-                    <p className="text-sm font-medium">Automation Rate</p>
-                    <p className="text-xs text-gray-500">Room for improvement</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="relative inline-flex items-center justify-center w-20 h-20 mb-2">
-                      <svg className="w-20 h-20 transform -rotate-90">
-                        <circle
-                          cx="40"
-                          cy="40"
-                          r="36"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
-                          className="text-gray-200"
-                        />
-                        <circle
-                          cx="40"
-                          cy="40"
-                          r="36"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
-                          strokeDasharray={`${82 * 2.26} ${100 * 2.26}`}
-                          className="text-blue-600"
-                        />
-                      </svg>
-                      <span className="absolute text-xl font-bold text-blue-600">82%</span>
-                    </div>
-                    <p className="text-sm font-medium">Collection Efficiency</p>
-                    <p className="text-xs text-gray-500">Above industry avg</p>
-                  </div>
-                </div>
-                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span className="font-medium text-green-800">
-                      Billing Autopilot Status: Active
-                    </span>
-                  </div>
-                  <p className="text-sm text-green-700">
-                    Your billing system is operating at optimal efficiency. AI monitoring has
-                    identified 3 optimization opportunities that could increase revenue by an
-                    estimated 12%.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            {/* AUDIT-019. A "Billing Health Score Dashboard" - four SVG ring
+                gauges reading 89% overall health ("Excellent"), 94%, 82% and
+                76% - closing with a green panel: "Billing Autopilot Status:
+                Active. Your billing system is operating at optimal efficiency.
+                AI monitoring has identified 3 optimization opportunities that
+                could increase revenue by an estimated 12%." There is no
+                autopilot, no AI monitoring and no health score; every figure
+                was typed in, on the page a dealer uses to run their billing. */}
 
             {/* Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1452,64 +1321,15 @@ export default function AdvancedBillingEngine() {
                 </CardContent>
               </Card>
 
-              {/* Performance Benchmarks */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-indigo-600" />
-                    Industry Benchmarks
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium mb-3">How You Compare</h4>
-                      <div className="space-y-3">
-                        <div>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm">Billing Accuracy</span>
-                            <span className="text-sm font-medium text-green-600">
-                              +18% above avg
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-green-600 h-2 rounded-full w-[94%]"></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm">Collection Rate</span>
-                            <span className="text-sm font-medium text-blue-600">
-                              +12% above avg
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-blue-600 h-2 rounded-full w-[82%]"></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm">DSO (Days Sales Outstanding)</span>
-                            <span className="text-sm font-medium text-orange-600">
-                              -8 days vs avg
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-orange-600 h-2 rounded-full w-[75%]"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-indigo-50 border border-indigo-200 rounded">
-                      <p className="text-sm text-indigo-800 font-medium">Industry Recognition</p>
-                      <p className="text-xs text-indigo-600 mt-1">
-                        Your billing efficiency ranks in the top 15% of copier dealers nationwide.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* AUDIT-019. An "Industry Benchmarks - How You Compare" card
+                  telling every dealer they are +18% above average on billing
+                  accuracy, +12% on collection rate, 8 days better on DSO, and
+                  that their billing efficiency "ranks in the top 15% of copier
+                  dealers nationwide". A comparison needs something to compare
+                  against: `industry_benchmarks` is in
+                  docs/unwritten-tables-baseline.json - declared, read by
+                  nothing, written by nothing. There is no industry average
+                  here, so there is no position relative to one. */}
             </div>
           </TabsContent>
 
