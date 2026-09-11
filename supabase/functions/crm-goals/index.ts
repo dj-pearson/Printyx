@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { toNumber } from '../_shared/quote-math.ts';
 import { toUserProfile, USER_PROFILE_COLUMNS, type UserRow } from '../_shared/user-profile.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -237,16 +238,17 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && resource === 'dashboard-stats') {
       const { data: leads } = await admin.from('leads').select('status').eq('tenant_id', tenantId);
 
-      const { data: deals } = await admin
-        .from('deals')
-        .select('status, amount')
-        .eq('tenant_id', tenantId);
+      const deals = await fetchAllRows<any>(() =>
+        admin.from('deals').select('status, amount').eq('tenant_id', tenantId),
+      );
 
-      const { data: activities } = await admin
-        .from('activities')
-        .select('type')
-        .eq('tenant_id', tenantId)
-        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+      const activities = await fetchAllRows<any>(() =>
+        admin
+          .from('activities')
+          .select('type')
+          .eq('tenant_id', tenantId)
+          .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+      );
 
       return createCorsResponse(
         {

@@ -20,6 +20,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 type SB = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -229,15 +230,17 @@ async function handleSimilarDeals(admin: SB, tenantId: string, quoteId: string, 
   let territoryMatchIds: Set<string> | null = null;
   if (territory) {
     const custIds = Array.from(new Set(candidateRows.map((c) => c.business_record_id as string)));
-    const custRows = custIds.length
-      ? await admin
-          .from('business_records')
-          .select('id,territory')
-          .eq('tenant_id', tenantId)
-          .in('id', custIds)
-      : { data: [] as Array<Record<string, unknown>> };
+    const custRows: Array<Record<string, unknown>> = custIds.length
+      ? await fetchAllRows<Record<string, unknown>>(() =>
+          admin
+            .from('business_records')
+            .select('id,territory')
+            .eq('tenant_id', tenantId)
+            .in('id', custIds),
+        )
+      : [];
     territoryMatchIds = new Set(
-      (custRows.data ?? [])
+      custRows
         .filter((r: Record<string, unknown>) => r.territory === territory)
         .map((r: Record<string, unknown>) => r.id as string),
     );

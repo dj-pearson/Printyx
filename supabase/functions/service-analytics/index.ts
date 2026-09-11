@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -51,17 +52,19 @@ export default async function handler(req: Request) {
     // GET /service-analytics - Get service analytics overview
     if (req.method === 'GET' && !subResource) {
       // Fetch all tickets for analytics
-      const { data: tickets, error: ticketsError } = await admin
-        .from('service_tickets')
-        .select('id, status, priority, created_at, resolved_at, assigned_technician_id')
-        .eq('tenant_id', tenantId);
-
-      if (ticketsError) {
+      let allTickets: any[];
+      try {
+        allTickets = await fetchAllRows<any>(() =>
+          admin
+            .from('service_tickets')
+            .select('id, status, priority, created_at, resolved_at, assigned_technician_id')
+            .eq('tenant_id', tenantId),
+        );
+      } catch (ticketsError) {
         console.error('Error fetching tickets for analytics:', ticketsError);
         return createCorsResponse({ error: 'Failed to fetch analytics' }, 500, req);
       }
 
-      const allTickets = tickets || [];
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);

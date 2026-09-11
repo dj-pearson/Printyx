@@ -2,6 +2,7 @@
 // Handles today's dashboard data
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -97,16 +98,18 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .gte('created_at', todayIso);
 
-      const { data: wonDeals } = await admin
-        .from('deals')
-        // AUDIT-037: `deals` has amount and actual_close_date, not value and
-        // closed_at, so this 42703'd and today's revenue was always 0 - a
-        // number the dashboard printed with no way to tell it apart from a
-        // genuinely quiet morning.
-        .select('amount')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'won')
-        .gte('actual_close_date', todayIso);
+      const wonDeals = await fetchAllRows<any>(() =>
+        admin
+          .from('deals')
+          // AUDIT-037: `deals` has amount and actual_close_date, not value and
+          // closed_at, so this 42703'd and today's revenue was always 0 - a
+          // number the dashboard printed with no way to tell it apart from a
+          // genuinely quiet morning.
+          .select('amount')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'won')
+          .gte('actual_close_date', todayIso),
+      );
 
       const todayRevenue =
         wonDeals?.reduce((sum: number, d: any) => sum + Number(d.amount ?? 0), 0) || 0;

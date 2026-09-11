@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -156,14 +157,16 @@ export default async function handler(req: Request) {
     // GET /technicians/:id/performance - Get technician performance metrics
     if (req.method === 'GET' && technicianId && subResource === 'performance') {
       // Fetch service tickets assigned to this technician
-      const { data: tickets } = await admin
-        .from('service_tickets')
-        // service_tickets has resolved_at, and records no first-response time at
-        // all - so the average below was computed over a column that does not
-        // exist and was always 0.
-        .select('id, status, priority, created_at, resolved_at')
-        .eq('assigned_technician_id', technicianId)
-        .eq('tenant_id', tenantId);
+      const tickets = await fetchAllRows<any>(() =>
+        admin
+          .from('service_tickets')
+          // service_tickets has resolved_at, and records no first-response time at
+          // all - so the average below was computed over a column that does not
+          // exist and was always 0.
+          .select('id, status, priority, created_at, resolved_at')
+          .eq('assigned_technician_id', technicianId)
+          .eq('tenant_id', tenantId),
+      );
 
       const totalTickets = tickets?.length || 0;
       const completedTickets = tickets?.filter((t) => t.status === 'completed').length || 0;

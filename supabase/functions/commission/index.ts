@@ -246,13 +246,15 @@ export default async function handler(req: Request) {
       periodStart.setDate(1);
       periodStart.setHours(0, 0, 0, 0);
 
-      const { data: deals } = await admin
-        .from('deals')
-        .select('amount')
-        .eq('tenant_id', tenantId)
-        .eq('owner_id', user.id)
-        .eq('status', 'won')
-        .gte('actual_close_date', periodStart.toISOString());
+      const deals = await fetchAllRows<any>(() =>
+        admin
+          .from('deals')
+          .select('amount')
+          .eq('tenant_id', tenantId)
+          .eq('owner_id', user.id)
+          .eq('status', 'won')
+          .gte('actual_close_date', periodStart.toISOString()),
+      );
 
       const totalSales = (deals ?? []).reduce((sum: number, d: any) => sum + dealAmount(d), 0);
       const baseCommission = totalSales * 0.05;

@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toNumber } from '../_shared/quote-math.ts';
 import { displayName, USER_NAME_COLUMNS, type UserRow } from '../_shared/user-profile.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 // COP-M01: this file addressed business_records as deal_value / assigned_to /
 // pipeline_stage. The columns are estimated_deal_value, assigned_sales_rep and
@@ -90,12 +91,14 @@ export default async function handler(req: Request) {
         .gte('created_at', startDate.toISOString());
 
       // Get deals by team
-      const { data: deals } = await admin
-        .from('business_records')
-        .select('estimated_deal_value, status')
-        .eq('tenant_id', tenantId)
-        .in('assigned_sales_rep', memberIds)
-        .gte('created_at', startDate.toISOString());
+      const deals = await fetchAllRows<any>(() =>
+        admin
+          .from('business_records')
+          .select('estimated_deal_value, status')
+          .eq('tenant_id', tenantId)
+          .in('assigned_sales_rep', memberIds)
+          .gte('created_at', startDate.toISOString()),
+      );
 
       const totalDealValue = (deals || []).reduce(
         (sum: number, d: any) => sum + toNumber(d.estimated_deal_value),
@@ -215,11 +218,13 @@ export default async function handler(req: Request) {
 
     // GET /team-reports/pipeline - Pipeline report
     if (req.method === 'GET' && reportType === 'pipeline') {
-      const { data: deals } = await admin
-        .from('business_records')
-        .select('status, estimated_deal_value, sales_stage')
-        .eq('tenant_id', tenantId)
-        .eq('record_type', 'opportunity');
+      const deals = await fetchAllRows<any>(() =>
+        admin
+          .from('business_records')
+          .select('status, estimated_deal_value, sales_stage')
+          .eq('tenant_id', tenantId)
+          .eq('record_type', 'opportunity'),
+      );
 
       // Group by stage
       const byStage = new Map<string, { count: number; value: number }>();
@@ -267,12 +272,14 @@ export default async function handler(req: Request) {
         .gte('created_at', startDate.toISOString());
 
       // Get user's deals
-      const { data: deals } = await admin
-        .from('business_records')
-        .select('estimated_deal_value, status, created_at')
-        .eq('tenant_id', tenantId)
-        .eq('assigned_sales_rep', userId)
-        .gte('created_at', startDate.toISOString());
+      const deals = await fetchAllRows<any>(() =>
+        admin
+          .from('business_records')
+          .select('estimated_deal_value, status, created_at')
+          .eq('tenant_id', tenantId)
+          .eq('assigned_sales_rep', userId)
+          .gte('created_at', startDate.toISOString()),
+      );
 
       const wonDeals = (deals || []).filter((d: any) => d.status === 'won');
       const lostDeals = (deals || []).filter((d: any) => d.status === 'lost');
@@ -317,12 +324,14 @@ export default async function handler(req: Request) {
 
           const memberIds = (members || []).map((m: any) => m.user_id);
 
-          const { data: deals } = await admin
-            .from('business_records')
-            .select('estimated_deal_value, status')
-            .eq('tenant_id', tenantId)
-            .in('assigned_sales_rep', memberIds)
-            .gte('created_at', startDate.toISOString());
+          const deals = await fetchAllRows<any>(() =>
+            admin
+              .from('business_records')
+              .select('estimated_deal_value, status')
+              .eq('tenant_id', tenantId)
+              .in('assigned_sales_rep', memberIds)
+              .gte('created_at', startDate.toISOString()),
+          );
 
           const wonValue = (deals || [])
             .filter((d: any) => d.status === 'won')

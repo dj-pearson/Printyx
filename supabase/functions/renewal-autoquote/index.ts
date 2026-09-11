@@ -545,10 +545,9 @@ async function generate(req: Request, ctx: GenerateCtx): Promise<Response> {
     const equipmentIds = [...perMachine.keys()];
     const equipmentById = new Map<string, Row>();
     if (equipmentIds.length) {
-      const { data: eqRows } = await admin
-        .from('equipment')
-        .select('id, serial_number, model_number')
-        .in('id', equipmentIds);
+      const eqRows = await fetchAllRows<any>(() =>
+        admin.from('equipment').select('id, serial_number, model_number').in('id', equipmentIds),
+      );
       for (const e of (eqRows as Row[]) || []) equipmentById.set(e.id, e);
     }
 

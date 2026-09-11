@@ -14660,10 +14660,10 @@
         "A large-tenant case is measured rather than assumed"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "category": "performance",
       "dependsOn": ["PERF-ROWCAP-001"],
-      "notes": "NEXT ITERATION CANDIDATE. The report initially could not see its own fixes - the inner chain inside fetchAllRows(() => admin.from(...).select(...)) carries no .range of its own, so a corrected call still looked unbounded and the number would never have moved. It skips already-paged chains now; check that rule still holds if the helper is ever renamed."
+      "notes": "DONE 2026-09-11. All 33 converted: fetchAllRows for value sums, HEAD count where only the number was wanted (analytics dashboard customers). Two shapes the script could not do mechanically and that are worth recognising - a Promise.all array of builders (reports/handlers/dashboards.ts, four handlers, whose consumers all read X.data ?? [] and now read X), and a destructure carrying an error var (service-analytics), which becomes a try/catch because fetchAllRows throws rather than returning a short set. The report itself was blind to its own fixes twice: its fetchAllRows escape used <[^>]*> for the generic argument, which does not match fetchAllRows<Record<string, unknown>>, and its 60-character lookback was shorter than the arrow-newline-receiver-newline gap. It is a HARD GATE at zero now (check:row-caps, CI-wired) and mutation-tested - reverting one call site reports it again. What it still cannot see is unchanged: a sum written as a for-loop, a reduce more than 30 lines from the from(), and the hand-maintained high-volume table list."
     },
     {
       "id": "SEC-TENANT-004",

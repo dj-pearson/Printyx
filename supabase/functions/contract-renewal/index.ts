@@ -239,12 +239,14 @@ export default async function handler(req: Request) {
       // contracts table is minimal — monthly_base carries the recurring amount
       // and `status` carries the lifecycle — so this select 42703'd and every
       // figure below came out zero through `|| 0`.
-      const { data: renewals } = await admin
-        .from('contracts')
-        .select('id, monthly_base, status')
-        .eq('tenant_id', tenantId)
-        .gte('end_date', yearStart)
-        .lte('end_date', yearEnd);
+      const renewals = await fetchAllRows<any>(() =>
+        admin
+          .from('contracts')
+          .select('id, monthly_base, status')
+          .eq('tenant_id', tenantId)
+          .gte('end_date', yearStart)
+          .lte('end_date', yearEnd),
+      );
 
       const renewed = renewals?.filter((c: any) => c.status === 'renewed') || [];
       const churned = renewals?.filter((c: any) => c.status === 'churned') || [];
