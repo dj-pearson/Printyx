@@ -207,11 +207,19 @@ export default function CustomerSelfServicePortal() {
     KnowledgeBaseArticle[]
   >({
     queryKey: ['/api/customer-portal/knowledge-base', searchQuery, selectedCategory],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       if (selectedCategory !== 'all') params.append('category', selectedCategory);
-      return apiRequest(`/api/customer-portal/knowledge-base?${params.toString()}`);
+      const res = await apiRequest(`/api/customer-portal/knowledge-base?${params.toString()}`);
+      // SHAPE-ENVELOPE-002. This endpoint is the one list in customer-portal
+      // whose `data` is an OBJECT - { articles, categories } - not an array.
+      // getQueryFn unwraps `{ data: [...] }` and nothing else, and apiRequest
+      // unwraps nothing at all, so the whole envelope landed here typed as
+      // KnowledgeBaseArticle[]: `.length` was undefined, the empty-state test
+      // `=== 0` was false, and `.map` threw on an object. The Help Center tab
+      // was a blank error, not an empty list.
+      return (res?.data?.articles ?? res?.articles ?? []) as KnowledgeBaseArticle[];
     },
   });
 

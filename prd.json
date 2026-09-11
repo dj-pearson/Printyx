@@ -14725,10 +14725,26 @@
         "It becomes a gate only once the false-positive rate is measured, not assumed"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "category": "frontend-data-contracts",
       "dependsOn": ["SHAPE-ENVELOPE-001"],
-      "notes": "STARTED: scripts/report-response-shape-mismatch.mjs is the first cut, mutation-tested against SHAPE-ENVELOPE-001 (reverting it makes the report fire; fixing it clears). It reports 13 CANDIDATES, not confirmed defects - each still needs its branch read by hand. Its value is as much in the five rules it learned as in the list: (1) getQueryFn auto-unwraps `{ data: [...] }` and NOTHING else, which is the single most important fact about this seam and the reason `{ deals: [...] }` broke while `{ data: [...] }` never does; (2) two response helpers are in use, createCorsResponse and jsonResponse, and scanning for one reports every function using the other; (3) `useQuery<{ data: Level[] }>` is a correctly typed envelope and a bare /\\[\\]$/ matches the [] inside it; (4) `group.levels.map()` is not a read of a query variable named levels; (5) a `select:` transform reshapes the response deliberately. The first run said 42 and five rounds of checking findings against the source removed 29 - a gate built on the first cut would have blocked 29 correct pages. WHAT REMAINS for a gate: branch-level resolution. The script asks whether a FUNCTION ever returns an array, not whether the branch serving THIS path does, so the platform CRM - contacts bare, deals enveloped - satisfies it either way. That is the last piece."
+      "notes": "DONE 2026-09-11 (loop iteration 3/15). All 13 candidates read by hand and NOT ONE was a shape mismatch, which is the finding: nine were correct pages the script misjudged for two reasons worth keeping - it required data: to be the FIRST key of the envelope, so customer-portal{success, data:[...]} read as sending no array, and it treated a response body that is a plain identifier (createCorsResponse(csms, 200, req)) as evidence of no array branch when the array is simply built above the return. Identifier bodies are UNRESOLVED now and counted. Two were orphan files. Two were real and neither was about shape: ServiceAnalytics and EquipmentTransitionHistory ask for paths no branch of their edge function serves. So the branch narrowing this story called for got built as a DIFFERENT question than expected - not which branch serves a path, which needs the dispatch graph, but whether any branch names it at all, which is sound, cheap and is what found both defects. Its segment scan is deliberately lenient (every token, not quoted literals only) because a branch is written half a dozen ways and an anchored scan called proposals broken. Fixed here: EquipmentTransitionHistory repointed to /transitions/history with a snake-to-camel map, and customer-portal knowledge-base, which the report could NOT see because a queryFn hides a query from it - its data is an object { articles, categories }, the page typed the whole envelope as an array, so length was undefined, the === 0 empty-state test was false and .map threw. Still a report, not a gate."
+    },
+    {
+      "id": "SHAPE-ENVELOPE-003",
+      "title": "Eleven live query paths no edge branch serves, and a routed page whose six endpoints do not exist",
+      "description": "report-response-shape-mismatch now asks whether any branch of an edge function names the sub-path a page requests, and answers no for eleven. Two are orphan components (dashboard/service-tickets, dashboard/top-customers) and three belong to MobileFieldOperations, which AUDIT-033 already 404s deliberately. The rest are live. ServiceAnalytics is the worst: it is ROUTED at /service-analytics and every one of its six endpoints - technician-performance, customer-service, trends, dashboards, benchmarks, performance-metrics - is served by nothing on either host, because the analytics edge fn answers only dashboard, sales, service and performance and server/analytics-routes.ts was deleted under PA-040. The page renders its empty states for every tenant. Then CrmGoalsDashboard (/api/crm/manager-insights, /api/crm/analytics) and RootAdminSecurity (/api/admin/audit-logs). The decision per page is the PA-040 one: build the endpoint, or gate the page behind NotConnectedState and say so - do not leave a screen that looks like a working report of nothing.",
+      "acceptanceCriteria": [
+        "Each of the eleven is confirmed live-and-broken, deliberately dead, or a false positive, and the verdict recorded",
+        "ServiceAnalytics either gets its six endpoints or is gated, not left rendering empty states",
+        "A page gated rather than built says what is not measured, per LEGAL-010",
+        "The report reaches zero or its survivors are annotated"
+      ],
+      "priority": 2,
+      "passes": false,
+      "category": "frontend-data-contracts",
+      "dependsOn": ["SHAPE-ENVELOPE-002"],
+      "notes": "NEXT ITERATION CANDIDATE. Check reachability before building: two of the eleven are already in docs/orphan-files-baseline.json and three are a feature AUDIT-033 retired. The branch scan is lenient by design, so a clean line is not proof - it cannot see a path assembled at runtime."
     }
   ]
 }

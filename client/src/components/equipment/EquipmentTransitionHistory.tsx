@@ -34,13 +34,35 @@ interface TransitionHistoryItem {
 }
 
 export function EquipmentTransitionHistory({ equipmentId }: EquipmentTransitionHistoryProps) {
+  // SHAPE-ENVELOPE-002. This asked for `/:equipmentId/transitions`, which only
+  // ever existed in Express: the edge function's equipment-id branch handles
+  // status, transition, available-transitions and can-transition and nothing
+  // else, so the panel worked in dev and 404'd in production. The branch that
+  // does serve this history is `/transitions/history`, which takes the
+  // equipment as a query parameter and answers with snake_case rows - hence the
+  // mapping, without which every field would render blank.
   const {
     data: transitions = [],
     isLoading,
     error,
   } = useQuery<TransitionHistoryItem[]>({
-    queryKey: [`/api/equipment-lifecycle/${equipmentId}/transitions`],
+    queryKey: [`/api/equipment-lifecycle/transitions/history?equipmentId=${equipmentId}`],
     enabled: !!equipmentId,
+    select: (rows: unknown) =>
+      (Array.isArray(rows) ? rows : []).map((row: Record<string, unknown>) => ({
+        id: String(row.id),
+        fromStage: (row.from_stage as string | null) ?? null,
+        toStage: (row.to_stage as string) ?? '',
+        transitionType: (row.transition_type as string) ?? '',
+        triggeredBy: (row.triggered_by as string | null) ?? null,
+        triggeredAt: new Date(row.triggered_at as string),
+        reason: (row.reason as string | null) ?? null,
+        status: (row.status as string) ?? '',
+        validationsPassed: row.validations_passed,
+        validationsFailed: row.validations_failed,
+        isRollback: Boolean(row.is_rollback),
+        rollbackReason: (row.rollback_reason as string | null) ?? null,
+      })),
   });
 
   const formatStageName = (stage: string) => {
