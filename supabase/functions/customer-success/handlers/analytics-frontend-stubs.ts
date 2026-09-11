@@ -10,6 +10,14 @@
 // response carries a `degraded: { reason }` block so callers can detect
 // the stub state.
 //
+// THE FIGURES ARE NULL, NOT ZERO (AUDIT-028). They used to be zero, and nothing
+// on the page read the `degraded` block, so a CSM opening /customer-success was
+// told their customers rate them 0.0 out of 5 - drawn as five empty stars -
+// with an NPS of 0 in green, a 0% response rate, 0% equipment utilisation
+// behind a progress bar, and a "+0%" trend also in green. Zero is a claim, and
+// on an NPS scale that runs -100 to 100 it is a specific and quite bad one. A
+// figure with no source is null and renders as an em dash.
+//
 // URLs (dispatched by customer-success/index.ts switch on first segment):
 //   GET  /customer-success/usage-analytics       — usage trends + customer breakdown
 //   GET  /customer-success/satisfaction          — NPS + survey aggregates
@@ -27,9 +35,9 @@ export async function handleUsageAnalytics(
   return jsonResponse(
     {
       summary: {
-        averageUtilization: 0,
-        totalMonthlyVolume: 0,
-        utilizationTrend: 0,
+        averageUtilization: null,
+        totalMonthlyVolume: null,
+        utilizationTrend: null,
       },
       optimizationOpportunities: [],
       customerBreakdown: [],
@@ -51,16 +59,16 @@ export async function handleSatisfaction(req: Request, ctx: HandlerCtx): Promise
   return jsonResponse(
     {
       summary: {
-        npsScore: 0,
-        overallSatisfaction: 0,
-        responseRate: 0,
+        npsScore: null,
+        overallSatisfaction: null,
+        responseRate: null,
       },
       categoryTrends: {},
       recentSurveys: [],
       degraded: {
         satisfaction: true,
         reason:
-          'Satisfaction surveys aggregation not yet ported. Requires customer_satisfaction_surveys table aggregation. Tracked in EDGE-002k follow-up.',
+          'No satisfaction data exists to aggregate. customer_satisfaction_surveys, its templates and its questions are read in three places and written by nothing at all - no survey can be created, so none can be answered.',
       },
     },
     200,
@@ -74,42 +82,27 @@ export async function handleCalculateHealth(
   ctx: HandlerCtx,
 ): Promise<Response | null> {
   if (ctx.method !== 'POST') return null;
-  const { auth, db, requestId } = ctx;
-  let body: { recalculateAll?: boolean; customerId?: string } = {};
-  try {
-    body = await req.json();
-  } catch {
-    /* empty body OK */
-  }
+  const { requestId } = ctx;
 
-  // Touch the customer_health_scores table's next_review_date so dashboards
-  // relying on that field don't permanently show stale values. Real
-  // recalculation is a heavier job that should land via a pg_cron task or a
-  // background queue.
-  if (body.recalculateAll) {
-    await db
-      .from('customer_health_scores')
-      .update({ next_review_date: new Date().toISOString() })
-      .eq('tenant_id', auth.tenantId);
-  } else if (body.customerId) {
-    await db
-      .from('customer_health_scores')
-      .update({ next_review_date: new Date().toISOString() })
-      .eq('tenant_id', auth.tenantId)
-      .eq('customer_id', body.customerId);
-  }
-
+  // 501, and it no longer touches the database.
+  //
+  // This used to move customer_health_scores.next_review_date forward and
+  // answer 202 "Recalculation queued", while the page toasted "Customer health
+  // scores have been recalculated successfully" and then displayed that same
+  // next review date. Nothing was recalculated. So the one visible effect of
+  // pressing the button was to make a stale score look freshly reviewed - it
+  // did not merely report work it had not done, it wrote the appearance of that
+  // work into the row a CSM reads. An honest refusal is strictly better, and it
+  // is the shape the rest of this tree already uses for an engine that does not
+  // exist yet.
   return jsonResponse(
     {
-      status: 'queued',
-      message: 'Health score recalculation queued.',
-      degraded: {
-        calculation: true,
-        reason:
-          'Full health-score recalculation pipeline not yet ported. Touched next_review_date so dashboards refresh; real per-customer scoring runs against the original Express service or via a future pg_cron job.',
-      },
+      error: 'Health score recalculation is not implemented',
+      detail:
+        'The scoring pipeline was never ported from the Express service. Nothing computes a health score today, so there is nothing to recalculate; the stored scores are whatever last wrote them.',
+      code: 'NOT_IMPLEMENTED',
     },
-    202,
+    501,
     req,
     requestId,
   );
