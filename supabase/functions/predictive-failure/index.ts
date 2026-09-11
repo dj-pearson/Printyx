@@ -40,6 +40,7 @@ import {
   scoreMachine,
   type ScoredMachine,
 } from './scoring.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 const DAY_MS = 86_400_000;
 /** The scorer's deltas need the last 12 readings per machine. */
@@ -257,12 +258,14 @@ export default async function handler(req: Request) {
 
       let closedTickets: Array<Record<string, unknown>> = [];
       if (machineIds.length > 0) {
-        const { data: tickets } = await admin
-          .from('service_tickets')
-          .select('equipment_id, resolved_at, created_at, status')
-          .eq('tenant_id', tenantId)
-          .in('equipment_id', machineIds)
-          .in('status', CLOSED_TICKET_STATUSES);
+        const tickets = await fetchAllRows<any>(() =>
+          admin
+            .from('service_tickets')
+            .select('equipment_id, resolved_at, created_at, status')
+            .eq('tenant_id', tenantId)
+            .in('equipment_id', machineIds)
+            .in('status', CLOSED_TICKET_STATUSES),
+        );
         closedTickets = tickets ?? [];
       }
 

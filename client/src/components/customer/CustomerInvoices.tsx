@@ -54,6 +54,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
+import { formatCurrency } from '@/lib/utils';
 
 interface Invoice {
   id: string;
@@ -124,13 +125,6 @@ export function CustomerInvoices({ customerId, customerName }: CustomerInvoicesP
 
     return matchesSearch && matchesStatus;
   });
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount || 0);
-  };
 
   const formatDate = (date: string) => {
     return format(new Date(date), 'MMM dd, yyyy');

@@ -514,7 +514,8 @@ export default async function handler(req: Request) {
           api_key_last_rotated: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', client.id);
+        .eq('id', client.id)
+        .eq('tenant_id', tenantId);
       if (error) {
         return createCorsResponse(
           { message: 'Failed to regenerate API key', detail: error.message },
@@ -875,6 +876,7 @@ export default async function handler(req: Request) {
         .from('monitoring_clients')
         .update(updates)
         .eq('id', client.id)
+        .eq('tenant_id', tenantId)
         .select()
         .single();
       if (error) {

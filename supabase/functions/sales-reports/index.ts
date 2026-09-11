@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -141,12 +142,14 @@ export default async function handler(req: Request) {
         .single();
 
       // Get won deals
-      const { data: wonDeals } = await admin
-        .from('deals')
-        .select('amount')
-        .eq('tenant_id', tenantId)
-        .eq('owner_id', user.id)
-        .eq('status', 'won');
+      const wonDeals = await fetchAllRows<any>(() =>
+        admin
+          .from('deals')
+          .select('amount')
+          .eq('tenant_id', tenantId)
+          .eq('owner_id', user.id)
+          .eq('status', 'won'),
+      );
 
       const actualRevenue =
         wonDeals?.reduce((sum: number, d: any) => sum + Number(d.amount ?? 0), 0) || 0;
@@ -216,17 +219,17 @@ export default async function handler(req: Request) {
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId);
 
-      const { data: wonDeals } = await admin
-        .from('deals')
-        .select('amount')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'won');
+      const wonDeals = await fetchAllRows<any>(() =>
+        admin.from('deals').select('amount').eq('tenant_id', tenantId).eq('status', 'won'),
+      );
 
-      const { data: openDeals } = await admin
-        .from('deals')
-        .select('amount, probability')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'open');
+      const openDeals = await fetchAllRows<any>(() =>
+        admin
+          .from('deals')
+          .select('amount, probability')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'open'),
+      );
 
       const totalWonValue =
         wonDeals?.reduce((sum: number, d: any) => sum + Number(d.amount ?? 0), 0) || 0;

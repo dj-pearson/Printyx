@@ -17,6 +17,7 @@
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { cached, paramKey } from '../_cache.ts';
+import { fetchAllRows } from '../../_shared/paged-select.ts';
 
 const TTL_SECONDS = 300; // 5 min
 
@@ -409,10 +410,9 @@ async function customerHealth(ctx: HandlerCtx): Promise<unknown> {
 
 async function salesPipeline(ctx: HandlerCtx): Promise<unknown> {
   const { auth, db } = ctx;
-  const { data: allDeals } = await db
-    .from('deals')
-    .select('id, owner_id, amount, status')
-    .eq('tenant_id', auth.tenantId);
+  const allDeals = await fetchAllRows<any>(() =>
+    db.from('deals').select('id, owner_id, amount, status').eq('tenant_id', auth.tenantId),
+  );
 
   const deals = (allDeals ?? []) as Array<{
     id: string;
@@ -462,11 +462,13 @@ async function revenueRecognition(ctx: HandlerCtx): Promise<unknown> {
   const { auth, db } = ctx;
   const from = new Date(Date.now() - 30 * 86_400_000).toISOString();
 
-  const { data } = await db
-    .from('invoices')
-    .select('total_amount, paid_date')
-    .eq('tenant_id', auth.tenantId)
-    .gte('invoice_date', from);
+  const data = await fetchAllRows<any>(() =>
+    db
+      .from('invoices')
+      .select('total_amount, paid_date')
+      .eq('tenant_id', auth.tenantId)
+      .gte('invoice_date', from),
+  );
 
   const list = (data ?? []) as Array<{ total_amount: string | null; paid_date: string | null }>;
   const total = list.reduce((s, i) => s + Number(i.total_amount ?? 0), 0);

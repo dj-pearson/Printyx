@@ -27,6 +27,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { CalculatorSession } from './types';
+import { formatCurrencyWhole as formatCurrency } from '@/lib/utils';
 
 interface CalculatorResultsProps {
   session: CalculatorSession;
@@ -66,15 +67,6 @@ export function CalculatorResults({
     { name: 'Downtime', value: results.hiddenCosts.downtimeCost },
     { name: 'Energy', value: results.hiddenCosts.energyCost },
   ];
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
 
   const formatPercentage = (value: number) => {
     return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;

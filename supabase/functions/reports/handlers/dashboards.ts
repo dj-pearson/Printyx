@@ -12,6 +12,7 @@ import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { rangeFromQuery } from '../_date.ts';
 import { cached, paramKey } from '../_cache.ts';
+import { fetchAllRows } from '../../_shared/paged-select.ts';
 
 const DASHBOARDS_TTL_SECONDS = 300; // 5 min
 
@@ -78,29 +79,34 @@ async function executiveSummary(ctx: HandlerCtx): Promise<unknown> {
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', auth.tenantId)
       .eq('record_type', 'customer'),
-    db
-      .from('quotes')
-      .select('id, status, total_amount')
-      .eq('tenant_id', auth.tenantId)
-      .gte('created_at', startIso),
-    db
-      .from('service_tickets')
-      .select('id, status')
-      .eq('tenant_id', auth.tenantId)
-      .gte('created_at', startIso),
-    db
-      .from('quotes')
-      .select('total_amount')
-      .eq('tenant_id', auth.tenantId)
-      .eq('status', 'accepted')
-      .gte('accepted_date', startIso),
+    fetchAllRows<any>(() =>
+      db
+        .from('quotes')
+        .select('id, status, total_amount')
+        .eq('tenant_id', auth.tenantId)
+        .gte('created_at', startIso),
+    ),
+    fetchAllRows<any>(() =>
+      db
+        .from('service_tickets')
+        .select('id, status')
+        .eq('tenant_id', auth.tenantId)
+        .gte('created_at', startIso),
+    ),
+    fetchAllRows<any>(() =>
+      db
+        .from('quotes')
+        .select('total_amount')
+        .eq('tenant_id', auth.tenantId)
+        .eq('status', 'accepted')
+        .gte('accepted_date', startIso),
+    ),
   ]);
 
   const totalRevenue =
-    (revenue.data ?? []).reduce((sum, q) => sum + parseFloat(String(q.total_amount ?? '0')), 0) ??
-    0;
-  const quotesData = quotes.data ?? [];
-  const ticketsData = tickets.data ?? [];
+    revenue.reduce((sum, q) => sum + parseFloat(String(q.total_amount ?? '0')), 0) ?? 0;
+  const quotesData = quotes;
+  const ticketsData = tickets;
 
   return {
     period: range.period,
@@ -125,26 +131,32 @@ async function kpiScorecards(ctx: HandlerCtx): Promise<unknown> {
   const startIso = range.start.toISOString();
 
   const [quotes, tickets, customers] = await Promise.all([
-    db
-      .from('quotes')
-      .select('status, total_amount, created_at, sent_date, accepted_date')
-      .eq('tenant_id', auth.tenantId)
-      .gte('created_at', startIso),
-    db
-      .from('service_tickets')
-      .select('status, created_at, resolved_at')
-      .eq('tenant_id', auth.tenantId)
-      .gte('created_at', startIso),
-    db
-      .from('business_records')
-      .select('record_type, status, created_at')
-      .eq('tenant_id', auth.tenantId)
-      .gte('created_at', startIso),
+    fetchAllRows<any>(() =>
+      db
+        .from('quotes')
+        .select('status, total_amount, created_at, sent_date, accepted_date')
+        .eq('tenant_id', auth.tenantId)
+        .gte('created_at', startIso),
+    ),
+    fetchAllRows<any>(() =>
+      db
+        .from('service_tickets')
+        .select('status, created_at, resolved_at')
+        .eq('tenant_id', auth.tenantId)
+        .gte('created_at', startIso),
+    ),
+    fetchAllRows<any>(() =>
+      db
+        .from('business_records')
+        .select('record_type, status, created_at')
+        .eq('tenant_id', auth.tenantId)
+        .gte('created_at', startIso),
+    ),
   ]);
 
-  const quotesData = quotes.data ?? [];
-  const ticketsData = tickets.data ?? [];
-  const customersData = customers.data ?? [];
+  const quotesData = quotes;
+  const ticketsData = tickets;
+  const customersData = customers;
 
   const totalQuotes = quotesData.length;
   const wonQuotes = quotesData.filter((q) => q.status === 'accepted').length;
@@ -200,27 +212,33 @@ async function businessInsights(ctx: HandlerCtx): Promise<unknown> {
   const startIso = range.start.toISOString();
 
   const [topCustomers, productPerformance, territoryStats] = await Promise.all([
-    db
-      .from('quotes')
-      .select(
-        'customer_id, total_amount, customer:business_records!quotes_customer_id_fkey(company_name)',
-      )
-      .eq('tenant_id', auth.tenantId)
-      .eq('status', 'accepted')
-      .gte('accepted_date', startIso),
-    db
-      .from('quote_line_items')
-      .select('description, quantity, total_price')
-      .eq('tenant_id', auth.tenantId),
-    db
-      .from('business_records')
-      .select('territory, status')
-      .eq('tenant_id', auth.tenantId)
-      .eq('record_type', 'customer'),
+    fetchAllRows<any>(() =>
+      db
+        .from('quotes')
+        .select(
+          'customer_id, total_amount, customer:business_records!quotes_customer_id_fkey(company_name)',
+        )
+        .eq('tenant_id', auth.tenantId)
+        .eq('status', 'accepted')
+        .gte('accepted_date', startIso),
+    ),
+    fetchAllRows<any>(() =>
+      db
+        .from('quote_line_items')
+        .select('description, quantity, total_price')
+        .eq('tenant_id', auth.tenantId),
+    ),
+    fetchAllRows<any>(() =>
+      db
+        .from('business_records')
+        .select('territory, status')
+        .eq('tenant_id', auth.tenantId)
+        .eq('record_type', 'customer'),
+    ),
   ]);
 
   const customerRevenue = new Map<string, { name: string; revenue: number }>();
-  for (const q of topCustomers.data ?? []) {
+  for (const q of topCustomers) {
     const customerId = (q.customer_id as string | null) ?? 'unknown';
     const existing = customerRevenue.get(customerId) ?? {
       name: ((q.customer as { company_name?: string } | null)?.company_name as string) ?? 'Unknown',
@@ -234,7 +252,7 @@ async function businessInsights(ctx: HandlerCtx): Promise<unknown> {
     .slice(0, 5);
 
   const territories = new Map<string, number>();
-  for (const c of territoryStats.data ?? []) {
+  for (const c of territoryStats) {
     const t = (c.territory as string | null) ?? 'Unassigned';
     territories.set(t, (territories.get(t) ?? 0) + 1);
   }
@@ -242,7 +260,7 @@ async function businessInsights(ctx: HandlerCtx): Promise<unknown> {
   return {
     topCustomers: top5Customers,
     territoryDistribution: [...territories.entries()].map(([name, count]) => ({ name, count })),
-    totalProducts: (productPerformance.data ?? []).length,
+    totalProducts: productPerformance.length,
   };
 }
 
@@ -254,20 +272,24 @@ async function competitiveMetrics(ctx: HandlerCtx): Promise<unknown> {
   const startIso = range.start.toISOString();
 
   const [quotes, tickets] = await Promise.all([
-    db
-      .from('quotes')
-      .select('status, created_at, sent_date, accepted_date')
-      .eq('tenant_id', auth.tenantId)
-      .gte('created_at', startIso),
-    db
-      .from('service_tickets')
-      .select('created_at, resolved_at, status')
-      .eq('tenant_id', auth.tenantId)
-      .gte('created_at', startIso),
+    fetchAllRows<any>(() =>
+      db
+        .from('quotes')
+        .select('status, created_at, sent_date, accepted_date')
+        .eq('tenant_id', auth.tenantId)
+        .gte('created_at', startIso),
+    ),
+    fetchAllRows<any>(() =>
+      db
+        .from('service_tickets')
+        .select('created_at, resolved_at, status')
+        .eq('tenant_id', auth.tenantId)
+        .gte('created_at', startIso),
+    ),
   ]);
 
-  const quotesData = quotes.data ?? [];
-  const ticketsData = tickets.data ?? [];
+  const quotesData = quotes;
+  const ticketsData = tickets;
 
   const sentQuotes = quotesData.filter((q) => q.sent_date);
   const avgQuoteResponseTime =
@@ -315,20 +337,24 @@ async function territoryPerformance(ctx: HandlerCtx): Promise<unknown> {
   const range = rangeFromQuery(url);
 
   const [territories, customers] = await Promise.all([
-    db
-      .from('sales_territories')
-      .select('id, territory_name, owner_id')
-      .eq('tenant_id', auth.tenantId)
-      .eq('is_active', true),
-    db
-      .from('business_records')
-      .select('territory')
-      .eq('tenant_id', auth.tenantId)
-      .eq('record_type', 'customer'),
+    fetchAllRows<any>(() =>
+      db
+        .from('sales_territories')
+        .select('id, territory_name, owner_id')
+        .eq('tenant_id', auth.tenantId)
+        .eq('is_active', true),
+    ),
+    fetchAllRows<any>(() =>
+      db
+        .from('business_records')
+        .select('territory')
+        .eq('tenant_id', auth.tenantId)
+        .eq('record_type', 'customer'),
+    ),
   ]);
 
-  const customersData = customers.data ?? [];
-  const territoryPerformance = (territories.data ?? []).map((t) => ({
+  const customersData = customers;
+  const territoryPerformance = territories.map((t) => ({
     territoryId: t.id as string,
     territoryName: t.territory_name as string,
     customerCount: customersData.filter((c) => c.territory === t.territory_name).length,

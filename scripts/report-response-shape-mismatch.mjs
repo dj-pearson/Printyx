@@ -34,18 +34,42 @@
  * or a `{ data: <array> }` envelope that getQueryFn unwraps. If none does, an
  * array-reading page is worth looking at.
  *
- * WHY A REPORT. The branch-level mapping is not built: the script cannot tell
- * WHICH branch serves a given sub-path, so a function that returns an array from
- * one branch and an envelope from another satisfies it either way. That is
- * exactly the platform CRM's shape - contacts returns a bare array while deals
- * returns an envelope - so a gate built on this rule would have missed
- * SHAPE-ENVELOPE-001 and would fail on correct code elsewhere. Narrowing it to
- * the branch is the work SHAPE-ENVELOPE-002 still carries.
+ * WHY A REPORT. The shape half cannot tell WHICH branch serves a given sub-path,
+ * so a function that returns an array from one branch and an envelope from
+ * another satisfies it either way. That is exactly the platform CRM's shape -
+ * contacts returns a bare array while deals returns an envelope - so a gate
+ * built on that rule alone would have missed SHAPE-ENVELOPE-001 and would fail
+ * on correct code elsewhere.
  *
- * THE 13 IT REPORTS ARE CANDIDATES, NOT CONFIRMED DEFECTS. Each still needs the
- * branch read by hand. The first run said 42; five rounds of checking findings
- * against the source removed 29 of them, and every one was a rule this script
- * did not know yet:
+ * The branch half answers a narrower question soundly: does ANY branch of the
+ * function name this sub-path at all? A "no" is a 404 in production, and dev
+ * may well answer it from Express, which is how both real findings survived.
+ * Its segment scan is deliberately LENIENT - every token in the source, not
+ * just quoted literals - because a branch is written half a dozen ways here
+ * (`resource === 'x'`, `path === '/x'`, a regex, a dispatch table), and an
+ * anchored scan reported proposals as not serving /proposal-templates when it
+ * matches `path === '/proposal-templates'`. A false negative costs a finding; a
+ * false positive costs trust in the whole report.
+ *
+ * ALL 13 OF THE OLD CANDIDATES WERE READ BY HAND (SHAPE-ENVELOPE-002) AND NOT
+ * ONE WAS A SHAPE MISMATCH. Nine were customer-portal and platform list pages
+ * whose endpoints DO send `{ success, data: [...] }` - two script bugs between
+ * them: `data:` was required to be the FIRST key in the envelope, and a response
+ * body that is a plain identifier (`createCorsResponse(csms, 200, req)`) was
+ * read as "sends no array" when the array is simply built above the return.
+ * Identifier bodies are UNRESOLVED now, not evidence. Two were orphan files.
+ * Two were real, and neither was a shape problem: ServiceAnalytics and
+ * EquipmentTransitionHistory ask for paths no branch of their edge function
+ * serves, which is why the branch narrowing below is the part of this script
+ * that earns its keep. One live defect it did NOT report was found while
+ * checking the others - customer-portal's knowledge-base branch nests its list
+ * under `data: { articles }`, and the page read the whole envelope as an array,
+ * so the Help Center tab threw rather than rendering. A `queryFn` makes a query
+ * invisible here, and that is where it hid.
+ *
+ * The earlier rounds, kept because each is still a rule this needs:
+ * The first run said 42; five rounds of checking findings against the source
+ * removed 29 of them, and every one was a rule this script did not know yet:
  *
  *   1. getQueryFn auto-unwraps `{ data: [...] }` and nothing else.
  *   2. Two response helpers are in use - createCorsResponse AND jsonResponse.
@@ -79,6 +103,7 @@ function functionReturnsBareArray(fnDir) {
     return null;
   }
   let found = false;
+  let opaque = false;
   (function walk(d) {
     for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, entry.name);
@@ -105,13 +130,81 @@ function functionReturnsBareArray(fnDir) {
         const bareArray = new RegExp(
           `${RESP}\\(\\s*(?:\\[|\\(*[A-Za-z_$][\\w$.]*[\\s\\S]{0,60}?\\s*(?:\\?\\?|\\|\\|)\\s*\\[\\]|toCamel\\(|camelRows\\(|\\(*[A-Za-z_$][\\w$.]*[^;]{0,60}?\\.map\\()`,
         ).test(src);
-        const dataEnvelope = new RegExp(`${RESP}\\(\\s*\\{\\s*\\n?\\s*data\\s*:`).test(src);
+        // `data:` need not be the FIRST key. customer-portal answers
+        // `{ success: true, data: [...] }`, which an anchored pattern misses -
+        // it reported all five of that function's list pages as sending no
+        // array. The negative lookahead keeps `data: {` out: an object under
+        // `data` is NOT unwrapped, and the knowledge-base branch returning
+        // `data: { articles, categories }` is exactly the live defect this
+        // report exists to catch.
+        const dataEnvelope = new RegExp(
+          `${RESP}\\(\\s*\\{[^{}]{0,200}?\\bdata\\s*:\\s*(?!\\{)`,
+        ).test(src);
+        // A RESPONSE BODY THAT IS A PLAIN IDENTIFIER SAYS NOTHING. `users`
+        // answers `createCorsResponse(transformedUsers, 200, req)` and
+        // `platform-cs` answers `createCorsResponse(csms, 200, req)` - both bare
+        // arrays, both reported as "never sends an array" because the array is
+        // built above the return. Resolving the variable is a data-flow problem;
+        // until it is solved these are UNRESOLVED, which is the honest answer,
+        // and they are counted rather than silently dropped.
+        const identifierBody = new RegExp(`${RESP}\\(\\s*[A-Za-z_$][\\w$]*\\s*,`).test(src);
         if (bareArray || dataEnvelope) found = true;
+        if (identifierBody) opaque = true;
       }
     }
   })(dir);
-  returnsArray.set(fnDir, found);
-  return found;
+  // "Yes" wins over "cannot tell": a function with one literal array branch
+  // answers the question whatever else it does.
+  const verdict = found ? true : opaque ? null : false;
+  returnsArray.set(fnDir, verdict);
+  return verdict;
+}
+
+/**
+ * Every static path segment any branch of a function tests for.
+ *
+ * This is the branch narrowing SHAPE-ENVELOPE-002 carries, at the only
+ * resolution that is cheap and sound: which sub-paths the function knows about
+ * at all. It does not say WHICH branch serves a path - that needs the dispatch
+ * graph - but "no branch anywhere names this segment" is a finding on its own,
+ * and a stronger one than a shape mismatch: the request 404s rather than
+ * rendering wrong. Both real defects this found were that shape, and both were
+ * invisible in dev because Express served them there.
+ */
+const segmentsByFn = new Map();
+function knownSegments(fnDir) {
+  if (segmentsByFn.has(fnDir)) return segmentsByFn.get(fnDir);
+  const dir = path.join('supabase/functions', fnDir);
+  if (!fs.existsSync(dir)) {
+    segmentsByFn.set(fnDir, null);
+    return null;
+  }
+  const segs = new Set();
+  (function walk(d) {
+    for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, entry.name);
+      if (entry.isDirectory()) walk(p);
+      else if (p.endsWith('.ts')) {
+        let src;
+        try {
+          src = strip(fs.readFileSync(p, 'utf8'));
+        } catch {
+          continue;
+        }
+        // Every hyphenated-or-plain token in the source, not just quoted ones.
+        // A branch is written half a dozen ways here - `resource === 'x'`,
+        // `path === '/x'`, `/^\/x\/([^/]+)$/`, a key in a dispatch table - and
+        // an anchored quoted-literal scan reported proposals as not serving
+        // /proposal-templates when it matches `path === '/proposal-templates'`
+        // six lines apart. Leniency is the right error here: the claim being
+        // made is "no branch names this AT ALL", so a false negative costs a
+        // finding while a false positive costs trust in the whole report.
+        for (const tok of src.matchAll(/[a-z][a-z0-9-]{1,60}/gi)) segs.add(tok[0].toLowerCase());
+      }
+    }
+  })(dir);
+  segmentsByFn.set(fnDir, segs);
+  return segs;
 }
 
 const pages = [];
@@ -124,6 +217,7 @@ const pages = [];
 })('client/src');
 
 const findings = [];
+const missing = [];
 let checked = 0;
 let unresolved = 0;
 
@@ -151,9 +245,15 @@ for (const file of pages) {
     // maps the envelope through mapTenants() and was reported twice for it.
     if (/\bselect\s*:/.test(body)) continue;
 
-    const km = body.match(/queryKey\s*:\s*\[\s*[`'"](\/api\/[a-z0-9-]+)/i);
+    const km = body.match(/queryKey\s*:\s*\[\s*[`'"](\/api\/[a-z0-9-]+)((?:\/[^`'"?\s]*)*)/i);
     if (!km) continue;
     const seg = km[1].replace('/api/', '');
+    // First static sub-segment, if the key has one. `${...}` and anything with
+    // an interpolation in it is skipped - that is an id, not a branch name.
+    const subPath = (km[2] ?? '')
+      .split('/')
+      .filter(Boolean)
+      .find((part) => /^[a-z][a-z0-9-]*$/.test(part));
 
     // Does the page treat it as an array?
     // Bind the name from THIS statement only. Looking back a fixed number of
@@ -178,6 +278,18 @@ for (const file of pages) {
     if (!typedArray && !usedAsArray) continue;
 
     checked++;
+    const line = src.slice(0, m.index).split('\n').length;
+
+    if (subPath) {
+      const segs = knownSegments(seg);
+      if (segs && !segs.has(subPath)) {
+        missing.push(
+          `${file}:${line}  /api/${seg}/${subPath} - no branch of supabase/functions/${seg}/ names "${subPath}"`,
+        );
+        continue;
+      }
+    }
+
     const arrayCapable = functionReturnsBareArray(seg);
     if (arrayCapable === null) {
       unresolved++;
@@ -186,15 +298,23 @@ for (const file of pages) {
     if (arrayCapable) continue;
 
     findings.push(
-      `${file}:${src.slice(0, m.index).split('\n').length}  reads /api/${seg} as an array; that function has no branch returning one`,
+      `${file}:${line}  reads /api/${seg} as an array; that function has no branch returning one`,
     );
   }
 }
 
+if (missing.length) {
+  console.log('NO BRANCH SERVES THIS PATH (404 in production; dev may still answer from Express):');
+  for (const f of missing) console.log('  ' + f);
+  console.log('');
+}
+if (findings.length) console.log('SHAPE MISMATCH CANDIDATES:');
 for (const f of findings) console.log('  ' + f);
 console.log(
-  `\n${findings.length} page(s) read an array from a function that never sends one.` +
-    ` ${checked} array-reading queries checked, ${unresolved} unresolvable (no matching function directory).`,
+  `\n${missing.length} path(s) no branch serves; ${findings.length} page(s) read an array from a` +
+    ` function that never sends one. ${checked} array-reading queries checked,` +
+    ` ${unresolved} unresolvable (no matching function directory, or a response body that is a` +
+    ` variable rather than a literal).`,
 );
 console.log(
   'REPORT ONLY: a function returning an array from one branch and an envelope from another\n' +

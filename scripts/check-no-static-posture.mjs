@@ -149,7 +149,21 @@ function recordArrays(code) {
 
 function fabricatedRecordArrays(code) {
   // A page that fetches ANYTHING is out of scope - see the header.
-  if (/\buseQuery\b|\buseMutation\b|\bapiRequest\b|\bfetch\s*\(/.test(code)) return [];
+  //
+  // THE ESCAPE MUST BE A CALL, NOT A MENTION. SystemMonitoring.tsx imported
+  // useQuery and never called it, so this bailed on the import line and the
+  // whole 517-line page went unexamined: CPU at 23.5%, memory at 68.2% flagged
+  // as a warning, four services with invented uptimes, and a SECURITY alert
+  // reading "Multiple failed login attempts detected" - all under a
+  // `// Mock data for demonstration` comment, on a routed page. An unused
+  // import is the easiest thing in the world to leave behind, which makes it a
+  // poor thing to take as evidence.
+  const withoutImports = code.replace(/^\s*import[\s\S]*?;\s*$/gm, '');
+  if (
+    /\buseQuery\s*[(<]|\buseMutation\s*[(<]|\bapiRequest\s*[(<]|\bfetch\s*\(/.test(withoutImports)
+  ) {
+    return [];
+  }
 
   const candidates = [];
   for (const { name, body, at } of recordArrays(code)) {
@@ -212,6 +226,12 @@ for (const rel of [...DIRS, ...FILES].flatMap(collect)) {
   const code = stripComments(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
   code.split('\n').forEach((line, i) => {
+    // A control whose LABEL IS ITS OWN VALUE is an option, not a measurement:
+    // `<SelectItem value="25">25</SelectItem>` is a page-size picker. Four of
+    // those sat in the baseline as known non-defects, which is precisely where
+    // a real one hides - so this is excluded by rule, the same way marketing
+    // copy is.
+    if (/<(?:SelectItem|option)\b[^>]*\bvalue=["']([^"']+)["'][^>]*>\s*\1\s*</.test(line)) return;
     for (const [re, why] of RULES) {
       re.lastIndex = 0;
       if (re.test(line)) {

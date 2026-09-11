@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Trophy, Medal, TrendingUp, TrendingDown, AlertCircle, RefreshCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrencyCompact as formatCurrency } from '@/lib/utils';
 import { useState } from 'react';
 
 interface TeamMemberActivity {
@@ -98,12 +98,6 @@ export function TeamLeaderboard({
     if (selectedMetric === 'activity') refetchActivity();
     else if (selectedMetric === 'pipeline') refetchPipeline();
     else if (selectedMetric === 'quota') refetchPerformance();
-  };
-
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-    return `$${value.toFixed(0)}`;
   };
 
   const getRankIcon = (rank: number) => {

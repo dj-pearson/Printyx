@@ -54,6 +54,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { format, isAfter, isBefore } from 'date-fns';
+import { formatCurrency } from '@/lib/utils';
 
 interface Quote {
   id: string;
@@ -152,13 +153,6 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
     threeDaysFromNow.setDate(now.getDate() + 3);
 
     return isAfter(validUntil, now) && isBefore(validUntil, threeDaysFromNow);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
   };
 
   if (isLoading) {

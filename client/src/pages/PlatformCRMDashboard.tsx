@@ -53,6 +53,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
 import { useLocation } from 'wouter';
 import { timeRangeStartDate } from '@/lib/date-utils';
+import { formatCurrencyWhole as formatCurrency } from '@/lib/utils';
 
 interface ExecutiveMetrics {
   totalProspects: number;
@@ -188,15 +189,6 @@ export default function PlatformCRMDashboard() {
     totalScore: 0,
   };
   const topPerformers = performance?.repPerformance?.slice(0, 5) || [];
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
 
   const formatPercentage = (value: number) => {
     return `${value.toFixed(1)}%`;

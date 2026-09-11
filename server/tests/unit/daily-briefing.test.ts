@@ -52,6 +52,10 @@ function stubClient(tables: Record<string, Record<string, unknown>[]>) {
     for (const m of ['eq', 'in', 'gte', 'lt', 'not', 'is', 'order', 'limit']) {
       q[m] = () => q;
     }
+    // fetchAllRows pages with .range(from, to) and stops on a short page, so a
+    // stub without it throws rather than returning the rows.
+    q.range = (from: number, to: number) =>
+      Promise.resolve({ data: rows.slice(from, to + 1), error: null });
     q.maybeSingle = async () => ({ data: rows[0] ?? null, error: null });
     q.then = (resolve: (v: unknown) => unknown) =>
       resolve(head ? { count: rows.length, error: null } : { data: rows, error: null });

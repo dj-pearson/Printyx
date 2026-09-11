@@ -228,7 +228,8 @@ export default async function handler(req: Request) {
         await admin
           .from('monitoring_clients')
           .update({ last_seen_at: new Date().toISOString() })
-          .eq('id', client.id);
+          .eq('id', client.id)
+          .eq('tenant_id', tenantId);
 
         return createCorsResponse(
           {

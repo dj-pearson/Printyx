@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { useLocation } from 'wouter';
 import { type Contract } from '@shared/schema';
 import { relativeDate, expiryDisplay } from '@/lib/date-utils';
@@ -204,11 +204,6 @@ export default function Contracts() {
       });
     },
   });
-
-  const formatCurrency = (amount?: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-      Number(amount ?? 0),
-    );
 
   // Helper: is contract expiring within 30 days?
   const isExpiringSoon = (endDate: Date | string | null | undefined) => {

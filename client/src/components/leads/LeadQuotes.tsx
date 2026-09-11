@@ -59,6 +59,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/lib/utils';
 
 interface Quote {
   id: string;
@@ -179,13 +180,6 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
       quotes.length > 0
         ? (quotes.filter((q: Quote) => q.status === 'accepted').length / quotes.length) * 100
         : 0,
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount || 0);
   };
 
   const formatDate = (date: string) => {

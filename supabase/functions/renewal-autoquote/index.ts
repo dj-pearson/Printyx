@@ -28,6 +28,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { pickTier, num, type CpcTier } from '../_shared/renewal-retier.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 type Row = Record<string, any>;
 
@@ -545,10 +546,9 @@ async function generate(req: Request, ctx: GenerateCtx): Promise<Response> {
     const equipmentIds = [...perMachine.keys()];
     const equipmentById = new Map<string, Row>();
     if (equipmentIds.length) {
-      const { data: eqRows } = await admin
-        .from('equipment')
-        .select('id, serial_number, model_number')
-        .in('id', equipmentIds);
+      const eqRows = await fetchAllRows<any>(() =>
+        admin.from('equipment').select('id, serial_number, model_number').in('id', equipmentIds),
+      );
       for (const e of (eqRows as Row[]) || []) equipmentById.set(e.id, e);
     }
 

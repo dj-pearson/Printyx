@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { formatCurrencyCompact as formatCurrency } from '@/lib/utils';
 
 interface RevenueForecastChartProps {
   data: any[];
@@ -32,15 +33,6 @@ export function RevenueForecastChart({ data }: RevenueForecastChartProps) {
     lower: Math.round(item.lowerBound),
     confidence: item.confidence,
   }));
-
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    } else if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
-    }
-    return `$${value.toFixed(0)}`;
-  };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -98,7 +90,7 @@ export function RevenueForecastChart({ data }: RevenueForecastChartProps) {
             tick={{ fontSize: 12 }}
             tickLine={false}
             axisLine={{ stroke: '#e5e7eb' }}
-            tickFormatter={formatCurrency}
+            tickFormatter={(v) => formatCurrency(v)}
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend

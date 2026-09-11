@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/table';
 import { Trophy, TrendingUp, TrendingDown } from 'lucide-react';
 import type { ScopedPerformanceReport, ScopedUnitPerformance } from '@/types/scoped-sales-reports';
+import { formatCurrencyCompact as formatCurrency } from '@/lib/utils';
 
 /**
  * CR-034: rebuilt against the shape the report actually returns.
@@ -25,13 +26,6 @@ interface LocationPerformanceTableProps {
   locations: ScopedUnitPerformance[];
   summary?: ScopedPerformanceReport['summary'];
 }
-
-const formatCurrency = (value: number) =>
-  value >= 1000000
-    ? `$${(value / 1000000).toFixed(1)}M`
-    : value >= 1000
-      ? `$${(value / 1000).toFixed(0)}K`
-      : `$${value.toFixed(0)}`;
 
 export default function LocationPerformanceTable({
   locations,

@@ -41,6 +41,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { MainLayout } from '@/components/layout/main-layout';
+import { formatCurrencyWhole as formatCurrency } from '@/lib/utils';
 
 interface AnalyticsData {
   executiveSummary: {
@@ -222,15 +223,6 @@ const getTrendIcon = (trend: string) => {
     default:
       return <Activity className="h-4 w-4 text-gray-600" />;
   }
-};
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
 };
 
 const formatPercentage = (value: number) => {

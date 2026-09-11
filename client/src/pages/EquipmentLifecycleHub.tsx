@@ -1410,34 +1410,14 @@ export default function EquipmentLifecycleHub() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Performance</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Workflow Efficiency</span>
-                        <span className="font-medium">92%</span>
-                      </div>
-                      <Progress value={92} className="h-2" />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">On-Time Delivery</span>
-                        <span className="font-medium">88%</span>
-                      </div>
-                      <Progress value={88} className="h-2" />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Compliance Rate</span>
-                        <span className="font-medium">95%</span>
-                      </div>
-                      <Progress value={95} className="h-2" />
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* AUDIT-019. A "Performance" card asserting 92% workflow
+                    efficiency, 88% on-time delivery and a 95% compliance rate,
+                    each with a progress bar. Nothing measures any of the three:
+                    equipment_lifecycle records a stage per machine and carries
+                    no promised date to be on time against, and there is no
+                    compliance check anywhere in this module. A compliance rate
+                    is LEGAL-010's case exactly - the claim was deleted rather
+                    than relabelled. */}
               </div>
             </div>
           </TabsContent>
@@ -1962,32 +1942,13 @@ export default function EquipmentLifecycleHub() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Insights</CardTitle>
-                  <CardDescription>Automated metrics and trends</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span className="text-muted-foreground">Automated Tasks</span>
-                      <Badge variant="secondary">89% automation</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span className="text-muted-foreground">On-Time Delivery</span>
-                      <Badge variant="default">88% on-time</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span className="text-muted-foreground">Cost Optimization</span>
-                      <Badge variant="outline">$12K monthly savings</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span className="text-muted-foreground">Compliance Rate</span>
-                      <Badge variant="default">95% compliant</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* AUDIT-019. "Performance Insights - Automated metrics and
+                  trends": 89% automation, 88% on-time, $12K monthly savings,
+                  95% compliant. The same four inventions as the Performance
+                  card above, in badges rather than bars, and the card's own
+                  subtitle called them automated metrics. The $12K is the worst
+                  of them - a saving nobody computed, on a page an executive
+                  reads. */}
             </div>
           </TabsContent>
         </Tabs>

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * REPORT, not a gate. Every unbounded .select() on a high-volume table whose
- * result is then summed with .reduce().
+ * HARD GATE at zero (PERF-ROWCAP-002 took the last 33 to none). Every unbounded
+ * .select() on a high-volume table whose result is then summed with .reduce().
  *
  * PostgREST truncates a response at db-max-rows (1000) WITHOUT erroring and
  * with no marker in the payload, so a plain select that is summed gives a total
@@ -42,7 +42,10 @@ for(const f of files){
     // chain inside fetchAllRows(() => admin.from(...).select(...)) carries no
     // .range of its own, so a fixed call still looks unbounded.
     const before=src.slice(Math.max(0,m.index-160), m.index);
-    if(/fetchAllRows\s*(?:<[^>]*>)?\s*\(\s*\(\)\s*=>\s*$/.test(before.replace(/\s+$/,''))||/fetchAllRows/.test(before.slice(-60))) continue;
+    // The receiver (`admin`, `db`) sits on its own line between the arrow and
+    // the .from(, so anchor on "fetchAllRows(() =>" followed by at most one
+    // identifier rather than on a fixed character window.
+    if(/fetchAllRows\s*(?:<[^(]*>)?\s*\(\s*\(\)\s*=>\s*(?:[A-Za-z_$][\w$]*\s*)?$/.test(before.replace(/\s+$/,''))) continue;
     const startLine=src.slice(0,m.index).split('\n').length;
     const after=lines.slice(startLine-1, startLine+30).join('\n');
     if(!/\.reduce\(/.test(after)) continue;   // a SUM, not a list
@@ -51,3 +54,8 @@ for(const f of files){
 }
 out.forEach(o=>console.log(`${o.f}:${o.line}  ${o.table}`));
 console.log('\nunbounded select on a high-volume table, then summed:', out.length);
+if(out.length){
+  console.error('\nPage it with fetchAllRows from supabase/functions/_shared/paged-select.ts,');
+  console.error('or switch to { count: \'exact\', head: true } when only the number is wanted.');
+  process.exit(1);
+}

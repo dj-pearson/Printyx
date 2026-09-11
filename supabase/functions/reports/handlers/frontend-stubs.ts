@@ -15,6 +15,7 @@
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
 import { cached, paramKey } from '../_cache.ts';
+import { fetchAllRows } from '../../_shared/paged-select.ts';
 import {
   buildFunnel,
   buildStatusFallback,
@@ -124,11 +125,13 @@ async function financialSummary(ctx: HandlerCtx): Promise<unknown> {
   const days = periodToDays(url.searchParams.get('period'));
   const from = new Date(Date.now() - days * 86_400_000).toISOString();
 
-  const { data } = await db
-    .from('invoices')
-    .select('total_amount, paid_date, due_date, balance_due')
-    .eq('tenant_id', auth.tenantId)
-    .gte('invoice_date', from);
+  const data = await fetchAllRows<any>(() =>
+    db
+      .from('invoices')
+      .select('total_amount, paid_date, due_date, balance_due')
+      .eq('tenant_id', auth.tenantId)
+      .gte('invoice_date', from),
+  );
 
   const list = (data ?? []) as Array<{
     total_amount: string | null;
@@ -767,11 +770,13 @@ async function serviceSummary(ctx: HandlerCtx): Promise<unknown> {
   const horizonDays = horizonToDays(url.searchParams.get('horizon')) || 30;
   const from = new Date(Date.now() - horizonDays * 86_400_000).toISOString();
 
-  const { data } = await db
-    .from('service_tickets')
-    .select('id, status, priority, created_at, resolved_at')
-    .eq('tenant_id', auth.tenantId)
-    .gte('created_at', from);
+  const data = await fetchAllRows<any>(() =>
+    db
+      .from('service_tickets')
+      .select('id, status, priority, created_at, resolved_at')
+      .eq('tenant_id', auth.tenantId)
+      .gte('created_at', from),
+  );
 
   const list = (data ?? []) as Array<{
     id: string;
@@ -814,11 +819,13 @@ async function revenueSnapshot(ctx: HandlerCtx): Promise<unknown> {
   const { auth, db } = ctx;
   const from = new Date(Date.now() - 30 * 86_400_000).toISOString();
 
-  const { data } = await db
-    .from('invoices')
-    .select('total_amount, paid_date')
-    .eq('tenant_id', auth.tenantId)
-    .gte('invoice_date', from);
+  const data = await fetchAllRows<any>(() =>
+    db
+      .from('invoices')
+      .select('total_amount, paid_date')
+      .eq('tenant_id', auth.tenantId)
+      .gte('invoice_date', from),
+  );
 
   const list = (data ?? []) as Array<{ total_amount: string | null; paid_date: string | null }>;
   const total = list.reduce((s, i) => s + Number(i.total_amount ?? 0), 0);

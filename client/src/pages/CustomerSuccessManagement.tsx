@@ -161,17 +161,46 @@ const getTrendIcon = (trend: string) => {
 
 const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
 
+/**
+ * AUDIT-028. Both endpoints are degraded stubs and both used to answer with
+ * ZEROES, which this page rendered as measurements: 0.0 out of 5 satisfaction
+ * drawn as five empty stars, an NPS of 0 in green, 0% response rate, 0%
+ * utilisation behind a progress bar and a "+0%" trend also in green. On a scale
+ * that runs -100 to 100, an NPS of 0 is a specific and quite bad claim. The
+ * figures are null now and render as an em dash, with the endpoint's own
+ * `degraded.reason` shown beside them rather than swallowed.
+ */
+interface DegradedNote {
+  reason?: string;
+}
+
 interface UsageAnalyticsData {
-  summary: any;
+  summary: {
+    averageUtilization: number | null;
+    totalMonthlyVolume: number | null;
+    utilizationTrend: number | null;
+  };
   optimizationOpportunities: any[];
   customerBreakdown: any[];
+  degraded?: DegradedNote;
 }
 
 interface SatisfactionData {
-  summary: any;
+  summary: {
+    npsScore: number | null;
+    overallSatisfaction: number | null;
+    responseRate: number | null;
+  };
   categoryTrends: any;
   recentSurveys: any[];
+  degraded?: DegradedNote;
 }
+
+/** An em dash for a figure nothing measures. A missing score is not a zero. */
+const measured = (value: number | null | undefined, suffix = '', digits?: number) =>
+  value === null || value === undefined
+    ? '—'
+    : `${digits === undefined ? value.toLocaleString() : value.toFixed(digits)}${suffix}`;
 
 export default function CustomerSuccessManagement() {
   const [, setLocation] = useLocation();
@@ -221,7 +250,12 @@ export default function CustomerSuccessManagement() {
     queryKey: ['/api/customer-success/satisfaction'],
   });
 
-  // Calculate health scores mutation
+  // AUDIT-028. This toasted "Customer health scores have been recalculated
+  // successfully" over an endpoint that recalculated nothing - it moved
+  // next_review_date forward and returned 202, so the one visible effect of
+  // pressing the button was to make a stale score look freshly reviewed on the
+  // card below. The endpoint answers 501 now and writes nothing, and the error
+  // it sends is what the user sees.
   const calculateHealthMutation = useMutation({
     mutationFn: (data: any) =>
       apiRequest('/api/customer-success/calculate-health', {
@@ -234,6 +268,17 @@ export default function CustomerSuccessManagement() {
       toast({
         title: 'Health Scores Updated',
         description: 'Customer health scores have been recalculated successfully.',
+      });
+    },
+    onError: (err: unknown) => {
+      setIsCalculatingHealth(false);
+      toast({
+        variant: 'destructive',
+        title: 'Recalculation is not available',
+        description:
+          err instanceof Error
+            ? err.message
+            : 'Nothing computes a health score yet, so there is nothing to recalculate.',
       });
     },
   });
@@ -343,7 +388,7 @@ export default function CustomerSuccessManagement() {
               <p className="text-xs text-muted-foreground">Pending action items</p>
               {satisfactionData && (
                 <div className="text-xs text-gray-600 mt-1">
-                  NPS Score: {satisfactionData.summary.npsScore}
+                  NPS Score: {measured(satisfactionData.summary.npsScore)}
                 </div>
               )}
             </CardContent>
@@ -358,11 +403,15 @@ export default function CustomerSuccessManagement() {
               {satisfactionData && (
                 <>
                   <div className="text-2xl font-bold">
-                    {satisfactionData.summary.overallSatisfaction.toFixed(1)}
+                    {measured(satisfactionData.summary.overallSatisfaction, '', 1)}
                   </div>
-                  <p className="text-xs text-muted-foreground">Average satisfaction rating</p>
+                  <p className="text-xs text-muted-foreground">
+                    {satisfactionData.summary.overallSatisfaction === null
+                      ? 'Not measured'
+                      : 'Average satisfaction rating'}
+                  </p>
                   <div className="text-xs text-gray-600 mt-1">
-                    {satisfactionData.summary.responseRate}% response rate
+                    {measured(satisfactionData.summary.responseRate, '%')} response rate
                   </div>
                 </>
               )}
@@ -601,25 +650,44 @@ export default function CustomerSuccessManagement() {
                         <div className="flex justify-between">
                           <span>Average Utilization</span>
                           <span className="font-bold">
-                            {usageAnalytics.summary.averageUtilization}%
+                            {measured(usageAnalytics.summary.averageUtilization, '%')}
                           </span>
                         </div>
-                        <Progress value={usageAnalytics.summary.averageUtilization} />
+                        {/* No bar for a figure nothing measures - an empty bar
+                            reads as zero utilisation, which is a claim. */}
+                        {usageAnalytics.summary.averageUtilization !== null && (
+                          <Progress value={usageAnalytics.summary.averageUtilization} />
+                        )}
 
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <div className="text-gray-600">Monthly Volume</div>
                             <div className="font-bold">
-                              {usageAnalytics.summary.totalMonthlyVolume.toLocaleString()}
+                              {measured(usageAnalytics.summary.totalMonthlyVolume)}
                             </div>
                           </div>
                           <div>
                             <div className="text-gray-600">Trend</div>
-                            <div className="font-bold text-green-600">
-                              +{usageAnalytics.summary.utilizationTrend}%
+                            {/* Not green by default: the colour used to assert
+                                growth over a hardcoded zero. */}
+                            <div
+                              className={`font-bold ${
+                                (usageAnalytics.summary.utilizationTrend ?? 0) > 0
+                                  ? 'text-green-600'
+                                  : ''
+                              }`}
+                            >
+                              {usageAnalytics.summary.utilizationTrend === null
+                                ? '—'
+                                : `${usageAnalytics.summary.utilizationTrend > 0 ? '+' : ''}${usageAnalytics.summary.utilizationTrend}%`}
                             </div>
                           </div>
                         </div>
+                        {usageAnalytics.degraded?.reason && (
+                          <p className="text-xs text-muted-foreground">
+                            {usageAnalytics.degraded.reason}
+                          </p>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -730,37 +798,56 @@ export default function CustomerSuccessManagement() {
                       <div className="space-y-4">
                         <div className="text-center">
                           <div className="text-3xl font-bold text-blue-600">
-                            {satisfactionData.summary.overallSatisfaction.toFixed(1)}
+                            {measured(satisfactionData.summary.overallSatisfaction, '', 1)}
                           </div>
                           <div className="text-sm text-gray-600">Overall Satisfaction</div>
-                          <div className="flex justify-center mt-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                className={`h-5 w-5 ${
-                                  star <= satisfactionData.summary.overallSatisfaction
-                                    ? 'text-yellow-400 fill-current'
-                                    : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
+                          {/* No star row when there is no rating. Five empty
+                              stars is a one-star-or-worse verdict on a business
+                              that has simply never been surveyed. */}
+                          {satisfactionData.summary.overallSatisfaction !== null && (
+                            <div className="flex justify-center mt-2">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`h-5 w-5 ${
+                                    star <= satisfactionData.summary.overallSatisfaction!
+                                      ? 'text-yellow-400 fill-current'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div className="text-center">
-                            <div className="text-lg font-bold text-green-600">
-                              {satisfactionData.summary.npsScore}
+                            {/* Green only for a real score: NPS runs -100 to
+                                100, so a zero printed in green read as healthy
+                                when it meant "nobody has been asked". */}
+                            <div
+                              className={`text-lg font-bold ${
+                                (satisfactionData.summary.npsScore ?? -1) > 0
+                                  ? 'text-green-600'
+                                  : ''
+                              }`}
+                            >
+                              {measured(satisfactionData.summary.npsScore)}
                             </div>
                             <div className="text-gray-600">NPS Score</div>
                           </div>
                           <div className="text-center">
                             <div className="text-lg font-bold">
-                              {satisfactionData.summary.responseRate}%
+                              {measured(satisfactionData.summary.responseRate, '%')}
                             </div>
                             <div className="text-gray-600">Response Rate</div>
                           </div>
                         </div>
+                        {satisfactionData.degraded?.reason && (
+                          <p className="text-xs text-muted-foreground">
+                            {satisfactionData.degraded.reason}
+                          </p>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

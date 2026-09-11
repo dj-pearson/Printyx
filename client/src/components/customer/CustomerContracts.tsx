@@ -50,6 +50,7 @@ import {
   Calculator,
 } from 'lucide-react';
 import { format, isAfter, isBefore, addMonths } from 'date-fns';
+import { formatCurrency } from '@/lib/utils';
 
 interface Contract {
   id: string;
@@ -146,14 +147,6 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
       return 'Renewal coming up';
     }
     return null;
-  };
-
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return 'N/A';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
   };
 
   if (isLoading) {

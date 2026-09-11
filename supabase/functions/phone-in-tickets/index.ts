@@ -301,7 +301,8 @@ export default async function handler(req: Request) {
               converted_to_ticket_id: serviceTicket.id,
               converted_at: new Date().toISOString(),
             })
-            .eq('id', ticket.id);
+            .eq('id', ticket.id)
+            .eq('tenant_id', tenantId);
 
           return createCorsResponse({ phoneTicket: ticket, serviceTicket }, 201, req);
         }
@@ -370,7 +371,8 @@ Phone-in ticket details:
           converted_to_ticket_id: serviceTicket.id,
           converted_at: new Date().toISOString(),
         })
-        .eq('id', ticketId);
+        .eq('id', ticketId)
+        .eq('tenant_id', tenantId);
 
       return createCorsResponse(
         {

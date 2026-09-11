@@ -84,6 +84,7 @@ import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
 import MobileFAB from '@/components/layout/MobileFAB';
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 import { relativeDate, expiryDisplay } from '@/lib/date-utils';
+import { formatCurrency } from '@/lib/utils';
 
 interface Quote {
   id: string;
@@ -418,14 +419,6 @@ export default function QuotesManagement() {
       confirmationDescription: `Are you sure you want to delete ${bulkSelection.selectedCount} quote(s)? This action cannot be undone.`,
     },
   ];
-
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return '$0.00';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMM dd, yyyy');

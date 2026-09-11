@@ -24,6 +24,7 @@
 // (toner, temperature, jam rate) are zeroed until real telemetry exists.
 import { createCorsResponse } from '../../_shared/cors.ts';
 import { isMissingTableError, resolveCustomerId, type PortalCtx } from './_context.ts';
+import { startOfNextUtcDay, startOfUtcDay, subtractMonths } from '../../_shared/date-months.ts';
 
 const TIME_RANGES = new Set(['7d', '30d', '90d', '6m', '1y']);
 const PERIOD_TYPES = new Set(['daily', 'weekly', 'monthly']);
@@ -49,8 +50,9 @@ function rangeStart(timeRange: string, endDate: Date): Date {
       startDate.setDate(endDate.getDate() - 90);
       break;
     case '6m':
-      startDate.setMonth(endDate.getMonth() - 6);
-      break;
+      // subtractMonths clamps the day; setMonth overflows, so on the 31st a
+      // six-month window silently became five months and three days.
+      return subtractMonths(endDate, 6);
     case '1y':
       startDate.setFullYear(endDate.getFullYear() - 1);
       break;
@@ -355,8 +357,17 @@ export async function handleUsageAnalytics(ctx: PortalCtx): Promise<Response> {
   // one query and splitting them is what makes the comparison real: it used to
   // be this period multiplied by 0.9, so every customer was always shown
   // "volume up 11.1%" no matter what their meters said.
-  const windowMs = endDate.getTime() - startDate.getTime();
-  const previousStart = new Date(startDate.getTime() - windowMs);
+  // DATE-LOCAL-002. reading_date is a calendar date stored at midnight, so a
+  // boundary carrying a time of day excluded every reading ON the boundary day
+  // - and because this same boundary splits the current period from the
+  // previous one, those readings were not merely missing, they were counted in
+  // the WRONG HALF of the comparison the whole page rests on. Snap all three to
+  // UTC midnight, and make the upper bound the start of the next day so the
+  // last day is whole.
+  const windowStart = startOfUtcDay(startDate);
+  const windowEnd = startOfNextUtcDay(endDate);
+  const windowMs = windowEnd.getTime() - windowStart.getTime();
+  const previousStart = new Date(windowStart.getTime() - windowMs);
 
   let query = admin
     .from('customer_meter_submissions')
@@ -365,7 +376,7 @@ export async function handleUsageAnalytics(ctx: PortalCtx): Promise<Response> {
     .eq('customer_id', customerId)
     .eq('is_validated', true)
     .gte('reading_date', previousStart.toISOString())
-    .lte('reading_date', endDate.toISOString())
+    .lt('reading_date', windowEnd.toISOString())
     .order('reading_date', { ascending: false });
   if (equipmentIds && equipmentIds.length > 0) {
     query = query.in('equipment_id', equipmentIds);
@@ -382,14 +393,14 @@ export async function handleUsageAnalytics(ctx: PortalCtx): Promise<Response> {
   }
   const allReadings = readings || [];
   const meterReadings = allReadings.filter(
-    (r: { reading_date: string }) => new Date(r.reading_date) >= startDate,
+    (r: { reading_date: string }) => new Date(r.reading_date) >= windowStart,
   );
   const previousReadings = allReadings.filter(
-    (r: { reading_date: string }) => new Date(r.reading_date) < startDate,
+    (r: { reading_date: string }) => new Date(r.reading_date) < windowStart,
   );
 
   const deltas = calculateMeterDeltas(meterReadings);
-  const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+  const daysDiff = Math.round(windowMs / (1000 * 3600 * 24));
   const summary = summarise(deltas, daysDiff);
   const previousSummary = summarise(calculateMeterDeltas(previousReadings), daysDiff);
 
@@ -500,7 +511,7 @@ export async function handleUsageAnalytics(ctx: PortalCtx): Promise<Response> {
     carbonFootprint: previousSummary.carbonFootprint,
     paperSaved: previousSummary.paperSaved,
     periodStart: previousStart.toISOString(),
-    periodEnd: startDate.toISOString(),
+    periodEnd: windowStart.toISOString(),
     readingCount: previousReadings.length,
   };
   const percentageChange =

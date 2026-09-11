@@ -7,7 +7,6 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Link } from 'wouter';
 import { MainLayout } from '@/components/layout/main-layout';
 import {
@@ -415,46 +414,13 @@ export default function AIHub() {
         </CardContent>
       </Card>
 
-      {/* AI Health Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-green-500" />
-            AI System Health
-          </CardTitle>
-          <CardDescription>Monitor the health and performance of all AI systems</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-600">API Response Time</span>
-                <span className="text-sm font-bold text-green-600">245ms</span>
-              </div>
-              <Progress value={85} className="h-2" />
-              <p className="text-xs text-gray-500">Excellent performance</p>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-600">Model Accuracy</span>
-                <span className="text-sm font-bold text-blue-600">93.2%</span>
-              </div>
-              <Progress value={93} className="h-2" />
-              <p className="text-xs text-gray-500">Above target threshold</p>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-600">System Uptime</span>
-                <span className="text-sm font-bold text-green-600">99.9%</span>
-              </div>
-              <Progress value={99.9} className="h-2" />
-              <p className="text-xs text-gray-500">Excellent availability</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* AUDIT-019. An "AI System Health" card asserting a 245ms API response
+          time, 93.2% model accuracy and 99.9% uptime, each with a progress bar
+          and a verdict ("Excellent performance", "Above target threshold").
+          Nothing times an AI call, nothing scores a model against a labelled
+          set, and nothing probes uptime - the three figures were typed in. A
+          green health card is the one thing nobody re-checks, so it is deleted
+          rather than relabelled. */}
     </MainLayout>
   );
 }

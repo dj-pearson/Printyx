@@ -32,6 +32,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { formatCurrencyWhole as formatCurrency } from '@/lib/utils';
 
 /** One headline number, with a caption saying what it is a mean of. */
 function SummaryCard({
@@ -134,15 +135,6 @@ export default function PlatformCohortAnalysis() {
   const formatPercent = (value: number | null) => {
     if (value === null) return '-';
     return `${value.toFixed(1)}%`;
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
   };
 
   return (

@@ -17,6 +17,7 @@ import {
   Gauge,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatCurrencyWhole as formatCurrency } from '@/lib/utils';
 
 // CRMX-001: This dashboard previously rendered fabricated ("mock") AI/ML
 // metrics. It now shows ONLY real, tenant-scoped data. Capabilities without a
@@ -68,14 +69,6 @@ interface AiAnalyticsResponse {
     alerts: MaintenanceAlert[];
   };
 }
-
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
 
 const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
 

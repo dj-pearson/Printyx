@@ -1,0 +1,22 @@
+{
+  "note": "update/delete on a tenant-scoped table with no tenant_id filter, no user scope and no preceding ownership read. SHRINK ONLY. TRIAGED 2026-09-11 (SEC-TENANT-002): the two genuine cross-tenant writes found here are FIXED and gone from this list - mfa admin reset and rbac assign-role both took a target user id straight off the request. What remains is three shapes, none of them a defect but none of them provable by this script either. (1) blog-pipeline and blog-jobs, 12 entries: an internal job runner writing to a run or job row it has already claimed. (2) knowledge-base ratings, votes, bookmarks and reading-history, 5 entries: each preceded by a select filtered on user_id, which is a tighter boundary than tenant, but further back than the 1800-character lookback sees. (3) public-booking, 4 entries: an UNAUTHENTICATED flow where the row is reached by a manage token, which is the credential. The rest are derivations of the same kind - lead-assignment increments a rule it just matched, pipeline-config marks a log row it just read, companies rolls back a row it just created.",
+  "entries": {
+    "supabase/functions/blog-jobs/index.ts  blog_jobs.update": 2,
+    "supabase/functions/blog-pipeline/index.ts  blog_pipeline_runs.update": 4,
+    "supabase/functions/blog-pipeline/index.ts  blog_pipeline_stages.update": 4,
+    "supabase/functions/blog-platform-api/index.ts  blog_api_usage.update": 1,
+    "supabase/functions/companies/index.ts  companies.delete": 1,
+    "supabase/functions/knowledge-base/handlers/bookmarks.ts  article_bookmarks.delete": 1,
+    "supabase/functions/knowledge-base/handlers/ratings.ts  article_ratings.update": 1,
+    "supabase/functions/knowledge-base/handlers/ratings.ts  article_votes.update": 1,
+    "supabase/functions/knowledge-base/handlers/reading-history.ts  reading_history.update": 1,
+    "supabase/functions/knowledge-base/index.ts  article_votes.update": 1,
+    "supabase/functions/lead-assignment/handlers/assign.ts  lead_assignment_rules.update": 1,
+    "supabase/functions/meeting-transcription/handlers/recordings.ts  consent_records.delete": 1,
+    "supabase/functions/mfa/index.ts  mfa_backup_codes.delete": 1,
+    "supabase/functions/mfa/index.ts  mfa_backup_codes.update": 1,
+    "supabase/functions/pipeline-config/index.ts  pipeline_automation_logs.update": 1,
+    "supabase/functions/public-booking/index.ts  booking_page_bookings.update": 2,
+    "supabase/functions/public-booking/index.ts  business_record_activities.update": 2
+  }
+}

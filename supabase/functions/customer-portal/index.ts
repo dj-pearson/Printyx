@@ -744,7 +744,8 @@ export default async function handler(req: Request) {
         await admin
           .from('knowledge_articles')
           .update({ view_count: (article.view_count || 0) + 1 })
-          .eq('id', resourceId);
+          .eq('id', resourceId)
+          .eq('tenant_id', tenantId);
 
         return createCorsResponse({ success: true, data: article }, 200, req);
       }

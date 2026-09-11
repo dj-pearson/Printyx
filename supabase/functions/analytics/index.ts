@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -64,49 +65,54 @@ export default async function handler(req: Request) {
       const [customers, quotes, tickets, activities] = await Promise.all([
         admin
           .from('business_records')
-          .select('id, created_at', { count: 'exact' })
+          .select('id', { count: 'exact', head: true })
           .eq('tenant_id', tenantId)
           .eq('record_type', 'customer')
           .gte('created_at', startDate.toISOString()),
-        admin
-          .from('quotes')
-          .select('id, status, total_amount, created_at')
-          .eq('tenant_id', tenantId)
-          .gte('created_at', startDate.toISOString()),
-        admin
-          .from('service_tickets')
-          .select('id, status, created_at')
-          .eq('tenant_id', tenantId)
-          .gte('created_at', startDate.toISOString()),
-        admin
-          .from('business_record_activities')
-          .select('id, activity_type', { count: 'exact' })
-          .eq('tenant_id', tenantId)
-          .gte('created_at', startDate.toISOString()),
+        fetchAllRows<any>(() =>
+          admin
+            .from('quotes')
+            .select('id, status, total_amount, created_at')
+            .eq('tenant_id', tenantId)
+            .gte('created_at', startDate.toISOString()),
+        ),
+        fetchAllRows<any>(() =>
+          admin
+            .from('service_tickets')
+            .select('id, status, created_at')
+            .eq('tenant_id', tenantId)
+            .gte('created_at', startDate.toISOString()),
+        ),
+        fetchAllRows<any>(() =>
+          admin
+            .from('business_record_activities')
+            .select('id, activity_type')
+            .eq('tenant_id', tenantId)
+            .gte('created_at', startDate.toISOString()),
+        ),
       ]);
 
       const metrics = {
         customers: {
           total: customers.count || 0,
-          new: customers.data?.length || 0,
+          new: customers.count || 0,
         },
         quotes: {
-          total: quotes.data?.length || 0,
-          won: quotes.data?.filter((q) => q.status === 'accepted').length || 0,
-          pending: quotes.data?.filter((q) => q.status === 'sent').length || 0,
-          totalValue:
-            quotes.data?.reduce((sum, q) => sum + parseFloat(q.total_amount || '0'), 0) || 0,
+          total: quotes?.length || 0,
+          won: quotes?.filter((q) => q.status === 'accepted').length || 0,
+          pending: quotes?.filter((q) => q.status === 'sent').length || 0,
+          totalValue: quotes?.reduce((sum, q) => sum + parseFloat(q.total_amount || '0'), 0) || 0,
         },
         tickets: {
-          total: tickets.data?.length || 0,
+          total: tickets?.length || 0,
           open:
-            tickets.data?.filter((t) => ['open', 'assigned', 'in-progress'].includes(t.status))
-              .length || 0,
-          closed: tickets.data?.filter((t) => t.status === 'completed').length || 0,
+            tickets?.filter((t) => ['open', 'assigned', 'in-progress'].includes(t.status)).length ||
+            0,
+          closed: tickets?.filter((t) => t.status === 'completed').length || 0,
         },
         activities: {
-          total: activities.count || 0,
-          byType: activities.data?.reduce((acc: Record<string, number>, a) => {
+          total: activities.length,
+          byType: activities.reduce((acc: Record<string, number>, a) => {
             acc[a.activity_type] = (acc[a.activity_type] || 0) + 1;
             return acc;
           }, {}),
@@ -124,8 +130,8 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .gte('created_at', startDate.toISOString());
 
-      const totalQuotes = quotes.data?.length || 0;
-      const wonQuotes = quotes.data?.filter((q) => q.status === 'accepted').length || 0;
+      const totalQuotes = quotes?.length || 0;
+      const wonQuotes = quotes?.filter((q) => q.status === 'accepted').length || 0;
       const winRate = totalQuotes > 0 ? (wonQuotes / totalQuotes) * 100 : 0;
 
       const revenue =
@@ -136,7 +142,7 @@ export default async function handler(req: Request) {
       const avgDealSize = wonQuotes > 0 ? revenue / wonQuotes : 0;
 
       // Sales by rep
-      const byRep = quotes.data?.reduce((acc: Record<string, any>, q) => {
+      const byRep = quotes?.reduce((acc: Record<string, any>, q) => {
         const repId = q.created_by || 'unknown';
         if (!acc[repId]) acc[repId] = { quotes: 0, won: 0, revenue: 0 };
         acc[repId].quotes++;
@@ -166,18 +172,20 @@ export default async function handler(req: Request) {
 
     // GET /analytics/service - Service-specific metrics
     if (req.method === 'GET' && metricType === 'service') {
-      const tickets = await admin
-        .from('service_tickets')
-        .select('status, created_at, resolved_at, assigned_technician_id')
-        .eq('tenant_id', tenantId)
-        .gte('created_at', startDate.toISOString());
+      const tickets = await fetchAllRows<any>(() =>
+        admin
+          .from('service_tickets')
+          .select('status, created_at, resolved_at, assigned_technician_id')
+          .eq('tenant_id', tenantId)
+          .gte('created_at', startDate.toISOString()),
+      );
 
-      const totalTickets = tickets.data?.length || 0;
-      const resolved = tickets.data?.filter((t) => t.status === 'completed').length || 0;
+      const totalTickets = tickets?.length || 0;
+      const resolved = tickets?.filter((t) => t.status === 'completed').length || 0;
       const resolutionRate = totalTickets > 0 ? (resolved / totalTickets) * 100 : 0;
 
       const avgResolutionTime =
-        tickets.data
+        tickets
           ?.filter((t) => t.resolved_at)
           .reduce((sum, t) => {
             const created = new Date(t.created_at).getTime();
@@ -188,7 +196,7 @@ export default async function handler(req: Request) {
       const avgResolutionHours = Math.round(avgResolutionTime / (1000 * 60 * 60));
 
       // Tickets by technician
-      const byTechnician = tickets.data?.reduce((acc: Record<string, any>, t) => {
+      const byTechnician = tickets?.reduce((acc: Record<string, any>, t) => {
         const techId = t.assigned_technician_id || 'unassigned';
         if (!acc[techId]) acc[techId] = { total: 0, resolved: 0 };
         acc[techId].total++;

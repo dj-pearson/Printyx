@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
+import { formatCurrency } from '@/lib/utils';
 
 interface FinancialSummary {
   totalBilled: number;
@@ -127,13 +128,6 @@ export function CustomerFinancials({ customerId, customerName }: CustomerFinanci
       return apiRequest(`/api/customers/${customerId}/contracts`);
     },
   });
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount || 0);
-  };
 
   const formatDate = (date: string) => {
     return format(new Date(date), 'MMM dd, yyyy');

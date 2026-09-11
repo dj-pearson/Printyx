@@ -12,6 +12,7 @@
  */
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 const DAY_MS = 86_400_000;
 
@@ -212,10 +213,12 @@ export async function assembleServiceManagerData(
 
   // Parts at/below reorder point. This compares TWO COLUMNS, which PostgREST
   // cannot express at all — the rows have to come back and be compared here.
-  const { data: inventory } = await admin
-    .from('inventory_items')
-    .select('id, quantity_on_hand, reorder_point')
-    .eq('tenant_id', tenantId);
+  const inventory = await fetchAllRows<any>(() =>
+    admin
+      .from('inventory_items')
+      .select('id, quantity_on_hand, reorder_point')
+      .eq('tenant_id', tenantId),
+  );
   const partsShortages = (inventory ?? []).filter(
     (i: Record<string, unknown>) => num(i.quantity_on_hand) <= num(i.reorder_point),
   ).length;
@@ -226,11 +229,13 @@ export async function assembleServiceManagerData(
 
   // Tech utilization: open tickets grouped by assigned technician. Express used
   // GROUP BY; the same fold happens here over the open set.
-  const { data: assigned } = await admin
-    .from('service_tickets')
-    .select('assigned_technician_id, status')
-    .eq('tenant_id', tenantId)
-    .not('assigned_technician_id', 'is', null);
+  const assigned = await fetchAllRows<any>(() =>
+    admin
+      .from('service_tickets')
+      .select('assigned_technician_id, status')
+      .eq('tenant_id', tenantId)
+      .not('assigned_technician_id', 'is', null),
+  );
   const openByTech = new Map<string, number>();
   for (const t of assigned ?? []) {
     if (CLOSED_TICKET_STATUSES.has(String(t.status ?? '').toLowerCase())) continue;

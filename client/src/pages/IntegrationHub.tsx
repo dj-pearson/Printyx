@@ -102,6 +102,7 @@ import {
   FastForward,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/lib/utils';
 
 interface IntegrationHubData {
   integrationOverview: {
@@ -319,16 +320,6 @@ const formatNumber = (num: number | undefined) => {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
   return num.toString();
-};
-
-const formatCurrency = (amount: number | undefined) => {
-  if (amount === undefined || amount === null) return '$0.00';
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
 };
 
 const renderStarRating = (rating: number | undefined) => {

@@ -179,7 +179,8 @@ export default async function handler(req: Request) {
             const { error: updateError } = await admin
               .from('business_records')
               .update(updateData)
-              .eq('id', lead.id);
+              .eq('id', lead.id)
+              .eq('tenant_id', tenantId);
 
             if (updateError) {
               results.push({

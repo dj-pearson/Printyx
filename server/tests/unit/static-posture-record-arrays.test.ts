@@ -66,8 +66,17 @@ describe('AC1: the rule finds the pages both other guards miss', () => {
 });
 
 describe('AC1: the conditions that make it a finding', () => {
-  it('a page that fetches ANYTHING is out of scope', () => {
-    expect(guard).toContain('useQuery\\b|\\buseMutation\\b|\\bapiRequest\\b|\\bfetch\\s*\\(');
+  it('a page that CALLS anything is out of scope - a mention is not enough', () => {
+    // Was `\buseQuery\b`, which matched the IMPORT line. SystemMonitoring.tsx
+    // imported useQuery and never called it, so the guard bailed there and left
+    // 517 lines unexamined: CPU at 23.5%, memory at 68.2% flagged as a warning,
+    // four services with invented uptimes, and a security alert reading
+    // "Multiple failed login attempts detected", all under a `// Mock data for
+    // demonstration` comment on a routed page. An unused import is the easiest
+    // thing in the world to leave behind, which makes it poor evidence.
+    expect(guard).toContain("code.replace(/^\\s*import[\\s\\S]*?;\\s*$/gm, '')");
+    expect(guard).toContain('useQuery\\s*[(<]');
+    expect(guard).not.toContain('\\buseQuery\\b|');
   });
 
   it('five fields and a data-ish value are both required', () => {

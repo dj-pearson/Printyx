@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Plus,
   Download,
@@ -106,9 +107,7 @@ export default function OidManagement() {
       const params = new URLSearchParams();
       if (selectedManufacturer) params.append('manufacturer', selectedManufacturer);
 
-      const res = await fetch(`/api/oid-mappings?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch OID mappings');
-      return res.json();
+      return await apiRequest(`/api/oid-mappings?${params}`);
     },
   });
 
@@ -120,17 +119,10 @@ export default function OidManagement() {
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const res = await fetch('/api/oid-mappings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          oids: JSON.parse(data.oids),
-        }),
-        credentials: 'include',
+      return await apiRequest('/api/oid-mappings', 'POST', {
+        ...data,
+        oids: JSON.parse(data.oids),
       });
-      if (!res.ok) throw new Error('Failed to create OID mapping');
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/oid-mappings'] });
@@ -147,17 +139,10 @@ export default function OidManagement() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: typeof formData }) => {
-      const res = await fetch(`/api/oid-mappings/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...data,
-          oids: JSON.parse(data.oids),
-        }),
-        credentials: 'include',
+      return await apiRequest(`/api/oid-mappings/${id}`, 'PUT', {
+        ...data,
+        oids: JSON.parse(data.oids),
       });
-      if (!res.ok) throw new Error('Failed to update OID mapping');
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/oid-mappings'] });
@@ -174,15 +159,7 @@ export default function OidManagement() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/oid-mappings/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || 'Failed to delete OID mapping');
-      }
-      return res.json();
+      return await apiRequest(`/api/oid-mappings/${id}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/oid-mappings'] });
@@ -201,14 +178,7 @@ export default function OidManagement() {
       snmpCommunity: string;
       snmpVersion: string;
     }) => {
-      const res = await fetch('/api/oid-mappings/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to test OIDs');
-      return res.json();
+      return await apiRequest('/api/oid-mappings/test', 'POST', data);
     },
     onSuccess: (data) => {
       setTestResults(data.results);
@@ -225,14 +195,7 @@ export default function OidManagement() {
   // Export mutation
   const exportMutation = useMutation({
     mutationFn: async (manufacturer?: string) => {
-      const res = await fetch('/api/oid-mappings/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ manufacturer }),
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to export OID mappings');
-      return res.json();
+      return await apiRequest('/api/oid-mappings/export', 'POST', { manufacturer });
     },
     onSuccess: (data) => {
       // Download as JSON file
@@ -255,14 +218,7 @@ export default function OidManagement() {
   // Import mutation
   const importMutation = useMutation({
     mutationFn: async (data: { mappings: any[]; overwriteExisting: boolean }) => {
-      const res = await fetch('/api/oid-mappings/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to import OID mappings');
-      return res.json();
+      return await apiRequest('/api/oid-mappings/import', 'POST', data);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/oid-mappings'] });

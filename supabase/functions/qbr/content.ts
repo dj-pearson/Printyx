@@ -19,6 +19,7 @@
  */
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 // ---------------------------------------------------------------------------
 // Types (mirror the Express QbrContent shape — this is what the page reads)
@@ -232,12 +233,14 @@ export async function assembleContent(
 
   // Supply cost proxy: sum(monthly_base) * 3 across active contracts. STUB — same
   // proxy and the same disclosure string as the Express generator.
-  const { data: activeContracts } = await admin
-    .from('contracts')
-    .select('monthly_base')
-    .eq('tenant_id', tenantId)
-    .eq('customer_id', customerId)
-    .eq('status', 'active');
+  const activeContracts = await fetchAllRows<any>(() =>
+    admin
+      .from('contracts')
+      .select('monthly_base')
+      .eq('tenant_id', tenantId)
+      .eq('customer_id', customerId)
+      .eq('status', 'active'),
+  );
   const monthlyBaseSum = (activeContracts ?? []).reduce(
     (a: number, c: Record<string, unknown>) => a + num(c.monthly_base),
     0,

@@ -44,6 +44,7 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
 import { clickableProps } from '@/lib/accessibility';
+import { formatCurrency } from '@/lib/utils';
 
 interface Deal {
   id: string;
@@ -226,15 +227,6 @@ export default function PlatformDealDetail() {
       </MainLayout>
     );
   }
-
-  const formatCurrency = (value: string | number) => {
-    const num = typeof value === 'string' ? parseFloat(value) : value;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-    }).format(num);
-  };
 
   const currentStageIndex = STAGE_CONFIG.findIndex((s) => s.stage === deal.stage);
   const currentStage = STAGE_CONFIG[currentStageIndex];

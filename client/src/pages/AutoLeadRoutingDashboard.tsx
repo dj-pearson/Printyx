@@ -22,7 +22,6 @@ import {
   TrendingUp,
   Clock,
   Users,
-  CheckCircle,
   Activity,
   BarChart3,
   Settings,
@@ -428,19 +427,10 @@ export default function AutoLeadRoutingDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Success Rate
-              </CardTitle>
-              <CheckCircle className="h-4 w-4 text-emerald-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">96.5%</div>
-              <p className="text-xs text-muted-foreground mt-1">Successful assignments</p>
-              <Progress value={96.5} className="mt-2" />
-            </CardContent>
-          </Card>
+          {/* AUDIT-019. A "Success Rate: 96.5%" tile with a progress bar stood
+              here. Nothing records whether a routed lead was assigned
+              successfully - lead_assignment_rules carries an assignments_count
+              and no outcome at all - so the figure was typed in. */}
         </div>
 
         {/* Main Content */}

@@ -73,7 +73,6 @@ import {
   StickyNote,
   MoreHorizontal,
   Eye,
-  TrendingUp,
   Award,
   Star,
   ExternalLink,
@@ -87,7 +86,6 @@ import {
   Calculator,
   Shield,
   Zap,
-  BarChart3,
   FileCheck,
   Clock3,
   Wrench,
@@ -2677,56 +2675,15 @@ export default function CustomerDetailHubspot() {
                     </div>
                   </div>
 
-                  {/* Predictive Analytics */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 border rounded-lg">
-                      <h4 className="font-medium mb-2 flex items-center">
-                        <TrendingUp className="h-4 w-4 mr-2 text-purple-600" />
-                        Upsell Opportunities
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span>Color Upgrade</span>
-                          <Badge variant="outline" className="text-purple-600">
-                            89% Match
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Maintenance Plus</span>
-                          <Badge variant="outline" className="text-blue-600">
-                            76% Match
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Document Management</span>
-                          <Badge variant="outline" className="text-green-600">
-                            68% Match
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-4 border rounded-lg">
-                      <h4 className="font-medium mb-2 flex items-center">
-                        <BarChart3 className="h-4 w-4 mr-2 text-orange-600" />
-                        Usage Patterns
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span>Monthly Volume</span>
-                          <span className="font-medium">↗ +15%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Peak Usage</span>
-                          <span className="font-medium">Mon-Wed</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Efficiency Score</span>
-                          <span className="font-medium text-green-600">94/100</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  {/* AUDIT-019. A "Predictive Analytics" block, per customer and
+                      identical for every customer: upsell matches of 89%, 76% and
+                      68% against named products, a "+15%" monthly volume trend, a
+                      "Mon-Wed" peak and a 94/100 efficiency score. A rep opened any
+                      account and was told to pitch a colour upgrade on an 89% match
+                      that means nothing. The peak is doubly unbacked - AUDIT-021
+                      established that a meter submission carries a reading_date and
+                      no time of day, so no arithmetic over this data yields a usage
+                      pattern by day of week. */}
 
                   {/* AI Recommendations */}
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">

@@ -1,3 +1,5 @@
+import { formatCurrency as sharedFormatCurrency } from './utils';
+
 /**
  * Export utilities for bulk data export operations
  */
@@ -117,15 +119,16 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 /**
- * Format currency value for export
+ * Currency for a CSV or XLSX cell.
+ *
+ * Delegates to the one formatter, with one difference that belongs to exports
+ * and nowhere else: a missing value is an EMPTY CELL, not an em dash and
+ * certainly not the `$0.00` this used to write. A spreadsheet full of $0.00 for
+ * rows that simply have no price is a claim that they are free, and it survives
+ * being summed.
  */
 export function formatCurrency(value: number | string | null | undefined): string {
-  if (value === null || value === undefined) return '$0.00';
-  const numValue = typeof value === 'string' ? parseFloat(value) : value;
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(numValue);
+  return sharedFormatCurrency(value, { absent: '' });
 }
 
 /**

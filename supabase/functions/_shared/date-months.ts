@@ -83,3 +83,46 @@ export function termEndDate(start: Date, months: number): Date {
 export function daysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
+
+/**
+ * A CALENDAR DATE IS NOT AN INSTANT, and comparing one to the other drops a day
+ * (DATE-LOCAL-002).
+ *
+ * Several columns here are `timestamp` in the schema but hold a calendar date:
+ * meter_readings.reading_date, invoices.paid_date and invoice_date, journal
+ * entry dates, contract start and end. The client writes them as a local
+ * `yyyy-MM-dd`, so Postgres stores midnight. A window boundary built from
+ * `new Date()` carries a TIME OF DAY, and `.gte('reading_date', <mid-day>)`
+ * therefore excludes every reading on the boundary day - the window is one day
+ * short, always, and silently.
+ *
+ * That was live in the customer portal's usage analytics, where the boundary
+ * also SPLITS this period from the previous one: readings on the split day were
+ * counted in the wrong half, on both sides of the comparison the page is built
+ * on.
+ *
+ * WHOSE MIDNIGHT. `tenants` has no timezone column - checked, it is not stored
+ * anywhere, and user_settings.timezone is per-user and not available to a cron.
+ * So boundaries are UTC midnight, which is exactly what the stored values are,
+ * and the comparison is therefore exact rather than approximately right. When a
+ * tenant timezone does get stored, this is the one place that changes.
+ */
+export function startOfUtcDay(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+/**
+ * Midnight on the day AFTER `d`, for use with a strict `.lt()`.
+ *
+ * Prefer this over an inclusive `.lte(endOfDay)`: 23:59:59.999 is a real
+ * timestamp that a row can exceed, and the sub-millisecond gap is the kind of
+ * thing that shows up once a year in a report nobody can reproduce.
+ */
+export function startOfNextUtcDay(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1));
+}
+
+/** The `yyyy-MM-dd` a calendar-date column actually holds. */
+export function utcDateOnly(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}

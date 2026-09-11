@@ -96,6 +96,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { formatCurrency } from '@/lib/utils';
 
 type ProductType =
   | 'product_models'
@@ -555,13 +556,6 @@ export default function LineItemManager({
       setParentProductForAccessory(parentItem.productId);
       setShowProductSelector(true);
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
   };
 
   // QUOTE-017: compact billing badge for recurring lines — "Monthly ×12" or

@@ -13,6 +13,7 @@
  */
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 /** Signal keys. `email_sentiment` is intentionally absent (v2 STUB). */
 export type SignalKey = 'ticket_delta' | 'ar_past_due' | 'meter_trend' | 'renewal_proximity';
@@ -414,11 +415,9 @@ async function customerEquipmentIds(
   tenantId: string,
   customerId: string,
 ): Promise<string[]> {
-  const { data } = await admin
-    .from('equipment')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .eq('customer_id', customerId);
+  const data = await fetchAllRows<any>(() =>
+    admin.from('equipment').select('id').eq('tenant_id', tenantId).eq('customer_id', customerId),
+  );
   return (data ?? []).map((e: Record<string, unknown>) => String(e.id));
 }
 
@@ -430,12 +429,14 @@ async function avgMeterTotal(
 ): Promise<number> {
   // No equipment means no readings — and an average over nothing is 0, not NaN.
   if (equipmentIds.length === 0) return 0;
-  const { data } = await admin
-    .from('meter_readings')
-    .select('bw_meter_reading, color_meter_reading')
-    .eq('tenant_id', tenantId)
-    .in('equipment_id', equipmentIds)
-    .gte('reading_date', since);
+  const data = await fetchAllRows<any>(() =>
+    admin
+      .from('meter_readings')
+      .select('bw_meter_reading, color_meter_reading')
+      .eq('tenant_id', tenantId)
+      .in('equipment_id', equipmentIds)
+      .gte('reading_date', since),
+  );
   const rows = data ?? [];
   if (rows.length === 0) return 0;
   const sum = rows.reduce(

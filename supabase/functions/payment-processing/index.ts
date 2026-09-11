@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -228,11 +229,13 @@ export default async function handler(req: Request) {
           startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       }
 
-      const { data: payments } = await admin
-        .from('payments')
-        .select('amount, status, payment_method')
-        .eq('tenant_id', tenantId)
-        .gte('created_at', startDate.toISOString());
+      const payments = await fetchAllRows<any>(() =>
+        admin
+          .from('payments')
+          .select('amount, status, payment_method')
+          .eq('tenant_id', tenantId)
+          .gte('created_at', startDate.toISOString()),
+      );
 
       const completed = (payments || []).filter(
         (p: any) => p.status === 'completed' && p.amount > 0,
