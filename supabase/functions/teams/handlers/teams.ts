@@ -18,6 +18,7 @@
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
+import { startOfUtcDay } from '../../_shared/date-months.ts';
 
 export async function handleTeams(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   const { method, pathParts, auth, db, requestId } = ctx;
@@ -170,7 +171,9 @@ async function teamCapacity(req: Request, ctx: HandlerCtx, teamId: string): Prom
     );
   }
 
-  const nowIso = new Date().toISOString();
+  // DATE-LOCAL-002: due_date is a calendar date stored at midnight, so "before
+  // now" counts everything due TODAY as already overdue from 00:00 onward.
+  const overdueBefore = startOfUtcDay(new Date()).toISOString();
   const [openTasks, overdue] = await Promise.all([
     db
       .from('tasks')
@@ -183,7 +186,7 @@ async function teamCapacity(req: Request, ctx: HandlerCtx, teamId: string): Prom
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', auth.tenantId)
       .in('assigned_to', members)
-      .lt('due_date', nowIso)
+      .lt('due_date', overdueBefore)
       .not('status', 'in', '(completed,cancelled)'),
   ]);
 

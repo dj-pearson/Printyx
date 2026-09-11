@@ -4,6 +4,7 @@
 
 import { jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
+import { startOfUtcDay } from '../../_shared/date-months.ts';
 
 export async function handleAnalytics(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   if (ctx.method !== 'GET') return null;
@@ -20,7 +21,7 @@ export async function handleAnalytics(req: Request, ctx: HandlerCtx): Promise<Re
       .from('tasks')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', auth.tenantId)
-      .lt('due_date', new Date().toISOString())
+      .lt('due_date', startOfUtcDay(new Date()).toISOString())
       .not('status', 'in', '(completed,cancelled)'),
     db
       .from('projects')
@@ -31,7 +32,7 @@ export async function handleAnalytics(req: Request, ctx: HandlerCtx): Promise<Re
       .from('time_entries')
       .select('hours, user_id, entry_date')
       .eq('tenant_id', auth.tenantId)
-      .gte('entry_date', new Date(Date.now() - 30 * 86400000).toISOString())
+      .gte('entry_date', startOfUtcDay(new Date(Date.now() - 30 * 86400000)).toISOString())
       .limit(10000),
   ]);
 

@@ -5,21 +5,21 @@
 
 import { jsonResponse } from '../../_shared/http.ts';
 import type { HandlerCtx } from '../_context.ts';
+import { startOfNextUtcDay, startOfUtcDay } from '../../_shared/date-months.ts';
 
 export async function handleStats(req: Request, ctx: HandlerCtx): Promise<Response | null> {
   const { method, auth, db, requestId } = ctx;
   if (method !== 'GET') return null;
 
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const endOfDay = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    23,
-    59,
-    59,
-  ).toISOString();
+  // DATE-LOCAL-002. due_date is a calendar date stored at midnight, so a
+  // boundary carrying a time of day misclassifies the current day. These two
+  // counts used to OVERLAP: "overdue" was `< now`, which from 00:00 onward
+  // includes everything due today, and "due today" counted the same rows again.
+  // The day starts at UTC midnight and ends at the start of the next one, so
+  // the two sets are disjoint and neither has a sub-millisecond gap.
+  const startOfDay = startOfUtcDay(now).toISOString();
+  const startOfTomorrow = startOfNextUtcDay(now).toISOString();
 
   const [all, byStatus, byPriority, overdue, dueToday, mine] = await Promise.all([
     db.from('tasks').select('id', { count: 'exact', head: true }).eq('tenant_id', auth.tenantId),
@@ -29,14 +29,14 @@ export async function handleStats(req: Request, ctx: HandlerCtx): Promise<Respon
       .from('tasks')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', auth.tenantId)
-      .lt('due_date', now.toISOString())
+      .lt('due_date', startOfDay)
       .not('status', 'in', '(completed,cancelled)'),
     db
       .from('tasks')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', auth.tenantId)
       .gte('due_date', startOfDay)
-      .lte('due_date', endOfDay)
+      .lt('due_date', startOfTomorrow)
       .not('status', 'in', '(completed,cancelled)'),
     db
       .from('tasks')
