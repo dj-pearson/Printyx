@@ -43,6 +43,9 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const REQUIRED_PERMISSION = 'finance.reports.view';
 
 // ── Replica of shared/contract-pnl-math.ts — keep in sync (see header) ───────
 const CONTRACT_PNL_DEFAULTS = {
@@ -347,6 +350,10 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     }
+
+    // SEC-EDGE-001: Contract profitability - cost and margin per contract. /contracts/profitability gates on finance.reports.view at level 4, and everything this function serves is that report, so both sides carry it.
+    const denied = await denyWithoutPermission(admin, user, REQUIRED_PERMISSION);
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'contract-pnl');

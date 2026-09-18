@@ -23,6 +23,7 @@ import {
   renderEmailTemplate,
 } from '../_shared/white-label.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, denyBelowLevel } from '../_shared/rbac.ts';
 
 type Row = Record<string, any>;
 
@@ -176,6 +177,15 @@ export default async function handler(req: Request) {
 
     const requireTenant = () =>
       tenantId ? null : createCorsResponse({ error: 'Tenant ID required' }, 400, req);
+
+    // SEC-EDGE-001: branding, custom domains and the email templates sent under
+    // this dealer's name. /white-label needs level 6 to open, which is the
+    // distinguishing constraint - `admin.settings.update` is granted to several
+    // admin roles, and the page deliberately puts this above them. A LEVEL check
+    // for that reason, reads included, because the page does not open below 6
+    // either.
+    const denied = await denyBelowLevel(admin, user, ROLE_LEVEL.REGIONAL_MANAGER);
+    if (denied) return createCorsResponse(denied, 403, req);
 
     // ─── /presets ───────────────────────────────────────────────────
     // Presets are global (no tenant_id column), so this is the one read that

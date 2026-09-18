@@ -19,6 +19,9 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const REQUIRED_PERMISSION = 'admin.settings.update';
 
 interface NumberConfig {
   id: string;
@@ -99,6 +102,10 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: The tenant-wide numbering scheme for customer records. /customer-number-settings needs admin.settings.update at level 4 to open, so both sides carry it.
+    const denied = await denyWithoutPermission(admin, user, REQUIRED_PERMISSION);
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'customer-numbers');

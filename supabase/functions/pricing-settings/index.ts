@@ -3,6 +3,9 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const REQUIRED_PERMISSION = 'operations.inventory.manage';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -28,6 +31,10 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: The company's pricing policy - maximum discount and minimum margin, the numbers the quote guardrails enforce. Loosening them is silent and changes what every rep may sell at. /pricing/settings needs operations.inventory.manage at level 4 to open, so the read carries the same code.
+    const denied = await denyWithoutPermission(admin, user, REQUIRED_PERMISSION);
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);

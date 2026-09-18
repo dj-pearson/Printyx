@@ -24,6 +24,10 @@ import {
   type StripeInvoicePreview,
 } from '../_shared/stripe.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'finance.ar.view';
+const WRITE_PERMISSION = 'admin.settings.update';
 
 /**
  * Append Stripe's checkout-session placeholder to a return URL, respecting a
@@ -89,6 +93,14 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: This tenant's own plan with Stripe. Reading it is the billing view /settings/subscription gates on; CHANGING it is a configuration act with an external side effect, which is admin.settings.update - there is no seeded code for "change our plan" and inventing one for a single endpoint would be worse than naming the one that means it.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'subscriptions');

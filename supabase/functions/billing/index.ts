@@ -38,6 +38,10 @@ import { handleServiceEntries } from './handlers/service-entries.ts';
 import { handleInvoiceSubResource } from './handlers/invoices.ts';
 import { generateInvoicesFromPendingReadings } from './handlers/generate-invoices.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'finance.ar.view';
+const WRITE_PERMISSION = 'finance.invoice.create';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -73,6 +77,14 @@ export default async function handler(req: Request) {
       console.error('No tenant ID found for user:', user.id);
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: Invoices, adjustments and billing cycles. /billing gates on finance.ar.view, so the read does too; raising or changing one is finance.invoice.create.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
 
     // Use service_role client for database operations (bypasses RLS)
 

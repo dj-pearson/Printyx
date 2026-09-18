@@ -301,3 +301,70 @@ describe('api-keys requires the level its page requires', () => {
     );
   });
 });
+
+/**
+ * Money and tenant configuration (SEC-EDGE-001, fourth batch).
+ *
+ * Each gate is the code its own page already requires, so the route and the
+ * screen in front of it agree. The read/write split follows the page: where the
+ * page will not open without a code, the read carries it too; where the page is
+ * open and only the write is privileged, only the write is gated.
+ */
+describe('the money and configuration surface is gated', () => {
+  const SPLIT: Record<string, { read: string; write: string }> = {
+    billing: { read: 'finance.ar.view', write: 'finance.invoice.create' },
+    subscriptions: { read: 'finance.ar.view', write: 'admin.settings.update' },
+  };
+  const SAME: Record<string, string> = {
+    'pricing-settings': 'operations.inventory.manage',
+    'customer-numbers': 'admin.settings.update',
+    'contract-pnl': 'finance.reports.view',
+    quickbooks: 'admin.settings.integrations',
+  };
+
+  const seeder = read('server/database-updater/seeders/rbac-seeder.ts');
+  const baseline = JSON.parse(read('docs/edge-rbac-baseline.json'));
+
+  for (const [fn, codes] of Object.entries(SPLIT)) {
+    it(`${fn} reads on ${codes.read} and writes on ${codes.write}`, () => {
+      const src = read(`supabase/functions/${fn}/index.ts`);
+      expect(src).toContain(`const READ_PERMISSION = '${codes.read}'`);
+      expect(src).toContain(`const WRITE_PERMISSION = '${codes.write}'`);
+      expect(seeder).toContain(`code: '${codes.read}'`);
+      expect(seeder).toContain(`code: '${codes.write}'`);
+    });
+  }
+
+  for (const [fn, codeName] of Object.entries(SAME)) {
+    it(`${fn} requires ${codeName} on both sides`, () => {
+      const src = read(`supabase/functions/${fn}/index.ts`);
+      expect(src).toContain(`const REQUIRED_PERMISSION = '${codeName}'`);
+      expect(seeder).toContain(`code: '${codeName}'`);
+    });
+  }
+
+  it('white-label is a LEVEL check, because the page puts it above the admins', () => {
+    // admin.settings.update is granted to several admin roles; /white-label
+    // deliberately requires level 6 on top of it, and the level is the
+    // distinguishing constraint.
+    const src = read('supabase/functions/white-label/index.ts');
+    const nav = read('client/src/lib/navigation-permissions.ts');
+    expect(
+      nav.slice(nav.indexOf("'/white-label': {"), nav.indexOf("'/white-label': {") + 200),
+    ).toContain('minLevel: 6');
+    expect(src).toContain('ROLE_LEVEL.REGIONAL_MANAGER');
+  });
+
+  it('every one of the seven is out of the open-to-all baseline', () => {
+    for (const fn of [...Object.keys(SPLIT), ...Object.keys(SAME), 'white-label']) {
+      expect(baseline.openToAllRoles, fn).not.toContain(fn);
+    }
+  });
+
+  it('pricing settings are gated on the read as well, because the numbers are the policy', () => {
+    // maxDiscountPercentage and requireApprovalBelowMargin are what the quote
+    // guardrails enforce. Loosening them is silent.
+    const src = read('supabase/functions/pricing-settings/index.ts');
+    expect(src).not.toMatch(/req\.method !== 'GET'/);
+  });
+});

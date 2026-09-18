@@ -4,6 +4,9 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const REQUIRED_PERMISSION = 'admin.settings.integrations';
 
 /**
  * The id of this tenant's QuickBooks row in `integrations`.
@@ -50,6 +53,10 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: The QuickBooks connection and its sync. /quickbooks-integration needs admin.settings.integrations at level 4, which is the seeded code for configuring a third-party integration.
+    const denied = await denyWithoutPermission(admin, user, REQUIRED_PERMISSION);
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'quickbooks');
