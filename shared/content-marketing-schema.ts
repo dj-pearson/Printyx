@@ -54,8 +54,32 @@ export const keywordTierEnum = pgEnum('keyword_tier', [
 
 // ============= BLOG POSTS =============
 
-export const blogPosts = pgTable(
-  'blog_posts',
+/**
+ * CONTENT MARKETING POSTS, formerly `blogPosts` / `blog_posts` (AUDIT-037).
+ *
+ * TWO DECLARATIONS OWNED ONE TABLE NAME AND ONLY ONE OF THEM EVER EXISTED.
+ * shared/schema.ts named this file's `blogPosts` in an explicit re-export and
+ * then did `export * from './blog-schema'`; a named export beats a later
+ * `export *`, so drizzle-kit only ever saw THIS shape and migration 0000 built
+ * it. The US-BLOG subsystem - 22 edge functions - is written against the other
+ * one: body_markdown, body_html, deleted_at, canonical_url, brief_id,
+ * cluster_id, brand_voice_id, cms_post_url. Every read returned nothing and no
+ * insert could work at all, because the physical table has `content` NOT NULL
+ * and `category` NOT NULL and the blog code sets neither.
+ *
+ * WHY THIS SIDE MOVED. It is the side with one consumer: a single image-sitemap
+ * query in server/routes-seo.ts. Against it stand 22 edge functions and the 15
+ * blog_* tables whose foreign keys point at `blog_posts`. The US-BLOG table has
+ * never physically existed anywhere - _backfill_blog_tables.sql creates it with
+ * CREATE TABLE IF NOT EXISTS, a silent no-op on any database that ran 0000, and
+ * 0008 only ever added foreign keys TO it - so there are no rows on that side to
+ * lose. The rows on THIS side follow an ALTER TABLE ... RENAME TO.
+ *
+ * Migration 0066 does the rename, creates the real `blog_posts`, and re-points
+ * the five foreign keys 0008 had aimed at this table.
+ */
+export const contentMarketingPosts = pgTable(
+  'content_marketing_posts',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     tenantId: uuid('tenant_id'), // null for platform-level content
@@ -131,11 +155,11 @@ export const blogPosts = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (table) => ({
-    slugIdx: index('blog_posts_slug_idx').on(table.slug),
-    statusIdx: index('blog_posts_status_idx').on(table.status),
-    categoryIdx: index('blog_posts_category_idx').on(table.category),
-    publishedAtIdx: index('blog_posts_published_at_idx').on(table.publishedAt),
-    tenantIdx: index('blog_posts_tenant_idx').on(table.tenantId),
+    slugIdx: index('content_marketing_posts_slug_idx').on(table.slug),
+    statusIdx: index('content_marketing_posts_status_idx').on(table.status),
+    categoryIdx: index('content_marketing_posts_category_idx').on(table.category),
+    publishedAtIdx: index('content_marketing_posts_published_at_idx').on(table.publishedAt),
+    tenantIdx: index('content_marketing_posts_tenant_idx').on(table.tenantId),
   }),
 );
 
@@ -489,7 +513,7 @@ export const contentCitations = pgTable(
 
 // ============= INSERT SCHEMAS =============
 
-export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({
+export const insertContentMarketingPostSchema = createInsertSchema(contentMarketingPosts).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -533,8 +557,8 @@ export const insertContentCitationSchema = createInsertSchema(contentCitations).
 
 // ============= TYPES =============
 
-export type BlogPost = typeof blogPosts.$inferSelect;
-export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
+export type ContentMarketingPost = typeof contentMarketingPosts.$inferSelect;
+export type InsertContentMarketingPost = z.infer<typeof insertContentMarketingPostSchema>;
 
 export type Guide = typeof guides.$inferSelect;
 export type InsertGuide = z.infer<typeof insertGuideSchema>;

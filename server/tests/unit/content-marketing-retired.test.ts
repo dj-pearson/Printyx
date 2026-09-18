@@ -45,18 +45,24 @@ describe('the router is gone and unmounted', () => {
   });
 });
 
-describe('the collision it was half of is recorded, not resolved', () => {
-  it('still lists blog_posts in the phantom baseline', () => {
-    // Resolving it means changing a table two subsystems name, which is the
-    // owner's decision. Deleting a dead router is not that.
+describe('the collision it was half of is RESOLVED now', () => {
+  // CORRECTED 2026-09-18 (AUDIT-037). This block used to assert the opposite -
+  // that blog_posts was still in the phantom baseline and still a declared
+  // duplicate - on the reasoning that resolving it was the owner's decision and
+  // deleting a dead router was not. The decision turned out to be settled by
+  // evidence rather than preference: the US-BLOG table has never physically
+  // existed anywhere, so there were no rows on that side to weigh, and the
+  // content-marketing side had exactly one consumer. Migration 0082 renames it
+  // to content_marketing_posts.
+  it('leaves no blog_posts entry in the phantom baseline', () => {
     const baseline = JSON.parse(read('docs/phantom-columns-baseline.json'));
-    expect(JSON.stringify(baseline.allowed)).toMatch(/blog_posts\./);
+    expect(JSON.stringify(baseline.allowed)).not.toMatch(/blog_posts\./);
   });
 
-  it('keeps both declarations, and drizzle-schema still picks one', () => {
+  it('keeps both declarations, each owning its own table name', () => {
     expect(existsSync(join(repo, 'shared/content-marketing-schema.ts'))).toBe(true);
     expect(existsSync(join(repo, 'shared/blog-schema.ts'))).toBe(true);
     const dups = JSON.parse(read('docs/duplicate-tables-baseline.json'));
-    expect(dups.allowed).toContain('blog_posts :: blog-schema.ts|content-marketing-schema.ts');
+    expect(dups.allowed).not.toContain('blog_posts :: blog-schema.ts|content-marketing-schema.ts');
   });
 });

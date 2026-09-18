@@ -8901,8 +8901,18 @@ export type {
 } from './print-cost-calculator-schema';
 
 // Re-export Content Marketing schemas
+//
+// AUDIT-037: `blogPosts` used to be re-exported HERE, from
+// content-marketing-schema, and that is the whole defect. A named re-export
+// beats the later `export * from './blog-schema'` at the bottom of this file,
+// so drizzle-kit only ever saw the content-marketing shape and every migration
+// built it - while 22 blog-* edge functions queried the OTHER declaration's
+// columns against a table that has `content` NOT NULL. The content-marketing
+// table is `content_marketing_posts` now and `blogPosts` comes from
+// blog-schema through that `export *`, which is what the blog subsystem meant
+// all along.
 export {
-  blogPosts,
+  contentMarketingPosts,
   guides,
   caseStudies,
   landingPages,
@@ -8913,7 +8923,7 @@ export {
   contentStatusEnum,
   contentCategoryEnum,
   keywordTierEnum,
-  insertBlogPostSchema,
+  insertContentMarketingPostSchema,
   insertGuideSchema,
   insertCaseStudySchema,
   insertLandingPageSchema,
@@ -8922,8 +8932,8 @@ export {
 } from './content-marketing-schema';
 
 export type {
-  BlogPost,
-  InsertBlogPost,
+  ContentMarketingPost,
+  InsertContentMarketingPost,
   Guide,
   InsertGuide,
   CaseStudy,
