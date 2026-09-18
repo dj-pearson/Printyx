@@ -30,6 +30,7 @@ import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { NotesPanel } from '@/components/crm/NotesPanel';
 import { ContactManager } from '@/components/ContactManager';
 import { LeadProposals } from '@/components/leads/LeadProposals';
+import { EnrollInSequenceDialog } from '@/components/leads/EnrollInSequenceDialog';
 import { LeadQuotes } from '@/components/leads/LeadQuotes';
 import { LeadDeals } from '@/components/leads/LeadDeals';
 import { format } from 'date-fns';
@@ -78,6 +79,7 @@ import {
   FileCheck,
   Clock3,
   CheckSquare,
+  Send,
   BookOpen,
   Quote,
 } from 'lucide-react';
@@ -236,6 +238,8 @@ export default function LeadDetailHubspot() {
   });
 
   // Dialog states
+  // WF-S-04
+  const [showEnrollDialog, setShowEnrollDialog] = useState(false);
   const [dialogs, setDialogs] = useState({
     note: false,
     email: false,
@@ -712,6 +716,18 @@ export default function LeadDetailHubspot() {
             >
               <CheckSquare className="h-4 w-4 mr-1 sm:mr-2" />
               Task
+            </Button>
+            {/* WF-S-04: enrolment lived only on EmailSequencesPage, a
+                standalone campaign screen. This is the same endpoint, offered
+                where the rep decides to nurture. */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEnrollDialog(true)}
+              className="justify-center sm:justify-start"
+            >
+              <Send className="h-4 w-4 mr-1 sm:mr-2" />
+              Sequence
             </Button>
             {isEditing && (
               <Button
@@ -2287,6 +2303,23 @@ export default function LeadDetailHubspot() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* WF-S-04 */}
+      <EnrollInSequenceDialog
+        open={showEnrollDialog}
+        onOpenChange={setShowEnrollDialog}
+        records={
+          lead?.id
+            ? [
+                {
+                  id: lead.id,
+                  email: lead.primaryContactEmail ?? null,
+                  name: lead.companyName ?? null,
+                },
+              ]
+            : []
+        }
+      />
     </MainLayout>
   );
 }
