@@ -71,6 +71,8 @@ jobs:
         run: npm run check:query-keys
       - name: Dead-invalidation gate (INVALIDATE-002)
         run: npm run check:invalidation-keys
+      - name: Raw browser alert gate (WF-S-08)
+        run: npm run check:browser-dialogs
       - name: Inline percentage-division gate (PRICING-MARGIN-002)
         run: npm run check:percent-math
       - name: Markup-as-margin gate (PRICING-MARGIN-001)

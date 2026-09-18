@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { MainLayout } from '@/components/layout/main-layout';
 import { apiRequest } from '@/lib/queryClient';
 import { downloadDocumentAgreement } from '@/lib/document-export';
+import { useToast } from '@/hooks/use-toast';
 
 interface QuoteLineItem {
   id: string;
@@ -79,6 +80,7 @@ interface DocumentData {
 }
 
 export default function DocumentBuilder() {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedQuoteId, setSelectedQuoteId] = useState('');
@@ -163,7 +165,7 @@ export default function DocumentBuilder() {
 
   const handleCreateDocument = () => {
     if (!documentForm.customerId) {
-      alert('Please select a customer');
+      toast({ title: 'Select a customer first', variant: 'destructive' });
       return;
     }
     createDocumentMutation.mutate(documentForm as DocumentData);

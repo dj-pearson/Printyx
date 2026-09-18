@@ -523,42 +523,18 @@ export default function LeadDetailHubspot() {
                 <Briefcase className="h-3 w-3 mr-1" />
                 Create Deal
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  alert('Button clicked! Check console for API test results...');
-                  // Direct API test
-                  try {
-                    const response = await apiRequest(`/api/leads/${id}/contacts`, {
-                      method: 'POST',
-                      body: {
-                        firstName: 'Test',
-                        lastName: 'Contact',
-                        email: 'test@test.com',
-                        isPrimary: false,
-                      },
-                    });
-                    alert('SUCCESS: Contact created!');
-                    toast({
-                      title: 'Success',
-                      description: 'Test contact created directly',
-                    });
-                  } catch (error: any) {
-                    console.error('DIRECT API ERROR:', error);
-                    alert('ERROR: ' + error.message);
-                    toast({
-                      title: 'Error',
-                      description: 'API test failed: ' + error.message,
-                      variant: 'destructive',
-                    });
-                  }
-                }}
-                className="text-xs bg-red-500 text-white"
-              >
-                <UserPlus className="h-3 w-3 mr-1" />
-                🔴 API TEST
-              </Button>
+              {/*
+                WF-S-08: a red "🔴 API TEST" button sat here, between Create Deal
+                and Log Activity, on every lead record.
+
+                It was not only debug UI. It raised three raw browser alerts
+                ("Button clicked! Check console for API test results...",
+                "SUCCESS: Contact created!", "ERROR: ...") AND it POSTed a real
+                contact - first name Test, last name Contact,
+                test@test.com - into the tenant's database through the live
+                /api/leads/:id/contacts endpoint. Anyone who pressed it out of
+                curiosity wrote a junk contact onto that lead.
+              */}
               <Button
                 variant="outline"
                 size="sm"

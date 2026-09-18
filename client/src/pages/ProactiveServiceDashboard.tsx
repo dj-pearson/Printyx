@@ -24,6 +24,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface EquipmentMaintenanceItem {
   equipmentId: string;
@@ -60,6 +61,7 @@ interface MaintenanceSummary {
 }
 
 export default function ProactiveServiceDashboard() {
+  const { toast } = useToast();
   const [selectedTab, setSelectedTab] = useState<
     'overdue' | 'urgent' | 'soon' | 'scheduled' | 'all'
   >('overdue');
@@ -86,7 +88,11 @@ export default function ProactiveServiceDashboard() {
       refetch();
     } catch (err) {
       console.error('Error scheduling service:', err);
-      alert('Failed to schedule service. Please try again.');
+      toast({
+        title: 'Could not schedule service',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setSchedulingEquipment(null);
     }
