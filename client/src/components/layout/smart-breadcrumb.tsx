@@ -227,8 +227,15 @@ export function SmartBreadcrumb({ customSegments, quickActions }: SmartBreadcrum
    * who is reading.
    */
 
-  // Don't show breadcrumbs on home/dashboard
-  if (location === '/' || location === '/dashboard') {
+  // Don't show breadcrumbs on the home dashboard.
+  //
+  // AUDIT-014: the second arm used to be `location === '/dashboard'`, which is
+  // not a registered route and never matched - App.tsx routes the authed
+  // dashboard at '/' and the only /dashboard path is /dashboard/today, a
+  // different string. Removing it changes nothing at runtime; it is gone
+  // because a comparison against a route that does not exist reads as coverage
+  // and is not.
+  if (location === '/') {
     return null;
   }
 
