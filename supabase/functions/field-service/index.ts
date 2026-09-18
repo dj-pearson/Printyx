@@ -32,6 +32,7 @@ import { createLogger } from '../_shared/logger.ts';
 import { handleInstallations } from './handlers/installations.ts';
 import { handleChecklists } from './handlers/checklists.ts';
 import { handleSignatures } from './handlers/signatures.ts';
+import { handleAcceptance } from './handlers/acceptance.ts';
 import { handleLocations } from './handlers/locations.ts';
 import { handleGeofences } from './handlers/geofences.ts';
 import { handleGeofenceAlerts } from './handlers/geofence-alerts.ts';
@@ -77,6 +78,12 @@ export default async function handler(req: Request) {
         break;
       case 'service-signatures':
         result = await handleSignatures(req, ctx);
+        break;
+      // WF-L-07: what was signed, for whom, and against which checklist, in one
+      // request - so the customer detail page does not fetch a signature list
+      // per installation.
+      case 'acceptance':
+        result = await handleAcceptance(req, ctx);
         break;
       case 'technicians':
       case 'locations':

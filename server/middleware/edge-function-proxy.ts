@@ -347,6 +347,15 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/vendors': 'vendors',
     '/api/webhooks': 'webhooks',
 
+    // WF-L-07. Nothing else serves /api/field-service, so a plain entry is safe:
+    // server/routes/field-service-routes.ts mounts its installations,
+    // installation-checklists and service-signatures paths at the /api ROOT, a
+    // different prefix - and every one of its handlers reads req.session.user,
+    // which nothing assigns, so all seven answer 401 regardless
+    // (SEC-SESSION-001). The edge function is the only real path and had no
+    // caller in any of the seven client trees until this story.
+    '/api/field-service': 'field-service',
+
     // WF-L-06. /api/equipment-lifecycle is SCOPED PER PATH for the same reason
     // /api/dashboard below is: server/routes-equipment-lifecycle-state-machine.ts
     // mounts at the /api ROOT and owns /:equipmentId/transition,

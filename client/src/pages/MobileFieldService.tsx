@@ -552,22 +552,41 @@ function TicketPicker() {
                 {crewDay.deliveryCount === 1 ? 'y' : 'ies'}, {crewDay.installationCount} install
                 {crewDay.installationCount === 1 ? '' : 's'}
               </p>
-              {crewDay.items.map((item) => (
-                <div
-                  key={`${item.kind}-${item.id}`}
-                  className="flex items-center justify-between gap-3 rounded-md border p-2"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm capitalize">{item.kind}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {item.window || 'No window set'}
-                    </p>
+              {crewDay.items.map((item) =>
+                // WF-L-07: an install is where a customer signs, so its row
+                // opens the acceptance screen. A delivery has no installation
+                // id to sign against, so it stays a plain row.
+                item.kind === 'installation' ? (
+                  <Link key={`${item.kind}-${item.id}`} href={`/acceptance/${item.id}`}>
+                    <div className="flex min-h-[44px] cursor-pointer items-center justify-between gap-3 rounded-md border p-2 transition-colors hover:bg-accent">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm">Installation · tap to accept</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {item.window || 'No window set'}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="shrink-0">
+                        {item.status}
+                      </Badge>
+                    </div>
+                  </Link>
+                ) : (
+                  <div
+                    key={`${item.kind}-${item.id}`}
+                    className="flex items-center justify-between gap-3 rounded-md border p-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm capitalize">{item.kind}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.window || 'No window set'}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="shrink-0">
+                      {item.status}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className="shrink-0">
-                    {item.status}
-                  </Badge>
-                </div>
-              ))}
+                ),
+              )}
             </CardContent>
           </Card>
         )}

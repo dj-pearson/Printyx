@@ -182,6 +182,7 @@ const WarehouseOperations = React.lazy(() => import('@/pages/WarehouseOperations
 const CrmGoalsDashboard = React.lazy(() => import('@/pages/CrmGoalsDashboard'));
 const TodayDashboard = React.lazy(() => import('@/pages/TodayDashboard'));
 const MobileFieldService = React.lazy(() => import('@/pages/MobileFieldService'));
+const DeliveryAcceptance = React.lazy(() => import('@/pages/DeliveryAcceptance'));
 const PricingManagement = React.lazy(() => import('@/pages/PricingManagement'));
 const PricingSettings = React.lazy(() => import('@/pages/PricingSettings'));
 const MarginAnalysisReport = React.lazy(() => import('@/pages/MarginAnalysisReport'));
@@ -917,6 +918,11 @@ function Router() {
                     reachable without knowing an id. */}
                 <Route path="/mobile-field-service/:ticketId" component={MobileFieldService} />
                 <Route path="/mobile-field-service" component={MobileFieldService} />
+                {/* WF-L-07: the technician's acceptance screen, opened from a
+                    crew day entry. Inside the shell on purpose - the customer
+                    signs on the technician's tablet, so this is an authenticated
+                    surface, not a public one like /p/ or /f/. */}
+                <Route path="/acceptance/:installationId" component={DeliveryAcceptance} />
                 <Route path="/product-catalog" component={ProductHubUnified} />
                 <Route path="/product-management-hub" component={ProductHubUnified} />
                 <Route path="/inventory" component={Inventory} />
