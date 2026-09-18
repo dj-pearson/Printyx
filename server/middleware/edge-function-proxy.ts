@@ -314,6 +314,10 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/demos': 'demos',
     '/api/deals': 'deals',
     '/api/contacts': 'contacts',
+    // WF-S-06: the CRM Goals page. Its eleven endpoints now all live in the crm
+    // edge function, so dev and prod run the same code and
+    // server/routes-crm-goals.ts is gone.
+    '/api/crm': 'crm',
     '/api/opportunities': 'opportunities',
     '/api/quotes': 'quotes',
     '/api/proposals': 'proposals',

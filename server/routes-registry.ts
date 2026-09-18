@@ -43,8 +43,6 @@ import {
   registerCrmCoreRoutes,
   registerCompaniesRoutes,
   registerBusinessRecordRoutes,
-  registerCrmGoalRoutes,
-  registerCrmNotesRoutes,
   registerCrmBulkRoutes,
   registerBulkOperationsRoutes,
   registerRecordLayoutRoutes,
@@ -417,8 +415,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerWarehouseRoutes(app);
 
   // ─── Service & CRM ────────────────────────────────────────────────
-  registerCrmGoalRoutes(app);
-  registerCrmNotesRoutes(app);
   registerDealTagRoutes(app);
   registerCrmBulkRoutes(app);
   registerBulkOperationsRoutes(app);

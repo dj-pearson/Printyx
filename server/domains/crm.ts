@@ -5,8 +5,6 @@
 export { registerCrmCoreRoutes } from '../routes-crm-core';
 export { registerCompaniesRoutes } from '../routes-companies';
 export { registerBusinessRecordRoutes } from '../routes-business-records';
-export { registerCrmGoalRoutes } from '../routes-crm-goals';
-export { registerCrmNotesRoutes } from '../routes-crm-notes';
 export { registerCrmBulkRoutes } from '../routes-crm-bulk';
 export { registerBulkOperationsRoutes } from '../routes-bulk-operations';
 export { registerRecordLayoutRoutes } from '../routes-record-layout';
