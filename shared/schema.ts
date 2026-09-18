@@ -2554,6 +2554,19 @@ export const deals = pgTable(
     customerId: varchar('customer_id'), // references customers.id
     companyName: varchar('company_name'), // for quick reference if no customer record
 
+    // WF-S-03: the lead or account this deal came out of, so the Deals tab on a
+    // lead can show that lead's deals. LeadDeals.tsx posted `leadId` and
+    // `companyId` for as long as it has existed and `deals` had neither column,
+    // so both were dropped on insert - the link the whole tab depends on was
+    // never stored.
+    //
+    // Named for `business_records` rather than for leads because a lead and an
+    // account are the same row here: conversion is a status change, and a deal
+    // created against a lead must keep pointing at it after that status moves.
+    // Nullable, so every existing deal stays valid and a deal created from the
+    // board carries no false provenance.
+    sourceBusinessRecordId: varchar('source_business_record_id'),
+
     // Pipeline Information
     stageId: varchar('stage_id').notNull(), // references dealStages.id
     probability: integer('probability').default(0), // 0-100 percentage
@@ -2621,6 +2634,11 @@ export const deals = pgTable(
   (table) => ({
     // Performance indexes for frequently queried columns
     customerIdIdx: index('deals_customer_id_idx').on(table.customerId),
+    // WF-S-03: the Deals tab filters on exactly this pair.
+    tenantSourceRecordIdx: index('deals_tenant_source_record_idx').on(
+      table.tenantId,
+      table.sourceBusinessRecordId,
+    ),
     ownerIdIdx: index('deals_owner_id_idx').on(table.ownerId),
     tenantStatusIdx: index('deals_tenant_status_idx').on(table.tenantId, table.status),
     tenantStageIdx: index('deals_tenant_stage_idx').on(table.tenantId, table.stageId),

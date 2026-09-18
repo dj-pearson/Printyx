@@ -172,6 +172,10 @@ export const DEAL_LIST_SPEC: CrmListSpec = {
     // be a control that never matches.
     'dealMotion',
     'forecastCategory',
+    // WF-S-03: the lead or account a deal came out of. The Deals tab on a lead
+    // sent ?leadId= and nothing read it, so the tab asked for one lead's deals
+    // and was handed the tenant's.
+    'businessRecordId',
   ],
 };
 

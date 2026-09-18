@@ -40,14 +40,13 @@ import {
   BarChart3,
   Activity,
 } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { ConversionInsights } from '@/components/analytics/ConversionInsights';
 import { PipelineTrendWidgets } from '@/components/analytics/PipelineTrendWidgets';
 
 interface LeadDealsProps {
   leadId: string;
   leadName: string;
-  companyId: string;
 }
 
 interface Deal {
@@ -70,7 +69,7 @@ interface Deal {
   ownerName?: string;
   createdAt: string;
   updatedAt?: string;
-  leadId?: string;
+  sourceBusinessRecordId?: string;
 }
 
 interface DealStage {
@@ -92,7 +91,7 @@ interface CreateDealFormData {
   stageId: string;
 }
 
-export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
+export function LeadDeals({ leadId, leadName }: LeadDealsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -146,13 +145,27 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
     };
   }, [leadId, leadName]);
 
-  // Fetch deals associated with this lead
+  // Deals for THIS lead (WF-S-03).
+  //
+  // Two defects sat on top of each other here. The request sent ?leadId=, which
+  // the deals function does not read, so it answered with the tenant's entire
+  // deal list. And that answer is `{ data, total, page, limit }` while this
+  // useQuery is typed Deal[] and the render calls deals.length and deals.map -
+  // so `deals.length === 0` was undefined === 0, false, and the map that
+  // followed threw. The tab did not show the wrong deals; it crashed.
+  //
+  // extractRecords tolerates either shape, which is what every other list
+  // consumer in the app uses.
   const { data: deals = [], isLoading: dealsLoading } = useQuery<Deal[]>({
-    queryKey: ['/api/deals', { leadId }],
+    queryKey: ['/api/deals', { businessRecordId: leadId }],
     queryFn: async () => {
-      const response = await apiRequest(`/api/deals?leadId=${leadId}`, 'GET');
-      return response || [];
+      const response = await apiRequest(
+        `/api/deals?businessRecordId=${encodeURIComponent(leadId)}`,
+        'GET',
+      );
+      return extractRecords<Deal>(response);
     },
+    enabled: Boolean(leadId),
   });
 
   // Fetch deal stages for dropdown
@@ -160,7 +173,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
     queryKey: ['/api/deal-stages'],
     queryFn: async () => {
       const response = await apiRequest('/api/deal-stages', 'GET');
-      return response || [];
+      return extractRecords<DealStage>(response);
     },
   });
 
@@ -284,9 +297,12 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
       expectedCloseDate: formData.expectedCloseDate || undefined,
       notes: formData.notes || undefined,
       stageId: formData.stageId || stages[0]?.id,
-      companyId: companyId,
       companyName: leadName,
-      leadId: leadId, // Associate with the lead
+      // WF-S-03: the column that now exists. `leadId` and `companyId` were both
+      // posted for as long as this component has existed and `deals` had
+      // neither, so Drizzle and PostgREST alike dropped them and no deal
+      // created here was ever attached to its lead.
+      sourceBusinessRecordId: leadId,
       ownerId: user?.id,
     };
 

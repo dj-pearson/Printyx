@@ -79,6 +79,9 @@ function toDealResponse(deal: any, stageNames: Record<string, string>) {
     targetCpcBlack: deal.target_cpc_black,
     targetCpcColor: deal.target_cpc_color,
     replacesContractId: deal.replaces_contract_id,
+    // WF-S-03: the lead this deal came out of, so a caller can navigate back
+    // without a second request.
+    sourceBusinessRecordId: deal.source_business_record_id,
     createdAt: deal.created_at,
     updatedAt: deal.updated_at,
   };
@@ -743,6 +746,15 @@ export default async function handler(req: Request) {
       if (q.filters.status) query = query.eq('status', q.filters.status);
       if (q.filters.priority) query = query.eq('priority', q.filters.priority);
       if (q.filters.customerId) query = query.eq('customer_id', q.filters.customerId);
+      // WF-S-03. `leadId` is accepted as an alias and nothing else: the tab
+      // shipped sending it, and answering the tenant's whole deal list to an
+      // old bundle is the defect this story exists to close.
+      const businessRecordId =
+        q.filters.businessRecordId ||
+        url.searchParams.get('business_record_id') ||
+        url.searchParams.get('leadId') ||
+        url.searchParams.get('lead_id');
+      if (businessRecordId) query = query.eq('source_business_record_id', businessRecordId);
       // COP-M04
       if (q.filters.dealMotion) query = query.eq('deal_motion', q.filters.dealMotion);
       if (q.filters.forecastCategory)
@@ -892,6 +904,20 @@ export default async function handler(req: Request) {
         expected_close_date: body.expectedCloseDate || body.expected_close_date || null,
         owner_id: body.ownerId || body.owner_id || user.id,
         customer_id: body.customerId || body.customer_id || null,
+        // WF-S-03. `leadId` is accepted because that is the key LeadDeals has
+        // always sent. `companyId` is NOT: LeadDetail computes it as
+        // `lead.companyId || lead.id` and business_records has no company_id
+        // column, so it is only ever the lead's own id wearing another name -
+        // reading it as a second identifier would make a coincidence look like
+        // a relationship.
+        source_business_record_id:
+          body.sourceBusinessRecordId ||
+          body.source_business_record_id ||
+          body.businessRecordId ||
+          body.business_record_id ||
+          body.leadId ||
+          body.lead_id ||
+          null,
         company_name: body.companyName || body.company_name || null,
         priority: body.priority || 'medium',
         source: body.source || null,

@@ -1854,18 +1854,23 @@ export default function LeadDetailHubspot() {
               </TabsContent>
 
               <TabsContent value="contacts" className="mt-6">
+                {/* WF-S-03: `lead.companyId` is not a field - business_records
+                    has no company_id column - so the fallback was the only
+                    branch that ever ran, and it is the right one:
+                    company_contacts.company_id references business_records.id,
+                    which is this lead. */}
                 <ContactManager
-                  companyId={lead?.companyId || lead?.id || ''}
+                  companyId={lead?.id || ''}
                   companyName={lead?.companyName || 'Unknown Company'}
                 />
               </TabsContent>
 
               <TabsContent value="deals" className="mt-6">
-                <LeadDeals
-                  leadId={lead?.id || ''}
-                  leadName={lead?.companyName || 'Unknown Lead'}
-                  companyId={lead?.companyId || lead?.id || ''}
-                />
+                {/* WF-S-03: companyId is gone. business_records has no
+                    company_id column, so `lead.companyId` was always
+                    undefined and the fallback - the lead's own id - was the
+                    only branch that ever ran. */}
+                <LeadDeals leadId={lead?.id || ''} leadName={lead?.companyName || 'Unknown Lead'} />
               </TabsContent>
 
               <TabsContent value="proposals" className="mt-6">
