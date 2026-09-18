@@ -57,6 +57,90 @@ export default async function handler(req: Request) {
     }
     const contractId = pathParts[1];
 
+    // ====================================================================
+    // The BARE prefix (WF-G-05). /managed-services is a routed page and its
+    // list and create calls hit the prefix itself - `useQuery(['/api/managed-
+    // services'])` and `apiRequest('/api/managed-services', 'POST', data)`.
+    // Every branch below requires a named segment, so both fell through to the
+    // 404 at the bottom: the page showed nothing and "Managed service created
+    // successfully" was a toast over a request that never landed.
+    //
+    // check:edge-path-coverage could not see this, because it keyed on a named
+    // segment and a bare call has none. That is the gap WF-G-05 closed, and
+    // this is what it found.
+    //
+    // These serve `managed_services` - the product catalogue rows the page
+    // renders - not `managed_service_contracts`, which is what /contracts
+    // below is about. Two different tables behind one prefix.
+    // ====================================================================
+    if (req.method === 'GET' && !endpoint) {
+      const { data, error } = await admin
+        .from('managed_services')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('product_name', { ascending: true });
+
+      if (error) {
+        console.error('Error listing managed services:', error);
+        return createCorsResponse({ error: 'Failed to fetch managed services' }, 500, req);
+      }
+      return createCorsResponse(data ?? [], 200, req);
+    }
+
+    if (req.method === 'POST' && !endpoint) {
+      const body = await req.json().catch(() => ({}));
+
+      // product_code and product_name are NOT NULL. The form collects both, so
+      // a missing one is a 400 rather than a 23502 the page cannot read.
+      const productCode = body.productCode ?? body.product_code;
+      const productName = body.productName ?? body.product_name;
+      if (!productCode || !productName) {
+        return createCorsResponse({ error: 'productCode and productName are required' }, 400, req);
+      }
+
+      // Only real columns. Drizzle would drop an unknown key silently; PostgREST
+      // answers PGRST204, which is louder but still reaches the user as
+      // "failed to create" with no reason.
+      const row: Record<string, unknown> = {
+        tenant_id: tenantId,
+        product_code: productCode,
+        product_name: productName,
+        category: body.category ?? null,
+        service_type: body.serviceType ?? body.service_type ?? null,
+        service_level: body.serviceLevel ?? body.service_level ?? null,
+        description: body.description ?? null,
+        summary: body.summary ?? null,
+        support_hours: body.supportHours ?? body.support_hours ?? null,
+        response_time: body.responseTime ?? body.response_time ?? null,
+        includes_hardware: body.includesHardware ?? body.includes_hardware ?? false,
+        remote_mgmt: body.remoteMgmt ?? body.remote_mgmt ?? false,
+        onsite_support: body.onsiteSupport ?? body.onsite_support ?? false,
+        is_active: body.isActive ?? body.is_active ?? true,
+        available_for_all: body.availableForAll ?? body.available_for_all ?? false,
+        repost_edit: body.repostEdit ?? body.repost_edit ?? null,
+        sales_rep_credit: body.salesRepCredit ?? body.sales_rep_credit ?? null,
+        funding: body.funding ?? null,
+        lease: body.lease ?? null,
+        payment_type: body.paymentType ?? body.payment_type ?? null,
+      };
+
+      const { data, error } = await admin
+        .from('managed_services')
+        .insert(row)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error creating managed service:', error);
+        return createCorsResponse(
+          { error: 'Failed to create managed service', message: error.message },
+          500,
+          req,
+        );
+      }
+      return createCorsResponse(data, 201, req);
+    }
+
     // GET /managed-services/contracts - List MPS contracts
     if (req.method === 'GET' && endpoint === 'contracts' && !contractId) {
       const status = url.searchParams.get('status');

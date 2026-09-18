@@ -9,16 +9,6 @@
       "tenant-stats",
       "user-stats"
     ],
-    "analytics": [
-      "benchmarks",
-      "customer-service",
-      "dashboards",
-      "generate-reports",
-      "metrics",
-      "performance-metrics",
-      "technician-performance",
-      "trends"
-    ],
     "apollo": ["credentials", "leads", "stats"],
     "blog-post-revisions": ["single"],
     "blog-serp": ["single"],
@@ -44,7 +34,6 @@
     "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"],
     "onboarding": ["export", "getting-started", "wizard-state"],
     "seo": ["analyze", "check", "core-web-vitals", "detect", "validate"],
-    "subscriptions": ["checkout", "portal", "preview-upgrade", "setup-intent", "stripe"],
     "technician-management": ["dashboard"]
   }
 }
