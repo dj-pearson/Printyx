@@ -72,7 +72,6 @@ import {
   registerProductModelsRoutes,
   registerProductPricingRoutes,
   registerSoftwareProductsRoutes,
-  registerDataEnrichmentRoutes,
   registerManufacturerIntegrationRoutes,
 } from './domains/products';
 
@@ -420,7 +419,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Salesforce & Data Enrichment ─────────────────────────────────
   registerSalesforceRoutes(app);
-  registerDataEnrichmentRoutes(app);
   registerQuickBooksRoutes(app);
 
   // ─── Sales Pipeline ───────────────────────────────────────────────

@@ -781,6 +781,17 @@ export function registerEdgeFunctionProxy(app: any) {
     // 200, and whose credential panel 404'd.
     '/api/apollo': 'apollo',
 
+    // WF-S-10: enrichment. The edge function serves every endpoint any client
+    // calls - DataEnrichment.tsx asks for contacts, companies, campaigns and
+    // analytics and nothing else, across all eight trees - and it carries the
+    // import branches that WRITE enriched_contacts.
+    // server/routes-data-enrichment.ts is deleted with this entry, so dev stops
+    // answering four endpoints production has always 404'd: GET /contacts/:id,
+    // POST /contacts, and the two /search/{zoominfo,apollo}/build helpers,
+    // which returned a query OBJECT for the caller to send itself and had no
+    // caller anywhere.
+    '/api/enrichment': 'enrichment',
+
     // WF-P-06: placing an approved PO with the manufacturer. No Express router
     // ever served this prefix, so proxying it is the whole of dev's story too -
     // there is nothing to shadow.
