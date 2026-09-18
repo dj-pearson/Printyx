@@ -76,7 +76,7 @@ for (const abs of walk(FUNCTIONS)) {
   const rel = relative(ROOT, abs).split('\\').join('/');
   scanned += 1;
   const raw = readFileSync(abs, 'utf8');
-  if (raw.includes("_shared/resolve-tenant.ts")) adopters += 1;
+  if (raw.includes('_shared/resolve-tenant.ts')) adopters += 1;
   if (EXEMPT.has(rel)) continue;
 
   const code = stripComments(raw);
@@ -84,7 +84,7 @@ for (const abs of walk(FUNCTIONS)) {
   if (code.includes("req.headers.get('x-tenant-id')")) {
     const hardened = MISMATCH_GUARD.test(code) && ADMIN_GATE.test(code);
     if (!hardened) {
-      findings.push([rel, "reads x-tenant-id without the mismatch guard and platform-admin gate"]);
+      findings.push([rel, 'reads x-tenant-id without the mismatch guard and platform-admin gate']);
       continue;
     }
   }
@@ -101,7 +101,9 @@ for (const abs of walk(FUNCTIONS)) {
 }
 
 if (findings.length) {
-  console.error(`check:tenant-resolution - ${findings.length} edge file(s) resolve tenancy outside ${HELPER}:\n`);
+  console.error(
+    `check:tenant-resolution - ${findings.length} edge file(s) resolve tenancy outside ${HELPER}:\n`,
+  );
   for (const [f, why] of findings) console.error(`  ${f}\n    ${why}`);
   console.error(`\nUse resolveTenantId(req, user, admin) from ${HELPER}.`);
   process.exit(1);

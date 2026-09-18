@@ -61,7 +61,10 @@ for (const m of seoConfig.matchAll(new RegExp(`\\\${SITE_URL}(/[^\`'"]*)`, 'g'))
 }
 for (const m of seoConfig.matchAll(/ogImage: '([^']+)'/g)) {
   const value = m[1];
-  requireAsset(value.startsWith(SITE_URL) ? value.slice(SITE_URL.length) : value, 'seoConfig.ts ogImage');
+  requireAsset(
+    value.startsWith(SITE_URL) ? value.slice(SITE_URL.length) : value,
+    'seoConfig.ts ogImage',
+  );
 }
 
 // 4. Every JSON-LD block parses. An unparseable block is ignored wholesale by
@@ -88,14 +91,14 @@ function pngSize(publicPath) {
 }
 for (const block of blocks) {
   for (const m of block[1].matchAll(
-    /"url":\s*"([^"]+\.png)"[\s\S]{0,120}?"width":\s*(\d+),\s*"height":\s*(\d+)/g
+    /"url":\s*"([^"]+\.png)"[\s\S]{0,120}?"width":\s*(\d+),\s*"height":\s*(\d+)/g,
   )) {
     const path = m[1].startsWith(SITE_URL) ? m[1].slice(SITE_URL.length) : m[1];
     if (!existsSync(resolve(PUBLIC_DIR, `.${path}`))) continue; // already reported above
     const actual = pngSize(path);
     if (actual && (actual.width !== Number(m[2]) || actual.height !== Number(m[3]))) {
       failures.push(
-        `index.html: JSON-LD declares ${path} as ${m[2]}x${m[3]}, the file is ${actual.width}x${actual.height}`
+        `index.html: JSON-LD declares ${path} as ${m[2]}x${m[3]}, the file is ${actual.width}x${actual.height}`,
       );
     }
   }
@@ -107,7 +110,7 @@ for (const block of blocks) {
 const withoutComments = html.replace(/<!--[\s\S]*?-->/g, '');
 if (/aggregateRating/.test(withoutComments)) {
   failures.push(
-    'index.html: aggregateRating is back in the static head. Printyx has no countable reviews (LEGAL-002).'
+    'index.html: aggregateRating is back in the static head. Printyx has no countable reviews (LEGAL-002).',
   );
 }
 
@@ -118,10 +121,7 @@ if (/aggregateRating/.test(withoutComments)) {
 //    and the page ships two conflicting values for the same key. Invisible to
 //    tsc, invisible to any test that does not render the DOM, and invisible in
 //    the browser because both tags are valid HTML.
-const provider = readFileSync(
-  resolve(ROOT, 'client/src/lib/seo/SEOProvider.tsx'),
-  'utf8'
-);
+const provider = readFileSync(resolve(ROOT, 'client/src/lib/seo/SEOProvider.tsx'), 'utf8');
 const providerAttr = new Map();
 for (const m of provider.matchAll(/setMeta\(\s*'([^']+)'\s*,[^;]*?\)\s*;/g)) {
   // The third argument is isProperty; absent means `name`.
@@ -133,7 +133,7 @@ for (const m of html.matchAll(/<meta\s+((?:name|property)="[^"]+")/g)) {
   if (want && want !== attr) {
     failures.push(
       `index.html: <meta ${attr}="${key}"> but SEOProvider writes ${want}="${key}" - ` +
-        'the provider will append a second tag instead of updating this one'
+        'the provider will append a second tag instead of updating this one',
     );
   }
 }
@@ -143,25 +143,23 @@ for (const m of html.matchAll(/<meta\s+((?:name|property)="[^"]+")/g)) {
 //    Stripe products, and the head's offer had the right number with the wrong
 //    unit - the unit a rich result would have shown (SEO-007).
 const plansSource = readFileSync(resolve(ROOT, 'shared/pricing-plans.ts'), 'utf8');
-const monthlyPrices = [...plansSource.matchAll(/monthlyPrice:\s*(\d+)/g)].map((m) =>
-  Number(m[1])
-);
+const monthlyPrices = [...plansSource.matchAll(/monthlyPrice:\s*(\d+)/g)].map((m) => Number(m[1]));
 if (monthlyPrices.length === 0) {
   failures.push('shared/pricing-plans.ts: no monthlyPrice entries found');
 } else {
   const entryDollars = Math.min(...monthlyPrices) / 100;
   for (const block of blocks) {
     for (const m of block[1].matchAll(
-      /"@type":\s*"UnitPriceSpecification"[\s\S]{0,400}?"price":\s*"(\d+(?:\.\d+)?)"[\s\S]{0,400}?"unitText":\s*"([^"]+)"/g
+      /"@type":\s*"UnitPriceSpecification"[\s\S]{0,400}?"price":\s*"(\d+(?:\.\d+)?)"[\s\S]{0,400}?"unitText":\s*"([^"]+)"/g,
     )) {
       if (Number(m[1]) !== entryDollars) {
         failures.push(
-          `index.html: offer price $${m[1]} does not match the cheapest plan ($${entryDollars})`
+          `index.html: offer price $${m[1]} does not match the cheapest plan ($${entryDollars})`,
         );
       }
       if (/per user/i.test(m[2])) {
         failures.push(
-          `index.html: offer unit "${m[2]}" - these plans are flat per tenant, not per seat`
+          `index.html: offer unit "${m[2]}" - these plans are flat per tenant, not per seat`,
         );
       }
     }
@@ -206,15 +204,13 @@ for (const file of walk(CLIENT_DIR)) {
   // URL scheme. A naive /\/\/.*$/ ate every line containing https:// - which
   // made the first version of this check silently match nothing, and it passed.
   // The mutation test is what caught that; the check alone looked healthy.
-  const stripped = src
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+  const stripped = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
   // A placeholder= hint is a form example, not a URL the page emits, but it
   // still teaches the reader a path - so it is checked the same way.
   for (const m of stripped.matchAll(ASSET_URL)) {
     if (!existsSync(resolve(PUBLIC_DIR, `.${m[1]}`))) {
       failures.push(
-        `${file.slice(ROOT.length + 1)}: ${SITE_URL}${m[1]} -> no such file under client/public`
+        `${file.slice(ROOT.length + 1)}: ${SITE_URL}${m[1]} -> no such file under client/public`,
       );
     }
   }

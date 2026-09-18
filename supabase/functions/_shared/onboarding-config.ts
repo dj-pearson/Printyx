@@ -147,7 +147,11 @@ export function buildPrintManagementRow(
 
 /** A comma or newline separated line to a trimmed list. */
 export function splitList(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map(String).map((v) => v.trim()).filter(Boolean);
+  if (Array.isArray(value))
+    return value
+      .map(String)
+      .map((v) => v.trim())
+      .filter(Boolean);
   if (typeof value !== 'string') return [];
   return value
     .split(/[\n,]/)

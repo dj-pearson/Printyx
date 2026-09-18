@@ -568,14 +568,12 @@ export default async function handler(req: Request) {
         | Record<string, unknown>
         | undefined;
       if (networkInput && typeof networkInput === 'object') {
-        const { error: netError } = await admin
-          .from('onboarding_network_config')
-          .insert(
-            buildNetworkConfigRow(networkInput, {
-              tenantId,
-              checklistId: String(checklist.id),
-            }),
-          );
+        const { error: netError } = await admin.from('onboarding_network_config').insert(
+          buildNetworkConfigRow(networkInput, {
+            tenantId,
+            checklistId: String(checklist.id),
+          }),
+        );
         if (netError) {
           console.error('Error writing network config:', netError);
           configWarnings.push('The network configuration was not saved.');
@@ -592,14 +590,12 @@ export default async function handler(req: Request) {
         | Record<string, unknown>
         | undefined;
       if (printInput && typeof printInput === 'object') {
-        const { error: printError } = await admin
-          .from('onboarding_print_management')
-          .insert(
-            buildPrintManagementRow(printInput, {
-              tenantId,
-              checklistId: String(checklist.id),
-            }),
-          );
+        const { error: printError } = await admin.from('onboarding_print_management').insert(
+          buildPrintManagementRow(printInput, {
+            tenantId,
+            checklistId: String(checklist.id),
+          }),
+        );
         if (printError) {
           console.error('Error writing print management config:', printError);
           configWarnings.push('The print management configuration was not saved.');

@@ -53,7 +53,9 @@ for (const file of files) {
 if (findings.length) {
   console.error('Blob download with no response.ok check (saves the error body as the file):\n');
   for (const f of findings) console.error('  ' + f);
-  console.error(`\n${findings.length} finding(s). Use downloadAuthedFile from @/lib/authed-download.`);
+  console.error(
+    `\n${findings.length} finding(s). Use downloadAuthedFile from @/lib/authed-download.`,
+  );
   process.exit(1);
 }
 console.log(`check:blob-downloads - ${files.length} files, every download checks its response.`);

@@ -19,31 +19,46 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-const files=[];
-(function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,e.name);if(e.isDirectory())walk(p);else if(p.endsWith('.tsx'))files.push(p);}})('client/src');
+const files = [];
+(function walk(d) {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name);
+    if (e.isDirectory()) walk(p);
+    else if (p.endsWith('.tsx')) files.push(p);
+  }
+})('client/src');
 
-const ACTION_WORDS=/\b(save|submit|create|add|update|delete|remove|send|apply|generate|export|import|run|start|assign|approve|reject|confirm|schedule|invite|publish|sync|refresh|upload|download|print|resolve|archive|convert|record|log|book|pay|renew|cancel)\b/i;
+const ACTION_WORDS =
+  /\b(save|submit|create|add|update|delete|remove|send|apply|generate|export|import|run|start|assign|approve|reject|confirm|schedule|invite|publish|sync|refresh|upload|download|print|resolve|archive|convert|record|log|book|pay|renew|cancel)\b/i;
 
-let total=0;
-for(const f of files){
-  const src=fs.readFileSync(f,'utf8');
-  const lines=src.split('\n');
+let total = 0;
+for (const f of files) {
+  const src = fs.readFileSync(f, 'utf8');
+  const lines = src.split('\n');
   // find <Button ...> ... </Button> blocks
-  const re=/<Button\b([^]*?)>([^]*?)<\/Button>/g;
+  const re = /<Button\b([^]*?)>([^]*?)<\/Button>/g;
   let m;
-  while((m=re.exec(src))!==null){
-    const attrs=m[1];
-    const label=m[2].replace(/<[^>]*>/g,'').replace(/\{[^}]*\}/g,'').trim();
-    if(!label) continue;
-    if(/onClick|type="submit"|type={'submit'}|asChild|href=/.test(attrs)) continue;
-    if(!ACTION_WORDS.test(label)) continue;
+  while ((m = re.exec(src)) !== null) {
+    const attrs = m[1];
+    const label = m[2]
+      .replace(/<[^>]*>/g, '')
+      .replace(/\{[^}]*\}/g, '')
+      .trim();
+    if (!label) continue;
+    if (/onClick|type="submit"|type={'submit'}|asChild|href=/.test(attrs)) continue;
+    if (!ACTION_WORDS.test(label)) continue;
     // skip if wrapped by a <form onSubmit> — crude: file has onSubmit and button has no type at all
-    const line=src.slice(0,m.index).split('\n').length;
+    const line = src.slice(0, m.index).split('\n').length;
     // check the ~30 lines before for a DialogTrigger/form
-    const before=lines.slice(Math.max(0,line-15),line).join('\n');
-    if(/DialogTrigger|AlertDialogTrigger|PopoverTrigger|SheetTrigger|DropdownMenuTrigger|<form/.test(before)) continue;
-    console.log(`${f}:${line}  "${label.replace(/\s+/g,' ').slice(0,50)}"`);
+    const before = lines.slice(Math.max(0, line - 15), line).join('\n');
+    if (
+      /DialogTrigger|AlertDialogTrigger|PopoverTrigger|SheetTrigger|DropdownMenuTrigger|<form/.test(
+        before,
+      )
+    )
+      continue;
+    console.log(`${f}:${line}  "${label.replace(/\s+/g, ' ').slice(0, 50)}"`);
     total++;
   }
 }
-console.log('total candidates',total);
+console.log('total candidates', total);
