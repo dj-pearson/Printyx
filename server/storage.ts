@@ -306,6 +306,7 @@ import {
   type WorkflowApproval,
   type InsertWorkflowApproval,
 } from '@shared/schema';
+import { encryptCredentialFields } from './services/credential-envelope';
 import {
   // Lead Scoring schemas
   leadScoringRules,
@@ -5963,10 +5964,22 @@ export class DatabaseStorage implements IStorage {
     return credential;
   }
 
+  /**
+   * Every Node writer of `integration_credentials` goes through these two, so
+   * encryption lives here rather than in each caller (SEC-CRED-VAULT-001).
+   * Reads deliberately do NOT auto-decrypt: ciphertext is the safe default to
+   * hand around, and the one place that needs the key in the clear -
+   * server/apollo-client.ts - calls readSecret itself. Both throw
+   * CredentialVaultError when no master key is configured; a save that cannot
+   * encrypt fails rather than storing plaintext.
+   */
   async createIntegrationCredential(
     credential: InsertIntegrationCredential,
   ): Promise<IntegrationCredential> {
-    const [newCredential] = await db.insert(integrationCredentials).values(credential).returning();
+    const [newCredential] = await db
+      .insert(integrationCredentials)
+      .values(encryptCredentialFields(credential))
+      .returning();
     return newCredential;
   }
 
@@ -5977,7 +5990,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<IntegrationCredential | undefined> {
     const [updatedCredential] = await db
       .update(integrationCredentials)
-      .set({ ...credential, updatedAt: new Date() })
+      .set({ ...encryptCredentialFields(credential), updatedAt: new Date() })
       .where(and(eq(integrationCredentials.id, id), eq(integrationCredentials.tenantId, tenantId)))
       .returning();
     return updatedCredential;

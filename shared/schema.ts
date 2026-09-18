@@ -7520,7 +7520,12 @@ export const integrationCredentials = pgTable(
     integrationName: varchar('integration_name').notNull(), // Display name
     status: varchar('status').notNull().default('active'), // active, inactive, error
 
-    // Credentials (encrypted at application level)
+    // Credentials. Encrypted at rest through the one envelope both runtimes
+    // read - server/services/credential-envelope.ts and
+    // supabase/functions/_shared/credential-envelope.ts (SEC-CRED-VAULT-001).
+    // A value stored before that story has no `pvc1:` prefix and is plaintext;
+    // reads tolerate it and the next write replaces it. Never SELECT one of
+    // these columns straight into a response - _shared/credentials.ts redacts.
     apiKey: text('api_key'),
     apiSecret: text('api_secret'),
     accessToken: text('access_token'),

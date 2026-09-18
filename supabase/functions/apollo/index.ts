@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { CredentialVaultError, encryptSecret, readSecret } from '../_shared/credential-envelope.ts';
 import {
   ApolloApiError,
   describeApolloFailure,
@@ -181,14 +182,13 @@ async function addContactToCrm(
 /**
  * The tenant's Apollo API key, or null when none is configured (WF-S-05).
  *
- * STORED IN PLAINTEXT, and that is unchanged here on purpose. The key lives in
- * `integration_credentials.api_key` exactly as the Express handler this
- * replaces wrote it, because server/routes/chrome-extension-routes.ts reads the
- * same column through createApolloClientForTenant. Encrypting on this side
- * alone would leave that route holding ciphertext it cannot read, and
- * encrypting both sides means a Node reader for the Deno vault's envelope plus
- * a migration for every provider row in the table - which is a story about
- * `integration_credentials`, not about Apollo. Filed as SEC-CRED-VAULT-001.
+ * `api_key` comes back DECRYPTED, so every caller below reads plaintext and
+ * nothing else in this file needs to know about the vault (SEC-CRED-VAULT-001).
+ * A row written before that story carries no envelope prefix and readSecret
+ * hands it back unchanged, which is what stops a working integration breaking
+ * on the deploy; the next save re-encrypts it. The same envelope is read on the
+ * Node side by server/apollo-client.ts, which is why one format was the whole
+ * point - see server/services/credential-envelope.ts.
  */
 // deno-lint-ignore no-explicit-any
 async function readApolloCredential(admin: any, tenantId: string) {
@@ -199,7 +199,8 @@ async function readApolloCredential(admin: any, tenantId: string) {
     .eq('provider', 'apollo')
     .maybeSingle();
   if (error) throw new Error(`Failed to read Apollo credential: ${error.message}`);
-  return data ?? null;
+  if (!data) return null;
+  return { ...data, api_key: await readSecret(data.api_key) };
 }
 
 /**
@@ -380,11 +381,32 @@ export default async function handler(req: Request) {
       const existing = await readApolloCredential(admin, tenantId);
       const now = new Date().toISOString();
 
+      // Fail the save rather than store the key in the clear. With no master
+      // key in the edge environment this endpoint is the one that stops
+      // working, which is the point: a 503 naming the variable is recoverable,
+      // a plaintext key that nobody is told about is not.
+      let storedKey: string;
+      try {
+        storedKey = await encryptSecret(apiKey);
+      } catch (err) {
+        console.error('Apollo credential encryption failed:', err);
+        return createCorsResponse(
+          {
+            error:
+              err instanceof CredentialVaultError
+                ? 'Credential vault is not configured on this deployment (PRINTYX_CREDENTIAL_VAULT_KEY). The API key was not saved.'
+                : 'Failed to save credentials',
+          },
+          503,
+          req,
+        );
+      }
+
       if (existing) {
         const { data: updated, error } = await admin
           .from('integration_credentials')
           .update({
-            api_key: apiKey,
+            api_key: storedKey,
             status: 'active',
             updated_by: user.id,
             updated_at: now,
@@ -411,7 +433,7 @@ export default async function handler(req: Request) {
           tenant_id: tenantId,
           provider: 'apollo',
           integration_name: 'Apollo.io Lead Enrichment',
-          api_key: apiKey,
+          api_key: storedKey,
           status: 'active',
           created_by: user.id,
           updated_by: user.id,

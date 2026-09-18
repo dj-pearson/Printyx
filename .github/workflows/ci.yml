@@ -145,6 +145,8 @@ jobs:
         run: npm run check:unwrapped-response
       - name: Permission-vocabulary ratchet (SEC-EDGE-001)
         run: npm run check:permission-vocab
+      - name: Credential-vault gate (SEC-CRED-VAULT-001)
+        run: npm run check:credential-vault
       - name: Edge path-normalization ratchet (EDGE-002e)
         run: npm run check:edge-paths
 

@@ -198,7 +198,9 @@
     "check:sitemap": "tsx scripts/generate-sitemap.mts --check",
     "seo:social-images": "node scripts/generate-social-images.mjs",
     "check:seo-assets": "node scripts/check-seo-assets.mjs",
-    "seo:llms": "tsx scripts/generate-llms-txt.mts"
+    "seo:llms": "tsx scripts/generate-llms-txt.mts",
+    "creds:encrypt": "tsx scripts/encrypt-integration-credentials.ts",
+    "check:credential-vault": "node scripts/check-credential-vault.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
