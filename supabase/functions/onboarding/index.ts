@@ -1,6 +1,13 @@
 // Onboarding Edge Function
 // Handles customer onboarding workflows, checklists, and equipment setup
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+import {
+  buildNetworkConfigRow,
+  buildPrintManagementRow,
+  NETWORK_FIELDS_WITHOUT_COLUMNS,
+  PRINT_FIELDS_WITHOUT_COLUMNS,
+  unpersistedFields,
+} from '../_shared/onboarding-config.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
@@ -284,6 +291,105 @@ export default async function handler(req: Request) {
       );
     }
 
+    // ───────── WF-L-10: network-config and print-management, as siblings ──────
+    //
+    // A checklist create writes both from the form payload. These are for the
+    // case the form cannot cover: an installer who configures the network on
+    // site, after the checklist was raised, and needs is_configured to become
+    // true - which is what WF-L-13 gates installed -> active on.
+    //
+    // PUT rather than PATCH: there is at most one row per checklist per
+    // concern, and an installer sending half a network configuration means
+    // "this is the configuration", not "merge this into whatever is there".
+
+    if (
+      req.method === 'GET' &&
+      checklistId &&
+      (subResource === 'network-config' || subResource === 'print-management')
+    ) {
+      const table =
+        subResource === 'network-config'
+          ? 'onboarding_network_config'
+          : 'onboarding_print_management';
+      const { data, error } = await admin
+        .from(table)
+        .select('*')
+        .eq('checklist_id', checklistId)
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error(`Error loading ${table}:`, error);
+        return createCorsResponse({ error: `Failed to load ${subResource}` }, 500, req);
+      }
+      return createCorsResponse(data || [], 200, req);
+    }
+
+    if (
+      (req.method === 'PUT' || req.method === 'POST') &&
+      checklistId &&
+      (subResource === 'network-config' || subResource === 'print-management')
+    ) {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const isNetwork = subResource === 'network-config';
+      const table = isNetwork ? 'onboarding_network_config' : 'onboarding_print_management';
+
+      // The checklist is confirmed to be this tenant's BEFORE anything is
+      // written against its id (SEC-TENANT-005): a checklist id travels in a
+      // URL, and hard to guess is not an authorisation check.
+      const { data: owner } = await admin
+        .from('equipment_onboarding_checklists')
+        .select('id')
+        .eq('id', checklistId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (!owner) {
+        return createCorsResponse({ error: 'Checklist not found' }, 404, req);
+      }
+
+      const equipmentId = (body.equipmentId ?? body.equipment_id ?? null) as string | null;
+      const row = isNetwork
+        ? buildNetworkConfigRow(body, { tenantId, checklistId, equipmentId })
+        : buildPrintManagementRow(body, { tenantId, checklistId, equipmentId });
+
+      // One row per checklist per concern, replaced in place. There is no
+      // unique index to name in onConflict, and an upsert without one inserts a
+      // duplicate on every save.
+      const { data: existing } = await admin
+        .from(table)
+        .select('id')
+        .eq('checklist_id', checklistId)
+        .eq('tenant_id', tenantId)
+        .limit(1)
+        .maybeSingle();
+
+      const { created_at: _created, ...update } = row;
+      const { data, error } = existing
+        ? await admin
+            .from(table)
+            .update(update)
+            .eq('id', existing.id)
+            .eq('tenant_id', tenantId)
+            .select()
+            .single()
+        : await admin.from(table).insert(row).select().single();
+
+      if (error) {
+        console.error(`Error saving ${table}:`, error);
+        return createCorsResponse({ error: `Failed to save ${subResource}` }, 500, req);
+      }
+
+      const skipped = unpersistedFields(
+        body,
+        isNetwork ? NETWORK_FIELDS_WITHOUT_COLUMNS : PRINT_FIELDS_WITHOUT_COLUMNS,
+      );
+      return createCorsResponse(
+        skipped.length > 0 ? { ...data, unpersisted: skipped } : data,
+        existing ? 200 : 201,
+        req,
+      );
+    }
+
     // GET /onboarding/:id/equipment - Get checklist equipment
     if (req.method === 'GET' && checklistId && subResource === 'equipment') {
       const { data: equipment, error } = await admin
@@ -447,8 +553,71 @@ export default async function handler(req: Request) {
           ? ['notes: equipment_onboarding_checklists has description and special_instructions']
           : [];
 
+      // WF-L-10: the networkConfig and printManagement steps get their own
+      // rows. EnhancedOnboardingForm has collected twenty-two network fields
+      // and twenty-one print fields since it was written, and this handler
+      // dropped every one of them - onboarding_network_config and
+      // onboarding_print_management had no writer anywhere, while the checklist
+      // PDF renderer already READ both and printed an empty section each time.
+      //
+      // Written after the checklist and NOT inside its transaction, because
+      // PostgREST has none: a failure here must not lose the checklist, so it
+      // is reported on the response instead of thrown.
+      const configWarnings: string[] = [];
+      const networkInput = (body.networkConfig ?? body.network_config) as
+        | Record<string, unknown>
+        | undefined;
+      if (networkInput && typeof networkInput === 'object') {
+        const { error: netError } = await admin
+          .from('onboarding_network_config')
+          .insert(
+            buildNetworkConfigRow(networkInput, {
+              tenantId,
+              checklistId: String(checklist.id),
+            }),
+          );
+        if (netError) {
+          console.error('Error writing network config:', netError);
+          configWarnings.push('The network configuration was not saved.');
+        } else {
+          unpersisted.push(
+            ...unpersistedFields(networkInput, NETWORK_FIELDS_WITHOUT_COLUMNS).map(
+              (f) => `networkConfig.${f}`,
+            ),
+          );
+        }
+      }
+
+      const printInput = (body.printManagement ?? body.print_management) as
+        | Record<string, unknown>
+        | undefined;
+      if (printInput && typeof printInput === 'object') {
+        const { error: printError } = await admin
+          .from('onboarding_print_management')
+          .insert(
+            buildPrintManagementRow(printInput, {
+              tenantId,
+              checklistId: String(checklist.id),
+            }),
+          );
+        if (printError) {
+          console.error('Error writing print management config:', printError);
+          configWarnings.push('The print management configuration was not saved.');
+        } else {
+          unpersisted.push(
+            ...unpersistedFields(printInput, PRINT_FIELDS_WITHOUT_COLUMNS).map(
+              (f) => `printManagement.${f}`,
+            ),
+          );
+        }
+      }
+
       return createCorsResponse(
-        unpersisted.length > 0 ? { ...checklist, unpersisted } : checklist,
+        {
+          ...checklist,
+          ...(unpersisted.length > 0 ? { unpersisted } : {}),
+          ...(configWarnings.length > 0 ? { warnings: configWarnings } : {}),
+        },
         201,
         req,
       );

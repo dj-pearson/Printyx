@@ -21,21 +21,23 @@
 //               open is not a gate, it is an outage. They are reported by name
 //               as unverifiable and recorded that way on the transition.
 //   AWAITING A   the query is right and the table is real, but NOTHING WRITES
-//   WRITER       IT YET. `network_configured` is the only one: the column is
-//               onboarding_network_config.is_configured, the table is declared,
-//               the onboarding function READS it, and no code anywhere inserts
-//               a row - that is WF-L-10, which is open. It reports its true
-//               verdict (absent) and does NOT block, because blocking on a
-//               table nobody can fill would brick installed -> active for every
-//               tenant. It flips to blocking the day WF-L-10 ships a writer,
-//               which is a one-line change here.
+//   WRITER       IT YET. Empty today - see below.
 //
-// That third kind is worth naming rather than folding into either neighbour. It
-// is not unverifiable - the query works and will start returning rows - and it
-// is not enforceable yet. The AUDIT-028 shape ("nobody fills this in") applied
-// to a gate, and the trap it avoids is one I walked into while writing this
-// file: `network_configured` was checkable and blocking for about ten minutes,
-// which would have shipped exactly the outage the paragraph above warns about.
+// That third kind is worth keeping even while empty. It is not unverifiable -
+// the query works and would start returning rows - and it is not enforceable
+// yet, and folding it into either neighbour loses one of those two facts. The
+// AUDIT-028 shape ("nobody fills this in") applied to a gate rather than to a
+// dashboard.
+//
+// `network_configured` WAS the only entry. WF-L-13 classified it that way
+// because onboarding_network_config had no writer anywhere: the onboarding
+// function read it and nothing inserted a row, so blocking on it would have
+// bricked installed -> active for every tenant. WF-L-10 SHIPPED THAT WRITER -
+// the checklist create writes the form's networkConfig step, and PUT
+// /onboarding/:id/network-config covers an installer who configures on site -
+// so it is a blocking requirement now, which is what AC4 of both stories asked
+// for. The set stays, because the next requirement in this position will want
+// it.
 //
 // Blocking on an unbacked requirement would have bricked the lifecycle: 17 of
 // the 25 strings have no possible evidence, so every transition in the product
@@ -70,9 +72,10 @@ export const CHECKABLE_REQUIREMENTS = {
  * and the verdict is already right, so that is the only change needed.
  */
 export const AWAITING_WRITER = new Set<string>([
-  // supabase/functions/onboarding/ reads onboarding_network_config and no code
-  // in any tree inserts into it. WF-L-10 owns that.
-  'network_configured',
+  // Empty since WF-L-10 gave onboarding_network_config a writer. Add a
+  // requirement here when its query is correct but its table has no writer yet,
+  // and take it out the day one lands - that is the only change needed, because
+  // the verdict is already right either way.
 ]);
 
 export type CheckableRequirement = keyof typeof CHECKABLE_REQUIREMENTS;

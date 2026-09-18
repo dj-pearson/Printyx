@@ -138,28 +138,23 @@ describe('a checkable requirement blocks when its record is absent', () => {
     expect(evaluateRequirement('delivery_signature', delivered).satisfied).toBe(true);
   });
 
-  it('network_configured reports absent but does NOT block, because nothing writes it', () => {
-    // The query is right and the table is declared; supabase/functions/onboarding
-    // READS it and no code in any tree inserts a row. Blocking on a table nobody
-    // can fill would brick installed -> active for every tenant - the exact
-    // outage this module's header warns about, which I walked into for about ten
-    // minutes while writing it. WF-L-10 owns the writer; remove the entry from
-    // AWAITING_WRITER the day it lands.
-    expect(AWAITING_WRITER.has('network_configured')).toBe(true);
+  it('network_configured BLOCKS now, because WF-L-10 gave it a writer', () => {
+    // CORRECTED 2026-09-18 (WF-L-10). This asserted the opposite and was right
+    // at the time: onboarding_network_config had no writer anywhere, so
+    // blocking on it would have bricked installed -> active for every tenant.
+    // The checklist create writes the form's networkConfig step now, and
+    // PUT /onboarding/:id/network-config covers an on-site change, so the gate
+    // can be enforced. AWAITING_WRITER is empty and kept for the next
+    // requirement in that position.
+    expect(AWAITING_WRITER.has('network_configured')).toBe(false);
     const report = evaluateRequirements(['network_configured'], EMPTY_EVIDENCE);
-    expect(report.blocked).toBe(false);
-    expect(report.missing).toEqual([]);
-    expect(report.awaitingWriter).toEqual(['network_configured']);
+    expect(report.blocked).toBe(true);
+    expect(report.missing).toEqual(['network_configured']);
+    expect(report.awaitingWriter).toEqual([]);
   });
 
-  it('but it is still reported honestly as absent, not as unverifiable', () => {
-    const verdict = evaluateRequirement('network_configured', EMPTY_EVIDENCE);
-    expect(verdict.satisfied).toBe(false);
-    expect(verdict.blocking).toBe(false);
-  });
-
-  it('and installed -> active is therefore NOT bricked', () => {
-    const report = evaluateRequirements(
+  it('and installed -> active needs it, so the whole chain is enforced', () => {
+    const withoutNetwork = evaluateRequirements(
       getValidationRequirements('installed', 'active'),
       evidence({
         installations: [{ status: 'completed' }],
@@ -168,8 +163,20 @@ describe('a checkable requirement blocks when its record is absent', () => {
         ],
       }),
     );
-    expect(report.blocked).toBe(false);
-    expect(report.satisfied).toEqual(['installation_completed', 'acceptance_signed']);
+    expect(withoutNetwork.blocked).toBe(true);
+    expect(withoutNetwork.missing).toEqual(['network_configured']);
+
+    const withNetwork = evaluateRequirements(
+      getValidationRequirements('installed', 'active'),
+      evidence({
+        installations: [{ status: 'completed' }],
+        signatures: [
+          { signature_type: 'installation', signer_name: 'A', signature_data_url: 'data:x' },
+        ],
+        networkConfigs: [{ is_configured: true }],
+      }),
+    );
+    expect(withNetwork.blocked).toBe(false);
   });
 
   it('network_configured needs is_configured true, not merely a row', () => {
