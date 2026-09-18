@@ -1,5 +1,7 @@
 // Pricing Edge Function
 // Handles product pricing, company settings, and price calculations
+import { getCorsHeaders } from '../_shared/cors.ts';
+import { toCsv } from '../_shared/csv.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { calculateRepCost, canSeeDealerCost } from '../_shared/pricing-math.ts';
@@ -224,7 +226,18 @@ export default async function handler(req: Request) {
     // put a third margin formula in the codebase, which is how the two that
     // disagreed with shared/quote-math.ts got there.
     // ========================================================================
-    if (req.method === 'GET' && resource === 'margin-report' && !resourceId) {
+    // GET /pricing/margin-report and /pricing/margin-report/export
+    //
+    // PLATFORM-EXPORT-001 found the export path existed on Express ONLY, so it
+    // worked in dev and 404'd in production the moment getApiUrl sent
+    // /api/pricing to this function. Same report, same filters, two
+    // representations - sharing the branch is what keeps them from drifting
+    // into two different definitions of "margin".
+    if (
+      req.method === 'GET' &&
+      resource === 'margin-report' &&
+      (!resourceId || resourceId === 'export')
+    ) {
       if (!canSeeDealerCost(userRole)) {
         return createCorsResponse(
           { error: 'Insufficient permissions to view margin report' },
@@ -291,6 +304,48 @@ export default async function handler(req: Request) {
           repMarginPercentage: num(quote.total_rep_margin_percentage),
         };
       });
+
+      if (resourceId === 'export') {
+        const headers = [
+          'Quote Number',
+          'Date',
+          'Sales Rep',
+          'Total Dealer Cost',
+          'Total Rep Cost',
+          'Total Customer Price',
+          'Total Margin ($)',
+          'Margin %',
+          'Rep Margin ($)',
+          'Rep Margin %',
+        ];
+        // A blank cell for a missing quote number, never the string
+        // "undefined"; the numbers are already coerced by num() above, where a
+        // non-numeric column reads as 0 rather than NaN.
+        const csv = toCsv([
+          headers,
+          ...report.map((r) => [
+            String(r.quoteNumber ?? ''),
+            r.quoteDate ? String(r.quoteDate).slice(0, 10) : '',
+            r.salesRep,
+            r.totalDealerCost.toFixed(2),
+            r.totalRepCost.toFixed(2),
+            r.totalCustomerPrice.toFixed(2),
+            r.totalMargin.toFixed(2),
+            r.marginPercentage.toFixed(1),
+            r.totalRepMargin.toFixed(2),
+            r.repMarginPercentage.toFixed(1),
+          ]),
+        ]);
+        const stamp = new Date().toISOString().slice(0, 10);
+        return new Response(csv, {
+          status: 200,
+          headers: {
+            ...getCorsHeaders(req.headers.get('Origin')),
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename="margin-report-${stamp}.csv"`,
+          },
+        });
+      }
 
       return createCorsResponse({ count: report.length, report }, 200, req);
     }

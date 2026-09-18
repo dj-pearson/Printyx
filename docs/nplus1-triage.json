@@ -135,7 +135,7 @@
       "why": "A draft service ticket per high-confidence prediction. Only the machines over the threshold reach the insert, so the count is normally small, but a fleet-wide degradation would make it large. Batchable."
     },
     {
-      "loop": "pricing/index.ts:493",
+      "loop": "pricing/index.ts:548",
       "table": "product_pricing",
       "verdict": "deliberate",
       "why": "A bulk price update where every row sets DIFFERENT columns to different values. One statement cannot express that, and the response reports per row."

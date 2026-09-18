@@ -4,6 +4,9 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { cachedRoleLookup } from '../_shared/auth-cache.ts';
+import { getCorsHeaders } from '../_shared/cors.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import { toCsv } from '../_shared/csv.ts';
 
 type Row = Record<string, any>;
 
@@ -144,6 +147,80 @@ function assignmentRuleWrite(body: Row): Row {
 
 // Columns a caller may write on platform_business_records. Anything else is
 // dropped rather than handed to PostgREST, which would answer PGRST204.
+/**
+ * The export's columns, in the order a reader wants them, with headings a
+ * person recognises. Deliberately NOT `select('*')`: an export is a published
+ * artefact, so adding a column to the table should not silently publish it.
+ */
+const EXPORT_COLUMNS = [
+  'company_name',
+  'record_type',
+  'status',
+  'primary_contact_name',
+  'primary_contact_email',
+  'phone',
+  'website',
+  'industry',
+  'employee_count',
+  'estimated_revenue',
+  'city',
+  'state',
+  'postal_code',
+  'country',
+  'lead_score',
+  'lead_grade',
+  'lead_tier',
+  'lead_source',
+  'assigned_rep',
+  'current_mrr',
+  'churn_risk',
+  'customer_since',
+  'last_activity_date',
+  'created_at',
+] as const;
+
+const EXPORT_HEADERS: Record<string, string> = {
+  company_name: 'Company',
+  record_type: 'Record Type',
+  status: 'Status',
+  primary_contact_name: 'Contact',
+  primary_contact_email: 'Email',
+  phone: 'Phone',
+  website: 'Website',
+  industry: 'Industry',
+  employee_count: 'Employees',
+  estimated_revenue: 'Estimated Revenue',
+  city: 'City',
+  state: 'State',
+  postal_code: 'Postal Code',
+  country: 'Country',
+  lead_score: 'Lead Score',
+  lead_grade: 'Lead Grade',
+  lead_tier: 'Lead Tier',
+  lead_source: 'Lead Source',
+  assigned_rep: 'Assigned Rep',
+  current_mrr: 'Current MRR',
+  churn_risk: 'Churn Risk',
+  customer_since: 'Customer Since',
+  last_activity_date: 'Last Activity',
+  created_at: 'Created',
+};
+
+/** Rows over this and the export refuses rather than truncating. */
+const MAX_EXPORT_ROWS = 5000;
+
+/**
+ * A cell. null becomes EMPTY, never the string "null" and never 0 - a blank
+ * cell is an absence and a 0 is a measurement, and the two get summed
+ * differently (the same rule export-utils applies on the client).
+ */
+function formatCell(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
 const BUSINESS_RECORD_COLUMNS = new Set([
   'record_type',
   'status',
@@ -229,6 +306,109 @@ export default async function handler(req: Request) {
     const { parts } = normalizePath(url.pathname, 'platform-crm');
     const endpoint = parts[0];
     const resourceId = parts[1];
+
+    // GET /platform-crm/business-records/export - CSV of the FILTERED set
+    //
+    // PLATFORM-EXPORT-001. This path existed on no backend: the page offered
+    // Export as CSV, Excel and PDF, all three 404'd, and before
+    // EXPORT-DOWNLOAD-001 the 404 body was saved to disk under a .csv name with
+    // a toast saying the export had worked.
+    //
+    // It must sit ABOVE the /:id branch below, which would otherwise look up a
+    // business record whose id is the string "export" - the same shape PA-020
+    // found in the customers function.
+    //
+    // CSV ONLY. Excel and PDF are gone from the menu rather than stubbed: a
+    // second synchronous generator on this request thread is what PA-028 says
+    // not to add, and an .xlsx that is really a CSV is a lie the file extension
+    // tells for you.
+    if (req.method === 'GET' && endpoint === 'business-records' && resourceId === 'export') {
+      const status = url.searchParams.get('status');
+      const search = url.searchParams.get('search');
+      const recordType = url.searchParams.get('recordType');
+      const leadTier = url.searchParams.get('leadTier');
+      const sortBy = toSnake(url.searchParams.get('sortBy') || 'createdAt');
+      const sortColumn =
+        BUSINESS_RECORD_COLUMNS.has(sortBy) || sortBy === 'created_at' ? sortBy : 'created_at';
+      const ascending = url.searchParams.get('sortOrder') !== 'desc';
+
+      // The SAME filters the list is showing, minus page and limit: an export
+      // of only the page on screen is the commonest way this goes wrong.
+      //
+      // Written out at both call sites rather than through one helper, and the
+      // duplication is the point: check:phantom-cols resolves a column literal
+      // against the table its CALL CHAIN is on, so filters applied through a
+      // generic helper are attributed to whichever .from() the scanner saw last
+      // - it reported all five of these against `users`. A chain the guard can
+      // read is worth six repeated lines.
+      const countQuery = admin
+        .from('platform_business_records')
+        .select('id', { count: 'exact', head: true });
+      if (status) countQuery.eq('status', status);
+      if (recordType) countQuery.eq('record_type', recordType);
+      if (leadTier) countQuery.eq('lead_tier', leadTier);
+      if (search)
+        countQuery.or(`company_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`);
+
+      // Bounded, and it REFUSES rather than truncating (PA-028). A spreadsheet
+      // silently missing its tail is worse than no spreadsheet: nothing about
+      // the file says it is partial, and somebody will sum it.
+      const { count, error: countError } = await countQuery;
+      if (countError) {
+        console.error('Error counting records for export:', countError);
+        return createCorsResponse({ error: 'Failed to prepare export' }, 500, req);
+      }
+      if ((count ?? 0) > MAX_EXPORT_ROWS) {
+        return createCorsResponse(
+          {
+            error: `Too many records to export at once (${count}). Narrow the filters to ${MAX_EXPORT_ROWS} or fewer.`,
+            count,
+            limit: MAX_EXPORT_ROWS,
+          },
+          413,
+          req,
+        );
+      }
+
+      // fetchAllRows, because PostgREST caps a plain select at 1000 rows and
+      // says nothing about it (PERF-ROWCAP-002).
+      let rows: Row[];
+      try {
+        rows = await fetchAllRows<Row>(() => {
+          // A FRESH builder each page - fetchAllRows says so and means it: a
+          // PostgREST builder accumulates its filters, so reusing one narrows
+          // the result silently.
+          const q = admin
+            .from('platform_business_records')
+            .select(EXPORT_COLUMNS.join(','))
+            .order(sortColumn, { ascending });
+          if (status) q.eq('status', status);
+          if (recordType) q.eq('record_type', recordType);
+          if (leadTier) q.eq('lead_tier', leadTier);
+          if (search)
+            q.or(`company_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`);
+          return q as unknown as { range: (a: number, b: number) => Promise<any> };
+        });
+      } catch (err) {
+        console.error('Error fetching records for export:', err);
+        return createCorsResponse({ error: 'Failed to build export' }, 500, req);
+      }
+
+      const body = toCsv([
+        EXPORT_COLUMNS.map((c) => EXPORT_HEADERS[c] ?? c),
+        ...rows.map((r) => EXPORT_COLUMNS.map((c) => formatCell(r[c]))),
+      ]);
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      return new Response(body, {
+        status: 200,
+        headers: {
+          ...getCorsHeaders(req.headers.get('Origin')),
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="platform-business-records-${stamp}.csv"`,
+        },
+      });
+    }
 
     // GET /platform-crm/business-records - List all platform business records
     //

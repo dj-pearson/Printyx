@@ -247,24 +247,39 @@ export default function PlatformBusinessRecords() {
     setSelectedRecords(newSelected);
   };
 
-  // This asked for /api/platform-crm/business-records/export, which exists on
-  // NO backend - not in the platform-crm edge function that /api/platform-crm
-  // is proxied to, and not in Express either, so it 404s in dev as well as
-  // production. Nothing threw: the 404 body went to disk as
-  // business-records-csv-<ts>.csv and the toast below said
-  // "Success - Exported N records as CSV". A platform admin was told the export
-  // worked and handed an error page with a spreadsheet's name on it.
-  // downloadAuthedFile throws on a non-2xx, so the catch fires and the failure
-  // is visible. Building the endpoint is PLATFORM-EXPORT-001.
-  const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
+  /*
+   * CSV, and only CSV (PLATFORM-EXPORT-001).
+   *
+   * This menu offered CSV, Excel and PDF against an endpoint that existed on no
+   * backend - not in the platform-crm edge function the prefix is proxied to,
+   * and not in Express - so all three 404'd in dev as well as production. Before
+   * EXPORT-DOWNLOAD-001 nothing even threw: the 404 body went to disk under a
+   * .csv name and the toast said the export had worked.
+   *
+   * Excel and PDF are REMOVED rather than pointed at the new endpoint. A second
+   * synchronous generator on that request thread is what PA-028 says not to add,
+   * and serving CSV bytes under an .xlsx name is a lie the file extension tells
+   * on your behalf.
+   *
+   * The filters go with it: the server applies the same ones the list is showing
+   * (page and limit excluded), so this exports the filtered SET rather than the
+   * page on screen. Over 5,000 rows it refuses with a 413 naming the count,
+   * which surfaces here as the error toast - a spreadsheet silently missing its
+   * tail is worse than no spreadsheet, because nothing about the file says it is
+   * partial and somebody will sum it.
+   */
+  const handleExport = async () => {
+    const exportParams = new URLSearchParams(queryParams);
+    exportParams.delete('page');
+    exportParams.delete('limit');
     try {
       await downloadAuthedFile(
-        `/api/platform-crm/business-records/export?${queryParams.toString()}&format=${format}`,
-        `business-records-${format}-${Date.now()}.${format === 'excel' ? 'xlsx' : format}`,
+        `/api/platform-crm/business-records/export?${exportParams.toString()}`,
+        `platform-business-records-${new Date().toISOString().slice(0, 10)}.csv`,
       );
       toast({
         title: 'Export ready',
-        description: `Downloaded business records as ${format.toUpperCase()}`,
+        description: 'Downloaded the filtered business records as CSV',
       });
     } catch (error) {
       toast({
@@ -399,14 +414,8 @@ export default function PlatformBusinessRecords() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => handleExport('csv')}>
+                      <DropdownMenuItem onClick={() => handleExport()}>
                         Export as CSV
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleExport('excel')}>
-                        Export as Excel
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                        Export as PDF
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
