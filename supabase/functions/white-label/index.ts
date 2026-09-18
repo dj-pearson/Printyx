@@ -22,6 +22,7 @@ import {
   generateCssVariables,
   renderEmailTemplate,
 } from '../_shared/white-label.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 type Row = Record<string, any>;
 
@@ -156,13 +157,13 @@ export default async function handler(req: Request) {
     }
 
     const user = userData.user;
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      null;
-
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
     const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     const loadConfig = async (): Promise<Row | null> => {
       const { data } = await admin

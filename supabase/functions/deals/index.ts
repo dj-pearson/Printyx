@@ -235,11 +235,11 @@ export default async function handler(req: Request) {
     // Resolve tenant ID from the verified JWT (canonical). The x-tenant-id header
     // is only a fallback and must NEVER override the JWT tenant — otherwise any
     // authenticated user can read/write another tenant by spoofing the header.
+    // SEC-TENANT-003: app_metadata only. The two user_metadata terms this used
+    // to end with are a bag the session holder writes with
+    // supabase.auth.updateUser, so they could not be what the name claims.
     const jwtTenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string);
+      (user.app_metadata?.tenantId as string) || (user.app_metadata?.tenant_id as string);
     const headerTenantId = req.headers.get('x-tenant-id') || undefined;
     // WF-R-03: the role claim carries the uppercase role CODE, so comparing it to
     // a lowercase string could never fire and this rested on a flag nothing wrote.
@@ -255,7 +255,14 @@ export default async function handler(req: Request) {
         req,
       );
     }
-    let tenantId = jwtTenantId || headerTenantId;
+    // SEC-TENANT-003: the header is honoured ONLY for a platform admin. It used
+    // to sit ahead of the users-table lookup below, so a caller whose JWT
+    // carried no tenantId - a freshly provisioned user, a service caller, an
+    // account whose app_metadata was written by a path that never set it - got
+    // whatever tenant they asked for, and every .eq('tenant_id', tenantId) past
+    // this point filtered on it. The web client sends the header from
+    // localStorage, so it is a devtools edit away.
+    let tenantId = jwtTenantId || (isPlatformAdmin ? headerTenantId : undefined);
 
     if (!tenantId) {
       // Fallback: look up tenant from public.users

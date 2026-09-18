@@ -79,6 +79,8 @@ jobs:
         run: npm run check:currency-copies
       - name: Insert-without-tenant_id gate (SEC-TENANT-004)
         run: npm run check:insert-tenant-id
+      - name: One tenant resolver across the edge tree (SEC-TENANT-003)
+        run: npm run check:tenant-resolution
       - name: Fabricated-fallback ratchet (AUDIT-019)
         run: npm run check:fabricated
       - name: Static-posture gate for admin surfaces (AUDIT-019)

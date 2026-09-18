@@ -44,6 +44,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamelShallow } from '../_shared/case.ts';
 import { assembleContent, renderHtml, currentQuarter } from './content.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 /**
  * Structured audit line, carried over from server/routes-qbr.ts. It was a log
@@ -110,18 +111,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     // The dispatcher strips segment 0 before the handler runs, so this must be
     // idempotent — see _shared/path.ts and the CLAUDE.md edge-path section.

@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import {
   linkOnboardingEquipment,
   UNMAPPED_ONBOARDING_FIELDS,
@@ -27,7 +28,6 @@ import { renderChecklistPdf } from './_pdf.ts';
 
 // Long enough to open the tab, short enough that a copied link stops working.
 const PDF_SIGNED_URL_TTL_SECONDS = 900;
-import { resolveTenantId } from '../_shared/tenant.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -50,15 +50,18 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized' }, 401, req);
     }
 
-    // Canonical resolution (camel/snake, both metadata bags). Reading only
-    // tenant_id previously 400'd every freshly signed-up tenant (PA-002/PA-003).
-    const tenantId = resolveTenantId(user);
+    // Canonical resolution (camel/snake). Reading only tenant_id previously
+    // 400'd every freshly signed-up tenant (PA-002/PA-003); SEC-TENANT-003
+    // moved the resolution into _shared/resolve-tenant.ts, which drops
+    // user_metadata (writable by the session holder) and resolves a missing
+    // claim through the caller's users row instead - the case onboarding is
+    // most likely to hit, since the claim may not be written yet.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
-
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     // AUDIT-012: server.ts strips the function-name segment before invoking us,
     // so a raw split never sees 'onboarding' at [0]. normalizePath is idempotent

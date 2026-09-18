@@ -23,6 +23,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
 import { extractJsonArray } from '../_shared/blog/llm-json.ts';
 import { scoreMetaVariant, type MetaVariantInput } from '../_shared/blog/meta-score.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 const reqSchema = z.object({
   title: z.string().max(500).optional(),
@@ -72,19 +73,14 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Forbidden: blog.post.edit required' }, 403, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    // Service client constructed for consistency with sibling functions; this
-    // endpoint is stateless so it performs no DB work.
-    createSupabaseServiceClient();
+    // The service client above exists only so resolveTenantId can read the
+    // caller's users row; this endpoint is otherwise stateless.
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'blog-meta-suggest');

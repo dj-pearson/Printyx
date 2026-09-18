@@ -81,7 +81,13 @@ export default async function handler(req: Request) {
     let user: any = null;
 
     if (isServiceRoleAuth) {
-      // Service role key auth - get tenant ID from query param or header
+      // Service role key auth - get tenant ID from query param or header.
+      //
+      // SEC-TENANT-003 deliberately leaves this alone. The header is only an
+      // escalation when it lets a caller reach past what they already hold; a
+      // caller presenting the service role key holds everything, so naming a
+      // tenant here selects a target rather than granting access to one. The
+      // control that matters is who can obtain that key, not this line.
       tenantId =
         url.searchParams.get('tenant_id') ||
         url.searchParams.get('tenantId') ||
@@ -111,11 +117,11 @@ export default async function handler(req: Request) {
 
       // Resolve tenant ID from the verified JWT (canonical). The x-tenant-id header
       // is only a fallback and must NEVER override the JWT tenant (cross-tenant IDOR guard).
+      // SEC-TENANT-003: app_metadata only. The two user_metadata terms this used
+      // to end with are a bag the session holder writes with
+      // supabase.auth.updateUser, so they could not be what the name claims.
       const jwtTenantId =
-        (user.app_metadata?.tenantId as string) ||
-        (user.app_metadata?.tenant_id as string) ||
-        (user.user_metadata?.tenantId as string) ||
-        (user.user_metadata?.tenant_id as string);
+        (user.app_metadata?.tenantId as string) || (user.app_metadata?.tenant_id as string);
       const headerTenantId = req.headers.get('x-tenant-id') || undefined;
       const isPlatformAdmin =
         user.app_metadata?.isPlatformAdmin === true || user.app_metadata?.role === 'platform_admin';
@@ -126,7 +132,14 @@ export default async function handler(req: Request) {
           req,
         );
       }
-      tenantId = jwtTenantId || headerTenantId || null;
+      // SEC-TENANT-003: the header is honoured ONLY for a platform admin. It used
+      // to sit ahead of the users-table lookup below, so a caller whose JWT
+      // carried no tenantId - a freshly provisioned user, a service caller, an
+      // account whose app_metadata was written by a path that never set it - got
+      // whatever tenant they asked for, and every .eq('tenant_id', tenantId) past
+      // this point filtered on it. The web client sends the header from
+      // localStorage, so it is a devtools edit away.
+      tenantId = jwtTenantId || (isPlatformAdmin ? headerTenantId : undefined) || null;
 
       if (!tenantId) {
         // Fallback: look up tenant from public.users

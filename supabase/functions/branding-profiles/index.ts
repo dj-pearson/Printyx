@@ -25,6 +25,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { sanitizeSvg } from '../_shared/svg-sanitize.ts';
 import { sniffUpload } from '../_shared/upload-validation.ts';
 import { removeStoragePrefix } from '../_shared/storage-delete.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -123,19 +124,6 @@ function hasBrandingManage(user: { app_metadata?: Record<string, unknown> }): bo
   return ['platform_admin', 'super_admin', 'company_admin', 'admin', 'owner'].includes(role);
 }
 
-function resolveTenantId(user: {
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-}): string | null {
-  return (
-    (user.app_metadata?.tenantId as string) ||
-    (user.app_metadata?.tenant_id as string) ||
-    (user.user_metadata?.tenantId as string) ||
-    (user.user_metadata?.tenant_id as string) ||
-    null
-  );
-}
-
 // Clear is_default on every OTHER profile in this tenant so at most one default.
 async function clearOtherDefaults(admin: Admin, tenantId: string, exceptId?: string) {
   let q = admin
@@ -176,12 +164,16 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId = resolveTenantId(user) || req.headers.get('x-tenant-id');
+    // SEC-TENANT-003: one shape for tenant resolution. The JWT decides; a
+    // caller with no claim resolves through their users row; x-tenant-id is
+    // honoured only for a platform admin. The local copy this replaced also
+    // read user_metadata, which the session holder can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'branding-profiles');
     const id = parts[0];

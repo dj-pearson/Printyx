@@ -82,7 +82,18 @@ describe('every query is tenant-scoped', () => {
     const headerAt = edge.indexOf('const headerTenantId');
     expect(jwtAt).toBeGreaterThan(-1);
     expect(jwtAt).toBeLessThan(headerAt);
-    expect(edge).toContain('jwtTenantId || headerTenantId');
+
+    // TIGHTENED 2026-09-18 (SEC-TENANT-003). This used to assert
+    // `jwtTenantId || headerTenantId`, which is the shape the story found: when
+    // the JWT carried no tenant, the header won outright and pre-empted the
+    // users-table lookup below it. The header is now a platform-admin tenant
+    // switcher and nothing else.
+    expect(edge).not.toContain('jwtTenantId || headerTenantId');
+    expect(edge).toContain('jwtTenantId || (isPlatformAdmin ? headerTenantId : undefined)');
+
+    // And jwtTenantId means what its name says - app_metadata only.
+    const decl = edge.slice(jwtAt, jwtAt + 200);
+    expect(decl).not.toContain('user_metadata');
   });
 });
 

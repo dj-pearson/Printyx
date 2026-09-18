@@ -77,6 +77,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { writeAuditLog, withRequestContext } from '../_shared/blog/audit-log.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
 import { extractJsonObject } from '../_shared/blog/llm-json.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -365,23 +366,6 @@ function cmsRepublishStub(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function getTenantId(
-  user: {
-    app_metadata?: Record<string, unknown>;
-    user_metadata?: Record<string, unknown>;
-  },
-  req: Request,
-): string | null {
-  return (
-    (user.app_metadata?.tenantId as string) ||
-    (user.app_metadata?.tenant_id as string) ||
-    (user.user_metadata?.tenantId as string) ||
-    (user.user_metadata?.tenant_id as string) ||
-    req.headers.get('x-tenant-id') ||
-    null
-  );
-}
 
 async function parseBody<T>(req: Request): Promise<T | null> {
   try {
@@ -2240,10 +2224,14 @@ export default async function handler(req: Request) {
         req,
       );
     }
-    const tenantId = getTenantId(user, req);
+    // SEC-TENANT-003: one shape for tenant resolution. The JWT decides; a
+    // caller with no claim resolves through their users row; the header is
+    // honoured only for a platform admin. The local copy this replaced also
+    // read user_metadata, which the session holder can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'blog-distribution-engine');
     const [a, b, c] = parts;

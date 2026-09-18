@@ -16,6 +16,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { createSupabaseClient } from '../_shared/supabase.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://api.printyx.net';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -126,11 +127,16 @@ export default async function handler(req: Request): Promise<Response> {
       }
 
       isAuthorized = true;
-      tenantId =
-        user.app_metadata?.tenantId ||
-        user.app_metadata?.tenant_id ||
-        user.user_metadata?.tenantId ||
-        user.user_metadata?.tenant_id;
+      // SEC-TENANT-003: user_metadata is writable by the session holder, so it
+      // cannot decide which tenant's duplicates get merged. The resolver reads
+      // app_metadata and falls back to the caller's users row.
+      tenantId = await resolveTenantId(
+        req,
+        user,
+        createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { persistSession: false },
+        }),
+      );
     }
 
     const body = await req.json().catch(() => ({}));
@@ -138,6 +144,9 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Get tenant ID from body if service role, otherwise use authenticated user's tenant
     if (isServiceRoleAuth) {
+      // Out of scope for SEC-TENANT-003 for the same reason as the companies
+      // function: a caller holding the service role key already has every
+      // tenant, so naming one here selects a target rather than granting access.
       tenantId = body.tenantId || body.tenant_id || req.headers.get('x-tenant-id');
     }
 

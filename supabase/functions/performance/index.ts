@@ -8,6 +8,7 @@ function nowIsoOf(): string {
   return new Date().toISOString();
 }
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 // Export handler for use by the main server router
 export default async function handler(req: Request) {
@@ -44,12 +45,7 @@ export default async function handler(req: Request) {
 
     // Tenant is needed for every branch below - these were mocks before and
     // never read one.
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);

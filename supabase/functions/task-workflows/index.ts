@@ -57,6 +57,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamelShallow } from '../_shared/case.ts';
 import { sendEmail } from '../email-marketing/_sendgrid.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 // ── Replica of shared/task-workflow-state.ts — keep in sync (see header) ────
 const TERMINAL_STEP_STATUSES = new Set(['completed', 'skipped']);
@@ -133,12 +134,8 @@ export default async function handler(req: Request) {
       return createCorsResponse({ message: 'Authentication required' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ message: 'Authentication required' }, 401, req);
@@ -148,7 +145,6 @@ export default async function handler(req: Request) {
     const platformAdmin =
       user.app_metadata?.isPlatformAdmin === true || Number(user.app_metadata?.roleLevel) === 8;
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'task-workflows');
     const method = req.method;
