@@ -446,3 +446,87 @@ describe('the service surface gates on codes technicians actually hold', () => {
     }
   });
 });
+
+/**
+ * The CRM surface (SEC-EDGE-001, sixth batch).
+ *
+ * The rule this batch established, and it is not a belt-and-braces habit: the
+ * seeded SALES_REP holds `edit_own` and NOT `create`, while SALES_MANAGER holds
+ * `create` and NOT `edit_own`. A write gate naming either code alone locks out
+ * one of the two roles that do this work every day. Every gate here names both,
+ * and the test asserts the split against the templates so a future seeder
+ * change that closes it does not silently make the second code redundant.
+ *
+ * Reads stay open on the record functions, deliberately. A technician opening a
+ * ticket and a billing clerk chasing an invoice both read a customer, and none
+ * of those pages sets a minimum level - gating the read on a SALES code would
+ * be the inversion the service batch warned about, one surface closing the
+ * daily job of another.
+ */
+describe('the CRM write paths are gated without closing the reads', () => {
+  const seeder = read('server/database-updater/seeders/rbac-seeder.ts');
+  const templateOf = (roleCode: string): string[] => {
+    const at = seeder.indexOf(`code: '${roleCode}'`);
+    const block = seeder.slice(at, seeder.indexOf(']', seeder.indexOf('permissions: [', at)));
+    return [...block.matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]);
+  };
+  const rep = templateOf('SALES_REP');
+  const manager = templateOf('SALES_MANAGER');
+
+  it('the rep and the manager hold DIFFERENT halves, which is why both are named', () => {
+    expect(rep).toContain('sales.customer.edit_own');
+    expect(rep).not.toContain('sales.customer.create');
+    expect(manager).toContain('sales.customer.create');
+    expect(manager).not.toContain('sales.customer.edit_own');
+  });
+
+  for (const fn of ['contacts', 'company-contacts', 'customers']) {
+    it(`${fn} names both customer codes and gates writes only`, () => {
+      const src = code(`supabase/functions/${fn}/index.ts`);
+      expect(src).toContain("'sales.customer.edit_own'");
+      expect(src).toContain("'sales.customer.create'");
+      expect(src).toContain("req.method !== 'GET' && req.method !== 'HEAD'");
+    });
+  }
+
+  it('opportunities does the same with the opportunity codes', () => {
+    const src = code('supabase/functions/opportunities/index.ts');
+    expect(src).toContain("'sales.opportunity.edit_own'");
+    expect(src).toContain("'sales.opportunity.create'");
+    expect(rep).toContain('sales.opportunity.edit_own');
+  });
+
+  it('custom-fields is a LEVEL gate, because the page names no permission', () => {
+    // Defining custom FIELDS is a schema act - it changes what every row of an
+    // object carries. /settings/custom-fields requires level 4 and lists no
+    // code, so the level is the gate the product already chose.
+    const nav = read('client/src/lib/navigation-permissions.ts');
+    const entry = nav.slice(nav.indexOf("'/settings/custom-fields': {"));
+    expect(entry.slice(0, 160)).toContain('minLevel: 4');
+    expect(code('supabase/functions/custom-fields/index.ts')).toContain('ROLE_LEVEL.MANAGER');
+  });
+
+  it('auto-lead-routing gates reads too, because the table IS the distribution', () => {
+    const src = code('supabase/functions/auto-lead-routing/index.ts');
+    expect(src).toContain("'sales.lead.assign'");
+    expect(src).toContain("'sales.territory.manage_assignments'");
+    expect(src).not.toContain("req.method !== 'GET'");
+    // Both are the manager's, neither is the rep's - which is the point.
+    expect(manager).toContain('sales.lead.assign');
+    expect(rep).not.toContain('sales.lead.assign');
+  });
+
+  it('all six are out of the open-to-all baseline', () => {
+    const baseline = JSON.parse(read('docs/edge-rbac-baseline.json'));
+    for (const fn of [
+      'contacts',
+      'company-contacts',
+      'customers',
+      'opportunities',
+      'custom-fields',
+      'auto-lead-routing',
+    ]) {
+      expect(baseline.openToAllRoles, fn).not.toContain(fn);
+    }
+  });
+});

@@ -3,6 +3,9 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { dashboardRollup, byStageRollup } from '../_shared/opportunity-rollups.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const WRITE_PERMISSION = ['sales.opportunity.edit_own', 'sales.opportunity.create'];
 
 // Rollup endpoints fold rows in the function because PostgREST has no GROUP BY
 // or SUM. The cap keeps a large tenant from pulling an unbounded page into
@@ -98,6 +101,20 @@ export default async function handler(req: Request) {
         .limit(1)
         .maybeSingle();
       tenantId = dbUser?.tenant_id;
+    }
+
+    // SEC-EDGE-001: the opportunity pipeline. Reads stay open - /opportunities gates on
+    // view_own OR view_team OR view_location and sets no level, and WF-R-04
+    // already narrows the ROWS a rep sees through _shared/scope.ts.
+    //
+    // BOTH CODES, and that is the rule this batch established rather than a
+    // belt-and-braces habit: the seeded SALES_REP holds `edit_own` and not
+    // `create`, while SALES_MANAGER holds `create` and not `edit_own`. A gate
+    // naming either one alone locks out one of the two roles that do this work
+    // every day. Checked against the role templates, not assumed.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
     }
 
     if (!tenantId) {

@@ -16,6 +16,9 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, denyBelowLevel } from '../_shared/rbac.ts';
+
+const REQUIRED_LEVEL = ROLE_LEVEL.MANAGER;
 
 const VALID_OBJECT_TYPES = new Set(['deals', 'leads', 'contacts', 'companies']);
 const VALID_FIELD_TYPES = new Set([
@@ -84,6 +87,15 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: defining custom FIELDS is a schema act, not a record act - it changes
+    // what every row of an object carries and what every form shows. A user
+    // redefining the CRM's shape is a different thing from a rep editing a
+    // contact. /settings/custom-fields requires level 4 and names no
+    // permission, so the level IS the gate the product already chose; reads are
+    // gated with it because the page does not open below 4 either.
+    const denied = await denyBelowLevel(admin, user, REQUIRED_LEVEL);
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'custom-fields');

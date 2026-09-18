@@ -18,6 +18,9 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { toCamelShallow } from '../_shared/case.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const WRITE_PERMISSION = ['sales.customer.edit_own', 'sales.customer.create'];
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -77,6 +80,20 @@ export default async function handler(req: Request) {
         .limit(1)
         .maybeSingle();
       tenantId = dbUser?.tenant_id;
+    }
+
+    // SEC-EDGE-001: contact records. READS STAY OPEN: a technician opening a ticket and a
+    // billing clerk chasing an invoice both need the customer's contact, and
+    // the pages here set no minimum level. What is privileged is the write.
+    //
+    // BOTH CODES, and that is the rule this batch established rather than a
+    // belt-and-braces habit: the seeded SALES_REP holds `edit_own` and not
+    // `create`, while SALES_MANAGER holds `create` and not `edit_own`. A gate
+    // naming either one alone locks out one of the two roles that do this work
+    // every day. Checked against the role templates, not assumed.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
     }
 
     if (!tenantId) {

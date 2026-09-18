@@ -29,6 +29,9 @@ import {
   type RoutableLead,
 } from '../_shared/lead-routing.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const REQUIRED_PERMISSION = ['sales.lead.assign', 'sales.territory.manage_assignments'];
 
 const RULES_TABLE = 'lead_assignment_rules';
 
@@ -101,6 +104,15 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: routing RULES decide which rep gets which lead, so writing one is
+    // taking pipeline from colleagues. /auto-lead-routing gates on
+    // sales.lead.assign OR sales.territory.manage_assignments at level 3, both
+    // held by SALES_MANAGER and neither by SALES_REP - which is the point.
+    // Reads carry the same codes: seeing the routing table is seeing how leads
+    // are distributed.
+    const denied = await denyWithoutPermission(admin, user, REQUIRED_PERMISSION);
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,

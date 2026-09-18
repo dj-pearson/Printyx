@@ -20,6 +20,9 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { buildSearchOr, CONTACT_LIST_SPEC, parseCrmListQuery } from '../_shared/crm-list-query.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const WRITE_PERMISSION = ['sales.customer.edit_own', 'sales.customer.create'];
 
 /**
  * snake_case row -> the camelCase shape the CRM table and the record layout read.
@@ -100,6 +103,19 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+    }
+
+    // SEC-EDGE-001: the same records from the company side, and the same reasoning - the
+    // read is shared across the business, the write is a sales act.
+    //
+    // BOTH CODES, and that is the rule this batch established rather than a
+    // belt-and-braces habit: the seeded SALES_REP holds `edit_own` and not
+    // `create`, while SALES_MANAGER holds `create` and not `edit_own`. A gate
+    // naming either one alone locks out one of the two roles that do this work
+    // every day. Checked against the role templates, not assumed.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
     }
 
     // Use service_role client for database operations (bypasses RLS)
