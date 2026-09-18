@@ -1,4 +1,4 @@
-// PROD-014 parity lock.
+// PROD-014 parity lock, now a SINGLE-SOURCE lock (DASH-METRICS-001).
 //
 // ModularDashboard reads /api/dashboard/modules. The edge function answered it
 // with four HARDCODED cards ('$125,430' revenue, 48 deals, 1,247 customers)
@@ -6,42 +6,52 @@
 // { modules, userRole, roleConfig } the page destructures — so the page's
 // default [] applied and production rendered the "no modules" empty state.
 //
-// Both backends now build cards from the same role map and the same
-// presentation table. What that pins: the card IDS (the page persists switched
-// -on ids in localStorage, so a backend inventing its own makes the toggles
-// meaningless) and the CATEGORY of each card (the page groups by it, so a card
-// labelled 'management' on one side and 'sales' on the other lands in a
-// different section).
+// Both backends built cards from the same role map and the same presentation
+// table, and this file locked the two copies together. There is only one copy
+// now: DASH-METRICS-001 proxied /api/dashboard/modules and deleted
+// server/routes-modular-dashboard.ts, which took the last consumer of the Node
+// copy with it, so server/lib/dashboard-cards.ts is deleted too and the assertion
+// below keeps a second one from coming back.
+//
+// What the rest still pins is unchanged and still matters: the card IDS (the
+// page persists switched-on ids in localStorage, so a backend inventing its own
+// makes the toggles meaningless) and the CATEGORY of each card (the page groups
+// by it, so a mislabelled card lands in the wrong section).
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import * as node from '../../lib/dashboard-cards';
 import * as edge from '../../../supabase/functions/_shared/dashboard-cards';
 
 const edgeSrc = readFileSync(join(process.cwd(), 'supabase/functions/dashboard/index.ts'), 'utf-8');
-const expressSrc = readFileSync(join(process.cwd(), 'server/routes-modular-dashboard.ts'), 'utf-8');
+const proxySrc = readFileSync(
+  join(process.cwd(), 'server/middleware/edge-function-proxy.ts'),
+  'utf-8',
+);
 const page = readFileSync(
   join(process.cwd(), 'client/src/components/ModularDashboard.tsx'),
   'utf-8',
 );
 
-describe('the two copies agree', () => {
-  it('on the role map', () => {
-    expect(edge.ROLE_CARDS).toEqual(node.ROLE_CARDS);
+describe('there is one copy', () => {
+  it('deletes the Node one, whose last consumer went with routes-modular-dashboard', () => {
+    expect(existsSync(join(process.cwd(), 'server/lib/dashboard-cards.ts'))).toBe(false);
+    expect(existsSync(join(process.cwd(), 'server/routes-modular-dashboard.ts'))).toBe(false);
   });
 
-  it('on every card presentation', () => {
-    expect(edge.CARD_META).toEqual(node.CARD_META);
+  it('serves /api/dashboard/modules from the edge function on both hosts', () => {
+    expect(proxySrc).toContain(
+      "'/api/dashboard/modules': { fn: 'dashboard', pathPrefix: '/modules' }",
+    );
   });
 
   it.each(['sales', 'sales_rep', 'technician', 'service_manager', 'manager', 'admin', 'nobody'])(
-    'on the active cards for %s',
+    'resolves active cards for %s without throwing on an unknown id',
     (role) => {
       const enabled = ['team_revenue', 'inventory_alerts', 'not_a_card'];
-      expect(edge.resolveActiveCards(role, enabled)).toEqual(
-        node.resolveActiveCards(role, enabled),
-      );
+      const { activeCards } = edge.resolveActiveCards(role, enabled);
+      expect(activeCards).not.toContain('not_a_card');
+      expect(Array.isArray(activeCards)).toBe(true);
     },
   );
 });
@@ -66,7 +76,6 @@ describe('a card a role may not switch on is refused', () => {
     expect(edge.parseEnabledParam(null)).toEqual([]);
     expect(edge.parseEnabledParam('')).toEqual([]);
     expect(edge.parseEnabledParam('a, b ,,c')).toEqual(['a', 'b', 'c']);
-    expect(node.parseEnabledParam('a, b ,,c')).toEqual(['a', 'b', 'c']);
   });
 });
 
@@ -91,14 +100,17 @@ describe('every card a role can see can actually be built', () => {
 
   it('builds nothing for an unknown id rather than a card with no title', () => {
     expect(edge.buildCard('not_a_card', 1)).toBeNull();
-    expect(node.buildCard('not_a_card', 1)).toBeNull();
   });
 
-  it('produces the same card object on both sides', () => {
-    expect(edge.buildCard('personal_deals', 7)).toEqual(node.buildCard('personal_deals', 7));
-    expect(edge.buildCard('service_overview', 3, { subtitle: '9 total tickets' })).toEqual(
-      node.buildCard('service_overview', 3, { subtitle: '9 total tickets' }),
-    );
+  it('carries the id, title and category the page groups by', () => {
+    expect(edge.buildCard('personal_deals', 7)).toMatchObject({
+      id: 'personal_deals',
+      value: 7,
+    });
+    expect(edge.buildCard('service_overview', 3, { subtitle: '9 total tickets' })).toMatchObject({
+      id: 'service_overview',
+      subtitle: '9 total tickets',
+    });
   });
 
   it('uses data instead of value for the executive card', () => {
@@ -109,17 +121,19 @@ describe('every card a role can see can actually be built', () => {
 });
 
 describe('money formatting', () => {
-  it('matches on both sides and carries no cents', () => {
-    for (const n of [0, 1234, 125430.49, 1_000_000]) {
-      expect(edge.formatCurrency(n)).toBe(node.formatCurrency(n));
-    }
-    expect(edge.formatCurrency(125430)).toBe('$125,430');
+  it('keeps cents when there are any', () => {
+    // The old assertion here said "carries no cents" and then compared the two
+    // copies to each other plus one INTEGER, so it never tested the claim. The
+    // formatter keeps whatever fraction it is given.
+    expect(edge.formatCurrency(0)).toBe('$0');
+    expect(edge.formatCurrency(1234)).toBe('$1,234');
+    expect(edge.formatCurrency(125430.49)).toBe('$125,430.49');
+    expect(edge.formatCurrency(1_000_000)).toBe('$1,000,000');
   });
 
   it('sums the numeric strings PostgREST returns', () => {
     expect(edge.sumNumeric(['10.50', '20.25', 5])).toBeCloseTo(35.75);
     expect(edge.sumNumeric([null, undefined, 'x', 2])).toBe(2);
-    expect(node.sumNumeric(['10.50', '20.25', 5])).toBeCloseTo(35.75);
   });
 });
 
@@ -147,9 +161,8 @@ describe('the fabricated dashboard is gone', () => {
     );
   });
 
-  it('both backends read the same query parameter', () => {
+  it('the one backend reads the parameter the page sends', () => {
     expect(edgeSrc).toContain("url.searchParams.get('enabled')");
-    expect(expressSrc).toContain('req.query.enabled');
     expect(page).toContain('?enabled=');
   });
 

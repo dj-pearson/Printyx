@@ -347,6 +347,47 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/vendors': 'vendors',
     '/api/webhooks': 'webhooks',
 
+    // DASH-METRICS-001. /api/dashboard is SCOPED PER PATH, not proxied whole,
+    // and that is deliberate: server/routes-dashboard-customization.ts mounts at
+    // the /api/dashboard ROOT and owns /layout, /preferences and /snapshot(s),
+    // which no edge function serves. A bare '/api/dashboard' entry would take
+    // that router off Express and give dev a 404 where it has working handlers -
+    // the exact failure the header above warns about. Same reasoning as the
+    // per-path /api/sales-pipeline entries.
+    //
+    // Order is load-bearing twice over. Express matches app.use prefixes in
+    // registration order, so /api/dashboard/widgets and /api/dashboard/user-layout
+    // come first: those two are served by `dashboard-widgets`, which
+    // supabase/functions/server.ts already routes them to in production. Nothing
+    // served them in DEV - registerDashboardWidgetRoutes was retired when that
+    // function landed and no proxy entry replaced it - so a saved dashboard
+    // layout 404'd locally while working in prod, the opposite of the usual
+    // split. /api/dashboard/widgets also shadows the customization router's own
+    // GET /widgets, which production could never reach either way.
+    //
+    // The rest go to `dashboard`, which now serves layouts, metrics/:type,
+    // charts/:type, activity, urgent, my-tasks, team-performance, recent-tickets,
+    // top-customers and alerts alongside card-config and modules. The three
+    // Express routers that owned those are deleted. One of them could never have
+    // worked at all: routes-dashboard-layouts read dashboard_layouts through the
+    // shared/reporting-schema declaration, and migration 0002 dropped four of the
+    // columns it filtered and inserted on, so Save on /custom-dashboard threw in
+    // dev and 404'd in prod.
+    '/api/dashboard/widgets': { fn: 'dashboard-widgets', pathPrefix: '/widgets' },
+    '/api/dashboard/user-layout': { fn: 'dashboard-widgets', pathPrefix: '/user-layout' },
+    '/api/dashboard/layouts': { fn: 'dashboard', pathPrefix: '/layouts' },
+    '/api/dashboard/metrics': { fn: 'dashboard', pathPrefix: '/metrics' },
+    '/api/dashboard/charts': { fn: 'dashboard', pathPrefix: '/charts' },
+    '/api/dashboard/activity': { fn: 'dashboard', pathPrefix: '/activity' },
+    '/api/dashboard/urgent': { fn: 'dashboard', pathPrefix: '/urgent' },
+    '/api/dashboard/my-tasks': { fn: 'dashboard', pathPrefix: '/my-tasks' },
+    '/api/dashboard/team-performance': { fn: 'dashboard', pathPrefix: '/team-performance' },
+    '/api/dashboard/recent-tickets': { fn: 'dashboard', pathPrefix: '/recent-tickets' },
+    '/api/dashboard/top-customers': { fn: 'dashboard', pathPrefix: '/top-customers' },
+    '/api/dashboard/alerts': { fn: 'dashboard', pathPrefix: '/alerts' },
+    '/api/dashboard/card-config': { fn: 'dashboard', pathPrefix: '/card-config' },
+    '/api/dashboard/modules': { fn: 'dashboard', pathPrefix: '/modules' },
+
     // EDGE-003: KPIs and reporting catalog/exports/dashboard live inside the
     // reports edge function (handlers/kpis.ts, handlers/reporting.ts).
     '/api/kpis': { fn: 'reports', pathPrefix: '/kpis' },

@@ -17,6 +17,22 @@
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import {
+  dashboardActivity,
+  dashboardMyTasks,
+  dashboardTeamPerformance,
+  dashboardUrgent,
+} from './handlers/lists.ts';
+import { dashboardMetric } from './handlers/metrics.ts';
+import { dashboardChart } from './handlers/charts.ts';
+import {
+  dashboardAlerts,
+  dashboardRecentTickets,
+  dashboardSummary,
+  dashboardTopCustomers,
+} from './handlers/summary.ts';
+import { deleteLayout, getDefaultLayout, normalizeLayout, saveLayout } from './handlers/layouts.ts';
 import {
   buildCard,
   formatCurrency,
@@ -50,39 +66,10 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
 
-    // Tenant from the verified JWT; the header is a fallback, never an override.
-    // SEC-TENANT-003: app_metadata only. The two user_metadata terms this used
-    // to end with are a bag the session holder writes with
-    // supabase.auth.updateUser, so they could not be what the name claims.
-    const jwtTenantId =
-      (user.app_metadata?.tenantId as string) || (user.app_metadata?.tenant_id as string);
-    const headerTenantId = req.headers.get('x-tenant-id') || undefined;
-    const isPlatformAdmin =
-      user.app_metadata?.isPlatformAdmin === true || user.app_metadata?.role === 'platform_admin';
-    if (headerTenantId && jwtTenantId && headerTenantId !== jwtTenantId && !isPlatformAdmin) {
-      return createCorsResponse(
-        { message: 'Tenant access denied', code: 'TENANT_ACCESS_DENIED' },
-        403,
-        req,
-      );
-    }
-    // SEC-TENANT-003: the header is honoured ONLY for a platform admin. It used
-    // to sit ahead of the users-table lookup below, so a caller whose JWT
-    // carried no tenantId - a freshly provisioned user, a service caller, an
-    // account whose app_metadata was written by a path that never set it - got
-    // whatever tenant they asked for, and every .eq('tenant_id', tenantId) past
-    // this point filtered on it. The web client sends the header from
-    // localStorage, so it is a devtools edit away.
-    let tenantId = jwtTenantId || (isPlatformAdmin ? headerTenantId : undefined);
-    if (!tenantId) {
-      const { data: dbUser } = await admin
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .limit(1)
-        .maybeSingle();
-      tenantId = dbUser?.tenant_id;
-    }
+    // SEC-TENANT-003 lives in _shared/resolve-tenant.ts now: the x-tenant-id
+    // header is honoured only for a platform admin, and only after the tenant is
+    // confirmed to exist. This file used to carry its own copy.
+    const tenantId = await resolveTenantId(req, user, admin);
 
     const userRole = (user.app_metadata as Record<string, unknown>)?.role as string | undefined;
 
@@ -311,6 +298,87 @@ export default async function handler(req: Request) {
         200,
         req,
       );
+    }
+
+    // ------------------------------------------------------------------
+    // Everything below needs a tenant. DASH-METRICS-001 ported these from
+    // server/routes-dashboard-layouts.ts and server/routes-dashboards-core.ts,
+    // which served them in dev only - /api/dashboard was not proxied and this
+    // function answered card-config and modules alone, so every one of them
+    // 404'd in production.
+    // ------------------------------------------------------------------
+    if (!tenantId) {
+      return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
+    }
+
+    // GET /dashboard/layouts/default | POST /dashboard/layouts | DELETE /:id
+    if (endpoint === 'layouts') {
+      if (req.method === 'GET' && parts[1] === 'default') {
+        return createCorsResponse(await getDefaultLayout(admin, tenantId, user.id), 200, req);
+      }
+      if (req.method === 'POST' && !parts[1]) {
+        const body = await req.json().catch(() => ({}));
+        const layout = normalizeLayout(body);
+        if (!layout) {
+          return createCorsResponse({ message: 'widgets must be an array' }, 400, req);
+        }
+        return createCorsResponse(await saveLayout(admin, tenantId, user.id, layout), 200, req);
+      }
+      if (req.method === 'DELETE' && parts[1]) {
+        const removed = await deleteLayout(admin, tenantId, user.id, parts[1]);
+        if (!removed) return createCorsResponse({ message: 'Layout not found' }, 404, req);
+        return createCorsResponse({ success: true }, 200, req);
+      }
+      return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
+    }
+
+    // GET /dashboard/metrics (summary) and /dashboard/metrics/:type (one card)
+    if (endpoint === 'metrics') {
+      if (!parts[1]) {
+        return createCorsResponse(await dashboardSummary(admin, tenantId), 200, req);
+      }
+      const metric = await dashboardMetric(admin, tenantId, parts[1]);
+      if (!metric) {
+        return createCorsResponse({ message: `Unknown metric type: ${parts[1]}` }, 404, req);
+      }
+      return createCorsResponse(metric, 200, req);
+    }
+
+    // GET /dashboard/charts/:type
+    if (endpoint === 'charts' && parts[1]) {
+      const chart = await dashboardChart(admin, tenantId, parts[1]);
+      if (!chart) {
+        return createCorsResponse({ message: `Unknown chart type: ${parts[1]}` }, 404, req);
+      }
+      return createCorsResponse(chart, 200, req);
+    }
+
+    if (endpoint === 'activity') {
+      return createCorsResponse(await dashboardActivity(admin, tenantId), 200, req);
+    }
+
+    if (endpoint === 'urgent') {
+      return createCorsResponse(await dashboardUrgent(admin, tenantId), 200, req);
+    }
+
+    if (endpoint === 'my-tasks') {
+      return createCorsResponse(await dashboardMyTasks(admin, tenantId, user.id), 200, req);
+    }
+
+    if (endpoint === 'team-performance') {
+      return createCorsResponse(await dashboardTeamPerformance(admin, tenantId), 200, req);
+    }
+
+    if (endpoint === 'recent-tickets') {
+      return createCorsResponse(await dashboardRecentTickets(admin, tenantId), 200, req);
+    }
+
+    if (endpoint === 'top-customers') {
+      return createCorsResponse(await dashboardTopCustomers(admin, tenantId), 200, req);
+    }
+
+    if (endpoint === 'alerts') {
+      return createCorsResponse(await dashboardAlerts(admin, tenantId), 200, req);
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);

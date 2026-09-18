@@ -91,6 +91,8 @@ jobs:
         run: npm run check:no-static-posture
       - name: Fabricated-measurement ratchet (AUDIT-020)
         run: npm run check:no-random-metrics
+      - name: Fabricated server/edge measurement ratchet (DASH-METRICS-001)
+        run: npm run check:server-fabricated
       - name: Unreferenced edge-function ratchet (AUDIT-024)
         run: npm run check:unreferenced-edge-fns
       - name: Accessible-name gate for icon buttons and search inputs (CR-035)

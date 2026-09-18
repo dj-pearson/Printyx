@@ -100,11 +100,8 @@ import {
 } from './domains/mobile';
 
 import {
-  registerDashboardsCoreRoutes,
-  registerModularDashboardRoutes,
   // registerDashboardWidgetRoutes — migrated to supabase/functions/dashboard-widgets/
   registerTodayDashboardRoutes,
-  registerDashboardLayoutsRoutes,
 } from './domains/dashboard';
 
 import {
@@ -345,7 +342,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Core Domain Routes ───────────────────────────────────────────
   registerSampleDataRoutes(app);
   registerCrmCoreRoutes(app);
-  registerDashboardsCoreRoutes(app);
   registerProductsCrudRoutes(app);
   registerCatalogCsvRoutes(app);
   registerSeoCoreRoutes(app);
@@ -421,7 +417,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerRecordLayoutRoutes(app);
   registerBusinessRecordRoutes(app);
   registerCsvImportRoutes(app);
-  registerDashboardLayoutsRoutes(app);
 
   // ─── Salesforce & Data Enrichment ─────────────────────────────────
   registerSalesforceRoutes(app);
@@ -656,7 +651,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use(documentAutomationRoutes.default);
 
   // ─── Dashboard & Onboarding ───────────────────────────────────────
-  registerModularDashboardRoutes(app);
   // registerDashboardWidgetRoutes(app) — migrated to supabase/functions/dashboard-widgets/
   registerTodayDashboardRoutes(app);
   registerOnboardingRoutes(app);

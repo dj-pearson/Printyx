@@ -314,8 +314,46 @@ function hasBareBranch(src, method) {
   return false;
 }
 
+/**
+ * Route overrides in supabase/functions/server.ts, as domain -> segment -> fn.
+ *
+ * A DOMAIN'S OWN DIRECTORY IS NOT ALWAYS THE HANDLER. server.ts rewrites the
+ * resolved function name for a few first sub-segments before dispatching, so
+ * /dashboard/widgets and /dashboard/user-layout are served by `dashboard-widgets`
+ * and not by `dashboard` at all. Reading only the domain directory reported both
+ * as coverage gaps, and they sat in the baseline for months asserting that
+ * production 404'd on a path production serves - a baseline entry that is not a
+ * defect, which is exactly where a real one hides (DASH-METRICS-001).
+ *
+ * Only the `functionName === 'x' && (subPath[0] === 'a' ...)` shape is read.
+ * Anything else in server.ts is left alone rather than guessed at, so a missed
+ * override still reports a gap - the safe direction.
+ */
+function aliasTargets() {
+  const out = {};
+  let src;
+  try {
+    src = stripComments(readFileSync(join(repo, 'supabase/functions/server.ts'), 'utf8'));
+  } catch {
+    return out;
+  }
+  const blocks = src.matchAll(
+    /functionName === '([a-z0-9-]+)'\s*&&\s*\(?([^)]*subPath\[0\][^)]*)\)?\s*\)?\s*\{([\s\S]{0,200}?)\}/g,
+  );
+  for (const block of blocks) {
+    const domain = block[1];
+    const assigned = /functionName = '([a-z0-9-]+)'/.exec(block[3]);
+    if (!assigned) continue;
+    for (const seg of block[2].matchAll(/subPath\[0\] === '([a-z0-9-]+)'/g)) {
+      (out[domain] ??= {})[seg[1]] = assigned[1];
+    }
+  }
+  return out;
+}
+
 export function computeCoverageGaps() {
   const parity = computeParity(repo);
+  const aliases = aliasTargets();
   const gaps = {};
 
   for (const row of parity.rows) {
@@ -369,7 +407,20 @@ export function computeCoverageGaps() {
       for (const method of bareMethodsIn(text, row.domain)) bareMethods.add(method);
     }
 
-    const missing = [...segments].filter((s) => !appearsIn(src, s));
+    // A segment server.ts hands to another function is searched in THAT
+    // function's source, not this one's.
+    const aliasForDomain = aliases[row.domain] ?? {};
+    const aliasSrc = {};
+    const sourceFor = (segment) => {
+      const target = aliasForDomain[segment];
+      if (!target) return src;
+      const targetDir = join(repo, 'supabase/functions', target);
+      if (!existsSync(targetDir)) return src;
+      aliasSrc[target] ??= readDirSrc(targetDir);
+      return `${src}\n${aliasSrc[target]}`;
+    };
+
+    const missing = [...segments].filter((s) => !appearsIn(sourceFor(s), s));
     const missingBare = [...bareMethods].filter((m) => !hasBareBranch(src, m)).map((m) => `#${m}`);
     const entries = [...new Set([...missing, ...deepShapes, ...missingBare])].sort();
     if (entries.length) gaps[row.domain] = entries;
