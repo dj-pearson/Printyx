@@ -5,6 +5,15 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { applyUserScope, resolveScope, rowInScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { fetchInBatches } from '../_shared/batch-fetch.ts';
+import {
+  completionUpdate,
+  computeFpy,
+  periodStart,
+  satisfiedRequirements,
+  type KittingRow,
+} from '../_shared/kitting-fpy.ts';
+import { toCamel } from '../_shared/case.ts';
 
 /**
  * The named sub-paths, so the single-operation GET below cannot swallow one.
@@ -20,7 +29,14 @@ const NAMED_ENDPOINTS = new Set([
   'bin-locations',
   'picking-list',
   'stats',
+  // WF-L-05
+  'kitting',
+  'fpy-metrics',
+  'serials',
 ]);
+
+/** Equipment stages a unit can be at while it is still the warehouse's problem. */
+const PRE_STAGE_STAGES = ['received', 'staged'];
 
 /**
  * WF-L-03, on the five branches nothing calls.
@@ -406,6 +422,291 @@ export default async function handler(req: Request) {
           failedOperations: statusCounts[3],
           operationsByType: Object.fromEntries(TYPES.map((t, i) => [t, typeCounts[i]])),
         },
+        200,
+        req,
+      );
+    }
+
+    // ────────────────────────── WF-L-05: kitting and FPY ──────────────────────
+    //
+    // Ported from server/routes-warehouse-fpy.ts, which had real Zod CRUD over
+    // warehouse_kitting_operations and fpy_metrics, no caller in any client
+    // tree, and no edge function - so it worked in dev for nobody and 404'd in
+    // production. The Build and Serial Numbers tabs on WarehouseOperations.tsx
+    // rendered "will be implemented here" above it the whole time.
+
+    // GET /warehouse-operations/kitting - list, newest first
+    if (req.method === 'GET' && endpoint === 'kitting' && !resourceId) {
+      let query = admin
+        .from('warehouse_kitting_operations')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      const status = url.searchParams.get('status');
+      const technician = url.searchParams.get('technician');
+      const orderNumber = url.searchParams.get('orderNumber');
+      if (status) query = query.eq('operation_status', status);
+      if (technician) query = query.eq('assigned_technician', technician);
+      if (orderNumber) query = query.eq('order_number', orderNumber);
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('Error listing kitting operations:', error);
+        return createCorsResponse({ error: 'Failed to list kitting operations' }, 500, req);
+      }
+      return createCorsResponse(toCamel(data ?? []), 200, req);
+    }
+
+    // GET /warehouse-operations/kitting/:id
+    if (req.method === 'GET' && endpoint === 'kitting' && resourceId && !parts[2]) {
+      const { data, error } = await admin
+        .from('warehouse_kitting_operations')
+        .select('*')
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (error || !data) {
+        return createCorsResponse({ error: 'Kitting operation not found' }, 404, req);
+      }
+      return createCorsResponse(
+        { ...toCamel(data), satisfiesRequirements: satisfiedRequirements(data as KittingRow) },
+        200,
+        req,
+      );
+    }
+
+    // POST /warehouse-operations/kitting - open a build
+    if (req.method === 'POST' && endpoint === 'kitting' && !resourceId) {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+
+      // order_number, customer_id, kit_name and assigned_technician are all NOT
+      // NULL. Refusing here beats a 23502 the caller has to decode.
+      const required = {
+        order_number: body.orderNumber ?? body.order_number,
+        customer_id: body.customerId ?? body.customer_id,
+        kit_name: body.kitName ?? body.kit_name,
+        assigned_technician: body.assignedTechnician ?? body.assigned_technician,
+      };
+      const missing = Object.entries(required)
+        .filter(([, v]) => v === undefined || v === null || v === '')
+        .map(([k]) => k);
+      if (missing.length > 0) {
+        return createCorsResponse({ error: 'Missing required fields', fields: missing }, 400, req);
+      }
+
+      const now = new Date().toISOString();
+      const { data, error } = await admin
+        .from('warehouse_kitting_operations')
+        .insert({
+          ...required,
+          tenant_id: tenantId,
+          purchase_order_id: body.purchaseOrderId ?? body.purchase_order_id ?? null,
+          equipment_model: body.equipmentModel ?? body.equipment_model ?? null,
+          required_accessories: body.requiredAccessories ?? body.required_accessories ?? [],
+          checklist_items: body.checklistItems ?? body.checklist_items ?? [],
+          serial_numbers: body.serialNumbers ?? body.serial_numbers ?? [],
+          asset_tags: body.assetTags ?? body.asset_tags ?? [],
+          notes: body.notes ?? null,
+          operation_status: 'in_progress',
+          quality_status: 'pending',
+          rework_count: 0,
+          started_at: now,
+          created_at: now,
+          updated_at: now,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating kitting operation:', error);
+        return createCorsResponse({ error: 'Failed to create kitting operation' }, 500, req);
+      }
+      return createCorsResponse(toCamel(data), 201, req);
+    }
+
+    // PATCH /warehouse-operations/kitting/:id - checklist and serial progress
+    if (req.method === 'PATCH' && endpoint === 'kitting' && resourceId) {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      const map: Record<string, string> = {
+        checklistItems: 'checklist_items',
+        requiredAccessories: 'required_accessories',
+        serialNumbers: 'serial_numbers',
+        assetTags: 'asset_tags',
+        firmwareVersions: 'firmware_versions',
+        photos: 'photos',
+        notes: 'notes',
+        equipmentModel: 'equipment_model',
+        assignedTechnician: 'assigned_technician',
+        operationStatus: 'operation_status',
+      };
+      for (const [camel, snake] of Object.entries(map)) {
+        if (body[camel] !== undefined) update[snake] = body[camel];
+        else if (body[snake] !== undefined) update[snake] = body[snake];
+      }
+
+      const { data, error } = await admin
+        .from('warehouse_kitting_operations')
+        .update(update)
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error || !data) {
+        return createCorsResponse({ error: 'Failed to update kitting operation' }, 500, req);
+      }
+      return createCorsResponse(toCamel(data), 200, req);
+    }
+
+    // POST /warehouse-operations/kitting/:id/complete - the QA decision
+    if (req.method === 'POST' && endpoint === 'kitting' && resourceId && parts[2] === 'complete') {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      if (typeof body.passed !== 'boolean') {
+        return createCorsResponse({ error: '`passed` must be true or false' }, 400, req);
+      }
+
+      // Read first: whether this is a FIRST pass depends on the rework count
+      // already on the row, not on what the caller sends.
+      const { data: current, error: readError } = await admin
+        .from('warehouse_kitting_operations')
+        .select('*')
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      if (readError || !current) {
+        return createCorsResponse({ error: 'Kitting operation not found' }, 404, req);
+      }
+
+      const { data, error } = await admin
+        .from('warehouse_kitting_operations')
+        .update(
+          completionUpdate(current as KittingRow, {
+            passed: body.passed as boolean,
+            defects: (body.defects ?? body.defectsFound) as never,
+            notes: (body.notes as string) ?? null,
+            completedBy: user.id,
+          }),
+        )
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error('Error completing kitting operation:', error);
+        return createCorsResponse({ error: 'Failed to complete kitting operation' }, 500, req);
+      }
+
+      // WF-L-13 is the story that makes the transition endpoint CHECK its
+      // requirements; today it accepts whatever the caller claims. What this
+      // returns is the EVIDENCE side of that - a durable record the check can
+      // read once it lands, rather than a claim.
+      return createCorsResponse(
+        { ...toCamel(data), satisfiesRequirements: satisfiedRequirements(data as KittingRow) },
+        200,
+        req,
+      );
+    }
+
+    // GET /warehouse-operations/fpy-metrics?period=day|week|month|quarter
+    if (req.method === 'GET' && endpoint === 'fpy-metrics') {
+      const period = url.searchParams.get('period') || 'week';
+      const start = periodStart(period);
+
+      const { data, error } = await admin
+        .from('warehouse_kitting_operations')
+        .select(
+          'id, assigned_technician, equipment_model, first_pass_yield, rework_required, defects_found',
+        )
+        .eq('tenant_id', tenantId)
+        .eq('operation_status', 'completed')
+        .gte('created_at', start.toISOString());
+
+      if (error) {
+        console.error('Error computing FPY metrics:', error);
+        return createCorsResponse({ error: 'Failed to compute FPY metrics' }, 500, req);
+      }
+
+      const metrics = computeFpy((data ?? []) as KittingRow[]);
+      return createCorsResponse(
+        {
+          period: { start: start.toISOString(), end: new Date().toISOString(), label: period },
+          ...metrics,
+          // A yield over an empty window is not zero. Saying so keeps a quiet
+          // week from reading as a collapse in build quality.
+          ...(metrics.totalOperations === 0
+            ? {
+                unbacked: ['fpyPercentage', 'reworkRate'],
+                reason: 'No kitting operation completed in this window.',
+              }
+            : {}),
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /warehouse-operations/serials - units the warehouse still holds,
+    // each with the kitting operation that covers it
+    if (req.method === 'GET' && endpoint === 'serials') {
+      // equipment_lifecycle is where the STAGE lives (current_stage); the
+      // `equipment` table has equipment_status, a different vocabulary, and no
+      // `model` column at all - it is model_number there. WF-L-04 put the
+      // lifecycle row in charge of the stage and this follows it.
+      const { data: units, error } = await admin
+        .from('equipment_lifecycle')
+        .select(
+          'id, equipment_id, serial_number, model, manufacturer, current_stage, current_location, customer_id, updated_at',
+        )
+        .eq('tenant_id', tenantId)
+        .in('current_stage', PRE_STAGE_STAGES)
+        .order('updated_at', { ascending: false })
+        .limit(200);
+
+      if (error) {
+        console.error('Error listing staged serials:', error);
+        return createCorsResponse({ error: 'Failed to list serial numbers' }, 500, req);
+      }
+
+      const serials = (units ?? [])
+        .map((u: Record<string, unknown>) => String(u.serial_number ?? ''))
+        .filter(Boolean);
+
+      // serial_numbers is a jsonb ARRAY on the operation, so a serial cannot be
+      // matched with .in() - the rows are fetched for the tenant and grouped
+      // here. Capped for the same reason.
+      const operations =
+        serials.length === 0
+          ? []
+          : await fetchInBatches<Record<string, unknown>>([tenantId], 'tenant_id', () =>
+              admin
+                .from('warehouse_kitting_operations')
+                .select(
+                  'id, order_number, kit_name, serial_numbers, operation_status, quality_status, first_pass_yield, assigned_technician, completed_at',
+                )
+                .order('created_at', { ascending: false }),
+            );
+
+      const bySerial = new Map<string, Record<string, unknown>>();
+      for (const op of operations) {
+        for (const serial of (op.serial_numbers as string[] | null) ?? []) {
+          const key = String(serial);
+          if (!bySerial.has(key)) bySerial.set(key, op);
+        }
+      }
+
+      return createCorsResponse(
+        (units ?? []).map((unit: Record<string, unknown>) => {
+          const op = bySerial.get(String(unit.serial_number ?? ''));
+          return {
+            ...toCamel(unit),
+            kitting: op ? toCamel(op) : null,
+            kittingStatus: op ? (op.quality_status ?? op.operation_status) : 'not_started',
+          };
+        }),
         200,
         req,
       );

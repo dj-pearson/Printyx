@@ -111,29 +111,24 @@ const serialNumberSchema = z.object({
 });
 
 // Build process schema
+// WF-L-05: the kitting operation a technician opens for a build.
+//
+// This schema used to describe a shape warehouse_kitting_operations does not
+// have - modelId, scheduledDate, an accessories[] of ids and quantities, a
+// buildSteps[] with per-step estimates - behind a dialog that never opened,
+// above a tab that said "will be implemented here". Rebound to the real
+// columns: order_number, customer_id, kit_name and assigned_technician are all
+// NOT NULL, the checklist is a jsonb array of items, and the serials are the
+// units this build covers.
 const buildProcessSchema = z.object({
-  equipmentId: z.string().min(1, 'Equipment is required'),
-  modelId: z.string().min(1, 'Model is required'),
+  orderNumber: z.string().min(1, 'Order number is required'),
+  customerId: z.string().min(1, 'Customer is required'),
+  kitName: z.string().min(1, 'Kit name is required'),
   assignedTechnician: z.string().min(1, 'Technician is required'),
-  scheduledDate: z.date(),
-  accessories: z.array(
-    z.object({
-      accessoryId: z.string(),
-      quantity: z.number().min(1),
-      isRequired: z.boolean().default(false),
-    }),
-  ),
-  buildSteps: z.array(
-    z.object({
-      stepName: z.string(),
-      description: z.string(),
-      estimatedTime: z.number(), // minutes
-      isCompleted: z.boolean().default(false),
-      completedBy: z.string().optional(),
-      completedAt: z.date().optional(),
-      notes: z.string().optional(),
-    }),
-  ),
+  equipmentModel: z.string().optional(),
+  serialNumbers: z.string().optional(),
+  checklist: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 // Delivery schedule schema
@@ -149,6 +144,73 @@ const deliveryScheduleSchema = z.object({
   installationRequired: z.boolean().default(false),
   installationDate: z.date().optional(),
 });
+
+// WF-L-05 shapes, matching what supabase/functions/warehouse-operations returns.
+interface ChecklistItem {
+  item: string;
+  completed: boolean;
+  completedBy?: string | null;
+  completedAt?: string | null;
+  notes?: string | null;
+}
+
+interface KittingOperation {
+  id: string;
+  orderNumber: string;
+  kitName: string;
+  customerId: string;
+  equipmentModel?: string | null;
+  assignedTechnician: string;
+  checklistItems?: ChecklistItem[] | null;
+  serialNumbers?: string[] | null;
+  operationStatus?: string | null;
+  qualityStatus?: string | null;
+  firstPassYield?: boolean | null;
+  reworkCount?: number | null;
+  reworkNotes?: string | null;
+  completedAt?: string | null;
+  notes?: string | null;
+}
+
+interface SerialUnit {
+  id: string;
+  equipmentId?: string | null;
+  serialNumber?: string | null;
+  model?: string | null;
+  manufacturer?: string | null;
+  currentStage?: string | null;
+  currentLocation?: string | null;
+  kittingStatus: string;
+  kitting?: Pick<
+    KittingOperation,
+    'id' | 'orderNumber' | 'kitName' | 'operationStatus' | 'qualityStatus' | 'firstPassYield'
+  > | null;
+}
+
+interface FpyMetrics {
+  totalOperations: number;
+  firstPassOperations: number;
+  /** null when nothing completed in the window - a yield over zero units is not 0%. */
+  fpyPercentage: number | null;
+  reworkRate: number | null;
+  topDefectTypes?: Array<{ defectType: string; count: number; percentage: number }>;
+  unbacked?: string[];
+  reason?: string;
+}
+
+/** Comma or newline separated free text to a trimmed list. */
+function splitList(value?: string): string[] {
+  if (!value) return [];
+  return value
+    .split(/[\n,]/)
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+/** A percentage the backend may legitimately not have. */
+function pct(value: number | null | undefined): string {
+  return value === null || value === undefined ? '—' : `${value}%`;
+}
 
 type WarehouseOperationFormData = z.infer<typeof warehouseOperationSchema>;
 type SerialNumberFormData = z.infer<typeof serialNumberSchema>;
@@ -220,6 +282,21 @@ export default function WarehouseOperations() {
     queryKey: ['/api/customers'],
   });
 
+  // WF-L-05: kitting operations, the serials still in the warehouse, and the
+  // first-pass yield over them. All three are served by the same edge function
+  // as the board above, so dev and production agree.
+  const { data: kittingOps = [], isLoading: kittingLoading } = useQuery<KittingOperation[]>({
+    queryKey: ['/api/warehouse-operations/kitting'],
+  });
+
+  const { data: serialUnits = [], isLoading: serialsLoading } = useQuery<SerialUnit[]>({
+    queryKey: ['/api/warehouse-operations/serials'],
+  });
+
+  const { data: fpy } = useQuery<FpyMetrics>({
+    queryKey: ['/api/warehouse-operations/fpy-metrics'],
+  });
+
   // Fetch statistics
   const { data: stats = {} } = useQuery<{
     totalOperations?: number;
@@ -286,6 +363,62 @@ export default function WarehouseOperations() {
     },
   });
 
+  const refreshKitting = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/warehouse-operations/kitting'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/warehouse-operations/serials'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/warehouse-operations/fpy-metrics'] });
+  };
+
+  const createKittingMutation = useMutation({
+    mutationFn: async (data: BuildProcessFormData) =>
+      apiRequest('/api/warehouse-operations/kitting', 'POST', {
+        orderNumber: data.orderNumber,
+        customerId: data.customerId,
+        kitName: data.kitName,
+        assignedTechnician: data.assignedTechnician,
+        equipmentModel: data.equipmentModel || null,
+        serialNumbers: splitList(data.serialNumbers),
+        checklistItems: splitList(data.checklist).map((item) => ({ item, completed: false })),
+        notes: data.notes || null,
+      }),
+    onSuccess: () => {
+      refreshKitting();
+      setShowBuildDialog(false);
+      buildForm.reset();
+      toast({ title: 'Build opened', description: 'The kitting operation is in progress.' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not open the build',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const toggleChecklistMutation = useMutation({
+    mutationFn: async ({ id, items }: { id: string; items: ChecklistItem[] }) =>
+      apiRequest(`/api/warehouse-operations/kitting/${id}`, 'PATCH', { checklistItems: items }),
+    onSuccess: refreshKitting,
+  });
+
+  const completeKittingMutation = useMutation({
+    mutationFn: async ({ id, passed, notes }: { id: string; passed: boolean; notes?: string }) =>
+      apiRequest(`/api/warehouse-operations/kitting/${id}/complete`, 'POST', { passed, notes }),
+    onSuccess: (_data, variables) => {
+      refreshKitting();
+      toast({
+        title: variables.passed ? 'QA passed' : 'QA failed',
+        description: variables.passed
+          ? 'The unit is cleared to stage.'
+          : 'Rework recorded. First pass is not restored by a later pass.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Could not record QA', description: error.message, variant: 'destructive' });
+    },
+  });
+
   // Form setup
   const form = useForm<WarehouseOperationFormData>({
     resolver: zodResolver(warehouseOperationSchema),
@@ -305,8 +438,14 @@ export default function WarehouseOperations() {
   const buildForm = useForm<BuildProcessFormData>({
     resolver: zodResolver(buildProcessSchema),
     defaultValues: {
-      accessories: [],
-      buildSteps: [],
+      orderNumber: '',
+      customerId: '',
+      kitName: '',
+      assignedTechnician: '',
+      equipmentModel: '',
+      serialNumbers: '',
+      checklist: '',
+      notes: '',
     },
   });
 
@@ -448,6 +587,45 @@ export default function WarehouseOperations() {
                   </CardContent>
                 </Card>
               </div>
+            )}
+
+            {/* WF-L-05: first-pass yield, from the kitting operations that
+                actually completed. `—` rather than 0% when nothing did: a yield
+                over an empty window is not a collapse in build quality, and 0%
+                on a quality card reads as exactly that. */}
+            {fpy && (
+              <Card>
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="text-base md:text-lg">First-pass yield</CardTitle>
+                  <CardDescription>
+                    {fpy.totalOperations} build{fpy.totalOperations === 1 ? '' : 's'} completed in
+                    the last week
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <div>
+                      <p className="text-lg font-bold md:text-2xl">{pct(fpy.fpyPercentage)}</p>
+                      <p className="text-xs text-muted-foreground md:text-sm">FPY</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold md:text-2xl">{pct(fpy.reworkRate)}</p>
+                      <p className="text-xs text-muted-foreground md:text-sm">Rework rate</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold md:text-2xl">{fpy.firstPassOperations}</p>
+                      <p className="text-xs text-muted-foreground md:text-sm">First pass</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold md:text-2xl">
+                        {fpy.topDefectTypes?.[0]?.defectType ?? '—'}
+                      </p>
+                      <p className="text-xs text-muted-foreground md:text-sm">Top defect</p>
+                    </div>
+                  </div>
+                  {fpy.reason && <p className="mt-3 text-sm text-muted-foreground">{fpy.reason}</p>}
+                </CardContent>
+              </Card>
             )}
 
             {/* Recent Operations */}
@@ -780,9 +958,44 @@ export default function WarehouseOperations() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
-                <div className="text-center py-8 text-muted-foreground">
-                  Serial number management interface will be implemented here
-                </div>
+                {serialsLoading ? (
+                  <div className="py-8 text-center text-muted-foreground">Loading serials…</div>
+                ) : serialUnits.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    No units are at received or staged right now.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {serialUnits.map((unit) => (
+                      <div
+                        key={unit.id}
+                        className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium">{unit.serialNumber || 'No serial recorded'}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {[unit.manufacturer, unit.model].filter(Boolean).join(' ') ||
+                              'Model not recorded'}
+                            {unit.currentLocation ? ` · ${unit.currentLocation}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline">{unit.currentStage}</Badge>
+                          <Badge
+                            variant={unit.kittingStatus === 'passed' ? 'default' : 'secondary'}
+                          >
+                            {unit.kittingStatus === 'not_started'
+                              ? 'no build'
+                              : `QA ${unit.kittingStatus}`}
+                          </Badge>
+                          {unit.kitting?.firstPassYield ? (
+                            <Badge variant="outline">first pass</Badge>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -813,9 +1026,129 @@ export default function WarehouseOperations() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
-                <div className="text-center py-8 text-muted-foreground">
-                  Build process management interface will be implemented here
-                </div>
+                {kittingLoading ? (
+                  <div className="py-8 text-center text-muted-foreground">Loading builds…</div>
+                ) : kittingOps.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    No builds yet. Open one with New Build Process.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {kittingOps.map((op) => {
+                      const items = op.checklistItems ?? [];
+                      const done = items.filter((i) => i.completed).length;
+                      const open = op.operationStatus !== 'completed';
+                      return (
+                        <div key={op.id} className="rounded-lg border p-4">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <p className="font-medium">{op.kitName}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Order {op.orderNumber}
+                                {op.equipmentModel ? ` · ${op.equipmentModel}` : ''} ·{' '}
+                                {(op.serialNumbers ?? []).length} serial
+                                {(op.serialNumbers ?? []).length === 1 ? '' : 's'}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline">{op.operationStatus}</Badge>
+                              {op.qualityStatus && op.qualityStatus !== 'pending' && (
+                                <Badge
+                                  variant={
+                                    op.qualityStatus === 'passed' ? 'default' : 'destructive'
+                                  }
+                                >
+                                  QA {op.qualityStatus}
+                                </Badge>
+                              )}
+                              {op.firstPassYield ? (
+                                <Badge variant="outline">first pass</Badge>
+                              ) : null}
+                              {(op.reworkCount ?? 0) > 0 ? (
+                                <Badge variant="secondary">rework ×{op.reworkCount}</Badge>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {items.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                Checklist {done}/{items.length}
+                              </p>
+                              {items.map((item, index) => (
+                                <label
+                                  key={`${op.id}-${index}`}
+                                  className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md px-2 hover:bg-muted/50"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4"
+                                    checked={item.completed}
+                                    disabled={!open || toggleChecklistMutation.isPending}
+                                    onChange={(event) =>
+                                      toggleChecklistMutation.mutate({
+                                        id: op.id,
+                                        items: items.map((existing, i) =>
+                                          i === index
+                                            ? {
+                                                ...existing,
+                                                completed: event.target.checked,
+                                                completedAt: event.target.checked
+                                                  ? new Date().toISOString()
+                                                  : null,
+                                              }
+                                            : existing,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                  <span className={item.completed ? 'text-muted-foreground' : ''}>
+                                    {item.item}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+
+                          {open && (
+                            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                              <Button
+                                size="sm"
+                                className="min-h-[44px] flex-1 touch-manipulation"
+                                disabled={completeKittingMutation.isPending}
+                                onClick={() =>
+                                  completeKittingMutation.mutate({ id: op.id, passed: true })
+                                }
+                              >
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                QA pass
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="min-h-[44px] flex-1 touch-manipulation"
+                                disabled={completeKittingMutation.isPending}
+                                onClick={() =>
+                                  completeKittingMutation.mutate({
+                                    id: op.id,
+                                    passed: false,
+                                    notes: 'Failed QA on the floor',
+                                  })
+                                }
+                              >
+                                QA fail
+                              </Button>
+                            </div>
+                          )}
+
+                          {op.reworkNotes && (
+                            <p className="mt-2 text-sm text-muted-foreground">{op.reworkNotes}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1045,6 +1378,190 @@ export default function WarehouseOperations() {
                     className="w-full md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                   >
                     {createOperationMutation.isPending ? 'Creating...' : 'Create Operation'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* WF-L-05: open a kitting operation. Every field here is a column on
+            warehouse_kitting_operations; the four at the top are NOT NULL. */}
+        <Dialog open={showBuildDialog} onOpenChange={setShowBuildDialog}>
+          <DialogContent className="max-h-[90vh] max-w-[600px] overflow-y-auto p-4 sm:p-6">
+            <DialogHeader>
+              <DialogTitle>New build</DialogTitle>
+              <DialogDescription>
+                Open a kitting operation for the unit being built. QA is recorded on the build.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...buildForm}>
+              <form
+                onSubmit={buildForm.handleSubmit((data) => createKittingMutation.mutate(data))}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={buildForm.control}
+                    name="orderNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Order number</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value ?? ''} className="min-h-[44px]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={buildForm.control}
+                    name="kitName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Kit name</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value ?? ''} className="min-h-[44px]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={buildForm.control}
+                  name="customerId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Select a customer" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {customers.map((customer) => (
+                            <SelectItem key={customer.id} value={customer.id}>
+                              {customer.companyName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={buildForm.control}
+                  name="assignedTechnician"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Technician</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Assign a technician" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {technicians.map((technician) => (
+                            <SelectItem key={technician.id} value={technician.id}>
+                              {[technician.firstName, technician.lastName]
+                                .filter(Boolean)
+                                .join(' ') || technician.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={buildForm.control}
+                  name="equipmentModel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Model</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value ?? ''} className="min-h-[44px]" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={buildForm.control}
+                  name="serialNumbers"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Serial numbers</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value ?? ''}
+                          rows={2}
+                          placeholder="One per line, or comma separated"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={buildForm.control}
+                  name="checklist"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Checklist</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value ?? ''}
+                          rows={4}
+                          placeholder="One item per line"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={buildForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value ?? ''} rows={2} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-[44px]"
+                    onClick={() => setShowBuildDialog(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="min-h-[44px]"
+                    disabled={createKittingMutation.isPending}
+                  >
+                    Open build
                   </Button>
                 </div>
               </form>

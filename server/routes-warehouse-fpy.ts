@@ -1,288 +1,35 @@
 import express from 'express';
-import { eq, and, desc, sql, gte, lte, count, avg } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { billingEngine } from './services/billing-engine-service';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-warehouse-fpy');
 
-import {
-  warehouseKittingOperations,
-  fpyMetrics,
-  autoInvoiceGeneration,
-  insertWarehouseKittingOperationSchema,
-  insertFpyMetricSchema,
-  insertAutoInvoiceGenerationSchema,
-  type WarehouseKittingOperation,
-  type FpyMetric,
-  type AutoInvoiceGeneration,
-} from '@shared/warehouse-fpy-schema';
-import { serviceTickets, businessRecords } from '@shared/schema';
+import { autoInvoiceGeneration } from '@shared/warehouse-fpy-schema';
 
 const router = express.Router();
 
-// Create warehouse kitting operation
-router.post('/warehouse-kitting-operations', async (req, res) => {
-  try {
-    // PA-035: tenantId is NOT NULL and injected at .values() below.
-    const validatedData = insertWarehouseKittingOperationSchema
-      .omit({ tenantId: true })
-      .parse(req.body);
-    const tenantId = req.headers['x-tenant-id'] as string;
-
-    const [operation] = await db
-      .insert(warehouseKittingOperations)
-      .values({
-        ...validatedData,
-        tenantId,
-      })
-      .returning();
-
-    res.json(operation);
-  } catch (error) {
-    log.error('Error creating warehouse kitting operation:', error);
-    res.status(500).json({ error: 'Failed to create warehouse kitting operation' });
-  }
-});
-
-// Get warehouse kitting operations
-router.get('/warehouse-kitting-operations', async (req, res) => {
-  try {
-    const tenantId = req.headers['x-tenant-id'] as string;
-    const { status, technician, fromDate, toDate } = req.query;
-
-    // QUALITY-002: drizzle's where() ASSIGNS rather than ANDs, so the old
-    // `query = query.where(...)` chain replaced the tenant predicate outright.
-    // Passing ?status=open returned every tenant's kitting operations.
-    const conditions = [eq(warehouseKittingOperations.tenantId, tenantId)];
-
-    if (status) {
-      conditions.push(eq(warehouseKittingOperations.operationStatus, status as string));
-    }
-
-    if (technician) {
-      conditions.push(eq(warehouseKittingOperations.assignedTechnician, technician as string));
-    }
-
-    if (fromDate) {
-      conditions.push(gte(warehouseKittingOperations.createdAt, new Date(fromDate as string)));
-    }
-
-    if (toDate) {
-      conditions.push(lte(warehouseKittingOperations.createdAt, new Date(toDate as string)));
-    }
-
-    const operations = await db
-      .select()
-      .from(warehouseKittingOperations)
-      .where(and(...conditions))
-      .orderBy(desc(warehouseKittingOperations.createdAt));
-
-    res.json(operations);
-  } catch (error) {
-    log.error('Error fetching warehouse kitting operations:', error);
-    res.status(500).json({ error: 'Failed to fetch warehouse kitting operations' });
-  }
-});
-
-// Update warehouse kitting operation
-router.patch('/warehouse-kitting-operations/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const tenantId = req.headers['x-tenant-id'] as string;
-    const updates = req.body;
-
-    // Calculate FPY if operation is being completed
-    if (updates.operationStatus === 'completed' && !updates.firstPassYield) {
-      updates.firstPassYield = !updates.reworkRequired && updates.qualityStatus === 'pass';
-    }
-
-    const [operation] = await db
-      .update(warehouseKittingOperations)
-      .set({
-        ...updates,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(warehouseKittingOperations.id, id),
-          eq(warehouseKittingOperations.tenantId, tenantId),
-        ),
-      )
-      .returning();
-
-    if (!operation) {
-      return res.status(404).json({ error: 'Operation not found' });
-    }
-
-    res.json(operation);
-  } catch (error) {
-    log.error('Error updating warehouse kitting operation:', error);
-    res.status(500).json({ error: 'Failed to update warehouse kitting operation' });
-  }
-});
-
-// Complete warehouse kitting operation with FPY calculation
-router.post('/warehouse-kitting-operations/:id/complete', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const tenantId = req.headers['x-tenant-id'] as string;
-    const { completedBy, supervisorApproval, notes } = req.body;
-
-    const [operation] = await db
-      .select()
-      .from(warehouseKittingOperations)
-      .where(
-        and(
-          eq(warehouseKittingOperations.id, id),
-          eq(warehouseKittingOperations.tenantId, tenantId),
-        ),
-      )
-      .limit(1);
-
-    if (!operation) {
-      return res.status(404).json({ error: 'Operation not found' });
-    }
-
-    // Calculate final FPY
-    const firstPassYield =
-      !operation.reworkRequired &&
-      operation.qualityStatus === 'pass' &&
-      operation.reworkCount === 0;
-
-    // Calculate duration
-    const startTime = operation.startedAt || operation.createdAt || new Date();
-    const totalDurationMinutes = Math.round(
-      (new Date().getTime() - startTime.getTime()) / (1000 * 60),
-    );
-
-    const [updatedOperation] = await db
-      .update(warehouseKittingOperations)
-      .set({
-        operationStatus: 'completed',
-        completedBy,
-        completedAt: new Date(),
-        firstPassYield,
-        totalDurationMinutes,
-        supervisorApproval: supervisorApproval || false,
-        notes: notes || operation.notes,
-        updatedAt: new Date(),
-      })
-      .where(eq(warehouseKittingOperations.id, id))
-      .returning();
-
-    res.json(updatedOperation);
-  } catch (error) {
-    log.error('Error completing warehouse kitting operation:', error);
-    res.status(500).json({ error: 'Failed to complete warehouse kitting operation' });
-  }
-});
-
-// Get FPY metrics
-router.get('/fpy-metrics', async (req, res) => {
-  try {
-    const tenantId = req.headers['x-tenant-id'] as string;
-    const { period = 'week' } = req.query;
-
-    // Calculate date range based on period
-    const now = new Date();
-    let startDate: Date;
-
-    switch (period) {
-      case 'day':
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        break;
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    }
-
-    // Get operations for the period
-    const operations = await db
-      .select()
-      .from(warehouseKittingOperations)
-      .where(
-        and(
-          eq(warehouseKittingOperations.tenantId, tenantId),
-          gte(warehouseKittingOperations.createdAt, startDate),
-          eq(warehouseKittingOperations.operationStatus, 'completed'),
-        ),
-      );
-
-    // Calculate FPY metrics
-    const totalOperations = operations.length;
-    const firstPassOperations = operations.filter((op) => op.firstPassYield).length;
-    const fpyPercentage = totalOperations > 0 ? (firstPassOperations / totalOperations) * 100 : 0;
-
-    // Calculate breakdown by technician
-    const fpyByTechnician = operations.reduce(
-      (acc, op) => {
-        const tech = op.assignedTechnician;
-        if (!acc[tech]) acc[tech] = { total: 0, firstPass: 0, percentage: 0 };
-        acc[tech].total++;
-        if (op.firstPassYield) acc[tech].firstPass++;
-        acc[tech].percentage = (acc[tech].firstPass / acc[tech].total) * 100;
-        return acc;
-      },
-      {} as Record<string, { total: number; firstPass: number; percentage: number }>,
-    );
-
-    // Calculate breakdown by equipment type
-    const fpyByEquipmentType = operations.reduce(
-      (acc, op) => {
-        const equipment = op.equipmentModel || 'Unknown';
-        if (!acc[equipment]) acc[equipment] = { total: 0, firstPass: 0, percentage: 0 };
-        acc[equipment].total++;
-        if (op.firstPassYield) acc[equipment].firstPass++;
-        acc[equipment].percentage = (acc[equipment].firstPass / acc[equipment].total) * 100;
-        return acc;
-      },
-      {} as Record<string, { total: number; firstPass: number; percentage: number }>,
-    );
-
-    // Analyze defects
-    const allDefects = operations.flatMap((op) => op.defectsFound || []);
-    const defectCounts = allDefects.reduce(
-      (acc, defect) => {
-        acc[defect.defectType] = (acc[defect.defectType] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
-
-    const topDefectTypes = Object.entries(defectCounts)
-      .map(([defectType, count]) => ({
-        defectType,
-        count,
-        percentage: (count / totalOperations) * 100,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    const reworkOperations = operations.filter((op) => op.reworkRequired).length;
-    const reworkRate = totalOperations > 0 ? (reworkOperations / totalOperations) * 100 : 0;
-
-    const metrics = {
-      period: { start: startDate, end: now },
-      totalOperations,
-      firstPassOperations,
-      fpyPercentage: Math.round(fpyPercentage * 100) / 100,
-      fpyByTechnician,
-      fpyByEquipmentType,
-      topDefectTypes,
-      reworkRate: Math.round(reworkRate * 100) / 100,
-    };
-
-    res.json(metrics);
-  } catch (error) {
-    log.error('Error fetching FPY metrics:', error);
-    res.status(500).json({ error: 'Failed to fetch FPY metrics' });
-  }
-});
+// WF-L-05: the kitting and FPY handlers that were here are GONE.
+//
+// Four kitting endpoints and /fpy-metrics, all with real Zod CRUD over
+// warehouse_kitting_operations, and no caller in any of the seven client trees.
+// They would have 404'd in production regardless: nothing proxied this prefix
+// and no edge function served it. They now live in
+// supabase/functions/warehouse-operations under /kitting and /fpy-metrics, which
+// IS proxied, so the Build and Serial Numbers tabs reach the same handler on
+// both hosts.
+//
+// Two things went wrong here that the port fixes rather than carries over. Every
+// handler read `req.headers['x-tenant-id']` straight into the query, so the
+// tenant was whatever the caller asked for - the SEC-TENANT-003 hole; the edge
+// function resolves it from the verified JWT. And /fpy-metrics returned a 0%
+// yield when nothing had been built in the window, which on a quality dashboard
+// reads as every build failing QA; it answers null now and says why.
+//
+// WHAT STAYS: /auto-invoice and /auto-invoices. They delegate to
+// server/services/billing-engine-service and have no edge counterpart, so this
+// is the PROD-008c shape - a real feature nobody wired up, where deleting is a
+// decision rather than cleanup.
 
 // Trigger auto-invoice generation using billing engine service
 // NOTE: This endpoint now delegates to the centralized billing engine
