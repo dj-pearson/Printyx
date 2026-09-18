@@ -34,6 +34,10 @@ import {
 } from '../_shared/voice-ticket-close-logic.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { fetchInBatches } from '../_shared/batch-fetch.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'service.ticket.view_own';
+const WRITE_PERMISSION = ['service.ticket.close', 'service.ticket.void'];
 
 type Row = Record<string, any>;
 
@@ -224,6 +228,24 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
     const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
+
+    // SEC-EDGE-001: closing a ticket by voice, from the van. service.ticket.close
+    // is what FIELD_TECHNICIAN and SENIOR_TECHNICIAN hold; service.ticket.void is
+    // what SERVICE_MANAGER holds, and someone who may void a ticket may
+    // certainly close one. The OR is there because the seeded SERVICE_MANAGER
+    // template has void and assign but NOT close, which looks like a gap -
+    // naming both avoids locking a manager out without asserting a change to
+    // what a role holds.
+    //
+    // Checked against the seeded role templates rather than assumed: gating the
+    // service surface on a code its own technicians do not hold would break the
+    // daily job, which is a worse outcome than the hole it closes.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'voice-ticket-close');

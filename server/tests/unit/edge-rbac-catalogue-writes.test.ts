@@ -368,3 +368,81 @@ describe('the money and configuration surface is gated', () => {
     expect(src).not.toMatch(/req\.method !== 'GET'/);
   });
 });
+
+/**
+ * The service surface (SEC-EDGE-001, fifth batch).
+ *
+ * Different from the finance one in the way that matters: TECHNICIANS MUST BE
+ * ABLE TO WRITE. A field technician is level 1 or 2, so a level gate would
+ * break the daily job, and a permission gate is only safe if the seeded
+ * FIELD_TECHNICIAN template actually holds the code. Each gate below is checked
+ * against that template rather than chosen by name - the failure mode here is
+ * not a hole, it is a technician who cannot close a ticket from the van.
+ */
+describe('the service surface gates on codes technicians actually hold', () => {
+  const seeder = read('server/database-updater/seeders/rbac-seeder.ts');
+
+  /** The permission list of one seeded role template. */
+  const templateOf = (roleCode: string): string[] => {
+    const at = seeder.indexOf(`code: '${roleCode}'`);
+    expect(at, `${roleCode} is not a seeded role`).toBeGreaterThan(0);
+    const block = seeder.slice(at, seeder.indexOf(']', seeder.indexOf('permissions: [', at)));
+    return [...block.matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]);
+  };
+
+  const tech = templateOf('FIELD_TECHNICIAN');
+  const manager = templateOf('SERVICE_MANAGER');
+
+  it('a technician can still close a ticket by voice', () => {
+    const src = code('supabase/functions/voice-ticket-close/index.ts');
+    expect(src).toContain("'service.ticket.close'");
+    expect(tech, 'FIELD_TECHNICIAN cannot close a ticket').toContain('service.ticket.close');
+  });
+
+  it('and a service manager is not locked out of it', () => {
+    // The seeded SERVICE_MANAGER has void and assign but NOT close, which looks
+    // like a gap. Naming both avoids the lockout without asserting a change to
+    // what a role holds.
+    const src = code('supabase/functions/voice-ticket-close/index.ts');
+    expect(manager).not.toContain('service.ticket.close');
+    expect(manager).toContain('service.ticket.void');
+    expect(src).toContain("'service.ticket.void'");
+  });
+
+  it('a technician can still read and restock their van', () => {
+    const src = code('supabase/functions/truck-stock/index.ts');
+    expect(src).toContain("const READ_PERMISSION = 'service.parts.view'");
+    expect(tech).toContain('service.parts.view');
+    expect(tech).toContain('service.parts.request');
+    expect(src).toContain("'service.parts.request'");
+  });
+
+  it('and a manager restocking a van is not denied either', () => {
+    // service.parts.order is the manager's code; a gate aimed at technicians
+    // must not exclude the person who orders the parts.
+    //
+    // code(), not read(): the comment beside the gate NAMES service.parts.order
+    // while explaining it, so a raw-source assertion passes even when the code
+    // itself has been changed - the mutation that caught this replaced the real
+    // constant and the test stayed green.
+    expect(manager).toContain('service.parts.order');
+    expect(code('supabase/functions/truck-stock/index.ts')).toContain("'service.parts.order'");
+  });
+
+  it('phone-in tickets need the code the people who answer phones hold', () => {
+    const src = code('supabase/functions/phone-in-tickets/index.ts');
+    expect(src).toContain("const WRITE_PERMISSION = 'service.ticket.create'");
+    // Held by the manager, the dispatcher and the CSR - and deliberately not by
+    // a field technician, who does not take these calls.
+    expect(manager).toContain('service.ticket.create');
+    expect(templateOf('CSR')).toContain('service.ticket.create');
+    expect(tech).not.toContain('service.ticket.create');
+  });
+
+  it('all three are out of the open-to-all baseline', () => {
+    const baseline = JSON.parse(read('docs/edge-rbac-baseline.json'));
+    for (const fn of ['phone-in-tickets', 'voice-ticket-close', 'truck-stock']) {
+      expect(baseline.openToAllRoles, fn).not.toContain(fn);
+    }
+  });
+});

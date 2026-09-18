@@ -29,8 +29,8 @@
     {
       "loop": "blog-competitor-gap/index.ts:316",
       "table": "blog_competitor_keywords",
-      "verdict": "scales-dominated",
-      "why": "One DataForSEO rankedKeywords call per competitor domain. The external API is the wall clock and the domains are a handful."
+      "verdict": "scales-open",
+      "why": "An ilike lookup per keyword in a gap-analysis list, which is as long as the analysis. Batchable by reading the tenant keyword set once and matching in memory - ilike here is case-insensitive equality, not a pattern. Left open."
     },
     {
       "loop": "blog-competitor-gap/index.ts:560",
@@ -54,7 +54,7 @@
       "loop": "company-ids/index.ts:182",
       "table": "business_records",
       "verdict": "bounded",
-      "why": "A backfill capped by the select above it (.limit(limit)), and generateCompanyDisplayId allocates the NEXT id, so it has to see the previous allocation. Sequential by definition."
+      "why": "Three fields - company code, tax id, external id - checked for uniqueness. A literal tuple list."
     },
     {
       "loop": "company-ids/index.ts:317",
@@ -171,7 +171,7 @@
       "why": "The running entries for ONE user on ONE task. More than one is already an anomaly the loop exists to clean up."
     },
     {
-      "loop": "voice-ticket-close/index.ts:393",
+      "loop": "voice-ticket-close/index.ts:415",
       "table": "truck_inventory",
       "verdict": "deliberate",
       "why": "The truck stock is read once for the whole ticket already. The deduction is per part because each part deducts a different amount and PostgREST cannot express quantity_on_truck - qty."

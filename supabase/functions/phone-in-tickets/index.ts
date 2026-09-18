@@ -4,6 +4,10 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'service.ticket.view_own';
+const WRITE_PERMISSION = 'service.ticket.create';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -34,6 +38,20 @@ export default async function handler(req: Request) {
       console.error('No tenant ID found for user:', user.id);
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: Creating a service ticket from a phone call. service.ticket.create is
+    // held by SERVICE_MANAGER, DISPATCH_COORDINATOR and CSR - the people who
+    // answer the phone - and deliberately not by a field technician, who does
+    // not take these calls. Checked against the seeded role templates rather
+    // than assumed: gating the service surface on a code its own technicians do
+    // not hold would break the daily job, which is a worse outcome than the
+    // hole it closes.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
 
     // Use service_role client for database operations (bypasses RLS)
 

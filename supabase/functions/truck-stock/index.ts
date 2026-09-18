@@ -67,6 +67,10 @@ import {
 } from './optimizer.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { chunk } from '../_shared/batch-fetch.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'service.parts.view';
+const WRITE_PERMISSION = ['service.parts.request', 'service.parts.order'];
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -94,6 +98,17 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     }
+
+    // SEC-EDGE-001: The parts on a technician's van. service.parts.view and
+    // service.parts.request are what FIELD_TECHNICIAN holds; service.parts.order
+    // is the manager's code, and a manager restocking a van must not be denied
+    // by a gate aimed at technicians. Both are named for that reason.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     // Idempotent — the dispatcher strips segment 0 before the handler runs.
