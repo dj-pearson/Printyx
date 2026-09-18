@@ -8,6 +8,7 @@
 //   [id, 'deliver']                        — POST /shipments/:id/deliver
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
+import { expectedDateFrom } from '../../_shared/manufacturer-order-from-po.ts';
 import type { HandlerCtx } from '../_context.ts';
 
 export async function handleShipments(req: Request, ctx: HandlerCtx): Promise<Response | null> {
@@ -58,6 +59,7 @@ export async function handleShipments(req: Request, ctx: HandlerCtx): Promise<Re
       .select()
       .maybeSingle();
     if (error) return dbErr(req, requestId, 'Failed to create shipment', error);
+    await syncPurchaseOrderExpectedDate(db, auth.tenantId, orderId, data);
     return jsonResponse(data, 201, req, requestId);
   }
 
@@ -201,4 +203,49 @@ function mapShipment(body: Record<string, unknown>): Record<string, unknown> {
 
 function dbErr(req: Request, requestId: string, msg: string, err: unknown): Response {
   return errorResponse(500, msg, req, { code: 'DB_ERROR', details: err, requestId });
+}
+
+/**
+ * Carry a manufacturer's delivery date back onto the purchase order (WF-P-06).
+ *
+ * Never throws and never blocks the answer: the confirmation or shipment was
+ * recorded, and failing the request would tell the caller nothing happened.
+ * A null date is NOT written - a confirmation that carries no date says nothing
+ * about delivery, and overwriting the buyer's own estimate with null in the
+ * name of an update that carried no information is worse than leaving it.
+ */
+// deno-lint-ignore no-explicit-any
+async function syncPurchaseOrderExpectedDate(
+  // deno-lint-ignore no-explicit-any
+  db: any,
+  tenantId: string,
+  orderId: string,
+  // deno-lint-ignore no-explicit-any
+  row: any,
+): Promise<void> {
+  const date = expectedDateFrom(row);
+  if (!date) return;
+  try {
+    const { data: order } = await db
+      .from('manufacturer_orders')
+      .select('purchase_order_id')
+      .eq('id', orderId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+    if (!order?.purchase_order_id) return;
+
+    await db
+      .from('manufacturer_orders')
+      .update({ estimated_delivery_date: date, updated_at: new Date().toISOString() })
+      .eq('id', orderId)
+      .eq('tenant_id', tenantId);
+
+    await db
+      .from('purchase_orders')
+      .update({ expected_date: date, updated_at: new Date().toISOString() })
+      .eq('id', order.purchase_order_id)
+      .eq('tenant_id', tenantId);
+  } catch (err) {
+    console.error('Failed to sync the purchase order delivery date:', String(err));
+  }
 }

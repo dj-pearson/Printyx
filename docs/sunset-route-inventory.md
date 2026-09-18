@@ -65,7 +65,7 @@ Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-r
 - [ ] `server/services/mileage-service.ts`
 - [ ] `server/services/geofence-alerts-service.ts`
 - [ ] `server/routes/lease-routes.ts` → `supabase/functions/leases/`
-- [ ] `server/routes/manufacturer-order-routes.ts` → `supabase/functions/manufacturer-orders/`
+- [x] `server/routes/manufacturer-order-routes.ts` → `supabase/functions/manufacturer-orders/` — deleted 2026-09-18 (WF-P-06). All 43 handlers covered one for one; `/api/manufacturer-orders` is in `crmProxies`.
 - [ ] `server/services/manufacturer-integration-service.ts`
 - [ ] `server/routes/task-routes.ts` → `supabase/functions/tasks/`
 - [ ] `server/routes/team-collaboration-routes.ts` → `supabase/functions/teams/`

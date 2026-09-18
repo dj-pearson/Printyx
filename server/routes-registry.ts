@@ -593,7 +593,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     // qualified, qualification-history, engagement and analytics, and the
     // prefix is proxied now.
     ['/api/lead-intelligence', './routes/lead-intelligence-routes'],
-    ['/api/manufacturer-orders', './routes/manufacturer-order-routes'],
+    // ['/api/manufacturer-orders', './routes/manufacturer-order-routes'] — retired
+    // (WF-P-06). All 43 handlers are covered one for one by
+    // supabase/functions/manufacturer-orders/, which that router's own
+    // replacement header already named, and the prefix is proxied now, so
+    // Express never saw a request for it in dev either.
     ['/api/gps', './routes/gps-tracking-routes'],
     ['/api/billing', './routes/advanced-billing-routes'],
     // ['/api/customer-success', './routes/customer-success-routes'] — retired

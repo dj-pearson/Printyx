@@ -781,6 +781,11 @@ export function registerEdgeFunctionProxy(app: any) {
     // 200, and whose credential panel 404'd.
     '/api/apollo': 'apollo',
 
+    // WF-P-06: placing an approved PO with the manufacturer. No Express router
+    // ever served this prefix, so proxying it is the whole of dev's story too -
+    // there is nothing to shadow.
+    '/api/manufacturer-orders': 'manufacturer-orders',
+
     // AI-001: /api/ai/gpt5/* → ai-gpt5 fn. Only the gpt5 sub-path is proxied;
     // the rest of /api/ai (ai-routes-simple) stays on Express, which is correct
     // because nothing in the frontend calls it. pathPrefix re-adds the /gpt5
