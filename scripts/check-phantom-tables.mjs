@@ -23,6 +23,20 @@
  * database-schema-report.json is not usable as the authority: it is a June
  * snapshot that predates web_forms, among others.
  *
+ * ── WHAT THIS GUARD CANNOT SEE, AND WHICH ONE DOES (AUDIT-038) ───────────────
+ *
+ * The swallow rule below keys on the 42P01/PGRST205 LITERAL, so it only finds a
+ * handler that tested its error and chose to tolerate a missing relation. A
+ * handler that never destructures `error` at all slips straight past it - which
+ * is exactly how client-metrics' write to `discovered_devices` (the real table
+ * is client_discovered_devices) avoided this hard gate. PostgREST returns
+ * { data, error } rather than throwing, so that write answered 200 and saved
+ * nothing.
+ *
+ * `npm run check:swallowed-writes` is the half that sees those. The two overlap
+ * deliberately: a write against a phantom table whose error is read lands here,
+ * and one whose error is discarded lands there. Run both.
+ *
  * ── WHY THE BASELINE BECAME AN ALLOW-LIST (WF-G-02) ────────────────────────────
  *
  * The old shape was a flat array of "table (file)" strings under one blanket

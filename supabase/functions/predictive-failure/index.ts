@@ -441,7 +441,10 @@ async function handleScore(
         const ticketNumber = `PF-${nowMs.toString(36)}-${Math.floor(Math.random() * 1e4)
           .toString()
           .padStart(4, '0')}`;
-        const { data: ticket } = await admin
+        // AUDIT-038: reading only `data` meant a ticket insert that failed was
+        // counted as "nothing to create". The run still continues - one bad
+        // prediction must not abort the sweep - but the failure is logged.
+        const { data: ticket, error: ticketError } = await admin
           .from('service_tickets')
           .insert({
             tenant_id: tenantId,
@@ -461,6 +464,12 @@ async function handleScore(
           })
           .select('id')
           .maybeSingle();
+        if (ticketError) {
+          console.error(
+            `[predictive-failure] service_tickets insert failed for machine ${s.machineId}:`,
+            ticketError.message,
+          );
+        }
         serviceTicketId = ticket?.id ? String(ticket.id) : null;
         if (serviceTicketId) created++;
       }

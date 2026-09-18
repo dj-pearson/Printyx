@@ -167,10 +167,16 @@ export default async function handler(req: Request) {
         );
       }
 
+      // AUDIT-038: this handler DOES check ticketError above and 500s, so the
+      // `|| ticketNumber` fallback was unreachable - .single() gives a row or
+      // an error, never neither. Removed anyway, because the same expression
+      // three hundred lines down in schedule-maintenance had no error check in
+      // front of it and returned a made-up id at 200. One of these shapes being
+      // safe is what made the other one easy to miss.
       return createCorsResponse(
         {
           success: true,
-          ticketId: ticket?.id || ticketNumber,
+          ticketId: ticket.id,
           ticketNumber,
           customerId,
           equipmentId,
@@ -313,10 +319,26 @@ export default async function handler(req: Request) {
         .select()
         .single();
 
+      // AUDIT-038: ticketError was destructured and never read, so a failed
+      // insert answered 200 with `maintenanceId` falling back to the ticket
+      // NUMBER this handler had just made up - a caller storing that id had a
+      // reference to a ticket that does not exist.
+      if (ticketError || !ticket?.id) {
+        console.error('schedule-maintenance: service_tickets insert failed', ticketError);
+        return createCorsResponse(
+          {
+            error: 'Failed to schedule maintenance',
+            message: ticketError?.message ?? 'Service ticket was not created',
+          },
+          500,
+          req,
+        );
+      }
+
       return createCorsResponse(
         {
           success: true,
-          maintenanceId: ticket?.id || ticketNumber,
+          maintenanceId: ticket.id,
           equipmentId,
           customerId,
           maintenanceType,
