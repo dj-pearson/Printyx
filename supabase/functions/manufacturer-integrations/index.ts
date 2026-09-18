@@ -332,14 +332,28 @@ export default async function handler(req: Request) {
 
     // GET /manufacturer-integrations/:manufacturer/supplies - Get supplies info
     if (req.method === 'GET' && manufacturer && endpoint === 'supplies') {
+      // AUDIT-037: `supplies` has NO manufacturer column and no part_number -
+      // it is product_code / product_name / product_type - so this query 42703'd
+      // on two names at once. The manufacturer is not recorded on a supply at
+      // all, so the nearest honest filter is the product name and code, which is
+      // where a dealer's catalogue actually carries the brand.
       const { data: supplies } = await admin
         .from('supplies')
         .select('*')
         .eq('tenant_id', tenantId)
-        .ilike('manufacturer', `%${manufacturer}%`)
-        .order('part_number', { ascending: true });
+        .or(`product_name.ilike.%${manufacturer}%,product_code.ilike.%${manufacturer}%`)
+        .order('product_code', { ascending: true });
 
-      return createCorsResponse(supplies || [], 200, req);
+      return createCorsResponse(
+        {
+          supplies: supplies || [],
+          unbacked: ['manufacturer'],
+          reason:
+            'supplies records no manufacturer, so this matches the brand against product_name and product_code instead.',
+        },
+        200,
+        req,
+      );
     }
 
     // GET /manufacturer-integrations/:manufacturer/sync-history - Get sync history

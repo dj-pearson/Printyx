@@ -363,12 +363,11 @@ export default async function handler(req: Request) {
             : body.is_serialized !== undefined
               ? body.is_serialized
               : false,
-        is_lot_tracked:
-          body.isLotTracked !== undefined
-            ? body.isLotTracked
-            : body.is_lot_tracked !== undefined
-              ? body.is_lot_tracked
-              : false,
+        // AUDIT-037: `is_lot_tracked` is not a column on inventory_items and
+        // never has been, so this insert 42703'd. The table tracks
+        // `is_serialized` above, which is a different question - a serial per
+        // unit, not a lot per batch - so it is NOT a substitute, and the field
+        // is reported back rather than quietly mapped onto it.
         is_active:
           body.isActive !== undefined
             ? body.isActive

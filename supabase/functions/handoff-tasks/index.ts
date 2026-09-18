@@ -1,9 +1,63 @@
 // Handoff Tasks Edge Function
 // Handles tasks associated with sales handoffs
+//
+// AUDIT-037: this was written against a shape handoff_tasks does not have.
+// `title`, `assignee_id`, `priority` and `created_by` are not columns - the real
+// ones are task_name and assigned_to, and neither priority nor a creator is
+// recorded at all - so create and update wrote 42703, and the two embedded
+// selects (`handoff:handoff_id`, `assignee:assignee_id`) could never resolve
+// because handoff_tasks declares no foreign keys for PostgREST to follow.
+//
+// Only one call site survived that: SalesHandoffs.tsx sends PUT /:id with
+// { status } alone, and JSON.stringify drops the undefined siblings before the
+// request leaves. Everything else on this function was a 500 waiting for a
+// caller.
+//
+// PRIORITY AND CREATED_BY ARE REPORTED, NOT DROPPED. The table records urgency
+// as is_required / is_blocking / due_date; a second, quieter answer to the same
+// question is not an improvement, so a caller that sends `priority` is told the
+// field was not persisted rather than left to assume it was.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { fetchInBatches } from '../_shared/batch-fetch.ts';
+
+/** Fields a caller may send that handoff_tasks has nowhere to put. */
+const UNPERSISTED_FIELDS = ['priority', 'createdBy'] as const;
+
+function unpersisted(body: Record<string, unknown>): string[] {
+  return UNPERSISTED_FIELDS.filter((f) => body[f] !== undefined);
+}
+
+/**
+ * Resolve assignee names in one read.
+ *
+ * handoff_tasks declares no foreign key, so PostgREST cannot embed the user -
+ * and `users` has first_name/last_name, NOT the full_name the embed asked for.
+ */
+// deno-lint-ignore no-explicit-any
+async function withAssignees(admin: any, tenantId: string, rows: any[]) {
+  const ids = rows.map((r) => String(r.assigned_to ?? '')).filter(Boolean);
+  if (ids.length === 0) return rows;
+  const users = await fetchInBatches<Record<string, unknown>>(ids, 'id', () =>
+    admin.from('users').select('id, first_name, last_name, email').eq('tenant_id', tenantId),
+  );
+  const byId = new Map(users.map((u) => [String(u.id), u]));
+  return rows.map((row) => {
+    const user = byId.get(String(row.assigned_to ?? ''));
+    return {
+      ...row,
+      assignee: user
+        ? {
+            id: user.id,
+            name: [user.first_name, user.last_name].filter(Boolean).join(' ') || null,
+            email: user.email ?? null,
+          }
+        : null,
+    };
+  });
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -46,19 +100,13 @@ export default async function handler(req: Request) {
 
       let query = admin
         .from('handoff_tasks')
-        .select(
-          `
-          *,
-          handoff:handoff_id (id, status),
-          assignee:assignee_id (id, full_name)
-        `,
-        )
+        .select('*')
         .eq('tenant_id', tenantId)
         .order('due_date', { ascending: true });
 
       if (handoffId) query = query.eq('handoff_id', handoffId);
       if (status) query = query.eq('status', status);
-      if (assigneeId) query = query.eq('assignee_id', assigneeId);
+      if (assigneeId) query = query.eq('assigned_to', assigneeId);
 
       const { data: tasks, error } = await query;
 
@@ -66,20 +114,14 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch handoff tasks' }, 500, req);
       }
 
-      return createCorsResponse(tasks || [], 200, req);
+      return createCorsResponse(await withAssignees(admin, tenantId, tasks || []), 200, req);
     }
 
     // GET /handoff-tasks/:id - Get single task
     if (req.method === 'GET' && taskId && !action) {
       const { data: task, error } = await admin
         .from('handoff_tasks')
-        .select(
-          `
-          *,
-          handoff:handoff_id (*),
-          assignee:assignee_id (id, full_name, email)
-        `,
-        )
+        .select('*')
         .eq('id', taskId)
         .eq('tenant_id', tenantId)
         .single();
@@ -88,7 +130,8 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Handoff task not found' }, 404, req);
       }
 
-      return createCorsResponse(task, 200, req);
+      const [withAssignee] = await withAssignees(admin, tenantId, [task]);
+      return createCorsResponse(withAssignee, 200, req);
     }
 
     // POST /handoff-tasks - Create task
@@ -100,13 +143,12 @@ export default async function handler(req: Request) {
         .insert({
           tenant_id: tenantId,
           handoff_id: body.handoffId || body.handoff_id,
-          title: body.title,
+          task_name: body.taskName || body.task_name || body.title,
           description: body.description,
-          assignee_id: body.assigneeId || body.assignee_id,
+          assigned_to: body.assignedTo || body.assigned_to || body.assigneeId,
+          assigned_to_role: body.assignedToRole || body.assigned_to_role,
           due_date: body.dueDate || body.due_date,
-          priority: body.priority || 'medium',
           status: 'pending',
-          created_by: user.id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -117,7 +159,12 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create handoff task' }, 500, req);
       }
 
-      return createCorsResponse(task, 201, req);
+      const skipped = unpersisted(body);
+      return createCorsResponse(
+        skipped.length > 0 ? { ...task, unpersisted: skipped } : task,
+        201,
+        req,
+      );
     }
 
     // PUT /handoff-tasks/:id - Update task
@@ -127,11 +174,11 @@ export default async function handler(req: Request) {
       const { data: task, error } = await admin
         .from('handoff_tasks')
         .update({
-          title: body.title,
+          task_name: body.taskName || body.task_name || body.title,
           description: body.description,
-          assignee_id: body.assigneeId || body.assignee_id,
+          assigned_to: body.assignedTo || body.assigned_to || body.assigneeId,
+          assigned_to_role: body.assignedToRole || body.assigned_to_role,
           due_date: body.dueDate || body.due_date,
-          priority: body.priority,
           status: body.status,
           updated_at: new Date().toISOString(),
         })
@@ -144,7 +191,12 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update handoff task' }, 500, req);
       }
 
-      return createCorsResponse(task, 200, req);
+      const skipped = unpersisted(body);
+      return createCorsResponse(
+        skipped.length > 0 ? { ...task, unpersisted: skipped } : task,
+        200,
+        req,
+      );
     }
 
     // POST /handoff-tasks/:id/complete - Complete task

@@ -372,7 +372,10 @@ export default async function handler(req: Request) {
         industry: contactData.industry,
         employee_count: contactData.employeeCount,
         source: 'apollo',
-        source_id: apolloId,
+        // AUDIT-037: `source_id` is not a column. business_records keeps
+        // foreign ids in the external_* family, and a contact pulled from
+        // Apollo enters as a lead, so external_lead_id is where its id belongs.
+        external_lead_id: apolloId,
         status: 'lead',
         created_by: user.id,
         created_at: new Date().toISOString(),

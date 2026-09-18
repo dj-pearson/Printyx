@@ -156,7 +156,9 @@ export default async function handler(req: Request) {
         issueCategory: t.issue_category,
         issueDescription: t.issue_description,
         urgencyLevel: t.urgency_level,
-        priority: t.priority || t.urgency_level || 'medium',
+        // The response keeps a `priority` key because callers read it, but it
+        // is urgency_level under another name rather than a second column.
+        priority: t.urgency_level || 'medium',
         contactMethod: t.contact_method,
         convertedToTicketId: t.converted_to_ticket_id,
         convertedAt: t.converted_at,
@@ -241,8 +243,10 @@ export default async function handler(req: Request) {
         equipment_serial: body.equipmentSerial || body.equipment_serial,
         issue_category: body.issueCategory || body.issue_category || 'general',
         issue_description: body.issueDescription || body.issue_description,
+        // AUDIT-037: `priority` is not a column - urgency_level is the one this
+        // table has, and the line above already accepts `priority` as an alias
+        // for it. Writing both meant every phone-in ticket 42703'd on create.
         urgency_level: body.urgencyLevel || body.urgency_level || body.priority || 'medium',
-        priority: body.priority || body.urgencyLevel || body.urgency_level || 'medium',
         contact_method: body.contactMethod || body.contact_method || 'phone',
         handled_by: user.id,
         created_at: new Date().toISOString(),
@@ -274,7 +278,7 @@ export default async function handler(req: Request) {
           ticket_number: ticketNumber,
           title: `${(ticket.issue_category || 'General').replace('_', ' ')} - ${ticket.customer_name || 'Unknown'}`,
           description: ticket.issue_description,
-          priority: ticket.priority || ticket.urgency_level || 'medium',
+          priority: ticket.urgency_level || 'medium',
           status: 'new',
           customer_address: ticket.location_address,
           customer_phone: ticket.caller_phone,
@@ -333,7 +337,7 @@ export default async function handler(req: Request) {
         ticket_number: ticketNumber,
         title: `${(phoneTicket.issue_category || 'General').replace('_', ' ')} - ${phoneTicket.customer_name || 'Unknown'}`,
         description: phoneTicket.issue_description,
-        priority: phoneTicket.priority || phoneTicket.urgency_level || 'medium',
+        priority: phoneTicket.urgency_level || 'medium',
         status: 'new',
         customer_address: phoneTicket.location_address,
         customer_phone: phoneTicket.caller_phone,

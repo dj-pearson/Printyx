@@ -418,8 +418,11 @@ export default async function handler(req: Request) {
           urgency_notes: body.urgencyNotes || body.urgency_notes || null,
           customer_notes: body.customerNotes || body.customer_notes || null,
           attachments: body.attachments || [],
+          // AUDIT-037: customer_service_requests has submitted_at and
+          // updated_at and NO created_at, so this insert 42703'd and a customer
+          // could not raise a service request at all. submitted_at is the
+          // column that records when it arrived.
           submitted_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
 

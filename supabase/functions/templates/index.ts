@@ -156,7 +156,10 @@ export default async function handler(req: Request) {
           tenant_id: tenantId,
           name: body.name || template.name,
           description: body.description || template.description,
-          template_id: templateId,
+          // AUDIT-037: `template_id` is not a column on projects, so creating a
+          // project from a template 42703'd - the one thing this endpoint is
+          // for. Nothing records which template a project came from; the id is
+          // named back in the response instead of being written nowhere.
           customer_id: body.customerId || body.customer_id,
           status: 'active',
           created_by: user.id,
@@ -185,7 +188,16 @@ export default async function handler(req: Request) {
         await admin.from('tasks').insert(taskInserts);
       }
 
-      return createCorsResponse(project, 201, req);
+      return createCorsResponse(
+        {
+          ...project,
+          instantiatedFromTemplateId: templateId,
+          unpersisted: ['templateId'],
+          reason: 'projects records no template it was created from.',
+        },
+        201,
+        req,
+      );
     }
 
     // DELETE /templates/:id - Delete template

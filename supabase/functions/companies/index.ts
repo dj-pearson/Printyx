@@ -421,7 +421,11 @@ export default async function handler(req: Request) {
         business_name: body.business_name,
         customer_number: body.customer_number,
         phone: body.phone,
-        email: body.email,
+        // AUDIT-037: `companies` has phone, fax and website and NO email - this
+        // file's own header says so, and the insert named it anyway, so every
+        // company create 42703'd. A company's email address lives on its
+        // primary contact (company_contacts.email), which the same request
+        // creates a few lines below.
         fax: body.fax,
         website: body.website,
         billing_address: body.billing_address,
@@ -657,11 +661,15 @@ export default async function handler(req: Request) {
     if ((req.method === 'PATCH' || req.method === 'PUT') && companyId) {
       const body = await req.json();
 
+      // AUDIT-037: the column is `last_modified_by`; `updated_by` is not one,
+      // so every company update 42703'd - which the `...body` spread made worse,
+      // since one unknown key from the caller fails the whole statement.
       const updateData = {
         ...body,
-        updated_by: user.id,
+        last_modified_by: user.id,
         updated_at: new Date().toISOString(),
       };
+      delete updateData.updated_by;
 
       // Remove fields that shouldn't be updated
       delete updateData.id;

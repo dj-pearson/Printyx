@@ -132,8 +132,12 @@ export default async function handler(req: Request) {
     // CSMS
     // ----------------------------------------------------------------------
     if (req.method === 'GET' && resource === 'csms') {
+      // AUDIT-037: platform_health_scores has no assigned_csm - it records who
+      // CALCULATED a score (calculated_by), not who owns the account - so this
+      // list came back empty for every tenant. The CSM assignment lives on
+      // platform_business_records, which is where the account itself is.
       const { data: rows } = await admin
-        .from('platform_health_scores')
+        .from('platform_business_records')
         .select('assigned_csm')
         .not('assigned_csm', 'is', null);
       const seen = new Set<string>();

@@ -22,7 +22,6 @@
     }
   },
   "unreviewed": [
-    "activities (supabase/functions/crm-goals/index.ts)",
     "activities (supabase/functions/gdpr/index.ts)",
     "activities (supabase/functions/sales-reports/index.ts)",
     "activities (supabase/functions/team-reports/index.ts)",
@@ -34,9 +33,6 @@
     "bin_locations (supabase/functions/warehouse-operations/index.ts)",
     "commission_statements (supabase/functions/commission/index.ts)",
     "contract_equipment (supabase/functions/service-contracts/index.ts)",
-    "crm_activity_reports (supabase/functions/crm-goals/index.ts)",
-    "crm_goals (supabase/functions/crm-goals/index.ts)",
-    "crm_teams (supabase/functions/crm-goals/index.ts)",
     "customer_segment_members (supabase/functions/customer-segments/index.ts)",
     "customer_segments (supabase/functions/customer-segments/index.ts)",
     "customers (supabase/functions/companies/index.ts)",
@@ -61,7 +57,6 @@
     "integrations (supabase/functions/quickbooks/index.ts)",
     "intent_signals (supabase/functions/data-enrichment/index.ts)",
     "intent_signals (supabase/functions/enrichment/index.ts)",
-    "inventory (supabase/functions/auto-supply-replenishment/index.ts)",
     "inventory (supabase/functions/cross-module/index.ts)",
     "inventory (supabase/functions/mobile-field/index.ts)",
     "inventory (supabase/functions/warehouse-operations/index.ts)",
@@ -69,7 +64,6 @@
     "inventory_transfers (supabase/functions/warehouse-operations/index.ts)",
     "leads (supabase/functions/assign-lead/index.ts)",
     "leads (supabase/functions/companies/index.ts)",
-    "leads (supabase/functions/crm-goals/index.ts)",
     "leads (supabase/functions/import/index.ts)",
     "leads (supabase/functions/lead-assignment-queue/index.ts)",
     "leads (supabase/functions/today-dashboard/index.ts)",

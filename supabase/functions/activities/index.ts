@@ -67,7 +67,10 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(`subject.ilike.%${search}%,notes.ilike.%${search}%`);
+        // AUDIT-037: the column is `description`; `notes` is not one, so any
+        // search on this list came back 42703. The insert below had already
+        // been corrected to description and this filter had not.
+        query = query.or(`subject.ilike.%${search}%,description.ilike.%${search}%`);
       }
 
       const { data: activities, error, count } = await query;

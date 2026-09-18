@@ -131,8 +131,9 @@ export default async function handler(req: Request) {
             : body.is_active !== undefined
               ? body.is_active
               : true,
-        // Notes
-        notes: body.notes || null,
+        // AUDIT-037: the column is `vendor_notes`; `notes` is not one, so every
+        // vendor create 42703'd.
+        vendor_notes: body.vendorNotes || body.vendor_notes || body.notes || null,
         // Timestamps
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -184,7 +185,8 @@ export default async function handler(req: Request) {
         taxId: 'tax_id',
         accountNumber: 'account_number',
         isActive: 'is_active',
-        notes: 'notes',
+        notes: 'vendor_notes',
+        vendorNotes: 'vendor_notes',
       };
 
       for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
