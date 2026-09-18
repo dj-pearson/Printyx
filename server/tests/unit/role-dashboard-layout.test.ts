@@ -21,7 +21,7 @@
  * for the level ladder, and it is what caught the count being stale.
  */
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   DEFAULT_ROLE_LAYOUTS,
@@ -32,18 +32,41 @@ import {
 
 const repo = join(__dirname, '../../..');
 
-/** ('Display Name', 'CODE', 'scope', 'department', level, ...) */
+/**
+ * Every role the migration chain seeds, read out of the SQL.
+ *
+ * Every migration that inserts into `roles`, not just the catalogue one: WF-R-11
+ * added seven more in 0081 and a test pinned to 0072 would have passed while
+ * four of them landed on DEFAULT. The shape is
+ * ('Display Name', 'CODE', 'scope', 'department', level, ...), and 0081 wraps
+ * its rows across lines, so the match is not anchored to the line start.
+ */
 function seededRoles(): Array<{ code: string; department: string; level: number }> {
-  const sql = readFileSync(join(repo, 'drizzle/migrations/0072_seed_role_catalogue.sql'), 'utf8');
-  const rows = [...sql.matchAll(/^\s*\('[^']*', '([A-Z_]+)', '[a-z_]+', '([a-z_]*)', (\d+)/gm)];
-  return rows.map((m) => ({ code: m[1], department: m[2], level: Number(m[3]) }));
+  const dir = join(repo, 'drizzle/migrations');
+  const roles = new Map<string, { code: string; department: string; level: number }>();
+  for (const file of readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()) {
+    const sql = readFileSync(join(dir, file), 'utf8');
+    if (!/INSERT INTO roles\s*\(/i.test(sql)) continue;
+    for (const m of sql.matchAll(
+      /\('[^']*',\s*'([A-Z_]+)',\s*'[a-z_]+',\s*'([a-z_]*)',\s*(\d+)/g,
+    )) {
+      // ON CONFLICT (code) DO NOTHING, so the first migration to name a code wins.
+      if (!roles.has(m[1])) {
+        roles.set(m[1], { code: m[1], department: m[2], level: Number(m[3]) });
+      }
+    }
+  }
+  return [...roles.values()];
 }
 
 describe('the seed catalogue is the source of truth for this test', () => {
-  it('reads every role out of migration 0072', () => {
+  it('reads every role out of every migration that seeds one', () => {
     const roles = seededRoles();
-    expect(roles.length).toBeGreaterThanOrEqual(45);
+    expect(roles.length).toBeGreaterThanOrEqual(52);
     expect(roles.map((r) => r.code)).toContain('COMPANY_ADMIN');
+    expect(roles.map((r) => r.code)).toContain('PURCHASING_AGENT');
     expect(new Set(roles.map((r) => r.code)).size).toBe(roles.length);
   });
 });

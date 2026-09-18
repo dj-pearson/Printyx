@@ -834,6 +834,30 @@ export const DEFAULT_ROLE_LAYOUTS: Record<string, LayoutWidgetConfig[]> = {
   ],
 };
 
+// WF-R-11: the purchasing and project families, added by migration 0081. Both
+// departments ('purchasing', 'operations') have no branch in the ladder, so
+// without these their four roles land on DEFAULT - which is the whole defect
+// WF-R-10 fixed for everyone else. Built from widgets that already exist.
+DEFAULT_ROLE_LAYOUTS['PURCHASING'] = [
+  { key: 'low-stock-alerts', x: 0, y: 0, w: 3, h: 1, visible: true },
+  { key: 'outstanding-invoices', x: 3, y: 0, w: 3, h: 1, visible: true },
+  { key: 'quick-actions', x: 6, y: 0, w: 3, h: 1, visible: true },
+  { key: 'my-tasks', x: 0, y: 1, w: 6, h: 2, visible: true },
+  { key: 'recent-activity', x: 6, y: 1, w: 6, h: 2, visible: true },
+];
+
+// A project role lives between the sold configuration and the working machine,
+// so the layout is the equipment and the schedule rather than the pipeline.
+DEFAULT_ROLE_LAYOUTS['PROJECT'] = [
+  { key: 'equipment-status', x: 0, y: 0, w: 3, h: 1, visible: true },
+  { key: 'completion-rate', x: 3, y: 0, w: 3, h: 1, visible: true },
+  { key: 'low-stock-alerts', x: 6, y: 0, w: 3, h: 1, visible: true },
+  { key: 'quick-actions', x: 9, y: 0, w: 3, h: 1, visible: true },
+  { key: 'my-tasks', x: 0, y: 1, w: 6, h: 2, visible: true },
+  { key: 'upcoming-events', x: 6, y: 1, w: 6, h: 2, visible: true },
+  { key: 'recent-activity', x: 0, y: 3, w: 6, h: 2, visible: true },
+];
+
 // WF-R-10: warehouse roles had no layout and no close alias. Mapping them to
 // DEFAULT would have satisfied the alias table and not the user - four generic
 // widgets for the person who picks and ships the parts. Built from widgets that
@@ -920,6 +944,14 @@ export const ROLE_LAYOUT_ALIASES: Record<string, string> = {
   VP_ADMIN: 'EXECUTIVE',
   DISPATCH_COORDINATOR: 'SERVICE_SUPERVISOR',
   CSR: 'SERVICE_SUPERVISOR',
+
+  // WF-R-11. 'purchasing' and 'operations' have no ladder branch, so the ladder
+  // sends the two ICs to DEFAULT and the two managers to LOCATION_MANAGER.
+  // Neither is right for someone whose day is purchase orders or installs.
+  PURCHASING_AGENT: 'PURCHASING',
+  PURCHASING_MANAGER: 'PURCHASING',
+  PROJECT_COORDINATOR: 'PROJECT',
+  PROJECT_MANAGER: 'PROJECT',
 };
 
 export interface RoleLayoutInput {
@@ -1023,6 +1055,8 @@ export function getRoleLabel(roleCode: string): string {
     COMPANY_ADMIN: 'Company Administrator',
     PLATFORM_ADMIN: 'Platform Administrator',
     WAREHOUSE: 'Warehouse',
+    PURCHASING: 'Purchasing',
+    PROJECT: 'Project Delivery',
   };
   return labels[roleCode] || roleCode.replace(/_/g, ' ');
 }

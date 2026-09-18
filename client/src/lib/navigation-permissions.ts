@@ -350,9 +350,16 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   },
   // WF-C-06: the sales-to-operations queue. Gated to the people who raise the
   // purchase orders it leads to, at level 3+ - a rep should not be working their
-  // own handoff. WF-R-11 will add dedicated purchasing and project-management
-  // roles; until those exist, gating on a code no seeder creates would deny
-  // everyone below platform admin (SEC-EDGE-002), so this uses one that does.
+  // own handoff.
+  //
+  // WF-R-11 added those dedicated roles (PURCHASING_AGENT, PURCHASING_MANAGER,
+  // PROJECT_COORDINATOR, PROJECT_MANAGER and the delivery/install and network
+  // pair, migration 0081) and the gate still names operations.po.view rather
+  // than a new code, deliberately: there is no table of permission codes to add
+  // to, only the module-to-code derivation below, so a bespoke code would be
+  // satisfiable by nobody - which is SEC-EDGE-002's 77 unsatisfiable gates
+  // exactly. PURCHASING_MANAGER and PROJECT_MANAGER hold the purchasing module
+  // at level 4 and reach this today.
   '/handoffs': {
     requiredPermissions: ['operations.po.view'],
     minLevel: 3,
@@ -1147,8 +1154,20 @@ export function expandLegacyPermissions(
       perms.add('operations.inventory.manage');
       perms.add('operations.inventory.transfer');
       perms.add('operations.warehouse.manage');
-      perms.add('operations.po.create');
       perms.add('operations.po.approve');
+      perms.add('operations.po.create');
+    }
+
+    // WF-R-11: RAISING a purchase order and APPROVING one are different acts,
+    // and this block used to grant both at level 4 because the only role with
+    // the purchasing module was OPERATIONS_MANAGER. /purchase-orders requires
+    // po.view AND po.create, so a Purchasing Agent - whose entire job is
+    // raising them - could not open the page. Holding the purchasing module is
+    // itself the authority to raise one; approval stays at level 4. A warehouse
+    // role holding only `inventory` is unaffected, which is why the condition
+    // names the module rather than lowering the level above.
+    if (modulePermissions.purchasing) {
+      perms.add('operations.po.create');
     }
   }
 
