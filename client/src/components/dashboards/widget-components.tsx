@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { cn, percentBar, percentOfOr } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -342,7 +342,7 @@ export function PipelineWidget({ definition }: { definition: WidgetDefinition })
                     ${(stage.value || 0).toLocaleString()} ({stage.count || 0})
                   </span>
                 </div>
-                <Progress value={total ? (stage.value / total) * 100 : 0} className="h-1.5" />
+                <Progress value={percentBar(stage.value, total)} className="h-1.5" />
               </div>
             ))}
           </div>
@@ -615,7 +615,7 @@ export function GaugeWidget({ definition }: { definition: WidgetDefinition }) {
   const widgetData = data as any;
   const value = widgetData?.value ?? 0;
   const maxVal = widgetData?.max ?? 100;
-  const pct = maxVal ? Math.round((parseFloat(String(value)) / maxVal) * 100) : 0;
+  const pct = Math.round(percentOfOr(parseFloat(String(value)), maxVal));
 
   const getColor = () => {
     if (pct >= 90) return 'text-green-600';
@@ -691,7 +691,7 @@ export function ChartWidget({ definition }: { definition: WidgetDefinition }) {
                 <div key={idx} className="flex-1 flex flex-col items-center gap-1">
                   <div
                     className="w-full bg-primary/80 rounded-t hover:bg-primary transition-colors"
-                    style={{ height: `${(point.value / maxValue) * 100}%`, minHeight: 2 }}
+                    style={{ height: `${percentBar(point.value, maxValue)}%`, minHeight: 2 }}
                     title={`${point.label}: ${point.displayValue || point.value}`}
                   />
                 </div>

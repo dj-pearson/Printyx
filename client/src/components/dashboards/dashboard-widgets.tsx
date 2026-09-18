@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { cn, percentBar } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
 import { Link } from 'wouter';
 import { formatDistanceToNow } from 'date-fns';
@@ -487,7 +487,7 @@ export function PipelineWidget({ title, stages, loading }: PipelineWidgetProps) 
                     ${stage.value.toLocaleString()} ({stage.count})
                   </span>
                 </div>
-                <Progress value={(stage.value / total) * 100} className="h-2" />
+                <Progress value={percentBar(stage.value, total)} className="h-2" />
               </div>
             ))}
           </div>

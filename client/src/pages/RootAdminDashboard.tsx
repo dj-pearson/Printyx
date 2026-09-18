@@ -1,3 +1,4 @@
+import { percentBar } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -388,7 +389,9 @@ export default function RootAdminDashboard() {
                                   ? 'bg-yellow-600'
                                   : 'bg-red-600'
                             }`}
-                            style={{ width: `${(resource.current / resource.threshold) * 100}%` }}
+                            style={{
+                              width: `${percentBar(resource.current, resource.threshold)}%`,
+                            }}
                           />
                         </div>
                       </div>
@@ -534,7 +537,7 @@ export default function RootAdminDashboard() {
                                 : 'bg-red-600'
                           }`}
                           style={{
-                            width: `${Math.min((resource.current / resource.threshold) * 100, 100)}%`,
+                            width: `${percentBar(resource.current, resource.threshold)}%`,
                           }}
                         />
                       </div>

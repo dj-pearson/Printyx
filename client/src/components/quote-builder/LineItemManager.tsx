@@ -96,7 +96,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, percentOfOr } from '@/lib/utils';
 
 type ProductType =
   | 'product_models'
@@ -485,7 +485,13 @@ export default function LineItemManager({
 
   const calculateMargin = (price: number, cost: number): number => {
     if (cost === 0) return 0;
-    return ((price - cost) / price) * 100;
+    // A line priced at 0 has no margin to express. This returned -Infinity for
+    // it before (cost > 0 over a zero price), which then travelled into the row
+    // and into the quote totals; 0 is bounded and neutral. It stays a `number`
+    // rather than widening to null because this value is STORED on the line,
+    // not rendered - the display-level absence belongs to whatever shows it
+    // (PRICING-MARGIN-002).
+    return percentOfOr(price - cost, price);
   };
 
   // QUOTE-016: recompute the derived fields (net total + margin) from qty,

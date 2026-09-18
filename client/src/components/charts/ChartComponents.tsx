@@ -39,7 +39,7 @@ import {
   Maximize2,
   RefreshCw,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPercent, percentBar, percentOf } from '@/lib/utils';
 
 // Mobile-responsive chart containers
 const MOBILE_BREAKPOINT = 768;
@@ -862,13 +862,13 @@ function MetricCard({
           <div className="mt-3">
             <div className="flex justify-between text-xs text-gray-500 mb-1">
               <span>Progress</span>
-              <span>{Math.round((value / target) * 100)}% of target</span>
+              <span>{formatPercent(percentOf(value, target))} of target</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
                 className="h-2 rounded-full transition-all duration-300"
                 style={{
-                  width: `${Math.min((value / target) * 100, 100)}%`,
+                  width: `${percentBar(value, target)}%`,
                   backgroundColor: color,
                 }}
               />

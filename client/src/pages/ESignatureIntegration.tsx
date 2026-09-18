@@ -1,3 +1,4 @@
+import { percentBar } from '@/lib/utils';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
@@ -700,7 +701,7 @@ export default function ESignatureIntegration() {
                               <div
                                 className="bg-green-600 h-2 rounded-full"
                                 style={{
-                                  width: `${(analytics.signingSpeedAnalysis.within24Hours / analytics.completedRequests) * 100}%`,
+                                  width: `${percentBar(analytics.signingSpeedAnalysis.within24Hours, analytics.completedRequests)}%`,
                                 }}
                               ></div>
                             </div>
@@ -717,7 +718,7 @@ export default function ESignatureIntegration() {
                               <div
                                 className="bg-blue-600 h-2 rounded-full"
                                 style={{
-                                  width: `${(analytics.signingSpeedAnalysis.within48Hours / analytics.completedRequests) * 100}%`,
+                                  width: `${percentBar(analytics.signingSpeedAnalysis.within48Hours, analytics.completedRequests)}%`,
                                 }}
                               ></div>
                             </div>
@@ -734,7 +735,7 @@ export default function ESignatureIntegration() {
                               <div
                                 className="bg-yellow-600 h-2 rounded-full"
                                 style={{
-                                  width: `${(analytics.signingSpeedAnalysis.within1Week / analytics.completedRequests) * 100}%`,
+                                  width: `${percentBar(analytics.signingSpeedAnalysis.within1Week, analytics.completedRequests)}%`,
                                 }}
                               ></div>
                             </div>
@@ -751,7 +752,7 @@ export default function ESignatureIntegration() {
                               <div
                                 className="bg-red-600 h-2 rounded-full"
                                 style={{
-                                  width: `${(analytics.signingSpeedAnalysis.moreThan1Week / analytics.completedRequests) * 100}%`,
+                                  width: `${percentBar(analytics.signingSpeedAnalysis.moreThan1Week, analytics.completedRequests)}%`,
                                 }}
                               ></div>
                             </div>

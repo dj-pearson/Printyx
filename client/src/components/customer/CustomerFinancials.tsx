@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, percentOf, percentOfOr } from '@/lib/utils';
 
 interface FinancialSummary {
   totalBilled: number;
@@ -143,10 +143,9 @@ export function CustomerFinancials({ customerId, customerName }: CustomerFinanci
   // show, and 0% reads as a customer using none of a limit they have.
   const calculateCreditUtilization = (): number | null => {
     if (!financialSummary?.creditLimit || financialSummary.availableCredit == null) return null;
-    return (
-      ((financialSummary.creditLimit - financialSummary.availableCredit) /
-        financialSummary.creditLimit) *
-      100
+    return percentOf(
+      financialSummary.creditLimit - financialSummary.availableCredit,
+      financialSummary.creditLimit,
     );
   };
 
@@ -358,7 +357,7 @@ export function CustomerFinancials({ customerId, customerName }: CustomerFinanci
                         },
                       ].map((item) => {
                         const total = Object.values(agingData).reduce((a, b) => a + b, 0);
-                        const percentage = total > 0 ? (item.amount / total) * 100 : 0;
+                        const percentage = percentOfOr(item.amount, total);
 
                         return (
                           <div key={item.label} className="flex items-center space-x-3">

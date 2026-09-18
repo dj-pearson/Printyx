@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { QueryStates } from '@/components/ui/query-state';
@@ -190,7 +191,7 @@ export default function AdvancedReporting() {
             ) || 0;
 
         const profit = revenue - serviceCost;
-        const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+        const margin = percentOfOr(profit, revenue);
 
         return {
           customer: customer.companyName,
@@ -517,7 +518,10 @@ export default function AdvancedReporting() {
                       <span className="text-lg font-bold">
                         {serviceMetrics.totalTickets > 0
                           ? Math.round(
-                              (serviceMetrics.completedTickets / serviceMetrics.totalTickets) * 100,
+                              percentOfOr(
+                                serviceMetrics.completedTickets,
+                                serviceMetrics.totalTickets,
+                              ),
                             )
                           : 0}
                         %

@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -225,7 +226,9 @@ export default function PricingManagement() {
 
   const calculateGrossProfitPercentage = (salePrice: number, companyPrice: number): number => {
     if (companyPrice === 0) return 0;
-    return ((salePrice - companyPrice) / companyPrice) * 100;
+    // Bounded rather than nullable for the same reason as LineItemManager's
+    // calculateMargin: the caller declares `number` and feeds a stored field.
+    return percentOfOr(salePrice - companyPrice, companyPrice);
   };
 
   // Filter products

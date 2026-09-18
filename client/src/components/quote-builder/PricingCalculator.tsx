@@ -24,7 +24,7 @@ import {
   FREQUENCY_LABELS,
 } from '@shared/quote-math';
 import { Textarea } from '@/components/ui/textarea';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, percentOfOr } from '@/lib/utils';
 
 interface LineItem {
   id?: string;
@@ -161,9 +161,9 @@ export default function PricingCalculator({
 
   const handleDiscountAmountChange = (value: number) => {
     setDiscountAmount(value);
-    setDiscountPercentage(itemsSubtotal > 0 ? (value / itemsSubtotal) * 100 : 0);
+    setDiscountPercentage(percentOfOr(value, itemsSubtotal));
     if (onDiscountChange) {
-      onDiscountChange(value, itemsSubtotal > 0 ? (value / itemsSubtotal) * 100 : 0);
+      onDiscountChange(value, percentOfOr(value, itemsSubtotal));
     }
   };
 

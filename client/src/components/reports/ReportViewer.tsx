@@ -41,7 +41,7 @@ import {
   Clock,
   Users,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPercent, percentOf } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 
@@ -560,7 +560,7 @@ function ReportChart({ data, metadata }: ReportChartProps) {
           showLegend={true}
           formatTooltip={(value: any, name: any) => {
             const total = chartData.reduce((sum: number, item: any) => sum + item.value, 0);
-            const percentage = ((value / total) * 100).toFixed(1);
+            const percentage = formatPercent(percentOf(value, total), { digits: 1 });
             return `${value?.toLocaleString()} (${percentage}%)`;
           }}
         />

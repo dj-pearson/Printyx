@@ -26,7 +26,7 @@ import {
   CheckCircle,
   Edit,
 } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, percentBar } from '@/lib/utils';
 
 type Lease = {
   id: string;
@@ -181,7 +181,7 @@ export default function LeaseDetail() {
 
   const completedPayments = payments.filter((p) => p.status === 'completed');
   const upcomingPayments = payments.filter((p) => p.status === 'scheduled');
-  const progressPercentage = (lease.paymentsCompleted / lease.term) * 100;
+  const progressPercentage = percentBar(lease.paymentsCompleted, lease.term);
 
   return (
     <div className="container mx-auto py-6 space-y-6">

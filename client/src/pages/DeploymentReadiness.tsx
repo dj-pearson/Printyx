@@ -1,3 +1,4 @@
+import { formatPercent, percentOf } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/main-layout';
@@ -352,7 +353,7 @@ export default function DeploymentReadiness() {
                     {mockMetrics.completedChecks}/{mockMetrics.totalChecks}
                   </p>
                   <p className="text-xs text-green-600">
-                    {Math.round((mockMetrics.completedChecks / mockMetrics.totalChecks) * 100)}%
+                    {formatPercent(percentOf(mockMetrics.completedChecks, mockMetrics.totalChecks))}
                     complete
                   </p>
                 </div>

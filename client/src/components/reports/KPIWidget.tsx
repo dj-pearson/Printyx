@@ -7,7 +7,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, Clock } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPercent, percentBar, percentOf } from '@/lib/utils';
 
 interface KPIWidgetProps {
   title: string;
@@ -241,14 +241,14 @@ export function KPIWidget({
                             : 'bg-gray-400',
                   )}
                   style={{
-                    width: `${Math.min((value / target) * 100, 100)}%`,
+                    width: `${percentBar(value, target)}%`,
                   }}
                 />
               </div>
               <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>0</span>
                 <span className="font-medium">
-                  {((value / target) * 100).toFixed(0)}% of target
+                  {formatPercent(percentOf(value, target))} of target
                 </span>
                 <span>{formatValue(target, format)}</span>
               </div>

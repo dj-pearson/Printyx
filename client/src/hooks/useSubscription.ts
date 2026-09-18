@@ -1,3 +1,4 @@
+import { percentBar } from '@/lib/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -330,7 +331,7 @@ export function useUsagePercentage(
     return Math.min(100, (usage / (limit * 1024)) * 100);
   }
 
-  return Math.min(100, (usage / limit) * 100);
+  return percentBar(usage, limit);
 }
 
 // ============================================================================

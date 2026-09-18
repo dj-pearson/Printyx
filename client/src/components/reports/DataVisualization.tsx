@@ -26,6 +26,7 @@ import {
   Funnel,
   LabelList,
 } from 'recharts';
+import { formatPercent, percentOf } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -320,7 +321,7 @@ export function InsightsPieChart({
           </div>
           <div className="space-y-2 lg:w-48">
             {data.map((item, index) => {
-              const percentage = ((item[dataKey] / total) * 100).toFixed(1);
+              const percentage = formatPercent(percentOf(item[dataKey], total), { digits: 1 });
               return (
                 <div key={index} className="flex items-center gap-3">
                   <div

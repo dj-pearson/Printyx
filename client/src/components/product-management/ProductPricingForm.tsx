@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Info, Calculator, AlertTriangle } from 'lucide-react';
@@ -283,7 +284,7 @@ export function ProductPricingForm({
           {(() => {
             const repCost = parseFloat(values.repCost.toString());
             const customerPrice = parseFloat(values.suggestedRetail.toString());
-            const discountPct = repCost > 0 ? ((repCost - customerPrice) / repCost) * 100 : 0;
+            const discountPct = percentOfOr(repCost - customerPrice, repCost);
             const threshold = visibility?.maxDiscountPercentage || 10;
 
             if (discountPct > threshold) {

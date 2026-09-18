@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
@@ -222,7 +223,7 @@ function DemoSchedulingContent() {
 
     const totalCompleted = demos.filter((d) => d.status === 'completed').length;
     const totalDemos = demos.filter((d) => d.status !== 'cancelled').length;
-    const conversionRate = totalDemos > 0 ? Math.round((totalCompleted / totalDemos) * 100) : 0;
+    const conversionRate = Math.round(percentOfOr(totalCompleted, totalDemos));
 
     return { scheduledThisWeek, upcoming, completedThisMonth, conversionRate };
   }, [demos]);

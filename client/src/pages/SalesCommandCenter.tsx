@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { QueryStates } from '@/components/ui/query-state';
@@ -134,9 +135,8 @@ export default function SalesCommandCenter() {
 
   const goalAttainmentPct = useMemo(() => {
     if (!forecastData?.goals?.totalValue) return 0;
-    return Math.min(
-      100,
-      Math.round(((forecastData.pipeline?.totalValue || 0) / forecastData.goals.totalValue) * 100),
+    return Math.round(
+      percentOfOr(forecastData.pipeline?.totalValue || 0, forecastData.goals.totalValue),
     );
   }, [forecastData]);
 

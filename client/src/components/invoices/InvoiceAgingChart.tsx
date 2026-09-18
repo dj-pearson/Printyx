@@ -4,6 +4,7 @@
  * FN-002: Shows aging breakdown for AR management.
  */
 
+import { percentOfOr } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 interface AgingBucket {
@@ -50,7 +51,7 @@ export function InvoiceAgingChart({
       {/* Stacked bar */}
       <div className="flex h-4 rounded-full overflow-hidden bg-gray-100">
         {buckets.map((bucket) => {
-          const pct = total > 0 ? (bucket.total / total) * 100 : 0;
+          const pct = percentOfOr(bucket.total, total);
           if (pct === 0) return null;
           return (
             <div

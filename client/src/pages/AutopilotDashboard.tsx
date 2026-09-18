@@ -1,3 +1,4 @@
+import { percentBar } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
@@ -210,7 +211,7 @@ export default function AutopilotDashboard() {
                 {overview?.pausedWorkflows || 0} paused • {overview?.totalWorkflows || 0} total
               </p>
               <Progress
-                value={(overview?.activeWorkflows / overview?.totalWorkflows) * 100 || 0}
+                value={percentBar(overview?.activeWorkflows, overview?.totalWorkflows)}
                 className="mt-2"
               />
             </CardContent>

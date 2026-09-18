@@ -1,3 +1,4 @@
+import { percentBar } from '@/lib/utils';
 import { useState } from 'react';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
@@ -460,10 +461,7 @@ export default function AdminCommandCenter() {
                                         : 'bg-red-600'
                                   }`}
                                   style={{
-                                    width: `${Math.min(
-                                      (Number(resource.value) / resource.threshold) * 100,
-                                      100,
-                                    )}%`,
+                                    width: `${percentBar(Number(resource.value), resource.threshold)}%`,
                                   }}
                                 />
                               </div>

@@ -23,6 +23,7 @@ import {
   CardContent,
   CardFooter,
 } from '@/components/ui/card';
+import { percentBar } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -482,7 +483,9 @@ function UsageMetric({
   limit: number;
   unit: string;
 }) {
-  const percentage = limit === -1 ? 0 : Math.min(100, (current / limit) * 100);
+  // -1 is the unlimited sentinel; 0 means the plan grants none of this, which
+  // percentOfOr renders as an empty bar rather than as Infinity.
+  const percentage = limit === -1 ? 0 : percentBar(current, limit);
   const isUnlimited = limit === -1;
   const isWarning = percentage >= 80 && percentage < 100;
   const isDanger = percentage >= 100;

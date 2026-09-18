@@ -20,6 +20,7 @@
  * panel shows, so an unbuilt feature reads as unbuilt.
  */
 
+import { percentOf } from '@/lib/utils';
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -132,10 +133,10 @@ export function AIInsightsView({ tasks, stats, isLoading }: AIInsightsViewProps)
       onTimeSample: withDueDate.length,
       thisWeek,
       priorWeek,
-      velocity: priorWeek > 0 ? ((thisWeek - priorWeek) / priorWeek) * 100 : null,
+      velocity: percentOf(thisWeek - priorWeek, priorWeek),
       trackedThisWeek,
       perDay: thisWeek / 7,
-      completionRate: total > 0 ? (completed.length / total) * 100 : null,
+      completionRate: percentOf(completed.length, total),
       overdue: stats?.overdue ?? null,
       dueToday: stats?.dueToday ?? null,
     };

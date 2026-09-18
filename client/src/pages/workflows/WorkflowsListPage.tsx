@@ -1,6 +1,7 @@
 /**
  * WorkflowsListPage — browse workflow instances and templates, create new ones.
  */
+import { percentOfOr } from '@/lib/utils';
 import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -15,7 +16,7 @@ import { Plus, Workflow as WorkflowIcon, FileText, Copy } from 'lucide-react';
 import { type TaskWorkflow, WORKFLOW_STATUS_META } from '@/lib/workflows/types';
 
 function ProgressBar({ done, total }: { done: number; total: number }) {
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const pct = Math.round(percentOfOr(done, total));
   return (
     <div className="space-y-1">
       <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">

@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -389,7 +390,7 @@ export default function DeviceMonitoring() {
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.online}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {stats.total > 0 ? Math.round((stats.online / stats.total) * 100) : 0}% uptime
+              {Math.round(percentOfOr(stats.online, stats.total))}% uptime
             </p>
           </CardContent>
         </Card>

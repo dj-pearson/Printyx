@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -250,7 +251,7 @@ export default function SalesPipelineWorkflow() {
   };
 
   const calculateConversionRate = (metrics: SalesRepMetrics) => {
-    return metrics.total_leads > 0 ? (metrics.deals_closed / metrics.total_leads) * 100 : 0;
+    return percentOfOr(metrics.deals_closed, metrics.total_leads);
   };
 
   const getPerformanceStatus = (achievement: number) => {

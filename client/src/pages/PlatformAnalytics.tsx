@@ -41,7 +41,7 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { formatCurrencyWhole as formatCurrency } from '@/lib/utils';
+import { formatCurrencyWhole as formatCurrency, formatPercent, percentBar } from '@/lib/utils';
 
 // Chart row shapes returned (or mocked) for the analytics charts.
 interface RevenueDatum {
@@ -824,7 +824,7 @@ function RevenueMetricRow({ label, value }: { label: string; value: string }) {
 // Velocity Bar Component
 function VelocityBar({ stage, days }: { stage: string; days: number }) {
   const maxDays = 20;
-  const percentage = (days / maxDays) * 100;
+  const percentage = percentBar(days, maxDays);
 
   return (
     <div>

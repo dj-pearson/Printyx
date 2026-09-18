@@ -53,7 +53,7 @@ import LineItemManager from './LineItemManager';
 import PricingCalculator from './PricingCalculator';
 import { QuoteWizardProgress, DEFAULT_QUOTE_STEPS } from '@/components/quotes/QuoteWizardProgress';
 import GenerateProposalDialog from '@/components/proposal-builder/GenerateProposalDialog';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, percentOfOr } from '@/lib/utils';
 
 // Quote form schema
 const quoteSchema = z.object({
@@ -894,8 +894,7 @@ export default function QuoteBuilder({
   // period of every recurring line) — low margin cannot hide in recurring lines.
   const guardrailTotalCost = lineItems.reduce((sum, i) => sum + (i.unitCost || 0) * i.quantity, 0);
   const guardrailRevenue = totals.subtotal - discountAmount;
-  const overallMargin =
-    guardrailRevenue > 0 ? ((guardrailRevenue - guardrailTotalCost) / guardrailRevenue) * 100 : 0;
+  const overallMargin = percentOfOr(guardrailRevenue - guardrailTotalCost, guardrailRevenue);
   const effectiveDiscount = effectiveDiscountPct(lineItems, Math.max(0, discountAmount));
   const belowMinMargin =
     guardrailTotalCost > 0 && minMargin != null && minMargin > 0 && overallMargin < minMargin;
@@ -1049,7 +1048,7 @@ export default function QuoteBuilder({
   const managerTotalCost = lineItems.reduce((s, i) => s + (i.unitCost || 0) * i.quantity, 0);
   const managerRevenue = totals.subtotal - discountAmount;
   const managerGrossProfit = managerRevenue - managerTotalCost;
-  const managerMargin = managerRevenue > 0 ? (managerGrossProfit / managerRevenue) * 100 : 0;
+  const managerMargin = percentOfOr(managerGrossProfit, managerRevenue);
 
   const requireSaved = (): string | null => {
     if (!savedQuoteId) {
@@ -1725,10 +1724,10 @@ export default function QuoteBuilder({
                         const cost = item.unitCost || 0;
                         // Margin on the line's net revenue (after per-line discount).
                         const lineRevenue = item.totalPrice;
-                        const lineMargin =
-                          lineRevenue > 0
-                            ? ((lineRevenue - cost * item.quantity) / lineRevenue) * 100
-                            : 0;
+                        const lineMargin = percentOfOr(
+                          lineRevenue - cost * item.quantity,
+                          lineRevenue,
+                        );
                         return (
                           <tr key={item.id || idx} className="border-b border-amber-100">
                             <td className="py-1 pr-2">{item.productName}</td>

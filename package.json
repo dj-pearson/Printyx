@@ -201,7 +201,8 @@
     "seo:llms": "tsx scripts/generate-llms-txt.mts",
     "creds:encrypt": "tsx scripts/encrypt-integration-credentials.ts",
     "check:credential-vault": "node scripts/check-credential-vault.mjs",
-    "check:invalidation-keys": "node scripts/check-invalidation-keys.mjs"
+    "check:invalidation-keys": "node scripts/check-invalidation-keys.mjs",
+    "check:percent-math": "node scripts/check-percent-math.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
