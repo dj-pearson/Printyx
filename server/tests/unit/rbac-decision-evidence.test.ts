@@ -56,11 +56,17 @@ describe('WF-R-01: RBAC-008 — the scoping middleware has no caller', () => {
       ...walk('server'),
       ...walk('client/src'),
       ...walk('supabase/functions'),
-    ].filter(
-      (f) => !f.endsWith('scope-middleware.ts') && !f.endsWith('rbac-decision-evidence.test.ts'),
-    );
+    ].filter((f) => !f.endsWith('scope-middleware.ts'));
 
-    const referencing = importers.filter((f) => code(f).includes('scope-middleware'));
+    // An IMPORT, not a mention. This used to match any occurrence of the
+    // basename in a comment-stripped file, which meant it fired the moment
+    // another test named the path in a string - WF-G-03's guard test does
+    // exactly that, and an assertion whose own name is "nothing imports" was
+    // reporting a fixture as a caller. The self-exemption by filename that used
+    // to be needed is gone with it.
+    const IMPORT_RE =
+      /(?:^|\n)\s*import[^;\n]*['"][^'"\n]*scope-middleware[^'"\n]*['"]|require\(\s*['"][^'"\n]*scope-middleware[^'"\n]*['"]|await import\(\s*['"][^'"\n]*scope-middleware[^'"\n]*['"]/;
+    const referencing = importers.filter((f) => IMPORT_RE.test(code(f)));
     // If this fails because somebody wired it up, that is RBAC-008 progressing -
     // update the story rather than the assertion.
     expect(referencing, `scope-middleware is now imported by: ${referencing.join(', ')}`).toEqual(
