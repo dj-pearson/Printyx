@@ -4,6 +4,9 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+/** The seeded capability for changing the product and inventory catalogue. */
+const WRITE_PERMISSION = 'operations.inventory.manage';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -38,6 +41,26 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+    }
+
+    // SEC-EDGE-001: writes need the inventory capability; reads stay open.
+    //
+    // The catalogue is a tenant-wide list every role has to be able to READ -
+    // a rep pricing a quote, a technician looking up a part - and the pages
+    // beside it set no minimum level for that. What was open to every
+    // authenticated member of the tenant is the WRITE side: production has
+    // served this function with no permission check at all, so any user could
+    // add, edit or delete a product model, a supply or a vendor.
+    //
+    // A permission and not a level, because the seeder has a code that means
+    // exactly this and navigation-permissions.ts already names it on the
+    // matching page. SEC-EDGE-002 is what makes that safe: until it landed,
+    // the code the Express gate named was one no seeded role could hold, and
+    // copying it here would have replaced "open to everyone" with "open to
+    // platform admins", a different wrong answer.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
     }
 
     // Use service_role client for database operations (bypasses RLS)
