@@ -259,9 +259,21 @@ jobs:
       # server/tests/integration, which need a migrated test DB the CI Postgres
       # service doesn't set up (relation "rbac_audit_log" does not exist).
       - run: npm run test:unit
-      # Integration tests require schema/migrations against TEST_DATABASE_URL,
-      # which this job doesn't apply yet — pre-existing gap, tracked separately.
-      # Non-blocking until the test-DB schema setup is added.
+      # WF-R-12: BLOCKING. The tier-isolation suite creates and drops its own
+      # schema against DATABASE_URL, so unlike its neighbours it needs no
+      # migrations applied and there is nothing to wait for. RBAC-008 closed
+      # without the rep-A/rep-B isolation test its own criteria asked for; this
+      # is that test, and a non-blocking one would be the same gap again.
+      - name: Tier isolation over real rows (WF-R-12)
+        # Its own variable, not DATABASE_URL: server/tests/setup.ts assigns that
+        # an unusable placeholder on purpose, so a suite falling back to it would
+        # think it had a database and skip silently.
+        env:
+          RBAC_TEST_DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/printyx_test
+        run: npx vitest run server/tests/integration/rbac-tier-isolation.test.ts
+      # The REST of the integration tests require schema/migrations against
+      # TEST_DATABASE_URL, which this job doesn't apply yet — pre-existing gap,
+      # tracked separately. Non-blocking until the test-DB schema setup is added.
       - run: npm run test:integration
         continue-on-error: true
 
