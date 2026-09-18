@@ -213,10 +213,14 @@ describe('one sitemap and one robots.txt (SEO-006)', () => {
    * which is what the public hits, served the static files. Two sitemaps and
    * two robots.txt, one URL each, and nothing compared them.
    *
-   * The DB-derived sitemap was also wrong on its own terms. The boot seed puts
+   * The DB-derived sitemap was also wrong on its own terms. The boot seed put
    * /crm, /reports, /product-hub, /service-hub and /product-catalog into
    * seo_pages, so it published five login-walled routes - and /reports is
-   * disallowed by the robots.txt served beside it.
+   * disallowed by the robots.txt served beside it. That seed is gone now
+   * (SEO-PAGES-001 deleted it along with the table that never existed), but
+   * these five stay asserted: the sitemap generator reads the route table, and
+   * a login-walled route slipping into PUBLIC_ROUTES_SEO would publish them
+   * again by a different path.
    */
   const core = readFileSync(join(root, 'server/routes-seo-core.ts'), 'utf8');
   const coreCode = core.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
@@ -232,7 +236,7 @@ describe('one sitemap and one robots.txt (SEO-006)', () => {
     expect(coreCode).not.toContain('CCBot');
   });
 
-  it('publishes none of the login-walled routes the boot seed puts in seo_pages', () => {
+  it('publishes none of the login-walled routes the old boot seed put in seo_pages', () => {
     const sitemap = readFileSync(join(root, 'client/public/sitemap.xml'), 'utf8');
     for (const appRoute of [
       '/crm',

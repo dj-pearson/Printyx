@@ -2,21 +2,50 @@
  * SEO Management Routes
  * Extracted from routes.ts monolith.
  *
- * Includes:
- * - POST /api/seo/settings (upsert global SEO settings)
- * - POST /api/seo/pages (upsert SEO page record)
- * - GET  /sitemap.xml
- * - GET  /robots.txt
- * - GET  /meta.json
- * - GET  /llms.txt
- * - GET  /.well-known/llms.txt
- * - GET  /schema.json
+ * Serves:
+ * - PUT/POST /api/seo/settings (upsert global SEO settings)
  * - GET  /api/seo/settings
- * - GET  /api/seo/pages
- * - SEO bootstrap logic (seed baseline settings and core pages on boot)
+ * - GET  /sitemap.xml, /robots.txt, /llms.txt, /.well-known/llms.txt
+ *   (all four are static build artifacts read from disk - see publicFile below)
  *
- * The three POST /api/seo/regenerate-* endpoints were deleted (SEO-005); see
- * the note where they used to live for why there was nothing for them to do.
+ * SEO-PAGES-001 REMOVED FIVE HANDLERS AND THE BOOT SEED, and the decision
+ * recorded here is that `seo_pages` should not exist.
+ *
+ * It never did, in the sense that matters: there is no seoPages export, no
+ * seo_pages pgTable and no such table in drizzle/migrations. This file loaded
+ * it through `require('@shared/schema')` inside a try/catch that logged "SEO
+ * pages schema not available" and carried on, so the identifier was undefined
+ * and every handler reading a column off it threw a TypeError into its own
+ * catch. POST and GET /api/seo/pages answered 500; /meta.json and /schema.json
+ * silently served a generic Printyx document for every path. That top-level
+ * try/catch is what turned a boot failure into five handlers failing one
+ * request at a time, which is why it survived.
+ *
+ * Declaring the table would have been the wrong repair, for four reasons, each
+ * checkable:
+ *
+ * 1. NOTHING READS IT ON ANY RENDER PATH. SEO-014 deleted `useSeo`, the only
+ *    caller of /meta.json and /schema.json. The head is written by SEOProvider
+ *    from PUBLIC_ROUTES_SEO in client/src/lib/seo/seoConfig.ts, and the sitemap
+ *    by scripts/generate-sitemap.mts from the same route table. A title typed
+ *    into the RootAdminSEO form reached none of them.
+ * 2. ONE WRITER FOR STRUCTURED DATA. Three systems had grown alongside the
+ *    route table and each caused its own defect (SEO-009's cross-domain
+ *    canonical, SEO-014's "Printyx"-titled landing pages, SEO-016's duplicate
+ *    BreadcrumbList). A per-path title table edited by hand is a fourth.
+ * 3. ITS ENDPOINT RESOLVES TO A DIFFERENT TABLE IN PRODUCTION. /api/seo is not
+ *    proxied, so getApiUrl sends /api/seo/pages to supabase/functions/seo/,
+ *    whose `pages` branch reads `seo_page_scores` - tenant-scoped analysis
+ *    scores - and answers { data, total } where the page maps a bare array.
+ *    AUDIT-031's two-domains-one-word shape, at path level rather than prefix.
+ * 4. THE SEEDED ROWS WERE WRONG ON THEIR OWN TERMS. The boot seed wrote /crm,
+ *    /reports, /product-hub, /service-hub and /product-catalog - five
+ *    login-walled app routes, which is exactly the set SEO-006 removed from the
+ *    sitemap for being login-walled.
+ *
+ * The boot seed went with them. Its other half could not work either: it
+ * inserted into seo_settings without a tenant_id, which is NOT NULL, so the
+ * whole IIFE died in its catch on every boot regardless of seoPages.
  *
  * NOTE ON MOUNTING: this module registers on `app` through the exported
  * registerSeoCoreRoutes(), not on a `router`. A grep for `router.post(` finds
@@ -29,31 +58,12 @@ import { createHash } from 'crypto';
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { db } from './db';
-import { eq, desc } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-seo-core');
 
 import { seoSettings, insertSeoSettingsSchema } from '@shared/schema';
-import { requireRootAdmin } from './routes-root-admin';
-import { isPlatformAdmin } from './utils/auth-helpers';
-
-import { getUserId, getTenantId } from './utils/auth-helpers';
-// NOTE: seoPages and insertSeoPageSchema were temporarily disabled from
-// the main @shared/schema import in routes.ts. These references are kept
-// as-is for consistency with the original monolith code. If the SEO pages
-// table has been re-enabled, update the import above accordingly.
-// For now we import them dynamically to match the original behavior.
-let seoPages: any;
-let insertSeoPageSchema: any;
-
-try {
-  // Attempt to load from schema - these may or may not be available
-  const schema = require('@shared/schema');
-  seoPages = schema.seoPages;
-  insertSeoPageSchema = schema.insertSeoPageSchema;
-} catch (e) {
-  log.warn('SEO pages schema not available:', (e as any)?.message);
-}
+import { getTenantId, isPlatformAdmin } from './utils/auth-helpers';
 
 export function registerSeoCoreRoutes(app: Express) {
   // ===== SEO Management Routes =====
@@ -107,37 +117,6 @@ export function registerSeoCoreRoutes(app: Express) {
     }
   }
 
-  // Root Admin: upsert SEO page record
-  app.post('/api/seo/pages', async (req: any, res) => {
-    try {
-      const isPlatformUser = isPlatformAdmin(req);
-      if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
-      const payload = insertSeoPageSchema.parse(req.body);
-      // Upsert by path (global)
-      const [existing] = await db
-        .select()
-        .from(seoPages)
-        .where(eq(seoPages.path, (payload as any).path))
-        .limit(1);
-      if (existing) {
-        const [updated] = await db
-          .update(seoPages)
-          .set({ ...payload, updatedAt: new Date(), lastmod: new Date() })
-          .where(eq(seoPages.id, (existing as any).id))
-          .returning();
-        return res.json(updated);
-      }
-      const [created] = await db
-        .insert(seoPages)
-        .values({ ...payload, lastmod: new Date() } as any)
-        .returning();
-      res.json(created);
-    } catch (error: any) {
-      log.error('Error upserting SEO page:', error);
-      res.status(500).json({ message: 'Failed to upsert SEO page', detail: error?.message });
-    }
-  });
-
   // Public: generate sitemap.xml
   /*
    * /sitemap.xml and /robots.txt are STATIC BUILD ARTIFACTS (SEO-006). Both are
@@ -156,9 +135,9 @@ export function registerSeoCoreRoutes(app: Express) {
    * and it stamped lastmod with the current time for any row without one, which
    * is a freshness claim made by the act of being asked.
    *
-   * scripts/generate-sitemap.mts writes the sitemap from the route table.
-   * seo_pages keeps its real job: per-path title and description, served by
-   * /meta.json below.
+   * scripts/generate-sitemap.mts writes the sitemap from the route table,
+   * which is now the only source of per-path title and description - see the
+   * SEO-PAGES-001 note at the top of this file.
    */
   const publicFile = (name: string, contentType: string) => async (req: any, res: any) => {
     // Order matters, and first-found is the wrong rule. In production dist/ is
@@ -197,34 +176,6 @@ export function registerSeoCoreRoutes(app: Express) {
   // Public: robots.txt
   app.get('/robots.txt', publicFile('robots.txt', 'text/plain; charset=utf-8'));
 
-  // Public: meta.json — returns meta for a given path
-  app.get('/meta.json', async (req, res) => {
-    try {
-      const path = String(req.query.path || '/');
-      const [page] = await db.select().from(seoPages).where(eq(seoPages.path, path)).limit(1);
-      const [settings] = await db.select().from(seoSettings).limit(1);
-      const include = (page as any)?.includeInSitemap !== false;
-      const payload = {
-        title:
-          (page as any)?.title ||
-          (settings as any)?.defaultTitle ||
-          (settings as any)?.siteName ||
-          'Printyx',
-        description: (page as any)?.description || (settings as any)?.defaultDescription || '',
-        ogImage: (settings as any)?.defaultOgImage || null,
-        twitterHandle: (settings as any)?.twitterHandle || null,
-        robots: include ? 'index,follow' : 'noindex,nofollow',
-      };
-      res.json(payload);
-    } catch (error: any) {
-      res.json({
-        title: 'Printyx',
-        description: '',
-        robots: 'noindex,nofollow',
-      });
-    }
-  });
-
   /*
    * llms.txt is a static build artifact too (SEO-007), for the same reason as
    * sitemap.xml and robots.txt above: it only ever existed as a handler here,
@@ -243,41 +194,6 @@ export function registerSeoCoreRoutes(app: Express) {
    */
   app.get('/llms.txt', publicFile('llms.txt', 'text/plain; charset=utf-8'));
   app.get('/.well-known/llms.txt', publicFile('llms.txt', 'text/plain; charset=utf-8'));
-
-  // Public: dynamic schema.json endpoint per path
-  app.get('/schema.json', async (req, res) => {
-    try {
-      const path = String(req.query.path || '/');
-      const [page] = await db.select().from(seoPages).where(eq(seoPages.path, path)).limit(1);
-      const settingsRows = await db.select().from(seoSettings).limit(1);
-      const settings = settingsRows[0] as any;
-      const baseWebsite = {
-        '@context': 'https://schema.org',
-        '@type': 'WebSite',
-        name: settings?.siteName || 'Printyx',
-        url: settings?.siteUrl || 'https://printyx.net',
-        // No SearchAction. The sitelinks search box needs a real results URL and
-        // /search is not a registered route - this was the THIRD copy of that
-        // dead action, after the static head (SEO-002) and SEOProvider's
-        // runtime WebSite (SEO-003).
-      };
-      let payload = baseWebsite as any;
-      if (page?.schemaType && page?.schemaData) {
-        payload = {
-          '@context': 'https://schema.org',
-          '@type': page.schemaType,
-          ...(page.schemaData as any),
-        };
-      }
-      res.json(payload);
-    } catch (error) {
-      res.json({
-        '@context': 'https://schema.org',
-        '@type': 'WebSite',
-        name: 'Printyx',
-      });
-    }
-  });
 
   // Admin: get SEO settings for the caller's tenant. See the note on
   // upsertSeoSettings above for what this used to return.
@@ -299,16 +215,6 @@ export function registerSeoCoreRoutes(app: Express) {
     }
   });
 
-  // Admin: list SEO pages
-  app.get('/api/seo/pages', async (_req: any, res) => {
-    try {
-      const rows = await db.select().from(seoPages).orderBy(desc(seoPages.updatedAt));
-      res.json(rows);
-    } catch (error: any) {
-      res.status(500).json({ message: 'Failed to load SEO pages', detail: error?.message });
-    }
-  });
-
   /*
    * POST /api/seo/regenerate-{sitemap,robots,llms} lived here (SEO-005).
    *
@@ -325,241 +231,4 @@ export function registerSeoCoreRoutes(app: Express) {
    * npm run seo:sitemap), which no runtime handler can rewrite - a Cloudflare
    * Pages deploy would overwrite whatever it wrote.
    */
-
-  // Seed baseline SEO settings and core pages on boot (non-blocking)
-  (async () => {
-    try {
-      const [settings] = await db.select().from(seoSettings).limit(1);
-      if (!settings) {
-        await db.insert(seoSettings).values({
-          siteName: 'Printyx',
-          siteUrl: 'https://printyx.net',
-          defaultTitle: 'Printyx — Print Fleet CRM, Service, Finance Platform',
-          defaultDescription:
-            'Printyx unifies CRM, Service, Product, and Finance workflows for print dealers. Master catalog, inventory, billing, and analytics in one platform.',
-          allowAiCrawling: true,
-          sitemapChangefreq: 'weekly',
-          sitemapPriorityDefault: '0.5' as any,
-        } as any);
-      }
-
-      const corePages: Array<{
-        path: string;
-        title: string;
-        description: string;
-        changefreq?: string;
-        priority?: string | number;
-        schemaType?: string | null;
-        schemaData?: any;
-      }> = [
-        {
-          path: '/',
-          title: 'Printyx — Print Fleet CRM, Service, Finance Platform',
-          description:
-            'All-in-one platform: CRM, Service, Inventory, Billing, and Reporting for print dealers.',
-          changefreq: 'weekly',
-          priority: '1.0',
-          schemaType: 'Organization',
-          schemaData: {
-            name: 'Printyx',
-            url: 'https://printyx.net',
-          },
-        },
-        {
-          path: '/product-hub',
-          title: 'Product Hub — Catalog, Inventory, and POs',
-          description:
-            'Manage master catalog, enable products, inventory, purchase orders, and warehouse ops.',
-          changefreq: 'weekly',
-          priority: '0.8',
-          schemaType: 'Service',
-          schemaData: {
-            name: 'Product Management',
-            serviceType: 'Inventory and Catalog Management',
-          },
-        },
-        {
-          path: '/product-catalog',
-          title: 'Master Product Catalog — Canon imageRUNNER, imagePRESS, Accessories',
-          description:
-            'Browse the master catalog. Enable equipment and accessories for your tenant with pricing overrides.',
-          changefreq: 'weekly',
-          priority: '0.8',
-          schemaType: 'Service',
-          schemaData: {
-            name: 'Master Product Catalog',
-          },
-        },
-        {
-          path: '/crm',
-          title: 'CRM — Leads, Deals, Quotes, Proposals',
-          description:
-            'End-to-end sales workflow with activities, quotes, proposals, and pipeline forecasting.',
-          changefreq: 'weekly',
-          priority: '0.7',
-          schemaType: 'SoftwareApplication',
-          schemaData: {
-            name: 'Printyx CRM',
-            applicationCategory: 'BusinessApplication',
-          },
-        },
-        {
-          path: '/service-hub',
-          title: 'Service Hub — Dispatch, PM, Field Operations',
-          description:
-            'Ticketing, dispatch optimization, preventive maintenance, and mobile field service.',
-          changefreq: 'weekly',
-          priority: '0.7',
-          schemaType: 'Service',
-          schemaData: { name: 'Printyx Service' },
-        },
-        {
-          path: '/reports',
-          title: 'Reports — Sales, Service, Finance KPIs',
-          description:
-            'Unified reporting across CRM, Service, Finance, and Product. Standardized KPIs and dashboards.',
-          changefreq: 'monthly',
-          priority: '0.6',
-          schemaType: 'WebSite',
-          schemaData: { name: 'Printyx Reports' },
-        },
-        {
-          path: '/compare-eautomate',
-          title: 'Printyx vs E-Automate | Modern Cloud Alternative for Copier Dealers',
-          description:
-            'Detailed comparison of Printyx vs ConnectWise E-Automate. See why copier dealers switch to modern cloud-based dealer management.',
-          changefreq: 'monthly',
-          priority: '0.9',
-          schemaType: 'Article',
-          schemaData: { name: 'Printyx vs E-Automate Comparison' },
-        },
-        {
-          path: '/battle-card',
-          title: 'Printyx vs E-Automate Comparison | Feature Battle Card',
-          description:
-            'Side-by-side comparison of Printyx vs E-Automate. See why modern dealers are making the switch.',
-          changefreq: 'monthly',
-          priority: '0.8',
-          schemaType: 'Article',
-          schemaData: { name: 'Competitive Battle Card' },
-        },
-        {
-          path: '/blog',
-          title: 'Printyx Blog | Insights for Copier Dealers & MPS Providers',
-          description:
-            'Expert insights on copier dealer operations, managed print services, and industry trends.',
-          changefreq: 'daily',
-          priority: '0.8',
-          schemaType: 'WebPage',
-          schemaData: { name: 'Printyx Blog' },
-        },
-        {
-          path: '/predictive-intelligence',
-          title: 'AI-Powered Predictive Intelligence for Copier Dealers | Printyx',
-          description:
-            'Leverage AI to predict service needs, optimize routes, forecast sales, and reduce downtime.',
-          changefreq: 'weekly',
-          priority: '0.9',
-          schemaType: 'SoftwareApplication',
-          schemaData: {
-            name: 'Printyx Predictive Intelligence',
-            applicationCategory: 'BusinessApplication',
-          },
-        },
-        {
-          path: '/modern-architecture',
-          title: 'Modern Cloud Architecture | Why Printyx Beats Legacy Systems',
-          description:
-            'Built on modern cloud infrastructure. Real-time sync, mobile-first design, API-driven integrations.',
-          changefreq: 'weekly',
-          priority: '0.9',
-          schemaType: 'Article',
-          schemaData: { name: 'Modern Architecture' },
-        },
-        {
-          path: '/integration-marketplace',
-          title: 'Integration Marketplace | Connect Printyx to Your Stack',
-          description:
-            'Pre-built integrations with Salesforce, QuickBooks, Microsoft 365, and more.',
-          changefreq: 'weekly',
-          priority: '0.8',
-          schemaType: 'Product',
-          schemaData: { name: 'Integration Marketplace' },
-        },
-        {
-          path: '/roi-calculator',
-          title: 'ROI Calculator | See Your Savings with Printyx',
-          description:
-            'Calculate your potential savings by switching to Printyx from legacy dealer management systems.',
-          changefreq: 'monthly',
-          priority: '0.8',
-          schemaType: 'WebPage',
-          schemaData: { name: 'ROI Calculator' },
-        },
-        {
-          path: '/case-studies',
-          title: 'Customer Success Stories | Printyx Case Studies',
-          description:
-            'See how copier dealers are transforming their business with Printyx. Real results from real customers.',
-          changefreq: 'monthly',
-          priority: '0.7',
-          schemaType: 'Article',
-          schemaData: { name: 'Case Studies' },
-        },
-        {
-          path: '/p/copier-dealer-crm',
-          title: 'CRM for Copier Dealers | Printyx - Built for Print Industry',
-          description:
-            'Purpose-built CRM for copier dealers. Manage leads, customers, contracts, and service all in one platform.',
-          changefreq: 'weekly',
-          priority: '0.9',
-          schemaType: 'Product',
-          schemaData: { name: 'Copier Dealer CRM' },
-        },
-        {
-          path: '/p/print-service-dispatch-mobile',
-          title: 'Mobile Service Dispatch for Copier Technicians | Printyx',
-          description:
-            'Empower your technicians with mobile-first service dispatch. Real-time job updates, GPS tracking, and more.',
-          changefreq: 'weekly',
-          priority: '0.9',
-          schemaType: 'Product',
-          schemaData: { name: 'Mobile Service Dispatch' },
-        },
-        {
-          path: '/knowledge-base',
-          title: 'Knowledge Base | Printyx Help Center & Documentation',
-          description:
-            'Find answers, tutorials, and guides for using Printyx copier dealer management platform.',
-          changefreq: 'weekly',
-          priority: '0.7',
-          schemaType: 'WebPage',
-          schemaData: { name: 'Printyx Knowledge Base' },
-        },
-      ];
-
-      for (const p of corePages) {
-        const [existing] = await db
-          .select()
-          .from(seoPages)
-          .where(eq(seoPages.path, p.path))
-          .limit(1);
-        if (!existing) {
-          await db.insert(seoPages).values({
-            path: p.path,
-            title: p.title,
-            description: p.description,
-            changefreq: (p.changefreq as any) || undefined,
-            priority: (p.priority as any) || undefined,
-            schemaType: (p.schemaType as any) || null,
-            schemaData: (p.schemaData as any) || null,
-            includeInSitemap: true,
-            lastmod: new Date(),
-          } as any);
-        }
-      }
-    } catch (e) {
-      log.warn('SEO bootstrap skipped:', (e as any)?.message);
-    }
-  })();
 }
