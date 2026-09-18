@@ -40,7 +40,6 @@
     "contract-renewals",
     "contract-tiered-rates",
     "crm",
-    "crm-goals",
     "cross-module",
     "csrf-token",
     "custom-fields",
@@ -181,7 +180,6 @@
   ],
   "rowScoped": [
     "business-records",
-    "commission",
     "companies",
     "contracts",
     "deals",
