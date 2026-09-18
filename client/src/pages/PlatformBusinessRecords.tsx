@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -140,7 +140,9 @@ export default function PlatformBusinessRecords() {
       return apiRequest(`/api/platform-crm/business-records/${id}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/business-records'] });
+      // The list key is one URL carrying the filters, so an exact-key
+      // invalidation stopped matching it (QUERYKEY-002).
+      invalidateApiPath('/api/platform-crm/business-records');
       toast({
         title: 'Success',
         description: 'Business record deleted successfully',
@@ -173,7 +175,7 @@ export default function PlatformBusinessRecords() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/business-records'] });
+      invalidateApiPath('/api/platform-crm/business-records');
       setSelectedRecords(new Set());
       toast({
         title: 'Success',

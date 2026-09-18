@@ -68,7 +68,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 
 // Types
 type FieldTechnician = {
@@ -230,9 +230,9 @@ export default function MobileFieldOperations() {
     mutationFn: async (data: WorkOrderForm) =>
       apiRequest('/api/mobile-field/work-orders', 'POST', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['/api/mobile-field/work-orders'],
-      });
+      // The list query carries its filters in the URL now, so an exact key no
+      // longer matches it. (Neither reaches a handler yet - see AUDIT-033.)
+      invalidateApiPath('/api/mobile-field/work-orders');
       setIsWorkOrderDialogOpen(false);
     },
   });

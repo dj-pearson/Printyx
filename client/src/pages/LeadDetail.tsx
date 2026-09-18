@@ -2291,7 +2291,11 @@ export default function LeadDetailHubspot() {
             leadId={id}
             onSuccess={() => {
               setDialogs((prev) => ({ ...prev, editRecord: false }));
-              queryClient.invalidateQueries({ queryKey: ['/api/leads', id, 'contacts'] });
+              // Contacts come back inside the lead payload; there is no
+              // ['/api/leads', id, 'contacts'] query, and a key LONGER than an
+              // existing one is not a prefix of it, so this matched nothing and
+              // a newly created contact did not appear until a reload.
+              queryClient.invalidateQueries({ queryKey: ['/api/leads', id] });
               toast({
                 title: 'Success',
                 description: 'Contact created successfully',

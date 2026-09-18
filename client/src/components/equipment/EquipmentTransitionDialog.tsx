@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, XCircle, AlertCircle, ArrowRight, Clock, Loader2 } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
 interface EquipmentTransitionDialogProps {
@@ -129,12 +129,13 @@ export function EquipmentTransitionDialog({
         });
 
         // Invalidate relevant queries
-        queryClient.invalidateQueries({
-          queryKey: [`/api/equipment-lifecycle/${equipmentId}`],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ['/api/equipment-lifecycle/stages'],
-        });
+        // This equipment's own queries are keyed on longer URLs
+        // (/available-transitions, /can-transition/:stage), so the bare id key
+        // matched neither - the dialog closed and the transition list behind it
+        // stayed stale. A path prefix covers both.
+        invalidateApiPath(`/api/equipment-lifecycle/${equipmentId}`);
+        // /stages was invalidated here and in EquipmentLifecycleHub and nothing
+        // queries it in any tree; dropped rather than left as decoration.
         queryClient.invalidateQueries({
           queryKey: ['/api/equipment-lifecycle/metrics'],
         });

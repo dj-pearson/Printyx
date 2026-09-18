@@ -617,7 +617,11 @@ export default function CustomReportBuilder() {
         title: 'Report saved',
         description: `"${config.name}" has been saved successfully`,
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
+      // EnhancedReportsHub - the only place a saved report is listed - keys its
+      // list ['reporting/reports', category, search], a different namespace
+      // entirely, so '/api/reports' refreshed nothing and a report the user had
+      // just saved did not appear until they reloaded the page.
+      queryClient.invalidateQueries({ queryKey: ['reporting/reports'] });
       // /reports/:code is NOT a route and never was — this dropped the user on the
       // 404 page the instant they saved a report. There is no route-based report
       // viewer at all: EnhancedReportsHub (the /reports page) opens reports IN-PAGE

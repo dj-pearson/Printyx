@@ -37,7 +37,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 import {
   effectiveDiscountPct,
@@ -573,7 +573,10 @@ export default function QuoteBuilder({
     onSuccess: () => {
       // A mounted DealDeskDashboard picks this up immediately; it also polls at
       // 30s, so a reviewer on another screen sees it without a reload either.
-      queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/requests'] });
+      // ApprovalRequestDetail is keyed on the full URL
+      // `/api/deal-desk/requests/${requestId}`, which an exact key does not
+      // reach. A path prefix does.
+      invalidateApiPath('/api/deal-desk/requests');
       queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/my-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/dashboard'] });
       toast({

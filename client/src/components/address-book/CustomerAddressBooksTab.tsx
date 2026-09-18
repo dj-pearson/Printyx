@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ImportWizard } from '@/components/address-book/ImportWizard';
-import { apiRequest, extractRecords } from '@/lib/queryClient';
+import { apiRequest, extractRecords, invalidateApiPath } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import type { AddressBookRow } from '@/pages/service/AddressBooksIndex';
 
@@ -81,10 +81,10 @@ export function CustomerAddressBooksTab({
         name: `${customerName || 'Customer'} — Master`,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['/api/address-books', `?customer_id=${customerId}`],
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/address-books'] });
+      // One prefix covers the customer list, the index and any book detail.
+      // The key here used to be ['/api/address-books', '?customer_id=…'], which
+      // stopped matching the moment QUERYKEY-002 made that query one string.
+      invalidateApiPath('/api/address-books');
       toast({ title: 'Customer-master book created' });
     },
     onError: (err: any) => {

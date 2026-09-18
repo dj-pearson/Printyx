@@ -139,7 +139,13 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
         title: 'Lead Added',
         description: 'Lead successfully added to your CRM',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/apollo/search'] });
+      // Search is a POST mutation, so its results are held in
+      // searchMutation.data and there is no '/api/apollo/search' query to
+      // invalidate - this refreshed nothing. Stats is the cached thing that
+      // actually changes when a lead is added. The result list keeps its stale
+      // inCrm flag until the next search; fixing that needs an optimistic
+      // update on the mutation data, not an invalidation.
+      queryClient.invalidateQueries({ queryKey: ['/api/apollo/stats'] });
     },
     onError: (error: any) => {
       toast({
@@ -161,7 +167,7 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
         description: `Added ${data.added} leads. Skipped ${data.skipped} duplicates.`,
       });
       setSelectedContacts(new Set());
-      queryClient.invalidateQueries({ queryKey: ['/api/apollo/search'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/apollo/stats'] });
     },
     onError: (error: any) => {
       toast({

@@ -122,7 +122,9 @@ export default function DeliveryAcceptance() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/field-service/service-signatures'] });
+      // Nothing queries service-signatures in any tree, and this navigates away
+      // to /mobile-field-service on the next line, so there was no cache to
+      // refresh. The installation's own queries are unmounted with the page.
       toast({
         title: 'Acceptance recorded',
         description: 'The signature and checklist are on the equipment record.',
