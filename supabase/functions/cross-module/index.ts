@@ -201,20 +201,27 @@ export default async function handler(req: Request) {
       const availableParts: string[] = [];
       const unavailableParts: string[] = [];
 
-      if (requiredParts && Array.isArray(requiredParts)) {
-        for (const partId of requiredParts) {
-          const { data: part } = await admin
-            .from('inventory')
-            .select('id, quantity')
-            .eq('id', partId)
-            .eq('tenant_id', tenantId)
-            .single();
+      // PERF-NPLUS1-002: one read for the whole parts list rather than one per
+      // part. The list is caller-supplied, so its length is a technician's
+      // parts request and not a constant - and .single() per id also THREW on
+      // a part this tenant does not have, where the answer wanted is
+      // "unavailable". A part missing from the result is unavailable now,
+      // which is both faster and the correct answer.
+      if (requiredParts && Array.isArray(requiredParts) && requiredParts.length > 0) {
+        const ids = [...new Set(requiredParts.map((p: unknown) => String(p)))];
+        const { data: parts } = await admin
+          .from('inventory')
+          .select('id, quantity')
+          .eq('tenant_id', tenantId)
+          .in('id', ids);
 
-          if (part && part.quantity > 0) {
-            availableParts.push(partId);
-          } else {
-            unavailableParts.push(partId);
-          }
+        const quantityById = new Map<string, number>();
+        for (const part of parts ?? []) {
+          quantityById.set(String(part.id), Number(part.quantity ?? 0));
+        }
+        for (const partId of requiredParts) {
+          if ((quantityById.get(String(partId)) ?? 0) > 0) availableParts.push(partId);
+          else unavailableParts.push(partId);
         }
       }
 

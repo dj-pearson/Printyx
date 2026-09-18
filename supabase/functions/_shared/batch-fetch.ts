@@ -88,11 +88,19 @@ type WriteResult<T> = Promise<{ data: T[] | null; error: unknown }>;
  * would turn one bad row into a lost fleet. Retrying a failed batch row by row
  * keeps that behaviour and pays the extra round trips only when the payload is
  * actually wrong.
+ *
+ * `onError` is how a caller that REPORTS its failures keeps doing so. The mobile
+ * sync endpoint answers with an errors array per section, and a batched write
+ * that silently returned fewer rows than it was given would turn a named
+ * failure into a missing record - which is the AUDIT-038 shape and worse than
+ * the N+1 it replaced. It fires once per row that could not be written, with
+ * that row's own error.
  */
 export async function writeInBatches<T = Record<string, unknown>>(
   rows: readonly Record<string, unknown>[],
   write: (batch: Record<string, unknown>[]) => WriteResult<T>,
   size = WRITE_BATCH,
+  onError?: (row: Record<string, unknown>, error: unknown) => void,
 ): Promise<T[]> {
   const written: T[] = [];
   for (const batch of chunk([...rows], size)) {
@@ -104,6 +112,7 @@ export async function writeInBatches<T = Record<string, unknown>>(
     for (const row of batch) {
       const single = await write([row]);
       if (!single.error) written.push(...((single.data ?? []) as T[]));
+      else onError?.(row, single.error);
     }
   }
   return written;

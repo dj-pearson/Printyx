@@ -589,6 +589,33 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+/**
+ * Comments blanked in place, so prose describing a query is not read as one.
+ *
+ * This guard used to scan raw source, and a doc comment explaining that a loop
+ * REPLACED an `.order('end_date', ...)` chain was reported as a phantom column
+ * on whatever table the previous real `.from()` named. That is the trap
+ * CLAUDE.md records for check:edge-coverage and for absence assertions, arriving
+ * here: a guard that cannot tell prose from a call site reports its own
+ * explanation as the defect, and the fix somebody reaches for is to change
+ * working code.
+ *
+ * Blanked rather than removed, so every line and column number still lines up
+ * with the file on disk. The line-comment pattern keeps the `https://`
+ * lookbehind, which is the mirror-image bug check:seo-assets already carries -
+ * `/\/\/.*$/` finds the slashes inside a URL and eats the rest of the line.
+ * Block comments are blanked FIRST, because a line comment can legitimately sit
+ * inside one; the reverse order lets a trailing `/*` in a line comment open a
+ * block that swallows the next forty lines, which is what
+ * check:shared-helper-imports was caught on.
+ */
+function blankComments(src: string): string {
+  const blank = (m: string) => m.replace(/[^\n]/g, ' ');
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, blank)
+    .replace(/(^|[^:])\/\/[^\n]*/g, (m, lead) => lead + blank(m.slice(lead.length)));
+}
+
 const files = walk(join(repo, 'supabase', 'functions')).filter(
   (f) => !f.endsWith(`functions${'/'}server.ts`),
 );
@@ -600,7 +627,7 @@ for (const file of files) {
   const rel = relative(repo, file).replace(/\\/g, '/');
   let source: string;
   try {
-    source = readFileSync(file, 'utf-8');
+    source = blankComments(readFileSync(file, 'utf-8'));
   } catch {
     continue;
   }

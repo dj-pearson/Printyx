@@ -35,6 +35,14 @@
  *   retry      a loop over attempts.
  *   bounded    the iterable is a literal array or a constant - the count cannot
  *              grow with a customer's business.
+ *   unreachable the loop is in an edge function listed in
+ *              docs/unreferenced-edge-fns-baseline.json, so it does not scale
+ *              with tenant data because it does not run at all. Reading the
+ *              baseline is a RULE, not a second baseline: the day something
+ *              calls that function the loop reappears as a candidate, which is
+ *              exactly when it starts to matter. Converting one now would be
+ *              careful work on code nothing runs (PROD-011), and the owning
+ *              story is AUDIT-025 / AUDIT-024, not this one.
  *   TENANT     everything else: the row count is the customer's business, and
  *              these are the ones that pass every test and fail in production,
  *              because a seeded tenant is small.
@@ -55,6 +63,17 @@
 import fs from 'fs';
 import path from 'path';
 import { classify } from './lib/nplus1-classify.mjs';
+
+/**
+ * Functions no client tree, proxy alias, server.ts mapping or cron job can
+ * reach. A loop inside one of them cannot scale with a customer's business
+ * because no customer can trigger it.
+ */
+const unreachable = new Set(
+  JSON.parse(fs.readFileSync('docs/unreferenced-edge-fns-baseline.json', 'utf8')).unreferenced ??
+    [],
+);
+const fnOf = (file) => file.split(path.sep).slice(2, 3)[0] ?? '';
 
 const files = [];
 (function w(d) {
@@ -93,7 +112,11 @@ for (const f of files) {
       table: m[1],
       parallel,
       head: l.trim().slice(0, 80),
-      kind: classify(l, b),
+      // Shape first, reachability second: a paging loop in an unreachable
+      // function is still a paging loop, and collapsing the two would hide how
+      // many of the deliberate shapes the rule actually recognises.
+      kind:
+        classify(l, b) === 'TENANT' && unreachable.has(fnOf(f)) ? 'unreachable' : classify(l, b),
     });
   });
 }
