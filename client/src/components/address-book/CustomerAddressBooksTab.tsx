@@ -66,7 +66,7 @@ export function CustomerAddressBooksTab({
   const [importOpen, setImportOpen] = useState(false);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['/api/address-books', `?customer_id=${customerId}`],
+    queryKey: [`/api/address-books?customer_id=${customerId}`],
     enabled: !!customerId,
   });
   const books = extractRecords<AddressBookRow>(data);

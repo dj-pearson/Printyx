@@ -228,7 +228,12 @@ export default function PlatformCustomerSuccess() {
 
   // Fetch tenant health data and map the real response to the UI shape (PA-036).
   const { data: tenants = [], isLoading } = useQuery<unknown, Error, TenantHealth[]>({
-    queryKey: ['/api/platform-cs/health-scores', selectedFilter, selectedCSM],
+    // Both selectors filter the loaded rows below (see `filtered`), so neither
+    // belongs in the key. As path segments they asked for
+    // /health-scores/all/ - which the edge function reads as
+    // /health-scores/:businessRecordId for a record called "all" - so this page
+    // has never loaded a row on either host.
+    queryKey: ['/api/platform-cs/health-scores'],
     select: (raw) => mapTenants(raw as any),
   });
 

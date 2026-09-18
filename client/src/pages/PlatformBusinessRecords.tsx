@@ -130,7 +130,7 @@ export default function PlatformBusinessRecords() {
     page: number;
     totalPages: number;
   }>({
-    queryKey: ['/api/platform-crm/business-records', queryParams.toString()],
+    queryKey: [`/api/platform-crm/business-records?${queryParams.toString()}`],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 

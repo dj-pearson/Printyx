@@ -198,11 +198,13 @@ export default function MobileFieldOperations() {
 
   // Fetch field work orders
   const { data: workOrders = [], isLoading: workOrdersLoading } = useQuery<FieldWorkOrder[]>({
+    // The three selectors are query params now rather than path segments. This
+    // does NOT make the page work: supabase/functions/mobile-field/ has no
+    // work-orders branch at all, so it is a 404 on both hosts either way, and
+    // whether a dispatcher's fleet view belongs on this prefix is AUDIT-033's
+    // decision. The URL is at least the one a handler would be written against.
     queryKey: [
-      '/api/mobile-field/work-orders',
-      selectedStatus,
-      selectedTechnician,
-      selectedPriority,
+      `/api/mobile-field/work-orders?status=${selectedStatus}&technicianId=${selectedTechnician}&priority=${selectedPriority}`,
     ],
   });
 

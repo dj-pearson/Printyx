@@ -65,7 +65,12 @@ export default async function handler(req: Request) {
       // (versions, triggers, steps, conditions, execution steps) do not, so
       // they are scoped by the parent ids fetched here. Fetching workflows
       // first is what makes that scoping tenant-safe.
-      const { data: workflows, error: wfError } = await admin
+      // QUERYKEY-002: the page's category Select used to be a PATH SEGMENT on
+      // this URL, so it 404'd and the selector did nothing. `category` is a
+      // real column on `workflows`, so it is read here rather than dropped.
+      const category = url.searchParams.get('category');
+
+      let workflowQuery = admin
         .from('workflows')
         .select(
           'id, name, description, category, status, current_version_id, created_at, updated_at',
@@ -73,6 +78,10 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .eq('is_template', false)
         .order('updated_at', { ascending: false });
+      if (category && category !== 'all') {
+        workflowQuery = workflowQuery.eq('category', category);
+      }
+      const { data: workflows, error: wfError } = await workflowQuery;
       if (wfError) {
         return createCorsResponse(
           { message: 'Failed to load workflows', detail: wfError.message },

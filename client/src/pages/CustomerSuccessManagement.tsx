@@ -242,7 +242,7 @@ export default function CustomerSuccessManagement() {
 
   // Fetch usage analytics
   const { data: usageAnalytics } = useQuery<UsageAnalyticsData>({
-    queryKey: ['/api/customer-success/usage-analytics', selectedPeriod],
+    queryKey: [`/api/customer-success/usage-analytics?period=${selectedPeriod}`],
   });
 
   // Fetch satisfaction data

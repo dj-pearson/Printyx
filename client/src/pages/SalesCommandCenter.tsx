@@ -97,7 +97,7 @@ export default function SalesCommandCenter() {
   // layout with zeroed KPIs and empty tables either way. The results are held
   // whole now so QueryStates below can tell the two apart.
   const goalProgressQuery = useQuery<GoalProgressRow[]>({
-    queryKey: ['/api/crm/goal-progress', ownerScope],
+    queryKey: ['/api/crm/goal-progress' + (ownerScope === 'me' ? '?owner=me' : '')],
   });
   const goalProgress = goalProgressQuery.data ?? [];
 

@@ -432,12 +432,18 @@ export default async function handler(req: Request) {
     // zero that reads as "no progress".
     if (req.method === 'GET' && subRoute === 'goal-progress') {
       const goalId = url.searchParams.get('goalId');
+      // QUERYKEY-002: SalesCommandCenter's Team/Me scope selector used to be a
+      // path segment here, so it 404'd and picking "Me" changed nothing.
+      // sales_goals.assigned_to_user_id is the column that answers it; a goal
+      // assigned to a TEAM has no user id and is correctly excluded from "Me".
+      const owner = url.searchParams.get('owner');
       let query = admin
         .from('sales_goals')
         .select('*')
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
       if (goalId) query = query.eq('id', goalId);
+      if (owner === 'me') query = query.eq('assigned_to_user_id', user.id);
 
       const { data: goals, error } = await query;
       if (error) {

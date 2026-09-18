@@ -43,22 +43,40 @@ export default async function handler(req: Request) {
     const { parts } = normalizePath(url.pathname, 'analytics');
     const metricType = parts[0]; // 'dashboard', 'sales', 'service', 'performance'
 
+    // QUERYKEY-002: AdvancedAnalyticsDashboard's selector offers last-7-days,
+    // last-30-days, last-90-days, last-12-months and ytd - a different
+    // vocabulary from the week|month|quarter|year this switch understood. An
+    // unmatched value fell through leaving startDate at NOW, so the window was
+    // zero-length and every count came back empty. That was invisible while the
+    // value was a path segment (the request 404'd before it got here); fixing
+    // the transport is what would have exposed it. Both vocabularies are
+    // accepted and anything unrecognised falls back to one month rather than to
+    // an empty window.
     const period = url.searchParams.get('period') || 'month';
     const now = new Date();
-    let startDate = new Date();
+    const startDate = new Date();
 
     switch (period) {
       case 'week':
+      case 'last-7-days':
         startDate.setDate(now.getDate() - 7);
         break;
-      case 'month':
-        startDate.setMonth(now.getMonth() - 1);
-        break;
       case 'quarter':
-        startDate.setMonth(now.getMonth() - 3);
+      case 'last-90-days':
+        startDate.setDate(now.getDate() - 90);
         break;
       case 'year':
+      case 'last-12-months':
         startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      case 'ytd':
+        startDate.setMonth(0, 1);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'month':
+      case 'last-30-days':
+      default:
+        startDate.setDate(now.getDate() - 30);
         break;
     }
 

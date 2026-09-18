@@ -110,7 +110,7 @@ export default function AddressBookDetail() {
   // For device-scoped books, fetch the customer-master (device_id = null) book to
   // surface inherited entries (US-022).
   const { data: customerBooksRaw } = useQuery({
-    queryKey: ['/api/address-books', `?customer_id=${book?.customer_id ?? ''}`],
+    queryKey: [`/api/address-books?customer_id=${book?.customer_id ?? ''}`],
     enabled: !!book?.customer_id && isDeviceScoped,
   });
   const masterBook: AddressBookRow | undefined = useMemo(() => {

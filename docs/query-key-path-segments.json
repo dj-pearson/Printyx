@@ -1,0 +1,71 @@
+{
+  "note": "QUERYKEY-002. The default queryFn joins a queryKey with '/', so every element is a URL path segment. These eleven multi-element keys are the ones that legitimately BUILD A PATH - an id and a sub-resource, not a filter. Each entry names the URL it produces and the handler that serves it. check:query-keys hard-fails on any multi-element key NOT listed here, and on any entry here that no longer exists, so the list cannot rot in either direction. Do not add an entry to silence a filter: a filter value goes in the query string. QUERYKEY-001 cleared ten object keys; QUERYKEY-002 cleared thirteen string ones, two of which (CustomerContracts, CustomerQuotes) LOOKED like sub-resources and were not - /api/contracts/customer/<id> is read as a contract whose id is the word 'customer'.",
+  "allowed": [
+    {
+      "file": "client/src/components/customer/CustomerMeterReadings.tsx",
+      "key": "['/api/customers', customerId, 'metrics/history']",
+      "url": "/api/customers/:id/metrics/history",
+      "servedBy": "supabase/functions/customers/ (PA-020 sub-resource router)"
+    },
+    {
+      "file": "client/src/components/service/ServiceTicketAnalysis.tsx",
+      "key": "['/api/service-tickets', ticket.id, 'analysis']",
+      "url": "/api/service-tickets/:id/analysis",
+      "servedBy": "supabase/functions/service-tickets/"
+    },
+    {
+      "file": "client/src/components/service/ServiceTicketAnalysis.tsx",
+      "key": "['/api/service-analysis', selectedAnalysis?.id, 'parts-orders']",
+      "url": "/api/service-analysis/:id/parts-orders",
+      "servedBy": "supabase/functions/service-analysis/"
+    },
+    {
+      "file": "client/src/components/service/TechnicianTicketWorkflow.tsx",
+      "key": "['/api/technician-sessions', ticket.id]",
+      "url": "/api/technician-sessions/:ticketId",
+      "servedBy": "supabase/functions/technician-sessions/ (proxied at edge-function-proxy.ts)"
+    },
+    {
+      "file": "client/src/pages/CompanyContacts.tsx",
+      "key": "['/api/companies', companyId]",
+      "url": "/api/companies/:id",
+      "servedBy": "supabase/functions/companies/"
+    },
+    {
+      "file": "client/src/pages/CompanyContacts.tsx",
+      "key": "['/api/companies', companyId, 'contacts']",
+      "url": "/api/companies/:id/contacts",
+      "servedBy": "supabase/functions/companies/"
+    },
+    {
+      "file": "client/src/pages/DocumentBuilder.tsx",
+      "key": "['/api/quotes', selectedQuoteId, 'line-items']",
+      "url": "/api/quotes/:id/line-items",
+      "servedBy": "supabase/functions/quotes/"
+    },
+    {
+      "file": "client/src/pages/EnhancedProductAccessories.tsx",
+      "key": "['/api/accessories', selectedAccessory?.id, 'compatibility']",
+      "url": "/api/accessories/:id/compatibility",
+      "servedBy": "supabase/functions/accessories/"
+    },
+    {
+      "file": "client/src/pages/FleetMonitoringDashboard.tsx",
+      "key": "['/api/device-monitoring/fleet-devices', selectedDevice, 'metrics']",
+      "url": "/api/device-monitoring/fleet-devices/:id/metrics",
+      "servedBy": "supabase/functions/device-monitoring/ (AUDIT-031 moved this off /api/fleet)"
+    },
+    {
+      "file": "client/src/pages/KnowledgeArticle.tsx",
+      "key": "['/api/knowledge-base/articles', slug]",
+      "url": "/api/knowledge-base/articles/:slug",
+      "servedBy": "supabase/functions/knowledge-base/"
+    },
+    {
+      "file": "client/src/pages/ManufacturerIntegrationDevices.tsx",
+      "key": "['/api/device-monitoring/devices', selectedDevice?.device.id, 'metrics']",
+      "url": "/api/device-monitoring/devices/:id/metrics",
+      "servedBy": "supabase/functions/device-monitoring/"
+    }
+  ]
+}
