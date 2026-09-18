@@ -18,35 +18,101 @@
  * `.in()` reads, explicit paging past PostgREST's silent 1000-row cap, and
  * grouping in memory.
  *
- * Limits: the loop body is read by indentation for 45 lines, so a longer body
- * or an unusually formatted one is missed, and a query behind a helper function
- * call is invisible. A clean line here is not proof.
+ * PERF-NPLUS1-002 TAUGHT IT THE DIFFERENCE. The first version reported 99
+ * serial loops, and most of them must not be "fixed": a pagination loop, a
+ * chunked insert and a retry loop all have exactly the shape it matches. A
+ * reading list where two thirds of the entries are correct code is a list
+ * nobody reads, which is the same failure a baseline full of non-defects has.
  *
- * Usage: node scripts/report-nplus1-loops.mjs
+ * So each hit is now CLASSIFIED from the loop header and body:
+ *
+ *   paging    `for (let offset = 0; ; offset += 1000)`, or a body that calls
+ *             fetchAllRows / .range(. Bounded by the result set by design, and
+ *             the queries are the point rather than an accident.
+ *   batching   `for (const batch of chunk(rows, 500))` or an index step of more
+ *             than one. One query per BATCH is the fix for N+1, not an instance
+ *             of it.
+ *   retry      a loop over attempts.
+ *   bounded    the iterable is a literal array or a constant - the count cannot
+ *              grow with a customer's business.
+ *   TENANT     everything else: the row count is the customer's business, and
+ *              these are the ones that pass every test and fail in production,
+ *              because a seeded tenant is small.
+ *
+ * Only TENANT rows are candidates. The rest are counted and printed as a
+ * summary so the classification stays visible - a rule that silently drops
+ * two-thirds of the findings is indistinguishable from a rule that is broken.
+ *
+ * Limits, and they are why this is a report rather than a gate: the loop body is
+ * read by indentation for 45 lines, so a longer body or an unusually formatted
+ * one is missed; a query behind a helper function call is invisible; and the
+ * classifier reads the loop HEADER, so a paging loop written unusually lands in
+ * TENANT and wants reading rather than converting. A clean line here is not
+ * proof.
+ *
+ * Usage: node scripts/report-nplus1-loops.mjs [--all]
  */
-import fs from 'fs'; import path from 'path';
-const files=[];(function w(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,e.name);if(e.isDirectory())w(p);else if(e.name.endsWith('.ts'))files.push(p);}})('supabase/functions');
-const out=[];
-for(const f of files){
-  const src=fs.readFileSync(f,'utf8').replace(/\/\*[\s\S]*?\*\//g,m=>m.replace(/[^\n]/g,' '));
-  const lines=src.split('\n').map(l=>l.replace(/\/\/.*$/,''));
-  lines.forEach((l,i)=>{
-    if(!/\b(for|while)\s*\(|\.map\(\s*async|\.forEach\(\s*async/.test(l)) return;
+import fs from 'fs';
+import path from 'path';
+import { classify } from './lib/nplus1-classify.mjs';
+
+const files = [];
+(function w(d) {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name);
+    if (e.isDirectory()) w(p);
+    else if (e.name.endsWith('.ts')) files.push(p);
+  }
+})('supabase/functions');
+const out = [];
+for (const f of files) {
+  const src = fs
+    .readFileSync(f, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
+  const lines = src.split('\n').map((l) => l.replace(/\/\/.*$/, ''));
+  lines.forEach((l, i) => {
+    if (!/\b(for|while)\s*\(|\.map\(\s*async|\.forEach\(\s*async/.test(l)) return;
     // scan the next 40 lines for an await on a db call, stopping at a dedent
-    const indent=l.search(/\S/);
-    let body=[];
-    for(let k=i+1;k<Math.min(lines.length,i+45);k++){
-      const cur=lines[k];
-      if(cur.trim() && cur.search(/\S/)<=indent) break;
+    const indent = l.search(/\S/);
+    const body = [];
+    for (let k = i + 1; k < Math.min(lines.length, i + 45); k++) {
+      const cur = lines[k];
+      if (cur.trim() && cur.search(/\S/) <= indent) break;
       body.push(cur);
     }
-    const b=body.join('\n');
-    const m=b.match(/await\s+(?:admin|db|supabase|client)[\s\S]{0,60}?\.from\(\s*['"]([a-z0-9_]+)['"]/);
-    if(!m) return;
+    const b = body.join('\n');
+    const m = b.match(
+      /await\s+(?:admin|db|supabase|client)[\s\S]{0,60}?\.from\(\s*['"]([a-z0-9_]+)['"]/,
+    );
+    if (!m) return;
     // Promise.all wrapping means it's parallel, still N queries but not serial
-    const parallel=/Promise\.all/.test(l)||/Promise\.all/.test(lines[Math.max(0,i-1)]);
-    out.push({f,line:i+1,table:m[1],parallel,head:l.trim().slice(0,80)});
+    const parallel = /Promise\.all/.test(l) || /Promise\.all/.test(lines[Math.max(0, i - 1)]);
+    out.push({
+      f,
+      line: i + 1,
+      table: m[1],
+      parallel,
+      head: l.trim().slice(0, 80),
+      kind: classify(l, b),
+    });
   });
 }
-out.filter(o=>!o.parallel).forEach(o=>console.log(`${o.f}:${o.line}  -> ${o.table}\n      ${o.head}`));
-console.log('serial db call inside a loop:',out.filter(o=>!o.parallel).length,'| parallel:',out.filter(o=>o.parallel).length);
+
+const candidates = out.filter((o) => !o.parallel && o.kind === 'TENANT');
+const showAll = process.argv.includes('--all');
+for (const o of showAll ? out.filter((o) => !o.parallel) : candidates) {
+  console.log(`${o.f}:${o.line}  -> ${o.table}${showAll ? `  [${o.kind}]` : ''}\n      ${o.head}`);
+}
+
+const counts = {};
+for (const o of out.filter((o) => !o.parallel)) counts[o.kind] = (counts[o.kind] || 0) + 1;
+const deliberate = Object.entries(counts)
+  .filter(([k]) => k !== 'TENANT')
+  .map(([k, v]) => `${v} ${k}`)
+  .join(', ');
+console.log(
+  `\nloops over tenant rows (candidates): ${candidates.length}` +
+    `\ndeliberate by shape, not reported: ${deliberate || 'none'}` +
+    `\nalready parallel: ${out.filter((o) => o.parallel).length}` +
+    (showAll ? '' : `\n\nRun with --all to see every serial loop and its classification.`),
+);

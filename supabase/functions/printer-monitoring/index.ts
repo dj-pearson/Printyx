@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { writeInBatches } from '../_shared/batch-fetch.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -145,37 +146,37 @@ export default async function handler(req: Request) {
         const body = await req.json();
         const devices = body.devices || [body];
 
-        const processedDevices = [];
+        // PERF-NPLUS1-002: one round trip per CHUNK, not per device. A
+        // monitoring agent posts a whole site's fleet in one call, so this was
+        // a sequential upsert per printer - hundreds of them for a dealer with
+        // a real install base, in a request an agent retries on timeout.
+        //
+        // The per-row fallback is what keeps the batch safe: PostgREST fails
+        // the whole statement on one bad row, and the previous shape let the
+        // good devices land regardless. So a failed batch is retried row by
+        // row, which costs the extra trips only when something is actually
+        // wrong with the payload.
+        const deviceRows = devices.map((device: Record<string, any>) => ({
+          tenant_id: client.tenant_id,
+          client_id: client.id,
+          ip_address: device.ipAddress || device.ip_address,
+          mac_address: device.macAddress || device.mac_address,
+          serial_number: device.serialNumber || device.serial_number,
+          manufacturer: device.manufacturer,
+          model: device.model,
+          hostname: device.hostname,
+          status: device.status || 'online',
+          snmp_data: device.snmpData || device.snmp_data || {},
+          discovered_at: new Date().toISOString(),
+          last_seen_at: new Date().toISOString(),
+        }));
 
-        for (const device of devices) {
-          const { data, error } = await admin
+        const processedDevices = await writeInBatches(deviceRows, (rows) =>
+          admin
             .from('discovered_devices')
-            .upsert(
-              {
-                tenant_id: client.tenant_id,
-                client_id: client.id,
-                ip_address: device.ipAddress || device.ip_address,
-                mac_address: device.macAddress || device.mac_address,
-                serial_number: device.serialNumber || device.serial_number,
-                manufacturer: device.manufacturer,
-                model: device.model,
-                hostname: device.hostname,
-                status: device.status || 'online',
-                snmp_data: device.snmpData || device.snmp_data || {},
-                discovered_at: new Date().toISOString(),
-                last_seen_at: new Date().toISOString(),
-              },
-              {
-                onConflict: 'tenant_id,serial_number',
-              },
-            )
-            .select()
-            .single();
-
-          if (!error && data) {
-            processedDevices.push(data);
-          }
-        }
+            .upsert(rows, { onConflict: 'tenant_id,serial_number' })
+            .select(),
+        );
 
         return createCorsResponse(
           {
@@ -193,37 +194,32 @@ export default async function handler(req: Request) {
         const body = await req.json();
         const metrics = body.metrics || [body];
 
-        const processedMetrics = [];
+        // Same shape as the devices branch above, and the worse of the two:
+        // an agent submits every printer's counters on every poll, so this ran
+        // one INSERT per printer per collection interval (PERF-NPLUS1-002).
+        const metricRows = metrics.map((metric: Record<string, any>) => ({
+          tenant_id: client.tenant_id,
+          client_id: client.id,
+          device_serial: metric.serialNumber || metric.device_serial,
+          page_count_total: metric.pageCountTotal || metric.page_count_total,
+          page_count_color: metric.pageCountColor || metric.page_count_color,
+          page_count_bw: metric.pageCountBw || metric.page_count_bw,
+          toner_black: metric.tonerBlack || metric.toner_black,
+          toner_cyan: metric.tonerCyan || metric.toner_cyan,
+          toner_magenta: metric.tonerMagenta || metric.toner_magenta,
+          toner_yellow: metric.tonerYellow || metric.toner_yellow,
+          drum_level: metric.drumLevel || metric.drum_level,
+          fuser_level: metric.fuserLevel || metric.fuser_level,
+          status: metric.status,
+          errors: metric.errors || [],
+          raw_data: metric.rawData || metric.raw_data || {},
+          collected_at: metric.collectedAt || new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        }));
 
-        for (const metric of metrics) {
-          const { data, error } = await admin
-            .from('printer_metrics')
-            .insert({
-              tenant_id: client.tenant_id,
-              client_id: client.id,
-              device_serial: metric.serialNumber || metric.device_serial,
-              page_count_total: metric.pageCountTotal || metric.page_count_total,
-              page_count_color: metric.pageCountColor || metric.page_count_color,
-              page_count_bw: metric.pageCountBw || metric.page_count_bw,
-              toner_black: metric.tonerBlack || metric.toner_black,
-              toner_cyan: metric.tonerCyan || metric.toner_cyan,
-              toner_magenta: metric.tonerMagenta || metric.toner_magenta,
-              toner_yellow: metric.tonerYellow || metric.toner_yellow,
-              drum_level: metric.drumLevel || metric.drum_level,
-              fuser_level: metric.fuserLevel || metric.fuser_level,
-              status: metric.status,
-              errors: metric.errors || [],
-              raw_data: metric.rawData || metric.raw_data || {},
-              collected_at: metric.collectedAt || new Date().toISOString(),
-              created_at: new Date().toISOString(),
-            })
-            .select()
-            .single();
-
-          if (!error && data) {
-            processedMetrics.push(data);
-          }
-        }
+        const processedMetrics = await writeInBatches(metricRows, (rows) =>
+          admin.from('printer_metrics').insert(rows).select(),
+        );
 
         // Update client last seen
         await admin

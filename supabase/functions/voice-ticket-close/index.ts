@@ -33,6 +33,7 @@ import {
   type SkuCandidate,
 } from '../_shared/voice-ticket-close-logic.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { fetchInBatches } from '../_shared/batch-fetch.ts';
 
 type Row = Record<string, any>;
 
@@ -372,16 +373,27 @@ export default async function handler(req: Request) {
         // (b) Deduct each resolved part from the tech's truck.
         const techUserId = draft.tech_user_id ?? user.id ?? null;
         if (techUserId) {
+          // PERF-NPLUS1-002: one read for every part on the ticket, not one
+          // read per part. The write still has to be per row - PostgREST cannot
+          // express `quantity_on_truck - qty` and each part deducts a different
+          // amount - but the lookup is the half that was N+1, and a tech
+          // closing a ticket with a dozen parts was a dozen sequential round
+          // trips before the first deduction.
+          const skus = resolvedParts.map((p) => String(p.chosenSku));
+          const stockRows = await fetchInBatches<Row>(skus, 'part_sku', () =>
+            admin
+              .from('truck_inventory')
+              .select('id, quantity_on_truck, part_sku')
+              .eq('tenant_id', tenantId)
+              .eq('tech_user_id', techUserId),
+          );
+          const stockBySku = new Map<string, Row>();
+          for (const row of stockRows) stockBySku.set(String(row.part_sku), row);
+
           for (const part of resolvedParts) {
             const sku = String(part.chosenSku);
             const qty = Math.max(1, Math.round(Number(part.quantity) || 1));
-            const { data: stock } = await admin
-              .from('truck_inventory')
-              .select('id, quantity_on_truck')
-              .eq('tenant_id', tenantId)
-              .eq('tech_user_id', techUserId)
-              .eq('part_sku', sku)
-              .maybeSingle();
+            const stock = stockBySku.get(sku) ?? null;
             if (!stock) {
               steps.partsDeductFailed += 1;
               stepErrors.push(`truck[${sku}]: no stock row for this tech`);
@@ -393,10 +405,10 @@ export default async function handler(req: Request) {
             const { error: deductErr } = await admin
               .from('truck_inventory')
               .update({
-                quantity_on_truck: Number((stock as Row).quantity_on_truck ?? 0) - qty,
+                quantity_on_truck: Number(stock.quantity_on_truck ?? 0) - qty,
                 updated_at: new Date().toISOString(),
               })
-              .eq('id', (stock as Row).id);
+              .eq('id', stock.id);
             if (deductErr) {
               steps.partsDeductFailed += 1;
               stepErrors.push(`truck[${sku}]: ${deductErr.message}`);

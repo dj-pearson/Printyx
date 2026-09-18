@@ -66,6 +66,7 @@ import {
   type RecommendedItem,
 } from './optimizer.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { chunk } from '../_shared/batch-fetch.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -293,10 +294,15 @@ async function generate(req: Request, admin: Admin, tenantId: string, userId: st
     );
   }
 
-  let generated = 0;
+  // PERF-NPLUS1-002: ONE insert for the whole run, not one per technician. A
+  // dealer with sixty vans made sixty sequential round trips just to write the
+  // results, on top of whatever runOptimizer does per tech - and the optimizer
+  // calls are the part this cannot fix from here, since each reads that tech's
+  // own truck. Batching the writes is the half that is free.
+  const rows: Record<string, unknown>[] = [];
   for (const techUserId of techIds) {
     const result = await runOptimizer(admin, tenantId, techUserId);
-    const { error } = await admin.from('truck_stock_recommendations').insert({
+    rows.push({
       tenant_id: tenantId,
       tech_user_id: techUserId,
       status: 'draft',
@@ -307,8 +313,17 @@ async function generate(req: Request, admin: Admin, tenantId: string, userId: st
       recommended_items: result.recommendedItems,
       generated_at: new Date().toISOString(),
     });
-    if (error) throw error;
-    generated++;
+  }
+
+  let generated = 0;
+  if (rows.length > 0) {
+    // Chunked, because a tenant with hundreds of technicians would otherwise
+    // put the whole run in one request body.
+    for (const batch of chunk(rows, 200)) {
+      const { error } = await admin.from('truck_stock_recommendations').insert(batch);
+      if (error) throw error;
+      generated += batch.length;
+    }
   }
 
   audit('GENERATE', { tenantId, userId, extra: { techs: techIds.length, generated } });
