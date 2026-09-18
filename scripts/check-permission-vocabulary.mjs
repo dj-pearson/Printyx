@@ -159,6 +159,32 @@ for (const file of walk(join(repo, 'server'))) {
     });
   }
 }
+/**
+ * The NAVIGATION side (SEC-EDGE-001).
+ *
+ * client/src/lib/navigation-permissions.ts decides what a user can SEE, and it
+ * speaks the same permission codes the route gates do - so it has the same
+ * failure mode and nothing was checking it. Nine entries named
+ * `admin.settings.view` / `admin.settings.update`, neither of which the seeder
+ * created, so /settings itself was invisible to every role below platform
+ * admin. A user who cannot see the page never reports that it is missing.
+ *
+ * An entry is a finding only when NONE of its codes is seeded, matching the
+ * route rule: the gate passes on any one of them.
+ */
+const NAV = 'client/src/lib/navigation-permissions.ts';
+if (existsSync(join(repo, NAV))) {
+  const nav = readFileSync(join(repo, NAV), 'utf8');
+  const lineOf = (index) => nav.slice(0, index).split('\n').length;
+  for (const entry of nav.matchAll(/'(\/[^']*)': \{([\s\S]*?)\n  \}/g)) {
+    const [, path, block] = entry;
+    const required = [...new Set([...block.matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]))];
+    if (required.length === 0) continue;
+    if (required.some((p) => seeded.has(p))) continue;
+    findings.push({ route: `NAV ${path}`, file: NAV, line: lineOf(entry.index), required });
+  }
+}
+
 findings.sort((a, b) => a.route.localeCompare(b.route) || a.file.localeCompare(b.file));
 
 const key = (f) => `${f.route} (${f.file})`;

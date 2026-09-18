@@ -154,3 +154,52 @@ describe('the guard is a hard gate at zero', () => {
     expect(out).toContain('unsatisfiable gates: 0');
   });
 });
+
+/**
+ * The navigation side speaks the same vocabulary (SEC-EDGE-001).
+ *
+ * navigation-permissions.ts decides what a user can SEE, and it names the same
+ * permission codes the route gates do - so it has the same failure mode, and
+ * nothing was checking it. Nine entries named `admin.settings.view` or
+ * `admin.settings.update`, neither of which the seeder created, so /settings
+ * ITSELF was invisible to every role below platform admin. A user who cannot
+ * see a page never reports that it is missing, which is why this went unnoticed
+ * while the route half was being ratcheted.
+ */
+describe('every navigation gate is satisfiable too', () => {
+  const nav = read('client/src/lib/navigation-permissions.ts');
+
+  it('no entry names only unseeded codes', () => {
+    const unsatisfiable: string[] = [];
+    for (const entry of nav.matchAll(/'(\/[^']*)': \{([\s\S]*?)\n  \}/g)) {
+      const required = [...entry[2].matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]);
+      if (required.length === 0) continue;
+      if (!required.some((p) => seeded.has(p))) unsatisfiable.push(entry[1]);
+    }
+    expect(unsatisfiable).toEqual([]);
+  });
+
+  it('the two codes /settings needed are seeded and granted', () => {
+    const seeder = read('server/database-updater/seeders/rbac-seeder.ts');
+    for (const code of ['admin.settings.view', 'admin.settings.update']) {
+      expect(seeded.has(code), `${code} is not in the catalogue`).toBe(true);
+      expect(seeder, `${code} is granted to no role`).toContain(`grantSec(roleCode, '${code}')`);
+    }
+  });
+
+  it('viewing settings reaches further down than changing them', () => {
+    // A manager has to be able to open /settings to see how their own tenant
+    // is configured; changing it is a different question.
+    const seeder = read('server/database-updater/seeders/rbac-seeder.ts');
+    const viewBlock = seeder.slice(
+      seeder.indexOf("await grantSec(roleCode, 'admin.settings.view')") - 300,
+    );
+    expect(viewBlock.slice(0, 400)).toContain('SERVICE_MANAGER');
+  });
+
+  it('the guard reads the navigation file, not just the server tree', () => {
+    expect(read('scripts/check-permission-vocabulary.mjs')).toContain(
+      'client/src/lib/navigation-permissions.ts',
+    );
+  });
+});

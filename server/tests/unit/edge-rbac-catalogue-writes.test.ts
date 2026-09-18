@@ -254,3 +254,50 @@ describe('the finance surface is gated on both sides', () => {
     }
   });
 });
+
+/**
+ * Minting an API key was open to everyone (SEC-EDGE-001, third batch).
+ *
+ * createKey takes `scopes` and `permissions` straight from the request body and
+ * returns the plaintext key once, so any authenticated member of a tenant could
+ * mint a credential carrying whatever scopes they asked for and then use it.
+ * That is a privilege-escalation path, not an ungated list.
+ */
+describe('api-keys requires the level its page requires', () => {
+  const src = read('supabase/functions/api-keys/index.ts');
+
+  it('gates on level 4, matching /settings/api-keys', () => {
+    const nav = read('client/src/lib/navigation-permissions.ts');
+    const entry = nav.slice(nav.indexOf("'/settings/api-keys': {"));
+    expect(entry.slice(0, 200)).toContain('minLevel: 4');
+    expect(src).toContain('ROLE_LEVEL.MANAGER');
+    expect(src).toContain('denyBelowLevel(');
+  });
+
+  it('a level and not a code, because the page names an unseeded one', () => {
+    // /settings/api-keys gates on admin.settings.update, which the seeder did
+    // not create until this pass - the SEC-EDGE-002 class on the nav side.
+    // Level 4 is what the page means and what a seeded role can satisfy.
+    expect(code('supabase/functions/api-keys/index.ts')).not.toContain('admin.settings.update');
+  });
+
+  it('POST /validate stays above the gate', () => {
+    // It is called by other edge functions to check a key, not by a user.
+    // Requiring level 4 there would break every integration holding a service
+    // key.
+    const validateAt = src.indexOf("first === 'validate'");
+    const gateAt = src.indexOf('denyBelowLevel(');
+    expect(validateAt).toBeGreaterThan(0);
+    expect(validateAt).toBeLessThan(gateAt);
+  });
+
+  it('the scopes it would mint are caller-supplied, which is why this matters', () => {
+    expect(src).toMatch(/scopes: \(body\.scopes \?\? \[\]\)/);
+  });
+
+  it('is out of the open-to-all baseline', () => {
+    expect(JSON.parse(read('docs/edge-rbac-baseline.json')).openToAllRoles).not.toContain(
+      'api-keys',
+    );
+  });
+});

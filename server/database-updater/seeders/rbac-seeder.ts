@@ -721,6 +721,33 @@ const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   // distinct, and pointing them at platform.config.manage or
   // finance.reports.view_sensitive would have granted far more than the route
   // needs.
+  // SEC-EDGE-001: nine navigation entries gate on these two - /settings itself,
+  // /seo, /workflow-automation, /white-label, /tenant-setup,
+  // /customer-number-settings, /deployment-readiness, /system-monitoring and
+  // /admin/system-settings - and the catalogue had neither, so every one was
+  // invisible to every role below platform admin. The route-gate half of this
+  // was SEC-EDGE-002; navigation-permissions.ts is the same defect on the side
+  // that decides what a user can SEE, and nothing was checking it.
+  {
+    name: 'View Settings',
+    code: 'admin.settings.view',
+    description: "See this tenant's configuration screens",
+    module: 'admin',
+    resourceType: 'settings',
+    action: 'view',
+    scopeLevel: 'company',
+    riskLevel: 'low',
+  },
+  {
+    name: 'Update Settings',
+    code: 'admin.settings.update',
+    description: "Change this tenant's configuration",
+    module: 'admin',
+    resourceType: 'settings',
+    action: 'update',
+    scopeLevel: 'company',
+    riskLevel: 'high',
+  },
   {
     name: 'Manage Integrations',
     code: 'admin.settings.integrations',
@@ -2741,6 +2768,12 @@ export async function seedRBAC() {
     };
     for (const roleCode of INTEGRATION_ROLE_CODES) {
       await grantSec(roleCode, 'admin.settings.integrations');
+      await grantSec(roleCode, 'admin.settings.update');
+    }
+    // Viewing settings reaches further down than changing them: a manager has
+    // to be able to open /settings to see how their own tenant is configured.
+    for (const roleCode of [...INTEGRATION_ROLE_CODES, 'SERVICE_MANAGER', 'SALES_MANAGER']) {
+      await grantSec(roleCode, 'admin.settings.view');
     }
     for (const roleCode of MARGIN_ROLE_CODES) {
       await grantSec(roleCode, 'sales.quote.view_margin');

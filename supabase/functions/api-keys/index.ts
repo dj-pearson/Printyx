@@ -34,6 +34,7 @@ import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { toCamelShallow } from '../_shared/case.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { ROLE_LEVEL, denyBelowLevel } from '../_shared/rbac.ts';
 
 const log = createLogger('api-keys');
 
@@ -77,6 +78,37 @@ export default async function handler(req: Request) {
 
     const auth = await requireAuth(req);
     const db = getDb();
+
+    // SEC-EDGE-001: minting an API key is an administrative act, and this
+    // endpoint was open to every authenticated member of the tenant.
+    //
+    // createKey takes `scopes` and `permissions` STRAIGHT FROM THE BODY and
+    // returns the plaintext key once, so any user could mint a credential
+    // carrying whatever scopes they asked for and then use it. That is a
+    // privilege-escalation path, not just an ungated list.
+    //
+    // A LEVEL check and not a permission code: /settings/api-keys gates on
+    // `admin.settings.update` at minLevel 4, and that code is one the RBAC
+    // seeder does not create - the SEC-EDGE-002 defect class, on the
+    // navigation side this time. Level 4 is what the page means and what a
+    // seeded role can actually satisfy. Reads are gated too, because the page
+    // itself does not open below 4.
+    //
+    // POST /validate sits ABOVE this deliberately: it is called by other edge
+    // functions to check a key, not by a user, and requiring level 4 there
+    // would break every integration holding a service key.
+    const denied = await denyBelowLevel(
+      db,
+      { id: auth.userId, app_metadata: auth.supabaseUser?.app_metadata },
+      ROLE_LEVEL.MANAGER,
+    );
+    if (denied) {
+      return errorResponse(403, denied.error, req, {
+        code: denied.code,
+        details: { required: denied.required, actual: denied.actual },
+        requestId,
+      });
+    }
 
     // POST / — create
     if (method === 'POST' && !first) {
