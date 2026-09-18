@@ -772,6 +772,15 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/public/booking': { fn: 'public-booking', pathPrefix: '/booking' },
     '/api/booking-pages': 'booking-pages',
 
+    // WF-S-05: Apollo lead enrichment. The whole prefix, because the edge fn
+    // now covers every path the frontend calls - search, enrich,
+    // leads/:id/add-to-crm, leads/bulk-add, stats, usage and the four
+    // credentials endpoints - and server/routes/apollo-routes.ts is gone. Until
+    // this entry existed, dev ran Express against the real Apollo API while
+    // production ran an edge function whose /search returned an empty list at
+    // 200, and whose credential panel 404'd.
+    '/api/apollo': 'apollo',
+
     // AI-001: /api/ai/gpt5/* → ai-gpt5 fn. Only the gpt5 sub-path is proxied;
     // the rest of /api/ai (ai-routes-simple) stays on Express, which is correct
     // because nothing in the frontend calls it. pathPrefix re-adds the /gpt5

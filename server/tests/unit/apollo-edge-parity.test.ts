@@ -23,7 +23,7 @@
  *   path - the one that appeared to work.
  */
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repo = join(__dirname, '../../..');
@@ -134,17 +134,105 @@ describe('stats counts the same rows /usage reads', () => {
   });
 });
 
-describe('the prefix is deliberately NOT proxied yet', () => {
-  it('because the edge function does not serve credentials', () => {
-    // CLAUDE.md: proxying an un-migrated prefix takes it from working-in-dev to
-    // 404-in-dev, because the proxy falls through only on a network error and
-    // never on a 404. ApolloCredentialManager calls four /api/apollo/credentials
-    // endpoints that exist on Express alone - a fourth family the story does not
-    // count - so proxying now would break a component that works today.
-    expect(read('client/src/components/integrations/ApolloCredentialManager.tsx')).toContain(
-      '/api/apollo/credentials',
-    );
-    expect(edge).not.toContain("endpoint === 'credentials'");
-    expect(read('server/middleware/edge-function-proxy.ts')).not.toContain("'/api/apollo'");
+describe('the prefix is proxied now, because the edge function covers it (WF-S-05 AC3)', () => {
+  // INVERTED DELIBERATELY. This block used to assert the OPPOSITE - that
+  // /api/apollo must stay off crmProxies because the edge function served no
+  // credentials branch, and CLAUDE.md is right that proxying an un-migrated
+  // prefix takes it from working-in-dev to 404-in-dev. The way out was never to
+  // keep the assertion; it was to migrate the prefix. All four credential
+  // endpoints are on the edge function now, so the reason has gone.
+  const proxy = read('server/middleware/edge-function-proxy.ts');
+
+  it('crmProxies carries the whole prefix', () => {
+    expect(proxy).toContain("'/api/apollo': 'apollo'");
+  });
+
+  it('the Express router is gone, not merely unmounted', () => {
+    expect(existsSync(join(repo, 'server/routes/apollo-routes.ts'))).toBe(false);
+    expect(read('server/routes-registry.ts')).not.toContain("'./routes/apollo-routes'");
+  });
+
+  it('every path the client calls has a branch', () => {
+    const called = new Set<string>();
+    for (const file of [
+      'client/src/pages/ApolloLeadEnrichment.tsx',
+      'client/src/components/integrations/ApolloCredentialManager.tsx',
+    ]) {
+      for (const m of read(file).matchAll(/\/api\/apollo\/([a-z-]+)/g)) called.add(m[1]);
+    }
+    expect(called).toEqual(new Set(['search', 'leads', 'stats', 'credentials']));
+    for (const resource of called) {
+      expect(edge, `no branch for ${resource}`).toContain(`endpoint === '${resource}'`);
+    }
+  });
+});
+
+describe('search really calls Apollo (WF-S-05 AC3)', () => {
+  const shared = code('supabase/functions/_shared/apollo-client.ts');
+
+  it('the placeholder is gone', () => {
+    // It answered { contacts: [], message: 'Apollo API integration required' }
+    // at status 200, which a rep reads as "nobody matched your filters".
+    expect(edge).not.toContain('Apollo API integration required');
+    expect(edge).not.toContain('Apollo API enrichment required');
+  });
+
+  it('posts to the endpoints the Node client used', () => {
+    expect(shared).toContain('/v1/mixed_people/search');
+    expect(shared).toContain('/v1/people/match');
+    expect(shared).toContain("'X-Api-Key'");
+  });
+
+  it('a missing key is an error, not an empty list', () => {
+    expect(edge).toContain('APOLLO_NOT_CONFIGURED');
+  });
+
+  it('looks the cache up by the digest, not by the raw filter JSON', () => {
+    // apollo_search_cache.search_hash holds a digest. The old branch matched it
+    // against JSON.stringify(body), so the cache could never hit even once the
+    // rest of the endpoint worked.
+    expect(edge).not.toContain("eq('search_hash', JSON.stringify(");
+    expect(edge).toContain("eq('search_hash', hash)");
+  });
+
+  it('records usage for a failed call too', () => {
+    // Credits are not spent on a rejected call, so a failure row carries zero -
+    // but it is still a row, or the usage panel says nothing happened.
+    expect(edge).toMatch(/success: false/);
+    expect(edge).toMatch(/credits_used: 0/);
+  });
+});
+
+describe('the branches that queried tables nobody declared are gone', () => {
+  // apollo_tenant_leads (the ledger is tenant_apollo_leads), apollo_contacts
+  // (the cache is centralized_apollo_contacts) and apollo_saved_searches, which
+  // is in no schema and no migration and had no caller either.
+  for (const table of ['apollo_tenant_leads', 'apollo_contacts', 'apollo_saved_searches']) {
+    it(`never queries ${table}`, () => {
+      expect(edge).not.toContain(`from('${table}')`);
+    });
+  }
+
+  it('the real ledger and cache are still read', () => {
+    expect(edge).toContain("from('tenant_apollo_leads')");
+    expect(edge).toContain("from('centralized_apollo_contacts')");
+  });
+
+  it('and the schema agrees about which names are real', () => {
+    const schema = read('shared/apollo-schema.ts');
+    for (const table of ['tenant_apollo_leads', 'centralized_apollo_contacts']) {
+      expect(schema).toContain(`'${table}'`);
+    }
+    for (const table of ['apollo_tenant_leads', 'apollo_contacts', 'apollo_saved_searches']) {
+      expect(schema).not.toContain(`'${table}'`);
+    }
+  });
+});
+
+describe('the API key is never returned to the client', () => {
+  it('GET /credentials sends a mask', () => {
+    const branch = edge.slice(edge.indexOf("req.method === 'GET' && endpoint === 'credentials'"));
+    expect(branch.slice(0, 900)).toContain('maskApiKey(credential.api_key)');
+    expect(branch.slice(0, 900)).not.toMatch(/apiKey: credential\.api_key/);
   });
 });

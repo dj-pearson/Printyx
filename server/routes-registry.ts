@@ -602,7 +602,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     // exported setter nothing called, so every handler dereferenced undefined.
     // supabase/functions/customer-success/ covers all 44, literals ordered before
     // /:id — which this router got backwards.
-    ['/api/apollo', './routes/apollo-routes'],
     // ['/api/outreach', './routes/outreach-routes'] — migrated to supabase/functions/outreach/
     ['/api/extension', './routes/chrome-extension-routes'],
     ['/api/route-optimization', './routes/route-optimization-routes'],

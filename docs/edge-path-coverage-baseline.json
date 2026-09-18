@@ -9,7 +9,6 @@
       "tenant-stats",
       "user-stats"
     ],
-    "apollo": ["credentials"],
     "blog-post-revisions": ["single"],
     "blog-serp": ["single"],
     "catalog": ["import-enhanced"],

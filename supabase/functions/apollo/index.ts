@@ -4,6 +4,17 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import {
+  ApolloApiError,
+  describeApolloFailure,
+  enrichPerson,
+  maskApiKey,
+  searchHash,
+  searchPeople,
+  transformApolloContact,
+  verifyApiKey,
+  type ApolloSearchFilters,
+} from '../_shared/apollo-client.ts';
 
 /**
  * Put one cached Apollo contact into the CRM (WF-S-05).
@@ -167,6 +178,75 @@ async function addContactToCrm(
   };
 }
 
+/**
+ * The tenant's Apollo API key, or null when none is configured (WF-S-05).
+ *
+ * STORED IN PLAINTEXT, and that is unchanged here on purpose. The key lives in
+ * `integration_credentials.api_key` exactly as the Express handler this
+ * replaces wrote it, because server/routes/chrome-extension-routes.ts reads the
+ * same column through createApolloClientForTenant. Encrypting on this side
+ * alone would leave that route holding ciphertext it cannot read, and
+ * encrypting both sides means a Node reader for the Deno vault's envelope plus
+ * a migration for every provider row in the table - which is a story about
+ * `integration_credentials`, not about Apollo. Filed as SEC-CRED-VAULT-001.
+ */
+// deno-lint-ignore no-explicit-any
+async function readApolloCredential(admin: any, tenantId: string) {
+  const { data, error } = await admin
+    .from('integration_credentials')
+    .select('id, api_key, status, config, created_at, updated_at')
+    .eq('tenant_id', tenantId)
+    .eq('provider', 'apollo')
+    .maybeSingle();
+  if (error) throw new Error(`Failed to read Apollo credential: ${error.message}`);
+  return data ?? null;
+}
+
+/**
+ * One row in `apollo_api_usage`. Never throws: a failed usage write must not
+ * turn a successful search into an error, and a failed search already has its
+ * own answer.
+ */
+// deno-lint-ignore no-explicit-any
+async function trackUsage(admin: any, row: Record<string, unknown>) {
+  const { error } = await admin.from('apollo_api_usage').insert({
+    ...row,
+    created_at: new Date().toISOString(),
+  });
+  if (error) console.error('Apollo usage tracking failed:', error.message);
+}
+
+/**
+ * Merge each cached contact with what THIS tenant has done with it.
+ *
+ * One read for the whole page rather than one per contact: the Express
+ * original issued a getTenantLeadByApolloId per row, so a 25-result page was 26
+ * round trips.
+ */
+// deno-lint-ignore no-explicit-any
+async function withTenantStatus(admin: any, tenantId: string, contacts: any[]) {
+  if (contacts.length === 0) return [];
+  const ids = contacts.map((c) => c.apollo_id).filter(Boolean);
+  const { data: leads } = await admin
+    .from('tenant_apollo_leads')
+    .select('id, apollo_id, status, added_to_crm')
+    .eq('tenant_id', tenantId)
+    .in('apollo_id', ids);
+
+  const byApolloId = new Map<string, any>();
+  for (const lead of leads ?? []) byApolloId.set(lead.apollo_id, lead);
+
+  return contacts.map((contact) => {
+    const lead = byApolloId.get(contact.apollo_id);
+    return {
+      ...contact,
+      tenantStatus: lead?.status ?? 'new',
+      addedToCrm: lead?.added_to_crm ?? false,
+      tenantLeadId: lead?.id ?? null,
+    };
+  });
+}
+
 export default async function handler(req: Request) {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
@@ -204,22 +284,224 @@ export default async function handler(req: Request) {
     const endpoint = parts[0];
     const resourceId = parts[1];
 
-    // POST /apollo/search - Search for leads
-    if (req.method === 'POST' && endpoint === 'search') {
-      const body = await req.json();
+    // ====================================================================
+    // CREDENTIALS (WF-S-05 AC3)
+    //
+    // Four endpoints ApolloCredentialManager has always called and that
+    // existed on Express alone, so the panel 404'd in production - nobody
+    // could configure an Apollo key on the host that serves it.
+    // ====================================================================
 
-      // Check for cached results
+    // GET /apollo/credentials - configured?, masked, never the key itself
+    if (req.method === 'GET' && endpoint === 'credentials') {
+      const credential = await readApolloCredential(admin, tenantId);
+      if (!credential) return createCorsResponse({ configured: false }, 200, req);
+
+      return createCorsResponse(
+        {
+          configured: true,
+          id: credential.id,
+          status: credential.status,
+          createdAt: credential.created_at,
+          updatedAt: credential.updated_at,
+          apiKeyMasked: maskApiKey(credential.api_key),
+          config: credential.config,
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /apollo/credentials/verify - test a key before or after saving
+    if (req.method === 'POST' && endpoint === 'credentials' && resourceId === 'verify') {
+      const body = await req.json().catch(() => ({}));
+      let testKey: string | null =
+        typeof body?.apiKey === 'string' && body.apiKey.trim() ? body.apiKey.trim() : null;
+
+      if (!testKey) {
+        const credential = await readApolloCredential(admin, tenantId);
+        testKey = credential?.api_key ? String(credential.api_key) : null;
+        if (!testKey) {
+          return createCorsResponse(
+            { valid: false, error: 'No API key configured. Save an API key first.' },
+            400,
+            req,
+          );
+        }
+      }
+
+      const startedAt = Date.now();
+      try {
+        await verifyApiKey(testKey);
+        const responseTimeMs = Date.now() - startedAt;
+        await trackUsage(admin, {
+          tenant_id: tenantId,
+          endpoint: '/v1/mixed_people/search',
+          method: 'POST',
+          request_params: { verify: true },
+          status_code: 200,
+          success: true,
+          credits_used: 1,
+          response_time_ms: responseTimeMs,
+          user_id: user.id,
+        });
+        return createCorsResponse(
+          { valid: true, message: 'API key is valid and working', responseTimeMs },
+          200,
+          req,
+        );
+      } catch (err) {
+        await trackUsage(admin, {
+          tenant_id: tenantId,
+          endpoint: '/v1/mixed_people/search',
+          method: 'POST',
+          request_params: { verify: true },
+          status_code: err instanceof ApolloApiError ? err.status : 500,
+          success: false,
+          error_message: (err as Error)?.message ?? String(err),
+          credits_used: 0,
+          response_time_ms: Date.now() - startedAt,
+          user_id: user.id,
+        });
+        // 200 with valid:false, matching what the panel reads: a rejected key
+        // is an answer to the question asked, not a failure of the request.
+        return createCorsResponse(describeApolloFailure(err), 200, req);
+      }
+    }
+
+    // POST /apollo/credentials - save or replace this tenant's key
+    if (req.method === 'POST' && endpoint === 'credentials' && !resourceId) {
+      const body = await req.json().catch(() => ({}));
+      const apiKey = typeof body?.apiKey === 'string' ? body.apiKey.trim() : '';
+      if (!apiKey) {
+        return createCorsResponse({ error: 'API key is required' }, 400, req);
+      }
+
+      const existing = await readApolloCredential(admin, tenantId);
+      const now = new Date().toISOString();
+
+      if (existing) {
+        const { data: updated, error } = await admin
+          .from('integration_credentials')
+          .update({
+            api_key: apiKey,
+            status: 'active',
+            updated_by: user.id,
+            updated_at: now,
+            config: { ...(existing.config ?? {}), lastUpdated: now, updatedBy: user.id },
+          })
+          .eq('id', existing.id)
+          .eq('tenant_id', tenantId)
+          .select('id')
+          .maybeSingle();
+        if (error) {
+          console.error('Apollo credential update failed:', error);
+          return createCorsResponse({ error: 'Failed to save credentials' }, 500, req);
+        }
+        return createCorsResponse(
+          { success: true, message: 'Apollo.io API key updated', credentialId: updated?.id },
+          200,
+          req,
+        );
+      }
+
+      const { data: created, error } = await admin
+        .from('integration_credentials')
+        .insert({
+          tenant_id: tenantId,
+          provider: 'apollo',
+          integration_name: 'Apollo.io Lead Enrichment',
+          api_key: apiKey,
+          status: 'active',
+          created_by: user.id,
+          updated_by: user.id,
+          config: { createdAt: now, createdBy: user.id },
+          created_at: now,
+          updated_at: now,
+        })
+        .select('id')
+        .maybeSingle();
+      if (error) {
+        console.error('Apollo credential insert failed:', error);
+        return createCorsResponse({ error: 'Failed to save credentials' }, 500, req);
+      }
+      return createCorsResponse(
+        { success: true, message: 'Apollo.io API key saved', credentialId: created?.id },
+        201,
+        req,
+      );
+    }
+
+    // DELETE /apollo/credentials/:id
+    if (req.method === 'DELETE' && endpoint === 'credentials' && resourceId) {
+      const { error } = await admin
+        .from('integration_credentials')
+        .delete()
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .eq('provider', 'apollo');
+      if (error) {
+        console.error('Apollo credential delete failed:', error);
+        return createCorsResponse({ error: 'Failed to delete credentials' }, 500, req);
+      }
+      return createCorsResponse(
+        { success: true, message: 'Apollo.io credentials removed' },
+        200,
+        req,
+      );
+    }
+
+    // ====================================================================
+    // SEARCH (WF-S-05 AC3)
+    //
+    // This branch used to answer `{ contacts: [], message: 'Apollo API
+    // integration required' }` at status 200 - a successful-looking empty
+    // result, which reads as "no matches" rather than "not implemented". It
+    // also looked the cache up by `search_hash = JSON.stringify(body)`, while
+    // apollo_search_cache.search_hash holds a DIGEST, so the cache could never
+    // hit even once the rest worked.
+    //
+    // apollo_search_cache has no tenant_id by design: the contact cache is
+    // platform-wide, which is the whole point of centralized_apollo_contacts.
+    // What is per tenant is the lead ledger, merged in afterwards.
+    // ====================================================================
+    if (req.method === 'POST' && endpoint === 'search') {
+      const filters = ((await req.json().catch(() => ({}))) ?? {}) as ApolloSearchFilters;
+      const perPage = filters.perPage || 25;
+      const page = filters.page || 1;
+      const hash = await searchHash(filters);
+
       const { data: cached } = await admin
         .from('apollo_search_cache')
         .select('*')
-        .eq('search_hash', JSON.stringify(body))
-        .single();
+        .eq('search_hash', hash)
+        .gte('expires_at', new Date().toISOString())
+        .maybeSingle();
 
-      if (cached && new Date(cached.expires_at) > new Date()) {
+      if (cached?.apollo_ids?.length) {
+        const { data: contacts } = await admin
+          .from('centralized_apollo_contacts')
+          .select('*')
+          .in('apollo_id', cached.apollo_ids as string[]);
+
+        await admin
+          .from('apollo_search_cache')
+          .update({
+            hit_count: (cached.hit_count ?? 1) + 1,
+            last_accessed_at: new Date().toISOString(),
+          })
+          .eq('id', cached.id);
+
+        const total = cached.total_available ?? 0;
         return createCorsResponse(
           {
-            contacts: cached.results || [],
-            pagination: cached.pagination,
+            contacts: await withTenantStatus(admin, tenantId, contacts ?? []),
+            pagination: {
+              page,
+              perPage,
+              totalEntries: total,
+              totalPages: Math.ceil(total / perPage),
+            },
             fromCache: true,
           },
           200,
@@ -227,46 +509,192 @@ export default async function handler(req: Request) {
         );
       }
 
-      // Return placeholder - actual Apollo API integration would go here
+      const credential = await readApolloCredential(admin, tenantId);
+      if (!credential?.api_key) {
+        // 400, not an empty list: the rep needs to know a key is missing, and
+        // an empty 200 is exactly how this endpoint used to lie.
+        return createCorsResponse(
+          {
+            error: 'No Apollo.io API key configured for this tenant.',
+            code: 'APOLLO_NOT_CONFIGURED',
+          },
+          400,
+          req,
+        );
+      }
+
+      const startedAt = Date.now();
+      let apollo;
+      try {
+        apollo = await searchPeople(String(credential.api_key), filters);
+      } catch (err) {
+        await trackUsage(admin, {
+          tenant_id: tenantId,
+          endpoint: '/v1/mixed_people/search',
+          method: 'POST',
+          request_params: filters,
+          status_code: err instanceof ApolloApiError ? err.status : 500,
+          success: false,
+          error_message: (err as Error)?.message ?? String(err),
+          credits_used: 0,
+          response_time_ms: Date.now() - startedAt,
+          user_id: user.id,
+        });
+        const status = err instanceof ApolloApiError ? err.status : 502;
+        return createCorsResponse(
+          { error: 'Failed to search leads', message: (err as Error)?.message ?? String(err) },
+          status === 401 || status === 403 ? 400 : 502,
+          req,
+        );
+      }
+
+      await trackUsage(admin, {
+        tenant_id: tenantId,
+        endpoint: '/v1/mixed_people/search',
+        method: 'POST',
+        request_params: filters,
+        status_code: 200,
+        success: true,
+        credits_used: 1,
+        response_time_ms: Date.now() - startedAt,
+        user_id: user.id,
+      });
+
+      const rows = apollo.people.map(transformApolloContact);
+      if (rows.length > 0) {
+        const { error: upsertError } = await admin.from('centralized_apollo_contacts').upsert(
+          rows.map((r) => ({ ...r, last_enriched_at: new Date().toISOString() })),
+          { onConflict: 'apollo_id' },
+        );
+        if (upsertError) {
+          console.error('Apollo contact cache write failed:', upsertError.message);
+        }
+      }
+
+      const { error: cacheError } = await admin.from('apollo_search_cache').upsert(
+        {
+          search_hash: hash,
+          search_filters: filters,
+          result_count: rows.length,
+          total_available: apollo.pagination.total_entries,
+          apollo_ids: rows.map((r) => r.apollo_id),
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          api_credits_used: 1,
+          last_accessed_at: new Date().toISOString(),
+        },
+        { onConflict: 'search_hash' },
+      );
+      if (cacheError) console.error('Apollo search cache write failed:', cacheError.message);
+
       return createCorsResponse(
         {
-          contacts: [],
-          pagination: { page: 1, perPage: 25, totalEntries: 0, totalPages: 0 },
+          contacts: await withTenantStatus(admin, tenantId, rows),
+          pagination: {
+            page: apollo.pagination.page,
+            perPage: apollo.pagination.per_page,
+            totalEntries: apollo.pagination.total_entries,
+            totalPages: apollo.pagination.total_pages,
+          },
           fromCache: false,
-          message: 'Apollo API integration required',
         },
         200,
         req,
       );
     }
 
-    // POST /apollo/enrich - Enrich a contact
+    // ====================================================================
+    // ENRICH (WF-S-05 AC3)
+    //
+    // Was a placeholder too, and read `apollo_contacts` - a table that is in no
+    // schema and no migration. The cache is `centralized_apollo_contacts`.
+    // ====================================================================
     if (req.method === 'POST' && endpoint === 'enrich') {
-      const body = await req.json();
-      const { email, linkedinUrl } = body;
+      const body = await req.json().catch(() => ({}));
+      const email = typeof body?.email === 'string' ? body.email.trim() : '';
+      const linkedinUrl = typeof body?.linkedinUrl === 'string' ? body.linkedinUrl.trim() : '';
 
-      // Check cache first
+      if (!email && !linkedinUrl) {
+        return createCorsResponse({ error: 'email or linkedinUrl is required' }, 400, req);
+      }
+
       if (email) {
-        const { data: cached } = await admin
-          .from('apollo_contacts')
+        const { data: cachedContact } = await admin
+          .from('centralized_apollo_contacts')
           .select('*')
           .eq('email', email)
-          .single();
-
-        if (cached) {
-          return createCorsResponse({ contact: cached, fromCache: true }, 200, req);
+          .maybeSingle();
+        if (cachedContact) {
+          return createCorsResponse({ contact: cachedContact, fromCache: true }, 200, req);
         }
       }
 
-      return createCorsResponse(
-        {
-          contact: null,
-          fromCache: false,
-          message: 'Apollo API enrichment required',
-        },
-        200,
-        req,
-      );
+      const credential = await readApolloCredential(admin, tenantId);
+      if (!credential?.api_key) {
+        return createCorsResponse(
+          {
+            error: 'No Apollo.io API key configured for this tenant.',
+            code: 'APOLLO_NOT_CONFIGURED',
+          },
+          400,
+          req,
+        );
+      }
+
+      const startedAt = Date.now();
+      let person;
+      try {
+        person = await enrichPerson(String(credential.api_key), {
+          email: email || undefined,
+          linkedin_url: linkedinUrl || undefined,
+          first_name: body?.firstName || undefined,
+          last_name: body?.lastName || undefined,
+          organization_name: body?.organizationName || undefined,
+        });
+      } catch (err) {
+        await trackUsage(admin, {
+          tenant_id: tenantId,
+          endpoint: '/v1/people/match',
+          method: 'POST',
+          request_params: { email, linkedinUrl },
+          status_code: err instanceof ApolloApiError ? err.status : 500,
+          success: false,
+          error_message: (err as Error)?.message ?? String(err),
+          credits_used: 0,
+          response_time_ms: Date.now() - startedAt,
+          user_id: user.id,
+        });
+        return createCorsResponse(
+          { error: 'Failed to enrich contact', message: (err as Error)?.message ?? String(err) },
+          502,
+          req,
+        );
+      }
+
+      await trackUsage(admin, {
+        tenant_id: tenantId,
+        endpoint: '/v1/people/match',
+        method: 'POST',
+        request_params: { email, linkedinUrl },
+        status_code: 200,
+        success: true,
+        credits_used: person ? 1 : 0,
+        response_time_ms: Date.now() - startedAt,
+        user_id: user.id,
+      });
+
+      if (!person) {
+        return createCorsResponse({ contact: null, fromCache: false }, 200, req);
+      }
+
+      const row = transformApolloContact(person);
+      const { data: stored, error: storeError } = await admin
+        .from('centralized_apollo_contacts')
+        .upsert({ ...row, last_enriched_at: new Date().toISOString() }, { onConflict: 'apollo_id' })
+        .select()
+        .maybeSingle();
+      if (storeError) console.error('Apollo enrich cache write failed:', storeError.message);
+
+      return createCorsResponse({ contact: stored ?? row, fromCache: false }, 200, req);
     }
 
     // POST /apollo/add-to-crm - Add Apollo contact to CRM
@@ -356,55 +784,16 @@ export default async function handler(req: Request) {
       );
     }
 
-    // The legacy body-driven shape, kept for any caller that still sends one.
-    if (req.method === 'POST' && endpoint === 'add-to-crm') {
-      const body = await req.json();
-      const { apolloId, contactData } = body;
-
-      // Create business record from Apollo data
-      const businessRecordData = {
-        tenant_id: tenantId,
-        company_name: contactData.organizationName || 'Unknown',
-        primary_contact_name: contactData.name,
-        primary_contact_email: contactData.email,
-        primary_contact_phone: contactData.phoneNumbers?.[0],
-        website: contactData.websiteUrl,
-        industry: contactData.industry,
-        employee_count: contactData.employeeCount,
-        source: 'apollo',
-        // AUDIT-037: `source_id` is not a column. business_records keeps
-        // foreign ids in the external_* family, and a contact pulled from
-        // Apollo enters as a lead, so external_lead_id is where its id belongs.
-        external_lead_id: apolloId,
-        status: 'lead',
-        created_by: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data: record, error } = await admin
-        .from('business_records')
-        .insert(businessRecordData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error adding Apollo contact to CRM:', error);
-        return createCorsResponse({ error: 'Failed to add to CRM' }, 500, req);
-      }
-
-      // Update Apollo tenant lead status
-      await admin.from('apollo_tenant_leads').upsert({
-        tenant_id: tenantId,
-        apollo_id: apolloId,
-        status: 'added_to_crm',
-        added_to_crm: true,
-        business_record_id: record.id,
-        updated_at: new Date().toISOString(),
-      });
-
-      return createCorsResponse({ success: true, businessRecord: record }, 201, req);
-    }
+    // THE LEGACY BODY-DRIVEN /add-to-crm BRANCH IS GONE (WF-S-05).
+    //
+    // It wrote to `apollo_tenant_leads`, which is not a table - the ledger is
+    // `tenant_apollo_leads`, declared in shared/apollo-schema.ts - so its
+    // upsert was a 42P01 on every call it ever received. No client tree sends
+    // that shape either: the page posts /leads/:contactId/add-to-crm with no
+    // body, which the branch above serves. Kept as a note rather than deleted
+    // silently, because "accepts a contactData body" is the thing not to
+    // reintroduce: it would let any authenticated caller write arbitrary rows
+    // into business_records under the Apollo source.
 
     // GET /apollo/usage - Get API usage stats
     if (req.method === 'GET' && endpoint === 'usage') {
@@ -428,39 +817,12 @@ export default async function handler(req: Request) {
       );
     }
 
-    // GET /apollo/saved-searches - Get saved searches
-    if (req.method === 'GET' && endpoint === 'saved-searches') {
-      const { data: searches } = await admin
-        .from('apollo_saved_searches')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
-
-      return createCorsResponse(searches || [], 200, req);
-    }
-
-    // POST /apollo/saved-searches - Save a search
-    if (req.method === 'POST' && endpoint === 'saved-searches') {
-      const body = await req.json();
-
-      const { data: search, error } = await admin
-        .from('apollo_saved_searches')
-        .insert({
-          tenant_id: tenantId,
-          name: body.name,
-          filters: body.filters,
-          created_by: user.id,
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return createCorsResponse({ error: 'Failed to save search' }, 500, req);
-      }
-
-      return createCorsResponse(search, 201, req);
-    }
+    // SAVED SEARCHES ARE GONE TOO (WF-S-05). Both branches queried
+    // `apollo_saved_searches`, which is in no Drizzle schema and no migration,
+    // and no client tree calls either one - so the GET was a 42P01 dressed as
+    // an empty list (`searches || []` swallowed the error) and the POST was a
+    // 500. A feature with no table and no caller is deleted rather than
+    // wired, per the AUDIT-016 rule.
 
     // Method/endpoint not found
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);
