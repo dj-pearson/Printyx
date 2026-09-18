@@ -714,6 +714,33 @@ const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     scopeLevel: 'location',
     riskLevel: 'high',
   },
+  // SEC-EDGE-002: two capabilities the route gates have always named and this
+  // catalogue never had, so both gates denied every role below platform admin.
+  // Added here rather than bent onto an unrelated code: "configure this tenant's
+  // Salesforce sync" and "see the margin on a comparable deal" are real and
+  // distinct, and pointing them at platform.config.manage or
+  // finance.reports.view_sensitive would have granted far more than the route
+  // needs.
+  {
+    name: 'Manage Integrations',
+    code: 'admin.settings.integrations',
+    description: "Configure this tenant's third-party integrations and field mappings",
+    module: 'admin',
+    resourceType: 'settings',
+    action: 'integrations',
+    scopeLevel: 'company',
+    riskLevel: 'high',
+  },
+  {
+    name: 'View Quote Margin',
+    code: 'sales.quote.view_margin',
+    description: 'See dealer cost and margin on a quote or a comparable deal',
+    module: 'sales',
+    resourceType: 'quote',
+    action: 'view_margin',
+    scopeLevel: 'company',
+    riskLevel: 'medium',
+  },
   {
     name: 'Manage Inventory',
     code: 'operations.inventory.manage',
@@ -2675,6 +2702,50 @@ export async function seedRBAC() {
       await grantBlog('COMPANY_ADMIN', permCode);
     }
     log.info(`✅ Granted ${blogMappingsCreated} blog permissions`);
+
+    // Step 6: the two codes SEC-EDGE-002 added, granted additively so an
+    // existing tenant picks them up on the next seed run without disturbing the
+    // static ROLE_TEMPLATES above - the same shape as the address-book and blog
+    // grants. Integration configuration is admin-only; margin visibility goes to
+    // the roles that quote and to the ones that manage quoting, and NOT to
+    // SALES_REP, because dealer cost on a comparable deal is the kind of number
+    // a rep can repeat to a customer.
+    log.info('\n🔐 Granting SEC-EDGE-002 permissions...');
+    const INTEGRATION_ROLE_CODES = ['PLATFORM_ADMIN', 'COMPANY_ADMIN', 'IT_ADMIN'];
+    const MARGIN_ROLE_CODES = [
+      'PLATFORM_ADMIN',
+      'COMPANY_ADMIN',
+      'VP_SALES',
+      'REGIONAL_SALES_DIRECTOR',
+      'SALES_MANAGER',
+      'SALES_SUPERVISOR',
+      'SOLUTIONS_CONSULTANT',
+    ];
+
+    let secMappingsCreated = 0;
+    const grantSec = async (roleCode: string, permCode: string) => {
+      const roleId = roleMap.get(roleCode);
+      const permId = permissionMap.get(permCode);
+      if (!roleId || !permId) return;
+      try {
+        await db.insert(rolePermissions).values({
+          roleId,
+          permissionId: permId,
+          effect: 'ALLOW',
+          isCustomized: false,
+        });
+        secMappingsCreated++;
+      } catch {
+        // Already granted — idempotent
+      }
+    };
+    for (const roleCode of INTEGRATION_ROLE_CODES) {
+      await grantSec(roleCode, 'admin.settings.integrations');
+    }
+    for (const roleCode of MARGIN_ROLE_CODES) {
+      await grantSec(roleCode, 'sales.quote.view_margin');
+    }
+    log.info(`✅ Granted ${secMappingsCreated} SEC-EDGE-002 permissions`);
 
     // Summary
     log.info('\n' + '='.repeat(60));
