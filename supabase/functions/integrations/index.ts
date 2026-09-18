@@ -4,6 +4,9 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const REQUIRED_PERMISSION = 'admin.settings.integrations';
 
 // Integration type configuration templates
 const INTEGRATION_CONFIGS: Record<string, { category: string; name: string; fields: string[] }> = {
@@ -73,6 +76,15 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: third-party connections and the credentials behind them -
+    // system_integrations carries OAuth tokens and API keys in its
+    // `credentials` column. Writing here connects or disconnects the tenant's
+    // integrations; reading here lists what is connected. /integrations and
+    // /integration-hub both gate on admin.settings.integrations at level 3, so
+    // both sides carry it.
+    const denied = await denyWithoutPermission(admin, user, REQUIRED_PERMISSION);
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
 

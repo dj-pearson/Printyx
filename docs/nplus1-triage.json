@@ -87,7 +87,7 @@
       "why": "Per recipient because the duplicate and suppression checks are per contact, and the response names what happened to EACH address. The suppression read was already hoisted to one query for the batch."
     },
     {
-      "loop": "import/index.ts:421",
+      "loop": "import/index.ts:439",
       "table": "companies",
       "verdict": "scales-open",
       "why": "One ilike duplicate search per CSV row, so a 5,000-row import is 5,000 round trips before a single record lands. The largest remaining one. Convertible by reading the tenant company names once and matching a normalised Map - ilike here is case-insensitive equality with no wildcard - but a large tenant makes that read big, so it wants a measurement rather than an assumption."

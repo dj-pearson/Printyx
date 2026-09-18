@@ -203,3 +203,65 @@ describe('every navigation gate is satisfiable too', () => {
     );
   });
 });
+
+/**
+ * The EDGE side, which the gating passes themselves opened (SEC-EDGE-001).
+ *
+ * Sixteen edge functions now carry permission codes through
+ * denyWithoutPermission, and nothing checked them: an invented code in one of
+ * those gates passed every guard silently and would have denied every role
+ * below platform admin, in production, on the host that serves it. The story
+ * fixing this defect on the route and navigation surfaces introduced it on a
+ * third.
+ */
+describe('edge-function gates are checked too', () => {
+  const guard = read('scripts/check-permission-vocabulary.mjs');
+
+  it('the guard reads supabase/functions', () => {
+    expect(guard).toContain("join(repo, 'supabase', 'functions')");
+    expect(guard).toContain('denyWithoutPermission');
+  });
+
+  it('every code in an edge gate is seeded', () => {
+    const dead: string[] = [];
+    for (const file of [
+      'contacts',
+      'company-contacts',
+      'customers',
+      'opportunities',
+      'auto-lead-routing',
+      'truck-stock',
+      'voice-ticket-close',
+      'phone-in-tickets',
+      'billing',
+      'subscriptions',
+      'pricing-settings',
+      'customer-numbers',
+      'contract-pnl',
+      'quickbooks',
+      'journal-entries',
+      'chart-of-accounts',
+      'account-payable',
+      'account-receivable',
+      'integrations',
+      'import',
+    ]) {
+      const src = read(`supabase/functions/${file}/index.ts`);
+      for (const decl of src.matchAll(/const\s+[A-Z_]*PERMISSION[A-Z_]*\s*=\s*([^;]+);/g)) {
+        for (const m of decl[1].matchAll(/'([a-z_]+\.[a-z_.]+)'/g)) {
+          if (!seeded.has(m[1])) dead.push(`${file}: ${m[1]}`);
+        }
+      }
+    }
+    expect(dead).toEqual([]);
+  });
+
+  it('the edge rule is per code, not any-of, and deliberately so', () => {
+    // A route gate's list is alternatives, so one seeded member makes it
+    // satisfiable. An edge gate's list is not: these ORs were written to admit
+    // a SECOND ROLE - SALES_REP holds edit_own and SALES_MANAGER holds create -
+    // so a dead member is the manager silently losing access while the rep
+    // still works and nobody reports it.
+    expect(guard).toContain('const dead = codes.filter((c) => !seeded.has(c))');
+  });
+});

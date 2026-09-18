@@ -185,6 +185,51 @@ if (existsSync(join(repo, NAV))) {
   }
 }
 
+/**
+ * The EDGE side (SEC-EDGE-001), and this one is a gap the gating passes opened.
+ *
+ * Sixteen edge functions now carry permission codes through
+ * denyWithoutPermission, and until this block existed nothing checked them: an
+ * invented code in one of those gates passed every guard silently and would
+ * have denied every role below platform admin, in production, on the host that
+ * serves it. That is the SEC-EDGE-002 defect on a third surface, introduced by
+ * the story fixing it on the first two.
+ *
+ * The rule is the file-level one, deliberately coarse: in any edge file that
+ * calls denyWithoutPermission, every string literal assigned to a
+ * *_PERMISSION constant is a code that has to be seeded. Resolving which
+ * constant reaches which call would be more precise and would miss the case
+ * that matters - a constant declared, never reached by the resolver, and wrong.
+ *
+ * AND IT IS PER CODE, NOT ANY-OF, which is where it deliberately differs from
+ * the route rule above. A route gate's list is a set of alternatives, so one
+ * seeded member makes it satisfiable. An edge gate's list is not: these ORs
+ * were written to admit a SECOND ROLE - SALES_REP holds edit_own and
+ * SALES_MANAGER holds create, FIELD_TECHNICIAN holds parts.request and
+ * SERVICE_MANAGER holds parts.order - so a dead member is not a harmless
+ * alternative, it is the manager silently losing access while the rep still
+ * works and nobody reports it.
+ */
+const EDGE_DIR = join(repo, 'supabase', 'functions');
+if (existsSync(EDGE_DIR)) {
+  for (const file of walk(EDGE_DIR)) {
+    const src = readFileSync(file, 'utf8');
+    if (!src.includes('denyWithoutPermission')) continue;
+    const rel = relative(repo, file).replace(/\\/g, '/');
+    for (const decl of src.matchAll(/const\s+([A-Z_]*PERMISSION[A-Z_]*)\s*=\s*([^;]+);/g)) {
+      const codes = [...decl[2].matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]);
+      const dead = codes.filter((c) => !seeded.has(c));
+      if (dead.length === 0) continue;
+      findings.push({
+        route: `EDGE ${rel.split('/')[2]} (${decl[1]})`,
+        file: rel,
+        line: src.slice(0, decl.index).split('\n').length,
+        required: dead,
+      });
+    }
+  }
+}
+
 findings.sort((a, b) => a.route.localeCompare(b.route) || a.file.localeCompare(b.file));
 
 const key = (f) => `${f.route} (${f.file})`;

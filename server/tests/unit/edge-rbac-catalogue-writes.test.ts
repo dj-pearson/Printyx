@@ -530,3 +530,37 @@ describe('the CRM write paths are gated without closing the reads', () => {
     }
   });
 });
+
+/**
+ * Integrations and bulk import (SEC-EDGE-001, seventh batch).
+ */
+describe('the integration and import surfaces are gated', () => {
+  it('integrations carries the code its own page requires, on both sides', () => {
+    // system_integrations holds OAuth tokens and API keys in `credentials`.
+    // Writing here connects or disconnects the tenant's integrations; reading
+    // lists what is connected, and /integrations gates on the same code at
+    // level 3.
+    const src = code('supabase/functions/integrations/index.ts');
+    expect(src).toContain("const REQUIRED_PERMISSION = 'admin.settings.integrations'");
+    expect(src).not.toMatch(/req\.method !== 'GET'/);
+  });
+
+  it('import gates writes on the import codes and leaves job status readable', () => {
+    // One request creates what would otherwise be hundreds of records.
+    // sales.lead.import is the seeded code for that; operations.inventory.manage
+    // is named beside it because /import/products is the same wizard pointed at
+    // the catalogue. The read stays on the lead view every rep holds, because
+    // whoever started an import has to be able to poll it.
+    const src = code('supabase/functions/import/index.ts');
+    expect(src).toContain("'sales.lead.import'");
+    expect(src).toContain("'operations.inventory.manage'");
+    expect(src).toContain("const READ_PERMISSION = 'sales.lead.view_own'");
+  });
+
+  it('both are out of the open-to-all baseline', () => {
+    const baseline = JSON.parse(read('docs/edge-rbac-baseline.json'));
+    for (const fn of ['integrations', 'import']) {
+      expect(baseline.openToAllRoles, fn).not.toContain(fn);
+    }
+  });
+});
