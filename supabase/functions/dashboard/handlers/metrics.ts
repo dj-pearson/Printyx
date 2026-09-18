@@ -1,4 +1,5 @@
 // GET /dashboard/metrics/:type - the stat cards (DASH-METRICS-001).
+import { startOfNextUtcDay, startOfUtcDay } from '../../_shared/date-months.ts';
 import {
   type Admin,
   type MetricResult,
@@ -49,8 +50,10 @@ export async function dashboardMetric(
         .from('invoices')
         .select('total_amount, invoice_date')
         .eq('tenant_id', tenantId)
-        .gte('invoice_date', lastMonth.toISOString())
-        .lt('invoice_date', nextMonth.toISOString());
+        // monthStart already lands on UTC midnight; snapping anyway keeps the
+        // day boundary visible at the call site rather than two files away.
+        .gte('invoice_date', startOfUtcDay(lastMonth).toISOString())
+        .lt('invoice_date', startOfUtcDay(nextMonth).toISOString());
       if (error) throw error;
 
       const rows = (data ?? []) as Array<Record<string, unknown>>;
@@ -141,8 +144,11 @@ export async function dashboardMetric(
         .select('id', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
         .eq('status', 'active')
-        .gte('end_date', now.toISOString())
-        .lt('end_date', horizon.toISOString());
+        // contracts.end_date is a CALENDAR DATE stored at midnight, so a bound
+        // built from `new Date()` excludes a contract ending TODAY - its
+        // midnight is already behind the current instant (DATE-LOCAL-002).
+        .gte('end_date', startOfUtcDay(now).toISOString())
+        .lt('end_date', startOfNextUtcDay(horizon).toISOString());
       if (error) throw error;
       return {
         value: count ?? 0,

@@ -10,6 +10,7 @@
 // counts a back-dated invoice in the wrong month. And /alerts ran
 // `quantity_on_hand <= reorder_point` as raw SQL, which PostgREST cannot
 // express at all, so the comparison happens here over a capped read.
+import { startOfUtcDay } from '../../_shared/date-months.ts';
 import { fetchInBatches } from '../../_shared/batch-fetch.ts';
 import { type Admin, monthStart, sumNumericField, WIDGET_LIMIT } from './_context.ts';
 
@@ -38,8 +39,8 @@ export async function dashboardSummary(
       .from('invoices')
       .select('total_amount')
       .eq('tenant_id', tenantId)
-      .gte('invoice_date', from.toISOString())
-      .lt('invoice_date', to.toISOString()),
+      .gte('invoice_date', startOfUtcDay(from).toISOString())
+      .lt('invoice_date', startOfUtcDay(to).toISOString()),
     admin
       .from('service_tickets')
       .select('id', { count: 'exact', head: true })

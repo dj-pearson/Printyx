@@ -48,6 +48,7 @@ const EXEMPT = new Set([
   'server/tests/unit/financial-period-months.test.ts',
   'server/tests/unit/contract-and-maintenance-dates.test.ts',
   'server/tests/unit/lease-schedule-months.test.ts',
+  'server/tests/unit/month-arithmetic-closed.test.ts',
   'scripts/check-month-arithmetic.mjs',
 ]);
 
@@ -110,6 +111,10 @@ const baseline = fs.existsSync(BASELINE_PATH)
   ? new Set(JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf8')).allowed ?? [])
   : new Set();
 
+// HARD GATE at zero since DATE-SETMONTH-001 closed. The baseline file stays as
+// the mechanism (and as the record that it reached empty), but an empty
+// baseline means every offence is a new one, so there is no longer a list of
+// known-bad sites for a new offence to hide inside.
 const added = offenders.filter((o) => !baseline.has(keyOf(o)));
 const fixed = [...baseline].filter((k) => !offenders.some((o) => keyOf(o) === k));
 

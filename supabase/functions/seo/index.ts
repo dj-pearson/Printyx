@@ -12,6 +12,7 @@ import {
   projectPageScore,
 } from '../_shared/seo-projection.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { subtractMonths } from '../_shared/date-months.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -419,11 +420,15 @@ export default async function handler(req: Request) {
         case 'week':
           startDate.setDate(now.getDate() - 7);
           break;
+        // setMonth OVERFLOWS rather than clamping (DATE-SETMONTH-001): on
+        // 31 March, month - 1 asks for "31 February" and lands on 3 March, so
+        // `period=month` returned a 28-day window sitting entirely inside the
+        // CURRENT month with February excluded outright.
         case 'month':
-          startDate.setMonth(now.getMonth() - 1);
+          startDate.setTime(subtractMonths(now, 1).getTime());
           break;
         case 'quarter':
-          startDate.setMonth(now.getMonth() - 3);
+          startDate.setTime(subtractMonths(now, 3).getTime());
           break;
         case 'year':
           startDate.setFullYear(now.getFullYear() - 1);

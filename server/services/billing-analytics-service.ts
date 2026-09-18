@@ -15,6 +15,7 @@ import { db } from '../db';
 import { eq, and, desc, sql, gte, lte, count, sum, avg } from 'drizzle-orm';
 import { invoices, businessRecords, contracts, meterReadings, type Invoice } from '@shared/schema';
 import { createModuleLogger } from '../lib/logger';
+import { addMonths, subtractMonths } from '@shared/date-months';
 const log = createModuleLogger('billing-analytics-service');
 
 // =============================================================================
@@ -119,9 +120,11 @@ class BillingAnalyticsService {
       const forecasts: RevenueForecast[] = [];
       const lastMonth = new Date(historicalData[historicalData.length - 1].month);
 
+      // An enumeration stepping a cursor that carries a day-of-month skips
+      // months: from 31 January, i = 1 gives 3 March and February never appears
+      // in the forecast at all (DATE-SETMONTH-001).
       for (let i = 1; i <= periodsAhead; i++) {
-        const forecastMonth = new Date(lastMonth);
-        forecastMonth.setMonth(forecastMonth.getMonth() + i);
+        const forecastMonth = addMonths(lastMonth, i);
 
         const monthIndex = forecastMonth.getMonth();
         const seasonalFactor = seasonality[monthIndex] || 1.0;
@@ -166,8 +169,7 @@ class BillingAnalyticsService {
     tenantId: string,
     monthsBack: number,
   ): Promise<{ month: string; revenue: number }[]> {
-    const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - monthsBack);
+    const startDate = subtractMonths(new Date(), monthsBack);
 
     const results = await db
       .select({

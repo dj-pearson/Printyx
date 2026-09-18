@@ -303,9 +303,13 @@ export default async function handler(req: Request) {
 
     // ─── GET /cost ───────────────────────────────────────────────────
     if (first === 'cost' && req.method === 'GET') {
-      const since = new Date();
-      since.setMonth(since.getMonth() - 5);
-      since.setDate(1);
+      // Anchored to the first of the month directly. The setDate(1) below used
+      // to hide half of this: setMonth overflows, so on 31 July month - 5 asked
+      // for "31 February" and landed in MARCH, and setDate(1) then tidied it to
+      // 1 March - a six-month cost window that silently began a month late
+      // (DATE-SETMONTH-001).
+      const nowForCost = new Date();
+      const since = new Date(nowForCost.getFullYear(), nowForCost.getMonth() - 5, 1);
       since.setHours(0, 0, 0, 0);
 
       const { data, error } = await admin

@@ -4,6 +4,7 @@
 // typed-in points, which asserts a direction the business may not be going in,
 // and service-metrics drew a status split nothing had counted. Both are derived
 // here; neither falls back to a literal.
+import { startOfUtcDay } from '../../_shared/date-months.ts';
 import { type Admin, monthStart, sumNumericField } from './_context.ts';
 
 export const CHART_TYPES = [
@@ -75,7 +76,7 @@ export async function dashboardChart(
         .from('invoices')
         .select('total_amount, invoice_date')
         .eq('tenant_id', tenantId)
-        .gte('invoice_date', from.toISOString())
+        .gte('invoice_date', startOfUtcDay(from).toISOString())
         .order('invoice_date', { ascending: true });
       if (error) throw error;
 

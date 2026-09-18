@@ -43,6 +43,7 @@ import {
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { ConversionInsights } from '@/components/analytics/ConversionInsights';
 import { PipelineTrendWidgets } from '@/components/analytics/PipelineTrendWidgets';
+import { addMonths } from '@shared/date-months';
 
 interface LeadDealsProps {
   leadId: string;
@@ -263,8 +264,9 @@ export function LeadDeals({ leadId, leadName }: LeadDealsProps) {
         errors.push('Expected close date cannot be in the past');
       }
 
-      const threeMonthsFromNow = new Date();
-      threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
+      // Clamped: from 30 November, +3 months overflowed "30 February" into
+      // 2 March, so the threshold this warning uses moved (DATE-SETMONTH-001).
+      const threeMonthsFromNow = addMonths(new Date(), 3);
 
       if (closeDate > threeMonthsFromNow && !data.notes.trim()) {
         errors.push('Deals with close dates beyond 3 months require notes explaining the timeline');
