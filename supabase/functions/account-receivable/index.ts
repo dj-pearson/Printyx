@@ -17,6 +17,10 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { readRange } from '../_shared/http.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'finance.ar.view';
+const WRITE_PERMISSION = 'finance.invoice.create';
 
 // Snake_case → camelCase so the frontend (which reads camelCase keys directly,
 // e.g. ar.totalAmount / ar.balanceAmount) renders without a transformer. The
@@ -71,6 +75,21 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: What customers owe this dealer. The page gates on finance.ar.view.
+    // Creating a receivable is raising an invoice, which is the seeded
+    // finance.invoice.create - voiding one is a separate code the delete path
+    // does not yet distinguish, and that is noted rather than approximated.
+    //
+    // Both codes are in the seeded catalogue and both are what
+    // navigation-permissions.ts already requires of the page, so the route and
+    // the screen in front of it finally agree.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'account-receivable');

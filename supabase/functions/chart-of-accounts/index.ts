@@ -10,6 +10,10 @@ import {
   SERVER_OWNED_COLUMNS,
 } from '../_shared/chart-of-accounts-contract.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'finance.gl.view';
+const WRITE_PERMISSION = 'finance.gl.post';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -35,6 +39,21 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: The account structure every journal entry and invoice posts against.
+    // Renaming or deactivating an account changes what every future posting
+    // means, so it carries the same GL authority as posting. The page needs
+    // finance.gl.view at level 4 to open, so the read is gated with it.
+    //
+    // Both codes are in the seeded catalogue and both are what
+    // navigation-permissions.ts already requires of the page, so the route and
+    // the screen in front of it finally agree.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,

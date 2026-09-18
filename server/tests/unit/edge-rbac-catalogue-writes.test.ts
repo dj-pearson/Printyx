@@ -26,6 +26,17 @@ import {
 
 const repo = process.cwd();
 const read = (p: string) => readFileSync(join(repo, p), 'utf8');
+/**
+ * Source with comments blanked. An absence assertion that reads raw source
+ * matches the COMMENT explaining why the thing is absent - which is how
+ * "deliberately NOT finance.bill.approve" failed the test asserting that
+ * finance.bill.approve is not there. CLAUDE.md records this trap for
+ * check:edge-coverage and it has now fired in a unit test too.
+ */
+const code = (p: string) =>
+  read(p)
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 const GATED = [
   'product-models',
@@ -179,6 +190,66 @@ describe('the ratchet moved', () => {
   it('none of the six is still recorded as open to all roles', () => {
     const baseline = JSON.parse(read('docs/edge-rbac-baseline.json'));
     for (const fn of GATED) {
+      expect(baseline.openToAllRoles, fn).not.toContain(fn);
+    }
+  });
+});
+
+/**
+ * The finance surface (SEC-EDGE-001, second batch).
+ *
+ * Sharper than the catalogue: production served the general ledger, the chart
+ * of accounts and both sides of the ledger to every authenticated member of a
+ * tenant with no permission check, so a technician could post a journal entry.
+ *
+ * These gate the READ too, which the catalogue deliberately does not. The
+ * difference is the page: /journal-entries and /chart-of-accounts need
+ * finance.gl.view at level 4 to open at all, so an ungated read on the endpoint
+ * behind them is a hole rather than a convenience.
+ */
+describe('the finance surface is gated on both sides', () => {
+  const FINANCE: Record<string, { read: string; write: string }> = {
+    'journal-entries': { read: 'finance.gl.view', write: 'finance.gl.post' },
+    'chart-of-accounts': { read: 'finance.gl.view', write: 'finance.gl.post' },
+    'account-payable': { read: 'finance.ap.view', write: 'finance.bill.enter' },
+    'account-receivable': { read: 'finance.ar.view', write: 'finance.invoice.create' },
+  };
+
+  const seeded = read('server/database-updater/seeders/rbac-seeder.ts');
+  const nav = read('client/src/lib/navigation-permissions.ts');
+
+  for (const [fn, codes] of Object.entries(FINANCE)) {
+    const src = read(`supabase/functions/${fn}/index.ts`);
+
+    it(`${fn} reads on ${codes.read} and writes on ${codes.write}`, () => {
+      expect(src).toContain(`const READ_PERMISSION = '${codes.read}'`);
+      expect(src).toContain(`const WRITE_PERMISSION = '${codes.write}'`);
+      expect(src).toMatch(/READ_PERMISSION : WRITE_PERMISSION/);
+    });
+
+    it(`${fn} names codes the seeder creates`, () => {
+      expect(seeded).toContain(`code: '${codes.read}'`);
+      expect(seeded).toContain(`code: '${codes.write}'`);
+    });
+
+    it(`${fn} gates the read, unlike the catalogue`, () => {
+      // The page will not open without the read code, so leaving the endpoint
+      // open would be a hole rather than a convenience.
+      expect(nav).toContain(`'${codes.read}'`);
+      expect(src).not.toMatch(/req\.method !== 'GET' && req\.method !== 'HEAD'/);
+    });
+  }
+
+  it('entering a payable is not approving one', () => {
+    // The two halves of a payable are what nobody should hold at once.
+    const src = code('supabase/functions/account-payable/index.ts');
+    expect(src).toContain('finance.bill.enter');
+    expect(src).not.toContain('finance.bill.approve');
+  });
+
+  it('every gated finance function is out of the open-to-all baseline', () => {
+    const baseline = JSON.parse(read('docs/edge-rbac-baseline.json'));
+    for (const fn of Object.keys(FINANCE)) {
       expect(baseline.openToAllRoles, fn).not.toContain(fn);
     }
   });

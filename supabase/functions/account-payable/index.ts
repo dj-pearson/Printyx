@@ -17,6 +17,10 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { readRange } from '../_shared/http.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'finance.ap.view';
+const WRITE_PERMISSION = 'finance.bill.enter';
 
 // Snake_case → camelCase so the frontend (which reads camelCase keys directly,
 // e.g. ap.totalAmount / ap.balanceAmount) renders without a transformer.
@@ -66,6 +70,21 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    // SEC-EDGE-001: What this dealer owes. The page gates on finance.ap.view, so the read
+    // does too; entering a bill is finance.bill.enter, which is the seeded code
+    // for exactly that and is deliberately NOT finance.bill.approve - entering
+    // and approving a payable are the two halves nobody should hold at once.
+    //
+    // Both codes are in the seeded catalogue and both are what
+    // navigation-permissions.ts already requires of the page, so the route and
+    // the screen in front of it finally agree.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'account-payable');
