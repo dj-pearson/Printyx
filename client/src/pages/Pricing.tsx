@@ -39,7 +39,7 @@ export default function Pricing() {
 
   const { data, isLoading } = useSubscriptionPlans();
   const { data: subscription } = useSubscription();
-  const { data: stripeConfig } = useStripeConfig();
+  const { data: stripeConfig, isLoading: stripeConfigLoading } = useStripeConfig();
   const checkout = useCheckout();
 
   // Handle canceled checkout
@@ -55,6 +55,13 @@ export default function Pricing() {
       navigate('/pricing', { replace: true });
     }
   }, [search, toast, navigate]);
+
+  // PROD-STRIPE-001. /subscriptions/stripe/config answers 503 when the edge
+  // environment holds no Stripe key, and useStripeConfig does not retry, so an
+  // absent publishableKey once the query has settled means payment is off. The
+  // page says that where the buttons are instead of letting someone press one
+  // and find out.
+  const paymentUnavailable = !stripeConfigLoading && !stripeConfig?.publishableKey;
 
   const handleSelectPlan = async (planSlug: string) => {
     // Check if Stripe is configured
@@ -146,6 +153,16 @@ export default function Pricing() {
           </TabsList>
         </Tabs>
       </div>
+
+      {paymentUnavailable && (
+        <div className="mb-8 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+          <p className="font-semibold">Checkout is unavailable right now</p>
+          <p className="mt-1 text-amber-900/80 dark:text-amber-100/80">
+            Plans and pricing below are current, but payment cannot be taken at the moment. Contact
+            support to start or change a subscription.
+          </p>
+        </div>
+      )}
 
       {/* Plan Cards */}
       <div className="grid md:grid-cols-3 gap-6 mb-16">
@@ -276,9 +293,13 @@ export default function Pricing() {
                     className="w-full"
                     variant={plan.isPopular ? 'default' : 'outline'}
                     onClick={() => handleSelectPlan(plan.slug)}
-                    disabled={checkout.isPending || selectedPlan === plan.slug}
+                    disabled={
+                      paymentUnavailable || checkout.isPending || selectedPlan === plan.slug
+                    }
                   >
-                    {checkout.isPending && selectedPlan === plan.slug ? (
+                    {paymentUnavailable ? (
+                      'Checkout unavailable'
+                    ) : checkout.isPending && selectedPlan === plan.slug ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Redirecting...

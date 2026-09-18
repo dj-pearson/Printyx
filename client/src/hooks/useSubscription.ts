@@ -14,15 +14,15 @@ import { apiRequest } from '@/lib/queryClient';
  * billing surface - the plan list, checkout, the Stripe customer portal, adding
  * a payment method, previewing an upgrade and verifying a completed checkout.
  *
- * They go through apiRequest now, which attaches both. That fixes the
- * ADDRESSING. It does not make them all work: only `plans` and `usage` have a
- * branch in supabase/functions/subscriptions/, so the seven Stripe paths -
- * checkout, checkout/addon, checkout/session/:id, portal, setup-intent,
- * preview-upgrade and stripe/config - exist on the Express side alone and 404
- * in production. That is PROD-STRIPE-001, and it means a customer cannot
- * subscribe or manage payment there at all. A visible 404 beats a request that
- * quietly dissolves into the static origin, which is why this is still worth
- * doing on its own.
+ * They go through apiRequest now, which attaches both.
+ *
+ * CORRECTED 2026-09-18 (PROD-STRIPE-001). This note used to end by saying the
+ * seven Stripe paths - checkout, checkout/addon, checkout/session/:id, portal,
+ * setup-intent, preview-upgrade and stripe/config - existed on the Express side
+ * alone and 404'd in production. They are ported. All nine calls in this file
+ * now resolve on both hosts: dev through Express, production through
+ * supabase/functions/subscriptions/, which talks to Stripe over its REST API
+ * (supabase/functions/_shared/stripe.ts) rather than the Node SDK.
  */
 
 export interface SubscriptionPlan {
@@ -90,45 +90,41 @@ export interface SubscriptionStatus {
 }
 
 /**
- * PROD-014 / PROD-013 — READ BEFORE "FIXING" THE FETCHES BELOW.
+ * PROD-014 / PROD-013 / PROD-STRIPE-001 — READ BEFORE "FIXING" THE CALLS BELOW.
  *
- * Every call in this file is a bare relative fetch, so in production it resolves
- * against the origin serving the static bundle rather than the API. SubscriptionBanner
- * is mounted in App.tsx itself, so this runs on every page and none of it answers
- * in production.
+ * Every call in this file goes through apiRequest, which is what makes it
+ * address the API rather than the origin serving the static bundle. Do not
+ * convert one back to a bare relative fetch: getApiUrl returns a relative path
+ * whenever config.apiBaseUrl is empty, and it is empty in development, so
+ * apiRequest in dev addresses Express exactly as a bare fetch did while also
+ * sending the Bearer token and tenant header production needs.
  *
- * CORRECTED 2026-09-11 (PROD-013). This note used to say the obvious repair -
- * swap fetch for apiRequest - would make things WORSE, taking the Stripe paths
- * from "works in dev, 404 in prod" to "404 in both". That is not what happens.
- * getApiUrl returns a RELATIVE path whenever config.apiBaseUrl is empty, and it
- * is empty in development (client/src/lib/config.ts: no VITE_API_BASE_URL, and
- * import.meta.env.PROD false), so apiRequest in dev addresses Express exactly
- * as the bare fetch did. Dev is unchanged; the only difference is that a Bearer
- * token and the tenant header now go with the request.
+ * SubscriptionBanner is mounted in App.tsx itself, so the status call runs on
+ * every page; /pricing is the only consumer of useSubscriptionPlans and
+ * useStripeConfig.
  *
- * So all nine were converted. In production they now address the functions
- * host, which means `plans` and `usage` WORK where they previously dissolved
- * into the static origin, and the seven Stripe paths - checkout,
+ * Both hosts now serve all nine. The subscriptions edge function has plans,
+ * usage, invoices, features, change-plan, the root list/create,
+ * :id / :id/cancel / :id/resume, and — ported under PROD-014 — current,
+ * notifications, notifications/:id/dismiss, the bare cancel path, convert-trial,
+ * create and upgrade. PROD-STRIPE-001 added the seven Stripe paths: checkout,
  * checkout/addon, checkout/session/:id, portal, setup-intent, preview-upgrade
- * and stripe/config - fail with a visible 404 instead of silently. A request
- * that fails loudly is the better of the two: the previous state was
- * indistinguishable from a backend that simply had nothing to say.
+ * and stripe/config.
  *
- * The subscriptions edge function serves plans, usage, invoices, features,
- * change-plan, the root list/create, :id / :id/cancel / :id/resume, and - ported
- * under PROD-014 - current, notifications, notifications/:id/dismiss, the bare
- * cancel path, convert-trial, create and upgrade.
+ * WHERE THE STRIPE CREDENTIALS LIVE, because it is not one host. The browser
+ * cannot reach Express in production — getApiUrl rewrites /api/<segment>
+ * straight to the functions host — so the interactive payment paths have to be
+ * on the edge. The Stripe WEBHOOK stays on Express at /api/webhooks/stripe,
+ * mounted ahead of the proxy by INTEG-WEBHOOK-001 because a provider POST
+ * carries no JWT and every edge function calls auth.getUser() before routing.
+ * Both environments therefore hold STRIPE_SECRET_KEY, and they must hold the
+ * SAME one: a checkout created against one Stripe account emits events a
+ * receiver configured for another cannot verify, and the subscription would
+ * never activate. STRIPE_PUBLISHABLE_KEY is needed in the edge environment for
+ * stripe/config; STRIPE_WEBHOOK_SECRET is Express-only.
  *
- * It still has NO Stripe paths, which need Stripe credentials in the edge
- * environment - a deployment decision rather than code. Until they are ported,
- * a customer cannot subscribe or manage payment in production at all. That is
- * PROD-STRIPE-001.
- *
- * Express (server/routes-subscriptions.ts) is the complete implementation, and
- * /api/subscriptions is not proxied, so dev works and only production is blind.
- * Closing this needs those endpoints ported — SubscriptionService.getSubscriptionStatus
- * carries the limit/usage/overage logic and Stripe is involved — which is its
- * own story, not a call-site edit.
+ * When Stripe is not configured, stripe/config answers 503 rather than a key,
+ * and /pricing says checkout is unavailable instead of rendering a live button.
  */
 /**
  * Fetch current subscription status

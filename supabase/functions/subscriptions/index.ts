@@ -13,6 +13,49 @@ import {
 import { buildCancellationEmail } from '../_shared/cancellation-email.ts';
 import { sendEmail } from '../email-marketing/_sendgrid.ts';
 import { normalizePath } from '../_shared/path.ts';
+import {
+  StripeError,
+  clientBaseUrl,
+  getOrCreateStripeCustomer,
+  getStripePublishableKey,
+  isStripeConfigured,
+  stripeRequest,
+  type StripeCheckoutSession,
+  type StripeInvoicePreview,
+} from '../_shared/stripe.ts';
+
+/**
+ * Append Stripe's checkout-session placeholder to a return URL, respecting a
+ * query string the URL already has.
+ */
+function withSessionId(target: string): string {
+  return `${target}${target.includes('?') ? '&' : '?'}session_id={CHECKOUT_SESSION_ID}`;
+}
+
+/**
+ * Turn a Stripe failure into a response the caller can act on (PROD-STRIPE-001).
+ *
+ * A card decline, an unknown price id and a missing coupon are all 4xx from
+ * Stripe and all of them are the user's to fix - flattening them to 500 with a
+ * generic message is what makes a payment screen unusable. Anything that is not
+ * a StripeError is ours, and stays a 500.
+ */
+function stripeFailure(err: unknown, fallback: string, req: Request): Response {
+  if (err instanceof StripeError) {
+    console.error(
+      `${fallback} (Stripe ${err.status}${err.stripeCode ? ` ${err.stripeCode}` : ''}):`,
+      err.message,
+    );
+    const status = err.status >= 400 && err.status < 500 ? err.status : 502;
+    return createCorsResponse({ error: fallback, message: err.message }, status, req);
+  }
+  console.error(`${fallback}:`, err);
+  return createCorsResponse(
+    { error: fallback, message: err instanceof Error ? err.message : 'Unknown error' },
+    500,
+    req,
+  );
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -95,6 +138,462 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ plans: plans || [], features: features || [] }, 200, req);
+    }
+
+    // ========================================================================
+    // STRIPE CHECKOUT, PORTAL, SETUP INTENT AND UPGRADE PREVIEW
+    // (PROD-STRIPE-001)
+    //
+    // These seven paths existed only in server/routes-subscriptions.ts. That
+    // router serves dev, where /api/subscriptions is unproxied and Express
+    // answers it; in production getApiUrl sends the prefix to the functions
+    // host and every one of them 404'd, so nobody could subscribe, open the
+    // billing portal, add a card, or even read the publishable key the
+    // Stripe.js widget needs to render. See _shared/stripe.ts for which host
+    // owns what and why the webhook stays on Express.
+    //
+    // Response shapes are matched key for key against the hooks in
+    // client/src/hooks/useSubscription.ts - a correct URL answering the wrong
+    // keys is a second breakage on the same call, which is how the plans
+    // branch above got its { plans, features } comment.
+    // ========================================================================
+
+    // GET /subscriptions/stripe/config -> { publishableKey }
+    if (req.method === 'GET' && secondSegment === 'stripe' && thirdSegment === 'config') {
+      const publishableKey = getStripePublishableKey();
+      if (!isStripeConfigured() || !publishableKey) {
+        return createCorsResponse(
+          {
+            error: 'Stripe is not configured',
+            message: 'Payment processing is currently unavailable',
+          },
+          503,
+          req,
+        );
+      }
+      return createCorsResponse({ publishableKey }, 200, req);
+    }
+
+    // POST /subscriptions/checkout -> { sessionId, sessionUrl }
+    if (req.method === 'POST' && secondSegment === 'checkout' && !thirdSegment) {
+      if (!isStripeConfigured()) {
+        return createCorsResponse(
+          {
+            error: 'Stripe is not configured',
+            message: 'Payment processing is currently unavailable',
+          },
+          503,
+          req,
+        );
+      }
+
+      const body = await req.json().catch(() => ({}));
+      const { planSlug, billingCycle, discountCode } = body as {
+        planSlug?: string;
+        billingCycle?: string;
+        discountCode?: string;
+      };
+
+      if (!planSlug || !billingCycle) {
+        return createCorsResponse(
+          { error: 'Missing required fields: planSlug, billingCycle' },
+          400,
+          req,
+        );
+      }
+      if (!['monthly', 'annual'].includes(billingCycle)) {
+        return createCorsResponse(
+          { error: 'Invalid billing cycle. Must be "monthly" or "annual"' },
+          400,
+          req,
+        );
+      }
+
+      const { data: plan } = await admin
+        .from('subscription_plans')
+        .select('*')
+        .eq('slug', planSlug)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!plan) {
+        return createCorsResponse({ error: 'Plan not found' }, 404, req);
+      }
+
+      const priceId =
+        billingCycle === 'annual' ? plan.stripe_price_id_annual : plan.stripe_price_id_monthly;
+      if (!priceId) {
+        return createCorsResponse(
+          {
+            error: 'Stripe price ID not configured for this plan',
+            message: 'Please contact support to set up payment for this plan',
+          },
+          400,
+          req,
+        );
+      }
+
+      const baseUrl = clientBaseUrl();
+      const successUrl =
+        Deno.env.get('STRIPE_CHECKOUT_SUCCESS_URL') ||
+        `${baseUrl}/settings/subscription?success=true`;
+      const cancelUrl =
+        Deno.env.get('STRIPE_CHECKOUT_CANCEL_URL') || `${baseUrl}/pricing?canceled=true`;
+
+      try {
+        const customerId = await getOrCreateStripeCustomer(admin, tenantId, user.email);
+        const trialDays = plan.trial_enabled ? plan.trial_days || 14 : 0;
+
+        // Stripe rejects allow_promotion_codes together with discounts, so the
+        // two are mutually exclusive here exactly as they are in the Express
+        // handler this replaces.
+        const payload: Record<string, unknown> = {
+          mode: 'subscription',
+          customer: customerId,
+          line_items: [{ price: priceId, quantity: 1 }],
+          // withSessionId, not a bare `?` append: the configured success URL
+          // already carries ?success=true by default, and the Express handler
+          // this replaces produced `...?success=true?session_id=...` - a second
+          // question mark makes session_id part of the value of `success`, so
+          // the page could never verify the checkout it had just completed.
+          success_url: withSessionId(successUrl),
+          cancel_url: cancelUrl,
+          billing_address_collection: 'required',
+          automatic_tax: { enabled: false },
+          metadata: { tenantId, billingCycle, planSlug, planName: plan.name },
+          subscription_data: { metadata: { tenantId, billingCycle } },
+        };
+        if (trialDays > 0) {
+          (payload.subscription_data as Record<string, unknown>).trial_period_days = trialDays;
+        }
+        if (discountCode) {
+          payload.discounts = [{ coupon: discountCode }];
+        } else {
+          payload.allow_promotion_codes = true;
+        }
+
+        const session = await stripeRequest<StripeCheckoutSession>('/checkout/sessions', {
+          method: 'POST',
+          body: payload,
+        });
+
+        return createCorsResponse({ sessionId: session.id, sessionUrl: session.url }, 200, req);
+      } catch (err) {
+        return stripeFailure(err, 'Failed to create checkout session', req);
+      }
+    }
+
+    // POST /subscriptions/checkout/addon -> { sessionId, sessionUrl }
+    if (req.method === 'POST' && secondSegment === 'checkout' && thirdSegment === 'addon') {
+      if (!isStripeConfigured()) {
+        return createCorsResponse(
+          {
+            error: 'Stripe is not configured',
+            message: 'Payment processing is currently unavailable',
+          },
+          503,
+          req,
+        );
+      }
+
+      const body = await req.json().catch(() => ({}));
+      const { addonSlug, quantity = 1 } = body as { addonSlug?: string; quantity?: number };
+      if (!addonSlug) {
+        return createCorsResponse({ error: 'Missing required field: addonSlug' }, 400, req);
+      }
+
+      const { data: addon } = await admin
+        .from('subscription_addons')
+        .select('*')
+        .eq('slug', addonSlug)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!addon) {
+        return createCorsResponse({ error: 'Add-on not found' }, 404, req);
+      }
+      if (!addon.stripe_price_id) {
+        return createCorsResponse(
+          {
+            error: 'Stripe price ID not configured for this add-on',
+            message: 'Please contact support to set up payment for this add-on',
+          },
+          400,
+          req,
+        );
+      }
+
+      const baseUrl = clientBaseUrl();
+      try {
+        const customerId = await getOrCreateStripeCustomer(admin, tenantId, user.email);
+        const session = await stripeRequest<StripeCheckoutSession>('/checkout/sessions', {
+          method: 'POST',
+          body: {
+            mode: 'payment',
+            customer: customerId,
+            line_items: [{ price: addon.stripe_price_id, quantity }],
+            success_url: `${baseUrl}/settings/subscription?addon_success=true&addon=${encodeURIComponent(addonSlug)}&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${baseUrl}/settings/subscription?addon_canceled=true`,
+            billing_address_collection: 'required',
+            allow_promotion_codes: true,
+            metadata: {
+              tenantId,
+              type: 'one_time_purchase',
+              addonSlug,
+              addonName: addon.name,
+              category: addon.category,
+            },
+            payment_intent_data: { metadata: { tenantId, type: 'one_time_purchase' } },
+          },
+        });
+
+        return createCorsResponse({ sessionId: session.id, sessionUrl: session.url }, 200, req);
+      } catch (err) {
+        return stripeFailure(err, 'Failed to create checkout session', req);
+      }
+    }
+
+    // GET /subscriptions/checkout/session/:sessionId
+    //   -> { id, status, paymentStatus, customerEmail, subscriptionId? }
+    if (
+      req.method === 'GET' &&
+      secondSegment === 'checkout' &&
+      thirdSegment === 'session' &&
+      parts[2]
+    ) {
+      if (!isStripeConfigured()) {
+        return createCorsResponse({ error: 'Stripe is not configured' }, 503, req);
+      }
+      try {
+        const session = await stripeRequest<StripeCheckoutSession>(
+          `/checkout/sessions/${encodeURIComponent(parts[2])}`,
+          { query: { 'expand[]': 'subscription' } },
+        );
+
+        // A session is readable by the tenant that created it and nobody else.
+        // The id travels in a redirect URL, so possession of one is not
+        // authorisation to read it.
+        if (session.metadata?.tenantId !== tenantId) {
+          return createCorsResponse({ error: 'Access denied to this session' }, 403, req);
+        }
+
+        return createCorsResponse(
+          {
+            id: session.id,
+            status: session.status,
+            paymentStatus: session.payment_status,
+            customerEmail: session.customer_email,
+            subscriptionId:
+              typeof session.subscription === 'string'
+                ? session.subscription
+                : session.subscription?.id,
+          },
+          200,
+          req,
+        );
+      } catch (err) {
+        return stripeFailure(err, 'Failed to retrieve checkout session', req);
+      }
+    }
+
+    // POST /subscriptions/portal -> { url }
+    if (req.method === 'POST' && secondSegment === 'portal' && !thirdSegment) {
+      if (!isStripeConfigured()) {
+        return createCorsResponse(
+          {
+            error: 'Stripe is not configured',
+            message: 'Billing management is currently unavailable',
+          },
+          503,
+          req,
+        );
+      }
+
+      const { data: tenant } = await admin
+        .from('tenants')
+        .select('metadata')
+        .eq('id', tenantId)
+        .maybeSingle();
+
+      let customerId = (tenant?.metadata as Record<string, unknown> | null)?.stripeCustomerId as
+        | string
+        | undefined;
+
+      if (!customerId) {
+        const { data: sub } = await admin
+          .from('tenant_subscriptions')
+          .select('stripe_customer_id')
+          .eq('tenant_id', tenantId)
+          .not('stripe_customer_id', 'is', null)
+          .limit(1)
+          .maybeSingle();
+        customerId = sub?.stripe_customer_id || undefined;
+      }
+
+      // The portal is not a place to create a customer: an account with no
+      // Stripe history has nothing to manage, and silently minting one would
+      // show an empty portal instead of saying why it is empty.
+      if (!customerId) {
+        return createCorsResponse(
+          {
+            error: 'No billing account found',
+            message: 'Please complete a purchase first to access billing management',
+          },
+          400,
+          req,
+        );
+      }
+
+      const returnUrl =
+        Deno.env.get('STRIPE_PORTAL_RETURN_URL') || `${clientBaseUrl()}/settings/billing`;
+
+      try {
+        const session = await stripeRequest<{ url: string }>('/billing_portal/sessions', {
+          method: 'POST',
+          body: { customer: customerId, return_url: returnUrl },
+        });
+        return createCorsResponse({ url: session.url }, 200, req);
+      } catch (err) {
+        return stripeFailure(err, 'Failed to create billing portal session', req);
+      }
+    }
+
+    // POST /subscriptions/setup-intent -> { clientSecret }
+    if (req.method === 'POST' && secondSegment === 'setup-intent' && !thirdSegment) {
+      if (!isStripeConfigured()) {
+        return createCorsResponse({ error: 'Stripe is not configured' }, 503, req);
+      }
+      try {
+        const customerId = await getOrCreateStripeCustomer(admin, tenantId, user.email);
+        const setupIntent = await stripeRequest<{ client_secret: string }>('/setup_intents', {
+          method: 'POST',
+          body: {
+            customer: customerId,
+            payment_method_types: ['card'],
+            metadata: { tenantId },
+          },
+        });
+        return createCorsResponse({ clientSecret: setupIntent.client_secret }, 200, req);
+      } catch (err) {
+        return stripeFailure(err, 'Failed to create setup intent', req);
+      }
+    }
+
+    // GET /subscriptions/preview-upgrade?newPlanSlug=&billingCycle=
+    //   -> { currentPlan, newPlan, subtotal, total, amountDue, prorationAmount,
+    //        currency, billingCycle }
+    // Money comes back from Stripe in the smallest currency unit; every figure
+    // here is divided by 100 before it is sent, matching the Express handler
+    // and what the hook's consumer renders.
+    if (req.method === 'GET' && secondSegment === 'preview-upgrade' && !thirdSegment) {
+      if (!isStripeConfigured()) {
+        return createCorsResponse({ error: 'Stripe is not configured' }, 503, req);
+      }
+
+      const newPlanSlug = url.searchParams.get('newPlanSlug');
+      if (!newPlanSlug) {
+        return createCorsResponse({ error: 'Missing required field: newPlanSlug' }, 400, req);
+      }
+
+      const { data: subscription } = await admin
+        .from('tenant_subscriptions')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!subscription?.stripe_subscription_id) {
+        return createCorsResponse(
+          {
+            error: 'No active Stripe subscription found',
+            message: 'Cannot preview upgrade without an active Stripe subscription',
+          },
+          400,
+          req,
+        );
+      }
+
+      const { data: newPlan } = await admin
+        .from('subscription_plans')
+        .select('*')
+        .eq('slug', newPlanSlug)
+        .maybeSingle();
+
+      if (!newPlan) {
+        return createCorsResponse({ error: 'Plan not found' }, 404, req);
+      }
+
+      const cycle = url.searchParams.get('billingCycle') || subscription.billing_cycle;
+      const newPriceId =
+        cycle === 'annual' ? newPlan.stripe_price_id_annual : newPlan.stripe_price_id_monthly;
+      if (!newPriceId) {
+        return createCorsResponse(
+          { error: 'Stripe price ID not configured for this plan' },
+          400,
+          req,
+        );
+      }
+
+      // The customer id is read off the subscription itself here rather than
+      // resolved-or-created: previewing a change to an existing Stripe
+      // subscription cannot be the moment a customer first comes into being.
+      // The Express handler looked it up with a WHERE clause comparing a
+      // tenant_subscriptions column against the tenants table, which is a
+      // different row set - it read the wrong tenant's metadata or none.
+      let customerId = subscription.stripe_customer_id as string | undefined;
+      if (!customerId) {
+        const { data: tenant } = await admin
+          .from('tenants')
+          .select('metadata')
+          .eq('id', tenantId)
+          .maybeSingle();
+        customerId = (tenant?.metadata as Record<string, unknown> | null)?.stripeCustomerId as
+          | string
+          | undefined;
+      }
+      if (!customerId) {
+        return createCorsResponse({ error: 'No Stripe customer found' }, 400, req);
+      }
+
+      try {
+        const current = await stripeRequest<{ items?: { data?: Array<{ id: string }> } }>(
+          `/subscriptions/${encodeURIComponent(subscription.stripe_subscription_id)}`,
+        );
+        const itemId = current.items?.data?.[0]?.id;
+        if (!itemId) {
+          return createCorsResponse(
+            { error: 'Stripe subscription has no billable item to reprice' },
+            400,
+            req,
+          );
+        }
+
+        const invoice = await stripeRequest<StripeInvoicePreview>('/invoices/upcoming', {
+          query: {
+            customer: customerId,
+            subscription: subscription.stripe_subscription_id,
+            subscription_items: [{ id: itemId, price: newPriceId }],
+          },
+        });
+
+        return createCorsResponse(
+          {
+            currentPlan: subscription.plan_id,
+            newPlan: newPlan.slug,
+            subtotal: (invoice.subtotal || 0) / 100,
+            total: (invoice.total || 0) / 100,
+            amountDue: (invoice.amount_due || 0) / 100,
+            prorationAmount: ((invoice.total || 0) - (invoice.subtotal || 0)) / 100,
+            currency: invoice.currency?.toUpperCase() || 'USD',
+            billingCycle: cycle,
+          },
+          200,
+          req,
+        );
+      } catch (err) {
+        return stripeFailure(err, 'Failed to preview upgrade', req);
+      }
     }
 
     // ========================================================================

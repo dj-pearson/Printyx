@@ -17,6 +17,11 @@ import { join } from 'node:path';
  * "works in dev, 404 in prod" to "404 in both". The premise is wrong, and this
  * test pins the reason: getApiUrl returns a RELATIVE path when apiBaseUrl is
  * empty, and it is empty in development.
+ *
+ * UPDATED 2026-09-18 (PROD-STRIPE-001). Correcting the addressing left the
+ * seven Stripe paths 404ing in production, because only Express implemented
+ * them. They are ported now; the last assertion here has been inverted to say
+ * so.
  */
 
 const root = join(__dirname, '../../..');
@@ -81,11 +86,24 @@ describe('the subscriptions edge function', () => {
     expect(plansBranch.slice(0, 2000)).toContain("from('subscription_features')");
   });
 
-  it('has no Stripe branch, which is why PROD-STRIPE-001 exists', () => {
-    // If this starts failing, the Stripe paths have been ported and the hook's
-    // header note needs correcting with it.
+  it('serves the Stripe paths too, which is what PROD-STRIPE-001 closed', () => {
+    // This assertion used to run the other way: it required the absence of
+    // these branches and existed to fail the day someone ported them, so the
+    // hook's header note would be corrected alongside. That day was
+    // 2026-09-18. The branches are locked individually, with their response
+    // shapes, in stripe-edge-paths.test.ts.
     for (const branch of ["=== 'checkout'", "=== 'portal'", "=== 'setup-intent'"]) {
-      expect(fn).not.toContain(branch);
+      expect(fn).toContain(branch);
     }
+  });
+
+  it('leaves the Stripe webhook on Express', () => {
+    // INTEG-WEBHOOK-001 mounted the receiver at /api/webhooks/stripe ahead of
+    // the proxy: a provider POST carries no JWT and this function calls
+    // auth.getUser() before routing. Porting the webhook here would 401 every
+    // delivery.
+    expect(fn).not.toContain('STRIPE_WEBHOOK_SECRET');
+    const express = read('server/routes-subscriptions.ts');
+    expect(express).toContain("router.post('/webhooks/stripe'");
   });
 });
