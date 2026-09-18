@@ -13759,10 +13759,10 @@
         "The navigation-permissions unit test asserts the entries."
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "category": "purchasing",
       "dependsOn": [],
-      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02."
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02. DONE 2026-09-18, and the story's premise needed correcting first. It offered \"the same audience as /task-hub, or a level 3+ gate if they are operations tooling\", and the second half assumed these five pages are the CRMX-008 automation builder. They are not: they call /api/task-workflows and render workflow INSTANCES and TEMPLATES attached to tasks. The automation engine lives behind /api/workflows and /api/workflow-automation and has no UI at all (CLAUDE.md records that no client tree calls it). Two different features sharing a word, which is AUDIT-031's shape one level down. So the audience is /task-hub's, and all five get alwaysVisible. WHAT THIS ACTUALLY CHANGES is worth being honest about: nothing, today. checkNavigationAccess returns TRUE for an unknown route - the right default for a nav helper, since it must not hide a page somebody forgot to register - so these were already visible to everyone. The entries pin the intent, and the test fails if one is dropped, which is the part that was missing. The general point the test now carries: an ABSENT entry is indistinguishable from a deliberate alwaysVisible one, so \"no rule\" is never evidence about who should see a page. Mutation-tested by deleting one entry; two assertions fail. VERIFIED: 350 test files / 6209 tests passing; tsc holds at 274; build passes; check:nav green at 327 routes."
     },
     {
       "id": "WF-P-10",
@@ -13773,10 +13773,10 @@
         "Sidebar and internal links point at the survivor; npm run check:nav and npm run check:orphans stay clean."
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "category": "purchasing",
       "dependsOn": [],
-      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02."
+      "notes": "Source: docs/WORKFLOW-AUDIT-2026-09-02.md (workflow deep dive, 2026-09-02). dependsOn: none. FILED 2026-09-02. DONE 2026-09-18. /vendors survives, /vendor-management is a LegacyRedirect to it, and VendorManagement.tsx (747 lines) is deleted. THE SURVIVOR PICKED ITSELF: /vendors is the path the desktop sidebar, the mobile nav and the mobile navigation drawer all link to, and NOTHING linked to /vendor-management - so the duplicate was reachable only by typing the URL. Both called exactly one endpoint, /api/vendors, and both had full create, edit and delete, so no capability went with it; /vendors additionally keeps an edit dialog that VendorManagement's create-only dialog lacked. The navigation-permissions entries were already IDENTICAL (finance.ap.view OR operations.po.view, minLevel 2), so the redirect loosens nothing, and the retired path keeps its entry per AUDIT-014's rule - drop it and the redirect becomes a looser way in than the path it replaces. The cost of having kept two is on the record: QUALITY-002 had to fix BOTH pages separately for the same phantom-shape defects, batch 7 and batch 10, against the same table. tsc did not move (274), which confirms the duplicate was already clean rather than carrying debt the deletion swept away. VERIFIED: 350 test files / 6209 tests passing; tsc holds at 274; build passes; check:nav green at 327 routes and check:orphans holds at 100."
     },
     {
       "id": "WF-L-01",

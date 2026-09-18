@@ -541,6 +541,26 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/tasks': { alwaysVisible: true },
   '/task-hub': { alwaysVisible: true },
 
+  /*
+   * /workflows is the TASK module's checklist surface, not the automation
+   * engine (WF-P-09). Worth stating, because the two share a word and the story
+   * that filed this assumed the second: these five pages call
+   * /api/task-workflows and render workflow INSTANCES and TEMPLATES attached to
+   * tasks. The CRMX-008 automation engine lives behind /api/workflows and
+   * /api/workflow-automation and has no UI at all.
+   *
+   * So the audience is /task-hub's, not an operations-tooling gate: running and
+   * authoring a checklist is ordinary work for whoever owns the task. Without
+   * an entry these were visible to everyone anyway - checkNavigationAccess
+   * returns true for an unknown route - so this pins the intent rather than
+   * changing who sees them, and the test below fails if someone drops one.
+   */
+  '/workflows': { alwaysVisible: true },
+  '/workflows/new': { alwaysVisible: true },
+  '/workflows/:id': { alwaysVisible: true },
+  '/workflows/:id/edit': { alwaysVisible: true },
+  '/workflows/:id/steps/:stepId': { alwaysVisible: true },
+
   // =====================================================================
   // DASHBOARD ITEMS (always visible or role-gated)
   // =====================================================================
@@ -720,6 +740,12 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['finance.reports.view'],
     minLevel: 4,
   },
+  /*
+   * /vendor-management is a REDIRECT to /vendors now (WF-P-10), and the entry
+   * stays: AUDIT-014's rule is that a retired path keeps its gate and the
+   * target carries the same one, or the redirect becomes a looser way in than
+   * the path it replaces. These two were already identical.
+   */
   '/vendor-management': {
     requiredPermissions: ['finance.ap.view', 'operations.po.view'],
     minLevel: 2,
