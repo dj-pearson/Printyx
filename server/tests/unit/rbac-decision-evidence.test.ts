@@ -75,23 +75,33 @@ describe('WF-R-01: RBAC-008 — the scoping middleware has no caller', () => {
   });
 });
 
-describe('WF-R-01: RBAC-009 — the dashboard role fallbacks are unreachable', () => {
-  it('usePermissions never returns an empty roleCode', () => {
+describe('WF-R-10: the dashboard role fallbacks are reachable again', () => {
+  // CORRECTED 2026-09-18. These two assertions used to require the DEFECT -
+  // they pinned `role?.code || role?.name || 'USER'` and the short-circuit
+  // above the inference, and the second carried the message "the short-circuit
+  // is gone - re-read WF-R-10" so it would fail the day somebody fixed it.
+  // That day came; they are inverted rather than deleted, because the pair is
+  // still the cheapest description of what was wrong.
+
+  it('usePermissions returns the role CODE, never a display name', () => {
     const src = code('client/src/hooks/usePermissions.ts');
-    // role?.code || role?.name || 'USER' — the literal default is what makes the
-    // consumer's `if (roleCode)` always true.
-    expect(src).toMatch(/roleCode[^=]*=\s*role\?\.code\s*\|\|\s*role\?\.name\s*\|\|\s*'USER'/);
+    // The old value was always truthy, which is what made the consumer's
+    // `if (roleCode)` short-circuit everything beneath it.
+    expect(src).not.toMatch(/roleCode[^=]*=\s*role\?\.code\s*\|\|\s*role\?\.name/);
+    expect(src).toMatch(/const roleCode: string = role\?\.code \|\| '';/);
   });
 
-  it('RoleBasedDashboard returns on that value before any fallback runs', () => {
+  it('RoleBasedDashboard resolves through the shared ladder, not an inline chain', () => {
     const src = code('client/src/components/dashboards/RoleBasedDashboard.tsx');
-    const at = src.indexOf('if (roleCode) return roleCode.toUpperCase()');
-    expect(at, 'the short-circuit is gone — re-read WF-R-10').toBeGreaterThan(-1);
+    expect(src).not.toContain('if (roleCode) return roleCode.toUpperCase()');
+    expect(src).toContain('resolveRoleLayoutKey({');
 
-    // Everything below it is dead: the level tiers and the department inference.
-    const after = src.slice(at);
-    expect(after).toMatch(/level >= 7/);
-    expect(after).toMatch(/dept === 'sales'/);
+    // The level tiers and the department inference moved into
+    // dashboard-widget-registry.ts, where they can be tested against every
+    // seeded role code without mounting a component.
+    const registry = code('client/src/lib/dashboard-widget-registry.ts');
+    expect(registry).toMatch(/level >= 7/);
+    expect(registry).toMatch(/dept === 'sales'/);
   });
 
   it("'USER' is not a seeded layout, so those users get the generic dashboard", () => {

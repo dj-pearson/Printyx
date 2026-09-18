@@ -834,6 +834,21 @@ export const DEFAULT_ROLE_LAYOUTS: Record<string, LayoutWidgetConfig[]> = {
   ],
 };
 
+// WF-R-10: warehouse roles had no layout and no close alias. Mapping them to
+// DEFAULT would have satisfied the alias table and not the user - four generic
+// widgets for the person who picks and ships the parts. Built from widgets that
+// already exist (low-stock-alerts is L2, so the associate at L1 gets it through
+// the supervisor's key only; getAvailableWidgets still filters on level, which
+// is why this layout is safe to share between the two).
+DEFAULT_ROLE_LAYOUTS['WAREHOUSE'] = [
+  { key: 'low-stock-alerts', x: 0, y: 0, w: 3, h: 1, visible: true },
+  { key: 'equipment-status', x: 3, y: 0, w: 3, h: 1, visible: true },
+  { key: 'quick-actions', x: 6, y: 0, w: 3, h: 1, visible: true },
+  { key: 'my-tasks', x: 0, y: 1, w: 6, h: 2, visible: true },
+  { key: 'upcoming-events', x: 6, y: 1, w: 6, h: 2, visible: true },
+  { key: 'recent-activity', x: 0, y: 3, w: 6, h: 2, visible: true },
+];
+
 // Fallback default for unrecognized roles
 DEFAULT_ROLE_LAYOUTS['DEFAULT'] = [
   { key: 'my-tasks', x: 0, y: 0, w: 6, h: 2, visible: true },
@@ -863,6 +878,116 @@ export function getAvailableWidgets(
     }
     return true;
   });
+}
+
+/**
+ * Seeded role codes whose layout the department-and-level ladder gets WRONG
+ * (WF-R-10).
+ *
+ * Migration 0072 seeds 45 role codes; DEFAULT_ROLE_LAYOUTS holds 14. The other
+ * 31 fell to DEFAULT - four generic widgets - so a Sales Director, a CFO and a
+ * warehouse associate all saw the same screen.
+ *
+ * THIS TABLE IS SHORT ON PURPOSE. The first version mapped all 32 by hand, and
+ * measuring it afterwards showed 24 of those entries produced exactly what the
+ * ladder in resolveRoleLayoutKey already produces. A table where two thirds of
+ * the rows do nothing is worse than no table: a reader cannot tell which rows
+ * carry information, and a redundant row silently PINS a code if the ladder
+ * ever changes. So the ladder is the rule, and an entry here means the rule is
+ * wrong for that code. role-dashboard-layout.test.ts asserts that, so a
+ * redundant entry cannot creep back in.
+ *
+ * The eight that remain, and why the ladder misses them:
+ *
+ *   WAREHOUSE_*      department 'operations', which has no ladder branch - they
+ *                    are the only seeded roles the ladder sends to DEFAULT.
+ *   VP_SALES,        level 6 in a department, so the ladder gives them the
+ *   VP_SERVICE       regional layout. They are company-wide officers and want
+ *                    the executive one.
+ *   DIRECTOR_OPERATIONS,  level 6 with no ladder department, so the ladder
+ *   VP_ADMIN              gives COMPANY_ADMIN. Same reason: company-wide.
+ *   DISPATCH_COORDINATOR, level 1 service, so the ladder gives TECHNICIAN -
+ *   CSR                   the layout for someone who goes out to a machine.
+ *                         Neither of these does; they work the queue, which is
+ *                         what the supervisor layout shows.
+ */
+export const ROLE_LAYOUT_ALIASES: Record<string, string> = {
+  WAREHOUSE_SUPERVISOR: 'WAREHOUSE',
+  WAREHOUSE_ASSOCIATE: 'WAREHOUSE',
+  VP_SALES: 'EXECUTIVE',
+  VP_SERVICE: 'EXECUTIVE',
+  DIRECTOR_OPERATIONS: 'EXECUTIVE',
+  VP_ADMIN: 'EXECUTIVE',
+  DISPATCH_COORDINATOR: 'SERVICE_SUPERVISOR',
+  CSR: 'SERVICE_SUPERVISOR',
+};
+
+export interface RoleLayoutInput {
+  /** roles.code, as /api/me returns it. Not the display name. */
+  code?: string | null;
+  level?: number | null;
+  department?: string | null;
+  isPlatformUser?: boolean;
+}
+
+/**
+ * Resolve which layout a user should see (WF-R-10).
+ *
+ * THE CODE DECIDES, AND THAT IS THE WHOLE FIX. RoleBasedDashboard used to read
+ * usePermissions().roleCode, which is `role?.code || role?.name || 'USER'` and
+ * therefore always truthy - so `if (roleCode) return roleCode.toUpperCase()`
+ * short-circuited every branch below it. With a role whose code was null, that
+ * upper-cased a DISPLAY NAME ("Company Administrator"), matched no layout key,
+ * and every user in the system landed on DEFAULT. The inference underneath it
+ * had never run.
+ *
+ * DEPARTMENT BEFORE LEVEL in the inference, which is the other half. The old
+ * order tested level first, so a level-4 Sales Manager resolved to
+ * LOCATION_MANAGER rather than SALES_MANAGER - a generic layout for a role that
+ * has a purpose-built one. Level only decides among roles with no department,
+ * or above the departmental ladder.
+ *
+ * Exported as a pure function so it can be tested against every seeded role
+ * code without mounting a component.
+ */
+export function resolveRoleLayoutKey(input: RoleLayoutInput): string {
+  if (input.isPlatformUser) return 'PLATFORM_ADMIN';
+
+  const code = (input.code ?? '').trim().toUpperCase();
+  if (code) {
+    if (DEFAULT_ROLE_LAYOUTS[code]) return code;
+    const alias = ROLE_LAYOUT_ALIASES[code];
+    if (alias) return alias;
+    // A code we have never seen falls through to inference rather than to
+    // DEFAULT: level and department still say something useful about it.
+  }
+
+  const level = input.level ?? 1;
+  const dept = (input.department ?? '').trim().toLowerCase();
+
+  if (dept === 'sales') {
+    if (level >= 5) return 'REGIONAL_MANAGER';
+    if (level >= 4) return 'SALES_MANAGER';
+    if (level >= 3) return 'SALES_SUPERVISOR';
+    if (level >= 2) return 'SENIOR_SALES_REP';
+    return 'SALES_REP';
+  }
+  if (dept === 'service') {
+    if (level >= 5) return 'REGIONAL_MANAGER';
+    if (level >= 4) return 'SERVICE_MANAGER';
+    if (level >= 3) return 'SERVICE_SUPERVISOR';
+    return 'TECHNICIAN';
+  }
+  if (dept === 'finance') return 'FINANCE_MANAGER';
+  if (dept === 'platform') return 'PLATFORM_ADMIN';
+
+  if (level >= 8) return 'PLATFORM_ADMIN';
+  if (level >= 7) return 'EXECUTIVE';
+  if (level >= 6) return 'COMPANY_ADMIN';
+  if (level >= 5) return 'REGIONAL_MANAGER';
+  if (level >= 4) return 'LOCATION_MANAGER';
+
+  return 'DEFAULT';
 }
 
 /**
@@ -897,6 +1022,7 @@ export function getRoleLabel(roleCode: string): string {
     EXECUTIVE: 'Executive',
     COMPANY_ADMIN: 'Company Administrator',
     PLATFORM_ADMIN: 'Platform Administrator',
+    WAREHOUSE: 'Warehouse',
   };
   return labels[roleCode] || roleCode.replace(/_/g, ' ');
 }

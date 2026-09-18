@@ -67,7 +67,15 @@ export function usePermissions(): PermissionContext & {
     const role = user?.role;
     const level: number = role?.level || 1;
     const isPlatformUser: boolean = user?.isPlatformUser || false;
-    const roleCode: string = role?.code || role?.name || 'USER';
+    // WF-R-10: the CODE, or nothing. This used to fall back to role?.name and
+    // then to 'USER', so it was always truthy - which meant RoleBasedDashboard's
+    // `if (roleCode) return roleCode.toUpperCase()` short-circuited every
+    // branch beneath it, upper-cased a DISPLAY NAME like "Company
+    // Administrator", matched no layout key, and put every user in the system
+    // on the DEFAULT dashboard. A display name is not an identifier; an absent
+    // code has to read as absent so the caller can infer from level and
+    // department instead.
+    const roleCode: string = role?.code || '';
     const organizationalTier: string = role?.organizationalTier || 'location';
     const department: string = role?.department || '';
 
