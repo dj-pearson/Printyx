@@ -11,14 +11,6 @@
         "supabase/functions/technician-management/index.ts",
         "supabase/functions/work-orders/index.ts"
       ]
-    },
-    "appointments": {
-      "story": "WF-L-06",
-      "reason": "No schema, no migration; the nearest declared relation is customer_maintenance_appointments, which is the customer portal's, not this. scheduling/ is unreferenced, but today-dashboard IS reachable (the iOS app calls it, APIEndpoint.swift) and discards the error the same way, so today's appointments are permanently empty there. WF-L-06 owns the delivery/installation scheduling model these two would sit on; it names delivery_schedules and installation_schedules, so the table this becomes is part of that decision.",
-      "files": [
-        "supabase/functions/scheduling/index.ts",
-        "supabase/functions/today-dashboard/index.ts"
-      ]
     }
   },
   "unreviewed": [

@@ -347,6 +347,36 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/vendors': 'vendors',
     '/api/webhooks': 'webhooks',
 
+    // WF-L-06. /api/equipment-lifecycle is SCOPED PER PATH for the same reason
+    // /api/dashboard below is: server/routes-equipment-lifecycle-state-machine.ts
+    // mounts at the /api ROOT and owns /:equipmentId/transition,
+    // /:equipmentId/transitions, /:equipmentId/available-transitions,
+    // /:equipmentId/can-transition/:toStage and the two rollback paths. A bare
+    // entry would take a working dev router off Express for paths this story has
+    // no business touching.
+    //
+    // These seven are the ones WF-L-02 and WF-L-06 own, and NONE of them has an
+    // Express handler at all - they existed only on the edge function, so dev
+    // got a 404 where production worked. That is the rarer direction of the
+    // split and the reason the Delivery tab had nothing to render even after
+    // WF-L-02 built its backend.
+    '/api/equipment-lifecycle/deliveries': {
+      fn: 'equipment-lifecycle',
+      pathPrefix: '/deliveries',
+    },
+    '/api/equipment-lifecycle/installations': {
+      fn: 'equipment-lifecycle',
+      pathPrefix: '/installations',
+    },
+    '/api/equipment-lifecycle/crew': { fn: 'equipment-lifecycle', pathPrefix: '/crew' },
+    '/api/equipment-lifecycle/metrics': { fn: 'equipment-lifecycle', pathPrefix: '/metrics' },
+    '/api/equipment-lifecycle/lifecycle': { fn: 'equipment-lifecycle', pathPrefix: '/lifecycle' },
+    '/api/equipment-lifecycle/assets': { fn: 'equipment-lifecycle', pathPrefix: '/assets' },
+    '/api/equipment-lifecycle/purchase-orders': {
+      fn: 'equipment-lifecycle',
+      pathPrefix: '/purchase-orders',
+    },
+
     // DASH-METRICS-001. /api/dashboard is SCOPED PER PATH, not proxied whole,
     // and that is deliberate: server/routes-dashboard-customization.ts mounts at
     // the /api/dashboard ROOT and owns /layout, /preferences and /snapshot(s),

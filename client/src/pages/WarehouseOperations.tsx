@@ -132,17 +132,20 @@ const buildProcessSchema = z.object({
 });
 
 // Delivery schedule schema
+// WF-L-06: bound to delivery_schedules. The fields this used to carry -
+// requiredAccessories, deliveryTeam, installationRequired, installationDate -
+// have no column on that table; an install is its own row in
+// installation_schedules, which is why the Install action posts separately
+// rather than a boolean flag standing in for one.
 const deliveryScheduleSchema = z.object({
   customerId: z.string().min(1, 'Customer is required'),
   equipmentId: z.string().min(1, 'Equipment is required'),
-  deliveryDate: z.date(),
-  deliveryWindow: z.string(), // "morning", "afternoon", "all_day"
+  deliveryDate: z.string().min(1, 'Delivery date is required'),
+  deliveryWindow: z.string(),
   deliveryAddress: z.string().min(1, 'Delivery address is required'),
+  driverId: z.string().optional(),
+  vehicleId: z.string().optional(),
   specialInstructions: z.string().optional(),
-  requiredAccessories: z.array(z.string()).optional(),
-  deliveryTeam: z.array(z.string()).optional(),
-  installationRequired: z.boolean().default(false),
-  installationDate: z.date().optional(),
 });
 
 // WF-L-05 shapes, matching what supabase/functions/warehouse-operations returns.
@@ -185,6 +188,49 @@ interface SerialUnit {
     KittingOperation,
     'id' | 'orderNumber' | 'kitName' | 'operationStatus' | 'qualityStatus' | 'firstPassYield'
   > | null;
+}
+
+interface DeliverySchedule {
+  id: string;
+  equipment_id: string;
+  customer_id: string;
+  scheduled_date: string;
+  time_window?: string | null;
+  delivery_type?: string | null;
+  status?: string | null;
+  driver_id?: string | null;
+  vehicle_id?: string | null;
+  special_instructions?: string | null;
+}
+
+interface InstallationSchedule {
+  id: string;
+  equipment_id: string;
+  customer_id: string;
+  technician_id: string;
+  scheduled_date: string;
+  estimated_duration?: number | null;
+  installation_type?: string | null;
+  status?: string | null;
+}
+
+interface CrewItem {
+  kind: 'delivery' | 'installation';
+  id: string;
+  equipmentId: string | null;
+  customerId: string | null;
+  window: string | null;
+  status: string | null;
+  assignedTo: string | null;
+  notes: string | null;
+}
+
+interface CrewDay {
+  date: string;
+  scope: string;
+  items: CrewItem[];
+  deliveryCount: number;
+  installationCount: number;
 }
 
 interface FpyMetrics {
@@ -297,6 +343,21 @@ export default function WarehouseOperations() {
     queryKey: ['/api/warehouse-operations/fpy-metrics'],
   });
 
+  // WF-L-06: the dispatcher's board and the crew's day.
+  const { data: deliveries = [], isLoading: deliveriesLoading } = useQuery<DeliverySchedule[]>({
+    queryKey: ['/api/equipment-lifecycle/deliveries'],
+  });
+
+  const { data: installations = [] } = useQuery<InstallationSchedule[]>({
+    queryKey: ['/api/equipment-lifecycle/installations'],
+  });
+
+  // Scoped to the caller by default - a driver's runs and a technician's
+  // installs, not the whole tenant's (WF-R-06).
+  const { data: crewDay } = useQuery<CrewDay>({
+    queryKey: ['/api/equipment-lifecycle/crew'],
+  });
+
   // Fetch statistics
   const { data: stats = {} } = useQuery<{
     totalOperations?: number;
@@ -360,6 +421,59 @@ export default function WarehouseOperations() {
       } else {
         toast({ title: 'Status updated successfully' });
       }
+    },
+  });
+
+  const refreshSchedules = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/deliveries'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/installations'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/crew'] });
+  };
+
+  const createDeliveryMutation = useMutation({
+    mutationFn: async (data: DeliveryScheduleFormData) =>
+      apiRequest('/api/equipment-lifecycle/deliveries', 'POST', {
+        equipmentId: data.equipmentId,
+        customerId: data.customerId,
+        scheduledDate: data.deliveryDate,
+        timeWindow: data.deliveryWindow,
+        deliveryAddress: data.deliveryAddress,
+        driverId: data.driverId || null,
+        vehicleId: data.vehicleId || null,
+        specialInstructions: data.specialInstructions || null,
+      }),
+    onSuccess: () => {
+      refreshSchedules();
+      setShowDeliveryDialog(false);
+      deliveryForm.reset();
+      toast({ title: 'Delivery scheduled' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not schedule the delivery',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Assigning a driver is a SEPARATE staged -> in_transit requirement from
+  // scheduling the run, because a run is usually booked before the rota is set.
+  const assignDriverMutation = useMutation({
+    mutationFn: async ({ id, driverId }: { id: string; driverId: string }) =>
+      apiRequest(`/api/equipment-lifecycle/deliveries/${id}`, 'PATCH', { driverId }),
+    onSuccess: () => {
+      refreshSchedules();
+      toast({ title: 'Driver assigned' });
+    },
+  });
+
+  const deliveryStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) =>
+      apiRequest(`/api/equipment-lifecycle/deliveries/${id}`, 'PATCH', { status }),
+    onSuccess: () => {
+      refreshSchedules();
+      toast({ title: 'Delivery updated' });
     },
   });
 
@@ -452,8 +566,14 @@ export default function WarehouseOperations() {
   const deliveryForm = useForm<DeliveryScheduleFormData>({
     resolver: zodResolver(deliveryScheduleSchema),
     defaultValues: {
+      customerId: '',
+      equipmentId: '',
+      deliveryDate: '',
       deliveryWindow: 'all_day',
-      installationRequired: false,
+      deliveryAddress: '',
+      driverId: '',
+      vehicleId: '',
+      specialInstructions: '',
     },
   });
 
@@ -1211,18 +1331,125 @@ export default function WarehouseOperations() {
                 </div>
               )}
 
-            {/* Delivery scheduling would go here */}
+            {/* WF-L-06: the crew's day, scoped to the caller. A dispatcher
+                looking at everything asks the same endpoint with ?all=true. */}
+            {crewDay && crewDay.items.length > 0 && (
+              <Card>
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="text-base md:text-lg">Your day</CardTitle>
+                  <CardDescription>
+                    {crewDay.deliveryCount} deliver{crewDay.deliveryCount === 1 ? 'y' : 'ies'} and{' '}
+                    {crewDay.installationCount} install
+                    {crewDay.installationCount === 1 ? '' : 's'} on {crewDay.date}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 p-4 pt-0 sm:p-6 sm:pt-0">
+                  {crewDay.items.map((item) => (
+                    <div
+                      key={`${item.kind}-${item.id}`}
+                      className="flex flex-col gap-1 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium capitalize">{item.kind}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.window || 'No window set'}
+                          {item.notes ? ` · ${item.notes}` : ''}
+                        </p>
+                      </div>
+                      <Badge variant="outline">{item.status}</Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Scheduled Deliveries</CardTitle>
                 <CardDescription>
-                  Manage delivery schedules and installation appointments
+                  {installations.length} installation
+                  {installations.length === 1 ? '' : 's'} booked alongside these
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
-                <div className="text-center py-8 text-muted-foreground">
-                  Delivery scheduling interface will be implemented here
-                </div>
+                {deliveriesLoading ? (
+                  <div className="py-8 text-center text-muted-foreground">Loading deliveries…</div>
+                ) : deliveries.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    Nothing scheduled. Use Schedule Delivery to book a run.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {deliveries.map((delivery) => (
+                      <div key={delivery.id} className="rounded-lg border p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="font-medium">
+                              {new Date(delivery.scheduled_date).toLocaleDateString()}
+                              {delivery.time_window ? ` · ${delivery.time_window}` : ''}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {delivery.delivery_type || 'standard'}
+                              {delivery.special_instructions
+                                ? ` · ${delivery.special_instructions}`
+                                : ''}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline">{delivery.status}</Badge>
+                            {delivery.driver_id ? (
+                              <Badge variant="secondary">driver assigned</Badge>
+                            ) : (
+                              <Badge variant="destructive">no driver</Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                          <Select
+                            value={delivery.driver_id ?? ''}
+                            onValueChange={(driverId) =>
+                              assignDriverMutation.mutate({ id: delivery.id, driverId })
+                            }
+                          >
+                            <SelectTrigger className="min-h-[44px] sm:w-64">
+                              <SelectValue placeholder="Assign a driver" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {technicians.map((technician) => (
+                                <SelectItem key={technician.id} value={technician.id}>
+                                  {[technician.firstName, technician.lastName]
+                                    .filter(Boolean)
+                                    .join(' ') || technician.email}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {delivery.status !== 'completed' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="min-h-[44px] flex-1 touch-manipulation"
+                              disabled={deliveryStatusMutation.isPending}
+                              onClick={() =>
+                                deliveryStatusMutation.mutate({
+                                  id: delivery.id,
+                                  status:
+                                    delivery.status === 'in_transit' ? 'completed' : 'in_transit',
+                                })
+                              }
+                            >
+                              <Truck className="mr-2 h-4 w-4" />
+                              {delivery.status === 'in_transit'
+                                ? 'Mark delivered'
+                                : 'Mark in transit'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1378,6 +1605,208 @@ export default function WarehouseOperations() {
                     className="w-full md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                   >
                     {createOperationMutation.isPending ? 'Creating...' : 'Create Operation'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* WF-L-06: book a delivery. Every field maps to a column on
+            delivery_schedules; equipment_id, customer_id, scheduled_date and
+            delivery_address are NOT NULL there. */}
+        <Dialog open={showDeliveryDialog} onOpenChange={setShowDeliveryDialog}>
+          <DialogContent className="max-h-[90vh] max-w-[600px] overflow-y-auto p-4 sm:p-6">
+            <DialogHeader>
+              <DialogTitle>Schedule a delivery</DialogTitle>
+              <DialogDescription>
+                A driver can be assigned now or later — the two are separate staged-to-in-transit
+                requirements.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...deliveryForm}>
+              <form
+                onSubmit={deliveryForm.handleSubmit((data) => createDeliveryMutation.mutate(data))}
+                className="space-y-4"
+              >
+                <FormField
+                  control={deliveryForm.control}
+                  name="customerId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Select a customer" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {customers.map((customer) => (
+                            <SelectItem key={customer.id} value={customer.id}>
+                              {customer.companyName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={deliveryForm.control}
+                  name="equipmentId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Equipment</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Select a unit" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {equipment.map((unit) => (
+                            <SelectItem key={unit.id} value={unit.id}>
+                              {unit.serialNumber || unit.id}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={deliveryForm.control}
+                    name="deliveryDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                            value={field.value ?? ''}
+                            className="min-h-[44px]"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={deliveryForm.control}
+                    name="deliveryWindow"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Window</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value ?? 'all_day'}>
+                          <FormControl>
+                            <SelectTrigger className="min-h-[44px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="morning">Morning</SelectItem>
+                            <SelectItem value="afternoon">Afternoon</SelectItem>
+                            <SelectItem value="all_day">All day</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={deliveryForm.control}
+                  name="deliveryAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Delivery address</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value ?? ''} rows={2} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={deliveryForm.control}
+                    name="driverId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Driver</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                          <FormControl>
+                            <SelectTrigger className="min-h-[44px]">
+                              <SelectValue placeholder="Assign later" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {technicians.map((technician) => (
+                              <SelectItem key={technician.id} value={technician.id}>
+                                {[technician.firstName, technician.lastName]
+                                  .filter(Boolean)
+                                  .join(' ') || technician.email}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={deliveryForm.control}
+                    name="vehicleId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Vehicle</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value ?? ''} className="min-h-[44px]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={deliveryForm.control}
+                  name="specialInstructions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Instructions</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value ?? ''} rows={2} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-[44px]"
+                    onClick={() => setShowDeliveryDialog(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="min-h-[44px]"
+                    disabled={createDeliveryMutation.isPending}
+                  >
+                    Schedule
                   </Button>
                 </div>
               </form>

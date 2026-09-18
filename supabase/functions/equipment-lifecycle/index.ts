@@ -31,6 +31,13 @@ import {
   hubMetrics,
   hubPurchaseOrders,
 } from './_hub.ts';
+import {
+  buildDeliveryUpdate,
+  buildInstallationUpdate,
+  dayBounds,
+  deliveryRequirements,
+  mergeCrewDay,
+} from '../_shared/delivery-scheduling.ts';
 import { accessibleCustomerIds, resolveScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
@@ -339,6 +346,145 @@ export default async function handler(req: Request) {
         );
       }
       return createCorsResponse(data, 201, req);
+    }
+
+    // ───────────────────── WF-L-06: the dispatcher's half ─────────────────────
+    //
+    // WF-L-02 built list and create. What a dispatcher actually does all day -
+    // assign a driver and a vehicle, move a window, mark a run complete, and see
+    // what a crew is due to do - had no endpoint at all. delivery_schedules had
+    // one Express writer with no caller; installation_schedules had no reader
+    // and no writer anywhere in the repository.
+
+    // PATCH /equipment-lifecycle/deliveries/:id
+    if (req.method === 'PATCH' && firstPart === 'deliveries' && secondPart) {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const update = buildDeliveryUpdate(body);
+      if ('error' in update) return createCorsResponse({ error: update.error }, 400, req);
+
+      const { data, error } = await admin
+        .from('delivery_schedules')
+        .update(update)
+        .eq('id', secondPart)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error('Error updating delivery schedule:', error);
+        return createCorsResponse({ error: 'Failed to update the delivery' }, 500, req);
+      }
+      // The evidence side of WF-L-13: a scheduled delivery with a driver on it
+      // is what satisfies staged -> in_transit, and this says which of the two
+      // requirements the row meets rather than leaving the caller to claim it.
+      return createCorsResponse(
+        { ...data, satisfiesRequirements: deliveryRequirements(data) },
+        200,
+        req,
+      );
+    }
+
+    // PATCH /equipment-lifecycle/installations/:id
+    if (req.method === 'PATCH' && firstPart === 'installations' && secondPart) {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const update = buildInstallationUpdate(body);
+      if ('error' in update) return createCorsResponse({ error: update.error }, 400, req);
+
+      const { data, error } = await admin
+        .from('installation_schedules')
+        .update(update)
+        .eq('id', secondPart)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error('Error updating installation schedule:', error);
+        return createCorsResponse({ error: 'Failed to update the installation' }, 500, req);
+      }
+      return createCorsResponse(data, 200, req);
+    }
+
+    // GET /equipment-lifecycle/crew?date=YYYY-MM-DD&all=true
+    //
+    // Scoped to the CALLER by default (WF-R-06): a driver sees the runs assigned
+    // to them and a technician the installs assigned to them. ?all=true widens
+    // it to the tenant for a dispatcher looking at the whole day.
+    if (req.method === 'GET' && firstPart === 'crew') {
+      const dateParam = url.searchParams.get('date');
+      const day = dateParam ? new Date(`${dateParam}T00:00:00Z`) : new Date();
+      if (Number.isNaN(day.getTime())) {
+        return createCorsResponse({ error: 'date must be YYYY-MM-DD' }, 400, req);
+      }
+      // scheduled_date holds a calendar date at UTC midnight, so the upper bound
+      // is the next day and the comparison is strict (DATE-LOCAL-002).
+      const { from, to } = dayBounds(day);
+      const mine = url.searchParams.get('all') !== 'true';
+
+      // Both chains are written out in full, twice, rather than built up in a
+      // variable. That is not style: check:phantom-columns resolves a column
+      // literal against the table its CALL CHAIN is on, and neither a
+      // reassigned query variable nor a chain returned from a lambda gives it
+      // one - it read both as installation_schedules.driver_id, a column that
+      // does not exist. Writing code the checker cannot follow is how a real
+      // 42703 gets through, so the repetition buys a guard that works.
+      const [deliveries, installations] = mine
+        ? await Promise.all([
+            admin
+              .from('delivery_schedules')
+              .select(
+                'id, equipment_id, customer_id, scheduled_date, time_window, status, driver_id, vehicle_id, special_instructions',
+              )
+              .eq('tenant_id', tenantId)
+              .eq('driver_id', user.id)
+              .gte('scheduled_date', from)
+              .lt('scheduled_date', to),
+            admin
+              .from('installation_schedules')
+              .select(
+                'id, equipment_id, customer_id, scheduled_date, estimated_duration, status, technician_id, installation_notes',
+              )
+              .eq('tenant_id', tenantId)
+              .eq('technician_id', user.id)
+              .gte('scheduled_date', from)
+              .lt('scheduled_date', to),
+          ])
+        : await Promise.all([
+            admin
+              .from('delivery_schedules')
+              .select(
+                'id, equipment_id, customer_id, scheduled_date, time_window, status, driver_id, vehicle_id, special_instructions',
+              )
+              .eq('tenant_id', tenantId)
+              .gte('scheduled_date', from)
+              .lt('scheduled_date', to),
+            admin
+              .from('installation_schedules')
+              .select(
+                'id, equipment_id, customer_id, scheduled_date, estimated_duration, status, technician_id, installation_notes',
+              )
+              .eq('tenant_id', tenantId)
+              .gte('scheduled_date', from)
+              .lt('scheduled_date', to),
+          ]);
+
+      if (deliveries.error || installations.error) {
+        console.error('Error loading the crew day:', deliveries.error ?? installations.error);
+        return createCorsResponse({ error: "Failed to load the crew's day" }, 500, req);
+      }
+
+      const items = mergeCrewDay(deliveries.data ?? [], installations.data ?? []);
+      return createCorsResponse(
+        {
+          date: from.slice(0, 10),
+          scope: mine ? 'mine' : 'tenant',
+          items,
+          deliveryCount: (deliveries.data ?? []).length,
+          installationCount: (installations.data ?? []).length,
+        },
+        200,
+        req,
+      );
     }
 
     // POST /equipment-lifecycle/purchase-orders
