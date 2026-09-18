@@ -122,12 +122,23 @@ describe('no host claims a requirement was verified', () => {
     ).toEqual([]);
   });
 
-  it('the edge branch marks its requirement list unchecked', () => {
+  it('the edge branch CHECKS its requirement list now', () => {
+    // CORRECTED 2026-09-18 (WF-L-13). This asserted the opposite - that the
+    // edge function marked the list unchecked - and it was right while nothing
+    // could check anything. _shared/lifecycle-evidence.ts maps eight of the
+    // twenty-five requirements to a query, and the endpoint refuses a
+    // transition whose checkable evidence is absent.
+    //
+    // The NODE state machine's own validateTransition still reports
+    // requirementsChecked: false, asserted above, and that stays true: it has
+    // no evidence layer, and saying so beats a second half-built one.
     const edgeFn = readFileSync(
       join(repo, 'supabase/functions/equipment-lifecycle/index.ts'),
       'utf8',
     );
-    expect(edgeFn).toMatch(/requirementsChecked:\s*false/);
+    expect(edgeFn).toMatch(/requirementsChecked:\s*true/);
+    expect(edgeFn).not.toMatch(/requirementsChecked:\s*false/);
+    expect(edgeFn).toContain('evaluateRequirements(');
   });
 
   it('the dialog no longer draws a tick or a progress bar off the mock', () => {

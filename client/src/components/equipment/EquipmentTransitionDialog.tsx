@@ -31,14 +31,35 @@ interface ValidationCheck {
   message?: string;
 }
 
+/** WF-L-13: one verdict per requirement. `satisfied` is three-valued. */
+interface RequirementVerdict {
+  name: string;
+  /** true = evidence found, false = checkable and absent, null = unverifiable. */
+  satisfied: boolean | null;
+  evidence: string;
+  /** Does an absent verdict stop the transition? False while awaiting a writer. */
+  blocking?: boolean;
+}
+
 interface TransitionValidation {
+  /** Allowed by the graph AND satisfied by the evidence. */
   canTransition: boolean;
+  /** Allowed by the graph alone, whatever the evidence says. */
+  graphAllows?: boolean;
   currentStage: string;
   targetStage: string;
   validationRequirements: string[];
-  // PA-052: false whenever the backend listed the requirements without checking
-  // them, which is currently always. Both hosts send it.
+  // PA-052 set this false whenever the backend listed requirements without
+  // checking them. WF-L-13 made it true: eight of the twenty-five are queries
+  // now, and the rest are reported as unverifiable rather than as met.
   requirementsChecked?: boolean;
+  requirements?: RequirementVerdict[];
+  satisfied?: string[];
+  missing?: string[];
+  unverifiable?: string[];
+  /** Checkable and absent, but nothing writes the table yet. Not blocking. */
+  awaitingWriter?: string[];
+  blocked?: boolean;
   validation?: {
     isValid: boolean;
     requirementsChecked?: boolean;
@@ -51,6 +72,9 @@ interface TransitionValidation {
 interface AvailableTransition {
   toStage: string;
   validationRequirements: string[];
+  requirements?: RequirementVerdict[];
+  missing?: string[];
+  blocked?: boolean;
 }
 
 export function EquipmentTransitionDialog({
@@ -251,25 +275,44 @@ export function EquipmentTransitionDialog({
                     <AlertDescription>{validationDetails.message}</AlertDescription>
                   </Alert>
 
-                  {/* Validation Requirements */}
-                  {validationDetails.validationRequirements.length > 0 && (
+                  {/* WF-L-13: three states per requirement, from the server.
+                      A green tick now means a record was found and says which
+                      one; grey means nothing in this schema can answer it, and
+                      that is said out loud rather than dressed as a pass. */}
+                  {(validationDetails.requirements?.length ?? 0) > 0 && (
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Confirm before transitioning:</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Nothing verifies these automatically. They were previously shown as
-                        &quot;verified&quot; by a backend that checked none of them.
-                      </p>
+                      <Label className="text-sm font-medium">Requirements</Label>
+                      {(validationDetails.unverifiable?.length ?? 0) > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          {validationDetails.unverifiable!.length} of these have no record in the
+                          system that could satisfy them. They are not checked and they do not
+                          block.
+                        </p>
+                      )}
                       <div className="space-y-2">
-                        {validationDetails.validationRequirements.map((req, index) => (
+                        {validationDetails.requirements!.map((req) => (
                           <div
-                            key={index}
-                            className="flex items-start gap-2 p-2 rounded-lg border border-orange-200 bg-orange-50"
+                            key={req.name}
+                            className={
+                              req.satisfied === true
+                                ? 'flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 p-2'
+                                : req.satisfied === false && req.blocking !== false
+                                  ? 'flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-2'
+                                  : 'flex items-start gap-2 rounded-lg border p-2'
+                            }
                           >
-                            <Clock className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
+                            {req.satisfied === true ? (
+                              <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
+                            ) : req.satisfied === false && req.blocking !== false ? (
+                              <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600" />
+                            ) : (
+                              <Clock className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                            )}
+                            <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium">
-                                {formatStageName(req.replace(/_/g, ' '))}
+                                {formatStageName(req.name.replace(/_/g, ' '))}
                               </p>
+                              <p className="text-xs text-muted-foreground">{req.evidence}</p>
                             </div>
                           </div>
                         ))}

@@ -32,6 +32,11 @@ import {
   hubPurchaseOrders,
 } from './_hub.ts';
 import {
+  EMPTY_EVIDENCE,
+  evaluateRequirements,
+  type EvidenceBundle,
+} from '../_shared/lifecycle-evidence.ts';
+import {
   buildDeliveryUpdate,
   buildInstallationUpdate,
   dayBounds,
@@ -212,6 +217,85 @@ async function runRetirement(
   }
 
   return { done, failed, skipped: plan.skipped };
+}
+
+/**
+ * Every row a requirement check might need, for ONE unit, in five reads
+ * (WF-L-13).
+ *
+ * Loaded once per transition rather than per requirement: nine checkable
+ * requirements over five tables would otherwise be the one-query-per-row shape
+ * PERF-NPLUS1-002 spent a story on, on the endpoint a technician taps.
+ *
+ * Each read is written out whole. check:phantom-columns resolves a column
+ * literal against the table its call chain is on, and a helper that builds a
+ * query from a variable loses it - WF-L-06 learned that on a false positive
+ * indistinguishable from a real one.
+ */
+// deno-lint-ignore no-explicit-any
+async function loadEvidence(
+  admin: any,
+  tenantId: string,
+  equipmentId: string,
+  serialNumber: string | null,
+): Promise<EvidenceBundle> {
+  const [deliveries, installSchedules, installations, signatures, networkConfigs] =
+    await Promise.all([
+      admin
+        .from('delivery_schedules')
+        .select('id, scheduled_date, status, driver_id')
+        .eq('tenant_id', tenantId)
+        .eq('equipment_id', equipmentId),
+      admin
+        .from('installation_schedules')
+        .select('id, status')
+        .eq('tenant_id', tenantId)
+        .eq('equipment_id', equipmentId),
+      admin
+        .from('installations')
+        .select('id, status')
+        .eq('tenant_id', tenantId)
+        .eq('equipment_id', equipmentId),
+      admin
+        .from('service_signatures')
+        .select('id, signature_type, signer_name, signature_data_url, installation_id')
+        .eq('tenant_id', tenantId),
+      admin
+        .from('onboarding_network_config')
+        .select('id, is_configured, equipment_id')
+        .eq('tenant_id', tenantId)
+        .eq('equipment_id', equipmentId),
+    ]);
+
+  // A kitting operation records the serials it built as a jsonb ARRAY, so it
+  // cannot be found by equipment_id - there is no such column. Without a serial
+  // there is nothing to match on, and quality_control_passed stays unmet rather
+  // than being waved through.
+  let kitting: Array<Record<string, unknown>> = [];
+  if (serialNumber) {
+    const { data } = await admin
+      .from('warehouse_kitting_operations')
+      .select('id, operation_status, quality_status, serial_numbers')
+      .eq('tenant_id', tenantId)
+      .contains('serial_numbers', [serialNumber]);
+    kitting = data ?? [];
+  }
+
+  // A signature hangs off an installation or a ticket, never off equipment, so
+  // the tenant's signatures are narrowed to this unit's installations here.
+  const installationIds = new Set(
+    [...(installations.data ?? [])].map((row: Record<string, unknown>) => String(row.id)),
+  );
+
+  return {
+    kitting,
+    deliveries: deliveries.data ?? [],
+    installations: [...(installSchedules.data ?? []), ...(installations.data ?? [])],
+    signatures: (signatures.data ?? []).filter((row: Record<string, unknown>) =>
+      installationIds.has(String(row.installation_id ?? '')),
+    ),
+    networkConfigs: networkConfigs.data ?? [],
+  };
 }
 
 export default async function handler(req: Request) {
@@ -799,7 +883,7 @@ export default async function handler(req: Request) {
     ) {
       const { data: lifecycle, error } = await admin
         .from('equipment_lifecycle')
-        .select('current_stage')
+        .select('current_stage, serial_number')
         .eq('equipment_id', equipmentId)
         .eq('tenant_id', tenantId)
         .maybeSingle();
@@ -813,6 +897,14 @@ export default async function handler(req: Request) {
       }
 
       const currentStage = lifecycle.current_stage as string;
+      // WF-L-13: loaded ONCE for every transition this stage offers, not once
+      // per transition and certainly not once per requirement.
+      const evidence = await loadEvidence(
+        admin,
+        tenantId,
+        equipmentId,
+        (lifecycle.serial_number as string) ?? null,
+      );
 
       if (secondPart === 'available-transitions') {
         return createCorsResponse(
@@ -820,10 +912,18 @@ export default async function handler(req: Request) {
             success: true,
             data: {
               currentStage,
-              availableTransitions: getAvailableTransitions(currentStage).map((toStage) => ({
-                toStage,
-                validationRequirements: getValidationRequirements(currentStage, toStage),
-              })),
+              availableTransitions: getAvailableTransitions(currentStage).map((toStage) => {
+                const requirements = getValidationRequirements(currentStage, toStage);
+                const report = evaluateRequirements(requirements, evidence);
+                return {
+                  toStage,
+                  validationRequirements: requirements,
+                  // AC3: the UI draws its checklist from this. Three states per
+                  // row, because "not checked" is not "not met".
+                  requirementsChecked: true,
+                  ...report,
+                };
+              }),
             },
           },
           200,
@@ -838,23 +938,30 @@ export default async function handler(req: Request) {
 
       const allowed = canTransition(currentStage, toStage);
       const requirements = getValidationRequirements(currentStage, toStage);
+      const report = evaluateRequirements(requirements, evidence);
 
       return createCorsResponse(
         {
           success: true,
           data: {
-            canTransition: allowed,
+            // WF-L-13: allowed by the GRAPH and satisfied by the EVIDENCE are
+            // two different answers, and the caller gets both. `canTransition`
+            // stays the graph answer so an existing consumer keeps its meaning;
+            // `blocked` is the new one.
+            canTransition: allowed && !report.blocked,
+            graphAllows: allowed,
             currentStage,
             targetStage: toStage,
             validationRequirements: requirements,
-            // Nothing verifies these, so none is reported as met. `checked` is
-            // false so a caller cannot read the empty list as "all clear".
-            requirementsChecked: false,
-            message: allowed
-              ? requirements.length
-                ? `Allowed. ${requirements.length} requirement(s) must be completed first; none is verified automatically.`
-                : 'Transition allowed.'
-              : `Transition from ${currentStage} to ${toStage} is not allowed.`,
+            requirementsChecked: true,
+            ...report,
+            message: !allowed
+              ? `Transition from ${currentStage} to ${toStage} is not allowed.`
+              : report.blocked
+                ? `Blocked: no evidence for ${report.missing.join(', ')}.`
+                : report.unverifiable.length
+                  ? `Allowed. ${report.unverifiable.length} requirement(s) cannot be verified by any record and are not checked.`
+                  : 'Allowed; every requirement has evidence.',
           },
         },
         200,
@@ -1056,14 +1163,46 @@ export default async function handler(req: Request) {
         );
       }
 
-      // Get validation requirements
+      // WF-L-13: THE EVIDENCE IS CHECKED HERE, and this is where the worst of
+      // it was. What stood here mapped every requirement to
+      // `{ passed: true, message: '<name> verified' }` and then WROTE THAT to
+      // the transition row - the same fabrication PA-052 had already removed
+      // from the two read paths, still running on the write path, and stored
+      // rather than merely displayed. A disposal record said "Data Wiped
+      // Confirmed - verified" because a caller asked for the stage change.
       const validationRequirements = getValidationRequirements(fromStage!, toStage);
+      const evidence = await loadEvidence(
+        admin,
+        tenantId,
+        equipmentId,
+        (lifecycle.serial_number as string) ?? null,
+      );
+      const report = evaluateRequirements(validationRequirements, evidence);
 
-      // For now, assume validations pass (in production, would check actual conditions)
-      const validationsPassed = validationRequirements.map((name) => ({
-        name,
-        passed: true,
-        message: `${name} verified`,
+      if (report.blocked) {
+        return createCorsResponse(
+          {
+            success: false,
+            error: `Missing evidence for: ${report.missing.join(', ')}`,
+            message:
+              `The stage did not move. ${report.missing.length} requirement(s) have a record ` +
+              `that would satisfy them and it is not there.`,
+            missing: report.missing,
+            satisfied: report.satisfied,
+            unverifiable: report.unverifiable,
+            requirements: report.requirements,
+          },
+          422,
+          req,
+        );
+      }
+
+      const validationsPassed = report.requirements.map((verdict) => ({
+        name: verdict.name,
+        // Three states on the stored record too. `null` is not `true`, and the
+        // whole point of this story is that the difference survives to the row.
+        passed: verdict.satisfied,
+        message: verdict.evidence,
       }));
 
       // Update lifecycle stage

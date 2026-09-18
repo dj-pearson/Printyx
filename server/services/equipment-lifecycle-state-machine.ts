@@ -133,6 +133,10 @@ export class EquipmentLifecycleStateMachine {
         'configuration_backed_up',
         'customer_trained',
         'acceptance_signed',
+        // WF-L-13: kept in step with the edge copy, which
+        // lifecycle-transitions-parity.test.ts enforces. The reasoning and the
+        // stage-list decision live in that file's header.
+        'network_configured',
       ],
     },
     [LIFECYCLE_STAGES.ACTIVE]: {
