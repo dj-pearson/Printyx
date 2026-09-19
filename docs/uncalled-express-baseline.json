@@ -1,0 +1,358 @@
+{
+  "note": "Express /api domains no client tree calls. A WORKLIST, not settled debt: some are features nobody wired, some are deletable, and this guard cannot tell them apart. Shrink-only — see scripts/check-uncalled-express-routes.mjs for why five other guards miss these.",
+  "count": 88,
+  "domains": [
+    {
+      "domain": "accessibility",
+      "class": "no-edge"
+    },
+    {
+      "domain": "accessory-model-compatibility",
+      "class": "no-edge"
+    },
+    {
+      "domain": "alerts",
+      "class": "no-edge"
+    },
+    {
+      "domain": "approvals",
+      "class": "no-edge"
+    },
+    {
+      "domain": "assign-lead",
+      "class": "edge-too"
+    },
+    {
+      "domain": "assignment-groups",
+      "class": "no-edge"
+    },
+    {
+      "domain": "beta",
+      "class": "no-edge"
+    },
+    {
+      "domain": "board-card-config",
+      "class": "no-edge"
+    },
+    {
+      "domain": "build-processes",
+      "class": "no-edge"
+    },
+    {
+      "domain": "calculator",
+      "class": "no-edge"
+    },
+    {
+      "domain": "client-metrics",
+      "class": "no-edge"
+    },
+    {
+      "domain": "collaboration",
+      "class": "no-edge"
+    },
+    {
+      "domain": "contract-renewals",
+      "class": "edge-too"
+    },
+    {
+      "domain": "csrf-token",
+      "class": "edge-too"
+    },
+    {
+      "domain": "data",
+      "class": "no-edge"
+    },
+    {
+      "domain": "data-retention",
+      "class": "no-edge"
+    },
+    {
+      "domain": "deal-tags",
+      "class": "no-edge"
+    },
+    {
+      "domain": "deals-management",
+      "class": "no-edge"
+    },
+    {
+      "domain": "delivery-schedules",
+      "class": "no-edge"
+    },
+    {
+      "domain": "devices",
+      "class": "no-edge"
+    },
+    {
+      "domain": "dispatch",
+      "class": "no-edge"
+    },
+    {
+      "domain": "docs",
+      "class": "no-edge"
+    },
+    {
+      "domain": "document-field-mappings",
+      "class": "no-edge"
+    },
+    {
+      "domain": "document-templates",
+      "class": "no-edge"
+    },
+    {
+      "domain": "document-types",
+      "class": "no-edge"
+    },
+    {
+      "domain": "email-campaigns",
+      "class": "no-edge"
+    },
+    {
+      "domain": "email-events",
+      "class": "no-edge"
+    },
+    {
+      "domain": "email-list-members",
+      "class": "no-edge"
+    },
+    {
+      "domain": "email-lists",
+      "class": "no-edge"
+    },
+    {
+      "domain": "email-parser",
+      "class": "no-edge"
+    },
+    {
+      "domain": "email-sends",
+      "class": "no-edge"
+    },
+    {
+      "domain": "email-templates",
+      "class": "no-edge"
+    },
+    {
+      "domain": "email-unsubscribes",
+      "class": "no-edge"
+    },
+    {
+      "domain": "equipment-disposal",
+      "class": "no-edge"
+    },
+    {
+      "domain": "executions",
+      "class": "no-edge"
+    },
+    {
+      "domain": "expansion-opportunities",
+      "class": "edge-too"
+    },
+    {
+      "domain": "google-indexing",
+      "class": "no-edge"
+    },
+    {
+      "domain": "incident-response",
+      "class": "no-edge"
+    },
+    {
+      "domain": "installation-checklists",
+      "class": "no-edge"
+    },
+    {
+      "domain": "installations",
+      "class": "no-edge"
+    },
+    {
+      "domain": "integration-credentials",
+      "class": "no-edge"
+    },
+    {
+      "domain": "knowledge",
+      "class": "no-edge"
+    },
+    {
+      "domain": "lead-assignment-history",
+      "class": "edge-too"
+    },
+    {
+      "domain": "lead-assignment-queue",
+      "class": "edge-too"
+    },
+    {
+      "domain": "lead-assignment-rules",
+      "class": "edge-too"
+    },
+    {
+      "domain": "me",
+      "class": "edge-too"
+    },
+    {
+      "domain": "models",
+      "class": "no-edge"
+    },
+    {
+      "domain": "monitoring",
+      "class": "no-edge"
+    },
+    {
+      "domain": "optimize-schedule",
+      "class": "no-edge"
+    },
+    {
+      "domain": "phone-tickets",
+      "class": "no-edge"
+    },
+    {
+      "domain": "printer-monitoring",
+      "class": "edge-too"
+    },
+    {
+      "domain": "real-time-data",
+      "class": "no-edge"
+    },
+    {
+      "domain": "record-layout-config",
+      "class": "no-edge"
+    },
+    {
+      "domain": "renewal-activities",
+      "class": "edge-too"
+    },
+    {
+      "domain": "renewal-playbooks",
+      "class": "edge-too"
+    },
+    {
+      "domain": "rep-capacity",
+      "class": "edge-too"
+    },
+    {
+      "domain": "resource",
+      "class": "no-edge"
+    },
+    {
+      "domain": "rooms",
+      "class": "no-edge"
+    },
+    {
+      "domain": "sales-forecasting-rules",
+      "class": "no-edge"
+    },
+    {
+      "domain": "sales-performance-metrics",
+      "class": "no-edge"
+    },
+    {
+      "domain": "sales-territories",
+      "class": "edge-too"
+    },
+    {
+      "domain": "sales-trends",
+      "class": "no-edge"
+    },
+    {
+      "domain": "salesforce",
+      "class": "no-edge"
+    },
+    {
+      "domain": "schedule",
+      "class": "no-edge"
+    },
+    {
+      "domain": "schedule-request",
+      "class": "no-edge"
+    },
+    {
+      "domain": "serial-numbers",
+      "class": "no-edge"
+    },
+    {
+      "domain": "service-dispatch",
+      "class": "no-edge"
+    },
+    {
+      "domain": "service-signatures",
+      "class": "no-edge"
+    },
+    {
+      "domain": "sessions",
+      "class": "no-edge"
+    },
+    {
+      "domain": "signature-documents",
+      "class": "no-edge"
+    },
+    {
+      "domain": "signature-requests",
+      "class": "no-edge"
+    },
+    {
+      "domain": "signature-signers",
+      "class": "no-edge"
+    },
+    {
+      "domain": "static-data",
+      "class": "no-edge"
+    },
+    {
+      "domain": "steps",
+      "class": "no-edge"
+    },
+    {
+      "domain": "teams",
+      "class": "edge-too"
+    },
+    {
+      "domain": "tenants",
+      "class": "no-edge"
+    },
+    {
+      "domain": "test",
+      "class": "no-edge"
+    },
+    {
+      "domain": "triggers",
+      "class": "no-edge"
+    },
+    {
+      "domain": "types",
+      "class": "no-edge"
+    },
+    {
+      "domain": "upload",
+      "class": "no-edge"
+    },
+    {
+      "domain": "user-assignments",
+      "class": "edge-too"
+    },
+    {
+      "domain": "v1",
+      "class": "no-edge"
+    },
+    {
+      "domain": "versions",
+      "class": "no-edge"
+    },
+    {
+      "domain": "workflow-events",
+      "class": "no-edge"
+    },
+    {
+      "domain": "workflow-rules",
+      "class": "no-edge"
+    },
+    {
+      "domain": "workflow-runtime",
+      "class": "no-edge"
+    },
+    {
+      "domain": "workflow-templates",
+      "class": "no-edge"
+    },
+    {
+      "domain": "workflows",
+      "class": "edge-too"
+    }
+  ]
+}
