@@ -32,6 +32,7 @@ import {
   buildResponsesRequest,
   extractResponseText,
 } from '../_shared/gpt5-prompts.ts';
+import { syncRenewalOutcomeFromDeal } from '../_shared/renewal-deal.ts';
 
 /** The tenant's pipeline stages. Small table; read once per request. */
 async function loadStages(admin: any, tenantId: string): Promise<DealStageRow[]> {
@@ -1323,6 +1324,14 @@ export default async function handler(req: Request) {
           },
           { dedupeKey: `stage:${deal.id}:${updateData.stage_id}`, initiatedBy: user.id },
         );
+      }
+
+      // COP-M06: a renewal deal closing is the renewal's outcome. Tracked on
+      // renewal_auto_quotes, which the rep no longer visits now that the draft
+      // lands on the board, so the deal has to carry the answer back. No-ops
+      // for any deal that is not a renewal.
+      if (updateData.status) {
+        await syncRenewalOutcomeFromDeal(admin, tenantId, deal);
       }
 
       return createCorsResponse(deal, 200, req);

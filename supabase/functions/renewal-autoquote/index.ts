@@ -30,6 +30,13 @@ import { normalizePath } from '../_shared/path.ts';
 import { pickTier, num, type CpcTier } from '../_shared/renewal-retier.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import {
+  RENEWAL_DEAL_MOTION,
+  buildRenewalDealInsert,
+  buildRenewalDealUpdate,
+  type RenewalDraftFacts,
+} from '../_shared/renewal-deal.ts';
+import { firstStageId, type DealStageRow } from '../_shared/deal-stage.ts';
 
 type Row = Record<string, any>;
 
@@ -411,6 +418,105 @@ async function companyNames(admin: any, tenantId: string, ids: (string | null)[]
   return map;
 }
 
+/**
+ * COP-M06. Land a renewal draft in the pipeline as a deal, and attach the
+ * machines it covers.
+ *
+ * Idempotent by the natural key (tenant, replaces_contract_id, renewal motion):
+ * one renewal deal per contract, so a re-run updates instead of duplicating and
+ * no column had to be added to carry the link.
+ *
+ * Best-effort throughout. A draft that reaches the rep on its own page but not
+ * on the board is the status quo; a generator that 500s because the board is
+ * mis-configured is a regression. Every failure is logged and counted, never
+ * thrown.
+ */
+async function upsertRenewalDeal(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  opts: {
+    tenantId: string;
+    fallbackUserId: string;
+    stageId: string | null;
+    facts: RenewalDraftFacts;
+    equipmentIds: string[];
+    /** The renewal deal this contract already has, from the batched lookup. */
+    existing: Row | null;
+  },
+): Promise<'created' | 'updated' | 'unchanged' | 'skipped'> {
+  const { tenantId, fallbackUserId, stageId, facts, equipmentIds, existing } = opts;
+  try {
+    let dealId: string | null = existing?.id ?? null;
+    let result: 'created' | 'updated' | 'unchanged' | 'skipped' = 'unchanged';
+
+    if (existing) {
+      const patch = buildRenewalDealUpdate(facts, existing as Row as never);
+      if (patch) {
+        const { error } = await admin
+          .from('deals')
+          .update({ ...patch, updated_at: new Date().toISOString() })
+          .eq('id', dealId)
+          .eq('tenant_id', tenantId);
+        if (error) throw new Error(error.message);
+        result = 'updated';
+      }
+    } else {
+      // stage_id is NOT NULL, so a tenant with no pipeline stages cannot have a
+      // deal created for it. That is a setup gap to report, not a crash.
+      if (!stageId) {
+        console.error('[RENEWAL-AUTOQUOTE] no deal stages for tenant; skipped deal creation');
+        return 'skipped';
+      }
+      const { data: created, error } = await admin
+        .from('deals')
+        .insert(buildRenewalDealInsert(facts, { tenantId, stageId, fallbackUserId }))
+        .select('id')
+        .single();
+      if (error) throw new Error(error.message);
+      dealId = (created as Row).id;
+      result = 'created';
+    }
+
+    // The serials this renewal covers, through the generic join COP-M05 uses.
+    // 'replaces' is the right relation: these are the machines currently on the
+    // expiring contract. onConflict on the link's own unique constraint makes a
+    // re-run a no-op rather than a duplicate-key error.
+    if (dealId && equipmentIds.length > 0) {
+      const links = equipmentIds.map((equipmentId) => ({
+        tenant_id: tenantId,
+        source_type: 'deal',
+        source_id: dealId,
+        target_type: 'equipment',
+        target_id: equipmentId,
+        relation: 'replaces',
+        created_by: fallbackUserId,
+      }));
+      const { error: linkError } = await admin.from('crm_associations').upsert(links, {
+        onConflict: 'tenant_id,source_type,source_id,target_type,target_id,relation',
+        ignoreDuplicates: true,
+      });
+      if (linkError) {
+        console.error('[RENEWAL-AUTOQUOTE] equipment link failed:', linkError.message);
+      }
+    }
+
+    return result;
+  } catch (err) {
+    console.error('[RENEWAL-AUTOQUOTE] deal upsert failed:', (err as Error).message);
+    return 'skipped';
+  }
+}
+
+/** The tenant's legacy deal_stages, which deals.stage_id is keyed on (CRMX-005). */
+// deno-lint-ignore no-explicit-any
+async function loadDealStages(admin: any, tenantId: string): Promise<DealStageRow[]> {
+  const { data } = await admin
+    .from('deal_stages')
+    .select('id, name, sort_order, is_active')
+    .eq('tenant_id', tenantId);
+  return ((data as DealStageRow[]) || []) as DealStageRow[];
+}
+
 interface GenerateCtx {
   // deno-lint-ignore no-explicit-any
   admin: any;
@@ -482,12 +588,20 @@ async function generate(req: Request, ctx: GenerateCtx): Promise<Response> {
     .eq('tenant_id', tenantId);
   const suppressed = new Set(((suppRows as Row[]) || []).map((s) => s.customer_id));
 
+  // COP-M06: the full row rather than just the id. A contract that already has
+  // a draft is skipped for DRAFTING, but it still has to be reconciled with the
+  // pipeline - drafts created before this story exist and have no deal, and a
+  // back-fill that needed a separate script would simply never be run.
   const { data: draftRows } = await admin
     .from('renewal_auto_quotes')
-    .select('contract_id')
+    .select(
+      'id, contract_id, customer_id, quote_value, contract_end_date, assigned_sales_rep, is_underage, current_monthly_revenue, recommended_monthly_revenue, machine_breakdown',
+    )
     .eq('tenant_id', tenantId)
     .in('status', ['renewal_draft', 'sent']);
-  const alreadyDrafted = new Set(((draftRows as Row[]) || []).map((d) => d.contract_id));
+  const existingDrafts = new Map<string, Row>(
+    ((draftRows as Row[]) || []).map((d) => [d.contract_id, d]),
+  );
 
   const { data: tierRows } = await admin
     .from('cpc_rates')
@@ -513,14 +627,58 @@ async function generate(req: Request, ctx: GenerateCtx): Promise<Response> {
   let skippedSuppressed = 0;
   let skippedExisting = 0;
   let skippedNoUsage = 0;
+  // COP-M06 pipeline reconciliation.
+  let dealsCreated = 0;
+  let dealsUpdated = 0;
+  let dealsSkipped = 0;
+
+  const dealStages = await loadDealStages(admin, tenantId);
+  const renewalStageId = firstStageId(dealStages);
+  /** Candidates that already had a draft; reconciled after the drafting loop. */
+  const needsReconcile: Row[] = [];
+  const countDeal = (outcome: 'created' | 'updated' | 'unchanged' | 'skipped') => {
+    if (outcome === 'created') dealsCreated++;
+    else if (outcome === 'updated') dealsUpdated++;
+    else if (outcome === 'skipped') dealsSkipped++;
+  };
+
+  // The renewal deals these contracts already have, in ONE read rather than one
+  // per contract. (tenant, replaces_contract_id, renewal motion) is the natural
+  // key the upsert is idempotent on, so this is the same lookup batched.
+  const existingDeals = new Map<string, Row>();
+  if (candidates.length > 0) {
+    const { data: dealRows } = await admin
+      .from('deals')
+      .select('id, status, amount, expected_close_date, title, replaces_contract_id')
+      .eq('tenant_id', tenantId)
+      .eq('deal_motion', RENEWAL_DEAL_MOTION)
+      .in(
+        'replaces_contract_id',
+        candidates.map((c) => c.id),
+      );
+    for (const d of (dealRows as Row[]) || []) {
+      if (d.replaces_contract_id) existingDeals.set(d.replaces_contract_id, d);
+    }
+  }
+
+  // Account names for the deal title, fetched once for every candidate rather
+  // than one lookup per contract inside the loop.
+  const candidateNames = await companyNames(
+    admin,
+    tenantId,
+    candidates.map((c) => c.customer_id),
+  );
 
   for (const c of candidates) {
     if (suppressed.has(c.customer_id)) {
       skippedSuppressed++;
       continue;
     }
-    if (alreadyDrafted.has(c.id)) {
+    if (existingDrafts.has(c.id)) {
       skippedExisting++;
+      // Reconciled with the pipeline in its own pass below, not here - see the
+      // comment on that pass for why it is separate.
+      needsReconcile.push(c);
       continue;
     }
 
@@ -672,19 +830,82 @@ async function generate(req: Request, ctx: GenerateCtx): Promise<Response> {
       quote_value: recommendedMonthlyRevenue * 12,
     });
     generated++;
+
+    // COP-M06: the draft lands on the board as a deal in the same pass, so a
+    // rep sees it where they work rather than only on the renewal page.
+    // Suppressed customers never reach here - the suppression check is above
+    // the draft insert, so AC6 holds without a second guard.
+    countDeal(
+      await upsertRenewalDeal(admin, {
+        tenantId,
+        fallbackUserId: userId,
+        stageId: renewalStageId,
+        facts: {
+          contractId: c.id,
+          customerId: c.customer_id,
+          companyName: candidateNames.get(c.customer_id) ?? null,
+          quoteValue: recommendedMonthlyRevenue * 12,
+          contractEndDate: c.end_date,
+          assignedSalesRep: (customer as Row | null)?.assigned_sales_rep ?? null,
+          isUnderage,
+          currentMonthlyRevenue,
+          recommendedMonthlyRevenue,
+        },
+        equipmentIds,
+        existing: existingDeals.get(c.id) ?? null,
+      }),
+    );
   }
 
-  audit('GENERATE', {
+  // COP-M06: reconcile the contracts that already had a draft.
+  //
+  // A SEPARATE PASS, not a branch inside the loop above, for two reasons. The
+  // drafting loop is long enough already - it computes 12 months of usage, a
+  // re-tier and a line-item set per contract - and burying a second concern in
+  // its first ten lines is how nobody finds either. And these are the drafts
+  // that predate this story: they have no deal, and a back-fill needing a
+  // separate script is a back-fill nobody runs.
+  for (const c of needsReconcile) {
+    const draft = existingDrafts.get(c.id);
+    if (!draft) continue;
+    const machines = Array.isArray(draft.machine_breakdown)
+      ? (draft.machine_breakdown as Row[])
+          .map((m) => m?.equipmentId)
+          .filter((id): id is string => typeof id === 'string')
+      : [];
+    countDeal(
+      await upsertRenewalDeal(admin, {
+        tenantId,
+        fallbackUserId: userId,
+        stageId: renewalStageId,
+        facts: {
+          contractId: c.id,
+          customerId: draft.customer_id ?? c.customer_id,
+          companyName: candidateNames.get(c.customer_id) ?? null,
+          quoteValue: num(draft.quote_value),
+          contractEndDate: draft.contract_end_date ?? c.end_date,
+          assignedSalesRep: draft.assigned_sales_rep ?? null,
+          isUnderage: draft.is_underage ?? false,
+          currentMonthlyRevenue: num(draft.current_monthly_revenue),
+          recommendedMonthlyRevenue: num(draft.recommended_monthly_revenue),
+        },
+        equipmentIds: machines,
+        existing: existingDeals.get(c.id) ?? null,
+      }),
+    );
+  }
+
+  const summary = {
     scanned: candidates.length,
     generated,
     skippedSuppressed,
     skippedExisting,
     skippedNoUsage,
-  });
+    dealsCreated,
+    dealsUpdated,
+    dealsSkipped,
+  };
+  audit('GENERATE', summary);
 
-  return createCorsResponse(
-    { scanned: candidates.length, generated, skippedSuppressed, skippedExisting, skippedNoUsage },
-    200,
-    req,
-  );
+  return createCorsResponse(summary, 200, req);
 }

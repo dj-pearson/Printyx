@@ -45,6 +45,7 @@ import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
 import { createHandoff } from '../_shared/handoff-create.ts';
 import { handoffTypeFor } from '../_shared/sales-handoff.ts';
 import { resolveStage, type CanonicalStage } from '../_shared/canonical-stage.ts';
+import { syncRenewalOutcomeFromDeal } from '../_shared/renewal-deal.ts';
 
 const log = createLogger('pipeline-config');
 
@@ -753,6 +754,13 @@ export default async function handler(req: Request) {
           details: updateError,
           requestId,
         });
+      }
+
+      // COP-M06: closing a renewal deal IS the renewal's outcome. This is the
+      // endpoint the board and the deal page actually move deals with, so
+      // wiring only PATCH /deals/:id would have recorded an outcome for nobody.
+      if (patch.status === 'won' || patch.status === 'lost') {
+        await syncRenewalOutcomeFromDeal(db, ctx.tenantId, updated);
       }
 
       // Stage history (references canonical pipeline_stages ids).

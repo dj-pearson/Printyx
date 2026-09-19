@@ -123,7 +123,7 @@
       "why": "A delete per row only under ?overwrite, matched on (manufacturer, mapping_name) - a two-column match that .in() cannot express - and bounded by the preset file being imported."
     },
     {
-      "loop": "pipeline-config/index.ts:1073",
+      "loop": "pipeline-config/index.ts:1081",
       "table": "tasks",
       "verdict": "deliberate",
       "why": "Capped at 50 by its own select, and each row is a different action with its own outcome written back. Annotated in place."
