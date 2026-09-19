@@ -74,6 +74,7 @@ import {
   Smartphone,
   Rocket,
   ClipboardList,
+  Swords,
   FileSignature,
   Code,
   Menu,
@@ -238,6 +239,9 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/crm*',
       '/business-records*',
       '/today*',
+      // COP-B10 / COP-B13.
+      '/competitors*',
+      '/playbooks*',
     ],
     // COP-M02: grouped Work / Sell / Manage instead of one flat 17-item list.
     // Every route is unchanged — this story moves and groups, it does not rewire.
@@ -264,6 +268,13 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Contracts', path: '/contracts', icon: FileSignature, group: 'Sell' },
       { title: 'Deal Desk', path: '/deal-desk', icon: CheckCircle2, group: 'Sell' },
       { title: 'Meetings', path: '/meeting-transcription', icon: Video, group: 'Sell' },
+      // COP-B10 and COP-B13. Both shipped ROUTED AND UNREACHABLE - permission
+      // entries and Route lines but no nav, so the only way in was typing the
+      // URL. That is CRMX-016's failure shape at nav level rather than route
+      // level, and it is why check:nav watching route targets is not enough on
+      // its own: a target that resolves can still have nothing pointing at it.
+      { title: 'Competitors', path: '/competitors', icon: Swords, group: 'Sell' },
+      { title: 'Playbooks', path: '/playbooks', icon: ClipboardList, group: 'Sell' },
       { title: 'Email Sequences', path: '/marketing/sequences', icon: Mail, group: 'Sell' },
       { title: 'Web Forms', path: '/marketing/forms', icon: FileText, group: 'Sell' },
 

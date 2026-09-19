@@ -149,6 +149,8 @@ jobs:
         run: npm run check:shadowed-express
       - name: Uncalled Express routes (AUDIT-024 Express side)
         run: npm run check:uncalled-express
+      - name: Unlinked routes (mirror of check:nav)
+        run: npm run check:unlinked-routes
       - name: Unwrapped API response (hard gate, PROD-008)
         run: npm run check:unwrapped-response
       - name: Permission-vocabulary ratchet (SEC-EDGE-001)
