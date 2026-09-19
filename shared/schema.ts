@@ -2676,6 +2676,46 @@ export const dealActivities = pgTable('deal_activities', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+/**
+ * COP-B11: the cached AI narrative for a deal.
+ *
+ * One row per deal, not a history: a superseded summary is a description of a
+ * deal that no longer exists and nobody would read it twice.
+ *
+ * `fingerprint` is what makes AC6 ("regenerate on meaningful change, not on
+ * every render") enforceable rather than aspirational. It is computed from the
+ * deal's own fields plus its timeline, so a stored summary can be compared to
+ * the deal as it stands now and shown as current or as out of date. Generation
+ * is never implicit: an LLM call on every page view of a changed deal is a bill
+ * nobody agreed to, so the summary regenerates when a rep asks for it.
+ */
+export const dealAiSummaries = pgTable(
+  'deal_ai_summaries',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
+    dealId: varchar('deal_id').notNull(),
+
+    summary: text('summary').notNull(),
+    /** Hash of the deal state the summary describes. Stale when it disagrees. */
+    fingerprint: varchar('fingerprint', { length: 64 }).notNull(),
+    /** How many timeline entries the narrative was written from. */
+    sourceEntryCount: integer('source_entry_count'),
+    /** The model that wrote it, so a later reader knows what produced the text. */
+    model: varchar('model', { length: 60 }),
+    totalTokens: integer('total_tokens'),
+
+    generatedBy: varchar('generated_by'),
+    generatedAt: timestamp('generated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    // One summary per deal. The upsert on regeneration depends on this.
+    dealUnique: unique('deal_ai_summaries_deal_uq').on(table.tenantId, table.dealId),
+  }),
+);
+
 // The comprehensive customers table is defined above (line 448) with all necessary fields
 
 // Contracts table - Simplified to match actual database structure

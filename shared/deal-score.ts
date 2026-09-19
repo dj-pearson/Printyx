@@ -1,7 +1,7 @@
 /**
  * Deal health scoring (COP-B11).
  *
- * A pure, inspectable function — deliberately NOT a black box. Every point is
+ * A pure, inspectable function - deliberately NOT a black box. Every point is
  * attributable to a named factor with a plain-language reason, because a score
  * a rep cannot interrogate is a score they will not trust, and one they cannot
  * argue with is one they will quietly ignore.
@@ -10,13 +10,22 @@
  *
  *  1. NO FABRICATION. If a signal is absent, it does not contribute and it is
  *     reported as unavailable. When too few signals are present the result is
- *     `scored: false` and there is NO number — an invented score is worse than
+ *     `scored: false` and there is NO number - an invented score is worse than
  *     a blank, because it gets quoted (see CRMX-001, COP-I07).
  *
- *  2. Only signals that exist TODAY. Competitor presence, lease buyout exposure
- *     and forecast category are deliberately absent: those are COP-M04 columns,
- *     which are blocked on the migration tooling (COP-M00). They are listed in
- *     PLANNED_FACTORS so the gap is visible rather than forgotten.
+ *  2. A signal is scored only when something produces it. The three COP-M04
+ *     copier facts - incumbent vendor, lease buyout exposure and forecast
+ *     category - are scored here as of COP-B11's second pass: the columns
+ *     landed with COP-M04 and the deals edge function already returns them.
+ *
+ *     Quote margin is the one exception and it is deliberate. The factor is
+ *     implemented and tested, but NOTHING produces `quoteMarginPct` or
+ *     `quoteDiscountPct` yet: `proposals` has no deal_id and `crm_associations`
+ *     has no quote type, so an account's quote cannot be attributed to one of
+ *     its deals. It stays in PLANNED_FACTORS until COP-B02 lands the quotes tab
+ *     and with it a real deal-to-quote link. Wiring it to the account's newest
+ *     proposal would attribute the wrong quote the moment an account has two
+ *     deals, which is the fabrication rule above wearing a join.
  */
 
 /** Minimum number of available signals before a score is meaningful. */
@@ -56,7 +65,28 @@ export interface DealScoreInput {
   contactCount?: number | null;
   primaryContactEmail?: string | null;
   primaryContactPhone?: string | null;
+  /** COP-M04. The vendor already in the account, when one is named. */
+  incumbentVendor?: string | null;
+  /** COP-M04. Dollars the customer must absorb to leave their current paper. */
+  leaseBuyoutExposure?: number | string | null;
+  /** COP-M04. pipeline | best_case | commit | closed. The rep's own call. */
+  forecastCategory?: string | null;
+  /** Gross margin on the deal's quote, as a percentage. No producer yet - see the header. */
+  quoteMarginPct?: number | string | null;
+  /** Effective discount on the deal's quote, as a percentage. No producer yet. */
+  quoteDiscountPct?: number | string | null;
 }
+
+/** Tenant pricing policy, so "over policy" means the tenant's policy and not a guess. */
+export interface DealScorePolicy {
+  /** pricing_settings.require_approval_below_margin. */
+  minMarginPct?: number | null;
+  /** company_pricing_settings.max_discount_percentage. 0 or absent = not enforced. */
+  maxDiscountPct?: number | null;
+}
+
+/** Matches QUOTE-016's server-side default for require_approval_below_margin. */
+export const DEFAULT_MIN_MARGIN_PCT = 15;
 
 export interface DealScoreResult {
   /** False when too little is known. Callers must render "not enough signal". */
@@ -70,11 +100,16 @@ export interface DealScoreResult {
   missingSignals: string[];
 }
 
-/** Signals this score will gain once COP-M04 lands. Surfaced, not silently dropped. */
+/**
+ * Signals the score is built to use that nothing produces yet. Surfaced rather
+ * than silently dropped, so the gap stays visible on the screen that needs it.
+ *
+ * The three COP-M04 facts that used to sit here are scored now. What remains is
+ * quote margin: see the file header for why attributing an account's quote to
+ * one of its deals is not available and should not be faked.
+ */
 export const PLANNED_FACTORS = [
-  'incumbent vendor / competitive pressure',
-  'lease buyout exposure',
-  'forecast category',
+  'quote margin and discount (no deal-to-quote link exists yet)',
 ] as const;
 
 function toDate(value?: string | Date | null): Date | null {
@@ -95,12 +130,55 @@ function bandFor(score: number): DealScoreBand {
 }
 
 /**
+ * Money and percentages arrive as Drizzle decimal strings over the wire, so
+ * every numeric signal goes through here. An unparseable value is treated as
+ * absent rather than as zero: zero buyout exposure is a fact worth points, and
+ * a string that does not parse is not that fact.
+ */
+function toNumber(value?: number | string | null): number | null {
+  if (value == null || value === '') return null;
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function money(n: number): string {
+  return n.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
+}
+
+/** The forecast buckets COP-M04 writes, and what each is worth. */
+const FORECAST_WEIGHTS: Record<string, { points: number; label: string; reason: string }> = {
+  commit: {
+    points: 15,
+    label: 'Committed',
+    reason: 'The rep has committed this deal to the forecast.',
+  },
+  best_case: {
+    points: 5,
+    label: 'Best case',
+    reason: 'Forecast as best case, not committed.',
+  },
+  pipeline: {
+    points: -5,
+    label: 'Pipeline only',
+    reason: 'Still pipeline - nobody has forecast this yet.',
+  },
+};
+
+/**
  * Score a deal from the signals available on it.
  *
  * `now` is injected rather than read from the clock so the result is
  * deterministic and testable.
  */
-export function scoreDeal(input: DealScoreInput, now: Date = new Date()): DealScoreResult {
+export function scoreDeal(
+  input: DealScoreInput,
+  now: Date = new Date(),
+  policy: DealScorePolicy = {},
+): DealScoreResult {
   const factors: DealScoreFactor[] = [];
   const risks: DealRiskFlag[] = [];
   const missingSignals: string[] = [];
@@ -278,6 +356,139 @@ export function scoreDeal(input: DealScoreInput, now: Date = new Date()): DealSc
     });
   } else {
     missingSignals.push('contact coverage');
+  }
+
+  // ── Competitive pressure (COP-M04 incumbentVendor) ──────────────────
+  // A named incumbent means this is a takeaway, not a greenfield sale: there is
+  // a relationship to displace and usually paper to break. It costs points, it
+  // is not a risk flag - competition is the normal state of a copier deal, and
+  // flagging it as a risk would train reps to ignore the flags that matter.
+  const incumbent = input.incumbentVendor?.trim();
+  if (incumbent) {
+    signalsAvailable += 1;
+    factors.push({
+      key: 'incumbent_present',
+      label: 'Competitive takeaway',
+      points: -8,
+      reason: `${incumbent} is the incumbent - this is a displacement, not a greenfield sale.`,
+    });
+    score -= 8;
+  } else {
+    missingSignals.push('incumbent vendor');
+  }
+
+  // ── Lease buyout exposure (COP-M04) ─────────────────────────────────
+  // Dollars the customer has to absorb to leave their current paper. Scored
+  // against the deal size where one is known, because a $4k buyout on a $200k
+  // fleet refresh and the same buyout on a $12k single-unit deal are different
+  // conversations. Zero is a real answer and earns points.
+  const buyout = toNumber(input.leaseBuyoutExposure);
+  if (buyout != null) {
+    signalsAvailable += 1;
+    const dealAmount = toNumber(input.amount);
+    const ratio = dealAmount && dealAmount > 0 ? buyout / dealAmount : null;
+    if (buyout <= 0) {
+      factors.push({
+        key: 'no_buyout',
+        label: 'No buyout to absorb',
+        points: 5,
+        reason: 'The customer is out of term or already owns the fleet.',
+      });
+      score += 5;
+    } else if (ratio != null && ratio >= 0.25) {
+      const pct = Math.round(ratio * 100);
+      factors.push({
+        key: 'buyout_heavy',
+        label: 'Heavy buyout exposure',
+        points: -15,
+        reason: `${money(buyout)} to break the current lease - ${pct}% of the deal.`,
+      });
+      score -= 15;
+      risks.push({
+        key: 'buyout_heavy',
+        severity: ratio >= 0.5 ? 'critical' : 'warning',
+        message: `The customer carries ${money(buyout)} of buyout, ${pct}% of the deal's value. Somebody has to absorb it.`,
+      });
+    } else {
+      factors.push({
+        key: 'buyout_present',
+        label: 'Buyout to absorb',
+        points: -5,
+        reason: `${money(buyout)} remaining on the current lease.`,
+      });
+      score -= 5;
+    }
+  } else {
+    missingSignals.push('lease buyout exposure');
+  }
+
+  // ── Forecast category (COP-M04) ─────────────────────────────────────
+  // The rep's own judgement, which is exactly why it is worth points: a deal
+  // nobody will commit to is a deal the person closest to it does not believe.
+  // 'closed' carries no weight - status already says that.
+  const forecast = input.forecastCategory?.trim().toLowerCase();
+  if (forecast) {
+    const weight = FORECAST_WEIGHTS[forecast];
+    if (weight) {
+      signalsAvailable += 1;
+      factors.push({
+        key: `forecast_${forecast}`,
+        label: weight.label,
+        points: weight.points,
+        reason: weight.reason,
+      });
+      score += weight.points;
+    }
+  } else {
+    missingSignals.push('forecast category');
+  }
+
+  // ── Quote margin and discount ───────────────────────────────────────
+  // Implemented and tested; nothing produces these yet (see the file header).
+  // The policy thresholds come from the tenant so "over policy" means the
+  // tenant's policy, never a number picked here.
+  const marginPct = toNumber(input.quoteMarginPct);
+  const discountPct = toNumber(input.quoteDiscountPct);
+  const minMargin = toNumber(policy.minMarginPct) ?? DEFAULT_MIN_MARGIN_PCT;
+  const maxDiscount = toNumber(policy.maxDiscountPct);
+
+  if (marginPct != null) {
+    signalsAvailable += 1;
+    if (marginPct < minMargin) {
+      factors.push({
+        key: 'margin_below_policy',
+        label: 'Margin below policy',
+        points: -15,
+        reason: `${marginPct.toFixed(1)}% margin against a ${minMargin}% floor.`,
+      });
+      score -= 15;
+      risks.push({
+        key: 'margin_below_policy',
+        severity: marginPct < 0 ? 'critical' : 'warning',
+        message: `The quote carries ${marginPct.toFixed(1)}% margin, under the ${minMargin}% approval floor.`,
+      });
+    } else {
+      factors.push({
+        key: 'margin_healthy',
+        label: 'Margin holds',
+        points: 10,
+        reason: `${marginPct.toFixed(1)}% margin, above the ${minMargin}% floor.`,
+      });
+      score += 10;
+    }
+  } else {
+    missingSignals.push('quote margin');
+  }
+
+  // Discount is a risk flag rather than a factor: the margin above already
+  // prices the concession, and charging for it twice would double-count one
+  // decision. A discount over policy is still worth saying out loud.
+  if (discountPct != null && maxDiscount != null && maxDiscount > 0 && discountPct > maxDiscount) {
+    risks.push({
+      key: 'discount_over_policy',
+      severity: 'warning',
+      message: `Discount is ${discountPct.toFixed(1)}%, over the ${maxDiscount}% this tenant allows without approval.`,
+    });
   }
 
   // Not enough to say anything honest.

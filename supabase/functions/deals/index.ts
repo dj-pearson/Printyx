@@ -20,6 +20,18 @@ import {
   type DealStageRow,
 } from '../_shared/deal-stage.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import {
+  buildDealFingerprint,
+  buildDealSummaryPrompt,
+  hasEnoughHistory,
+  MAX_TIMELINE_ENTRIES,
+  type DealSummaryEntry,
+} from '../_shared/deal-summary.ts';
+import {
+  GPT5_CONFIGS,
+  buildResponsesRequest,
+  extractResponseText,
+} from '../_shared/gpt5-prompts.ts';
 
 /** The tenant's pipeline stages. Small table; read once per request. */
 async function loadStages(admin: any, tenantId: string): Promise<DealStageRow[]> {
@@ -217,6 +229,94 @@ async function fillDealFromInstalledBase(
   }
 }
 
+/**
+ * The deal and its timeline, in the shape the summary module wants. One read of
+ * each, because both the GET (staleness) and the POST (generation) need them.
+ */
+async function loadSummarySource(
+  admin: ReturnType<typeof createSupabaseServiceClient>,
+  tenantId: string,
+  dealId: string,
+): Promise<{ deal: Record<string, any>; entries: DealSummaryEntry[] } | null> {
+  const { data: deal } = await admin
+    .from('deals')
+    .select('*')
+    .eq('id', dealId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  if (!deal) return null;
+
+  // Two sources, because the deal's history is written to two tables: calls,
+  // emails, meetings and stage changes land in deal_activities, and what the
+  // rep typed lands in crm_notes (CRMX-006). Summarising only the first would
+  // leave out the half a rep actually wrote.
+  //
+  // Both capped at the query, not in memory: a deal with 900 logged calls must
+  // not pull 900 rows over the wire to throw 860 of them away.
+  const [activityResult, noteResult] = await Promise.all([
+    admin
+      .from('deal_activities')
+      .select('id, type, subject, description, outcome, created_at')
+      .eq('deal_id', dealId)
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false })
+      .limit(MAX_TIMELINE_ENTRIES),
+    admin
+      .from('crm_notes')
+      .select('id, body, created_at')
+      .eq('tenant_id', tenantId)
+      .eq('parent_type', 'deal')
+      .eq('parent_id', dealId)
+      .order('created_at', { ascending: false })
+      .limit(MAX_TIMELINE_ENTRIES),
+  ]);
+
+  const activities: DealSummaryEntry[] = (activityResult.data ?? []).map(
+    (r: Record<string, any>) => ({
+      id: r.id,
+      type: r.type,
+      subject: r.subject,
+      description: r.description,
+      outcome: r.outcome,
+      createdAt: r.created_at,
+    }),
+  );
+
+  const notes: DealSummaryEntry[] = (noteResult.data ?? []).map((r: Record<string, any>) => ({
+    id: r.id,
+    type: 'note',
+    description: r.body,
+    createdAt: r.created_at,
+  }));
+
+  // Merged newest-first, which is the order boundedTimeline expects. An undated
+  // row sorts last rather than jumping to the front of the story.
+  const entries = [...activities, ...notes].sort((a, b) =>
+    (b.createdAt ?? '').localeCompare(a.createdAt ?? ''),
+  );
+
+  return { deal, entries };
+}
+
+/** The deal fields the narrative and the fingerprint read, in camelCase. */
+function toSummaryDeal(deal: Record<string, any>, stageNames: Record<string, string>) {
+  return {
+    id: deal.id,
+    title: deal.title,
+    companyName: deal.company_name,
+    amount: deal.amount,
+    stage: stageNames[deal.stage_id] ?? null,
+    status: deal.status,
+    expectedCloseDate: deal.expected_close_date,
+    nextFollowUpDate: deal.next_follow_up_date,
+    lastActivityDate: deal.last_activity_date,
+    incumbentVendor: deal.incumbent_vendor,
+    forecastCategory: deal.forecast_category,
+    leaseBuyoutExposure: deal.lease_buyout_exposure,
+    dealMotion: deal.deal_motion,
+  };
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -367,6 +467,164 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    }
+
+    // ─── /deals/:id/summary (COP-B11) ──────────────────────────────────────
+    //
+    // The AI narrative half of the insights panel. Two verbs on purpose:
+    //
+    //   GET  reads the cached summary and says whether it still describes the
+    //        deal as it stands. It NEVER generates. A GET that quietly called
+    //        an LLM would bill the tenant for every page view of a deal that
+    //        changed, which is the cost bound AC6 asks for.
+    //   POST generates and stores, when a rep asks for it.
+    //
+    // Refusing to generate is a normal outcome: a deal with no logged
+    // interaction has nothing to narrate, and a model handed six fields and no
+    // events writes fluent sales fiction (COP-I07).
+    if (dealId && subResource === 'summary') {
+      if (req.method !== 'GET' && req.method !== 'POST') {
+        return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+      }
+
+      const source = await loadSummarySource(admin, tenantId, dealId);
+      if (!source) {
+        return createCorsResponse({ error: 'Deal not found' }, 404, req);
+      }
+
+      const stageNames = buildStageNameMap(await loadStages(admin, tenantId));
+      const summaryDeal = toSummaryDeal(source.deal, stageNames);
+      const fingerprint = buildDealFingerprint(summaryDeal, source.entries);
+      const enoughHistory = hasEnoughHistory(source.entries);
+
+      const { data: cached } = await admin
+        .from('deal_ai_summaries')
+        .select('summary, fingerprint, model, generated_at, source_entry_count')
+        .eq('tenant_id', tenantId)
+        .eq('deal_id', dealId)
+        .maybeSingle();
+
+      if (req.method === 'GET') {
+        return createCorsResponse(
+          {
+            summary: cached?.summary ?? null,
+            generatedAt: cached?.generated_at ?? null,
+            model: cached?.model ?? null,
+            sourceEntryCount: cached?.source_entry_count ?? null,
+            // Out of date rather than absent: the rep can still read what was
+            // written, knowing the deal has moved since.
+            stale: cached ? cached.fingerprint !== fingerprint : false,
+            canGenerate: enoughHistory,
+            entryCount: source.entries.length,
+          },
+          200,
+          req,
+        );
+      }
+
+      if (!enoughHistory) {
+        return createCorsResponse(
+          {
+            error: 'Nothing to summarise',
+            code: 'NO_INTERACTION_HISTORY',
+            detail:
+              'This deal has no logged activity. A summary written from the record alone would be invention, not a summary.',
+          },
+          422,
+          req,
+        );
+      }
+
+      const apiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!apiKey) {
+        // 503, not 500: the request is well formed and works the moment the key
+        // is configured in this environment.
+        return createCorsResponse(
+          { error: 'Summary generation is not configured', code: 'LLM_NOT_CONFIGURED' },
+          503,
+          req,
+        );
+      }
+
+      // LEAD_ANALYSIS, not BUSINESS_ANALYTICS: gpt-5-mini at medium effort and
+      // medium verbosity. This is a 3-to-5 sentence recap of a timeline, and
+      // BUSINESS_ANALYTICS is gpt-5 at high/high - paying for deep reasoning and
+      // a long answer would work against both halves of AC6.
+      const config = GPT5_CONFIGS.LEAD_ANALYSIS;
+      let payload: any = null;
+      try {
+        const res = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(
+            buildResponsesRequest(buildDealSummaryPrompt(summaryDeal, source.entries), config),
+          ),
+        });
+        payload = await res.json().catch(() => null);
+        if (!res.ok) {
+          const message = payload?.error?.message || `OpenAI request failed (${res.status})`;
+          console.error('Error generating the deal summary:', message);
+          return createCorsResponse({ error: message, code: 'LLM_ERROR' }, 502, req);
+        }
+      } catch (err) {
+        console.error('Error calling the summary model:', err);
+        return createCorsResponse(
+          { error: 'Could not reach the summary model', code: 'LLM_UNREACHABLE' },
+          502,
+          req,
+        );
+      }
+
+      const text = extractResponseText(payload).trim();
+      if (!text) {
+        // An empty completion is not a summary. Storing it would replace a
+        // readable stale one with a blank.
+        return createCorsResponse(
+          { error: 'The model returned nothing', code: 'LLM_EMPTY' },
+          502,
+          req,
+        );
+      }
+
+      const row = {
+        tenant_id: tenantId,
+        deal_id: dealId,
+        summary: text,
+        fingerprint,
+        source_entry_count: source.entries.length,
+        model: config.model ?? null,
+        total_tokens: payload?.usage?.total_tokens ?? null,
+        generated_by: user.id,
+        generated_at: new Date().toISOString(),
+      };
+
+      const { error: writeError } = await admin
+        .from('deal_ai_summaries')
+        .upsert(row, { onConflict: 'tenant_id,deal_id' });
+
+      if (writeError) {
+        console.error('Error storing the deal summary:', writeError);
+        // The text is still returned: the rep asked a question and got an
+        // answer, and a cache write is not what they asked for.
+      }
+
+      return createCorsResponse(
+        {
+          summary: text,
+          generatedAt: row.generated_at,
+          model: row.model,
+          sourceEntryCount: source.entries.length,
+          stale: false,
+          canGenerate: true,
+          entryCount: source.entries.length,
+          cached: !writeError,
+        },
+        200,
+        req,
+      );
     }
 
     // ─── /deals/:id/equipment (COP-M05) ────────────────────────────────────
@@ -856,7 +1114,43 @@ export default async function handler(req: Request) {
         console.error('Error loading the deal lease:', err);
       }
 
-      return createCorsResponse({ ...toDealResponse(deal, stageNames), contract, lease }, 200, req);
+      // COP-B11: contact coverage. The score treats single-threading as a risk
+      // and could not read it, because a deal carries one primary contact and
+      // the committee lives in crm_associations. Counted in both directions,
+      // because an association is written from whichever side made the link.
+      // Best-effort: a failure here costs one signal, not the page.
+      let contactCount: number | null = null;
+      try {
+        const { data: contactLinks } = await admin
+          .from('crm_associations')
+          .select('source_type, source_id, target_type, target_id')
+          .eq('tenant_id', tenantId)
+          .or(
+            `and(source_type.eq.deal,source_id.eq.${dealId},target_type.eq.contact),` +
+              `and(target_type.eq.deal,target_id.eq.${dealId},source_type.eq.contact)`,
+          );
+        const linked = new Set(
+          (contactLinks ?? []).map((l: Record<string, any>) =>
+            l.source_type === 'contact' ? l.source_id : l.target_id,
+          ),
+        );
+        // The primary contact is a person on the deal whether or not anybody
+        // associated them. Counted only when no association carries the deal,
+        // so a committee that already includes them is not inflated by one.
+        if (linked.size === 0 && (deal.primary_contact_email || deal.primary_contact_phone)) {
+          contactCount = 1;
+        } else {
+          contactCount = linked.size;
+        }
+      } catch (err) {
+        console.error('Error counting deal contacts:', err);
+      }
+
+      return createCorsResponse(
+        { ...toDealResponse(deal, stageNames), contract, lease, contactCount },
+        200,
+        req,
+      );
     }
 
     // POST /deals - Create deal
