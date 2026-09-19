@@ -171,6 +171,7 @@ const WorkflowDetailPage = React.lazy(() => import('@/pages/workflows/WorkflowDe
 const WorkflowStepPage = React.lazy(() => import('@/pages/workflows/WorkflowStepPage'));
 const CrmDealsPage = React.lazy(() => import('@/pages/CrmDealsPage'));
 const CompetitiveIntelligence = React.lazy(() => import('@/pages/CompetitiveIntelligence'));
+const SalesPlaybooks = React.lazy(() => import('@/pages/SalesPlaybooks'));
 const CrmLeadsPage = React.lazy(() => import('@/pages/CrmLeadsPage'));
 const CrmContactsPage = React.lazy(() => import('@/pages/CrmContactsPage'));
 const ContactDetail = React.lazy(() => import('@/pages/ContactDetail'));
@@ -740,6 +741,8 @@ function Router() {
                 <Route path="/crm/companies" component={CrmCompaniesPage} />
                 {/* COP-B10: competitive knockout intelligence. */}
                 <Route path="/competitors" component={CompetitiveIntelligence} />
+                {/* COP-B13: copier sales playbooks. */}
+                <Route path="/playbooks" component={SalesPlaybooks} />
                 <Route path="/leads" component={LeadsPage} />
                 <Route path="/prospects" component={ProspectsPage} />
                 <Route path="/customers" component={CustomersPage} />

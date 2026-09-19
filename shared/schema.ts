@@ -9462,6 +9462,8 @@ export * from './renewal-autoquote-schema';
 export * from './competitor-schema';
 // Forecast commit-vs-actual history (COP-I06)
 export * from './forecast-snapshot-schema';
+// Copier sales playbooks (COP-B13)
+export * from './playbook-schema';
 // Quarterly Business Review decks (US-SUPER-004)
 export * from './qbr-schema';
 // Predictive truck-stocking optimizer (US-SUPER-007)

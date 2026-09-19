@@ -42,6 +42,7 @@ import {
 import { NotesPanel } from '@/components/crm/NotesPanel';
 import { DealInsightsPanel } from '@/components/crm/DealInsightsPanel';
 import { CompetitiveCard } from '@/components/crm/CompetitiveCard';
+import { PlaybookPanel } from '@/components/crm/PlaybookPanel';
 import { DealEquipmentPanel } from '@/components/crm/DealEquipmentPanel';
 import {
   ArrowLeft,
@@ -59,6 +60,7 @@ import {
   CheckCircle2,
   Printer,
   ListChecks,
+  ClipboardList,
   Activity as ActivityIcon,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -559,7 +561,23 @@ export default function DealDetail() {
                 <TabsTrigger value="equipment">
                   <Printer className="h-4 w-4 mr-1.5" /> Equipment
                 </TabsTrigger>
+                {/* COP-B13: the discovery questions, in front of the rep while
+                    they are on the call. */}
+                <TabsTrigger value="discovery">
+                  <ClipboardList className="h-4 w-4 mr-1.5" /> Discovery
+                </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="discovery" className="mt-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Guided discovery</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <PlaybookPanel parentType="deal" parentId={dealId} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
               <TabsContent value="activity" className="mt-4">
                 <Card>
