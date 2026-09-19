@@ -1083,7 +1083,11 @@ function buildProposalUpdate(body: Record<string, unknown>): Record<string, unkn
 // Proposals columns added by pending migrations (0019). Until the migration is
 // applied, writes including them fail with PGRST204 — retry without them so a
 // drifted database degrades gracefully instead of 500-ing the whole save.
-const PROPOSAL_DRIFT_COLUMNS = ['discount_reason', 'discount_reason_note'];
+// Columns that exist in the schema but may not be on a given database yet, so
+// an insert naming one retries without it rather than failing the whole save.
+// deal_id joins the list because migration 0088 is committed and UNAPPLIED:
+// until it runs, a quote still saves and simply carries no deal link.
+const PROPOSAL_DRIFT_COLUMNS = ['discount_reason', 'discount_reason_note', 'deal_id'];
 
 function stripProposalDriftColumns(row: Record<string, unknown>): Record<string, unknown> {
   const out = { ...row };
@@ -1807,6 +1811,10 @@ export default async function handler(req: Request) {
         proposal_type: body.proposalType || body.proposal_type || 'quote',
         business_record_id: body.businessRecordId || body.business_record_id || null,
         contact_id: body.contactId || body.contact_id || null,
+        // COP-B02: the opportunity this quote is for, when it was raised from
+        // one. Without it the deal record cannot list its own quotes and
+        // COP-B11 cannot score quote margin.
+        deal_id: body.dealId || body.deal_id || null,
         template_id: body.templateId || body.template_id || null,
         subtotal: body.subtotal ?? 0,
         discount_amount: body.discountAmount || body.discount_amount || 0,

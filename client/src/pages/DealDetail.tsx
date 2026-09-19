@@ -20,7 +20,7 @@
  */
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useLocation, useRoute } from 'wouter';
+import { Link, useLocation, useRoute } from 'wouter';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
@@ -61,6 +61,7 @@ import {
   Printer,
   ListChecks,
   ClipboardList,
+  Plus,
   Activity as ActivityIcon,
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -310,6 +311,29 @@ export default function DealDetail() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   /** Local draft for the recurring value, so typing does not PATCH per keystroke. */
   const [monthlyDraft, setMonthlyDraft] = useState<string | null>(null);
+
+  // COP-B02: the deal's quotes. proposals.deal_id landed with this story -
+  // before it, an account's proposals could not be attributed to one of its
+  // deals and this tab could not honestly exist.
+  const dealQuotesQuery = useQuery<{
+    data: Array<{
+      id: string;
+      proposalNumber: string | null;
+      title: string | null;
+      status: string | null;
+      totalAmount: string | null;
+      discountPercentage: string | null;
+      marginPercentage: string | null;
+      validUntil: string | null;
+      createdAt: string | null;
+    }>;
+    unbacked: string[];
+  }>({
+    queryKey: [`/api/deals/${dealId}/quotes`],
+    queryFn: () => apiRequest(`/api/deals/${dealId}/quotes`),
+    enabled: Boolean(dealId),
+  });
+  const dealQuotes = dealQuotesQuery.data?.data ?? [];
 
   const dealTasksQuery = useQuery<
     Array<{ id: string; title: string; status?: string; priority?: string; dueDate?: string }>
@@ -563,10 +587,75 @@ export default function DealDetail() {
                 </TabsTrigger>
                 {/* COP-B13: the discovery questions, in front of the rep while
                     they are on the call. */}
+                <TabsTrigger value="quotes">
+                  <FileText className="h-4 w-4 mr-1.5" /> Quotes
+                </TabsTrigger>
                 <TabsTrigger value="discovery">
                   <ClipboardList className="h-4 w-4 mr-1.5" /> Discovery
                 </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="quotes" className="mt-4">
+                <Card>
+                  <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+                    <CardTitle className="text-sm">Quotes</CardTitle>
+                    {/* The only path that SETS proposals.deal_id. Raising a
+                        quote from /quotes/new directly leaves it null, which is
+                        correct - that quote belongs to an account, not a deal. */}
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={`/quotes/new?dealId=${dealId}`}>
+                        <Plus className="h-4 w-4 mr-1" /> New quote
+                      </Link>
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {dealQuotesQuery.isLoading ? (
+                      <Skeleton className="h-16 w-full" />
+                    ) : dealQuotes.length === 0 ? (
+                      <EmptyState
+                        title="No quotes on this deal"
+                        description={
+                          dealQuotesQuery.data?.unbacked?.[0] ??
+                          'A quote raised from this deal will appear here with its margin and discount.'
+                        }
+                      />
+                    ) : (
+                      <div className="space-y-2">
+                        {dealQuotes.map((quote) => (
+                          <Link
+                            key={quote.id}
+                            href={`/quotes/${quote.id}`}
+                            className="flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/50"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium truncate">
+                                  {quote.title || quote.proposalNumber || 'Quote'}
+                                </span>
+                                {quote.status && (
+                                  <Badge variant="outline" className="text-xs font-normal">
+                                    {quote.status}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {quote.proposalNumber}
+                                {/* Margin is what the insights panel scores; showing
+                                    it here is why a rep can argue with the score. */}
+                                {quote.marginPercentage != null &&
+                                  ` · ${Number(quote.marginPercentage).toFixed(1)}% margin`}
+                              </p>
+                            </div>
+                            <span className="tabular-nums text-sm shrink-0">
+                              {money(quote.totalAmount)}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
               <TabsContent value="discovery" className="mt-4">
                 <Card>

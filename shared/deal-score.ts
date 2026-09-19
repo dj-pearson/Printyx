@@ -18,14 +18,14 @@
  *     category - are scored here as of COP-B11's second pass: the columns
  *     landed with COP-M04 and the deals edge function already returns them.
  *
- *     Quote margin is the one exception and it is deliberate. The factor is
- *     implemented and tested, but NOTHING produces `quoteMarginPct` or
- *     `quoteDiscountPct` yet: `proposals` has no deal_id and `crm_associations`
- *     has no quote type, so an account's quote cannot be attributed to one of
- *     its deals. It stays in PLANNED_FACTORS until COP-B02 lands the quotes tab
- *     and with it a real deal-to-quote link. Wiring it to the account's newest
- *     proposal would attribute the wrong quote the moment an account has two
- *     deals, which is the fabrication rule above wearing a join.
+ *     Quote margin was the one exception, and it is no longer one. COP-B02
+ *     added `proposals.deal_id`, so a quote now belongs to a deal and the
+ *     deals endpoint feeds the deal's most recent LIVE quote in. Until that
+ *     column existed the only available join was the account's newest
+ *     proposal, which attributes the wrong quote the moment an account has two
+ *     deals - the fabrication rule above wearing a join. PLANNED_FACTORS is
+ *     empty now; it stays in the file because the next unbacked signal belongs
+ *     in it rather than in a comment.
  */
 
 /** Minimum number of available signals before a score is meaningful. */
@@ -104,13 +104,12 @@ export interface DealScoreResult {
  * Signals the score is built to use that nothing produces yet. Surfaced rather
  * than silently dropped, so the gap stays visible on the screen that needs it.
  *
- * The three COP-M04 facts that used to sit here are scored now. What remains is
- * quote margin: see the file header for why attributing an account's quote to
- * one of its deals is not available and should not be faked.
+ * EMPTY, as of COP-B02's deal-to-quote link. Every signal the scorer accepts
+ * now has a producer. Kept rather than deleted so the next unbacked signal is
+ * added here and rendered, instead of being explained in a comment nobody
+ * reads.
  */
-export const PLANNED_FACTORS = [
-  'quote margin and discount (no deal-to-quote link exists yet)',
-] as const;
+export const PLANNED_FACTORS: readonly string[] = [];
 
 function toDate(value?: string | Date | null): Date | null {
   if (!value) return null;

@@ -498,6 +498,13 @@
       "when": 1789851976965,
       "tag": "0087_blue_jack_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1789853180249,
+      "tag": "0088_secret_chat",
+      "breakpoints": true
     }
   ]
 }

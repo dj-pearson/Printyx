@@ -6133,6 +6133,20 @@ export const proposals = pgTable(
     businessRecordId: varchar('business_record_id').notNull(),
     contactId: varchar('contact_id'), // Primary contact for this proposal
 
+    // COP-B02: the deal this quote is for.
+    //
+    // `proposals` knew its ACCOUNT and nothing about the opportunity, so the
+    // deal record could not list its own quotes and COP-B11 could not score
+    // quote margin - an account's newest proposal is not attributable to one of
+    // its deals the moment the account has two. A column rather than a
+    // crm_associations link, matching `contracts.deal_id` (WF-C-09): a quote
+    // belongs to exactly one deal, and the spine from deal to quote to contract
+    // should not change shape halfway along.
+    //
+    // Nullable, so every existing proposal stays valid and a quote raised from
+    // an account rather than a deal carries no false provenance.
+    dealId: varchar('deal_id'),
+
     // Assignment and Ownership
     createdBy: varchar('created_by').notNull(),
     assignedTo: varchar('assigned_to').notNull(),
@@ -6232,6 +6246,8 @@ export const proposals = pgTable(
   (table) => ({
     // PA-026: tenant-scoped indexes (table had none).
     tenantStatusIdx: index('proposals_tenant_status_idx').on(table.tenantId, table.status),
+    // COP-B02: the deal record's Quotes tab filters on exactly this pair.
+    tenantDealIdx: index('proposals_tenant_deal_idx').on(table.tenantId, table.dealId),
     tenantCreatedIdx: index('proposals_tenant_created_idx').on(table.tenantId, table.createdAt),
     // AUDIT-009: `proposals` is the live quotes table and callers filter by
     // proposal_type='quote' BEFORE status, which (tenant_id, status) above cannot

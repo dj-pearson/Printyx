@@ -133,6 +133,12 @@ interface LineItem {
 
 interface QuoteBuilderProps {
   initialQuoteId?: string;
+  /**
+   * COP-B02: the opportunity this quote is being raised for, when the builder
+   * was opened from a deal. Without it `proposals.deal_id` stays null and the
+   * deal record's Quotes tab is a column nothing fills.
+   */
+  dealId?: string;
   onSave?: (quoteId: string) => void;
   onCancel?: () => void;
   onCreateProposal?: (quoteId: string) => void;
@@ -155,7 +161,7 @@ const toIntOrNull = (value?: string | null) => {
 
 // Build the draft proposal payload from form + line items. Shared by the manual
 // Save Draft mutation and the QUOTE-018 autosave so they stay in sync.
-function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
+function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[], dealId?: string) {
   const subtotalAmount = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const discountAmt = parseFloat(quote.discountAmount || '0');
   const taxAmt = parseFloat(quote.taxAmount || '0');
@@ -163,6 +169,9 @@ function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
 
   return {
     ...quote,
+    // Only when the builder was opened from a deal. Omitted rather than sent
+    // as null, so a PATCH of an existing quote cannot clear an existing link.
+    ...(dealId ? { dealId } : {}),
     proposalType: 'quote',
     status: 'draft',
     lineItems: lineItems.map((item, index) => ({
@@ -210,6 +219,7 @@ function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
 
 export default function QuoteBuilder({
   initialQuoteId,
+  dealId,
   onSave,
   onCancel,
   onCreateProposal,
@@ -490,7 +500,7 @@ export default function QuoteBuilder({
   // Create or update quote mutation
   const saveQuoteMutation = useMutation({
     mutationFn: async (data: { quote: QuoteFormData; lineItems: LineItem[] }) => {
-      const quoteData = buildQuoteData(data.quote, data.lineItems);
+      const quoteData = buildQuoteData(data.quote, data.lineItems, dealId);
       console.log('📤 Submitting quote:', quoteData);
 
       // Prefer an existing persisted id (route or autosave-created draft).
@@ -919,7 +929,7 @@ export default function QuoteBuilder({
       await apiRequest(
         `/api/proposals/${savedQuoteId}`,
         'PATCH',
-        buildQuoteData(form.getValues(), latestLineItemsRef.current),
+        buildQuoteData(form.getValues(), latestLineItemsRef.current, dealId),
       );
       // Keep the detail cache in sync so a later remount re-hydrates the autosaved
       // line items instead of the stale empty draft cached at creation time.
@@ -950,7 +960,10 @@ export default function QuoteBuilder({
       const created = await apiRequest(
         '/api/proposals',
         'POST',
-        buildQuoteData(form.getValues(), lineItems),
+        // QUOTE-018's autosave is how most drafts are actually created, so the
+        // deal link has to be here too - wiring only the explicit Save would
+        // leave the common path writing a null.
+        buildQuoteData(form.getValues(), lineItems, dealId),
       );
       if (created?.id) {
         hydratedRef.current = true; // local state is authoritative; don't re-hydrate

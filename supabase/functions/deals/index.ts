@@ -33,6 +33,7 @@ import {
   extractResponseText,
 } from '../_shared/gpt5-prompts.ts';
 import { syncRenewalOutcomeFromDeal } from '../_shared/renewal-deal.ts';
+import { isMissingColumnError } from '../_shared/postgrest-errors.ts';
 
 /** The tenant's pipeline stages. Small table; read once per request. */
 async function loadStages(admin: any, tenantId: string): Promise<DealStageRow[]> {
@@ -468,6 +469,64 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    }
+
+    // ─── /deals/:id/quotes (COP-B02) ───────────────────────────────────────
+    //
+    // The deal's own quotes. `proposals.deal_id` landed with COP-B02; before it
+    // this tab could not exist, because an account's newest proposal is not
+    // attributable to one of its deals the moment the account has two.
+    //
+    // Tolerates the column being absent: migration 0088 is committed and
+    // unapplied, and a deal record that 500s because one migration has not run
+    // is worse than one whose Quotes tab is empty.
+    if (dealId && subResource === 'quotes' && req.method === 'GET') {
+      const { data, error } = await admin
+        .from('proposals')
+        .select(
+          'id, proposal_number, title, status, total_amount, subtotal, discount_amount, discount_percentage, total_margin_percentage, valid_until, created_at, updated_at',
+        )
+        .eq('tenant_id', tenantId)
+        .eq('deal_id', dealId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        if (isMissingColumnError(error)) {
+          return createCorsResponse(
+            {
+              data: [],
+              unbacked: [
+                'Quotes cannot be linked to a deal on this database yet: migration 0088 adds proposals.deal_id and has not been applied.',
+              ],
+            },
+            200,
+            req,
+          );
+        }
+        console.error('Error fetching deal quotes:', error);
+        return createCorsResponse({ error: 'Failed to fetch quotes' }, 500, req);
+      }
+
+      return createCorsResponse(
+        {
+          data: (data ?? []).map((q: Record<string, any>) => ({
+            id: q.id,
+            proposalNumber: q.proposal_number,
+            title: q.title,
+            status: q.status,
+            totalAmount: q.total_amount,
+            subtotal: q.subtotal,
+            discountAmount: q.discount_amount,
+            discountPercentage: q.discount_percentage,
+            marginPercentage: q.total_margin_percentage,
+            validUntil: q.valid_until,
+            createdAt: q.created_at,
+          })),
+          unbacked: [],
+        },
+        200,
+        req,
+      );
     }
 
     // ─── /deals/:id/summary (COP-B11) ──────────────────────────────────────
@@ -1152,8 +1211,42 @@ export default async function handler(req: Request) {
         console.error('Error counting deal contacts:', err);
       }
 
+      // COP-B11's last planned signal, now that COP-B02 has given a quote a
+      // deal to belong to. The deal's most recent LIVE quote - a rejected or
+      // superseded one is not what the deal is being sold at, and scoring the
+      // margin of a quote nobody is considering would be worse than scoring
+      // none. Best-effort, and tolerant of the unapplied migration.
+      let quoteMarginPct: number | null = null;
+      let quoteDiscountPct: number | null = null;
+      try {
+        const { data: quote, error: quoteError } = await admin
+          .from('proposals')
+          .select('total_margin_percentage, discount_percentage, status, created_at')
+          .eq('tenant_id', tenantId)
+          .eq('deal_id', dealId)
+          .not('status', 'in', '("rejected","expired","superseded")')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!quoteError && quote) {
+          const margin = Number((quote as Record<string, any>).total_margin_percentage);
+          const discount = Number((quote as Record<string, any>).discount_percentage);
+          quoteMarginPct = Number.isFinite(margin) ? margin : null;
+          quoteDiscountPct = Number.isFinite(discount) ? discount : null;
+        }
+      } catch (err) {
+        console.error('Error reading the deal quote margin:', err);
+      }
+
       return createCorsResponse(
-        { ...toDealResponse(deal, stageNames), contract, lease, contactCount },
+        {
+          ...toDealResponse(deal, stageNames),
+          contract,
+          lease,
+          contactCount,
+          quoteMarginPct,
+          quoteDiscountPct,
+        },
         200,
         req,
       );

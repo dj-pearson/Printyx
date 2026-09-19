@@ -44,6 +44,9 @@ interface DealLike {
   incumbentVendor?: string | null;
   leaseBuyoutExposure?: string | number | null;
   forecastCategory?: string | null;
+  // COP-B02: the deal's most recent live quote, fed by /api/deals/:id.
+  quoteMarginPct?: number | null;
+  quoteDiscountPct?: number | null;
 }
 
 interface DealSummaryResponse {
@@ -123,6 +126,8 @@ export function DealInsightsPanel({
         incumbentVendor: deal.incumbentVendor,
         leaseBuyoutExposure: deal.leaseBuyoutExposure,
         forecastCategory: deal.forecastCategory,
+        quoteMarginPct: deal.quoteMarginPct,
+        quoteDiscountPct: deal.quoteDiscountPct,
       }),
     [deal],
   );
@@ -248,9 +253,13 @@ export function DealInsightsPanel({
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground border-t pt-2">
-        Not yet scored, because nothing produces it: {PLANNED_FACTORS.join(', ')}.
-      </p>
+      {/* Only when there IS an unbacked signal. Every one has a producer as
+          of COP-B02's deal-to-quote link, so this normally renders nothing. */}
+      {PLANNED_FACTORS.length > 0 && (
+        <p className="text-xs text-muted-foreground border-t pt-2">
+          Not yet scored, because nothing produces it: {PLANNED_FACTORS.join(', ')}.
+        </p>
+      )}
     </div>
   );
 }
