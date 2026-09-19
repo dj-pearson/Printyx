@@ -75,6 +75,7 @@ import {
   Rocket,
   ClipboardList,
   Swords,
+  Radar,
   FileSignature,
   Code,
   Menu,
@@ -239,9 +240,10 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/crm*',
       '/business-records*',
       '/today*',
-      // COP-B10 / COP-B13.
+      // COP-B10 / COP-B13 / COP-B04.
       '/competitors*',
       '/playbooks*',
+      '/opportunity-radar*',
     ],
     // COP-M02: grouped Work / Sell / Manage instead of one flat 17-item list.
     // Every route is unchanged — this story moves and groups, it does not rewire.
@@ -273,6 +275,9 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       // URL. That is CRMX-016's failure shape at nav level rather than route
       // level, and it is why check:nav watching route targets is not enough on
       // its own: a target that resolves can still have nothing pointing at it.
+      // COP-B04: a rep's own pipeline out of the installed base. In Work, not
+      // Sell - this is where the day starts.
+      { title: 'Opportunity Radar', path: '/opportunity-radar', icon: Radar, group: 'Work' },
       { title: 'Competitors', path: '/competitors', icon: Swords, group: 'Sell' },
       { title: 'Playbooks', path: '/playbooks', icon: ClipboardList, group: 'Sell' },
       { title: 'Email Sequences', path: '/marketing/sequences', icon: Mail, group: 'Sell' },

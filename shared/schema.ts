@@ -9480,6 +9480,8 @@ export * from './competitor-schema';
 export * from './forecast-snapshot-schema';
 // Copier sales playbooks (COP-B13)
 export * from './playbook-schema';
+// Installed-Base Opportunity Radar (COP-B04)
+export * from './opportunity-radar-schema';
 // Quarterly Business Review decks (US-SUPER-004)
 export * from './qbr-schema';
 // Predictive truck-stocking optimizer (US-SUPER-007)

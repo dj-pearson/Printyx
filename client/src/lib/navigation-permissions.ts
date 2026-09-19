@@ -581,6 +581,16 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/crm/leads': {
     requiredPermissions: ['sales.lead.view_own', 'sales.lead.view_team'],
   },
+  // COP-B04. Same gate as the deals board: the radar produces a rep's own
+  // pipeline. Running the SCAN and setting thresholds are manager-level checks
+  // in the edge function, which a permission code here would not reach.
+  '/opportunity-radar': {
+    requiredPermissions: [
+      'sales.opportunity.view_own',
+      'sales.opportunity.view_team',
+      'sales.opportunity.view_location',
+    ],
+  },
   // COP-B13. Same gate as the deals board: a rep who can see a deal can run its
   // discovery. Authoring is a role-level check in the edge function.
   '/playbooks': {

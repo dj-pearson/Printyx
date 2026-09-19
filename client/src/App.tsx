@@ -172,6 +172,7 @@ const WorkflowStepPage = React.lazy(() => import('@/pages/workflows/WorkflowStep
 const CrmDealsPage = React.lazy(() => import('@/pages/CrmDealsPage'));
 const CompetitiveIntelligence = React.lazy(() => import('@/pages/CompetitiveIntelligence'));
 const SalesPlaybooks = React.lazy(() => import('@/pages/SalesPlaybooks'));
+const OpportunityRadar = React.lazy(() => import('@/pages/OpportunityRadar'));
 const CrmLeadsPage = React.lazy(() => import('@/pages/CrmLeadsPage'));
 const CrmContactsPage = React.lazy(() => import('@/pages/CrmContactsPage'));
 const ContactDetail = React.lazy(() => import('@/pages/ContactDetail'));
@@ -743,6 +744,8 @@ function Router() {
                 <Route path="/competitors" component={CompetitiveIntelligence} />
                 {/* COP-B13: copier sales playbooks. */}
                 <Route path="/playbooks" component={SalesPlaybooks} />
+                {/* COP-B04: the installed-base opportunity radar. */}
+                <Route path="/opportunity-radar" component={OpportunityRadar} />
                 <Route path="/leads" component={LeadsPage} />
                 <Route path="/prospects" component={ProspectsPage} />
                 <Route path="/customers" component={CustomersPage} />

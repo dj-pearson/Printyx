@@ -318,6 +318,8 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/competitors': 'competitors',
     // COP-B13: copier sales playbooks. Same - a new prefix, nothing to shadow.
     '/api/playbooks': 'playbooks',
+    // COP-B04: the installed-base opportunity radar. New prefix, no Express handler.
+    '/api/opportunity-radar': 'opportunity-radar',
     '/api/contacts': 'contacts',
     // WF-S-06: the CRM Goals page. Its eleven endpoints now all live in the crm
     // edge function, so dev and prod run the same code and
