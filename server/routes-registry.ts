@@ -45,7 +45,6 @@ import {
   registerBusinessRecordRoutes,
   registerCrmBulkRoutes,
   registerBulkOperationsRoutes,
-  registerRecordLayoutRoutes,
   registerCsvImportRoutes,
   signupCrmRoutes,
   universalSearchRoutes,
@@ -413,7 +412,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerDealTagRoutes(app);
   registerCrmBulkRoutes(app);
   registerBulkOperationsRoutes(app);
-  registerRecordLayoutRoutes(app);
   registerBusinessRecordRoutes(app);
   registerCsvImportRoutes(app);
 

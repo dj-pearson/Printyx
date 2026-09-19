@@ -984,6 +984,15 @@ export default async function handler(req: Request) {
       targetCpcBlack: 'target_cpc_black',
       targetCpcColor: 'target_cpc_color',
       replacesContractId: 'replaces_contract_id',
+      // CRM-008: the fields the record page's editable property groups expose.
+      // They are real columns and were read everywhere, but absent from this
+      // map - so a PATCH setting a next step or a contact answered 200 having
+      // changed nothing, which is the worst shape a write can take.
+      nextFollowUpDate: 'next_follow_up_date',
+      primaryContactName: 'primary_contact_name',
+      primaryContactEmail: 'primary_contact_email',
+      primaryContactPhone: 'primary_contact_phone',
+      productsInterested: 'products_interested',
     };
 
     if (req.method === 'POST' && dealId === 'bulk-update') {

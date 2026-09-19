@@ -1,6 +1,6 @@
 {
   "note": "Express /api domains no client tree calls. A WORKLIST, not settled debt: some are features nobody wired, some are deletable, and this guard cannot tell them apart. Shrink-only — see scripts/check-uncalled-express-routes.mjs for why five other guards miss these.",
-  "count": 88,
+  "count": 86,
   "domains": [
     {
       "domain": "accessibility",
@@ -211,10 +211,6 @@
       "class": "no-edge"
     },
     {
-      "domain": "record-layout-config",
-      "class": "no-edge"
-    },
-    {
       "domain": "renewal-activities",
       "class": "edge-too"
     },
@@ -241,10 +237,6 @@
     {
       "domain": "sales-performance-metrics",
       "class": "no-edge"
-    },
-    {
-      "domain": "sales-territories",
-      "class": "edge-too"
     },
     {
       "domain": "sales-trends",

@@ -326,6 +326,9 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/opportunity-radar': 'opportunity-radar',
     // COP-B03: suggested tasks. New prefix, no Express handler.
     '/api/suggested-tasks': 'suggested-tasks',
+    // CRM-008: record page layouts. The Express router this replaces could
+    // never run in production and nothing called it; see the fn header.
+    '/api/record-layout-config': 'record-layout-config',
     '/api/contacts': 'contacts',
     // WF-S-06: the CRM Goals page. Its eleven endpoints now all live in the crm
     // edge function, so dev and prod run the same code and
