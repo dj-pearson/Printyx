@@ -76,18 +76,34 @@ export default async function handler(req: Request) {
       );
     }
 
+    /**
+     * THE WHOLE CRUD SURFACE WAS BUILT AGAINST A TABLE THAT DOES NOT EXIST
+     * (COP-B03's regression sweep). `sales_territories` has territory_name,
+     * territory_code, territory_type, description, geographic_rules,
+     * account_rules, is_active, priority, owner_id and manager_id. This
+     * function named `name`, `region`, `states`, `zip_codes`, `rules`,
+     * `assigned_rep_id` and `created_by` - seven columns, every one absent,
+     * every branch a guaranteed 42703.
+     *
+     * It survived because nothing called the function: it sat in
+     * docs/unreferenced-edge-fns-baseline.json and its phantom columns sat in
+     * docs/phantom-columns-baseline.json, and the two entries were true at the
+     * same time for the same reason. COP-B09 wired a page to it, which turned
+     * seven baselined references into seven live 500s, and
+     * server/tests/unit/phantom-cols-reachable-zero.test.ts is what said so.
+     * That test is the point: a phantom column is tolerable only while nobody
+     * can reach it, so wiring a caller is what makes it a defect.
+     */
+    const TERRITORY_COLUMNS =
+      'id, tenant_id, territory_name, territory_code, territory_type, description, geographic_rules, account_rules, is_active, priority, owner_id, manager_id, created_at, updated_at';
+
     // GET /sales-territories - List territories
     if (req.method === 'GET' && !territoryId) {
       const { data: territories, error } = await admin
         .from('sales_territories')
-        .select(
-          `
-          *,
-          assigned_rep:assigned_rep_id (id, full_name, email)
-        `,
-        )
+        .select(TERRITORY_COLUMNS)
         .eq('tenant_id', tenantId)
-        .order('name', { ascending: true });
+        .order('territory_name', { ascending: true });
 
       if (error) {
         console.error('Error fetching territories:', error);
@@ -101,12 +117,7 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && territoryId) {
       const { data: territory, error } = await admin
         .from('sales_territories')
-        .select(
-          `
-          *,
-          assigned_rep:assigned_rep_id (id, full_name, email)
-        `,
-        )
+        .select(TERRITORY_COLUMNS)
         .eq('id', territoryId)
         .eq('tenant_id', tenantId)
         .single();
@@ -120,27 +131,29 @@ export default async function handler(req: Request) {
 
     // POST /sales-territories - Create territory
     if (req.method === 'POST' && !territoryId) {
-      const body = await req.json();
-
-      const territoryData = {
-        tenant_id: tenantId,
-        name: body.name,
-        description: body.description,
-        region: body.region,
-        states: body.states || [],
-        zip_codes: body.zipCodes || body.zip_codes || [],
-        assigned_rep_id: body.assignedRepId || body.assigned_rep_id,
-        is_active: body.isActive !== false,
-        rules: body.rules || {},
-        created_by: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      const body = await req.json().catch(() => ({}));
+      const territoryName = body.territoryName ?? body.territory_name ?? body.name;
+      if (!territoryName) {
+        // territory_name is NOT NULL. Saying so beats a 500 from the database.
+        return createCorsResponse({ error: 'A territory name is required' }, 400, req);
+      }
 
       const { data: territory, error } = await admin
         .from('sales_territories')
-        .insert(territoryData)
-        .select()
+        .insert({
+          tenant_id: tenantId,
+          territory_name: String(territoryName),
+          territory_code: body.territoryCode ?? body.territory_code ?? null,
+          // NOT NULL with no database default, so the create has to carry one.
+          territory_type: body.territoryType ?? body.territory_type ?? 'geographic',
+          description: body.description ?? null,
+          geographic_rules: body.geographicRules ?? body.geographic_rules ?? null,
+          account_rules: body.accountRules ?? body.account_rules ?? null,
+          is_active: body.isActive ?? body.is_active ?? true,
+          owner_id: body.ownerId ?? body.owner_id ?? null,
+          manager_id: body.managerId ?? body.manager_id ?? null,
+        })
+        .select(TERRITORY_COLUMNS)
         .single();
 
       if (error) {
@@ -153,27 +166,34 @@ export default async function handler(req: Request) {
 
     // PUT /sales-territories/:id - Update territory
     if (req.method === 'PUT' && territoryId) {
-      const body = await req.json();
+      const body = await req.json().catch(() => ({}));
+      // Only the fields the caller actually sent. A blanket object would write
+      // null over every column a partial form left out.
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      const set = (column: string, ...candidates: unknown[]) => {
+        const value = candidates.find((v) => v !== undefined);
+        if (value !== undefined) patch[column] = value;
+      };
+      set('territory_name', body.territoryName, body.territory_name, body.name);
+      set('territory_code', body.territoryCode, body.territory_code);
+      set('territory_type', body.territoryType, body.territory_type);
+      set('description', body.description);
+      set('geographic_rules', body.geographicRules, body.geographic_rules);
+      set('account_rules', body.accountRules, body.account_rules);
+      set('is_active', body.isActive, body.is_active);
+      set('owner_id', body.ownerId, body.owner_id);
+      set('manager_id', body.managerId, body.manager_id);
 
       const { data: territory, error } = await admin
         .from('sales_territories')
-        .update({
-          name: body.name,
-          description: body.description,
-          region: body.region,
-          states: body.states,
-          zip_codes: body.zipCodes || body.zip_codes,
-          assigned_rep_id: body.assignedRepId || body.assigned_rep_id,
-          is_active: body.isActive ?? body.is_active,
-          rules: body.rules,
-          updated_at: new Date().toISOString(),
-        })
+        .update(patch)
         .eq('id', territoryId)
         .eq('tenant_id', tenantId)
-        .select()
+        .select(TERRITORY_COLUMNS)
         .single();
 
       if (error) {
+        console.error('Error updating territory:', error);
         return createCorsResponse({ error: 'Failed to update territory' }, 500, req);
       }
 

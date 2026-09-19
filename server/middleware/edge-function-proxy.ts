@@ -324,6 +324,8 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/sales-territories': 'sales-territories',
     // COP-B04: the installed-base opportunity radar. New prefix, no Express handler.
     '/api/opportunity-radar': 'opportunity-radar',
+    // COP-B03: suggested tasks. New prefix, no Express handler.
+    '/api/suggested-tasks': 'suggested-tasks',
     '/api/contacts': 'contacts',
     // WF-S-06: the CRM Goals page. Its eleven endpoints now all live in the crm
     // edge function, so dev and prod run the same code and

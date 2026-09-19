@@ -28,6 +28,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
+import { SuggestedTasksCard } from '@/components/crm/SuggestedTasksCard';
 import { cn, formatCurrencyWhole } from '@/lib/utils';
 
 interface Activity {
@@ -310,6 +311,11 @@ export default function TodayDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* COP-B03: ranked next actions. Sits above the quote list
+                because it spans every source a rep has - deals, quotes and
+                installed-base plays - and expires itself when the rep acts. */}
+            <SuggestedTasksCard />
 
             {/* COP-B01: quotes awaiting signature. A quote sent and not
                 answered is the card a rep acts on first, and it could not be
