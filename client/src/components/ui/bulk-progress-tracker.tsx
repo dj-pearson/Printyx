@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Loader2, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, percentBar } from '@/lib/utils';
 
 export interface BulkOperationProgress {
   operationId: string;
@@ -23,8 +23,7 @@ interface BulkProgressTrackerProps {
 export function BulkProgressTracker({ progress, onDismiss, className }: BulkProgressTrackerProps) {
   if (!progress) return null;
 
-  const percentage =
-    progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0;
+  const percentage = Math.round(percentBar(progress.processed, progress.total));
   const isComplete =
     progress.status === 'completed' ||
     progress.status === 'failed' ||

@@ -11,6 +11,7 @@ import {
   equipment,
 } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
+import { addMonths } from '@shared/date-months';
 
 async function seedLeaseData() {
   log.info('Starting lease data seeding...');
@@ -185,8 +186,11 @@ async function seedLeaseData() {
 
         // Create past payments (completed)
         for (let i = 0; i < paymentsCompleted; i++) {
-          const scheduledDate = new Date(startDate);
-          scheduledDate.setMonth(startDate.getMonth() + i);
+          // Same defect the leases handler carried: from a first payment on
+          // 31 January a twelve-month schedule covered seven distinct months,
+          // doubling up on some and skipping others, while the row COUNT stayed
+          // right so nothing downstream could notice (DATE-SETMONTH-001).
+          const scheduledDate = addMonths(startDate, i);
 
           const paidDate = new Date(scheduledDate);
           paidDate.setDate(paidDate.getDate() + Math.floor(Math.random() * 5)); // Paid within 5 days
@@ -207,8 +211,7 @@ async function seedLeaseData() {
         // Create upcoming payments (scheduled)
         const remainingPayments = lease.term - paymentsCompleted;
         for (let i = 0; i < Math.min(remainingPayments, 12); i++) {
-          const scheduledDate = new Date(startDate);
-          scheduledDate.setMonth(startDate.getMonth() + paymentsCompleted + i);
+          const scheduledDate = addMonths(startDate, paymentsCompleted + i);
 
           paymentRecords.push({
             tenantId,

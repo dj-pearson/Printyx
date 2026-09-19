@@ -6,6 +6,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { toNumber } from '../_shared/quote-math.ts';
 import { displayName, USER_NAME_COLUMNS, type UserRow } from '../_shared/user-profile.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 // COP-M01: this file addressed business_records as deal_value / assigned_to /
 // pipeline_stage. The columns are estimated_deal_value, assigned_sales_rep and
@@ -32,18 +33,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
     // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading

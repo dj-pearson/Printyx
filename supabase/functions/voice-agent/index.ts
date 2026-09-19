@@ -42,6 +42,7 @@ import {
   type IntakeSummary,
   type VoiceCallPriority,
 } from '../_shared/voice-agent-logic.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 type Row = Record<string, any>;
 
@@ -162,14 +163,15 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string);
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'voice-agent');
     const first = parts[0];
@@ -301,9 +303,13 @@ export default async function handler(req: Request) {
 
     // ─── GET /cost ───────────────────────────────────────────────────
     if (first === 'cost' && req.method === 'GET') {
-      const since = new Date();
-      since.setMonth(since.getMonth() - 5);
-      since.setDate(1);
+      // Anchored to the first of the month directly. The setDate(1) below used
+      // to hide half of this: setMonth overflows, so on 31 July month - 5 asked
+      // for "31 February" and landed in MARCH, and setDate(1) then tidied it to
+      // 1 March - a six-month cost window that silently began a month late
+      // (DATE-SETMONTH-001).
+      const nowForCost = new Date();
+      const since = new Date(nowForCost.getFullYear(), nowForCost.getMonth() - 5, 1);
       since.setHours(0, 0, 0, 0);
 
       const { data, error } = await admin

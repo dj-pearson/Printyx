@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { readSecret } from './services/credential-envelope';
 
 export interface ApolloSearchFilters {
   personTitles?: string[];
@@ -167,7 +168,18 @@ export const createApolloClientForTenant = async (tenantId: string): Promise<Apo
     );
   }
 
-  return new ApolloClient(credential.apiKey as string);
+  // The key is written by the apollo EDGE function and read here, which is the
+  // whole reason SEC-CRED-VAULT-001 insisted on one envelope across the two
+  // runtimes. A row saved before that story has no prefix and readSecret
+  // returns it unchanged.
+  const apiKey = readSecret(credential.apiKey);
+  if (!apiKey) {
+    throw new Error(
+      'Apollo.io API key could not be read. Check PRINTYX_CREDENTIAL_VAULT_KEY on this deployment.',
+    );
+  }
+
+  return new ApolloClient(apiKey);
 };
 
 // Legacy: Create singleton instance with API key from environment (fallback for platform-level testing)

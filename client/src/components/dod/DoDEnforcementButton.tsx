@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface DoDEnforcementButtonProps {
   recordId: string;
@@ -33,6 +34,7 @@ export default function DoDEnforcementButton({
     'idle',
   );
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const { toast } = useToast();
 
   const handleClick = async () => {
     if (!recordId) {
@@ -71,10 +73,16 @@ export default function DoDEnforcementButton({
         setValidationState('failed');
         setValidationErrors(errorMessages.length ? errorMessages : ['Validation failed']);
 
-        // Show validation errors in alert
-        const errorMessage =
-          errorMessages.join('\n') || 'Please complete all required fields before proceeding.';
-        alert(`Cannot proceed:\n\n${errorMessage}`);
+        // A toast rather than a browser alert, and it carries the DETAIL: the
+        // badge below this button shows only a count, and a setTimeout clears
+        // it after two seconds, so the alert was the only way to learn what was
+        // actually wrong (WF-S-08).
+        toast({
+          title: 'Cannot proceed',
+          description:
+            errorMessages.join(' ') || 'Please complete all required fields before proceeding.',
+          variant: 'destructive',
+        });
 
         // Reset state after showing error
         setTimeout(() => setValidationState('idle'), 2000);
@@ -82,7 +90,11 @@ export default function DoDEnforcementButton({
     } catch (error) {
       console.error('DoD validation error:', error);
       setValidationState('failed');
-      alert('Unable to validate requirements. Please try again.');
+      toast({
+        title: 'Could not validate requirements',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
       setTimeout(() => setValidationState('idle'), 2000);
     }
   };

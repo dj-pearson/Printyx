@@ -45,18 +45,10 @@ function pricingSection(): string {
   const lines = PRICING_PLANS.map((plan) => {
     const monthly = `${formatUsd(plan.monthlyPrice)}/month`;
     const annual = `${formatUsd(plan.annualPrice)}/year`;
-    const cap =
-      plan.maxUsers === 'unlimited'
-        ? 'unlimited users'
-        : `up to ${plan.maxUsers} users`;
+    const cap = plan.maxUsers === 'unlimited' ? 'unlimited users' : `up to ${plan.maxUsers} users`;
     return `- ${plan.name.replace(/^Printyx /, '')}: ${monthly} or ${annual}, ${cap}, ${plan.trialDays}-day trial`;
   });
-  return [
-    '## Pricing',
-    'Prices are per tenant, not per seat.',
-    '',
-    ...lines,
-  ].join('\n');
+  return ['## Pricing', 'Prices are per tenant, not per seat.', '', ...lines].join('\n');
 }
 
 function links(): string {

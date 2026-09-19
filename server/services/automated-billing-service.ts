@@ -23,6 +23,7 @@ import {
   invoiceGenerationLogs,
 } from '@shared/schema';
 import { billingEngine } from './billing-engine-service';
+import { addMonths, subtractMonths } from '@shared/date-months';
 
 export interface ScheduledBillingRun {
   scheduleId: string;
@@ -310,12 +311,15 @@ class AutomatedBillingService {
       case 'weekly':
         start.setDate(start.getDate() - 7);
         break;
+      // The setDate(1) below used to hide half of this: setMonth overflows, so
+      // on 31 March month - 1 landed in MARCH and setDate(1) tidied it to
+      // 1 March - a billing period that began a month late (DATE-SETMONTH-001).
       case 'monthly':
-        start.setMonth(start.getMonth() - 1);
+        start.setTime(subtractMonths(start, 1).getTime());
         start.setDate(1);
         break;
       case 'quarterly':
-        start.setMonth(start.getMonth() - 3);
+        start.setTime(subtractMonths(start, 3).getTime());
         start.setDate(1);
         break;
       case 'annual':
@@ -324,7 +328,7 @@ class AutomatedBillingService {
         start.setDate(1);
         break;
       default:
-        start.setMonth(start.getMonth() - 1);
+        start.setTime(subtractMonths(start, 1).getTime());
     }
 
     start.setHours(0, 0, 0, 0);
@@ -344,17 +348,19 @@ class AutomatedBillingService {
       case 'weekly':
         next.setDate(next.getDate() + 7);
         break;
+      // The NEXT BILLING DATE. Nothing clamps it here, so a cycle anchored on
+      // the 31st drifted into the month after the one it meant.
       case 'monthly':
-        next.setMonth(next.getMonth() + 1);
+        next.setTime(addMonths(next, 1).getTime());
         break;
       case 'quarterly':
-        next.setMonth(next.getMonth() + 3);
+        next.setTime(addMonths(next, 3).getTime());
         break;
       case 'annual':
         next.setFullYear(next.getFullYear() + 1);
         break;
       default:
-        next.setMonth(next.getMonth() + 1);
+        next.setTime(addMonths(next, 1).getTime());
     }
 
     next.setHours(9, 0, 0, 0); // Default to 9 AM

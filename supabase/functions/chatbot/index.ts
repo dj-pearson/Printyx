@@ -44,11 +44,11 @@ export default async function handler(req: Request) {
     // Tenant comes from the verified JWT. The x-tenant-id header is a fallback
     // only — letting it win would let any authenticated user read another
     // tenant's workspace installs by spoofing a header.
+    // SEC-TENANT-003: app_metadata only. The two user_metadata terms this used
+    // to end with are a bag the session holder writes with
+    // supabase.auth.updateUser, so they could not be what the name claims.
     const jwtTenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string);
+      (user.app_metadata?.tenantId as string) || (user.app_metadata?.tenant_id as string);
     const headerTenantId = req.headers.get('x-tenant-id') || undefined;
     const isPlatformAdmin =
       user.app_metadata?.isPlatformAdmin === true || user.app_metadata?.role === 'platform_admin';
@@ -61,7 +61,14 @@ export default async function handler(req: Request) {
     }
 
     const admin = createSupabaseServiceClient();
-    let tenantId = jwtTenantId || headerTenantId;
+    // SEC-TENANT-003: the header is honoured ONLY for a platform admin. It used
+    // to sit ahead of the users-table lookup below, so a caller whose JWT
+    // carried no tenantId - a freshly provisioned user, a service caller, an
+    // account whose app_metadata was written by a path that never set it - got
+    // whatever tenant they asked for, and every .eq('tenant_id', tenantId) past
+    // this point filtered on it. The web client sends the header from
+    // localStorage, so it is a devtools edit away.
+    let tenantId = jwtTenantId || (isPlatformAdmin ? headerTenantId : undefined);
     if (!tenantId) {
       const { data: dbUser } = await admin
         .from('users')

@@ -13,6 +13,27 @@
  *   /:orderId/shipments + /shipments    → handlers/shipments.ts     (8)
  *   /:orderId/exceptions + /exceptions  → handlers/exceptions.ts    (7)
  *   /analytics/dashboard                → handlers/analytics.ts     (1)
+ *   /from-purchase-order                → handlers/from-purchase-order.ts (1)
+ *
+ * WF-P-06 DECISION: BUILD, not retire.
+ *
+ * This function had no caller in any of the seven client trees - the AUDIT-024
+ * shape - and the question CLAUDE.md attaches to that shape is whether you have
+ * found debt or unconnected work. It is unconnected work. Ordering from Canon,
+ * Ricoh or Xerox and tracking the confirmation and the shipment is what a
+ * dealer's purchasing desk does all day, six real tables in migration 0000
+ * model it, and manufacturer_orders.purchase_order_id was put there for exactly
+ * the join /from-purchase-order now makes. Retiring it would mean dropping six
+ * tables to avoid writing a dialog.
+ *
+ * WHAT IS BUILT: an approved PO becomes a manufacturer order with its lines,
+ * the PO moves to `ordered`, and a confirmation or a shipment carries the
+ * manufacturer's date back onto the PO's expected_date.
+ *
+ * WHAT IS NOT: the provider dispatch. /:id/submit persists the submission
+ * intent and says so; no EDI message or portal call leaves this function, and
+ * every /from-purchase-order response carries a warning saying so, because a
+ * button labelled "Place order" must not read as "sent" when it is not.
  *
  * One-time SQL:
  *   \i drizzle/rls/manufacturer-orders-tables.sql
@@ -32,6 +53,7 @@ import { handleConfirmations } from './handlers/confirmations.ts';
 import { handleShipments } from './handlers/shipments.ts';
 import { handleExceptions } from './handlers/exceptions.ts';
 import { handleAnalytics } from './handlers/analytics.ts';
+import { handleFromPurchaseOrder } from './handlers/from-purchase-order.ts';
 
 const log = createLogger('manufacturer-orders');
 
@@ -80,6 +102,10 @@ export default async function handler(req: Request) {
       result = await handleExceptions(req, { ...ctx, pathParts: parts.slice(1) });
     } else if (first === 'analytics' && second === 'dashboard') {
       result = await handleAnalytics(req, { ...ctx, pathParts: [] });
+    } else if (first === 'from-purchase-order' && !second) {
+      // WF-P-06. Before the core-orders fallthrough, or 'from-purchase-order'
+      // is read as an order id and answers 404 from the by-id branch.
+      result = await handleFromPurchaseOrder(req, { ...ctx, pathParts: [] });
     } else if (first && second === 'line-items') {
       // /:orderId/line-items[/bulk]
       result = await handleLineItems(req, {

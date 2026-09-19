@@ -15,8 +15,32 @@
 // "<requirement> verified" for every requirement. The dialog rendered that as a
 // green tick per row, so a technician saw "Data Wiped Confirmed - verified"
 // before disposing of a machine, and "Certificate Of Destruction - verified"
-// next to it. Nothing checked either. Requirements are reported here as
-// OUTSTANDING, because that is the only thing this data supports.
+// next to it. Nothing checked either. Requirements were reported here as
+// OUTSTANDING, because that was the only thing the data supported.
+//
+// WF-L-13 CHANGED THAT for eight of them. _shared/lifecycle-evidence.ts maps
+// each requirement to a QUERY, and the transition endpoint evaluates them
+// server-side and refuses a transition whose checkable evidence is absent. The
+// other seventeen have no table, no column and no writer, so they are reported
+// as unverifiable and cannot block - a gate nothing can open is not a gate, it
+// is an outage. Which is which lives in that module, not here.
+//
+// THE STAGE-LIST DECISION (WF-L-13, AC2), recorded here because this is the
+// file that would have to change.
+//
+// The question was whether to add explicit `qa_passed` and `accepted` stages
+// between received/staged and installed/active. THE ANSWER IS NO, and the
+// reason is that they would be states with no independent meaning: a unit has
+// passed QA exactly when a completed kitting operation says so, and it is
+// accepted exactly when an acceptance signature exists. Both are now queries.
+// Adding a stage for each would mean two places that can disagree about the
+// same fact - the row and the stage - and the stage would be the one a person
+// sets by hand.
+//
+// What DID change is the requirement list: `network_configured` joins
+// installed -> active beside acceptance_signed, because onboarding_network_config
+// can answer it (WF-L-10) and a machine that is not on the network is not
+// active in any sense a customer would recognise.
 
 export const LIFECYCLE_STAGES = {
   ORDERED: 'ordered',
@@ -75,6 +99,9 @@ export const TRANSITION_REQUIREMENTS: Record<string, Record<string, string[]>> =
       'configuration_backed_up',
       'customer_trained',
       'acceptance_signed',
+      // WF-L-13: added, and checkable. onboarding_network_config.is_configured
+      // answers it, so unlike the two above it can actually block.
+      'network_configured',
     ],
   },
   [LIFECYCLE_STAGES.ACTIVE]: {

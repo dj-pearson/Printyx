@@ -26,6 +26,9 @@
     "check:local-dates": "node scripts/check-local-dates.mjs",
     "check:currency-copies": "node scripts/check-currency-copies.mjs",
     "check:insert-tenant-id": "node scripts/check-insert-tenant-id.mjs",
+    "check:tenant-resolution": "node scripts/check-tenant-resolution.mjs",
+    "check:swallowed-writes": "tsx scripts/check-swallowed-write-errors.mts",
+    "check:story-orphans": "node scripts/check-passing-story-orphans.mjs",
     "check:orphans": "node scripts/check-orphan-files.mjs",
     "check:query-states": "node scripts/check-query-states.mjs",
     "check:fabricated": "node scripts/check-fabricated-fallbacks.mjs",
@@ -60,6 +63,7 @@
     "check:migrations": "node scripts/check-migration-journal.mjs",
     "check:no-mocks": "node scripts/check-no-mock-fallbacks.mjs",
     "check:no-static-posture": "node scripts/check-no-static-posture.mjs",
+    "check:server-fabricated": "node scripts/check-server-fabricated.mjs",
     "check:no-random-metrics": "node scripts/check-no-random-metrics.mjs",
     "check:unreferenced-edge-fns": "node scripts/check-unreferenced-edge-fns.mjs",
     "check:a11y-names": "node scripts/check-accessible-names.mjs",
@@ -194,7 +198,12 @@
     "check:sitemap": "tsx scripts/generate-sitemap.mts --check",
     "seo:social-images": "node scripts/generate-social-images.mjs",
     "check:seo-assets": "node scripts/check-seo-assets.mjs",
-    "seo:llms": "tsx scripts/generate-llms-txt.mts"
+    "seo:llms": "tsx scripts/generate-llms-txt.mts",
+    "creds:encrypt": "tsx scripts/encrypt-integration-credentials.ts",
+    "check:credential-vault": "node scripts/check-credential-vault.mjs",
+    "check:invalidation-keys": "node scripts/check-invalidation-keys.mjs",
+    "check:percent-math": "node scripts/check-percent-math.mjs",
+    "check:browser-dialogs": "node scripts/check-browser-dialogs.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

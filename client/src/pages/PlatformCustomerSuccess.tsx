@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -173,7 +174,7 @@ function mapTenants(raw: any): TenantHealth[] {
       activeUsers: 0,
       totalUsers: 0,
       loginFrequency: 0,
-      featureAdoption: totalFeatures > 0 ? Math.round((featuresAdopted / totalFeatures) * 100) : 0,
+      featureAdoption: Math.round(percentOfOr(featuresAdopted, totalFeatures)),
       mrr: br.current_mrr != null ? String(br.current_mrr) : '0',
       contractValue: br.current_mrr != null ? String(Number(br.current_mrr) * 12) : '0',
       contractEndDate: endDate ?? undefined,
@@ -228,7 +229,12 @@ export default function PlatformCustomerSuccess() {
 
   // Fetch tenant health data and map the real response to the UI shape (PA-036).
   const { data: tenants = [], isLoading } = useQuery<unknown, Error, TenantHealth[]>({
-    queryKey: ['/api/platform-cs/health-scores', selectedFilter, selectedCSM],
+    // Both selectors filter the loaded rows below (see `filtered`), so neither
+    // belongs in the key. As path segments they asked for
+    // /health-scores/all/ - which the edge function reads as
+    // /health-scores/:businessRecordId for a record called "all" - so this page
+    // has never loaded a row on either host.
+    queryKey: ['/api/platform-cs/health-scores'],
     select: (raw) => mapTenants(raw as any),
   });
 

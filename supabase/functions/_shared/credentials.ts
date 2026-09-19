@@ -71,7 +71,23 @@ export const DEFAULT_SENSITIVE_KEYS: readonly string[] = [
   'token',
 ];
 
-const DEFAULT_SET = new Set(DEFAULT_SENSITIVE_KEYS.map((k) => k.toLowerCase()));
+/**
+ * Key names are compared with separators removed, so `api_key`, `apiKey` and
+ * `API-KEY` all match the same entry.
+ *
+ * This was a lowercase-only comparison until SEC-CRED-VAULT-001, and the only
+ * caller in the tree - signatures/handlers/credentials.ts - hands it rows that
+ * PostgREST returns in snake_case. `'apiKey'.toLowerCase()` is `apikey`, the
+ * row's key is `api_key`, so the list, get, create and update responses all
+ * returned every credential column in full while looking redacted. Nothing
+ * reported it because the masking is invisible on a screen that never had a
+ * real key in it.
+ */
+function normalizeKey(key: string): string {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+const DEFAULT_SET = new Set(DEFAULT_SENSITIVE_KEYS.map(normalizeKey));
 
 export interface RedactOptions {
   /** Override the sensitive key list entirely. Case-insensitive. */
@@ -85,11 +101,11 @@ export interface RedactOptions {
 function resolveSet(opts: RedactOptions | undefined): Set<string> {
   if (!opts) return DEFAULT_SET;
   if (opts.sensitiveKeys) {
-    return new Set(opts.sensitiveKeys.map((k) => k.toLowerCase()));
+    return new Set(opts.sensitiveKeys.map(normalizeKey));
   }
   if (opts.extraKeys?.length) {
     const s = new Set(DEFAULT_SET);
-    for (const k of opts.extraKeys) s.add(k.toLowerCase());
+    for (const k of opts.extraKeys) s.add(normalizeKey(k));
     return s;
   }
   return DEFAULT_SET;
@@ -112,7 +128,7 @@ export function redactCredentials<T>(row: T, opts?: RedactOptions): T {
   const out: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(row as Record<string, unknown>)) {
-    if (keySet.has(key.toLowerCase())) {
+    if (keySet.has(normalizeKey(key))) {
       // Mask only when there's something to hide; preserve null/undefined/empty.
       if (value === null || value === undefined || value === '') {
         out[key] = value;
@@ -151,7 +167,7 @@ export function hasUnredactedCredentials(row: unknown, opts?: RedactOptions): bo
   if (!row || typeof row !== 'object') return false;
   const keySet = resolveSet(opts);
   for (const [key, value] of Object.entries(row as Record<string, unknown>)) {
-    if (value && keySet.has(key.toLowerCase()) && value !== (opts?.mask ?? MASK_VALUE)) {
+    if (value && keySet.has(normalizeKey(key)) && value !== (opts?.mask ?? MASK_VALUE)) {
       return true;
     }
   }

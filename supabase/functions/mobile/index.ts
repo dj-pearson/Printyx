@@ -4,6 +4,8 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveScope, rowInScope } from '../_shared/scope.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { WRITE_BATCH, writeInBatches } from '../_shared/batch-fetch.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -27,8 +29,13 @@ export default async function handler(req: Request) {
     }
 
     // Extract tenant ID from JWT metadata
-    const tenantId =
-      (user.app_metadata?.tenant_id as string) || (user.user_metadata?.tenant_id as string);
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
@@ -36,7 +43,6 @@ export default async function handler(req: Request) {
     }
 
     // Use service_role client for database operations (bypasses RLS)
-    const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
@@ -647,6 +653,7 @@ export default async function handler(req: Request) {
 
       // Process photo metadata
       if (body.photos && Array.isArray(body.photos)) {
+        const photoRows: Record<string, unknown>[] = [];
         for (const photoData of body.photos) {
           try {
             const data = {
@@ -668,21 +675,34 @@ export default async function handler(req: Request) {
               created_at: new Date().toISOString(),
             };
 
-            const { error } = await admin.from('service_photos').insert(data);
-
-            if (error) {
-              results.photos.errors.push(`Failed to create photo: ${error.message}`);
-            } else {
-              results.photos.created++;
-            }
+            photoRows.push(data);
           } catch (err) {
             results.photos.errors.push(`Photo processing error: ${err}`);
           }
         }
+
+        // PERF-NPLUS1-002: one insert per 200 photos rather than one per photo.
+        // A technician syncing a day's work offline posts every photo at once,
+        // and this was a round trip each in a request the app retries on
+        // timeout. onError keeps the per-photo failure message the response
+        // reports - a batched write that silently returned fewer rows would
+        // turn a named failure into a missing record.
+        results.photos.created = (
+          await writeInBatches(
+            photoRows,
+            (batch) => admin.from('service_photos').insert(batch).select('id'),
+            WRITE_BATCH,
+            (_row, error) =>
+              results.photos.errors.push(
+                `Failed to create photo: ${(error as { message?: string })?.message ?? error}`,
+              ),
+          )
+        ).length;
       }
 
       // Process time tracking entries
       if (body.timeEntries && Array.isArray(body.timeEntries)) {
+        const timeEntryRows: Record<string, unknown>[] = [];
         for (const entryData of body.timeEntries) {
           try {
             const data = {
@@ -697,21 +717,28 @@ export default async function handler(req: Request) {
               created_at: new Date().toISOString(),
             };
 
-            const { error } = await admin.from('time_tracking_entries').insert(data);
-
-            if (error) {
-              results.timeEntries.errors.push(`Failed to create time entry: ${error.message}`);
-            } else {
-              results.timeEntries.created++;
-            }
+            timeEntryRows.push(data);
           } catch (err) {
             results.timeEntries.errors.push(`Time entry processing error: ${err}`);
           }
         }
+
+        results.timeEntries.created = (
+          await writeInBatches(
+            timeEntryRows,
+            (batch) => admin.from('time_tracking_entries').insert(batch).select('id'),
+            WRITE_BATCH,
+            (_row, error) =>
+              results.timeEntries.errors.push(
+                `Failed to create time entry: ${(error as { message?: string })?.message ?? error}`,
+              ),
+          )
+        ).length;
       }
 
       // Process location history
       if (body.locationHistory && Array.isArray(body.locationHistory)) {
+        const locationRows: Record<string, unknown>[] = [];
         for (const locationData of body.locationHistory) {
           try {
             const data = {
@@ -728,19 +755,23 @@ export default async function handler(req: Request) {
               created_at: new Date().toISOString(),
             };
 
-            const { error } = await admin.from('location_history').insert(data);
-
-            if (error) {
-              results.locationHistory.errors.push(
-                `Failed to create location entry: ${error.message}`,
-              );
-            } else {
-              results.locationHistory.created++;
-            }
+            locationRows.push(data);
           } catch (err) {
             results.locationHistory.errors.push(`Location history processing error: ${err}`);
           }
         }
+
+        results.locationHistory.created = (
+          await writeInBatches(
+            locationRows,
+            (batch) => admin.from('location_history').insert(batch).select('id'),
+            WRITE_BATCH,
+            (_row, error) =>
+              results.locationHistory.errors.push(
+                `Failed to create location entry: ${(error as { message?: string })?.message ?? error}`,
+              ),
+          )
+        ).length;
       }
 
       const hasErrors =

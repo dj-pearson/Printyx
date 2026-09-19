@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -26,12 +27,8 @@ export default async function handler(req: Request) {
     }
 
     // Extract tenant ID from JWT metadata or header
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
@@ -39,7 +36,6 @@ export default async function handler(req: Request) {
     }
 
     // Use service_role client for database operations (bypasses RLS)
-    const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'cross-module');
@@ -171,10 +167,16 @@ export default async function handler(req: Request) {
         );
       }
 
+      // AUDIT-038: this handler DOES check ticketError above and 500s, so the
+      // `|| ticketNumber` fallback was unreachable - .single() gives a row or
+      // an error, never neither. Removed anyway, because the same expression
+      // three hundred lines down in schedule-maintenance had no error check in
+      // front of it and returned a made-up id at 200. One of these shapes being
+      // safe is what made the other one easy to miss.
       return createCorsResponse(
         {
           success: true,
-          ticketId: ticket?.id || ticketNumber,
+          ticketId: ticket.id,
           ticketNumber,
           customerId,
           equipmentId,
@@ -199,20 +201,27 @@ export default async function handler(req: Request) {
       const availableParts: string[] = [];
       const unavailableParts: string[] = [];
 
-      if (requiredParts && Array.isArray(requiredParts)) {
-        for (const partId of requiredParts) {
-          const { data: part } = await admin
-            .from('inventory')
-            .select('id, quantity')
-            .eq('id', partId)
-            .eq('tenant_id', tenantId)
-            .single();
+      // PERF-NPLUS1-002: one read for the whole parts list rather than one per
+      // part. The list is caller-supplied, so its length is a technician's
+      // parts request and not a constant - and .single() per id also THREW on
+      // a part this tenant does not have, where the answer wanted is
+      // "unavailable". A part missing from the result is unavailable now,
+      // which is both faster and the correct answer.
+      if (requiredParts && Array.isArray(requiredParts) && requiredParts.length > 0) {
+        const ids = [...new Set(requiredParts.map((p: unknown) => String(p)))];
+        const { data: parts } = await admin
+          .from('inventory')
+          .select('id, quantity')
+          .eq('tenant_id', tenantId)
+          .in('id', ids);
 
-          if (part && part.quantity > 0) {
-            availableParts.push(partId);
-          } else {
-            unavailableParts.push(partId);
-          }
+        const quantityById = new Map<string, number>();
+        for (const part of parts ?? []) {
+          quantityById.set(String(part.id), Number(part.quantity ?? 0));
+        }
+        for (const partId of requiredParts) {
+          if ((quantityById.get(String(partId)) ?? 0) > 0) availableParts.push(partId);
+          else unavailableParts.push(partId);
         }
       }
 
@@ -317,10 +326,26 @@ export default async function handler(req: Request) {
         .select()
         .single();
 
+      // AUDIT-038: ticketError was destructured and never read, so a failed
+      // insert answered 200 with `maintenanceId` falling back to the ticket
+      // NUMBER this handler had just made up - a caller storing that id had a
+      // reference to a ticket that does not exist.
+      if (ticketError || !ticket?.id) {
+        console.error('schedule-maintenance: service_tickets insert failed', ticketError);
+        return createCorsResponse(
+          {
+            error: 'Failed to schedule maintenance',
+            message: ticketError?.message ?? 'Service ticket was not created',
+          },
+          500,
+          req,
+        );
+      }
+
       return createCorsResponse(
         {
           success: true,
-          maintenanceId: ticket?.id || ticketNumber,
+          maintenanceId: ticket.id,
           equipmentId,
           customerId,
           maintenanceType,

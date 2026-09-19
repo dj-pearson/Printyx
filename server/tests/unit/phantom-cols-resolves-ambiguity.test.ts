@@ -74,7 +74,15 @@ describe('the baseline says why it grew', () => {
     const all = JSON.stringify(baseline.allowed);
     expect(all).not.toMatch(/purchase_orders\./);
     expect(all).not.toMatch(/users\.job_title/);
-    // Still open, and named in AUDIT-037 so the shrink is legible.
-    expect(all).toMatch(/blog_posts\./);
+    // blog_posts was 103 of the 195 entries and is gone as of 2026-09-18:
+    // migration 0082 renamed the content-marketing table out of the way, so
+    // `blog_posts` is the shape the 22 blog-* edge functions were written for.
+    // This line read `toMatch` while that was open.
+    expect(all).not.toMatch(/blog_posts\./);
+    // implementation_projects went with it, for a different reason worth
+    // knowing: 0080 had renamed that table away months ago and the journal
+    // replay could not follow a rename, so the guard kept reporting the old
+    // table's columns against the new declaration.
+    expect(all).not.toMatch(/implementation_projects\./);
   });
 });

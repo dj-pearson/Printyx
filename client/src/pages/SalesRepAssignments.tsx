@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
@@ -192,7 +193,7 @@ function RepOverviewTab({ reps, summary }: { reps: Rep[]; summary: RepsSummary }
           <div className="space-y-1">
             {reps.map((rep) => {
               const isExpanded = expandedRepId === rep.id;
-              const workloadPct = maxAccounts > 0 ? (rep.accountCount / maxAccounts) * 100 : 0;
+              const workloadPct = percentOfOr(rep.accountCount, maxAccounts);
 
               return (
                 <div key={rep.id} className="border rounded-lg">

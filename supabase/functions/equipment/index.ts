@@ -6,6 +6,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
 import { accessibleCustomerIds, applyCustomerScope, resolveScope } from '../_shared/scope.ts';
 import { lifecycleRowForReceivedUnit } from '../purchase-orders/_serialization.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -44,17 +45,18 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenant_id as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string);
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'equipment');
     const equipmentId = parts[0];

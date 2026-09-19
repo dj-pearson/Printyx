@@ -38,6 +38,7 @@ import { ContactManager } from '@/components/ContactManager';
 import { CustomerInvoices } from '@/components/customer/CustomerInvoices';
 import { CustomerServiceHistory } from '@/components/customer/CustomerServiceHistory';
 import { CustomerEquipment } from '@/components/customer/CustomerEquipment';
+import { AcceptanceRecords } from '@/components/field/AcceptanceRecords';
 import { CustomerSupplies } from '@/components/customer/CustomerSupplies';
 import { CustomerFinancials } from '@/components/customer/CustomerFinancials';
 import { CustomerProposals } from '@/components/customer/CustomerProposals';
@@ -2215,11 +2216,18 @@ export default function CustomerDetailHubspot() {
                 />
               </TabsContent>
 
-              <TabsContent value="equipment" className="mt-6">
+              <TabsContent value="equipment" className="mt-6 space-y-6">
                 <CustomerEquipment
                   customerId={customer?.id || ''}
                   customerName={customer?.companyName || 'Unknown Customer'}
                 />
+                {/* WF-L-07: the signature and checklist captured at delivery,
+                    beside the units they are about. Before this, a signature
+                    existed nowhere a person could find it. */}
+                <div>
+                  <h3 className="mb-3 text-lg font-semibold">Delivery acceptance</h3>
+                  <AcceptanceRecords customerId={customer?.id || ''} />
+                </div>
               </TabsContent>
 
               <TabsContent value="supplies" className="mt-6">

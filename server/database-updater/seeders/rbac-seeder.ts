@@ -714,6 +714,60 @@ const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     scopeLevel: 'location',
     riskLevel: 'high',
   },
+  // SEC-EDGE-002: two capabilities the route gates have always named and this
+  // catalogue never had, so both gates denied every role below platform admin.
+  // Added here rather than bent onto an unrelated code: "configure this tenant's
+  // Salesforce sync" and "see the margin on a comparable deal" are real and
+  // distinct, and pointing them at platform.config.manage or
+  // finance.reports.view_sensitive would have granted far more than the route
+  // needs.
+  // SEC-EDGE-001: nine navigation entries gate on these two - /settings itself,
+  // /seo, /workflow-automation, /white-label, /tenant-setup,
+  // /customer-number-settings, /deployment-readiness, /system-monitoring and
+  // /admin/system-settings - and the catalogue had neither, so every one was
+  // invisible to every role below platform admin. The route-gate half of this
+  // was SEC-EDGE-002; navigation-permissions.ts is the same defect on the side
+  // that decides what a user can SEE, and nothing was checking it.
+  {
+    name: 'View Settings',
+    code: 'admin.settings.view',
+    description: "See this tenant's configuration screens",
+    module: 'admin',
+    resourceType: 'settings',
+    action: 'view',
+    scopeLevel: 'company',
+    riskLevel: 'low',
+  },
+  {
+    name: 'Update Settings',
+    code: 'admin.settings.update',
+    description: "Change this tenant's configuration",
+    module: 'admin',
+    resourceType: 'settings',
+    action: 'update',
+    scopeLevel: 'company',
+    riskLevel: 'high',
+  },
+  {
+    name: 'Manage Integrations',
+    code: 'admin.settings.integrations',
+    description: "Configure this tenant's third-party integrations and field mappings",
+    module: 'admin',
+    resourceType: 'settings',
+    action: 'integrations',
+    scopeLevel: 'company',
+    riskLevel: 'high',
+  },
+  {
+    name: 'View Quote Margin',
+    code: 'sales.quote.view_margin',
+    description: 'See dealer cost and margin on a quote or a comparable deal',
+    module: 'sales',
+    resourceType: 'quote',
+    action: 'view_margin',
+    scopeLevel: 'company',
+    riskLevel: 'medium',
+  },
   {
     name: 'Manage Inventory',
     code: 'operations.inventory.manage',
@@ -2675,6 +2729,56 @@ export async function seedRBAC() {
       await grantBlog('COMPANY_ADMIN', permCode);
     }
     log.info(`✅ Granted ${blogMappingsCreated} blog permissions`);
+
+    // Step 6: the two codes SEC-EDGE-002 added, granted additively so an
+    // existing tenant picks them up on the next seed run without disturbing the
+    // static ROLE_TEMPLATES above - the same shape as the address-book and blog
+    // grants. Integration configuration is admin-only; margin visibility goes to
+    // the roles that quote and to the ones that manage quoting, and NOT to
+    // SALES_REP, because dealer cost on a comparable deal is the kind of number
+    // a rep can repeat to a customer.
+    log.info('\n🔐 Granting SEC-EDGE-002 permissions...');
+    const INTEGRATION_ROLE_CODES = ['PLATFORM_ADMIN', 'COMPANY_ADMIN', 'IT_ADMIN'];
+    const MARGIN_ROLE_CODES = [
+      'PLATFORM_ADMIN',
+      'COMPANY_ADMIN',
+      'VP_SALES',
+      'REGIONAL_SALES_DIRECTOR',
+      'SALES_MANAGER',
+      'SALES_SUPERVISOR',
+      'SOLUTIONS_CONSULTANT',
+    ];
+
+    let secMappingsCreated = 0;
+    const grantSec = async (roleCode: string, permCode: string) => {
+      const roleId = roleMap.get(roleCode);
+      const permId = permissionMap.get(permCode);
+      if (!roleId || !permId) return;
+      try {
+        await db.insert(rolePermissions).values({
+          roleId,
+          permissionId: permId,
+          effect: 'ALLOW',
+          isCustomized: false,
+        });
+        secMappingsCreated++;
+      } catch {
+        // Already granted — idempotent
+      }
+    };
+    for (const roleCode of INTEGRATION_ROLE_CODES) {
+      await grantSec(roleCode, 'admin.settings.integrations');
+      await grantSec(roleCode, 'admin.settings.update');
+    }
+    // Viewing settings reaches further down than changing them: a manager has
+    // to be able to open /settings to see how their own tenant is configured.
+    for (const roleCode of [...INTEGRATION_ROLE_CODES, 'SERVICE_MANAGER', 'SALES_MANAGER']) {
+      await grantSec(roleCode, 'admin.settings.view');
+    }
+    for (const roleCode of MARGIN_ROLE_CODES) {
+      await grantSec(roleCode, 'sales.quote.view_margin');
+    }
+    log.info(`✅ Granted ${secMappingsCreated} SEC-EDGE-002 permissions`);
 
     // Summary
     log.info('\n' + '='.repeat(60));

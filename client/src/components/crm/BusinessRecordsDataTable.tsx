@@ -26,6 +26,10 @@ import {
 } from '@/components/ui/bulk-operations-toolbar';
 import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
 import {
+  EnrollInSequenceDialog,
+  type EnrollableRecord,
+} from '@/components/leads/EnrollInSequenceDialog';
+import {
   Table as UITable,
   TableBody,
   TableCell,
@@ -55,6 +59,7 @@ import {
   Rows,
   Download,
   FileText,
+  Mail,
   Trash2,
   ChevronUp,
   ChevronDown,
@@ -248,6 +253,11 @@ export function BusinessRecordsDataTable({
 
   // Filter state
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
+  // WF-S-04: the records a bulk enroll is about. Held as rows rather than ids,
+  // because the enroll endpoint needs a valid email per recipient and the table
+  // already has them - resolving ids back to addresses would be a second round
+  // trip for data in scope.
+  const [enrollTargets, setEnrollTargets] = useState<EnrollableRecord[] | null>(null);
 
   const activeFilterCount = useMemo(
     () => Object.values(activeFilters).filter((v) => v && v !== 'all').length,
@@ -453,6 +463,28 @@ export function BusinessRecordsDataTable({
       onClick: () => handleBulkExport('json'),
     },
     {
+      // WF-S-04: enrolling a record in a drip sequence used to be reachable
+      // only from EmailSequencesPage, a standalone campaign screen where the
+      // rep had to type the address back in. Same endpoint, offered where the
+      // records are.
+      id: 'enroll-sequence',
+      label: 'Enroll in sequence',
+      icon: Mail,
+      onClick: (ids) => {
+        const byId = new Map(records.map((r: any) => [r.id, r]));
+        setEnrollTargets(
+          ids
+            .map((id) => byId.get(id))
+            .filter(Boolean)
+            .map((r: any) => ({
+              id: r.id,
+              email: r.primaryContactEmail ?? r.primary_contact_email ?? r.email ?? null,
+              name: r.companyName ?? r.company_name ?? null,
+            })),
+        );
+      },
+    },
+    {
       id: 'delete',
       label: 'Delete',
       icon: Trash2,
@@ -478,6 +510,15 @@ export function BusinessRecordsDataTable({
 
   return (
     <div className="space-y-4">
+      {/* WF-S-04 */}
+      <EnrollInSequenceDialog
+        open={Boolean(enrollTargets)}
+        onOpenChange={(open) => {
+          if (!open) setEnrollTargets(null);
+        }}
+        records={enrollTargets ?? []}
+      />
+
       {/* Quick Filter Tabs */}
       {quickFilterTabs && quickFilterTabs.length > 0 && (
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">

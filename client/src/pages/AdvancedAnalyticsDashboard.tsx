@@ -231,7 +231,6 @@ const formatPercentage = (value: number) => {
 
 export default function AdvancedAnalyticsDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState('last-30-days');
-  const [selectedSegment, setSelectedSegment] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
 
   // Fetch analytics dashboard data
@@ -240,7 +239,11 @@ export default function AdvancedAnalyticsDashboard() {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['/api/analytics/dashboard', selectedPeriod, selectedSegment],
+    // selectedSegment was the second half of this key and nothing ever set it -
+    // no Select was bound to it - so it contributed a constant "all" segment to
+    // the URL. Deleted rather than wired: there is no segment column on any of
+    // the four tables the dashboard branch counts.
+    queryKey: [`/api/analytics/dashboard?period=${selectedPeriod}`],
     select: (data: any) => ({
       ...data,
       customerAnalytics: {

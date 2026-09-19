@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -22,17 +23,18 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenant_id as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string);
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'activities');
     const activityId = parts[0];
@@ -65,7 +67,10 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(`subject.ilike.%${search}%,notes.ilike.%${search}%`);
+        // AUDIT-037: the column is `description`; `notes` is not one, so any
+        // search on this list came back 42703. The insert below had already
+        // been corrected to description and this filter had not.
+        query = query.or(`subject.ilike.%${search}%,description.ilike.%${search}%`);
       }
 
       const { data: activities, error, count } = await query;

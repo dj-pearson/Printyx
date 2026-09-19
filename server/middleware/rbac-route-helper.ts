@@ -162,16 +162,22 @@ export const PERMISSIONS = {
       ASSIGN: 'service.ticket.assign',
       ESCALATE: 'service.ticket.escalate',
     },
+    // SEC-EDGE-002: dispatch and technician management are the SCHEDULE
+    // capability in the seeded catalogue - there is no service.dispatch.* or
+    // service.technician.* code anywhere. /technician-management and
+    // /service-dispatch are both gated on service.schedule.manage or
+    // service.ticket.assign in navigation-permissions.ts, so these repoint onto
+    // the same pair.
     DISPATCH: {
-      VIEW: 'service.dispatch.view',
-      SCHEDULE: 'service.dispatch.schedule',
-      REASSIGN: 'service.dispatch.reassign',
-      OPTIMIZE: 'service.dispatch.optimize',
+      VIEW: 'service.schedule.view_team',
+      SCHEDULE: 'service.schedule.manage',
+      REASSIGN: 'service.ticket.assign',
+      OPTIMIZE: 'service.schedule.manage',
     },
     TECHNICIAN: {
-      VIEW: 'service.technician.view',
-      MANAGE: 'service.technician.manage',
-      ASSIGN_TERRITORY: 'service.technician.assign_territory',
+      VIEW: 'service.schedule.view_team',
+      MANAGE: 'service.schedule.manage',
+      ASSIGN_TERRITORY: 'service.schedule.manage',
     },
     EQUIPMENT: {
       VIEW: 'service.equipment.view',
@@ -194,26 +200,38 @@ export const PERMISSIONS = {
   },
 
   // Inventory Module
+  // SEC-EDGE-002: these named an `inventory.*` vocabulary the RBAC seeder has
+  // never created - it spells the same capabilities `operations.*` - so every
+  // gate here denied every role below platform admin. The VALUES are repointed
+  // at the seeded codes rather than the keys being renamed, because the keys are
+  // what 24 route files read and the codes are what `rolePermissions` rows are
+  // keyed on. navigation-permissions.ts already gates the matching PAGES on
+  // exactly these codes, so a route and its page now agree.
+  //
+  // The seeder has no create/delete for inventory; `operations.inventory.manage`
+  // IS the write capability, so create, update and delete all resolve to it. A
+  // finer split needs new codes in the seeder AND a role to hold them, which is
+  // a seeding change and not a gate change.
   INVENTORY: {
     ITEM: {
-      VIEW: 'inventory.item.view',
-      CREATE: 'inventory.item.create',
-      UPDATE: 'inventory.item.update',
-      DELETE: 'inventory.item.delete',
-      ADJUST: 'inventory.item.adjust',
+      VIEW: 'operations.inventory.view',
+      CREATE: 'operations.inventory.manage',
+      UPDATE: 'operations.inventory.manage',
+      DELETE: 'operations.inventory.manage',
+      ADJUST: 'operations.inventory.adjust',
     },
     WAREHOUSE: {
-      VIEW: 'inventory.warehouse.view',
-      MANAGE: 'inventory.warehouse.manage',
-      TRANSFER: 'inventory.warehouse.transfer',
+      VIEW: 'operations.warehouse.pick',
+      MANAGE: 'operations.warehouse.manage',
+      TRANSFER: 'operations.inventory.transfer',
     },
     PURCHASE_ORDER: {
-      VIEW: 'inventory.po.view',
-      CREATE: 'inventory.po.create',
-      EDIT: 'inventory.po.edit',
-      DELETE: 'inventory.po.delete',
-      APPROVE: 'inventory.po.approve',
-      RECEIVE: 'inventory.po.receive',
+      VIEW: 'operations.po.view',
+      CREATE: 'operations.po.create',
+      EDIT: 'operations.po.create',
+      DELETE: 'operations.po.approve',
+      APPROVE: 'operations.po.approve',
+      RECEIVE: 'operations.warehouse.receive',
     },
   },
 

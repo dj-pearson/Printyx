@@ -13,7 +13,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { DashboardBuilder } from './DashboardBuilder';
-import { getDefaultLayout, type LayoutWidgetConfig } from '@/lib/dashboard-widget-registry';
+import {
+  getDefaultLayout,
+  resolveRoleLayoutKey,
+  type LayoutWidgetConfig,
+} from '@/lib/dashboard-widget-registry';
 import { apiRequest } from '@/lib/queryClient';
 import { DashboardSkeleton } from '@/components/ui/skeletons';
 
@@ -22,37 +26,22 @@ export function RoleBasedDashboard() {
   const { level, isPlatformUser, roleCode, permissions, isLoaded } = usePermissions();
   const queryClient = useQueryClient();
 
-  // Resolve the effective role code
-  const effectiveRoleCode = useMemo(() => {
-    if (isPlatformUser) return 'PLATFORM_ADMIN';
-    if (roleCode) return roleCode.toUpperCase();
-
-    // Fallback: map from user role object
-    const role = user?.role;
-    if (role?.code) return role.code.toUpperCase();
-
-    // Infer from level
-    if (level >= 7) return 'EXECUTIVE';
-    if (level >= 6) return 'COMPANY_ADMIN';
-    if (level >= 5) return 'REGIONAL_MANAGER';
-    if (level >= 4) return 'LOCATION_MANAGER';
-
-    // Infer from department
-    const dept = role?.department?.toLowerCase();
-    if (dept === 'sales') {
-      if (level >= 3) return 'SALES_MANAGER';
-      if (level >= 2) return 'SALES_SUPERVISOR';
-      return 'SALES_REP';
-    }
-    if (dept === 'service') {
-      if (level >= 3) return 'SERVICE_MANAGER';
-      if (level >= 2) return 'SERVICE_SUPERVISOR';
-      return 'TECHNICIAN';
-    }
-    if (dept === 'finance') return 'FINANCE_MANAGER';
-
-    return 'DEFAULT';
-  }, [user, level, isPlatformUser, roleCode]);
+  // Resolve the effective role code (WF-R-10).
+  //
+  // The resolution moved into dashboard-widget-registry.ts so it can be tested
+  // against every code migration 0072 seeds without mounting this component.
+  // What lived here tested `if (roleCode)` first, and roleCode was always
+  // truthy, so nothing below that line had ever run.
+  const effectiveRoleCode = useMemo(
+    () =>
+      resolveRoleLayoutKey({
+        code: roleCode || user?.role?.code,
+        level,
+        department: user?.role?.department,
+        isPlatformUser,
+      }),
+    [user, level, isPlatformUser, roleCode],
+  );
 
   // Load user's saved layout from backend
   const { data: savedLayout, isLoading: layoutLoading } = useQuery({

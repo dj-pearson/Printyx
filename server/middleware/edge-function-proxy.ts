@@ -314,6 +314,10 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/demos': 'demos',
     '/api/deals': 'deals',
     '/api/contacts': 'contacts',
+    // WF-S-06: the CRM Goals page. Its eleven endpoints now all live in the crm
+    // edge function, so dev and prod run the same code and
+    // server/routes-crm-goals.ts is gone.
+    '/api/crm': 'crm',
     '/api/opportunities': 'opportunities',
     '/api/quotes': 'quotes',
     '/api/proposals': 'proposals',
@@ -342,6 +346,86 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/users': 'users',
     '/api/vendors': 'vendors',
     '/api/webhooks': 'webhooks',
+
+    // WF-L-07. Nothing else serves /api/field-service, so a plain entry is safe:
+    // server/routes/field-service-routes.ts mounts its installations,
+    // installation-checklists and service-signatures paths at the /api ROOT, a
+    // different prefix - and every one of its handlers reads req.session.user,
+    // which nothing assigns, so all seven answer 401 regardless
+    // (SEC-SESSION-001). The edge function is the only real path and had no
+    // caller in any of the seven client trees until this story.
+    '/api/field-service': 'field-service',
+
+    // WF-L-06. /api/equipment-lifecycle is SCOPED PER PATH for the same reason
+    // /api/dashboard below is: server/routes-equipment-lifecycle-state-machine.ts
+    // mounts at the /api ROOT and owns /:equipmentId/transition,
+    // /:equipmentId/transitions, /:equipmentId/available-transitions,
+    // /:equipmentId/can-transition/:toStage and the two rollback paths. A bare
+    // entry would take a working dev router off Express for paths this story has
+    // no business touching.
+    //
+    // These seven are the ones WF-L-02 and WF-L-06 own, and NONE of them has an
+    // Express handler at all - they existed only on the edge function, so dev
+    // got a 404 where production worked. That is the rarer direction of the
+    // split and the reason the Delivery tab had nothing to render even after
+    // WF-L-02 built its backend.
+    '/api/equipment-lifecycle/deliveries': {
+      fn: 'equipment-lifecycle',
+      pathPrefix: '/deliveries',
+    },
+    '/api/equipment-lifecycle/installations': {
+      fn: 'equipment-lifecycle',
+      pathPrefix: '/installations',
+    },
+    '/api/equipment-lifecycle/crew': { fn: 'equipment-lifecycle', pathPrefix: '/crew' },
+    '/api/equipment-lifecycle/metrics': { fn: 'equipment-lifecycle', pathPrefix: '/metrics' },
+    '/api/equipment-lifecycle/lifecycle': { fn: 'equipment-lifecycle', pathPrefix: '/lifecycle' },
+    '/api/equipment-lifecycle/assets': { fn: 'equipment-lifecycle', pathPrefix: '/assets' },
+    '/api/equipment-lifecycle/purchase-orders': {
+      fn: 'equipment-lifecycle',
+      pathPrefix: '/purchase-orders',
+    },
+
+    // DASH-METRICS-001. /api/dashboard is SCOPED PER PATH, not proxied whole,
+    // and that is deliberate: server/routes-dashboard-customization.ts mounts at
+    // the /api/dashboard ROOT and owns /layout, /preferences and /snapshot(s),
+    // which no edge function serves. A bare '/api/dashboard' entry would take
+    // that router off Express and give dev a 404 where it has working handlers -
+    // the exact failure the header above warns about. Same reasoning as the
+    // per-path /api/sales-pipeline entries.
+    //
+    // Order is load-bearing twice over. Express matches app.use prefixes in
+    // registration order, so /api/dashboard/widgets and /api/dashboard/user-layout
+    // come first: those two are served by `dashboard-widgets`, which
+    // supabase/functions/server.ts already routes them to in production. Nothing
+    // served them in DEV - registerDashboardWidgetRoutes was retired when that
+    // function landed and no proxy entry replaced it - so a saved dashboard
+    // layout 404'd locally while working in prod, the opposite of the usual
+    // split. /api/dashboard/widgets also shadows the customization router's own
+    // GET /widgets, which production could never reach either way.
+    //
+    // The rest go to `dashboard`, which now serves layouts, metrics/:type,
+    // charts/:type, activity, urgent, my-tasks, team-performance, recent-tickets,
+    // top-customers and alerts alongside card-config and modules. The three
+    // Express routers that owned those are deleted. One of them could never have
+    // worked at all: routes-dashboard-layouts read dashboard_layouts through the
+    // shared/reporting-schema declaration, and migration 0002 dropped four of the
+    // columns it filtered and inserted on, so Save on /custom-dashboard threw in
+    // dev and 404'd in prod.
+    '/api/dashboard/widgets': { fn: 'dashboard-widgets', pathPrefix: '/widgets' },
+    '/api/dashboard/user-layout': { fn: 'dashboard-widgets', pathPrefix: '/user-layout' },
+    '/api/dashboard/layouts': { fn: 'dashboard', pathPrefix: '/layouts' },
+    '/api/dashboard/metrics': { fn: 'dashboard', pathPrefix: '/metrics' },
+    '/api/dashboard/charts': { fn: 'dashboard', pathPrefix: '/charts' },
+    '/api/dashboard/activity': { fn: 'dashboard', pathPrefix: '/activity' },
+    '/api/dashboard/urgent': { fn: 'dashboard', pathPrefix: '/urgent' },
+    '/api/dashboard/my-tasks': { fn: 'dashboard', pathPrefix: '/my-tasks' },
+    '/api/dashboard/team-performance': { fn: 'dashboard', pathPrefix: '/team-performance' },
+    '/api/dashboard/recent-tickets': { fn: 'dashboard', pathPrefix: '/recent-tickets' },
+    '/api/dashboard/top-customers': { fn: 'dashboard', pathPrefix: '/top-customers' },
+    '/api/dashboard/alerts': { fn: 'dashboard', pathPrefix: '/alerts' },
+    '/api/dashboard/card-config': { fn: 'dashboard', pathPrefix: '/card-config' },
+    '/api/dashboard/modules': { fn: 'dashboard', pathPrefix: '/modules' },
 
     // EDGE-003: KPIs and reporting catalog/exports/dashboard live inside the
     // reports edge function (handlers/kpis.ts, handlers/reporting.ts).
@@ -687,6 +771,31 @@ export function registerEdgeFunctionProxy(app: any) {
     // CRMX-016: public Calendly-style booking pages + authenticated admin CRUD.
     '/api/public/booking': { fn: 'public-booking', pathPrefix: '/booking' },
     '/api/booking-pages': 'booking-pages',
+
+    // WF-S-05: Apollo lead enrichment. The whole prefix, because the edge fn
+    // now covers every path the frontend calls - search, enrich,
+    // leads/:id/add-to-crm, leads/bulk-add, stats, usage and the four
+    // credentials endpoints - and server/routes/apollo-routes.ts is gone. Until
+    // this entry existed, dev ran Express against the real Apollo API while
+    // production ran an edge function whose /search returned an empty list at
+    // 200, and whose credential panel 404'd.
+    '/api/apollo': 'apollo',
+
+    // WF-S-10: enrichment. The edge function serves every endpoint any client
+    // calls - DataEnrichment.tsx asks for contacts, companies, campaigns and
+    // analytics and nothing else, across all eight trees - and it carries the
+    // import branches that WRITE enriched_contacts.
+    // server/routes-data-enrichment.ts is deleted with this entry, so dev stops
+    // answering four endpoints production has always 404'd: GET /contacts/:id,
+    // POST /contacts, and the two /search/{zoominfo,apollo}/build helpers,
+    // which returned a query OBJECT for the caller to send itself and had no
+    // caller anywhere.
+    '/api/enrichment': 'enrichment',
+
+    // WF-P-06: placing an approved PO with the manufacturer. No Express router
+    // ever served this prefix, so proxying it is the whole of dev's story too -
+    // there is nothing to shadow.
+    '/api/manufacturer-orders': 'manufacturer-orders',
 
     // AI-001: /api/ai/gpt5/* → ai-gpt5 fn. Only the gpt5 sub-path is proxied;
     // the rest of /api/ai (ai-routes-simple) stays on Express, which is correct

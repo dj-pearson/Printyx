@@ -1,7 +1,7 @@
 /**
  * Every file that cannot authenticate anyone says so (SEC-SESSION-001).
  *
- * Twelve registered routers read `req.session.user` as their only source of
+ * Ten registered routers read `req.session.user` as their only source of
  * identity. Nothing assigns it - session login sets the flat req.session.userId
  * and the JWT path sets req.user - so each answers 401 in dev exactly as it does
  * in production, and has never run. The type augmentation makes them compile, so
@@ -40,9 +40,14 @@ describe('the baselined files are annotated, not just listed', () => {
     }
   });
 
-  it('covers all eleven, with no file left implicit', () => {
-    expect(baseline.files).toHaveLength(11);
-    expect(baseline.totalReads).toBe(365);
+  it('covers all ten, with no file left implicit', () => {
+    // WAS ELEVEN. WF-P-06 deleted server/routes/manufacturer-order-routes.ts,
+    // which was doubly dead: shadowed by the /api/manufacturer-orders proxy AND
+    // session-only, so all 43 of its handlers answered 401 in dev too. The edge
+    // function covers every endpoint it had.
+    expect(baseline.files).toHaveLength(10);
+    expect(baseline.totalReads).toBe(322);
+    expect(baseline.files).not.toContain('server/routes/manufacturer-order-routes.ts');
   });
 });
 

@@ -70,6 +70,7 @@ import { writeAuditLog, withRequestContext } from '../_shared/blog/audit-log.ts'
 import { generateCompletion } from '../_shared/anthropic.ts';
 import { extractJsonObject } from '../_shared/blog/llm-json.ts';
 import { encryptCredential } from '../_shared/credential-vault.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -101,19 +102,6 @@ function hasAnalyticsAccess(user: { app_metadata?: Record<string, unknown> }): b
   }
   const role = String(meta.role ?? '').toLowerCase();
   return role === 'platform_admin' || role === 'super_admin' || role === 'company_admin';
-}
-
-function resolveTenantId(user: {
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-}): string | null {
-  return (
-    (user.app_metadata?.tenantId as string) ||
-    (user.app_metadata?.tenant_id as string) ||
-    (user.user_metadata?.tenantId as string) ||
-    (user.user_metadata?.tenant_id as string) ||
-    null
-  );
 }
 
 // ===========================================================================
@@ -1724,10 +1712,14 @@ export default async function handler(req: Request) {
         req,
       );
     }
-    const tenantId = resolveTenantId(user) || req.headers.get('x-tenant-id');
+    // SEC-TENANT-003: one shape for tenant resolution. The JWT decides; a
+    // caller with no claim resolves through their users row; x-tenant-id is
+    // honoured only for a platform admin. The local copy this replaced also
+    // read user_metadata, which the session holder can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'blog-analytics-intel');
     const [a, b, c] = parts;

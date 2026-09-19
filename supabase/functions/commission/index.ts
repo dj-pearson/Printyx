@@ -5,8 +5,14 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { toNumber } from '../_shared/quote-math.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamel } from '../_shared/case.ts';
-import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import { applyUserScope, resolveScope, scopeRoleLevel } from '../_shared/scope.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import {
+  calculateCommission,
+  type PlanTier,
+  type ProductRate,
+} from '../_shared/commission-engine.ts';
 
 /**
  * A deal's amount as a number.
@@ -41,18 +47,13 @@ export default async function handler(req: Request) {
     }
 
     // Extract tenant ID
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
     // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
@@ -241,38 +242,15 @@ export default async function handler(req: Request) {
       return createCorsResponse(statements || [], 200, req);
     }
 
-    // GET /commission/my-earnings - Get current user's earnings
-    if (req.method === 'GET' && endpoint === 'my-earnings') {
-      const periodStart = new Date();
-      periodStart.setDate(1);
-      periodStart.setHours(0, 0, 0, 0);
-
-      const deals = await fetchAllRows<any>(() =>
-        admin
-          .from('deals')
-          .select('amount')
-          .eq('tenant_id', tenantId)
-          .eq('owner_id', user.id)
-          .eq('status', 'won')
-          .gte('actual_close_date', periodStart.toISOString()),
-      );
-
-      const totalSales = (deals ?? []).reduce((sum: number, d: any) => sum + dealAmount(d), 0);
-      const baseCommission = totalSales * 0.05;
-
-      return createCorsResponse(
-        {
-          periodStart: periodStart.toISOString(),
-          totalSales,
-          dealCount: deals?.length || 0,
-          estimatedCommission: baseCommission,
-          pendingPayment: baseCommission,
-          lastPayment: null,
-        },
-        200,
-        req,
-      );
-    }
+    // GET /commission/my-earnings - DELETED (WF-C-07).
+    //
+    // It computed a rep's pay as `totalSales * 0.05` - a flat five percent that
+    // no plan, tier or product rate had anything to do with - and no client
+    // tree called it, so nobody ever saw the number. CR-017 removed the same
+    // invention from the /calculations read path; this was its twin. AC3 offers
+    // "reads commission_calculations or is deleted", and deleting is right for
+    // an endpoint with no caller: a rep's earnings now come from
+    // GET /commission/calculations, which reads what the engine wrote.
 
     // POST /commission/plans - Create commission plan
     if (req.method === 'POST' && endpoint === 'plans') {
@@ -594,20 +572,254 @@ export default async function handler(req: Request) {
     // employee_commission_assignments (who is on which plan) and
     // commission_sales_transactions (what to pay on), writing
     // commission_calculations. Whoever builds it has the map.
+    // POST /commission/calculate - run the engine for one employee and period
+    //
+    // This answered 501 and said so honestly: no handler existed on Express
+    // either, so the Calculate button had never worked on any host. The schema
+    // was already complete; what was missing was the arithmetic, which now
+    // lives in _shared/commission-engine.ts so it can be tested against a
+    // worked example at every tier boundary rather than only against a
+    // database. That matters here more than usual: every figure is somebody's
+    // pay, and CR-017 found a flat five percent surviving in the read path
+    // precisely because nothing could check it cheaply.
     if (req.method === 'POST' && endpoint === 'calculate') {
+      const body = await req.json().catch(() => ({}));
+      const employeeId = body.employeeId ?? body.employee_id;
+      const periodStart = body.periodStart ?? body.period_start;
+      const periodEnd = body.periodEnd ?? body.period_end;
+
+      if (!employeeId || !periodStart || !periodEnd) {
+        return createCorsResponse(
+          { error: 'employeeId, periodStart and periodEnd are required' },
+          400,
+          req,
+        );
+      }
+
+      // A rep may only calculate their own; a manager may calculate anyone's.
+      // Level 6 is where sales.commission.approve is granted, so the same rung
+      // decides who can compute for somebody else.
+      const roleLevel = scopeRoleLevel(user.app_metadata);
+      if (employeeId !== user.id && roleLevel < 6) {
+        return createCorsResponse(
+          { error: "Calculating another employee's commission requires a manager role" },
+          403,
+          req,
+        );
+      }
+
+      const { data: assignment } = await admin
+        .from('employee_commission_assignments')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('employee_id', employeeId)
+        .eq('is_active', true)
+        .order('effective_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!assignment?.plan_id) {
+        return createCorsResponse(
+          {
+            error: 'No active commission plan is assigned to this employee',
+            code: 'NO_PLAN_ASSIGNED',
+          },
+          400,
+          req,
+        );
+      }
+
+      const [{ data: plan }, { data: tiers }, { data: productRates }] = await Promise.all([
+        admin.from('commission_plans').select('*').eq('id', assignment.plan_id).maybeSingle(),
+        admin.from('commission_plan_tiers').select('*').eq('plan_id', assignment.plan_id),
+        admin.from('commission_product_rates').select('*').eq('plan_id', assignment.plan_id),
+      ]);
+
+      // What to pay on: deals this employee closed won inside the period.
+      // actual_close_date, not closed_at - the column `deals` has never had.
+      const { data: wonDeals, error: dealsError } = await admin
+        .from('deals')
+        .select('id, amount, deal_type, customer_id, company_name, actual_close_date')
+        .eq('tenant_id', tenantId)
+        .eq('owner_id', employeeId)
+        .eq('status', 'won')
+        .gte('actual_close_date', periodStart)
+        .lte('actual_close_date', periodEnd);
+
+      if (dealsError) {
+        console.error('Error reading won deals for commission:', dealsError);
+        return createCorsResponse({ error: 'Failed to read sales for the period' }, 500, req);
+      }
+
+      const result = calculateCommission({
+        sales: (wonDeals ?? []).map((d: any) => ({
+          id: d.id,
+          amount: d.amount,
+          category: d.deal_type ?? null,
+          customerId: d.customer_id ?? null,
+          customerName: d.company_name ?? null,
+          closedAt: d.actual_close_date ?? null,
+        })),
+        tiers: (tiers ?? []) as PlanTier[],
+        productRates: (productRates ?? []) as ProductRate[],
+        assignment,
+        minimumPayment: plan?.minimum_commission_payment ?? null,
+      });
+
+      // A calculation is DRAFT until somebody approves it. Writing it as
+      // approved would make the approve action below decorative.
+      const { data: calculation, error: calcError } = await admin
+        .from('commission_calculations')
+        .insert({
+          tenant_id: tenantId,
+          employee_id: employeeId,
+          plan_id: assignment.plan_id,
+          calculation_period_start: periodStart,
+          calculation_period_end: periodEnd,
+          period_name: body.periodName ?? `${periodStart} to ${periodEnd}`,
+          total_sales: result.totalSales,
+          quota_target: result.quotaTarget,
+          quota_achievement: result.quotaAchievement,
+          gross_commission: result.grossCommission,
+          total_bonuses: result.totalBonuses,
+          total_adjustments: 0,
+          net_commission: result.netCommission,
+          status: 'draft',
+          calculated_at: new Date().toISOString(),
+          calculated_by: user.id,
+          notes: result.unbacked.length ? result.unbacked.join(' ') : null,
+        })
+        .select()
+        .maybeSingle();
+
+      if (calcError || !calculation) {
+        console.error('Error writing commission calculation:', calcError);
+        return createCorsResponse(
+          { error: 'Failed to save the calculation', message: calcError?.message },
+          500,
+          req,
+        );
+      }
+
+      // The detail rows are what a rep disputes against, so a failure to write
+      // them is reported rather than swallowed - a calculation with a total and
+      // no breakdown is worse than none.
+      const writeErrors: string[] = [];
+      if (result.lines.length) {
+        const { error } = await admin.from('commission_calculation_details').insert(
+          result.lines.map((line) => ({
+            calculation_id: calculation.id,
+            category: line.category,
+            category_name: line.categoryName,
+            sales_amount: line.salesAmount,
+            commission_rate: line.commissionRate,
+            commission_amount: line.commissionAmount,
+            description: line.description,
+          })),
+        );
+        if (error) writeErrors.push(`detail lines: ${error.message}`);
+      }
+
+      const earned = result.bonuses.filter((b) => b.eligibilityMet);
+      if (earned.length) {
+        const { error } = await admin.from('commission_bonuses').insert(
+          earned.map((b) => ({
+            calculation_id: calculation.id,
+            bonus_type: b.bonusType,
+            description: b.description,
+            amount: b.amount,
+            eligibility_met: b.eligibilityMet,
+            eligibility_criteria: b.eligibilityCriteria,
+          })),
+        );
+        if (error) writeErrors.push(`bonuses: ${error.message}`);
+      }
+
       return createCorsResponse(
         {
-          error: 'Commission calculation is not implemented',
-          code: 'COMMISSION_ENGINE_NOT_BUILT',
-          details:
-            'No handler exists on Express either, so this is a feature rather than a port. The ' +
-            'tables it would need are commission_plans, commission_plan_tiers, ' +
-            'commission_product_rates, employee_commission_assignments and ' +
-            'commission_sales_transactions, writing results to commission_calculations.',
+          calculation: toCamel(calculation),
+          lines: result.lines,
+          bonuses: result.bonuses,
+          tier: result.tier,
+          salesCounted: (wonDeals ?? []).length,
+          belowMinimum: result.belowMinimum,
+          unbacked: result.unbacked,
+          ...(writeErrors.length ? { partialWriteErrors: writeErrors } : {}),
         },
-        501,
+        writeErrors.length ? 207 : 201,
         req,
       );
+    }
+
+    // POST /commission/calculations/:id/approve - AC4
+    //
+    // Gated on sales.commission.approve, which the module-and-level derivation
+    // grants at level 6 with the sales module - so it is SATISFIABLE, unlike
+    // the 77 gates SEC-EDGE-002 found naming codes no seeder creates. Checked
+    // rather than assumed: navigation-permissions.ts:1103 and
+    // _shared/permission-expansion.ts:77 both emit it.
+    if (
+      req.method === 'POST' &&
+      endpoint === 'calculations' &&
+      resourceId &&
+      parts[2] === 'approve'
+    ) {
+      const permissions = (user.app_metadata?.permissions ?? []) as string[];
+      const mayApprove =
+        scopeRoleLevel(user.app_metadata) >= 6 ||
+        (Array.isArray(permissions) && permissions.includes('sales.commission.approve'));
+
+      if (!mayApprove) {
+        return createCorsResponse(
+          { error: 'Approving commission requires sales.commission.approve', code: 'FORBIDDEN' },
+          403,
+          req,
+        );
+      }
+
+      const { data: existing } = await admin
+        .from('commission_calculations')
+        .select('id, employee_id, status')
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (!existing) return createCorsResponse({ error: 'Calculation not found' }, 404, req);
+
+      // Nobody approves their own pay.
+      if (existing.employee_id === user.id) {
+        return createCorsResponse(
+          { error: 'A commission calculation cannot be approved by the employee it pays' },
+          403,
+          req,
+        );
+      }
+      if (existing.status === 'approved') {
+        return createCorsResponse({ error: 'Already approved' }, 400, req);
+      }
+
+      const { data: updated, error } = await admin
+        .from('commission_calculations')
+        .update({
+          status: 'approved',
+          approved_at: new Date().toISOString(),
+          approved_by: user.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .maybeSingle();
+
+      if (error || !updated) {
+        console.error('Error approving commission calculation:', error);
+        return createCorsResponse(
+          { error: 'Failed to approve', message: error?.message },
+          500,
+          req,
+        );
+      }
+      return createCorsResponse(toCamel(updated), 200, req);
     }
 
     // Method/endpoint not found

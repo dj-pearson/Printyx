@@ -147,8 +147,18 @@ describe('GET /calculations reads what was calculated', () => {
     expect(branch).toMatch(/createCorsResponse\(\[\], 200, req\)/);
   });
 
-  it('leaves POST /calculate answering 501 rather than writing invented pay', () => {
-    expect(edge).toContain('COMMISSION_ENGINE_NOT_BUILT');
+  it('is fed by a real engine now, not by a 501 or an invented rate', () => {
+    // CORRECTED 2026-09-18 (WF-C-07). This asserted the 501, which was right
+    // while the alternative was the flat five percent CR-017 had just removed
+    // from this same branch: answering "not built" beat answering with invented
+    // pay. The engine exists now - _shared/commission-engine.ts, tiers read
+    // from commission_plan_tiers - so the list reads rows something actually
+    // calculated.
+    expect(edge).not.toContain('COMMISSION_ENGINE_NOT_BUILT');
+    expect(edge).toContain('calculateCommission({');
+
+    // The thing that must NOT come back, in either branch.
+    expect(edge).not.toMatch(/\* 0\.05/);
   });
 });
 

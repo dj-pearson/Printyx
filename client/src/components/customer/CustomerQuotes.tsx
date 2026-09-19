@@ -118,7 +118,9 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
     isLoading,
     refetch,
   } = useQuery<Quote[]>({
-    queryKey: ['/api/quotes', 'customer', customerId],
+    // Same shape as CustomerContracts: the quotes function reads parts[0] as a
+    // QUOTE id, so this 404'd rather than filtering. ?customerId is the filter.
+    queryKey: [`/api/quotes?customerId=${customerId}`],
     enabled: !!customerId,
   });
 

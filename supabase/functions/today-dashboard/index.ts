@@ -1,8 +1,10 @@
 // Today Dashboard Edge Function
 // Handles today's dashboard data
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+import { mergeCrewDay } from '../_shared/delivery-scheduling.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -22,18 +24,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayIso = today.toISOString();
@@ -41,19 +38,37 @@ export default async function handler(req: Request) {
 
     // GET /today-dashboard - Get today's dashboard data
     if (req.method === 'GET') {
-      // Get today's appointments
-      const { data: appointments } = await admin
-        .from('appointments')
-        .select(
-          `
-          *,
-          customer:customer_id (id, company_name)
-        `,
-        )
-        .eq('tenant_id', tenantId)
-        .gte('start_time', todayIso)
-        .lt('start_time', tomorrowIso)
-        .order('start_time', { ascending: true });
+      // WF-L-06: TODAY'S APPOINTMENTS ARE DELIVERIES AND INSTALLS.
+      //
+      // This read `appointments`, a table with no schema, no migration and no
+      // writer anywhere - so `.data` came back null, the `|| []` below turned
+      // that into an empty list, and the iOS app's Today screen has shown zero
+      // appointments for every tenant since it shipped. A missing relation that
+      // reads as "nothing scheduled" is the AUDIT-028 shape, and it is worse
+      // here than a 500 would have been.
+      //
+      // delivery_schedules and installation_schedules are the real tables and
+      // they are what a dealer's day is made of. scheduled_date holds a
+      // calendar date at UTC midnight, so the window is a day boundary and the
+      // upper bound is exclusive (DATE-LOCAL-002).
+      const [deliveryRows, installRows] = await Promise.all([
+        admin
+          .from('delivery_schedules')
+          .select('id, equipment_id, customer_id, scheduled_date, time_window, status, driver_id')
+          .eq('tenant_id', tenantId)
+          .gte('scheduled_date', todayIso)
+          .lt('scheduled_date', tomorrowIso),
+        admin
+          .from('installation_schedules')
+          .select(
+            'id, equipment_id, customer_id, scheduled_date, estimated_duration, status, technician_id',
+          )
+          .eq('tenant_id', tenantId)
+          .gte('scheduled_date', todayIso)
+          .lt('scheduled_date', tomorrowIso),
+      ]);
+
+      const appointments = mergeCrewDay(deliveryRows.data ?? [], installRows.data ?? []);
 
       // Get today's tasks
       const { data: tasks } = await admin

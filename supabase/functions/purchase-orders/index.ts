@@ -40,6 +40,8 @@ import {
   unscopedAtLevel,
 } from '../_shared/scope.ts';
 import { hasPermissionClaim } from '../_shared/permission-claim.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { writeInBatches } from '../_shared/batch-fetch.ts';
 
 // Valid PO statuses
 const PO_STATUSES = [
@@ -76,8 +78,13 @@ export default async function handler(req: Request) {
     }
 
     // Extract tenant ID from JWT metadata
-    const tenantId =
-      (user.app_metadata?.tenant_id as string) || (user.user_metadata?.tenant_id as string);
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
@@ -85,7 +92,6 @@ export default async function handler(req: Request) {
     }
 
     // Use service_role client for database operations (bypasses RLS)
-    const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'purchase-orders');
@@ -840,34 +846,65 @@ export default async function handler(req: Request) {
         customerId: po.customer_id ?? null,
       });
 
+      // PERF-NPLUS1-002: two inserts per serial became one insert per table for
+      // the whole receipt, with a per-row retry ONLY when the batch fails.
+      //
+      // The retry is not optional here: a serial already in the table is a
+      // UNIQUE violation, it is the commonest outcome on a re-submitted
+      // receipt, and the caller is told which serial and why. PostgREST fails
+      // the whole statement on that one row, so a bare batch would turn one
+      // duplicate into "nothing received" with no explanation. Batch first,
+      // attribute row by row only when something actually went wrong.
       const created: Record<string, unknown>[] = [];
       const failed: Array<{ serialNumber: string; reason: string }> = [];
-      for (const row of plan.equipment) {
-        const { data: unit, error: insertError } = await admin
-          .from('equipment')
-          .insert(row)
-          .select('id, serial_number, purchase_order_item_id')
-          .single();
+      const selectUnit = 'id, serial_number, purchase_order_item_id';
 
-        if (insertError || !unit) {
-          // The commonest one is a serial already in the table - it is UNIQUE
-          // across the whole tenant set - and that is a real answer, not a fault.
-          console.error('Error creating equipment from receipt:', insertError);
-          failed.push({
-            serialNumber: String(row.serial_number),
-            reason: isUniqueViolation(insertError)
-              ? 'that serial number is already registered'
-              : 'the equipment row could not be created',
-          });
-          continue;
+      const insertEquipment = (rows: Record<string, unknown>[]) =>
+        admin.from('equipment').insert(rows).select(selectUnit);
+
+      if (plan.equipment.length > 0) {
+        const { data: batch, error: batchError } = await insertEquipment(plan.equipment);
+        if (!batchError && batch) {
+          created.push(...(batch as Record<string, unknown>[]));
+        } else {
+          for (const row of plan.equipment) {
+            const { data: unit, error: insertError } = await insertEquipment([row]);
+            if (insertError || !unit || unit.length === 0) {
+              console.error('Error creating equipment from receipt:', insertError);
+              failed.push({
+                serialNumber: String(row.serial_number),
+                reason: isUniqueViolation(insertError)
+                  ? 'that serial number is already registered'
+                  : 'the equipment row could not be created',
+              });
+              continue;
+            }
+            created.push(unit[0] as Record<string, unknown>);
+          }
         }
-        created.push(unit);
+      }
 
-        const { error: lifecycleError } = await admin
-          .from('equipment_lifecycle')
-          .insert(lifecycleRowForReceivedUnit(row, String(unit.id)));
-        if (lifecycleError) {
-          console.error('Error creating equipment lifecycle row:', lifecycleError);
+      // The lifecycle row hangs off the equipment row that landed, so it is
+      // keyed by serial rather than by position - a per-row retry above can
+      // leave `created` shorter than the plan and in a different order.
+      const plannedBySerial = new Map(
+        plan.equipment.map((row) => [String(row.serial_number), row]),
+      );
+      const lifecycleRows = created
+        .map((unit) => {
+          const row = plannedBySerial.get(String(unit.serial_number ?? ''));
+          return row ? lifecycleRowForReceivedUnit(row, String(unit.id)) : null;
+        })
+        .filter((row): row is ReturnType<typeof lifecycleRowForReceivedUnit> => row !== null);
+
+      if (lifecycleRows.length > 0) {
+        const written = await writeInBatches(lifecycleRows, (rows) =>
+          admin.from('equipment_lifecycle').insert(rows).select('id'),
+        );
+        if (written.length < lifecycleRows.length) {
+          console.error(
+            `equipment_lifecycle: ${lifecycleRows.length - written.length} of ${lifecycleRows.length} rows failed`,
+          );
         }
       }
 
@@ -1006,14 +1043,29 @@ export default async function handler(req: Request) {
         }
       }
 
-      for (const movement of inventoryMovements(plan.receipts, serialized)) {
-        const { data: invItem } = await admin
+      // PERF-NPLUS1-002: one read for every item on the receipt, not one read
+      // per item. The UPDATE stays per row - each movement adds a different
+      // quantity and PostgREST cannot express `quantity_on_hand + n` - but the
+      // read half was a sequential round trip per line on a receipt that can
+      // run to a hundred lines.
+      const movements = inventoryMovements(plan.receipts, serialized);
+      type Level = {
+        quantity_on_hand?: number | null;
+        quantity_available?: number | null;
+        quantity_on_order?: number | null;
+      };
+      const movementItems = new Map<string, Level>();
+      if (movements.length > 0) {
+        const { data: levels } = await admin
           .from('inventory_items')
-          .select('quantity_on_hand, quantity_available, quantity_on_order')
-          .eq('id', movement.inventoryItemId)
+          .select('id, quantity_on_hand, quantity_available, quantity_on_order')
           .eq('tenant_id', tenantId)
-          .single();
+          .in('id', [...new Set(movements.map((m) => m.inventoryItemId))]);
+        for (const item of levels || []) movementItems.set(String(item.id), item as Level);
+      }
 
+      for (const movement of movements) {
+        const invItem = movementItems.get(String(movement.inventoryItemId));
         if (!invItem) continue;
 
         await admin
@@ -1723,6 +1775,15 @@ export default async function handler(req: Request) {
       const createdPoIds: string[] = [];
       const skipped: string[] = [];
 
+      // PERF-NPLUS1-002: two inserts per vendor group became two inserts total.
+      // The line items need the PO's generated id, so the pass is split: build
+      // every PO row, insert them in one statement, then key the line items off
+      // the po_number that comes back. po_number is unique per group here
+      // (`PO-<now>-<n>`), which is what makes that mapping safe.
+      type Line = Record<string, unknown>;
+      const poRows: Record<string, unknown>[] = [];
+      const linesByPoNumber = new Map<string, Line[]>();
+
       for (let i = 0; i < groups.length; i++) {
         const group: any = groups[i];
         if (!group?.vendorId || !Array.isArray(group.items) || group.items.length === 0) {
@@ -1748,49 +1809,68 @@ export default async function handler(req: Request) {
           };
         });
 
-        const { data: po, error: poError } = await admin
-          .from('purchase_orders')
-          .insert({
-            tenant_id: tenantId,
-            po_number: `PO-${now}-${i + 1}`,
-            vendor_id: group.vendorId,
-            requested_by: user.id,
-            order_date: body.orderDate
-              ? new Date(body.orderDate as string).toISOString()
-              : new Date(now).toISOString(),
-            expected_date: body.expectedDate
-              ? new Date(body.expectedDate as string).toISOString()
-              : null,
-            description:
-              (body.description as string) ||
-              `Auto-generated from low stock for ${group.vendorName || group.vendorId}`,
-            subtotal,
-            tax_amount: 0,
-            shipping_amount: 0,
-            total_amount: subtotal,
-            status: 'draft',
-            created_by: user.id,
-            created_at: new Date(now).toISOString(),
-            updated_at: new Date(now).toISOString(),
-          })
-          .select()
-          .single();
+        const poNumber = `PO-${now}-${i + 1}`;
+        linesByPoNumber.set(poNumber, lineItems);
+        poRows.push({
+          tenant_id: tenantId,
+          po_number: poNumber,
+          vendor_id: group.vendorId,
+          requested_by: user.id,
+          order_date: body.orderDate
+            ? new Date(body.orderDate as string).toISOString()
+            : new Date(now).toISOString(),
+          expected_date: body.expectedDate
+            ? new Date(body.expectedDate as string).toISOString()
+            : null,
+          description:
+            (body.description as string) ||
+            `Auto-generated from low stock for ${group.vendorName || group.vendorId}`,
+          subtotal,
+          tax_amount: 0,
+          shipping_amount: 0,
+          total_amount: subtotal,
+          status: 'draft',
+          created_by: user.id,
+          created_at: new Date(now).toISOString(),
+          updated_at: new Date(now).toISOString(),
+        });
+      }
 
-        if (poError || !po) {
-          console.error('Error creating purchase order from suggestions:', poError);
-          skipped.push(group.vendorName ?? group.vendorId);
-          continue;
+      if (poRows.length > 0) {
+        // writeInBatches falls back to one row at a time when the batch fails,
+        // which is how a single bad group keeps its own failure instead of
+        // costing every other vendor's PO - the behaviour the per-group loop
+        // had.
+        const createdPos = await writeInBatches<Record<string, unknown>>(poRows, (rows) =>
+          admin.from('purchase_orders').insert(rows).select(),
+        );
+
+        const landed = new Set(createdPos.map((po) => String(po.po_number ?? '')));
+        for (const row of poRows) {
+          const poNumber = String(row.po_number);
+          if (landed.has(poNumber)) continue;
+          console.error(`Error creating purchase order from suggestions: ${poNumber}`);
+          skipped.push(String(row.vendor_id));
         }
 
-        const { error: itemsError } = await admin
-          .from('purchase_order_items')
-          .insert(lineItems.map((li: any) => ({ ...li, purchase_order_id: po.id })));
-
-        if (itemsError) {
-          console.error('Error creating purchase order items:', itemsError);
+        const allLines: Line[] = [];
+        for (const po of createdPos) {
+          createdPoIds.push(String(po.id));
+          for (const li of linesByPoNumber.get(String(po.po_number ?? '')) ?? []) {
+            allLines.push({ ...li, purchase_order_id: po.id });
+          }
         }
 
-        createdPoIds.push(po.id as string);
+        if (allLines.length > 0) {
+          const writtenLines = await writeInBatches(allLines, (rows) =>
+            admin.from('purchase_order_items').insert(rows).select('id'),
+          );
+          if (writtenLines.length < allLines.length) {
+            console.error(
+              `Error creating purchase order items: ${allLines.length - writtenLines.length} of ${allLines.length} failed`,
+            );
+          }
+        }
       }
 
       return createCorsResponse(

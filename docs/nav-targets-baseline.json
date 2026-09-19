@@ -1,11 +1,4 @@
 {
-  "note": "AUDIT-014 nav-target ratchet. scripts/check-nav-targets.mjs fails CI when a navigation target that does not resolve to a route in App.tsx is ADDED. Entries here are known-broken targets awaiting a product decision (a page that does not exist yet). Shrink this list, never grow it: node scripts/check-nav-targets.mjs --update-baseline.",
-  "allowed": [
-    "client/src/components/layout/smart-breadcrumb.tsx:/dashboard",
-    "client/src/components/layout/smart-breadcrumb.tsx:/equipment",
-    "client/src/components/layout/smart-breadcrumb.tsx:/warehouse",
-    "client/src/lib/auth-utils.ts:/auth/",
-    "client/src/lib/seo/seoConfig.ts:/knowledge-base/article/",
-    "client/src/lib/validations.ts:/auth/"
-  ]
+  "note": "AUDIT-014 nav-target gate, AT ZERO as of 2026-09-18. A navigation target that does not resolve to a route in App.tsx fails CI. This list is EMPTY and should stay that way - it existed for targets awaiting a product decision, and all of them were either built, retired, or turned out to be a path the code COMPARES against rather than navigates to (see the predicate and deny-list rules in the script header). Do not add an entry to get a build green: point the control at a registered route, or delete the control. node scripts/check-nav-targets.mjs --update-baseline.",
+  "allowed": []
 }

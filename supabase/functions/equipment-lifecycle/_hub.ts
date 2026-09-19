@@ -437,6 +437,11 @@ export function buildDeliveryRow(
     contact_person: body.contact_person ?? body.contactPerson ?? null,
     contact_phone: body.contact_phone ?? body.contactPhone ?? null,
     special_instructions: body.delivery_instructions ?? body.special_instructions ?? null,
+    // WF-L-06: the crew. Both are nullable, because a run is often booked before
+    // the rota is set - and driver_assigned is a SEPARATE staged -> in_transit
+    // requirement from delivery_scheduled precisely because of that.
+    driver_id: body.driver_id ?? body.driverId ?? null,
+    vehicle_id: body.vehicle_id ?? body.vehicleId ?? null,
     status: 'scheduled',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -475,6 +480,11 @@ export function buildInstallationRow(
       network: body.network_requirements ?? null,
       environmental: body.environmental_conditions ?? null,
     },
+    // WF-L-06: the checklist a technician works through on site. jsonb, so the
+    // dialog can send either a list of strings or {item, completed} entries.
+    pre_installation_checklist:
+      body.pre_installation_checklist ?? body.preInstallationChecklist ?? [],
+    estimated_duration: body.estimated_duration ?? body.estimatedDuration ?? null,
     status: 'scheduled',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),

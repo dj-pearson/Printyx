@@ -273,6 +273,10 @@ export default function LeadsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // WF-S-03: the lead just converted, held so the first-deal offer can name it.
+  const [convertedLead, setConvertedLead] = useState<{ id: string; name: string } | null>(null);
+  const [dealTitle, setDealTitle] = useState('');
+  const [dealAmount, setDealAmount] = useState('');
 
   // COP-I02: honour ?action=new from the command palette.
   useCreateFromUrl(() => setIsCreateOpen(true));
@@ -379,10 +383,49 @@ export default function LeadsPage() {
       apiRequest(`/api/companies/${record.id}`, 'PATCH', {
         business_record_type: 'Prospect',
         activity: 'qualified',
-      }),
-    onSuccess: () => {
+      }).then(() => record),
+    onSuccess: (record: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
       toast({ title: 'Converted', description: 'Lead has been converted to prospect.' });
+      // WF-S-03: offer the first deal, rather than converting into an empty
+      // pipeline and leaving the rep to find the Deals tab. Declining is one
+      // click and nothing is created until the rep asks for it.
+      setConvertedLead({ id: record.id, name: record.companyName || 'this prospect' });
+      setDealTitle(record.companyName ? `${record.companyName} - new business` : '');
+      setDealAmount('');
+    },
+  });
+
+  // ─── First Deal After Conversion (WF-S-03) ────────────────────────────────
+  //
+  // No stage is sent. resolveStageId in supabase/functions/_shared/deal-stage.ts
+  // puts a new deal on the tenant's own front-of-pipeline stage and answers 400
+  // with NO_DEAL_STAGES when the tenant has none - which is the honest failure,
+  // because deals.stage_id is NOT NULL and a hardcoded slug would write an id
+  // belonging to nothing.
+  const createFirstDealMutation = useMutation({
+    mutationFn: (payload: { businessRecordId: string; title: string; amount?: number }) =>
+      apiRequest('/api/deals', 'POST', {
+        title: payload.title,
+        amount: payload.amount,
+        sourceBusinessRecordId: payload.businessRecordId,
+        companyName: convertedLead?.name,
+        source: 'Lead conversion',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
+      setConvertedLead(null);
+      toast({
+        title: 'Deal created',
+        description: 'The deal is on the board and linked to the prospect.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Could not create the deal',
+        description: error?.message || 'The prospect was converted; the deal was not created.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -658,6 +701,73 @@ export default function LeadsPage() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* First Deal After Conversion (WF-S-03) */}
+      <Dialog
+        open={Boolean(convertedLead)}
+        onOpenChange={(open) => {
+          if (!open) setConvertedLead(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Start a deal for {convertedLead?.name}?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              The deal will be linked to this prospect and appear on its Deals tab. Skip this if the
+              opportunity is not defined yet.
+            </p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="first-deal-title">
+                Deal title
+              </label>
+              <Input
+                id="first-deal-title"
+                value={dealTitle}
+                onChange={(e) => setDealTitle(e.target.value)}
+                placeholder="e.g. Fleet refresh - 6 MFPs"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="first-deal-amount">
+                Amount (optional)
+              </label>
+              <Input
+                id="first-deal-amount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={dealAmount}
+                onChange={(e) => setDealAmount(e.target.value)}
+                placeholder="Leave blank if unknown"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setConvertedLead(null)}>
+                Not yet
+              </Button>
+              <Button
+                disabled={!dealTitle.trim() || createFirstDealMutation.isPending}
+                onClick={() => {
+                  if (!convertedLead) return;
+                  // An empty amount stays undefined rather than becoming 0: a
+                  // deal worth nothing and a deal not yet sized are different
+                  // things, and the forecast adds them up.
+                  const parsed = dealAmount.trim() === '' ? undefined : Number(dealAmount);
+                  createFirstDealMutation.mutate({
+                    businessRecordId: convertedLead.id,
+                    title: dealTitle.trim(),
+                    amount: Number.isFinite(parsed as number) ? (parsed as number) : undefined,
+                  });
+                }}
+              >
+                {createFirstDealMutation.isPending ? 'Creating...' : 'Create deal'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </MainLayout>

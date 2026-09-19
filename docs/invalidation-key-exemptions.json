@@ -1,0 +1,20 @@
+{
+  "note": "INVALIDATE-002. check:invalidation-keys proves every invalidation key reaches a query key. These are the ones it cannot prove either way, each with the reason - a key assembled at runtime from a value the scanner has no way to enumerate. An entry here is a statement that somebody opened the file, not a way to silence a finding: a key that CAN be resolved and does not match is a defect, and the guard fails on a stale entry so this file cannot outlive the code.",
+  "exempt": [
+    {
+      "file": "client/src/components/product-import/ProductImport.tsx",
+      "key": "[selectedType.endpoint.replace('/import', '')]",
+      "reason": "The key is the selected product type's endpoint with '/import' stripped, chosen from a productTypes array at runtime. Every entry in that array resolves to a real list endpoint, so this refreshes the list the import just wrote to - but which one is a user choice, not a literal."
+    },
+    {
+      "file": "client/src/pages/admin/OrgStructure.tsx",
+      "key": "[`/api/admin/${variables.kind}`]",
+      "reason": "`kind` is the mutation's own variable and takes one of locations, regions or teams, each of which this page queries by exactly that key. Correct at runtime; unresolvable statically because the value comes from the caller."
+    },
+    {
+      "file": "client/src/lib/queryOptimizations.ts",
+      "key": "queryKeyToInvalidate",
+      "reason": "A generic optimistic-mutation helper: the key is a function PARAMETER (`queryKeyToInvalidate: any[]`), supplied by whoever calls it. There is nothing here to compare against - the obligation belongs to the call sites, which this guard checks on their own terms."
+    }
+  ]
+}

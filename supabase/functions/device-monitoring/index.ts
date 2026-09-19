@@ -46,6 +46,7 @@ import {
   enrichDeviceWithMetrics,
   OPEN_ALERT_STATUSES,
 } from '../_shared/device-monitoring-shape.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 const REGISTRATION_FIELDS = 'serial_number, ip_address, device_name, model';
 
@@ -75,12 +76,8 @@ export default async function handler(req: Request) {
       return createCorsResponse({ message: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin: Admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     }
@@ -107,7 +104,6 @@ export default async function handler(req: Request) {
       );
     }
 
-    const admin: Admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'device-monitoring');
     const resource = parts[0];

@@ -40,6 +40,13 @@ export interface SequenceEnrollment {
   campaignId: string;
   recipientEmail: string;
   businessRecordId: string | null;
+  /**
+   * WF-S-04: resolved by the edge function from business_records or companies,
+   * null when the enrollment was created from a bare address or the record has
+   * gone. Never falls back to the email - a list that silently shows an address
+   * where a name should be cannot be told from one where the name is missing.
+   */
+  businessRecordName?: string | null;
   currentStep: number;
   status: 'active' | 'sending' | 'completed' | 'stopped' | 'unsubscribed' | 'bounced' | 'failed';
   nextSendAt: string | null;

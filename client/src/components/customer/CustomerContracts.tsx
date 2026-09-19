@@ -108,7 +108,10 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
     isLoading,
     refetch,
   } = useQuery<Contract[]>({
-    queryKey: ['/api/contracts', 'customer', customerId],
+    // Not a sub-resource: supabase/functions/contracts/ reads parts[0] as a
+    // CONTRACT id, so /api/contracts/customer/<id> looked up a contract called
+    // "customer" and 404'd. The list branch takes ?customerId.
+    queryKey: [`/api/contracts?customerId=${customerId}`],
     enabled: !!customerId,
   });
 

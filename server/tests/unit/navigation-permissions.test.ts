@@ -9,6 +9,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   checkNavigationAccess,
   expandLegacyPermissions,
@@ -678,5 +680,81 @@ describe('Legacy expansion → navigation access (integration)', () => {
     expect(checkNavigationAccess(ITEM_PERMISSIONS['/chart-of-accounts'], perms, 2, false)).toBe(
       false,
     );
+  });
+});
+
+/**
+ * Every routed page needs an entry, because the default is OPEN (WF-P-09).
+ *
+ * checkNavigationAccess returns true for an unknown route, so a page with no
+ * rule is visible to every authenticated user at any level. That is the right
+ * default for a nav helper - it must not hide a page somebody forgot to
+ * register - and it means an absent entry is indistinguishable from a
+ * deliberate alwaysVisible one. The five /workflows routes had no entry at all.
+ */
+describe('WF-P-09: the /workflows routes are pinned', () => {
+  const ROUTES = [
+    '/workflows',
+    '/workflows/new',
+    '/workflows/:id',
+    '/workflows/:id/edit',
+    '/workflows/:id/steps/:stepId',
+  ];
+
+  for (const route of ROUTES) {
+    it(`${route} has an explicit rule`, () => {
+      expect(ITEM_PERMISSIONS[route], route).toBeDefined();
+    });
+  }
+
+  it('with the same audience as /task-hub, which is what they belong to', () => {
+    for (const route of ROUTES) {
+      expect(ITEM_PERMISSIONS[route], route).toEqual(ITEM_PERMISSIONS['/task-hub']);
+    }
+  });
+
+  it('and they really are the task module, not the automation engine', () => {
+    // The two share a word. These pages call /api/task-workflows; the CRMX-008
+    // engine is /api/workflows and /api/workflow-automation and has no UI.
+    const list = readFileSync(
+      join(process.cwd(), 'client/src/pages/workflows/WorkflowsListPage.tsx'),
+      'utf8',
+    );
+    expect(list).toContain('/api/task-workflows');
+    expect(list).not.toMatch(/['"`]\/api\/workflow-automation/);
+  });
+});
+
+/**
+ * One vendor page (WF-P-10).
+ *
+ * /vendors and /vendor-management were full CRUD pages over the same `vendors`
+ * table, and QUALITY-002 had to fix both separately for the same phantom-shape
+ * defects (batches 7 and 10). /vendors survives because it is the one the
+ * sidebar, mobile nav and mobile drawer link to.
+ */
+describe('WF-P-10: the duplicate vendor page is retired', () => {
+  const app = readFileSync(join(process.cwd(), 'client/src/App.tsx'), 'utf8')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('/vendor-management redirects rather than rendering a second page', () => {
+    expect(app).toContain('<LegacyRedirect to="/vendors" />');
+    expect(app).not.toContain('VendorManagement');
+  });
+
+  it('and the retired path keeps its gate, matching the target', () => {
+    // AUDIT-014: drop the entry and the redirect becomes a looser way in than
+    // the path it replaces.
+    expect(ITEM_PERMISSIONS['/vendor-management']).toBeDefined();
+    expect(ITEM_PERMISSIONS['/vendor-management']).toEqual(ITEM_PERMISSIONS['/vendors']);
+  });
+
+  it('the survivor still does the whole job', () => {
+    const page = readFileSync(join(process.cwd(), 'client/src/pages/Vendors.tsx'), 'utf8');
+    expect(page).toContain("'POST'");
+    expect(page).toMatch(/'PUT'|'PATCH'/);
+    expect(page).toContain("'DELETE'");
+    expect(page).toContain('editingVendor');
   });
 });

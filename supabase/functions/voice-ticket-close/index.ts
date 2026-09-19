@@ -32,6 +32,12 @@ import {
   rankSkuCandidates,
   type SkuCandidate,
 } from '../_shared/voice-ticket-close-logic.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { fetchInBatches } from '../_shared/batch-fetch.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'service.ticket.view_own';
+const WRITE_PERMISSION = ['service.ticket.close', 'service.ticket.void'];
 
 type Row = Record<string, any>;
 
@@ -214,14 +220,33 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string);
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
 
-    const admin = createSupabaseServiceClient();
+    // SEC-EDGE-001: closing a ticket by voice, from the van. service.ticket.close
+    // is what FIELD_TECHNICIAN and SENIOR_TECHNICIAN hold; service.ticket.void is
+    // what SERVICE_MANAGER holds, and someone who may void a ticket may
+    // certainly close one. The OR is there because the seeded SERVICE_MANAGER
+    // template has void and assign but NOT close, which looks like a gap -
+    // naming both avoids locking a manager out without asserting a change to
+    // what a role holds.
+    //
+    // Checked against the seeded role templates rather than assumed: gating the
+    // service surface on a code its own technicians do not hold would break the
+    // daily job, which is a worse outcome than the hole it closes.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
+
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'voice-ticket-close');
     const first = parts[0];
@@ -370,16 +395,27 @@ export default async function handler(req: Request) {
         // (b) Deduct each resolved part from the tech's truck.
         const techUserId = draft.tech_user_id ?? user.id ?? null;
         if (techUserId) {
+          // PERF-NPLUS1-002: one read for every part on the ticket, not one
+          // read per part. The write still has to be per row - PostgREST cannot
+          // express `quantity_on_truck - qty` and each part deducts a different
+          // amount - but the lookup is the half that was N+1, and a tech
+          // closing a ticket with a dozen parts was a dozen sequential round
+          // trips before the first deduction.
+          const skus = resolvedParts.map((p) => String(p.chosenSku));
+          const stockRows = await fetchInBatches<Row>(skus, 'part_sku', () =>
+            admin
+              .from('truck_inventory')
+              .select('id, quantity_on_truck, part_sku')
+              .eq('tenant_id', tenantId)
+              .eq('tech_user_id', techUserId),
+          );
+          const stockBySku = new Map<string, Row>();
+          for (const row of stockRows) stockBySku.set(String(row.part_sku), row);
+
           for (const part of resolvedParts) {
             const sku = String(part.chosenSku);
             const qty = Math.max(1, Math.round(Number(part.quantity) || 1));
-            const { data: stock } = await admin
-              .from('truck_inventory')
-              .select('id, quantity_on_truck')
-              .eq('tenant_id', tenantId)
-              .eq('tech_user_id', techUserId)
-              .eq('part_sku', sku)
-              .maybeSingle();
+            const stock = stockBySku.get(sku) ?? null;
             if (!stock) {
               steps.partsDeductFailed += 1;
               stepErrors.push(`truck[${sku}]: no stock row for this tech`);
@@ -391,10 +427,10 @@ export default async function handler(req: Request) {
             const { error: deductErr } = await admin
               .from('truck_inventory')
               .update({
-                quantity_on_truck: Number((stock as Row).quantity_on_truck ?? 0) - qty,
+                quantity_on_truck: Number(stock.quantity_on_truck ?? 0) - qty,
                 updated_at: new Date().toISOString(),
               })
-              .eq('id', (stock as Row).id);
+              .eq('id', stock.id);
             if (deductErr) {
               steps.partsDeductFailed += 1;
               stepErrors.push(`truck[${sku}]: ${deductErr.message}`);

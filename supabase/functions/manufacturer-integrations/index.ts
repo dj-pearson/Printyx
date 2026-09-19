@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { createAdapter } from '../_shared/manufacturer-adapters.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -49,18 +50,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
     // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
@@ -336,14 +332,28 @@ export default async function handler(req: Request) {
 
     // GET /manufacturer-integrations/:manufacturer/supplies - Get supplies info
     if (req.method === 'GET' && manufacturer && endpoint === 'supplies') {
+      // AUDIT-037: `supplies` has NO manufacturer column and no part_number -
+      // it is product_code / product_name / product_type - so this query 42703'd
+      // on two names at once. The manufacturer is not recorded on a supply at
+      // all, so the nearest honest filter is the product name and code, which is
+      // where a dealer's catalogue actually carries the brand.
       const { data: supplies } = await admin
         .from('supplies')
         .select('*')
         .eq('tenant_id', tenantId)
-        .ilike('manufacturer', `%${manufacturer}%`)
-        .order('part_number', { ascending: true });
+        .or(`product_name.ilike.%${manufacturer}%,product_code.ilike.%${manufacturer}%`)
+        .order('product_code', { ascending: true });
 
-      return createCorsResponse(supplies || [], 200, req);
+      return createCorsResponse(
+        {
+          supplies: supplies || [],
+          unbacked: ['manufacturer'],
+          reason:
+            'supplies records no manufacturer, so this matches the brand against product_name and product_code instead.',
+        },
+        200,
+        req,
+      );
     }
 
     // GET /manufacturer-integrations/:manufacturer/sync-history - Get sync history

@@ -3,6 +3,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -22,18 +23,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'templates');
     const templateId = parts[0];
@@ -160,7 +156,10 @@ export default async function handler(req: Request) {
           tenant_id: tenantId,
           name: body.name || template.name,
           description: body.description || template.description,
-          template_id: templateId,
+          // AUDIT-037: `template_id` is not a column on projects, so creating a
+          // project from a template 42703'd - the one thing this endpoint is
+          // for. Nothing records which template a project came from; the id is
+          // named back in the response instead of being written nowhere.
           customer_id: body.customerId || body.customer_id,
           status: 'active',
           created_by: user.id,
@@ -189,7 +188,16 @@ export default async function handler(req: Request) {
         await admin.from('tasks').insert(taskInserts);
       }
 
-      return createCorsResponse(project, 201, req);
+      return createCorsResponse(
+        {
+          ...project,
+          instantiatedFromTemplateId: templateId,
+          unpersisted: ['templateId'],
+          reason: 'projects records no template it was created from.',
+        },
+        201,
+        req,
+      );
     }
 
     // DELETE /templates/:id - Delete template

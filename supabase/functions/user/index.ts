@@ -8,6 +8,7 @@ import {
   USER_PROFILE_COLUMNS,
   type UserRow,
 } from '../_shared/user-profile.ts';
+import { resolveTenantId as resolveTenantForRequest } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -45,21 +46,10 @@ export default async function handler(req: Request) {
     // issued, and the `users` row is the fallback for a token that carries
     // neither - without that fallback the write fails with a not-null violation
     // that reads like a bug in the settings form.
-    const jwtTenantId =
-      (user.app_metadata?.tenantId as string | undefined) ??
-      (user.app_metadata?.tenant_id as string | undefined) ??
-      (user.user_metadata?.tenantId as string | undefined) ??
-      (user.user_metadata?.tenant_id as string | undefined) ??
-      null;
-    const resolveTenantId = async (): Promise<string | null> => {
-      if (jwtTenantId) return jwtTenantId;
-      const { data } = await admin
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .maybeSingle();
-      return (data?.tenant_id as string | undefined) ?? null;
-    };
+    // SEC-TENANT-003: the local copy this replaced also read user_metadata,
+    // which the session holder writes with supabase.auth.updateUser. The shared
+    // resolver keeps the users-row fallback the comment above depends on.
+    const resolveTenantId = () => resolveTenantForRequest(req, user, admin);
 
     // GET /user or /user/profile - Get current user profile
     if (req.method === 'GET' && (!endpoint || endpoint === 'profile')) {

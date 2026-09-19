@@ -1,8 +1,11 @@
 // Pricing Edge Function
 // Handles product pricing, company settings, and price calculations
+import { getCorsHeaders } from '../_shared/cors.ts';
+import { toCsv } from '../_shared/csv.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { calculateRepCost, canSeeDealerCost } from '../_shared/pricing-math.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -26,11 +29,13 @@ export default async function handler(req: Request) {
     }
 
     // Extract tenant ID from JWT metadata
-    const tenantId =
-      (user.app_metadata?.tenant_id as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string);
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
@@ -38,7 +43,6 @@ export default async function handler(req: Request) {
     }
 
     // Use service_role client for database operations
-    const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
@@ -222,7 +226,18 @@ export default async function handler(req: Request) {
     // put a third margin formula in the codebase, which is how the two that
     // disagreed with shared/quote-math.ts got there.
     // ========================================================================
-    if (req.method === 'GET' && resource === 'margin-report' && !resourceId) {
+    // GET /pricing/margin-report and /pricing/margin-report/export
+    //
+    // PLATFORM-EXPORT-001 found the export path existed on Express ONLY, so it
+    // worked in dev and 404'd in production the moment getApiUrl sent
+    // /api/pricing to this function. Same report, same filters, two
+    // representations - sharing the branch is what keeps them from drifting
+    // into two different definitions of "margin".
+    if (
+      req.method === 'GET' &&
+      resource === 'margin-report' &&
+      (!resourceId || resourceId === 'export')
+    ) {
       if (!canSeeDealerCost(userRole)) {
         return createCorsResponse(
           { error: 'Insufficient permissions to view margin report' },
@@ -289,6 +304,48 @@ export default async function handler(req: Request) {
           repMarginPercentage: num(quote.total_rep_margin_percentage),
         };
       });
+
+      if (resourceId === 'export') {
+        const headers = [
+          'Quote Number',
+          'Date',
+          'Sales Rep',
+          'Total Dealer Cost',
+          'Total Rep Cost',
+          'Total Customer Price',
+          'Total Margin ($)',
+          'Margin %',
+          'Rep Margin ($)',
+          'Rep Margin %',
+        ];
+        // A blank cell for a missing quote number, never the string
+        // "undefined"; the numbers are already coerced by num() above, where a
+        // non-numeric column reads as 0 rather than NaN.
+        const csv = toCsv([
+          headers,
+          ...report.map((r) => [
+            String(r.quoteNumber ?? ''),
+            r.quoteDate ? String(r.quoteDate).slice(0, 10) : '',
+            r.salesRep,
+            r.totalDealerCost.toFixed(2),
+            r.totalRepCost.toFixed(2),
+            r.totalCustomerPrice.toFixed(2),
+            r.totalMargin.toFixed(2),
+            r.marginPercentage.toFixed(1),
+            r.totalRepMargin.toFixed(2),
+            r.repMarginPercentage.toFixed(1),
+          ]),
+        ]);
+        const stamp = new Date().toISOString().slice(0, 10);
+        return new Response(csv, {
+          status: 200,
+          headers: {
+            ...getCorsHeaders(req.headers.get('Origin')),
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename="margin-report-${stamp}.csv"`,
+          },
+        });
+      }
 
       return createCorsResponse({ count: report.length, report }, 200, req);
     }

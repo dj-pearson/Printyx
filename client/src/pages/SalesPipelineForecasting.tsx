@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -162,15 +163,12 @@ export default function SalesPipelineForecasting() {
                   forecastData?.pipeline?.breakdown?.proposals?.weightedValue || 0,
                 ].reduce((a: number, b: number) => a + b, 0);
                 const toGoal = forecastData?.remaining?.toGoalValue ?? null;
-                const goalAttainmentPct = forecastData?.goals?.totalValue
-                  ? Math.min(
-                      100,
-                      Math.round(
-                        ((forecastData.pipeline?.totalValue || 0) / forecastData.goals.totalValue) *
-                          100,
-                      ),
-                    )
-                  : 0;
+                const goalAttainmentPct = Math.round(
+                  percentOfOr(
+                    forecastData?.pipeline?.totalValue || 0,
+                    forecastData?.goals?.totalValue,
+                  ),
+                );
                 const icons = [DollarSign, TrendingUp, Target, PieChart];
                 const colors = [
                   'text-blue-500',

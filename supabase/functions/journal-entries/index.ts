@@ -28,6 +28,11 @@ import {
   parseJournalEntryPatch,
   toJournalEntryColumns,
 } from '../_shared/journal-entry-contract.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'finance.gl.view';
+const WRITE_PERMISSION = 'finance.gl.post';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -47,18 +52,29 @@ export default async function handler(req: Request) {
       return createCorsResponse({ message: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ message: 'Tenant context required' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
+    // SEC-EDGE-001: The general ledger. Posting a journal entry moves money in the books, and
+    // production served this to every authenticated member of the tenant - a
+    // technician could post to the GL. /journal-entries itself needs
+    // finance.gl.view at level 4 to open, so the READ is gated too: unlike the
+    // product catalogue, this is not a list everyone has a job reason to see.
+    //
+    // Both codes are in the seeded catalogue and both are what
+    // navigation-permissions.ts already requires of the page, so the route and
+    // the screen in front of it finally agree.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
+
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'journal-entries');
     const entryId = parts[0];

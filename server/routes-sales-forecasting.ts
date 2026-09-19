@@ -7,6 +7,7 @@ const log = createModuleLogger('routes-sales-forecasting');
 
 import { businessRecords } from '../shared/schema';
 import { forecastPipelineItems, forecastMetrics, forecastRules } from './sales-forecasting-schema';
+import { subtractMonths } from '@shared/date-months';
 
 const router = express.Router();
 
@@ -114,8 +115,9 @@ router.get('/api/sales-trends', async (req: any, res) => {
     // Get historical sales metrics from business records and recent forecast metrics
     const { months = 6 } = req.query;
     const monthsBack = parseInt(months as string);
-    const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - monthsBack);
+    // Clamped: setMonth overflows, so a six-month window opened on 31 August
+    // started on 3 March rather than 28 February (DATE-SETMONTH-001).
+    const startDate = subtractMonths(new Date(), monthsBack);
 
     const [recentDeals, metricsData] = await Promise.all([
       // Get recent closed deals from business records
@@ -148,9 +150,12 @@ router.get('/api/sales-trends', async (req: any, res) => {
 
     // Combine and format trend data
     const trendData = [];
+    // Enumeration, not subtraction, and the nastier of the two shapes: a cursor
+    // carrying today's day-of-month SKIPS a month (from 31 March, i=1 gives
+    // 3 March again and April never appears), and a missing month in a trend
+    // reads as a month in which nothing happened.
     for (let i = 0; i < monthsBack; i++) {
-      const date = new Date();
-      date.setMonth(date.getMonth() - i);
+      const date = subtractMonths(new Date(), i);
       const monthKey = date.toISOString().substring(0, 7);
 
       const dealData = recentDeals.find((d) => d.month?.startsWith(monthKey));

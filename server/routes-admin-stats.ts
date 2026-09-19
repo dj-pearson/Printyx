@@ -18,6 +18,7 @@ import { eq, count, and, sql, gte, sum } from 'drizzle-orm';
 import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth';
 import { isPlatformAdmin } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
+import { subtractMonths } from '@shared/date-months';
 
 const log = createModuleLogger('routes-admin-stats');
 
@@ -73,8 +74,11 @@ export function registerAdminStatsRoutes(app: Express) {
       const totalRevenue = parseFloat(revenueResult?.total ?? '0');
 
       // Previous month revenue for growth comparison
-      const startOfLastMonth = new Date(startOfMonth);
-      startOfLastMonth.setMonth(startOfLastMonth.getMonth() - 1);
+      // startOfMonth is day 1, so this particular subtraction could not
+      // overflow - but a reader has to re-derive that every time, and the
+      // anchor is one edit away from moving. The helper is unconditional
+      // (DATE-SETMONTH-001).
+      const startOfLastMonth = subtractMonths(startOfMonth, 1);
       const endOfLastMonth = new Date(startOfMonth);
       endOfLastMonth.setMilliseconds(-1);
 

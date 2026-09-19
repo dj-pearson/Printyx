@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, invalidateApiPath } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import type {
   CanonicalEntry,
@@ -223,8 +223,10 @@ export function EntryFormDialog({
       onOpenChange(false);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/address-books/${bookId}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/address-books/${bookId}/entries`] });
+      // The detail query is keyed on the book URL and returns book + entries
+      // together, so /:id/entries had nothing to invalidate. One prefix covers
+      // both, and the paginated entries route too if a caller ever uses it.
+      invalidateApiPath(`/api/address-books/${bookId}`);
     },
   });
 

@@ -128,8 +128,24 @@ export function expandLegacyPermissions(
       perms.add('operations.inventory.manage');
       perms.add('operations.inventory.transfer');
       perms.add('operations.warehouse.manage');
-      perms.add('operations.po.create');
       perms.add('operations.po.approve');
+      perms.add('operations.po.create');
+    }
+
+    // WF-R-11: raising a purchase order and approving one are different acts.
+    // Both were granted at level 4 because the only role holding the purchasing
+    // module was OPERATIONS_MANAGER, so a Purchasing Agent - whose entire job
+    // is raising them - could not reach /purchase-orders, which requires
+    // po.view AND po.create. Holding the purchasing module is itself the
+    // authority to raise one; approval stays at level 4. The condition names
+    // the MODULE rather than lowering the level, so a warehouse role holding
+    // only `inventory` is unaffected.
+    //
+    // Keep in sync with client/src/lib/navigation-permissions.ts - the two are
+    // locked by server/tests/unit/po-permission-gate.test.ts, which is what
+    // caught this half being missed.
+    if (modulePermissions.purchasing) {
+      perms.add('operations.po.create');
     }
   }
 

@@ -2,6 +2,7 @@ import { and, eq, lte, gte, or, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { createModuleLogger } from '../lib/logger';
 import {
+  businessRecordActivities,
   emailSequenceEnrollments,
   emailCampaigns,
   emailUnsubscribes,
@@ -9,6 +10,10 @@ import {
   type SequenceStepHistoryEntry,
 } from '@shared/schema';
 import { sendEmail } from './email-service';
+import {
+  sequenceSendActivity,
+  toDrizzleActivity,
+} from '../../supabase/functions/_shared/sequence-activity';
 
 const log = createModuleLogger('email-sequence-scheduler');
 
@@ -266,6 +271,12 @@ async function advanceEnrollment(enrollment: EmailSequenceEnrollment): Promise<v
         updatedAt: new Date(),
       })
       .where(eq(emailSequenceEnrollments.id, claimed.id));
+
+    await recordSend(
+      claimed,
+      campaign.campaignName ?? null,
+      entry.status === 'failed' ? 'failed' : 'sent',
+    );
   } catch (error) {
     const attemptsForStep =
       history.filter((h) => h.step === claimed.currentStep && h.status === 'failed').length + 1;
@@ -297,7 +308,52 @@ async function advanceEnrollment(enrollment: EmailSequenceEnrollment): Promise<v
         })
         .where(eq(emailSequenceEnrollments.id, claimed.id));
     }
+    await recordSend(claimed, campaign.campaignName ?? null, 'failed', error);
     log.warn(`[EmailSeq] send failed for enrollment ${claimed.id}:`, error);
+  }
+}
+
+/**
+ * A send on the lead's own timeline (WF-S-04).
+ *
+ * The row shape comes from supabase/functions/_shared/sequence-activity.ts,
+ * imported rather than copied, so enrolment (written by the edge function) and
+ * each send (written here) read as one story. Never throws: a timeline write
+ * that fails must not turn a delivered email into a retry.
+ */
+async function recordSend(
+  enrollment: {
+    tenantId: string;
+    businessRecordId: string | null;
+    recipientEmail: string;
+    currentStep: number;
+    enrolledBy?: string | null;
+  },
+  campaignName: string | null,
+  status: 'sent' | 'failed',
+  error?: unknown,
+): Promise<void> {
+  if (!enrollment.businessRecordId) return;
+  const row = toDrizzleActivity(
+    sequenceSendActivity({
+      tenantId: enrollment.tenantId,
+      businessRecordId: enrollment.businessRecordId,
+      campaignName,
+      recipientEmail: enrollment.recipientEmail,
+      // The scheduler is not a person. The enroller is the nearest true answer
+      // to "who caused this send", and created_by is NOT NULL, so an
+      // enrollment with no enroller gets no timeline row rather than a 23502.
+      userId: enrollment.enrolledBy ?? null,
+      step: enrollment.currentStep,
+      status,
+      error: error instanceof Error ? error.message : error ? String(error) : null,
+    }),
+  );
+  if (!row) return;
+  try {
+    await db.insert(businessRecordActivities).values(row);
+  } catch (err) {
+    log.warn(`[EmailSeq] timeline write failed for enrollment ${enrollment.recipientEmail}:`, err);
   }
 }
 

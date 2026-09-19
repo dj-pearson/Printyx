@@ -21,6 +21,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { buildWorkflowDashboard } from '../_shared/workflow-dashboard.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 // Bounded fetches - the aggregation is in memory, so these cap what one
 // dashboard request can pull. Executions dominate; 5000 covers a busy tenant's
@@ -48,23 +49,28 @@ export default async function handler(req: Request) {
       return createCorsResponse({ message: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string | undefined) ||
-      (user.app_metadata?.tenant_id as string | undefined) ||
-      (user.user_metadata?.tenantId as string | undefined) ||
-      (user.user_metadata?.tenant_id as string | undefined);
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) {
       return createCorsResponse({ message: 'No tenant ID found' }, 400, req);
     }
-
-    const admin = createSupabaseServiceClient();
 
     if (req.method === 'GET' && resource === 'dashboard') {
       // workflows and workflow_executions carry tenant_id; the child tables
       // (versions, triggers, steps, conditions, execution steps) do not, so
       // they are scoped by the parent ids fetched here. Fetching workflows
       // first is what makes that scoping tenant-safe.
-      const { data: workflows, error: wfError } = await admin
+      // QUERYKEY-002: the page's category Select used to be a PATH SEGMENT on
+      // this URL, so it 404'd and the selector did nothing. `category` is a
+      // real column on `workflows`, so it is read here rather than dropped.
+      const category = url.searchParams.get('category');
+
+      let workflowQuery = admin
         .from('workflows')
         .select(
           'id, name, description, category, status, current_version_id, created_at, updated_at',
@@ -72,6 +78,10 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .eq('is_template', false)
         .order('updated_at', { ascending: false });
+      if (category && category !== 'all') {
+        workflowQuery = workflowQuery.eq('category', category);
+      }
+      const { data: workflows, error: wfError } = await workflowQuery;
       if (wfError) {
         return createCorsResponse(
           { message: 'Failed to load workflows', detail: wfError.message },

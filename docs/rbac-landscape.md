@@ -72,6 +72,25 @@ The last two are JSONB blobs in System A with different internal shapes again;
 
 ## What that produces
 
+**CLOSED 2026-09-18 (SEC-EDGE-002): the count below is 0.** Two corrections to
+the figures, both worth keeping. First, the guard that produced them was naming
+the WRONG permission: it keyed its constant map on the leaf name, so every
+module's `CREATE` overwrote the last and `PERMISSIONS.INVENTORY.ITEM.CREATE`
+resolved to `platform.tenant.create`. The count was right and the names were
+fiction. Second, once the names were right the fix was almost entirely a
+repointing rather than a rewrite: the gates named an `inventory.*` and
+`service.dispatch.*`/`service.technician.*` vocabulary for capabilities the
+seeder spells `operations.*` and `service.schedule.*`, and
+`navigation-permissions.ts` was already gating the matching PAGES on the seeded
+codes. Only three codes had no seeded equivalent at all -
+`admin.settings.integrations` and `sales.quote.view_margin`, both added to the
+seeder and granted, and `finance.billing.meter_billing`, which was simply the
+wrong gate: it asked the technicians who take meter readings for the authority
+to RUN meter billing.
+
+The paragraph below is the state as it stood before that, kept because it is
+what the decision was made against.
+
 - **77 Express route gates** name a code no seeded role can hold, so they pass
   only on the platform-admin bypass. 67 are live, 43 of those are called by the
   frontend.

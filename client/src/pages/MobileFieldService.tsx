@@ -520,6 +520,15 @@ function TicketPicker() {
     queryFn: () => apiRequest('/api/mobile/sync'),
   });
 
+  // WF-L-06: today's deliveries and installs assigned to the caller.
+  const { data: crewDay } = useQuery<{
+    items: Array<{ kind: string; id: string; window: string | null; status: string | null }>;
+    deliveryCount: number;
+    installationCount: number;
+  }>({
+    queryKey: ['/api/equipment-lifecycle/crew'],
+  });
+
   // The response is { syncedAt, technician, data: { serviceTickets, ... }, counts }.
   // Reading `data.tickets` here would have rendered an empty queue forever - the
   // PA-040 shape, where a page reads key names its endpoint does not send.
@@ -530,6 +539,58 @@ function TicketPicker() {
   return (
     <MainLayout title="My service calls" description="Pick a ticket to check in to">
       <div className="space-y-3">
+        {/* WF-L-06: the deliveries and installs assigned to THIS person today.
+            The endpoint scopes by driver_id and technician_id off the verified
+            JWT, so there is nothing to filter here and nothing a caller can ask
+            for on someone else's behalf. Hidden entirely on a day with none,
+            rather than shown as an empty card a technician has to read past. */}
+        {crewDay && crewDay.items.length > 0 && (
+          <Card>
+            <CardContent className="space-y-2 p-4">
+              <p className="text-sm font-medium">
+                Also today: {crewDay.deliveryCount} deliver
+                {crewDay.deliveryCount === 1 ? 'y' : 'ies'}, {crewDay.installationCount} install
+                {crewDay.installationCount === 1 ? '' : 's'}
+              </p>
+              {crewDay.items.map((item) =>
+                // WF-L-07: an install is where a customer signs, so its row
+                // opens the acceptance screen. A delivery has no installation
+                // id to sign against, so it stays a plain row.
+                item.kind === 'installation' ? (
+                  <Link key={`${item.kind}-${item.id}`} href={`/acceptance/${item.id}`}>
+                    <div className="flex min-h-[44px] cursor-pointer items-center justify-between gap-3 rounded-md border p-2 transition-colors hover:bg-accent">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm">Installation · tap to accept</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {item.window || 'No window set'}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="shrink-0">
+                        {item.status}
+                      </Badge>
+                    </div>
+                  </Link>
+                ) : (
+                  <div
+                    key={`${item.kind}-${item.id}`}
+                    className="flex items-center justify-between gap-3 rounded-md border p-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm capitalize">{item.kind}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.window || 'No window set'}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="shrink-0">
+                      {item.status}
+                    </Badge>
+                  </div>
+                ),
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {isLoading && <p className="text-sm text-muted-foreground">Loading your tickets…</p>}
 
         {!isLoading && tickets.length === 0 && (

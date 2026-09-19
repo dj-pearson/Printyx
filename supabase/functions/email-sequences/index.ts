@@ -30,7 +30,12 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import {
+  sequenceEnrollmentActivity,
+  sequenceUnenrollmentActivity,
+} from '../_shared/sequence-activity.ts';
 import { toCamelShallow } from '../_shared/case.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
@@ -58,6 +63,34 @@ function stepDelayMs(step: SequenceStep | undefined): number {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Campaign display name for a timeline entry; null rather than a guess. */
+// deno-lint-ignore no-explicit-any
+async function campaignName(admin: any, tenantId: string, campaignId: string | null) {
+  if (!campaignId) return null;
+  const { data } = await admin
+    .from('email_campaigns')
+    .select('campaign_name')
+    .eq('id', campaignId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  return data?.campaign_name ?? null;
+}
+
+/**
+ * Write a timeline row for a sequence event (WF-S-04).
+ *
+ * Never throws and never blocks the answer: enrolling someone succeeded even if
+ * the timeline write did not, and failing the request would leave the caller
+ * believing nothing happened while the enrollment row exists. Logged, so a
+ * missing timeline entry is findable rather than silent.
+ */
+// deno-lint-ignore no-explicit-any
+async function recordSequenceActivity(admin: any, row: Record<string, unknown> | null) {
+  if (!row) return;
+  const { error } = await admin.from('business_record_activities').insert(row);
+  if (error) console.error('Sequence timeline write failed:', error.message);
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -76,18 +109,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'Tenant ID is required' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'email-sequences');
     const method = req.method;
@@ -116,11 +144,29 @@ export default async function handler(req: Request) {
           .eq('id', enrollmentId)
           .eq('tenant_id', tenantId)
           .in('status', ['active', 'sending'])
-          .select('id');
+          // WF-S-04: the row is returned so the timeline entry can name the
+          // person and the campaign. Selected from the UPDATE rather than read
+          // first, so there is no window where the two disagree.
+          .select('id, campaign_id, recipient_email, business_record_id');
 
         if (error) return createCorsResponse({ error: error.message }, 500, req);
         if (!data || data.length === 0) {
           return createCorsResponse({ error: 'Active enrollment not found' }, 404, req);
+        }
+
+        const stopped = data[0];
+        if (stopped.business_record_id) {
+          await recordSequenceActivity(
+            admin,
+            sequenceUnenrollmentActivity({
+              tenantId,
+              businessRecordId: stopped.business_record_id,
+              campaignName: await campaignName(admin, tenantId, stopped.campaign_id),
+              recipientEmail: stopped.recipient_email,
+              userId: user.id,
+              reason,
+            }),
+          );
         }
         return createCorsResponse({ success: true }, 200, req);
       }
@@ -166,7 +212,49 @@ export default async function handler(req: Request) {
         .limit(limit);
 
       if (error) return createCorsResponse({ error: error.message }, 500, req);
-      return createCorsResponse((data ?? []).map(camel), 200, req);
+
+      // WF-S-04: name the record, so the list reads as people rather than as
+      // addresses. BOTH TABLES ARE TRIED, and that is the WF-S-01 fan-out
+      // showing through rather than indecision on my part: /api/leads serves
+      // LeadDetail from `business_records` while the CRM list serves
+      // `companies`, so an enrollment's business_record_id can have been
+      // minted by either. One batched query per table, not one per row, and a
+      // record that resolves in neither keeps a null name instead of being
+      // given its own email address as a stand-in.
+      const rows = (data ?? []).map(camel) as Array<Record<string, unknown>>;
+      const recordIds = [
+        ...new Set(rows.map((r) => r.businessRecordId).filter(Boolean)),
+      ] as string[];
+      const names = new Map<string, string>();
+      if (recordIds.length > 0) {
+        for (const table of ['business_records', 'companies']) {
+          const { data: found, error: nameError } = await admin
+            .from(table)
+            .select('id, company_name')
+            .eq('tenant_id', tenantId)
+            .in('id', recordIds);
+          if (nameError) {
+            console.error(`Enrollment name lookup failed on ${table}:`, nameError.message);
+            continue;
+          }
+          for (const row of found ?? []) {
+            if (row?.id && row.company_name && !names.has(row.id)) {
+              names.set(row.id, row.company_name);
+            }
+          }
+        }
+      }
+
+      return createCorsResponse(
+        rows.map((r) => ({
+          ...r,
+          businessRecordName: r.businessRecordId
+            ? (names.get(r.businessRecordId as string) ?? null)
+            : null,
+        })),
+        200,
+        req,
+      );
     }
 
     // ─── POST /:campaignId/enroll ────────────────────────────────────
@@ -185,7 +273,7 @@ export default async function handler(req: Request) {
       // Campaign must belong to this tenant. Fetched once, outside the loop.
       const { data: campaign, error: campaignError } = await admin
         .from('email_campaigns')
-        .select('id, sequence_steps')
+        .select('id, campaign_name, sequence_steps')
         .eq('id', campaignId)
         .eq('tenant_id', tenantId)
         .maybeSingle();
@@ -255,6 +343,21 @@ export default async function handler(req: Request) {
 
         if (!insertError && inserted) {
           results.push({ email, enrollmentId: inserted.id, enrolled: true });
+          // WF-S-04: only when the recipient IS a record. An enrollment typed
+          // in as a bare address has no timeline to land on, and inventing a
+          // business record for it would be worse than the gap.
+          if (recipient.businessRecordId) {
+            await recordSequenceActivity(
+              admin,
+              sequenceEnrollmentActivity({
+                tenantId,
+                businessRecordId: recipient.businessRecordId,
+                campaignName: campaign.campaign_name ?? null,
+                recipientEmail: email,
+                userId: user.id,
+              }),
+            );
+          }
           continue;
         }
 

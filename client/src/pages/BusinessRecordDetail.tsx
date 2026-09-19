@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useRoute } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,8 +17,10 @@ import {
   MapPin,
   FileText,
   Activity as ActivityIcon,
+  Send,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { EnrollInSequenceDialog } from '@/components/leads/EnrollInSequenceDialog';
 
 interface RecordActivity {
   id: string;
@@ -81,6 +84,7 @@ function formatAddress(r: BusinessRecord): string | null {
 }
 
 export default function BusinessRecordDetail() {
+  const [showEnrollDialog, setShowEnrollDialog] = useState(false);
   const [, params] = useRoute('/business-records/:id');
   const [, navigate] = useLocation();
   const recordId = params?.id;
@@ -131,9 +135,31 @@ export default function BusinessRecordDetail() {
   return (
     <MainLayout>
       <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/business-records')}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Records
-        </Button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/business-records')}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to Records
+          </Button>
+          {/* WF-S-04: same endpoint as the standalone campaign screen, offered
+              on the record. Hidden with no address, because the enroll
+              endpoint requires a valid email on every recipient. */}
+          {record.primaryContactEmail && (
+            <Button variant="outline" size="sm" onClick={() => setShowEnrollDialog(true)}>
+              <Send className="h-4 w-4 mr-1" /> Enroll in sequence
+            </Button>
+          )}
+        </div>
+
+        <EnrollInSequenceDialog
+          open={showEnrollDialog}
+          onOpenChange={setShowEnrollDialog}
+          records={[
+            {
+              id: record.id,
+              email: record.primaryContactEmail ?? null,
+              name: record.companyName ?? null,
+            },
+          ]}
+        />
 
         <Card>
           <CardHeader>

@@ -72,7 +72,10 @@ if (chromiumPath && !existsSync(chromiumPath)) {
 
 const browser = await chromium.launch(chromiumPath ? { executablePath: chromiumPath } : {});
 try {
-  const page = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
+  const page = await browser.newPage({
+    viewport: { width: 1200, height: 630 },
+    deviceScaleFactor: 1,
+  });
   await page.setContent(CARD, { waitUntil: 'load' });
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: OUT, type: 'png' });

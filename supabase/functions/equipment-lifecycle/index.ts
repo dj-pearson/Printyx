@@ -31,7 +31,20 @@ import {
   hubMetrics,
   hubPurchaseOrders,
 } from './_hub.ts';
+import {
+  EMPTY_EVIDENCE,
+  evaluateRequirements,
+  type EvidenceBundle,
+} from '../_shared/lifecycle-evidence.ts';
+import {
+  buildDeliveryUpdate,
+  buildInstallationUpdate,
+  dayBounds,
+  deliveryRequirements,
+  mergeCrewDay,
+} from '../_shared/delivery-scheduling.ts';
 import { accessibleCustomerIds, resolveScope } from '../_shared/scope.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 /**
  * WF-L-08 side effects, PostgREST half. The DECISIONS live in
@@ -206,6 +219,85 @@ async function runRetirement(
   return { done, failed, skipped: plan.skipped };
 }
 
+/**
+ * Every row a requirement check might need, for ONE unit, in five reads
+ * (WF-L-13).
+ *
+ * Loaded once per transition rather than per requirement: nine checkable
+ * requirements over five tables would otherwise be the one-query-per-row shape
+ * PERF-NPLUS1-002 spent a story on, on the endpoint a technician taps.
+ *
+ * Each read is written out whole. check:phantom-columns resolves a column
+ * literal against the table its call chain is on, and a helper that builds a
+ * query from a variable loses it - WF-L-06 learned that on a false positive
+ * indistinguishable from a real one.
+ */
+// deno-lint-ignore no-explicit-any
+async function loadEvidence(
+  admin: any,
+  tenantId: string,
+  equipmentId: string,
+  serialNumber: string | null,
+): Promise<EvidenceBundle> {
+  const [deliveries, installSchedules, installations, signatures, networkConfigs] =
+    await Promise.all([
+      admin
+        .from('delivery_schedules')
+        .select('id, scheduled_date, status, driver_id')
+        .eq('tenant_id', tenantId)
+        .eq('equipment_id', equipmentId),
+      admin
+        .from('installation_schedules')
+        .select('id, status')
+        .eq('tenant_id', tenantId)
+        .eq('equipment_id', equipmentId),
+      admin
+        .from('installations')
+        .select('id, status')
+        .eq('tenant_id', tenantId)
+        .eq('equipment_id', equipmentId),
+      admin
+        .from('service_signatures')
+        .select('id, signature_type, signer_name, signature_data_url, installation_id')
+        .eq('tenant_id', tenantId),
+      admin
+        .from('onboarding_network_config')
+        .select('id, is_configured, equipment_id')
+        .eq('tenant_id', tenantId)
+        .eq('equipment_id', equipmentId),
+    ]);
+
+  // A kitting operation records the serials it built as a jsonb ARRAY, so it
+  // cannot be found by equipment_id - there is no such column. Without a serial
+  // there is nothing to match on, and quality_control_passed stays unmet rather
+  // than being waved through.
+  let kitting: Array<Record<string, unknown>> = [];
+  if (serialNumber) {
+    const { data } = await admin
+      .from('warehouse_kitting_operations')
+      .select('id, operation_status, quality_status, serial_numbers')
+      .eq('tenant_id', tenantId)
+      .contains('serial_numbers', [serialNumber]);
+    kitting = data ?? [];
+  }
+
+  // A signature hangs off an installation or a ticket, never off equipment, so
+  // the tenant's signatures are narrowed to this unit's installations here.
+  const installationIds = new Set(
+    [...(installations.data ?? [])].map((row: Record<string, unknown>) => String(row.id)),
+  );
+
+  return {
+    kitting,
+    deliveries: deliveries.data ?? [],
+    installations: [...(installSchedules.data ?? []), ...(installations.data ?? [])],
+    signatures: (signatures.data ?? []).filter((row: Record<string, unknown>) =>
+      installationIds.has(String(row.installation_id ?? '')),
+    ),
+    networkConfigs: networkConfigs.data ?? [],
+  };
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -224,14 +316,18 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenant_id as string) || (user.user_metadata?.tenant_id as string);
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
     // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
@@ -334,6 +430,145 @@ export default async function handler(req: Request) {
         );
       }
       return createCorsResponse(data, 201, req);
+    }
+
+    // ───────────────────── WF-L-06: the dispatcher's half ─────────────────────
+    //
+    // WF-L-02 built list and create. What a dispatcher actually does all day -
+    // assign a driver and a vehicle, move a window, mark a run complete, and see
+    // what a crew is due to do - had no endpoint at all. delivery_schedules had
+    // one Express writer with no caller; installation_schedules had no reader
+    // and no writer anywhere in the repository.
+
+    // PATCH /equipment-lifecycle/deliveries/:id
+    if (req.method === 'PATCH' && firstPart === 'deliveries' && secondPart) {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const update = buildDeliveryUpdate(body);
+      if ('error' in update) return createCorsResponse({ error: update.error }, 400, req);
+
+      const { data, error } = await admin
+        .from('delivery_schedules')
+        .update(update)
+        .eq('id', secondPart)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error('Error updating delivery schedule:', error);
+        return createCorsResponse({ error: 'Failed to update the delivery' }, 500, req);
+      }
+      // The evidence side of WF-L-13: a scheduled delivery with a driver on it
+      // is what satisfies staged -> in_transit, and this says which of the two
+      // requirements the row meets rather than leaving the caller to claim it.
+      return createCorsResponse(
+        { ...data, satisfiesRequirements: deliveryRequirements(data) },
+        200,
+        req,
+      );
+    }
+
+    // PATCH /equipment-lifecycle/installations/:id
+    if (req.method === 'PATCH' && firstPart === 'installations' && secondPart) {
+      const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+      const update = buildInstallationUpdate(body);
+      if ('error' in update) return createCorsResponse({ error: update.error }, 400, req);
+
+      const { data, error } = await admin
+        .from('installation_schedules')
+        .update(update)
+        .eq('id', secondPart)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error('Error updating installation schedule:', error);
+        return createCorsResponse({ error: 'Failed to update the installation' }, 500, req);
+      }
+      return createCorsResponse(data, 200, req);
+    }
+
+    // GET /equipment-lifecycle/crew?date=YYYY-MM-DD&all=true
+    //
+    // Scoped to the CALLER by default (WF-R-06): a driver sees the runs assigned
+    // to them and a technician the installs assigned to them. ?all=true widens
+    // it to the tenant for a dispatcher looking at the whole day.
+    if (req.method === 'GET' && firstPart === 'crew') {
+      const dateParam = url.searchParams.get('date');
+      const day = dateParam ? new Date(`${dateParam}T00:00:00Z`) : new Date();
+      if (Number.isNaN(day.getTime())) {
+        return createCorsResponse({ error: 'date must be YYYY-MM-DD' }, 400, req);
+      }
+      // scheduled_date holds a calendar date at UTC midnight, so the upper bound
+      // is the next day and the comparison is strict (DATE-LOCAL-002).
+      const { from, to } = dayBounds(day);
+      const mine = url.searchParams.get('all') !== 'true';
+
+      // Both chains are written out in full, twice, rather than built up in a
+      // variable. That is not style: check:phantom-columns resolves a column
+      // literal against the table its CALL CHAIN is on, and neither a
+      // reassigned query variable nor a chain returned from a lambda gives it
+      // one - it read both as installation_schedules.driver_id, a column that
+      // does not exist. Writing code the checker cannot follow is how a real
+      // 42703 gets through, so the repetition buys a guard that works.
+      const [deliveries, installations] = mine
+        ? await Promise.all([
+            admin
+              .from('delivery_schedules')
+              .select(
+                'id, equipment_id, customer_id, scheduled_date, time_window, status, driver_id, vehicle_id, special_instructions',
+              )
+              .eq('tenant_id', tenantId)
+              .eq('driver_id', user.id)
+              .gte('scheduled_date', from)
+              .lt('scheduled_date', to),
+            admin
+              .from('installation_schedules')
+              .select(
+                'id, equipment_id, customer_id, scheduled_date, estimated_duration, status, technician_id, installation_notes',
+              )
+              .eq('tenant_id', tenantId)
+              .eq('technician_id', user.id)
+              .gte('scheduled_date', from)
+              .lt('scheduled_date', to),
+          ])
+        : await Promise.all([
+            admin
+              .from('delivery_schedules')
+              .select(
+                'id, equipment_id, customer_id, scheduled_date, time_window, status, driver_id, vehicle_id, special_instructions',
+              )
+              .eq('tenant_id', tenantId)
+              .gte('scheduled_date', from)
+              .lt('scheduled_date', to),
+            admin
+              .from('installation_schedules')
+              .select(
+                'id, equipment_id, customer_id, scheduled_date, estimated_duration, status, technician_id, installation_notes',
+              )
+              .eq('tenant_id', tenantId)
+              .gte('scheduled_date', from)
+              .lt('scheduled_date', to),
+          ]);
+
+      if (deliveries.error || installations.error) {
+        console.error('Error loading the crew day:', deliveries.error ?? installations.error);
+        return createCorsResponse({ error: "Failed to load the crew's day" }, 500, req);
+      }
+
+      const items = mergeCrewDay(deliveries.data ?? [], installations.data ?? []);
+      return createCorsResponse(
+        {
+          date: from.slice(0, 10),
+          scope: mine ? 'mine' : 'tenant',
+          items,
+          deliveryCount: (deliveries.data ?? []).length,
+          installationCount: (installations.data ?? []).length,
+        },
+        200,
+        req,
+      );
     }
 
     // POST /equipment-lifecycle/purchase-orders
@@ -648,7 +883,7 @@ export default async function handler(req: Request) {
     ) {
       const { data: lifecycle, error } = await admin
         .from('equipment_lifecycle')
-        .select('current_stage')
+        .select('current_stage, serial_number')
         .eq('equipment_id', equipmentId)
         .eq('tenant_id', tenantId)
         .maybeSingle();
@@ -662,6 +897,14 @@ export default async function handler(req: Request) {
       }
 
       const currentStage = lifecycle.current_stage as string;
+      // WF-L-13: loaded ONCE for every transition this stage offers, not once
+      // per transition and certainly not once per requirement.
+      const evidence = await loadEvidence(
+        admin,
+        tenantId,
+        equipmentId,
+        (lifecycle.serial_number as string) ?? null,
+      );
 
       if (secondPart === 'available-transitions') {
         return createCorsResponse(
@@ -669,10 +912,18 @@ export default async function handler(req: Request) {
             success: true,
             data: {
               currentStage,
-              availableTransitions: getAvailableTransitions(currentStage).map((toStage) => ({
-                toStage,
-                validationRequirements: getValidationRequirements(currentStage, toStage),
-              })),
+              availableTransitions: getAvailableTransitions(currentStage).map((toStage) => {
+                const requirements = getValidationRequirements(currentStage, toStage);
+                const report = evaluateRequirements(requirements, evidence);
+                return {
+                  toStage,
+                  validationRequirements: requirements,
+                  // AC3: the UI draws its checklist from this. Three states per
+                  // row, because "not checked" is not "not met".
+                  requirementsChecked: true,
+                  ...report,
+                };
+              }),
             },
           },
           200,
@@ -687,23 +938,30 @@ export default async function handler(req: Request) {
 
       const allowed = canTransition(currentStage, toStage);
       const requirements = getValidationRequirements(currentStage, toStage);
+      const report = evaluateRequirements(requirements, evidence);
 
       return createCorsResponse(
         {
           success: true,
           data: {
-            canTransition: allowed,
+            // WF-L-13: allowed by the GRAPH and satisfied by the EVIDENCE are
+            // two different answers, and the caller gets both. `canTransition`
+            // stays the graph answer so an existing consumer keeps its meaning;
+            // `blocked` is the new one.
+            canTransition: allowed && !report.blocked,
+            graphAllows: allowed,
             currentStage,
             targetStage: toStage,
             validationRequirements: requirements,
-            // Nothing verifies these, so none is reported as met. `checked` is
-            // false so a caller cannot read the empty list as "all clear".
-            requirementsChecked: false,
-            message: allowed
-              ? requirements.length
-                ? `Allowed. ${requirements.length} requirement(s) must be completed first; none is verified automatically.`
-                : 'Transition allowed.'
-              : `Transition from ${currentStage} to ${toStage} is not allowed.`,
+            requirementsChecked: true,
+            ...report,
+            message: !allowed
+              ? `Transition from ${currentStage} to ${toStage} is not allowed.`
+              : report.blocked
+                ? `Blocked: no evidence for ${report.missing.join(', ')}.`
+                : report.unverifiable.length
+                  ? `Allowed. ${report.unverifiable.length} requirement(s) cannot be verified by any record and are not checked.`
+                  : 'Allowed; every requirement has evidence.',
           },
         },
         200,
@@ -905,14 +1163,46 @@ export default async function handler(req: Request) {
         );
       }
 
-      // Get validation requirements
+      // WF-L-13: THE EVIDENCE IS CHECKED HERE, and this is where the worst of
+      // it was. What stood here mapped every requirement to
+      // `{ passed: true, message: '<name> verified' }` and then WROTE THAT to
+      // the transition row - the same fabrication PA-052 had already removed
+      // from the two read paths, still running on the write path, and stored
+      // rather than merely displayed. A disposal record said "Data Wiped
+      // Confirmed - verified" because a caller asked for the stage change.
       const validationRequirements = getValidationRequirements(fromStage!, toStage);
+      const evidence = await loadEvidence(
+        admin,
+        tenantId,
+        equipmentId,
+        (lifecycle.serial_number as string) ?? null,
+      );
+      const report = evaluateRequirements(validationRequirements, evidence);
 
-      // For now, assume validations pass (in production, would check actual conditions)
-      const validationsPassed = validationRequirements.map((name) => ({
-        name,
-        passed: true,
-        message: `${name} verified`,
+      if (report.blocked) {
+        return createCorsResponse(
+          {
+            success: false,
+            error: `Missing evidence for: ${report.missing.join(', ')}`,
+            message:
+              `The stage did not move. ${report.missing.length} requirement(s) have a record ` +
+              `that would satisfy them and it is not there.`,
+            missing: report.missing,
+            satisfied: report.satisfied,
+            unverifiable: report.unverifiable,
+            requirements: report.requirements,
+          },
+          422,
+          req,
+        );
+      }
+
+      const validationsPassed = report.requirements.map((verdict) => ({
+        name: verdict.name,
+        // Three states on the stored record too. `null` is not `true`, and the
+        // whole point of this story is that the difference survives to the row.
+        passed: verdict.satisfied,
+        message: verdict.evidence,
       }));
 
       // Update lifecycle stage

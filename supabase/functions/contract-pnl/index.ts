@@ -42,6 +42,10 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const REQUIRED_PERMISSION = 'finance.reports.view';
 
 // ── Replica of shared/contract-pnl-math.ts — keep in sync (see header) ───────
 const CONTRACT_PNL_DEFAULTS = {
@@ -340,18 +344,17 @@ export default async function handler(req: Request) {
       return createCorsResponse({ message: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
+    // SEC-EDGE-001: Contract profitability - cost and margin per contract. /contracts/profitability gates on finance.reports.view at level 4, and everything this function serves is that report, so both sides carry it.
+    const denied = await denyWithoutPermission(admin, user, REQUIRED_PERMISSION);
+    if (denied) return createCorsResponse(denied, 403, req);
+
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'contract-pnl');
     const seg = parts[0];

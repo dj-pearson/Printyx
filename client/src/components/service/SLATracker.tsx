@@ -4,6 +4,7 @@
  * FN-006: Shows SLA compliance tracking for service dispatch.
  */
 
+import { percentBar } from '@/lib/utils';
 import { Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -15,7 +16,7 @@ interface SLATrackerProps {
 }
 
 export function SLATracker({ targetHours, elapsedHours, status, slaType }: SLATrackerProps) {
-  const percentage = Math.min((elapsedHours / targetHours) * 100, 100);
+  const percentage = percentBar(elapsedHours, targetHours);
   const remaining = Math.max(targetHours - elapsedHours, 0);
 
   const statusConfig = {

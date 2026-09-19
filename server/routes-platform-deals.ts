@@ -29,6 +29,7 @@ import { eq, and, or, inArray, gte, lte, desc, asc, sql, SQL } from 'drizzle-orm
 import { requireRootAdmin } from './routes-root-admin';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { subtractMonths } from '@shared/date-months';
 const router = Router();
 
 // All routes require root admin access
@@ -248,11 +249,14 @@ router.get('/stats', async (req: Request, res: Response) => {
       case 'week':
         startDate.setDate(now.getDate() - 7);
         break;
+      // setMonth overflows rather than clamping (DATE-SETMONTH-001): on
+      // 31 March, month - 1 asks for "31 February" and lands on 3 March, so
+      // the window sat entirely inside the current month.
       case 'month':
-        startDate.setMonth(now.getMonth() - 1);
+        startDate.setTime(subtractMonths(now, 1).getTime());
         break;
       case 'quarter':
-        startDate.setMonth(now.getMonth() - 3);
+        startDate.setTime(subtractMonths(now, 3).getTime());
         break;
       case 'year':
         startDate.setFullYear(now.getFullYear() - 1);

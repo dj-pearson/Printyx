@@ -260,7 +260,12 @@ export async function handleInvoiceSubResource(ctx: BillingCtx): Promise<Respons
       );
     }
 
-    const { data: updatedInvoice } = await admin
+    // AUDIT-038: the email has already gone out at this point, so a failed
+    // status update cannot roll it back - but answering "Invoice sent
+    // successfully" with a null invoice told the caller nothing was wrong while
+    // the row stayed a draft, and the next send would be the customer's second
+    // copy. The send is reported as done and the persistence failure named.
+    const { data: updatedInvoice, error: statusError } = await admin
       .from('invoices')
       .update({
         status: 'sent',
@@ -272,6 +277,23 @@ export async function handleInvoiceSubResource(ctx: BillingCtx): Promise<Respons
       .eq('tenant_id', tenantId)
       .select()
       .single();
+
+    if (statusError) {
+      console.error('Invoice sent but status update failed:', statusError);
+      return createCorsResponse(
+        {
+          message: 'Invoice emailed, but its status could not be updated',
+          code: 'PARTIAL_DB_ERROR',
+          invoice: null,
+          sentTo: toEmail,
+          messageId: emailResult.messageId,
+          details: statusError.message,
+          ...(emailResult.simulated && { simulated: true }),
+        },
+        207,
+        req,
+      );
+    }
 
     return createCorsResponse(
       {

@@ -40,6 +40,33 @@
  * `id` is a varchar, so the first matched no row, PostgREST reported no error,
  * and the user was told the bulk delete succeeded.
  *
+ * WF-G-05 ADDED THE METHOD, AND THE BARE PREFIX WITH IT. Everything above keys
+ * on a NAMED SEGMENT after the domain, so a page whose list and create calls hit
+ * the prefix itself was invisible: `useQuery(['/api/warehouse-operations'])` and
+ * `apiRequest('/api/warehouse-operations', 'POST', data)` carry no segment to
+ * look for. EDGE-002h audited that domain and reported only `/stats` missing,
+ * because the bare GET and the bare POST could not be seen - and both were in
+ * fact absent until WF-L-03 added them.
+ *
+ * So a bare call is now recorded as a method: the page's verb decides which
+ * branch has to exist, and `GET /x` and `POST /x` are different endpoints that
+ * happen to share a URL. An entry reads `warehouse-operations/#POST`; the `#`
+ * keeps it from ever colliding with a segment name.
+ *
+ * SCOPED TO THE BARE PREFIX, NOT TO `/:id`, and that is deliberate. AC1 lists
+ * four shapes; two of them are already covered - a literal after a placeholder
+ * is what PA-025 added above - and a bare `/:id` is genuinely ambiguous, because
+ * the id branch is usually the FALLTHROUGH rather than a branch of its own.
+ * Reporting it would mean reporting almost every domain, which is the kind of
+ * noise a real finding hides in.
+ *
+ * WHAT COUNTS AS A BRANCH, and it is generous on purpose. A method test paired
+ * with an emptiness test anywhere in the same condition: `!endpoint`,
+ * `!secondSegment`, `parts.length === 0`, `!parts[0]`. A false NEGATIVE here
+ * costs a missed report; a false positive de-gates a domain that is actually
+ * broken, which is the worse trade and is what the word-boundary rule above
+ * already got wrong once.
+ *
  * Ratchet, not a gate: docs/edge-path-coverage-baseline.json records what is
  * known. The check fails on anything NEW and reports what has been resolved.
  *
@@ -164,8 +191,169 @@ function appearsIn(src, segment) {
   return new RegExp(`['"\`/]${esc}(?=['"\`/$?\\\\)])`).test(src);
 }
 
+/**
+ * HTTP methods a bare-prefix call can carry. A literal path with no method
+ * beside it is a read - that is what a TanStack queryKey is, and what
+ * `apiRequest(url)` defaults to.
+ */
+const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+
+/**
+ * Methods this client file uses against the domain's BARE prefix.
+ *
+ * TWO CALL SHAPES ONLY, and the narrowness is the point - a literal that merely
+ * SPELLS the prefix is not a request to it:
+ *
+ *   apiRequest('/api/x')            -> GET      apiRequest('/api/x', 'POST') -> POST
+ *   queryKey: ['/api/x']            -> GET
+ *
+ * A MULTI-ELEMENT QUERY KEY IS NOT A BARE PATH. getQueryFn joins a key with
+ * '/', so `['/api/quote-line-items', quote.id]` requests
+ * /api/quote-line-items/<id>. Counting it as a bare GET reported a domain whose
+ * only caller asks for one row.
+ *
+ * AN INVALIDATION IS NOT A CALL. `invalidateQueries({ queryKey: ['/api/x'] })`
+ * is a cache operation, and TanStack matches it as a PREFIX - so the bare
+ * spelling appears in files that only ever request deeper paths. That is the
+ * same false positive PROD-020 found in the static route audit, where
+ * quote-templates turned out to be an api-shaped cache key with no network call
+ * behind it.
+ */
+function bareMethodsIn(text, domain) {
+  const found = new Set();
+  const esc = domain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const record = (index, method) => {
+    const around = text.slice(Math.max(0, index - 120), index + 40);
+    if (/invalidate|removeQueries|cancelQueries|setQueryData|prefetch/.test(around)) return;
+    const m = (method ?? 'GET').toUpperCase();
+    if (METHODS.includes(m)) found.add(m);
+  };
+
+  // apiRequest('/api/x') or apiRequest('/api/x', 'POST', ...)
+  const callRe = new RegExp(
+    `apiRequest\\(\\s*(['"\`])/api/${esc}\\1\\s*(?:,\\s*(['"\`])(\\w+)\\2)?`,
+    'g',
+  );
+  for (const m of text.matchAll(callRe)) record(m.index, m[3]);
+
+  // queryKey: ['/api/x']  - exactly one element, so the joined URL is the prefix
+  const keyRe = new RegExp(`queryKey:\\s*\\[\\s*(['"\`])/api/${esc}\\1\\s*\\]`, 'g');
+  for (const m of text.matchAll(keyRe)) record(m.index, 'GET');
+
+  return found;
+}
+
+/**
+ * Text that says "the path is empty here".
+ *
+ * `!id`, `!parts[0]`, `parts.length === 0`, `segment === undefined`, and the
+ * inverted form audit-logs uses - `rest !== '/'` guarding an early return, so
+ * everything after it IS the bare path.
+ */
+const EMPTY_PATH_TEST =
+  /!\s*[A-Za-z_$][\w$]*(?:\s*\[\s*\d+\s*\])?\s*[)&|{]|\.length\s*===\s*0|===\s*undefined|===\s*''|!==\s*'\/'/;
+
+/**
+ * A condition that names a specific sub-path: `endpoint === 'stats'`,
+ * `&& resourceId`, `parts[0] === 'x'`. Its presence means the branch is NOT the
+ * bare one.
+ */
+const SEGMENT_TEST = /===\s*['"`][a-z][\w-]*['"`]|&&\s*[A-Za-z_$][\w$]*\s*[)&{]/;
+
+/**
+ * Does the edge function have a branch for METHOD against the bare path?
+ *
+ * Three idioms in this tree, and getting to three took two wrong rules, each
+ * caught by running the check rather than by reading it:
+ *
+ *   1. Same condition:   if (req.method === 'GET' && !equipmentId)
+ *   2. Enclosing guard:  if (!id) { if (req.method === 'GET') ... }
+ *   3. UNCONDITIONAL:    if (req.method === 'POST') { ... }
+ *
+ * The first rule looked only FORWARD from the method test and reported nearly
+ * every domain as missing its own list endpoint, because idiom 2 is the
+ * commonest here. The second added the backward window and still reported
+ * business-records and equipment, because idiom 3 needs no path test at all -
+ * a method branch with nothing else in its condition handles the bare path by
+ * definition, and that is how most create endpoints are written.
+ *
+ * Generous on purpose. A false negative costs a missed report; a false positive
+ * de-gates a domain that is actually broken, which is the worse trade and is
+ * what the word-boundary rule above already got wrong once.
+ */
+function hasBareBranch(src, method) {
+  // Idiom 4: no method dispatch anywhere. deal-stages answers a hardcoded list
+  // whatever verb arrives, so every method reaches it - including the bare one.
+  // Reported as missing until this rule existed, which is the clearest kind of
+  // false positive: the endpoint is the one thing the function does.
+  if (!/method\s*[=!]==\s*['"`]/.test(src)) return true;
+
+  const methodRe = new RegExp(`method\\s*[=!]==\\s*['"\`]${method}['"\`]`, 'g');
+  for (const m of src.matchAll(methodRe)) {
+    const after = src.slice(m.index, m.index + 220).split('{')[0];
+    const before = src.slice(Math.max(0, m.index - 260), m.index);
+
+    // An emptiness test in the SAME condition only counts when the condition
+    // says nothing about a segment. managed-services has
+    // `GET && endpoint === 'contracts' && !contractId`: the `!contractId` is
+    // about the segment AFTER 'contracts', not about the bare path, and reading
+    // it as one hid that page's own list query.
+    if (EMPTY_PATH_TEST.test(after + ')') && !SEGMENT_TEST.test(after)) return true;
+    if (EMPTY_PATH_TEST.test(before)) return true;
+
+    // Idiom 3: the condition holds the method test and nothing else. Read back
+    // to the `if (` that opens it, so a neighbouring branch on the line above
+    // cannot be mistaken for part of this condition.
+    const open = before.lastIndexOf('if (');
+    if (open === -1) continue;
+    const condition = before.slice(open + 4) + after;
+    const remainder = condition.replace(methodRe, '').replace(/req\.?/g, '');
+    if (!SEGMENT_TEST.test(remainder) && !/[A-Za-z_$][\w$]*\s*===/.test(remainder)) return true;
+  }
+  return false;
+}
+
+/**
+ * Route overrides in supabase/functions/server.ts, as domain -> segment -> fn.
+ *
+ * A DOMAIN'S OWN DIRECTORY IS NOT ALWAYS THE HANDLER. server.ts rewrites the
+ * resolved function name for a few first sub-segments before dispatching, so
+ * /dashboard/widgets and /dashboard/user-layout are served by `dashboard-widgets`
+ * and not by `dashboard` at all. Reading only the domain directory reported both
+ * as coverage gaps, and they sat in the baseline for months asserting that
+ * production 404'd on a path production serves - a baseline entry that is not a
+ * defect, which is exactly where a real one hides (DASH-METRICS-001).
+ *
+ * Only the `functionName === 'x' && (subPath[0] === 'a' ...)` shape is read.
+ * Anything else in server.ts is left alone rather than guessed at, so a missed
+ * override still reports a gap - the safe direction.
+ */
+function aliasTargets() {
+  const out = {};
+  let src;
+  try {
+    src = stripComments(readFileSync(join(repo, 'supabase/functions/server.ts'), 'utf8'));
+  } catch {
+    return out;
+  }
+  const blocks = src.matchAll(
+    /functionName === '([a-z0-9-]+)'\s*&&\s*\(?([^)]*subPath\[0\][^)]*)\)?\s*\)?\s*\{([\s\S]{0,200}?)\}/g,
+  );
+  for (const block of blocks) {
+    const domain = block[1];
+    const assigned = /functionName = '([a-z0-9-]+)'/.exec(block[3]);
+    if (!assigned) continue;
+    for (const seg of block[2].matchAll(/subPath\[0\] === '([a-z0-9-]+)'/g)) {
+      (out[domain] ??= {})[seg[1]] = assigned[1];
+    }
+  }
+  return out;
+}
+
 export function computeCoverageGaps() {
   const parity = computeParity(repo);
+  const aliases = aliasTargets();
   const gaps = {};
 
   for (const row of parity.rows) {
@@ -176,6 +364,7 @@ export function computeCoverageGaps() {
 
     const segments = new Set();
     const deepShapes = new Set();
+    const bareMethods = new Set();
     for (const file of row.callers.live) {
       let text;
       try {
@@ -213,10 +402,27 @@ export function computeCoverageGaps() {
         }
         if (unhandled) deepShapes.add(segs.map((s) => (isPlaceholder(s) ? ':id' : s)).join('/'));
       }
+
+      // WF-G-05: the bare prefix, which carries no segment to search for.
+      for (const method of bareMethodsIn(text, row.domain)) bareMethods.add(method);
     }
 
-    const missing = [...segments].filter((s) => !appearsIn(src, s));
-    const entries = [...new Set([...missing, ...deepShapes])].sort();
+    // A segment server.ts hands to another function is searched in THAT
+    // function's source, not this one's.
+    const aliasForDomain = aliases[row.domain] ?? {};
+    const aliasSrc = {};
+    const sourceFor = (segment) => {
+      const target = aliasForDomain[segment];
+      if (!target) return src;
+      const targetDir = join(repo, 'supabase/functions', target);
+      if (!existsSync(targetDir)) return src;
+      aliasSrc[target] ??= readDirSrc(targetDir);
+      return `${src}\n${aliasSrc[target]}`;
+    };
+
+    const missing = [...segments].filter((s) => !appearsIn(sourceFor(s), s));
+    const missingBare = [...bareMethods].filter((m) => !hasBareBranch(src, m)).map((m) => `#${m}`);
+    const entries = [...new Set([...missing, ...deepShapes, ...missingBare])].sort();
     if (entries.length) gaps[row.domain] = entries;
   }
 

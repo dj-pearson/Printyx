@@ -30,6 +30,7 @@ import { ActivityTimeline } from '@/components/ActivityTimeline';
 import { NotesPanel } from '@/components/crm/NotesPanel';
 import { ContactManager } from '@/components/ContactManager';
 import { LeadProposals } from '@/components/leads/LeadProposals';
+import { EnrollInSequenceDialog } from '@/components/leads/EnrollInSequenceDialog';
 import { LeadQuotes } from '@/components/leads/LeadQuotes';
 import { LeadDeals } from '@/components/leads/LeadDeals';
 import { format } from 'date-fns';
@@ -78,6 +79,7 @@ import {
   FileCheck,
   Clock3,
   CheckSquare,
+  Send,
   BookOpen,
   Quote,
 } from 'lucide-react';
@@ -236,6 +238,8 @@ export default function LeadDetailHubspot() {
   });
 
   // Dialog states
+  // WF-S-04
+  const [showEnrollDialog, setShowEnrollDialog] = useState(false);
   const [dialogs, setDialogs] = useState({
     note: false,
     email: false,
@@ -519,42 +523,18 @@ export default function LeadDetailHubspot() {
                 <Briefcase className="h-3 w-3 mr-1" />
                 Create Deal
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  alert('Button clicked! Check console for API test results...');
-                  // Direct API test
-                  try {
-                    const response = await apiRequest(`/api/leads/${id}/contacts`, {
-                      method: 'POST',
-                      body: {
-                        firstName: 'Test',
-                        lastName: 'Contact',
-                        email: 'test@test.com',
-                        isPrimary: false,
-                      },
-                    });
-                    alert('SUCCESS: Contact created!');
-                    toast({
-                      title: 'Success',
-                      description: 'Test contact created directly',
-                    });
-                  } catch (error: any) {
-                    console.error('DIRECT API ERROR:', error);
-                    alert('ERROR: ' + error.message);
-                    toast({
-                      title: 'Error',
-                      description: 'API test failed: ' + error.message,
-                      variant: 'destructive',
-                    });
-                  }
-                }}
-                className="text-xs bg-red-500 text-white"
-              >
-                <UserPlus className="h-3 w-3 mr-1" />
-                🔴 API TEST
-              </Button>
+              {/*
+                WF-S-08: a red "🔴 API TEST" button sat here, between Create Deal
+                and Log Activity, on every lead record.
+
+                It was not only debug UI. It raised three raw browser alerts
+                ("Button clicked! Check console for API test results...",
+                "SUCCESS: Contact created!", "ERROR: ...") AND it POSTed a real
+                contact - first name Test, last name Contact,
+                test@test.com - into the tenant's database through the live
+                /api/leads/:id/contacts endpoint. Anyone who pressed it out of
+                curiosity wrote a junk contact onto that lead.
+              */}
               <Button
                 variant="outline"
                 size="sm"
@@ -712,6 +692,18 @@ export default function LeadDetailHubspot() {
             >
               <CheckSquare className="h-4 w-4 mr-1 sm:mr-2" />
               Task
+            </Button>
+            {/* WF-S-04: enrolment lived only on EmailSequencesPage, a
+                standalone campaign screen. This is the same endpoint, offered
+                where the rep decides to nurture. */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEnrollDialog(true)}
+              className="justify-center sm:justify-start"
+            >
+              <Send className="h-4 w-4 mr-1 sm:mr-2" />
+              Sequence
             </Button>
             {isEditing && (
               <Button
@@ -1854,18 +1846,23 @@ export default function LeadDetailHubspot() {
               </TabsContent>
 
               <TabsContent value="contacts" className="mt-6">
+                {/* WF-S-03: `lead.companyId` is not a field - business_records
+                    has no company_id column - so the fallback was the only
+                    branch that ever ran, and it is the right one:
+                    company_contacts.company_id references business_records.id,
+                    which is this lead. */}
                 <ContactManager
-                  companyId={lead?.companyId || lead?.id || ''}
+                  companyId={lead?.id || ''}
                   companyName={lead?.companyName || 'Unknown Company'}
                 />
               </TabsContent>
 
               <TabsContent value="deals" className="mt-6">
-                <LeadDeals
-                  leadId={lead?.id || ''}
-                  leadName={lead?.companyName || 'Unknown Lead'}
-                  companyId={lead?.companyId || lead?.id || ''}
-                />
+                {/* WF-S-03: companyId is gone. business_records has no
+                    company_id column, so `lead.companyId` was always
+                    undefined and the fallback - the lead's own id - was the
+                    only branch that ever ran. */}
+                <LeadDeals leadId={lead?.id || ''} leadName={lead?.companyName || 'Unknown Lead'} />
               </TabsContent>
 
               <TabsContent value="proposals" className="mt-6">
@@ -2270,7 +2267,11 @@ export default function LeadDetailHubspot() {
             leadId={id}
             onSuccess={() => {
               setDialogs((prev) => ({ ...prev, editRecord: false }));
-              queryClient.invalidateQueries({ queryKey: ['/api/leads', id, 'contacts'] });
+              // Contacts come back inside the lead payload; there is no
+              // ['/api/leads', id, 'contacts'] query, and a key LONGER than an
+              // existing one is not a prefix of it, so this matched nothing and
+              // a newly created contact did not appear until a reload.
+              queryClient.invalidateQueries({ queryKey: ['/api/leads', id] });
               toast({
                 title: 'Success',
                 description: 'Contact created successfully',
@@ -2282,6 +2283,23 @@ export default function LeadDetailHubspot() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* WF-S-04 */}
+      <EnrollInSequenceDialog
+        open={showEnrollDialog}
+        onOpenChange={setShowEnrollDialog}
+        records={
+          lead?.id
+            ? [
+                {
+                  id: lead.id,
+                  email: lead.primaryContactEmail ?? null,
+                  name: lead.companyName ?? null,
+                },
+              ]
+            : []
+        }
+      />
     </MainLayout>
   );
 }

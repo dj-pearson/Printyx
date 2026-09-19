@@ -1194,9 +1194,13 @@ class BillingEngineService {
   }
 
   private getDefaultPeriodEnd(): Date {
-    const date = new Date();
-    date.setMonth(date.getMonth() + 1);
-    date.setDate(0); // Last day of current month
+    // Last day of the CURRENT month. The old form was setMonth(+1) then
+    // setDate(0), and setMonth overflows: from 31 January it reached 3 March,
+    // so setDate(0) tidied it to the last day of FEBRUARY - a default billing
+    // period that ended a month early, on the three days of the month where it
+    // mattered (DATE-SETMONTH-001).
+    const now = new Date();
+    const date = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     date.setHours(23, 59, 59, 999);
     return date;
   }

@@ -54,11 +54,55 @@ function seededCodes() {
   return new Set([...src.matchAll(/code: ['"]([a-z_]+\.[a-z_.]+)['"]/g)].map((m) => m[1]));
 }
 
-/** CONSTANT_NAME -> 'dotted.code' from the PERMISSIONS object the gates use. */
+/**
+ * 'INVENTORY.ITEM.CREATE' -> 'inventory.item.create', from the PERMISSIONS
+ * object the gates use.
+ *
+ * KEYED ON THE FULL PATH, and that is the whole point. This function used to key
+ * on the LEAF name alone - `CREATE`, `VIEW`, `UPDATE`, `DELETE` - so every
+ * module's CREATE overwrote the previous one and the map held whichever came
+ * last in the file. `PERMISSIONS.INVENTORY.ITEM.CREATE` therefore resolved to
+ * `platform.tenant.create`, and the guard reported "creating a product model
+ * requires permission to create a TENANT" for fifty routes whose gates were
+ * nothing of the kind. A permission guard that names the wrong permission is
+ * worse than no guard: the baseline it produced was a list of defects that were
+ * not there, and the obvious fix - rewriting those gates - would have replaced
+ * working ones.
+ *
+ * The parse is a small brace walk rather than a regex, because the nesting IS
+ * the key. Depth is tracked from the PERMISSIONS declaration so keys outside it
+ * cannot leak in.
+ */
 function helperValues() {
   const src = readFileSync(join(repo, HELPER), 'utf8');
+  const start = src.indexOf('PERMISSIONS = {');
   const out = new Map();
-  for (const m of src.matchAll(/([A-Z_]+):\s*['"]([a-z_]+\.[a-z_.]+)['"]/g)) out.set(m[1], m[2]);
+  if (start === -1) return out;
+
+  const path = [];
+  let depth = 0;
+  for (const rawLine of src.slice(start).split('\n')) {
+    const line = rawLine.replace(/\/\/.*$/, '');
+    const leaf = /^\s*([A-Z][A-Z0-9_]*):\s*['"]([a-z_]+\.[a-z_.]+)['"]/.exec(line);
+    if (leaf) {
+      out.set([...path, leaf[1]].join('.'), leaf[2]);
+      continue;
+    }
+    const group = /^\s*([A-Z][A-Z0-9_]*):\s*\{/.exec(line);
+    if (group) {
+      path.push(group[1]);
+      depth++;
+      continue;
+    }
+    // A closing brace at the start of a line ends the innermost group. The
+    // PERMISSIONS object itself closes when the path is empty, which is where
+    // the walk stops - anything after it belongs to another declaration.
+    if (/^\s*\}/.test(line)) {
+      if (path.length === 0) break;
+      path.pop();
+      depth--;
+    }
+  }
   return out;
 }
 
@@ -94,7 +138,9 @@ for (const file of walk(join(repo, 'server'))) {
     const gate = /(?:requirePermission|can)\(\s*\[([^\]]*)\]/.exec(lines[i]);
     if (!gate || !route) continue;
 
-    const viaConstant = [...gate[1].matchAll(/PERMISSIONS(?:\.[A-Z_]+)*\.([A-Z_]+)/g)]
+    // The FULL path after PERMISSIONS., so INVENTORY.ITEM.CREATE and
+    // PLATFORM.TENANT.CREATE are different keys rather than both being CREATE.
+    const viaConstant = [...gate[1].matchAll(/PERMISSIONS\.((?:[A-Z0-9_]+\.)*[A-Z0-9_]+)/g)]
       .map((m) => values.get(m[1]))
       .filter(Boolean);
     const viaLiteral = [...gate[1].matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]);
@@ -113,6 +159,77 @@ for (const file of walk(join(repo, 'server'))) {
     });
   }
 }
+/**
+ * The NAVIGATION side (SEC-EDGE-001).
+ *
+ * client/src/lib/navigation-permissions.ts decides what a user can SEE, and it
+ * speaks the same permission codes the route gates do - so it has the same
+ * failure mode and nothing was checking it. Nine entries named
+ * `admin.settings.view` / `admin.settings.update`, neither of which the seeder
+ * created, so /settings itself was invisible to every role below platform
+ * admin. A user who cannot see the page never reports that it is missing.
+ *
+ * An entry is a finding only when NONE of its codes is seeded, matching the
+ * route rule: the gate passes on any one of them.
+ */
+const NAV = 'client/src/lib/navigation-permissions.ts';
+if (existsSync(join(repo, NAV))) {
+  const nav = readFileSync(join(repo, NAV), 'utf8');
+  const lineOf = (index) => nav.slice(0, index).split('\n').length;
+  for (const entry of nav.matchAll(/'(\/[^']*)': \{([\s\S]*?)\n  \}/g)) {
+    const [, path, block] = entry;
+    const required = [...new Set([...block.matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]))];
+    if (required.length === 0) continue;
+    if (required.some((p) => seeded.has(p))) continue;
+    findings.push({ route: `NAV ${path}`, file: NAV, line: lineOf(entry.index), required });
+  }
+}
+
+/**
+ * The EDGE side (SEC-EDGE-001), and this one is a gap the gating passes opened.
+ *
+ * Sixteen edge functions now carry permission codes through
+ * denyWithoutPermission, and until this block existed nothing checked them: an
+ * invented code in one of those gates passed every guard silently and would
+ * have denied every role below platform admin, in production, on the host that
+ * serves it. That is the SEC-EDGE-002 defect on a third surface, introduced by
+ * the story fixing it on the first two.
+ *
+ * The rule is the file-level one, deliberately coarse: in any edge file that
+ * calls denyWithoutPermission, every string literal assigned to a
+ * *_PERMISSION constant is a code that has to be seeded. Resolving which
+ * constant reaches which call would be more precise and would miss the case
+ * that matters - a constant declared, never reached by the resolver, and wrong.
+ *
+ * AND IT IS PER CODE, NOT ANY-OF, which is where it deliberately differs from
+ * the route rule above. A route gate's list is a set of alternatives, so one
+ * seeded member makes it satisfiable. An edge gate's list is not: these ORs
+ * were written to admit a SECOND ROLE - SALES_REP holds edit_own and
+ * SALES_MANAGER holds create, FIELD_TECHNICIAN holds parts.request and
+ * SERVICE_MANAGER holds parts.order - so a dead member is not a harmless
+ * alternative, it is the manager silently losing access while the rep still
+ * works and nobody reports it.
+ */
+const EDGE_DIR = join(repo, 'supabase', 'functions');
+if (existsSync(EDGE_DIR)) {
+  for (const file of walk(EDGE_DIR)) {
+    const src = readFileSync(file, 'utf8');
+    if (!src.includes('denyWithoutPermission')) continue;
+    const rel = relative(repo, file).replace(/\\/g, '/');
+    for (const decl of src.matchAll(/const\s+([A-Z_]*PERMISSION[A-Z_]*)\s*=\s*([^;]+);/g)) {
+      const codes = [...decl[2].matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]);
+      const dead = codes.filter((c) => !seeded.has(c));
+      if (dead.length === 0) continue;
+      findings.push({
+        route: `EDGE ${rel.split('/')[2]} (${decl[1]})`,
+        file: rel,
+        line: src.slice(0, decl.index).split('\n').length,
+        required: dead,
+      });
+    }
+  }
+}
+
 findings.sort((a, b) => a.route.localeCompare(b.route) || a.file.localeCompare(b.file));
 
 const key = (f) => `${f.route} (${f.file})`;
@@ -215,9 +332,11 @@ if (update) {
     JSON.stringify(
       {
         note:
-          'SEC-EDGE-001: routes gated on a permission code the RBAC seeder never creates. Each ' +
-          'denies every non-platform-admin. Fix by reconciling the two vocabularies - do not ' +
-          'copy these gates to the edge functions, which would export the lockout.',
+          'SEC-EDGE-002 drove this to 0 and the guard is a HARD GATE - it now refuses to run ' +
+          'against a non-empty list. A route gated on a code the RBAC seeder never creates ' +
+          'denies every role below platform admin. Fix one by naming a code the seeder ' +
+          'creates, or by adding the code to rbac-seeder.ts AND granting it to a role. Do not ' +
+          'copy such a gate to an edge function, which would export the lockout to production.',
         allowed: [...new Set(findings.map(key))].sort(),
       },
       null,
@@ -228,12 +347,27 @@ if (update) {
   process.exit(0);
 }
 
+/**
+ * HARD GATE since SEC-EDGE-002 closed (AC9). The backlog is 0, so the baseline
+ * is kept only to make a regression legible - a new finding names itself against
+ * an empty list rather than against nothing. It must stay empty: an entry here
+ * is a route that denies every role below platform admin, and the two ways to
+ * fix one are to name a code the seeder creates or to add the code to the
+ * seeder AND grant it to a role. Adding it to the baseline is not a third way.
+ */
 if (!existsSync(baselinePath)) {
   console.error(`Missing ${relative(repo, baselinePath)}. Run with --update-baseline first.`);
   process.exit(1);
 }
 
 const allowed = new Set(JSON.parse(readFileSync(baselinePath, 'utf8')).allowed);
+if (allowed.size > 0) {
+  console.error(
+    `✗ ${relative(repo, baselinePath)} is not empty. This guard is a hard gate: fix the ` +
+      `${allowed.size} entr(ies) rather than baselining them.`,
+  );
+  process.exit(1);
+}
 const novel = findings.filter((f) => !allowed.has(key(f)));
 
 if (novel.length > 0) {

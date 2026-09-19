@@ -3,6 +3,9 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { dashboardRollup, byStageRollup } from '../_shared/opportunity-rollups.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const WRITE_PERMISSION = ['sales.opportunity.edit_own', 'sales.opportunity.create'];
 
 // Rollup endpoints fold rows in the function because PostgREST has no GROUP BY
 // or SUM. The cap keeps a large tenant from pulling an unbounded page into
@@ -64,11 +67,11 @@ export default async function handler(req: Request) {
     // Resolve tenant ID from the verified JWT (canonical). The x-tenant-id header
     // is only a fallback and must NEVER override the JWT tenant — otherwise any
     // authenticated user can read/write another tenant by spoofing the header.
+    // SEC-TENANT-003: app_metadata only. The two user_metadata terms this used
+    // to end with are a bag the session holder writes with
+    // supabase.auth.updateUser, so they could not be what the name claims.
     const jwtTenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string);
+      (user.app_metadata?.tenantId as string) || (user.app_metadata?.tenant_id as string);
     const headerTenantId = req.headers.get('x-tenant-id') || undefined;
     const isPlatformAdmin =
       user.app_metadata?.isPlatformAdmin === true || user.app_metadata?.role === 'platform_admin';
@@ -79,7 +82,14 @@ export default async function handler(req: Request) {
         req,
       );
     }
-    let tenantId = jwtTenantId || headerTenantId;
+    // SEC-TENANT-003: the header is honoured ONLY for a platform admin. It used
+    // to sit ahead of the users-table lookup below, so a caller whose JWT
+    // carried no tenantId - a freshly provisioned user, a service caller, an
+    // account whose app_metadata was written by a path that never set it - got
+    // whatever tenant they asked for, and every .eq('tenant_id', tenantId) past
+    // this point filtered on it. The web client sends the header from
+    // localStorage, so it is a devtools edit away.
+    let tenantId = jwtTenantId || (isPlatformAdmin ? headerTenantId : undefined);
 
     if (!tenantId) {
       // Fallback: look up tenant from public.users
@@ -91,6 +101,20 @@ export default async function handler(req: Request) {
         .limit(1)
         .maybeSingle();
       tenantId = dbUser?.tenant_id;
+    }
+
+    // SEC-EDGE-001: the opportunity pipeline. Reads stay open - /opportunities gates on
+    // view_own OR view_team OR view_location and sets no level, and WF-R-04
+    // already narrows the ROWS a rep sees through _shared/scope.ts.
+    //
+    // BOTH CODES, and that is the rule this batch established rather than a
+    // belt-and-braces habit: the seeded SALES_REP holds `edit_own` and not
+    // `create`, while SALES_MANAGER holds `create` and not `edit_own`. A gate
+    // naming either one alone locks out one of the two roles that do this work
+    // every day. Checked against the role templates, not assumed.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
     }
 
     if (!tenantId) {

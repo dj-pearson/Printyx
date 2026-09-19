@@ -265,10 +265,22 @@ const OPEN_INVOICE_STATUSES = ['open', 'partial', 'overdue'];
 /**
  * Run scoring for every active customer and persist one row each.
  *
- * Faithful to the Express loop, including its per-customer query fan-out. That
- * is genuinely N+1, but reproducing the aggregation in a different shape risks
- * changing the numbers, and this endpoint is a weekly cron-style batch rather
- * than a request-path read. Fixing the fan-out is a separate, measurable change.
+ * PERF-NPLUS1-002: this WAS the per-customer fan-out the Express original had,
+ * and it was the worst one left in the edge tree - SEVEN round trips per
+ * customer (two ticket counts, open invoices, the equipment id list, two meter
+ * averages and the active contract), so a dealer with 500 customers made 3,500
+ * sequential hops to the pooler in one invocation. It is five tenant-wide
+ * paged reads now, whatever the customer count.
+ *
+ * THE ARITHMETIC IS UNCHANGED AND THAT IS THE POINT. Each read covers the WIDER
+ * of the two windows and the narrower one is a filter in memory, which is
+ * exactly what the two queries computed; the per-customer grouping is the same
+ * `.eq('customer_id', ...)` expressed as a Map. Two details are reproduced
+ * deliberately rather than tidied, because tidying either would move every
+ * score: the contract pick keeps Postgres's DESC NULLS FIRST ordering (see
+ * pickContract), and the meter window still compares reading_date against an
+ * instant rather than a day boundary (DATE-LOCAL-002's shape, left alone here
+ * because correcting it is a change in the numbers, not a refactor).
  */
 export async function runScoring(
   admin: SupabaseClient,
@@ -290,54 +302,129 @@ export async function runScoring(
   const ninetyDaysAgo = new Date(nowMs - 90 * DAY_MS).toISOString();
   const twelveMonthsAgo = new Date(nowMs - 365 * DAY_MS).toISOString();
 
+  const customerIds = (customers ?? []).map((c: Record<string, unknown>) => String(c.id));
   const scored: ScoredCustomer[] = [];
+  if (customerIds.length === 0) {
+    return { scored: 0, bands: {}, calculatedAt: new Date(nowMs).toISOString() };
+  }
+
+  // ─── Five tenant-wide reads, in place of seven per customer ──────────────
+
+  // Tickets over the WIDER window; the 90-day count is a filter on the same
+  // rows, which is what the second count(*) was computing.
+  const ticketRows = await fetchAllRows<any>(() =>
+    admin
+      .from('service_tickets')
+      .select('customer_id, created_at')
+      .eq('tenant_id', tenantId)
+      .in('customer_id', customerIds)
+      .gte('created_at', twelveMonthsAgo),
+  );
+  const recentTickets = new Map<string, number>();
+  const yearTickets = new Map<string, number>();
+  for (const t of ticketRows ?? []) {
+    const id = String(t.customer_id);
+    yearTickets.set(id, (yearTickets.get(id) ?? 0) + 1);
+    if (String(t.created_at) >= ninetyDaysAgo) {
+      recentTickets.set(id, (recentTickets.get(id) ?? 0) + 1);
+    }
+  }
+
+  const invoiceRows = await fetchAllRows<any>(() =>
+    admin
+      .from('invoices')
+      .select('customer_id, due_date, balance_due')
+      .eq('tenant_id', tenantId)
+      .in('customer_id', customerIds)
+      .in('invoice_status', OPEN_INVOICE_STATUSES),
+  );
+  const worstPastDue = new Map<string, number>();
+  for (const inv of invoiceRows ?? []) {
+    const balance = num(inv.balance_due);
+    // A zero/credit balance is not past due no matter how old the invoice is.
+    if (balance <= 0 || !inv.due_date) continue;
+    const id = String(inv.customer_id);
+    const days = (nowMs - new Date(inv.due_date as string).getTime()) / DAY_MS;
+    if (days > (worstPastDue.get(id) ?? 0)) worstPastDue.set(id, days);
+  }
+
+  // NOTE the columns: bw_meter_reading / color_meter_reading, NOT black_copies
+  // / color_copies. Both pairs exist on meter_readings and mean different
+  // things - these are the cumulative E-Automate meter values the Express
+  // scorer averages. Swapping in the copies columns would change every score
+  // without any error surfacing.
+  const equipmentRows = await fetchAllRows<any>(() =>
+    admin
+      .from('equipment')
+      .select('id, customer_id')
+      .eq('tenant_id', tenantId)
+      .in('customer_id', customerIds),
+  );
+  const customerOfEquipment = new Map<string, string>();
+  for (const e of equipmentRows ?? []) {
+    customerOfEquipment.set(String(e.id), String(e.customer_id));
+  }
+
+  const meterRows =
+    customerOfEquipment.size === 0
+      ? []
+      : ((await fetchAllRows<any>(() =>
+          admin
+            .from('meter_readings')
+            .select('equipment_id, reading_date, bw_meter_reading, color_meter_reading')
+            .eq('tenant_id', tenantId)
+            .in('equipment_id', [...customerOfEquipment.keys()])
+            .gte('reading_date', twelveMonthsAgo),
+        )) ?? []);
+
+  // Sum and count per window, so the average is sum/count exactly as
+  // avgMeterTotal computed it - and 0, not NaN, when a customer has none.
+  const recentMeter = new Map<string, { sum: number; n: number }>();
+  const yearMeter = new Map<string, { sum: number; n: number }>();
+  for (const r of meterRows) {
+    const customerId = customerOfEquipment.get(String(r.equipment_id));
+    if (!customerId) continue;
+    const total = num(r.bw_meter_reading) + num(r.color_meter_reading);
+    const year = yearMeter.get(customerId) ?? { sum: 0, n: 0 };
+    year.sum += total;
+    year.n += 1;
+    yearMeter.set(customerId, year);
+    if (String(r.reading_date) >= ninetyDaysAgo) {
+      const recent = recentMeter.get(customerId) ?? { sum: 0, n: 0 };
+      recent.sum += total;
+      recent.n += 1;
+      recentMeter.set(customerId, recent);
+    }
+  }
+  const avgOf = (m: Map<string, { sum: number; n: number }>, id: string) => {
+    const acc = m.get(id);
+    return acc && acc.n > 0 ? acc.sum / acc.n : 0;
+  };
+
+  const contractRows = await fetchAllRows<any>(() =>
+    admin
+      .from('contracts')
+      .select('customer_id, end_date, monthly_base')
+      .eq('tenant_id', tenantId)
+      .in('customer_id', customerIds)
+      .eq('status', 'active'),
+  );
+  const contractOf = new Map<string, Record<string, unknown>>();
+  for (const row of contractRows ?? []) {
+    const id = String(row.customer_id);
+    contractOf.set(id, pickContract(contractOf.get(id), row));
+  }
 
   for (const c of customers ?? []) {
     const customerId = String(c.id);
 
-    // --- Tickets: 90d count + 12-month monthly baseline -------------------
-    const recentTicketCount = await countTickets(admin, tenantId, customerId, ninetyDaysAgo);
-    const yearTicketCount = await countTickets(admin, tenantId, customerId, twelveMonthsAgo);
-    const baselineMonthlyTickets = yearTicketCount / 12;
+    const recentTicketCount = recentTickets.get(customerId) ?? 0;
+    const baselineMonthlyTickets = (yearTickets.get(customerId) ?? 0) / 12;
+    const maxDaysPastDue = worstPastDue.get(customerId) ?? 0;
+    const recentAvgVolume = avgOf(recentMeter, customerId);
+    const longAvgVolume = avgOf(yearMeter, customerId);
 
-    // --- AR: worst days-past-due across open invoices ---------------------
-    const { data: openInvoices } = await admin
-      .from('invoices')
-      .select('due_date, balance_due')
-      .eq('tenant_id', tenantId)
-      .eq('customer_id', customerId)
-      .in('invoice_status', OPEN_INVOICE_STATUSES);
-
-    let maxDaysPastDue = 0;
-    for (const inv of openInvoices ?? []) {
-      const balance = num(inv.balance_due);
-      // A zero/credit balance is not past due no matter how old the invoice is.
-      if (balance <= 0 || !inv.due_date) continue;
-      const days = (nowMs - new Date(inv.due_date as string).getTime()) / DAY_MS;
-      if (days > maxDaysPastDue) maxDaysPastDue = days;
-    }
-
-    // --- Meter trend: 3-mo rolling avg vs 12-mo avg -----------------------
-    // NOTE the columns: bw_meter_reading / color_meter_reading, NOT
-    // black_copies / color_copies. Both pairs exist on meter_readings and mean
-    // different things — these are the cumulative E-Automate meter values the
-    // Express scorer averages. Swapping in the copies columns would change every
-    // score without any error surfacing.
-    const equipmentIds = await customerEquipmentIds(admin, tenantId, customerId);
-    const recentAvgVolume = await avgMeterTotal(admin, tenantId, equipmentIds, ninetyDaysAgo);
-    const longAvgVolume = await avgMeterTotal(admin, tenantId, equipmentIds, twelveMonthsAgo);
-
-    // --- Renewal proximity + contract value -------------------------------
-    const { data: activeContracts } = await admin
-      .from('contracts')
-      .select('end_date, monthly_base')
-      .eq('tenant_id', tenantId)
-      .eq('customer_id', customerId)
-      .eq('status', 'active')
-      .order('end_date', { ascending: false })
-      .limit(1);
-
-    const contract = (activeContracts ?? [])[0];
+    const contract = contractOf.get(customerId);
     let daysToRenewal: number | null = null;
     if (contract?.end_date) {
       daysToRenewal = Math.round(
@@ -390,61 +477,29 @@ export async function runScoring(
   return { scored: scored.length, bands, calculatedAt };
 }
 
-async function countTickets(
-  admin: SupabaseClient,
-  tenantId: string,
-  customerId: string,
-  since: string,
-): Promise<number> {
-  const { count } = await admin
-    .from('service_tickets')
-    .select('id', { count: 'exact', head: true })
-    .eq('tenant_id', tenantId)
-    .eq('customer_id', customerId)
-    .gte('created_at', since);
-  return count ?? 0;
-}
-
 /**
- * meter_readings is keyed by equipment, so per-customer volume resolves through
- * the customer's equipment. Express expressed this as an inner join; PostgREST
- * needs the id list first.
+ * Which of a customer's active contracts the scorer uses.
+ *
+ * PERF-NPLUS1-002 replaced a per-customer
+ * `.order('end_date', { ascending: false }).limit(1)` with one tenant-wide read,
+ * and this reproduces that ordering EXACTLY rather than taking the obvious
+ * max(end_date). Postgres orders DESC as NULLS FIRST, so a contract with no end
+ * date was the one the query returned whenever the customer had one - which
+ * leaves daysToRenewal null and contract_value taken from THAT row. Picking the
+ * latest dated contract instead would be more sensible and would move the
+ * renewal-proximity signal on every customer who has an open-ended contract, so
+ * it is left alone and written down instead.
  */
-async function customerEquipmentIds(
-  admin: SupabaseClient,
-  tenantId: string,
-  customerId: string,
-): Promise<string[]> {
-  const data = await fetchAllRows<any>(() =>
-    admin.from('equipment').select('id').eq('tenant_id', tenantId).eq('customer_id', customerId),
-  );
-  return (data ?? []).map((e: Record<string, unknown>) => String(e.id));
-}
-
-async function avgMeterTotal(
-  admin: SupabaseClient,
-  tenantId: string,
-  equipmentIds: string[],
-  since: string,
-): Promise<number> {
-  // No equipment means no readings — and an average over nothing is 0, not NaN.
-  if (equipmentIds.length === 0) return 0;
-  const data = await fetchAllRows<any>(() =>
-    admin
-      .from('meter_readings')
-      .select('bw_meter_reading, color_meter_reading')
-      .eq('tenant_id', tenantId)
-      .in('equipment_id', equipmentIds)
-      .gte('reading_date', since),
-  );
-  const rows = data ?? [];
-  if (rows.length === 0) return 0;
-  const sum = rows.reduce(
-    (a: number, r: Record<string, unknown>) =>
-      a + num(r.bw_meter_reading) + num(r.color_meter_reading),
-    0,
-  );
-  return sum / rows.length;
+function pickContract(
+  current: Record<string, unknown> | undefined,
+  candidate: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!current) return candidate;
+  // NULLS FIRST: a null end_date outranks any date, and the first null seen
+  // wins, matching LIMIT 1 over an otherwise unordered set.
+  if (!current.end_date) return current;
+  if (!candidate.end_date) return candidate;
+  return String(candidate.end_date) > String(current.end_date) ? candidate : current;
 }
 
 /**

@@ -119,11 +119,175 @@ export function requirePlatformAdmin(ctx: AuthContext): void {
   }
 }
 
-// ─── Permission check with DB-backed fallback ────────────────────────────────
+// ─── Level check for the createSupabaseClient idiom (SEC-EDGE-001) ───────────
 
+/**
+ * Assert a minimum role level for a function that holds a Supabase `user`
+ * rather than an AuthContext.
+ *
+ * WHY THIS EXISTS. 175 edge functions authenticate with
+ * `createSupabaseClient(req)` + `auth.getUser(jwt)` and never build an
+ * AuthContext, so `requireRoleLevel(ctx, n)` does not fit them without
+ * restructuring the handler. This is the same check against the same claim,
+ * taking what those functions already have.
+ *
+ * WHY IT READS THE DATABASE. `getRoleLevel` answers 1 when
+ * `app_metadata.roleLevel` is absent, which is correct for a claim check and
+ * WRONG as an authorisation decision: WF-R-03 writes that claim at every point
+ * that assigns a role plus a backfill on the next authenticated request, so a
+ * token minted before then carries no level. Gating on the claim alone would
+ * lock a company admin out of their own product catalogue until they signed in
+ * again, on deploy day, with a 403 that says their role is too low. So an
+ * ABSENT claim falls through to `users.role_id -> roles.level`, which is
+ * authoritative. A PRESENT claim is trusted: it is signed, and re-reading it
+ * would cost a query per request for nothing.
+ *
+ * Cached per user for the same 60s as the permission cache. A role change takes
+ * effect within a minute, which is the same guarantee the permission path
+ * already makes.
+ */
+/** Shared by the level check, the permission check and the AuthContext path. */
+const PERMISSION_CACHE_TTL_MS = 60 * 1000;
+const levelCache = new Map<string, { level: number; expiresAt: number }>();
 type CacheEntry = { permissions: Set<string>; expiresAt: number };
 const permissionCache = new Map<string, CacheEntry>();
-const PERMISSION_CACHE_TTL_MS = 60 * 1000;
+
+/** The level in the token, or null when the claim is absent. */
+export function roleLevelClaim(user: { app_metadata?: Record<string, unknown> }): number | null {
+  const meta = user.app_metadata ?? {};
+  if (meta.isPlatformAdmin === true) return ROLE_LEVEL.PLATFORM_ADMIN;
+  const level = (meta.roleLevel ?? meta.role_level) as unknown;
+  return typeof level === 'number' ? level : null;
+}
+
+/**
+ * The user's role level: the claim when it is there, otherwise the database.
+ * Answers 1 only when the user has no role row at all, which is a user who
+ * genuinely has no privileges rather than one whose token is stale.
+ */
+export async function resolveRoleLevel(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  user: { id: string; app_metadata?: Record<string, unknown> },
+): Promise<number> {
+  const claim = roleLevelClaim(user);
+  if (claim !== null) return claim;
+
+  const cached = levelCache.get(user.id);
+  if (cached && cached.expiresAt > Date.now()) return cached.level;
+
+  let level = 1;
+  try {
+    const { data } = await admin
+      .from('users')
+      .select('role:roles(level)')
+      .eq('id', user.id)
+      .maybeSingle();
+    const found = data?.role?.level;
+    if (typeof found === 'number') level = found;
+  } catch (err) {
+    // A failed lookup must not open the gate. Level 1 denies anything above it,
+    // which is the same answer an unprivileged user gets.
+    console.error('Role level lookup failed:', String(err));
+  }
+  levelCache.set(user.id, { level, expiresAt: Date.now() + PERMISSION_CACHE_TTL_MS });
+  return level;
+}
+
+/**
+ * 403 body for a denied level check, or null when the user is allowed.
+ *
+ * Returns rather than throws, because these handlers answer with
+ * `createCorsResponse(body, status, req)` and have no RbacError catch. The
+ * message names the level required and the level held, so a denial is
+ * diagnosable without server logs - a 403 that says only "forbidden" sends the
+ * user to support.
+ */
+export async function denyBelowLevel(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  user: { id: string; app_metadata?: Record<string, unknown> },
+  minLevel: RoleLevel | number,
+): Promise<{ error: string; code: string; required: number; actual: number } | null> {
+  const actual = await resolveRoleLevel(admin, user);
+  if (actual >= minLevel) return null;
+  return {
+    error: `This action requires role level ${minLevel} or higher.`,
+    code: 'INSUFFICIENT_ROLE',
+    required: Number(minLevel),
+    actual,
+  };
+}
+
+/**
+ * 403 body for a denied PERMISSION check, or null when the user is allowed.
+ *
+ * The sibling of denyBelowLevel, and it exists for the same reason: the 175
+ * functions on the createSupabaseClient idiom hold a `user`, not an
+ * AuthContext, and `requirePermission` additionally needs a lookup registered
+ * with setPermissionLookup - which no edge function does, so it would deny
+ * everyone whose token predates WF-R-03's permissions claim. This reads
+ * `roles.permissions` directly on a claim miss, which is the query that
+ * function's own documentation shows.
+ *
+ * Use this rather than a level check when the capability is what matters and
+ * the seeder has a code for it. Use denyBelowLevel when it does not - per
+ * SEC-EDGE-002 a gate naming an unseeded code denies every role below platform
+ * admin, and that mistake is what this whole pair of stories is about.
+ */
+export async function denyWithoutPermission(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  user: { id: string; app_metadata?: Record<string, unknown> },
+  permissions: string | string[],
+): Promise<{ error: string; code: string; required: string[] } | null> {
+  const needed = Array.isArray(permissions) ? permissions : [permissions];
+  if (roleLevelClaim(user) === ROLE_LEVEL.PLATFORM_ADMIN) return null;
+
+  let held: Set<string>;
+  const claimed = user.app_metadata?.permissions;
+  if (Array.isArray(claimed) && claimed.length > 0) {
+    held = new Set(claimed as string[]);
+  } else {
+    const cached = permissionCache.get(user.id);
+    if (cached && cached.expiresAt > Date.now()) {
+      held = cached.permissions;
+    } else {
+      held = new Set<string>();
+      try {
+        const { data } = await admin
+          .from('users')
+          .select('role:roles(permissions)')
+          .eq('id', user.id)
+          .maybeSingle();
+        for (const code of flattenPermissions(data?.role?.permissions)) held.add(code);
+      } catch (err) {
+        // Fail closed. An empty set denies, which is what an unprivileged user
+        // gets - a failed lookup must never open the gate.
+        console.error('Permission lookup failed:', String(err));
+      }
+      permissionCache.set(user.id, {
+        permissions: held,
+        expiresAt: Date.now() + PERMISSION_CACHE_TTL_MS,
+      });
+    }
+  }
+
+  for (const code of needed) {
+    if (held.has(code)) return null;
+    if (code.endsWith('.*')) {
+      const prefix = code.slice(0, -1);
+      for (const h of held) if (h.startsWith(prefix)) return null;
+    }
+  }
+  return {
+    error: `This action requires the ${needed.join(' or ')} permission.`,
+    code: 'MISSING_PERMISSION',
+    required: needed,
+  };
+}
+
+// ─── Permission check with DB-backed fallback ────────────────────────────────
 
 interface PermissionLookup {
   /**
@@ -260,8 +424,10 @@ export async function requirePermission(
 }
 
 /**
- * Test-seam: clear the in-memory cache.
+ * Test-seam: clear the in-memory caches. Clears the LEVEL cache too - a test
+ * that resets one and not the other reads a stale answer from the other.
  */
 export function _clearPermissionCache(): void {
   permissionCache.clear();
+  levelCache.clear();
 }

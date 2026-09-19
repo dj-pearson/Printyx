@@ -8,6 +8,7 @@
 //   POST /satisfaction/surveys/:id/submit   ({ responses: [...] })
 //   GET  /satisfaction/analytics[?timeRange=]
 import { createCorsResponse } from '../../_shared/cors.ts';
+import { subtractMonths } from '../../_shared/date-months.ts';
 import {
   isMissingTableError,
   mapQuestionRow,
@@ -354,7 +355,9 @@ export async function handleSatisfaction(ctx: PortalCtx): Promise<Response> {
         startDate.setDate(now.getDate() - 90);
         break;
       case '6m':
-        startDate.setMonth(now.getMonth() - 6);
+        // Clamped, because setMonth overflows: six months back from 31 August
+        // is 28/29 February, not 3 March (DATE-SETMONTH-001).
+        startDate.setTime(subtractMonths(now, 6).getTime());
         break;
       case '1y':
       default:

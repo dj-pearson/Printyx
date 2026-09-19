@@ -67,8 +67,14 @@ jobs:
         run: npm run check:orphans
       - name: Query loading/error-state ratchet (CR-033)
         run: npm run check:query-states
-      - name: Object-in-queryKey gate (QUERYKEY-001)
+      - name: queryKey path-segment gate (QUERYKEY-001, QUERYKEY-002)
         run: npm run check:query-keys
+      - name: Dead-invalidation gate (INVALIDATE-002)
+        run: npm run check:invalidation-keys
+      - name: Raw browser alert gate (WF-S-08)
+        run: npm run check:browser-dialogs
+      - name: Inline percentage-division gate (PRICING-MARGIN-002)
+        run: npm run check:percent-math
       - name: Markup-as-margin gate (PRICING-MARGIN-001)
         run: npm run check:margin-formula
       - name: Unchecked blob-download gate (EXPORT-DOWNLOAD-001)
@@ -79,12 +85,20 @@ jobs:
         run: npm run check:currency-copies
       - name: Insert-without-tenant_id gate (SEC-TENANT-004)
         run: npm run check:insert-tenant-id
+      - name: One tenant resolver across the edge tree (SEC-TENANT-003)
+        run: npm run check:tenant-resolution
+      - name: Swallowed PostgREST write errors (AUDIT-038)
+        run: npm run check:swallowed-writes
+      - name: Passing stories naming an unreachable deliverable (WF-G-03)
+        run: npm run check:story-orphans
       - name: Fabricated-fallback ratchet (AUDIT-019)
         run: npm run check:fabricated
       - name: Static-posture gate for admin surfaces (AUDIT-019)
         run: npm run check:no-static-posture
       - name: Fabricated-measurement ratchet (AUDIT-020)
         run: npm run check:no-random-metrics
+      - name: Fabricated server/edge measurement ratchet (DASH-METRICS-001)
+        run: npm run check:server-fabricated
       - name: Unreferenced edge-function ratchet (AUDIT-024)
         run: npm run check:unreferenced-edge-fns
       - name: Accessible-name gate for icon buttons and search inputs (CR-035)
@@ -137,6 +151,8 @@ jobs:
         run: npm run check:unwrapped-response
       - name: Permission-vocabulary ratchet (SEC-EDGE-001)
         run: npm run check:permission-vocab
+      - name: Credential-vault gate (SEC-CRED-VAULT-001)
+        run: npm run check:credential-vault
       - name: Edge path-normalization ratchet (EDGE-002e)
         run: npm run check:edge-paths
 
@@ -253,9 +269,21 @@ jobs:
       # server/tests/integration, which need a migrated test DB the CI Postgres
       # service doesn't set up (relation "rbac_audit_log" does not exist).
       - run: npm run test:unit
-      # Integration tests require schema/migrations against TEST_DATABASE_URL,
-      # which this job doesn't apply yet — pre-existing gap, tracked separately.
-      # Non-blocking until the test-DB schema setup is added.
+      # WF-R-12: BLOCKING. The tier-isolation suite creates and drops its own
+      # schema against DATABASE_URL, so unlike its neighbours it needs no
+      # migrations applied and there is nothing to wait for. RBAC-008 closed
+      # without the rep-A/rep-B isolation test its own criteria asked for; this
+      # is that test, and a non-blocking one would be the same gap again.
+      - name: Tier isolation over real rows (WF-R-12)
+        # Its own variable, not DATABASE_URL: server/tests/setup.ts assigns that
+        # an unusable placeholder on purpose, so a suite falling back to it would
+        # think it had a database and skip silently.
+        env:
+          RBAC_TEST_DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/printyx_test
+        run: npx vitest run server/tests/integration/rbac-tier-isolation.test.ts
+      # The REST of the integration tests require schema/migrations against
+      # TEST_DATABASE_URL, which this job doesn't apply yet — pre-existing gap,
+      # tracked separately. Non-blocking until the test-DB schema setup is added.
       - run: npm run test:integration
         continue-on-error: true
 

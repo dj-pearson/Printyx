@@ -1065,6 +1065,11 @@ async function executePendingAutomations(
     return result;
   }
 
+  // PERF-NPLUS1-002: not batchable and not unbounded. The select above caps at
+  // 50, and each row is a DIFFERENT action - a task insert, a deal field
+  // update, a not-implemented branch - with its own outcome written back to
+  // pipeline_automation_logs. One statement cannot express that, and 50 pending
+  // automations on a single stage change is already a misconfigured pipeline.
   for (const row of pending ?? []) {
     result.considered++;
     const actionType = String(row.action_type ?? '').toLowerCase();

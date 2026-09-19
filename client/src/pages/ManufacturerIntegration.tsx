@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -368,10 +369,7 @@ export default function ManufacturerIntegration() {
               <CardContent>
                 <div className="text-2xl font-bold">{stats.onlineDevices}</div>
                 <p className="text-xs text-muted-foreground">
-                  {stats.totalDevices > 0
-                    ? Math.round((stats.onlineDevices / stats.totalDevices) * 100)
-                    : 0}
-                  % online
+                  {Math.round(percentOfOr(stats.onlineDevices, stats.totalDevices))}% online
                 </p>
               </CardContent>
             </Card>

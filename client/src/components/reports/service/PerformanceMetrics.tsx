@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { CheckCircle2, TrendingUp, Star, Target, Award, AlertTriangle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
@@ -84,7 +85,7 @@ export default function PerformanceMetrics({
     unit?: string;
     description: string;
   }) => {
-    const percentage = (value / target) * 100;
+    const percentage = percentOfOr(value, target);
     const isOnTarget = value >= target;
 
     return (

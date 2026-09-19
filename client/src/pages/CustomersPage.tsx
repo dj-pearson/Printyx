@@ -5,6 +5,7 @@
  * Account managers track customer health, equipment, contracts, and service history.
  */
 
+import { formatPercent, percentOf } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -540,9 +541,7 @@ export default function CustomersPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats?.total
-                  ? `${Math.round(((stats.activeCount || 0) / stats.total) * 100)}%`
-                  : '—'}
+                {stats?.total ? formatPercent(percentOf(stats.activeCount || 0, stats.total)) : '—'}
               </div>
               <p className="text-xs text-muted-foreground">
                 {stats?.inactiveCount?.toLocaleString() || '0'} inactive

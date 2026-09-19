@@ -9,33 +9,10 @@
       "tenant-stats",
       "user-stats"
     ],
-    "analytics": [
-      "benchmarks",
-      "customer-service",
-      "dashboards",
-      "generate-reports",
-      "metrics",
-      "performance-metrics",
-      "technician-performance",
-      "trends"
-    ],
-    "apollo": ["credentials", "leads", "stats"],
     "blog-post-revisions": ["single"],
     "blog-serp": ["single"],
     "catalog": ["import-enhanced"],
     "companies": ["stats"],
-    "crm": ["analytics", "manager-insights"],
-    "dashboard": [
-      "activity",
-      "charts",
-      "layouts",
-      "metrics",
-      "my-tasks",
-      "team-performance",
-      "urgent",
-      "user-layout",
-      "widgets"
-    ],
     "deal-desk": ["dashboard"],
     "financial": ["kpis", "profitability"],
     "integrations": ["bulk-sync", "eautomate", "oauth", "quickbooks", "salesforce"],
@@ -44,7 +21,6 @@
     "mobile-field": ["metrics", "technicians", "voice-notes", "work-orders"],
     "onboarding": ["export", "getting-started", "wizard-state"],
     "seo": ["analyze", "check", "core-web-vitals", "detect", "validate"],
-    "subscriptions": ["checkout", "portal", "preview-upgrade", "setup-intent", "stripe"],
     "technician-management": ["dashboard"]
   }
 }

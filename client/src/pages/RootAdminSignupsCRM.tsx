@@ -94,7 +94,10 @@ export default function RootAdminSignupsCRM() {
 
   // Fetch signups
   const { data: signupsData, isLoading: signupsLoading } = useQuery<SignupsResponse>({
-    queryKey: ['/api/root-admin/signups', statusFilter === 'all' ? '' : statusFilter, page],
+    queryKey: [
+      `/api/root-admin/signups?page=${page}` +
+        (statusFilter && statusFilter !== 'all' ? `&status=${statusFilter}` : ''),
+    ],
   });
 
   // Fetch analytics

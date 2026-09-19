@@ -24,6 +24,7 @@ import { writeAuditLog, withRequestContext } from '../_shared/blog/audit-log.ts'
 import { generateCompletionDetailed } from '../_shared/anthropic.ts';
 import { extractJsonArray } from '../_shared/blog/llm-json.ts';
 import { logAiCost, getQuotaStatus, usdToCents } from '../_shared/blog/ai-cost.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -63,15 +64,10 @@ export default async function handler(req: Request) {
     if (!hasBlogPostEdit(user)) {
       return createCorsResponse({ error: 'Forbidden: blog.post.edit required' }, 403, req);
     }
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'blog-outline-variants');
     const action = parts[0];

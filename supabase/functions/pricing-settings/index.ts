@@ -2,6 +2,10 @@
 // Handles pricing settings and visibility configuration
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const REQUIRED_PERMISSION = 'operations.inventory.manage';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -21,18 +25,17 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
+    // SEC-EDGE-001: The company's pricing policy - maximum discount and minimum margin, the numbers the quote guardrails enforce. Loosening them is silent and changes what every rep may sell at. /pricing/settings needs operations.inventory.manage at level 4 to open, so the read carries the same code.
+    const denied = await denyWithoutPermission(admin, user, REQUIRED_PERMISSION);
+    if (denied) return createCorsResponse(denied, 403, req);
+
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
     // server.ts strips the function name before invoking this handler, so the

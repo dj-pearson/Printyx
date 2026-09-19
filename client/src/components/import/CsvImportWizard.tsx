@@ -10,6 +10,7 @@
  * - Import execution with progress tracking
  */
 
+import { percentBar } from '@/lib/utils';
 import { useState, useCallback, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -311,7 +312,7 @@ export function CsvImportWizard({
     },
     onSuccess: async (data) => {
       // Update progress
-      const percentage = Math.round((data.processedRows / data.totalRows) * 100);
+      const percentage = Math.round(percentBar(data.processedRows, data.totalRows));
       setImportProgress({
         current: data.processedRows,
         total: data.totalRows,

@@ -3,6 +3,10 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+/** The seeded capability for changing the product and inventory catalogue. */
+const WRITE_PERMISSION = 'operations.inventory.manage';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -26,18 +30,33 @@ export default async function handler(req: Request) {
     }
 
     // Extract tenant ID
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
+    // SEC-EDGE-001: writes need the inventory capability; reads stay open.
+    //
+    // The catalogue is a tenant-wide list every role has to be able to READ -
+    // a rep pricing a quote, a technician looking up a part - and the pages
+    // beside it set no minimum level for that. What was open to every
+    // authenticated member of the tenant is the WRITE side: production has
+    // served this function with no permission check at all, so any user could
+    // add, edit or delete a product model, a supply or a vendor.
+    //
+    // A permission and not a level, because the seeder has a code that means
+    // exactly this and navigation-permissions.ts already names it on the
+    // matching page. SEC-EDGE-002 is what makes that safe: until it landed,
+    // the code the Express gate named was one no seeded role could hold, and
+    // copying it here would have replaced "open to everyone" with "open to
+    // platform admins", a different wrong answer.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
+    }
+
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
     // Server strips function name, so /supplies/:id becomes /:id

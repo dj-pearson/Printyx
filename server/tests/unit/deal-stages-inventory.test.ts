@@ -75,6 +75,8 @@ const SANCTIONED: Record<string, string> = {
   'server/routes-universal-search.ts': 'joins the stage NAME for a search result label',
   'supabase/functions/pipeline-config/index.ts': 'the canonical surface, which owns the bridge',
   'supabase/functions/deals/index.ts': 'reads stage names for the deal list',
+  'supabase/functions/deal-stages/index.ts':
+    'WF-S-03: serves the stage PICKER, which must offer the legacy ids deals.stage_id holds - identity only, no config flags',
   'supabase/functions/proposals/index.ts': 'resolves a stage_id when acceptance creates a deal',
   'supabase/functions/opportunities/index.ts': 'embeds the stage NAME and COLOUR for iOS',
   'supabase/functions/reports/handlers/frontend-stubs.ts':

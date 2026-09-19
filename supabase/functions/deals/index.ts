@@ -79,6 +79,9 @@ function toDealResponse(deal: any, stageNames: Record<string, string>) {
     targetCpcBlack: deal.target_cpc_black,
     targetCpcColor: deal.target_cpc_color,
     replacesContractId: deal.replaces_contract_id,
+    // WF-S-03: the lead this deal came out of, so a caller can navigate back
+    // without a second request.
+    sourceBusinessRecordId: deal.source_business_record_id,
     createdAt: deal.created_at,
     updatedAt: deal.updated_at,
   };
@@ -235,11 +238,11 @@ export default async function handler(req: Request) {
     // Resolve tenant ID from the verified JWT (canonical). The x-tenant-id header
     // is only a fallback and must NEVER override the JWT tenant — otherwise any
     // authenticated user can read/write another tenant by spoofing the header.
+    // SEC-TENANT-003: app_metadata only. The two user_metadata terms this used
+    // to end with are a bag the session holder writes with
+    // supabase.auth.updateUser, so they could not be what the name claims.
     const jwtTenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string);
+      (user.app_metadata?.tenantId as string) || (user.app_metadata?.tenant_id as string);
     const headerTenantId = req.headers.get('x-tenant-id') || undefined;
     // WF-R-03: the role claim carries the uppercase role CODE, so comparing it to
     // a lowercase string could never fire and this rested on a flag nothing wrote.
@@ -255,7 +258,14 @@ export default async function handler(req: Request) {
         req,
       );
     }
-    let tenantId = jwtTenantId || headerTenantId;
+    // SEC-TENANT-003: the header is honoured ONLY for a platform admin. It used
+    // to sit ahead of the users-table lookup below, so a caller whose JWT
+    // carried no tenantId - a freshly provisioned user, a service caller, an
+    // account whose app_metadata was written by a path that never set it - got
+    // whatever tenant they asked for, and every .eq('tenant_id', tenantId) past
+    // this point filtered on it. The web client sends the header from
+    // localStorage, so it is a devtools edit away.
+    let tenantId = jwtTenantId || (isPlatformAdmin ? headerTenantId : undefined);
 
     if (!tenantId) {
       // Fallback: look up tenant from public.users
@@ -736,6 +746,15 @@ export default async function handler(req: Request) {
       if (q.filters.status) query = query.eq('status', q.filters.status);
       if (q.filters.priority) query = query.eq('priority', q.filters.priority);
       if (q.filters.customerId) query = query.eq('customer_id', q.filters.customerId);
+      // WF-S-03. `leadId` is accepted as an alias and nothing else: the tab
+      // shipped sending it, and answering the tenant's whole deal list to an
+      // old bundle is the defect this story exists to close.
+      const businessRecordId =
+        q.filters.businessRecordId ||
+        url.searchParams.get('business_record_id') ||
+        url.searchParams.get('leadId') ||
+        url.searchParams.get('lead_id');
+      if (businessRecordId) query = query.eq('source_business_record_id', businessRecordId);
       // COP-M04
       if (q.filters.dealMotion) query = query.eq('deal_motion', q.filters.dealMotion);
       if (q.filters.forecastCategory)
@@ -885,6 +904,20 @@ export default async function handler(req: Request) {
         expected_close_date: body.expectedCloseDate || body.expected_close_date || null,
         owner_id: body.ownerId || body.owner_id || user.id,
         customer_id: body.customerId || body.customer_id || null,
+        // WF-S-03. `leadId` is accepted because that is the key LeadDeals has
+        // always sent. `companyId` is NOT: LeadDetail computes it as
+        // `lead.companyId || lead.id` and business_records has no company_id
+        // column, so it is only ever the lead's own id wearing another name -
+        // reading it as a second identifier would make a coincidence look like
+        // a relationship.
+        source_business_record_id:
+          body.sourceBusinessRecordId ||
+          body.source_business_record_id ||
+          body.businessRecordId ||
+          body.business_record_id ||
+          body.leadId ||
+          body.lead_id ||
+          null,
         company_name: body.companyName || body.company_name || null,
         priority: body.priority || 'medium',
         source: body.source || null,

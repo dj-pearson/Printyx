@@ -63,17 +63,24 @@ async function bumpTracked(
 ) {
   // No atomic increment through PostgREST, so this is read-modify-write. It is
   // a display total, and the Express version had the same race.
+  //
+  // AUDIT-037: `time_tracked` is not a column on tasks. The one that records
+  // effort is `actual_hours`, so every timer stop wrote a 42703 and the total
+  // never moved. The unit changes with the column - this function counts
+  // MINUTES and actual_hours is hours - so the delta is converted rather than
+  // stored as-is, which would have multiplied every total by sixty.
   const { data: task } = await db
     .from('tasks')
-    .select('time_tracked')
+    .select('actual_hours')
     .eq('id', taskId)
     .eq('tenant_id', tenantId)
     .maybeSingle();
-  const current = (task?.time_tracked as number | null) ?? 0;
+  const current = Number(task?.actual_hours ?? 0) || 0;
+  const next = Math.max(current + deltaMinutes / 60, 0);
   await db
     .from('tasks')
     .update({
-      time_tracked: Math.max(current + deltaMinutes, 0),
+      actual_hours: Math.round(next * 100) / 100,
       updated_at: new Date().toISOString(),
     })
     .eq('id', taskId)

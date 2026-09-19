@@ -1,3 +1,4 @@
+import { percentOf } from '@/lib/utils';
 import { useState, useMemo, memo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
@@ -66,7 +67,10 @@ const MONTH_LABELS = [
  */
 function percentChange(current: number, previous: number): number | null {
   if (!Number.isFinite(previous) || previous === 0) return null;
-  return ((current - previous) / previous) * 100;
+  // Null, not Infinity: a customer in their first month has no previous
+  // period, and AUDIT-021 already made the endpoint answer null for exactly
+  // this - the component was recomputing it (PRICING-MARGIN-002).
+  return percentOf(current - previous, previous);
 }
 
 interface UsageAnalyticsDashboardProps {

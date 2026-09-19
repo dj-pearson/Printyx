@@ -258,7 +258,19 @@ describe('WF-C-03: the quote builder asks for one', () => {
   });
 
   it('refreshes the dashboard so a reviewer sees it without reloading', () => {
-    expect(code).toMatch(/queryKey: \['\/api\/deal-desk\/requests'\]/);
+    // The dashboard's two queries are what actually carry the request list.
+    // This used to assert queryKey: ['/api/deal-desk/requests'] instead, and
+    // that key reaches nothing: the only queries on that path are
+    // ApprovalRequestDetail's `/api/deal-desk/requests/${requestId}`, a longer
+    // STRING rather than a longer key, so element-wise prefix matching never
+    // saw it (INVALIDATE-002). The assertion was locking in the misfire it was
+    // written to prevent.
+    expect(code).toMatch(/queryKey: \['\/api\/deal-desk\/dashboard'\]/);
+    expect(code).toMatch(/queryKey: \['\/api\/deal-desk\/my-approvals'\]/);
+  });
+
+  it('and an open request detail page too, by path', () => {
+    expect(code).toMatch(/invalidateApiPath\('\/api\/deal-desk\/requests'\)/);
   });
 
   it('offers the button only to the rep the guardrail blocks', () => {

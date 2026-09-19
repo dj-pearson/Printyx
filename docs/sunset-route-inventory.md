@@ -29,9 +29,9 @@ Grouped by phase. Every domain here has a named PRD, an edge function, and a ses
 
 ### Phase 2 — Outreach + reconciles
 
-- [ ] `server/routes/apollo-routes.ts` → `supabase/functions/apollo/` (US-008)
-- [ ] `server/apollo-client.ts` → merged into `apollo/` (US-008)
-- [ ] `server/apollo-storage.ts` → merged into `apollo/` (US-008)
+- [x] `server/routes/apollo-routes.ts` → `supabase/functions/apollo/` (US-008) — deleted 2026-09-18 (WF-S-05). `/api/apollo` is in `crmProxies`; the edge function serves search, enrich, leads/:id/add-to-crm, leads/bulk-add, stats, usage and the four credentials endpoints.
+- [ ] `server/apollo-client.ts` → merged into `apollo/` (US-008) — NOT deletable. `server/routes/chrome-extension-routes.ts` still calls `createApolloClientForTenant`; the Deno equivalent is `supabase/functions/_shared/apollo-client.ts`.
+- [ ] `server/apollo-storage.ts` → merged into `apollo/` (US-008) — NOT deletable, same caller.
 - [ ] `server/routes/knowledge-base-routes.ts` → `supabase/functions/knowledge-base/` (US-010)
 - [ ] `server/routes/knowledge-base-admin-routes.ts` → `supabase/functions/knowledge-base/` (US-010)
 - [ ] `server/services/knowledge-base-service.ts` → merged into `knowledge-base/` (US-010)
@@ -65,7 +65,7 @@ Note: several auxiliary edge functions from Phase 3 (`assign-lead`, `auto-lead-r
 - [ ] `server/services/mileage-service.ts`
 - [ ] `server/services/geofence-alerts-service.ts`
 - [ ] `server/routes/lease-routes.ts` → `supabase/functions/leases/`
-- [ ] `server/routes/manufacturer-order-routes.ts` → `supabase/functions/manufacturer-orders/`
+- [x] `server/routes/manufacturer-order-routes.ts` → `supabase/functions/manufacturer-orders/` — deleted 2026-09-18 (WF-P-06). All 43 handlers covered one for one; `/api/manufacturer-orders` is in `crmProxies`.
 - [ ] `server/services/manufacturer-integration-service.ts`
 - [ ] `server/routes/task-routes.ts` → `supabase/functions/tasks/`
 - [ ] `server/routes/team-collaboration-routes.ts` → `supabase/functions/teams/`

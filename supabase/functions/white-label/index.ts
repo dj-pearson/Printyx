@@ -22,6 +22,8 @@ import {
   generateCssVariables,
   renderEmailTemplate,
 } from '../_shared/white-label.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, denyBelowLevel } from '../_shared/rbac.ts';
 
 type Row = Record<string, any>;
 
@@ -156,13 +158,13 @@ export default async function handler(req: Request) {
     }
 
     const user = userData.user;
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      null;
-
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
     const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     const loadConfig = async (): Promise<Row | null> => {
       const { data } = await admin
@@ -175,6 +177,15 @@ export default async function handler(req: Request) {
 
     const requireTenant = () =>
       tenantId ? null : createCorsResponse({ error: 'Tenant ID required' }, 400, req);
+
+    // SEC-EDGE-001: branding, custom domains and the email templates sent under
+    // this dealer's name. /white-label needs level 6 to open, which is the
+    // distinguishing constraint - `admin.settings.update` is granted to several
+    // admin roles, and the page deliberately puts this above them. A LEVEL check
+    // for that reason, reads included, because the page does not open below 6
+    // either.
+    const denied = await denyBelowLevel(admin, user, ROLE_LEVEL.REGIONAL_MANAGER);
+    if (denied) return createCorsResponse(denied, 403, req);
 
     // ─── /presets ───────────────────────────────────────────────────
     // Presets are global (no tenant_id column), so this is the one read that

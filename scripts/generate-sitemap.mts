@@ -110,6 +110,6 @@ if (check) {
 } else {
   writeFileSync(OUT, generated, 'utf8');
   console.log(
-    `sitemap: wrote ${OUT} (${generated.match(/<loc>/g)?.length ?? 0} URLs, site ${CLOSED ? 'CLOSED' : 'open'})`
+    `sitemap: wrote ${OUT} (${generated.match(/<loc>/g)?.length ?? 0} URLs, site ${CLOSED ? 'CLOSED' : 'open'})`,
   );
 }

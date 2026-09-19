@@ -1,3 +1,4 @@
+import { formatPercent, percentBar, percentOf } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
@@ -707,7 +708,7 @@ export default function ExecutiveDashboard() {
                                   {kpi.trend.toFixed(1)}%
                                 </span>
                               </div>
-                              <Progress value={Math.min((kpi.current / kpi.target) * 100, 100)} />
+                              <Progress value={percentBar(kpi.current, kpi.target)} />
                             </div>
                           </div>
                         );
@@ -765,15 +766,17 @@ export default function ExecutiveDashboard() {
                           <div className="flex justify-between text-xs mb-1">
                             <span>Gap to Leader</span>
                             <span>
-                              {(
-                                ((metric.topPerformer - metric.ourValue) / metric.topPerformer) *
-                                100
-                              ).toFixed(1)}
-                              %
+                              {formatPercent(
+                                percentOf(
+                                  metric.topPerformer - metric.ourValue,
+                                  metric.topPerformer,
+                                ),
+                                { digits: 1 },
+                              )}
                             </span>
                           </div>
                           <Progress
-                            value={Math.min((metric.ourValue / metric.topPerformer) * 100, 100)}
+                            value={percentBar(metric.ourValue, metric.topPerformer)}
                             className="h-2"
                           />
                         </div>

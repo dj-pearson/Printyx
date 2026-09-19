@@ -44,6 +44,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { toCamelShallow } from '../_shared/case.ts';
 import { assembleContent, renderHtml, currentQuarter } from './content.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 /**
  * Structured audit line, carried over from server/routes-qbr.ts. It was a log
@@ -110,18 +111,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     // The dispatcher strips segment 0 before the handler runs, so this must be
     // idempotent — see _shared/path.ts and the CLAUDE.md edge-path section.
@@ -411,24 +407,33 @@ async function handleGenerate(
   let skippedSuppressed = 0;
   let skippedNoContract = 0;
 
+  // An explicitly requested customer still has to hold an active contract. The
+  // other branch already selected its ids THROUGH contracts, so this check only
+  // ever applies to the one requested id - it was inside the loop, where it read
+  // as a query per customer (PERF-NPLUS1-002).
+  if (requestedCustomerId && targetIds.length > 0) {
+    const { data: hasContract } = await admin
+      .from('contracts')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('customer_id', requestedCustomerId)
+      .eq('status', 'active')
+      .limit(1);
+    if (!hasContract || hasContract.length === 0) {
+      skippedNoContract++;
+      targetIds = [];
+    }
+  }
+
+  // PERF-NPLUS1-002: what remains per customer is a DOCUMENT, not a query -
+  // assembleContent, an HTML render and a storage upload, one deck each. There
+  // is nothing to batch: the upload and the upsert are per customer by
+  // definition, and a dealer generating a quarter's decks is doing per-customer
+  // work whichever way the reads are shaped.
   for (const customerId of targetIds) {
     if (suppressed.has(customerId)) {
       skippedSuppressed++;
       continue;
-    }
-    // An explicitly requested customer still has to hold an active contract.
-    if (requestedCustomerId) {
-      const { data: hasContract } = await admin
-        .from('contracts')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('customer_id', customerId)
-        .eq('status', 'active')
-        .limit(1);
-      if (!hasContract || hasContract.length === 0) {
-        skippedNoContract++;
-        continue;
-      }
     }
 
     const content = await assembleContent(admin, tenantId, customerId, quarter);

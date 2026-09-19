@@ -4,6 +4,7 @@
  * Comprehensive rating and voting component for knowledge base articles
  */
 
+import { percentOfOr } from '@/lib/utils';
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
@@ -201,7 +202,7 @@ export function ArticleRatingWidget({
   };
 
   const getPercentage = (count: number) => {
-    return ratings.total > 0 ? Math.round((count / ratings.total) * 100) : 0;
+    return Math.round(percentOfOr(count, ratings.total));
   };
 
   if (isLoading) {

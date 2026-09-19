@@ -38,6 +38,7 @@ import { normalizePath } from '../_shared/path.ts';
 // arbitrary user data whose own keys are not ours to rewrite. A deep convert
 // would turn a filter on the custom field `cf_lease_end` into `cfLeaseEnd`.
 import { toCamelShallow } from '../_shared/case.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 /** Top-level keys only, through an array of rows. */
 function camelRows<T>(rows: unknown): T {
@@ -73,12 +74,8 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
@@ -91,7 +88,6 @@ export default async function handler(req: Request) {
       0;
     const isAdmin = roleLevel >= 7;
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'saved-views');
     const first = parts[0]; // ':id' or 'pins'

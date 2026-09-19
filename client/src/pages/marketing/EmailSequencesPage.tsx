@@ -195,7 +195,22 @@ export default function EmailSequencesPage() {
                     <TableBody>
                       {enrollments.map((e) => (
                         <TableRow key={e.id}>
-                          <TableCell className="text-sm">{e.recipientEmail}</TableCell>
+                          <TableCell className="text-sm">
+                            {/* WF-S-04: the record's name when it resolves, the
+                                address underneath. An enrollment created from
+                                the campaign screen has no record and shows the
+                                address alone - which is the truth about it. */}
+                            {e.businessRecordName ? (
+                              <div>
+                                <div className="font-medium">{e.businessRecordName}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {e.recipientEmail}
+                                </div>
+                              </div>
+                            ) : (
+                              e.recipientEmail
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Badge
                               variant={STATUS_VARIANT[e.status] ?? 'secondary'}

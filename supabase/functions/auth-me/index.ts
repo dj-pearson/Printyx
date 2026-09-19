@@ -2,7 +2,7 @@
 // Returns current user information
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
-import { resolveTenantId } from '../_shared/tenant.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -22,11 +22,11 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    // Canonical resolution (camel/snake, both metadata bags). The x-tenant-id
-    // header fallback is user-supplied and tracked separately by CR-010.
-    const tenantId = resolveTenantId(user) || req.headers.get('x-tenant-id');
-
+    // SEC-TENANT-003 closed the CR-010 loose end this comment used to name: the
+    // header fallback was user-supplied, and it sat ahead of the users-table
+    // lookup that could have answered correctly.
     const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     // GET /auth/me - Get current user profile
     if (req.method === 'GET') {

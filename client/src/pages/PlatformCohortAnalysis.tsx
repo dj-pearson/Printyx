@@ -32,7 +32,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { formatCurrencyWhole as formatCurrency } from '@/lib/utils';
+import { formatCurrencyWhole as formatCurrency, formatPercent } from '@/lib/utils';
 
 /** One headline number, with a caption saying what it is a mean of. */
 function SummaryCard({

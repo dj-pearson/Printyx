@@ -1,3 +1,4 @@
+import { percentOf } from '@/lib/utils';
 import { X, AlertTriangle, Info, TrendingUp, Clock } from 'lucide-react';
 import { useSubscription, useDismissNotification } from '@/hooks/useSubscription';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -164,7 +165,7 @@ export function SubscriptionBanner() {
       subscription.limits.users !== -1 &&
       subscription.usage.users >= subscription.limits.users * 0.8
     ) {
-      const pct = Math.round((subscription.usage.users / subscription.limits.users) * 100);
+      const pct = percentOf(subscription.usage.users, subscription.limits.users);
       warnings.push(`Users: ${subscription.usage.users}/${subscription.limits.users} (${pct}%)`);
     }
 
@@ -183,7 +184,7 @@ export function SubscriptionBanner() {
       subscription.limits.apiCalls !== -1 &&
       subscription.usage.apiCalls >= subscription.limits.apiCalls * 0.8
     ) {
-      const pct = Math.round((subscription.usage.apiCalls / subscription.limits.apiCalls) * 100);
+      const pct = percentOf(subscription.usage.apiCalls, subscription.limits.apiCalls);
       warnings.push(
         `API Calls: ${subscription.usage.apiCalls.toLocaleString()}/${subscription.limits.apiCalls.toLocaleString()} (${pct}%)`,
       );

@@ -661,12 +661,14 @@ export default function MeterBilling() {
                         (sum, inv) => sum + parseFloat(inv.totalAmount.toString()),
                         0,
                       );
-                      // contracts have no equipment-cost column; treat as 0 for margin
-                      const equipmentCost = 0;
-                      const margin =
-                        equipmentCost > 0
-                          ? ((totalRevenue - equipmentCost) / totalRevenue) * 100
-                          : 0;
+                      // A "Margin: 0.0%" line used to sit beside the revenue here.
+                      // It was not a measurement: equipmentCost was hardcoded to 0
+                      // because contracts carry no equipment-cost column, so the
+                      // ternary below it could never take its first branch and the
+                      // figure was the literal 0 for every contract, every time. A
+                      // 0% margin is a specific and quite bad claim to make about a
+                      // contract nobody has costed, so the line is gone rather than
+                      // relabelled (AUDIT-028, LEGAL-010).
 
                       return (
                         <div key={contract.id} className="p-3 border rounded">
@@ -675,7 +677,6 @@ export default function MeterBilling() {
                             <span className="text-green-600">${totalRevenue.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-sm text-gray-600 mt-1">
-                            <span>Margin: {margin.toFixed(1)}%</span>
                             <span>{contractInvoices.length} invoices</span>
                           </div>
                         </div>

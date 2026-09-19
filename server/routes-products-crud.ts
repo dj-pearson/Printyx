@@ -974,10 +974,16 @@ export function registerProductsCrudRoutes(app: Express) {
   });
 
   // Create meter reading (accepts UI shape and schema shape)
+  //
+  // SEC-EDGE-002: this asked for FINANCE.BILLING.METER_BILLING - the authority
+  // to RUN meter billing - to submit a reading. Two different things, and the
+  // code is not seeded either, so the gate denied every technician: the people
+  // who take meter readings. It names what /meter-readings itself requires in
+  // navigation-permissions.ts, which is the equipment read a technician has.
   app.post(
     '/api/meter-readings',
     ctx,
-    can([PERMISSIONS.FINANCE.BILLING.METER_BILLING]),
+    can([PERMISSIONS.SERVICE.EQUIPMENT.VIEW]),
     async (req: any, res) => {
       try {
         const tenantId = req.user?.tenantId;

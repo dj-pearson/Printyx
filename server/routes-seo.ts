@@ -1291,9 +1291,12 @@ router.get('/image-sitemap.xml', async (req: any, res) => {
     const baseUrl = process.env.BASE_URL || 'https://printyx.com';
 
     // Import schemas for images
-    const { blogPosts, guides, caseStudies, landingPages, knowledgeArticles } = await import(
-      '@shared/schema'
-    );
+    // AUDIT-037: `blogPosts` now resolves to the US-BLOG declaration, which has
+    // no featured_image column - the featured image is a uuid into blog_assets.
+    // This query wants the content-marketing table, which is
+    // `content_marketing_posts` since that story.
+    const { contentMarketingPosts, guides, caseStudies, landingPages, knowledgeArticles } =
+      await import('@shared/schema');
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';
@@ -1336,13 +1339,13 @@ router.get('/image-sitemap.xml', async (req: any, res) => {
     // 1. Blog post featured images
     const posts = await db
       .select({
-        slug: blogPosts.slug,
-        featuredImage: blogPosts.featuredImage,
-        featuredImageAlt: blogPosts.featuredImageAlt,
-        title: blogPosts.title,
+        slug: contentMarketingPosts.slug,
+        featuredImage: contentMarketingPosts.featuredImage,
+        featuredImageAlt: contentMarketingPosts.featuredImageAlt,
+        title: contentMarketingPosts.title,
       })
-      .from(blogPosts)
-      .where(eq(blogPosts.status, 'published'))
+      .from(contentMarketingPosts)
+      .where(eq(contentMarketingPosts.status, 'published'))
       .limit(500);
 
     posts.forEach((post) => {

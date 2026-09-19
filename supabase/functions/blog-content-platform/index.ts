@@ -40,6 +40,7 @@ import {
   type CmsCredentials,
   type CmsPostInput,
 } from '../_shared/blog/cms/index.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -61,19 +62,6 @@ function hasContentPlatformAccess(user: { app_metadata?: Record<string, unknown>
   }
   const role = String(meta.role ?? '').toLowerCase();
   return role === 'platform_admin' || role === 'super_admin' || role === 'company_admin';
-}
-
-function parseTenantId(user: {
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-}): string | null {
-  return (
-    (user.app_metadata?.tenantId as string) ||
-    (user.app_metadata?.tenant_id as string) ||
-    (user.user_metadata?.tenantId as string) ||
-    (user.user_metadata?.tenant_id as string) ||
-    null
-  );
 }
 
 async function readJsonBody(req: Request): Promise<unknown | null> {
@@ -2044,6 +2032,11 @@ async function translateText(
   let masked = text;
   glossary.forEach((g, i) => {
     if (g.mode !== 'do_not_translate') return;
+    // The sentinel is a literal NUL on each side so it cannot collide with
+    // anything in a user's prose. Load-bearing, and worth knowing about for a
+    // reason that has nothing to do with translation: four NUL bytes make grep
+    // classify this file as BINARY, so every text-scanning guard in this repo
+    // skips it silently. Read it with an explicit utf-8 decode, not `grep -r`.
     const token = ` GLOSS${i} `;
     const re = new RegExp(g.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
     if (re.test(masked)) {
@@ -2503,10 +2496,14 @@ export default async function handler(req: Request) {
         req,
       );
     }
-    const tenantId = parseTenantId(user) || req.headers.get('x-tenant-id');
+    // SEC-TENANT-003: one shape for tenant resolution. The JWT decides; a
+    // caller with no claim resolves through their users row; the header is
+    // honoured only for a platform admin. The local copy this replaced also
+    // read user_metadata, which the session holder can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'blog-content-platform');
     const [root, a, b, c] = parts;

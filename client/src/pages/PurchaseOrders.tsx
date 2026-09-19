@@ -59,6 +59,7 @@ import {
   Calendar,
   Package,
   Truck,
+  Factory,
   CheckCircle,
   AlertCircle,
   Clock,
@@ -80,6 +81,7 @@ import ContextualHelp from '@/components/contextual/ContextualHelp';
 import PageAlerts from '@/components/contextual/PageAlerts';
 import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
 import MobileFAB from '@/components/layout/MobileFAB';
+import { PlaceManufacturerOrderDialog } from '@/components/purchasing/PlaceManufacturerOrderDialog';
 
 // WF-P-02: the receive dialog's view of a line, normalized from whichever host
 // answered - Express returns snake_case Drizzle rows under `items`, the edge
@@ -410,6 +412,8 @@ export default function PurchaseOrders() {
   // WF-P-02 records their quantity and deliberately does not move bulk inventory,
   // because the units are supposed to become equipment rows. Nothing created
   // them, so the receipt ended with a toast and a machine that did not exist.
+  // WF-P-06: the PO being placed with its manufacturer.
+  const [placingPO, setPlacingPO] = useState<{ id: string; poNumber?: string | null } | null>(null);
   const [serialPO, setSerialPO] = useState<{ id: string; poNumber: string } | null>(null);
   const [serialSlots, setSerialSlots] = useState<SerialSlot[]>([]);
 
@@ -1398,6 +1402,20 @@ export default function PurchaseOrders() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() =>
+                                      setPlacingPO({ id: po.id, poNumber: po.poNumber })
+                                    }
+                                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                  >
+                                    <Factory className="h-4 w-4 mr-1" />
+                                    Place Manufacturer Order
+                                  </Button>
+                                )}
+
+                                {po.status === 'approved' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
                                       setLocation(`/warehouse-operations?orderId=${po.id}`)
                                     }
                                     className="text-green-600 hover:text-green-700 hover:bg-green-50"
@@ -1851,6 +1869,17 @@ export default function PurchaseOrders() {
                   </Button>
                   {selectedPO?.status === 'approved' && (
                     <Button
+                      variant="outline"
+                      onClick={() =>
+                        setPlacingPO({ id: selectedPO.id, poNumber: selectedPO.poNumber })
+                      }
+                    >
+                      <Factory className="h-4 w-4 mr-2" />
+                      Place Manufacturer Order
+                    </Button>
+                  )}
+                  {selectedPO?.status === 'approved' && (
+                    <Button
                       onClick={() => setLocation(`/warehouse-operations?orderId=${selectedPO.id}`)}
                     >
                       Release to Warehouse
@@ -1886,6 +1915,14 @@ export default function PurchaseOrders() {
           </DialogContent>
         </Dialog>
       </div>
+      {/* WF-P-06 */}
+      <PlaceManufacturerOrderDialog
+        purchaseOrder={placingPO}
+        onOpenChange={(open) => {
+          if (!open) setPlacingPO(null);
+        }}
+      />
+
       <MobileFAB onClick={() => setShowCreateDialog(true)} label="New PO" />
     </MainLayout>
   );

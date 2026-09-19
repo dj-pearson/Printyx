@@ -806,7 +806,10 @@ async function upsertDealForProposal(
     return existing.id;
   }
 
-  const { data: created } = await db
+  // AUDIT-038: this read only `data`, so an insert that failed returned null
+  // and the proposal was accepted with no deal behind it - indistinguishable
+  // from a proposal that deliberately creates none.
+  const { data: created, error: createError } = await db
     .from('deals')
     .insert({
       tenant_id: tenantId,
@@ -824,6 +827,11 @@ async function upsertDealForProposal(
     })
     .select('id')
     .maybeSingle();
+
+  if (createError) {
+    log.error({ tenantId, err: createError.message }, 'deal insert failed on proposal acceptance');
+    throw createError;
+  }
 
   return created?.id ?? null;
 }
@@ -895,7 +903,11 @@ async function createContractFromProposal(
 
   const acquisitionType = normalizeAcquisitionType(proposal.acquisition_type);
 
-  const { data: created } = await db
+  // AUDIT-038: same shape as ensureDeal above. A failed contract insert left
+  // contractId null, which then skipped the lease planning below - so a
+  // financed deal silently became a cash sale, the exact failure WF-C-05 was
+  // written to prevent.
+  const { data: created, error: contractError } = await db
     .from('contracts')
     .insert({
       tenant_id: tenantId,
@@ -908,6 +920,14 @@ async function createContractFromProposal(
     })
     .select('id')
     .maybeSingle();
+
+  if (contractError) {
+    log.error(
+      { tenantId, err: contractError.message },
+      'contract insert failed on proposal acceptance',
+    );
+    throw contractError;
+  }
 
   const contractId = created?.id ?? null;
 

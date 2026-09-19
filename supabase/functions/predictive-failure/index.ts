@@ -41,6 +41,7 @@ import {
   type ScoredMachine,
 } from './scoring.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 const DAY_MS = 86_400_000;
 /** The scorer's deltas need the last 12 readings per machine. */
@@ -98,18 +99,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     // Idempotent — the dispatcher strips segment 0 before the handler runs.
     const { parts } = normalizePath(url.pathname, 'predictive-failure');
@@ -445,7 +441,10 @@ async function handleScore(
         const ticketNumber = `PF-${nowMs.toString(36)}-${Math.floor(Math.random() * 1e4)
           .toString()
           .padStart(4, '0')}`;
-        const { data: ticket } = await admin
+        // AUDIT-038: reading only `data` meant a ticket insert that failed was
+        // counted as "nothing to create". The run still continues - one bad
+        // prediction must not abort the sweep - but the failure is logged.
+        const { data: ticket, error: ticketError } = await admin
           .from('service_tickets')
           .insert({
             tenant_id: tenantId,
@@ -465,6 +464,12 @@ async function handleScore(
           })
           .select('id')
           .maybeSingle();
+        if (ticketError) {
+          console.error(
+            `[predictive-failure] service_tickets insert failed for machine ${s.machineId}:`,
+            ticketError.message,
+          );
+        }
         serviceTicketId = ticket?.id ? String(ticket.id) : null;
         if (serviceTicketId) created++;
       }

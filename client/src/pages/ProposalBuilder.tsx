@@ -63,6 +63,7 @@ import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { downloadQuotePdf } from '@/lib/quote-pdf';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProposalTemplate {
   id: string;
@@ -198,6 +199,7 @@ function mapTemplateRow(r: any): ProposalTemplate {
 }
 
 export default function ProposalBuilder() {
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [selectedTemplate, setSelectedTemplate] = useState<ProposalTemplate | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
@@ -390,16 +392,22 @@ export default function ProposalBuilder() {
         if (!validationResult.valid) {
           // Show error toast with validation issues
           console.error('Proposal validation failed:', validationResult.errors);
-          alert(
-            `Cannot create contract. Please fix the following issues:\n${validationResult.errors.join('\n')}`,
-          );
+          toast({
+            title: 'Cannot create contract',
+            description: validationResult.errors.join(' '),
+            variant: 'destructive',
+          });
           return;
         }
 
         console.log('Proposal validation passed, proceeding to contracts...');
       } catch (error) {
         console.error('DoD validation error:', error);
-        alert('Unable to validate proposal. Please try again.');
+        toast({
+          title: 'Could not validate the proposal',
+          description: 'Please try again.',
+          variant: 'destructive',
+        });
         return;
       }
     }

@@ -26,6 +26,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import JSZip from 'https://esm.sh/jszip@3.10.1';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 const READ_PERMS = ['service.equipment.view', 'service.equipment.configure'];
 const WRITE_PERMS = ['service.equipment.configure'];
@@ -354,18 +355,15 @@ export default async function handler(req: Request) {
     return createCorsResponse({ message: userError?.message || 'Unauthorized' }, 401, req);
   }
 
-  const tenantId =
-    (user.app_metadata?.tenantId as string | undefined) ||
-    (user.app_metadata?.tenant_id as string | undefined) ||
-    (user.user_metadata?.tenantId as string | undefined) ||
-    (user.user_metadata?.tenant_id as string | undefined) ||
-    req.headers.get('x-tenant-id') ||
-    undefined;
+  // SEC-TENANT-003: one shape for tenant resolution. The JWT decides; a
+  // caller with no claim resolves through their users row; the header is
+  // honoured only for a platform admin. The local copy this replaced also
+  // read user_metadata, which the session holder can write.
+  const admin = createSupabaseServiceClient();
+  const tenantId = (await resolveTenantId(req, user, admin)) ?? undefined;
   if (!tenantId) {
     return createCorsResponse({ message: 'No tenant ID found for user' }, 400, req);
   }
-
-  const admin = createSupabaseServiceClient();
 
   const isWrite = req.method !== 'GET' && req.method !== 'HEAD';
   const requiredPerms = isWrite ? WRITE_PERMS : READ_PERMS;

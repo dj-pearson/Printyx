@@ -19,6 +19,10 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { buildSearchOr, CONTACT_LIST_SPEC, parseCrmListQuery } from '../_shared/crm-list-query.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const WRITE_PERMISSION = ['sales.customer.edit_own', 'sales.customer.create'];
 
 /**
  * snake_case row -> the camelCase shape the CRM table and the record layout read.
@@ -88,19 +92,33 @@ export default async function handler(req: Request) {
     }
 
     // Extract tenant ID from JWT metadata
-    const tenantId =
-      (user.app_metadata?.tenant_id as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string);
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
+    // SEC-EDGE-001: the same records from the company side, and the same reasoning - the
+    // read is shared across the business, the write is a sales act.
+    //
+    // BOTH CODES, and that is the rule this batch established rather than a
+    // belt-and-braces habit: the seeded SALES_REP holds `edit_own` and not
+    // `create`, while SALES_MANAGER holds `create` and not `edit_own`. A gate
+    // naming either one alone locks out one of the two roles that do this work
+    // every day. Checked against the role templates, not assumed.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
+    }
+
     // Use service_role client for database operations (bypasses RLS)
-    const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
     // normalizePath strips an OPTIONAL leading function-name segment, so the id

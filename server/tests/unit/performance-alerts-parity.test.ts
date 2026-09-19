@@ -27,6 +27,11 @@ const stripComments = (s: string) =>
 const read = (p: string) => stripComments(readFileSync(join(repo, p), 'utf8'));
 
 const edge = read('supabase/functions/performance/index.ts');
+// DASH-METRICS-001 moved deriveOperationalAlerts into _shared so the dashboard's
+// urgent-items widget answers with the SAME four families the bell shows rather
+// than a second opinion. The assertions below follow it; `edge` stays because
+// the wiring assertions are about the performance function itself.
+const alerts = read('supabase/functions/_shared/operational-alerts.ts');
 
 describe('derived operational alerts', () => {
   it.each([
@@ -35,8 +40,17 @@ describe('derived operational alerts', () => {
     ['billing_anomaly', 'invoices'],
     ['contract_expiration', 'service_contracts'],
   ])('derives %s from %s', (type, table) => {
-    expect(edge).toContain(`type: '${type}'`);
-    expect(edge).toContain(`.from('${table}')`);
+    expect(alerts).toContain(`type: '${type}'`);
+    expect(alerts).toContain(`.from('${table}')`);
+  });
+
+  it('is imported by both surfaces, so neither can drift', () => {
+    for (const caller of [
+      'supabase/functions/performance/index.ts',
+      'supabase/functions/dashboard/handlers/lists.ts',
+    ]) {
+      expect(read(caller), caller).toContain('deriveOperationalAlerts');
+    }
   });
 
   it('keeps the system_alerts read rather than replacing it', () => {
@@ -46,13 +60,13 @@ describe('derived operational alerts', () => {
   });
 
   it('guards each family separately, so one missing table cannot blank the bell', () => {
-    const helper = edge.slice(edge.indexOf('async function deriveOperationalAlerts'));
+    const helper = alerts.slice(alerts.indexOf('export async function deriveOperationalAlerts'));
     expect((helper.match(/try \{/g) ?? []).length).toBe(4);
     expect((helper.match(/catch \(err\)/g) ?? []).length).toBe(4);
   });
 
   it('caps every family, including the one it has to filter in memory', () => {
-    const helper = edge.slice(edge.indexOf('async function deriveOperationalAlerts'));
+    const helper = alerts.slice(alerts.indexOf('export async function deriveOperationalAlerts'));
     // PostgREST cannot compare two columns, so low stock is filtered here -
     // which is exactly why it needs a bound on what it fetches.
     expect((helper.match(/\.limit\(/g) ?? []).length).toBe(4);

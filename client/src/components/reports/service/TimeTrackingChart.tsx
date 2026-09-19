@@ -1,3 +1,4 @@
+import { formatPercent, percentOf } from '@/lib/utils';
 import { useMemo } from 'react';
 import {
   BarChart,
@@ -225,7 +226,7 @@ export default function TimeTrackingChart({ entries, summary, metrics }: TimeTra
               </div>
               <div className="text-xs text-muted-foreground mt-1">
                 {summary?.totalHours
-                  ? `${(((hours as number) / summary.totalHours) * 100).toFixed(0)}% of total`
+                  ? `${formatPercent(percentOf(hours as number, summary.totalHours))} of total`
                   : ''}
               </div>
             </div>

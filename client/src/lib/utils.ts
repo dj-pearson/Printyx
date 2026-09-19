@@ -96,3 +96,77 @@ export function formatDate(date: Date): string {
     day: 'numeric',
   }).format(date);
 }
+
+/**
+ * A percentage, or null when the question has no answer (PRICING-MARGIN-002).
+ *
+ * `(a / b) * 100` written inline is fine until b is zero, and b is usually a
+ * total that a new tenant, a first-month customer or an empty pipeline has none
+ * of. JavaScript then yields Infinity (or NaN when both sides are zero), and
+ * because these figures land in a template string or a bar width, what ships is
+ * "Infinity% of target" or a bar a thousand screens wide - not an error, not a
+ * crash, just a number nobody can act on.
+ *
+ * NULL IS NOT ZERO here, for the AUDIT-028 reason: 0% of target is a specific
+ * and quite bad claim, and asserting it about a tenant who has set no target is
+ * worse than saying nothing. Render the null as an absence - formatPercent does.
+ *
+ * Returns null when the divisor is zero or either side is not a finite number.
+ */
+export function percentOf(part: number | null | undefined, whole: number | null | undefined) {
+  if (part === null || part === undefined || whole === null || whole === undefined) return null;
+  if (!Number.isFinite(part) || !Number.isFinite(whole) || whole === 0) return null;
+  return (part / whole) * 100;
+}
+
+/**
+ * The same ratio as a plain number, with a fallback instead of null.
+ *
+ * This is the exact equivalent of the guarded inline form it replaces -
+ * `whole > 0 ? (part / whole) * 100 : 0` - and it does NOT clamp, because a
+ * percentage over 100 is often the real answer: usage over a limit, a value
+ * over target, a negative margin. Use it where the result is stored or fed to
+ * arithmetic rather than shown as a bare figure.
+ */
+export function percentOfOr(
+  part: number | null | undefined,
+  whole: number | null | undefined,
+  fallback = 0,
+): number {
+  const pct = percentOf(part, whole);
+  return pct === null ? fallback : pct;
+}
+
+/**
+ * A ratio clamped to 0-100, for BAR GEOMETRY only - a width, a Progress value,
+ * a bar height.
+ *
+ * Clamping belongs here and not in percentOfOr: a bar wider than its track
+ * overflows its container, and several of these sites were already clamping by
+ * hand. A zero fallback is defensible precisely because nothing is printed -
+ * a bar measuring a ratio with no denominator should be empty, and an empty bar
+ * makes no claim about a quantity. Do not reach for this to fill a text slot;
+ * use percentOf and render the absence.
+ */
+export function percentBar(
+  part: number | null | undefined,
+  whole: number | null | undefined,
+): number {
+  return Math.min(Math.max(percentOfOr(part, whole), 0), 100);
+}
+
+/**
+ * Render a percentage, or an em dash when there is none.
+ *
+ * Takes a ready-made percentage (0-100), not a ratio - pass percentOf's result
+ * straight in. Never prints "NaN%" or "Infinity%", which is the whole point.
+ */
+export function formatPercent(
+  value: number | null | undefined,
+  options: { digits?: number; absent?: string; sign?: boolean } = {},
+): string {
+  const { digits = 0, absent = '—', sign = false } = options;
+  if (value === null || value === undefined || !Number.isFinite(value)) return absent;
+  const body = `${value.toFixed(digits)}%`;
+  return sign && value > 0 ? `+${body}` : body;
+}

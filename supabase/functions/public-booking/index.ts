@@ -444,8 +444,14 @@ async function handleCreate(req: Request, db: SupabaseClient, slug: string): Pro
   // 1) Local calendar event (authoritative host-side record).
   let calendarEventId: string | null = null;
   let externalEventId: string | null = null;
+  // AUDIT-038: the try/catch below protects against a network fault and
+  // nothing else - PostgREST hands the failure back in `error` rather than
+  // throwing, so a calendar event failing on every booking looked exactly like
+  // a booking page with no calendar connection. Best-effort is still the right
+  // behaviour here (a booking must not fail because the calendar did), but the
+  // failure is recorded now instead of vanishing.
   try {
-    const { data: ev } = await db
+    const { data: ev, error: evError } = await db
       .from('calendar_events')
       .insert({
         tenant_id: page.tenant_id,
@@ -464,9 +470,12 @@ async function handleCreate(req: Request, db: SupabaseClient, slug: string): Pro
       })
       .select('id')
       .maybeSingle();
+    if (evError) {
+      console.error('[public-booking] calendar_events insert failed', evError.message);
+    }
     calendarEventId = ev?.id ?? null;
   } catch (err) {
-    console.error('[public-booking] calendar_events insert failed', err);
+    console.error('[public-booking] calendar_events insert threw', err);
   }
 
   // 2) Best-effort provider push.

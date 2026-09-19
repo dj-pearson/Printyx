@@ -70,7 +70,10 @@ interface AiAnalyticsResponse {
   };
 }
 
-const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
+// Takes a RATIO (0-1), unlike lib/utils' formatPercent which takes a
+// percentage - the model scores on this page are probabilities. Named apart so
+// the two cannot be swapped by autocomplete (PRICING-MARGIN-002).
+const formatRatioPercent = (value: number) => `${Math.round(value * 100)}%`;
 
 const bandBadge = (band: string) => {
   switch (band) {
@@ -302,7 +305,7 @@ export default function AIAnalyticsDashboard() {
                             <div className="text-right">
                               <div className="text-xs text-gray-500">Risk</div>
                               <div className="font-semibold">
-                                {formatPercent(c.churnProbability)}
+                                {formatRatioPercent(c.churnProbability)}
                               </div>
                             </div>
                             <div className="text-right">
@@ -387,7 +390,9 @@ export default function AIAnalyticsDashboard() {
                           <div className="flex items-center gap-4 shrink-0">
                             <div className="text-right">
                               <div className="text-xs text-gray-500">Confidence</div>
-                              <div className="font-semibold">{formatPercent(a.confidence)}</div>
+                              <div className="font-semibold">
+                                {formatRatioPercent(a.confidence)}
+                              </div>
                             </div>
                             <div className="text-right">
                               <div className="text-xs text-gray-500">Contract</div>

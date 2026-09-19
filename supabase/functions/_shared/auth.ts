@@ -10,10 +10,10 @@
  *   2. Verify with Supabase (auth.getUser), through a short-TTL cache (AUDIT-005).
  *      GoTrue is still the source of truth, but revocation is now honored within
  *      AUTH_CACHE_TTL_MS (default 30s) rather than instantly — see _shared/auth-cache.ts.
- *   3. Resolve tenantId via:
- *        a. JWT app_metadata.tenantId  (canonical)
- *        b. JWT user_metadata.tenantId (legacy fallback)
- *        c. x-tenant-id header         (dev override — log a warning)
+ *   3. Resolve tenantId via _shared/resolve-tenant.ts:
+ *        a. JWT app_metadata.tenantId  (canonical, written server-side)
+ *        b. the caller's `users` row   (authoritative, not caller-controlled)
+ *        c. x-tenant-id header         (platform admins only - a tenant switcher)
  *        d. Users table lookup by id   (self-healing fallback)
  *        e. Users table lookup by email (last resort)
  *   4. Throw AuthError on any failure — caller returns the appropriate Response
@@ -28,6 +28,7 @@ import {
 } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { cachedGetUser, type GetUserCapable } from './auth-cache.ts';
 import { ensureRoleClaims, hasRoleClaims, type ClaimsClient } from './role-claims.ts';
+import { resolveTenantId as resolveTenant, tenantFromJwt } from './resolve-tenant.ts';
 
 export interface AuthContext {
   userId: string;
@@ -107,64 +108,24 @@ async function resolveTenantId(
   user: User,
   log?: (level: 'warn' | 'info', msg: string, ctx?: Record<string, unknown>) => void,
 ): Promise<string | null> {
-  // 1. app_metadata (canonical)
-  const appTenant =
-    (user.app_metadata?.tenantId as string | undefined) ??
-    (user.app_metadata?.tenant_id as string | undefined);
-  if (appTenant) return appTenant;
+  // SEC-TENANT-003. This used to try, in order: app_metadata, user_metadata,
+  // the x-tenant-id header, then the users table. The last two were the wrong
+  // way round. user_metadata is writable by the session holder through
+  // supabase.auth.updateUser and the header is writable by anyone, while the
+  // users row is writable by neither - so a caller with no app_metadata claim
+  // was placed wherever they asked rather than where the database says they
+  // belong, and this client uses the service role, which bypasses RLS.
+  //
+  // The order now lives in _shared/resolve-tenant.ts and is shared with the
+  // 160 functions that resolve tenancy inline.
+  const svc = getServiceClient();
+  const tenantId = await resolveTenant(req, user, svc);
+  if (!tenantId) return null;
 
-  // 2. user_metadata (legacy)
-  const userTenant =
-    (user.user_metadata?.tenantId as string | undefined) ??
-    (user.user_metadata?.tenant_id as string | undefined);
-  if (userTenant) return userTenant;
-
-  // 3. x-tenant-id header (dev override)
-  const headerTenant = req.headers.get('x-tenant-id');
-  if (headerTenant) {
-    log?.('warn', 'tenantId resolved from x-tenant-id header (dev override)', {
-      userId: user.id,
-    });
-    return headerTenant;
+  if (tenantId !== tenantFromJwt(user)) {
+    log?.('info', 'tenantId resolved outside the JWT claim', { userId: user.id });
   }
-
-  // 4. DB lookup by user id (self-healing — migrates old accounts)
-  try {
-    const svc = getServiceClient();
-    const { data: dbUser } = await svc
-      .from('users')
-      .select('tenant_id')
-      .eq('id', user.id)
-      .limit(1)
-      .maybeSingle();
-    if (dbUser?.tenant_id) {
-      log?.('info', 'tenantId resolved from users table by id', { userId: user.id });
-      return dbUser.tenant_id as string;
-    }
-  } catch {
-    /* fall through */
-  }
-
-  // 5. DB lookup by email (last resort)
-  if (user.email) {
-    try {
-      const svc = getServiceClient();
-      const { data: emailUser } = await svc
-        .from('users')
-        .select('tenant_id')
-        .ilike('email', user.email)
-        .limit(1)
-        .maybeSingle();
-      if (emailUser?.tenant_id) {
-        log?.('info', 'tenantId resolved from users table by email', { userId: user.id });
-        return emailUser.tenant_id as string;
-      }
-    } catch {
-      /* fall through */
-    }
-  }
-
-  return null;
+  return tenantId;
 }
 
 /**

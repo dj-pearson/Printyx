@@ -23,6 +23,31 @@
  * "/", then allowlist the noise (below). False positives are cheap to allowlist; a
  * false negative ships a 404.
  *
+ * ── A PATH YOU COMPARE AGAINST IS NOT A PATH YOU GO TO (AUDIT-014) ─────────
+ * Collecting every "/" literal is deliberate and must stay - see above - but it
+ * swept up two positions where navigation is syntactically impossible, and all
+ * six of the last baseline entries were one or the other. Neither is a broken
+ * link, and a ratchet holding six non-defects is where a real one hides.
+ *
+ *   A PREDICATE. `location === '/dashboard'`, `location.includes('/equipment')`,
+ *   `path.startsWith('/knowledge-base/article/')`. You cannot navigate by
+ *   comparing. SmartBreadcrumb's three entries are all of this shape, and the
+ *   /equipment and /warehouse ones are CORRECT code: they match the registered
+ *   /equipment-lifecycle and /warehouse-operations by prefix, which is the whole
+ *   point of using .includes.
+ *
+ *   A DENY-LIST MEMBER. '/auth/' inside BLOCKED_REDIRECT_PREFIXES is a path the
+ *   code exists to REFUSE. Every other member of those two arrays is a
+ *   registered route and resolved silently, so only the one that is a prefix
+ *   rather than a route got reported - the guard was flagging the single
+ *   correct entry.
+ *
+ * This is NOT the narrowing the header above warns against. That warning is
+ * about collecting only navigation EXPRESSIONS, which loses a route path held as
+ * an object value - the post-login 404. These two rules exclude positions, not
+ * expression kinds, and a literal in either position cannot be a destination in
+ * any syntax.
+ *
  * ── Known-imprecise by design ───────────────────────────────────────────────
  * Template literals (`/deals/${id}`) are normalized to a placeholder segment and
  * accepted if they match a route exactly, or if some route lives STRICTLY UNDER the
@@ -220,6 +245,23 @@ function buildPropertyRoutes(files) {
   return map;
 }
 
+/**
+ * Whether the literal starting at `index` is an operand of a location test
+ * rather than a destination. Looks only at what immediately precedes it, so a
+ * literal reached any other way is untouched.
+ *
+ *   x === '/a'   x !== '/a'   x == '/a'   x != '/a'
+ *   x.includes('/a')   x.startsWith('/a')   x.endsWith('/a')
+ *   'a' in a switch case, and a switch on a location behaves the same way
+ */
+function isPredicateOperand(src, index) {
+  const before = src.slice(Math.max(0, index - 40), index);
+  if (/(?:===|!==|==|!=)\s*$/.test(before)) return true;
+  if (/\.(?:includes|startsWith|endsWith|indexOf|search|match)\(\s*$/.test(before)) return true;
+  if (/\bcase\s+$/.test(before)) return true;
+  return false;
+}
+
 function candidates(file, propertyRoutes) {
   const src = stripComments(readFileSync(file, 'utf8'));
   const found = [];
@@ -239,10 +281,23 @@ function candidates(file, propertyRoutes) {
     if (ROUTE_BASE_PROPERTY.test(bm[1])) baseLiterals.add(bm[2]);
   }
 
+  // Members of a deny-list array - a path the code exists to REFUSE, never to
+  // go to. Matched on the CONST NAME rather than on the values, so a list that
+  // gains an entry does not need the guard changed.
+  const denied = new Set();
+  const denyRe =
+    /(?:const|let|var)\s+(\w*(?:BLOCK|DENY|DISALLOW|FORBIDDEN|EXCLUDE)\w*)\s*(?::[^=]+)?=\s*\[([^\]]*)\]/gi;
+  let dm;
+  while ((dm = denyRe.exec(src)) !== null) {
+    for (const lit of dm[2].matchAll(/['"`](\/[^'"`\n]*)['"`]/g)) denied.add(lit[1]);
+  }
+
   // Single-quoted, double-quoted, and template literals starting with "/".
   const re = /(['"`])(\/[^'"`\n]*)\1/g;
   let m;
   while ((m = re.exec(src)) !== null) {
+    if (denied.has(m[2])) continue;
+    if (isPredicateOperand(src, m.index)) continue;
     found.push({ raw: m[2], line: lineAt(m.index), base: baseLiterals.has(m[2]) });
   }
 
@@ -392,10 +447,13 @@ if (update) {
     JSON.stringify(
       {
         note:
-          'AUDIT-014 nav-target ratchet. scripts/check-nav-targets.mjs fails CI when a navigation ' +
-          'target that does not resolve to a route in App.tsx is ADDED. Entries here are known-broken ' +
-          'targets awaiting a product decision (a page that does not exist yet). Shrink this list, ' +
-          'never grow it: node scripts/check-nav-targets.mjs --update-baseline.',
+          'AUDIT-014 nav-target gate, AT ZERO as of 2026-09-18. A navigation target that does not ' +
+          'resolve to a route in App.tsx fails CI. This list is EMPTY and should stay that way - ' +
+          'it existed for targets awaiting a product decision, and all of them were either built, ' +
+          'retired, or turned out to be a path the code COMPARES against rather than navigates to ' +
+          '(see the predicate and deny-list rules in the script header). Do not add an entry to get ' +
+          'a build green: point the control at a registered route, or delete the control. ' +
+          'node scripts/check-nav-targets.mjs --update-baseline.',
         allowed: broken.map(key).sort(),
       },
       null,

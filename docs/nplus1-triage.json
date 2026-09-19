@@ -1,0 +1,180 @@
+{
+  "note": "PERF-NPLUS1-002 AC1: every loop scripts/report-nplus1-loops.mjs still reports as a TENANT candidate, classified with a reason. A loop leaves this file by being converted, not by being ignored. server/tests/unit/nplus1-triage.test.ts fails when the report names a loop this file does not, so a new one cannot arrive unexamined. Verdicts: deliberate (one statement cannot express it), bounded (the count is not a customer's business), scales-dominated (it scales, but a model or an external API is the wall clock), scales-open (it scales and is worth converting - remaining work, and each entry says what the conversion needs).",
+  "generated": "2026-09-18",
+  "loops": [
+    {
+      "loop": "address-books/_import-export.ts:137",
+      "table": "address_book_credentials",
+      "verdict": "scales-open",
+      "why": "One credential insert per SMB entry while importing an address book, which can hold thousands. Batchable, but each entry row needs ITS credential id, so the conversion is two passes (insert all credentials, map id back onto each entry) rather than a wrapper. Left open deliberately rather than done badly."
+    },
+    {
+      "loop": "ai-employee/_workflow.ts:94",
+      "table": "ai_workflow_executions",
+      "verdict": "bounded",
+      "why": "One progress write per workflow STEP, and the steps are the workflow definition, not tenant rows. Each write records which step is running and has to land before that step does, so it is sequential by intent."
+    },
+    {
+      "loop": "auto-supply-replenishment/index.ts:290",
+      "table": "supply_usage_history",
+      "verdict": "scales-dominated",
+      "why": "One usage-history read per monitored supply, and one generateCompletion per supply in the same iteration. The model call is the wall clock; hoisting the read halves the DB hops and changes nothing a user could perceive. Worth doing when the loop stops calling a model, not before."
+    },
+    {
+      "loop": "billing/handlers/generate-invoices.ts:242",
+      "table": "invoices",
+      "verdict": "deliberate",
+      "why": "The documented per-row FALLBACK after a bulk insert fails, which is the writeInBatches shape written out by hand. Converting it would remove the fault isolation it exists for."
+    },
+    {
+      "loop": "blog-competitor-gap/index.ts:316",
+      "table": "blog_competitor_keywords",
+      "verdict": "scales-open",
+      "why": "An ilike lookup per keyword in a gap-analysis list, which is as long as the analysis. Batchable by reading the tenant keyword set once and matching in memory - ilike here is case-insensitive equality, not a pattern. Left open."
+    },
+    {
+      "loop": "blog-competitor-gap/index.ts:560",
+      "table": "blog_keywords",
+      "verdict": "scales-open",
+      "why": "An ilike lookup per keyword in a gap-analysis list, which is as long as the analysis. Batchable by reading the tenant keyword set once and matching in memory - ilike here is case-insensitive equality, not a pattern. Left open."
+    },
+    {
+      "loop": "blog-jobs/index.ts:194",
+      "table": "blog_jobs",
+      "verdict": "bounded",
+      "why": "Five head-count queries, one per job STATUS. The array is a typed literal of five, which the shape classifier cannot see through the type annotation."
+    },
+    {
+      "loop": "blog-keywords/index.ts:274",
+      "table": "blog_keywords",
+      "verdict": "scales-dominated",
+      "why": "One classifyIntent model call per keyword. The model is the wall clock."
+    },
+    {
+      "loop": "company-ids/index.ts:182",
+      "table": "business_records",
+      "verdict": "bounded",
+      "why": "Three fields - company code, tax id, external id - checked for uniqueness. A literal tuple list."
+    },
+    {
+      "loop": "company-ids/index.ts:317",
+      "table": "business_records",
+      "verdict": "bounded",
+      "why": "Three fields - company code, tax id, external id - checked for uniqueness. A literal tuple list."
+    },
+    {
+      "loop": "contract-renewal/index.ts:448",
+      "table": "contract_renewal_tracking",
+      "verdict": "scales-dominated",
+      "why": "One generateCompletion per expiring contract. The model call is the wall clock."
+    },
+    {
+      "loop": "email-autopilot/index.ts:578",
+      "table": "business_records",
+      "verdict": "scales-dominated",
+      "why": "One classifyEmail model call per inbox message. The model is the wall clock and the inbox page is already capped upstream."
+    },
+    {
+      "loop": "email-marketing/handlers/webhooks-sendgrid.ts:77",
+      "table": "email_sends",
+      "verdict": "scales-open",
+      "why": "SendGrid posts up to a thousand events per delivery and each one resolves its send row separately. Batchable by resolving all the ids in one read first. Left open: the resolution has three fallback paths (custom_args, message id, recipient) and collapsing them safely is its own change."
+    },
+    {
+      "loop": "email-sequences/index.ts:319",
+      "table": "email_sequence_enrollments",
+      "verdict": "deliberate",
+      "why": "Per recipient because the duplicate and suppression checks are per contact, and the response names what happened to EACH address. The suppression read was already hoisted to one query for the batch."
+    },
+    {
+      "loop": "import/index.ts:439",
+      "table": "companies",
+      "verdict": "scales-open",
+      "why": "One ilike duplicate search per CSV row, so a 5,000-row import is 5,000 round trips before a single record lands. The largest remaining one. Convertible by reading the tenant company names once and matching a normalised Map - ilike here is case-insensitive equality with no wildcard - but a large tenant makes that read big, so it wants a measurement rather than an assumption."
+    },
+    {
+      "loop": "manufacturer-integrations/index.ts:532",
+      "table": "device_registrations",
+      "verdict": "deliberate",
+      "why": "The INSERT half is already collected into one statement; what loops is the UPDATE half, and each discovered device updates different columns on a different row. One statement cannot express that."
+    },
+    {
+      "loop": "meetings/handlers/connections.ts:181",
+      "table": "calendar_events",
+      "verdict": "scales-open",
+      "why": "One upsert per calendar event on a sync, and a busy calendar is hundreds. A batched upsert on (connection, external_event_id) is the obvious fix; left open because the two providers build their rows differently and the conflict target needs checking against the real index."
+    },
+    {
+      "loop": "meetings/handlers/connections.ts:235",
+      "table": "calendar_events",
+      "verdict": "scales-open",
+      "why": "One upsert per calendar event on a sync, and a busy calendar is hundreds. A batched upsert on (connection, external_event_id) is the obvious fix; left open because the two providers build their rows differently and the conflict target needs checking against the real index."
+    },
+    {
+      "loop": "mobile/index.ts:599",
+      "table": "mobile_service_sessions",
+      "verdict": "deliberate",
+      "why": "What remains is the SESSION loop, which is an update-or-insert per row keyed on whether the client sent an id. The three pure-insert loops beside it (photos, time entries, location history) are batched now."
+    },
+    {
+      "loop": "oid-mappings/index.ts:364",
+      "table": "oid_mappings",
+      "verdict": "bounded",
+      "why": "A delete per row only under ?overwrite, matched on (manufacturer, mapping_name) - a two-column match that .in() cannot express - and bounded by the preset file being imported."
+    },
+    {
+      "loop": "pipeline-config/index.ts:1073",
+      "table": "tasks",
+      "verdict": "deliberate",
+      "why": "Capped at 50 by its own select, and each row is a different action with its own outcome written back. Annotated in place."
+    },
+    {
+      "loop": "predictive-failure/index.ts:431",
+      "table": "service_tickets",
+      "verdict": "scales-open",
+      "why": "A draft service ticket per high-confidence prediction. Only the machines over the threshold reach the insert, so the count is normally small, but a fleet-wide degradation would make it large. Batchable."
+    },
+    {
+      "loop": "pricing/index.ts:548",
+      "table": "product_pricing",
+      "verdict": "deliberate",
+      "why": "A bulk price update where every row sets DIFFERENT columns to different values. One statement cannot express that, and the response reports per row."
+    },
+    {
+      "loop": "purchase-orders/index.ts:1067",
+      "table": "inventory_items",
+      "verdict": "deliberate",
+      "why": "The inventory levels are read once for the whole receipt already. What loops is the write, and each one is quantity_on_hand + this movement - arithmetic PostgREST cannot express across rows."
+    },
+    {
+      "loop": "qbr/index.ts:433",
+      "table": "qbr_reports",
+      "verdict": "deliberate",
+      "why": "Produces a DOCUMENT per customer - assemble, render, upload. There is nothing to batch. Annotated in place."
+    },
+    {
+      "loop": "saved-views/index.ts:489",
+      "table": "saved_view_pins",
+      "verdict": "bounded",
+      "why": "One update per pinned view in a drag-reorder, each with its own sort_order, bounded by what one user has pinned."
+    },
+    {
+      "loop": "service-tickets/index.ts:482",
+      "table": "service_ticket_updates",
+      "verdict": "bounded",
+      "why": "At most three writes - the loop is over changed fields and only status, assigned technician and priority produce a row."
+    },
+    {
+      "loop": "tasks/handlers/time-entries.ts:208",
+      "table": "time_entries",
+      "verdict": "bounded",
+      "why": "The running entries for ONE user on ONE task. More than one is already an anomaly the loop exists to clean up."
+    },
+    {
+      "loop": "voice-ticket-close/index.ts:415",
+      "table": "truck_inventory",
+      "verdict": "deliberate",
+      "why": "The truck stock is read once for the whole ticket already. The deduction is per part because each part deducts a different amount and PostgREST cannot express quantity_on_truck - qty."
+    }
+  ]
+}

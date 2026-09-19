@@ -26,6 +26,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { writeAuditLog, withRequestContext } from '../_shared/blog/audit-log.ts';
 import { encryptCredential } from '../_shared/credential-vault.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -125,19 +126,6 @@ function hasBlogAdmin(user: { app_metadata?: Record<string, unknown> }): boolean
   if (Array.isArray(perms) && perms.includes('blog.post.edit')) return true;
   const role = String(meta.role ?? '').toLowerCase();
   return role === 'platform_admin' || role === 'super_admin' || role === 'company_admin';
-}
-
-function resolveTenant(user: {
-  app_metadata?: Record<string, unknown>;
-  user_metadata?: Record<string, unknown>;
-}): string | null {
-  return (
-    (user.app_metadata?.tenantId as string) ||
-    (user.app_metadata?.tenant_id as string) ||
-    (user.user_metadata?.tenantId as string) ||
-    (user.user_metadata?.tenant_id as string) ||
-    null
-  );
 }
 
 // ── Zod schemas ──────────────────────────────────────────────────────────────
@@ -1478,7 +1466,11 @@ export default async function handler(req: Request) {
     if (!hasBlogAdmin(user)) {
       return createCorsResponse({ error: 'Forbidden: blog.post.edit required' }, 403, req);
     }
-    const tenantId = resolveTenant(user) || req.headers.get('x-tenant-id');
+    // SEC-TENANT-003: one shape for tenant resolution. The JWT decides; a
+    // caller with no claim resolves through their users row; x-tenant-id is
+    // honoured only for a platform admin. The local copy this replaced also
+    // read user_metadata, which the session holder can write.
+    const tenantId = await resolveTenantId(req, user, admin);
     if (!tenantId) return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     const userId = user.id;
 

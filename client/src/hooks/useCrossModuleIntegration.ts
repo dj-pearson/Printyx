@@ -57,7 +57,10 @@ export function useCrossModuleIntegration() {
     onSuccess: (data, integration) => {
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: ['/api/service-tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/customers', integration.customerId] });
+      // No query is keyed ['/api/customers', <id>] - the detail pages use a
+      // single URL string - so this matched nothing. The list is what this
+      // mutation changes, and a prefix key does reach it.
+      queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
 
       // Trigger inventory check if parts are needed
       if (data.requiredParts?.length > 0) {
@@ -92,7 +95,7 @@ export function useCrossModuleIntegration() {
     onSuccess: (_data, integration) => {
       queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
       queryClient.invalidateQueries({
-        queryKey: ['/api/service-tickets', integration.serviceTicketId],
+        queryKey: ['/api/service-tickets'],
       });
     },
   });

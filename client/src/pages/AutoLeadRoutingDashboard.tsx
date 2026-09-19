@@ -1,3 +1,4 @@
+import { percentOfOr } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/main-layout';
@@ -738,7 +739,7 @@ export default function AutoLeadRoutingDashboard() {
                       (sum: number, d: any) => sum + d.count,
                       0,
                     );
-                    const percentage = total > 0 ? (item.count / total) * 100 : 0;
+                    const percentage = percentOfOr(item.count, total);
 
                     return (
                       <div key={item.grade} className="space-y-2">

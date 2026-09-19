@@ -13,6 +13,7 @@ import {
   todayWindows,
   type BusinessRecordRow,
 } from '../_shared/today-dashboard-view.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 /**
  * Total of a set of deal amounts.
@@ -47,18 +48,13 @@ export default async function handler(req: Request) {
     }
 
     // Extract tenant ID
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'dashboards');
     const dashboardType = parts[0];

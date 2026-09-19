@@ -9,6 +9,7 @@ import {
   signatureDocuments,
   signatureAuditLogs,
 } from '@shared/schema';
+import { encryptCredentialFields } from './services/credential-envelope';
 
 async function seedSignatureData() {
   log.info('Starting e-signature data seeding...');
@@ -41,57 +42,63 @@ async function seedSignatureData() {
 
     const docusignCred = await db
       .insert(integrationCredentials)
-      .values({
-        tenantId,
-        provider: 'docusign',
-        integrationName: 'DocuSign Production',
-        status: 'active',
-        apiKey: process.env.SEED_DOCUSIGN_API_KEY ?? '',
-        accountId: process.env.SEED_DOCUSIGN_ACCOUNT_ID ?? '',
-        sandboxMode: false,
-        config: {
-          baseUrl: 'https://www.docusign.net/restapi',
-          apiVersion: 'v2.1',
-        },
-        healthStatus: 'healthy',
-        lastHealthCheck: new Date(),
-      })
+      .values(
+        encryptCredentialFields({
+          tenantId,
+          provider: 'docusign',
+          integrationName: 'DocuSign Production',
+          status: 'active',
+          apiKey: process.env.SEED_DOCUSIGN_API_KEY ?? '',
+          accountId: process.env.SEED_DOCUSIGN_ACCOUNT_ID ?? '',
+          sandboxMode: false,
+          config: {
+            baseUrl: 'https://www.docusign.net/restapi',
+            apiVersion: 'v2.1',
+          },
+          healthStatus: 'healthy',
+          lastHealthCheck: new Date(),
+        }),
+      )
       .returning();
 
     const adobeSignCred = await db
       .insert(integrationCredentials)
-      .values({
-        tenantId,
-        provider: 'adobe_sign',
-        integrationName: 'Adobe Sign Development',
-        status: 'active',
-        apiKey: process.env.SEED_ADOBE_SIGN_API_KEY ?? '',
-        accessToken: process.env.SEED_ADOBE_SIGN_ACCESS_TOKEN ?? '',
-        refreshToken: process.env.SEED_ADOBE_SIGN_REFRESH_TOKEN ?? '',
-        tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        sandboxMode: true,
-        config: {
-          baseUrl: 'https://api.na1.adobesign.com/api/rest/v6',
-        },
-        healthStatus: 'healthy',
-        lastHealthCheck: new Date(),
-      })
+      .values(
+        encryptCredentialFields({
+          tenantId,
+          provider: 'adobe_sign',
+          integrationName: 'Adobe Sign Development',
+          status: 'active',
+          apiKey: process.env.SEED_ADOBE_SIGN_API_KEY ?? '',
+          accessToken: process.env.SEED_ADOBE_SIGN_ACCESS_TOKEN ?? '',
+          refreshToken: process.env.SEED_ADOBE_SIGN_REFRESH_TOKEN ?? '',
+          tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          sandboxMode: true,
+          config: {
+            baseUrl: 'https://api.na1.adobesign.com/api/rest/v6',
+          },
+          healthStatus: 'healthy',
+          lastHealthCheck: new Date(),
+        }),
+      )
       .returning();
 
     const hellosignCred = await db
       .insert(integrationCredentials)
-      .values({
-        tenantId,
-        provider: 'hellosign',
-        integrationName: 'HelloSign Testing',
-        status: 'inactive',
-        apiKey: process.env.SEED_HELLOSIGN_API_KEY ?? '',
-        sandboxMode: true,
-        config: {
-          baseUrl: 'https://api.hellosign.com/v3',
-        },
-        healthStatus: 'unknown',
-      })
+      .values(
+        encryptCredentialFields({
+          tenantId,
+          provider: 'hellosign',
+          integrationName: 'HelloSign Testing',
+          status: 'inactive',
+          apiKey: process.env.SEED_HELLOSIGN_API_KEY ?? '',
+          sandboxMode: true,
+          config: {
+            baseUrl: 'https://api.hellosign.com/v3',
+          },
+          healthStatus: 'unknown',
+        }),
+      )
       .returning();
 
     log.info(

@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { formatCurrencyWhole as formatCurrency } from '@/lib/utils';
+import { formatCurrencyWhole as formatCurrency, formatPercent, percentOf } from '@/lib/utils';
 
 interface Deal {
   id: string;
@@ -213,10 +213,9 @@ export default function PlatformDealsPipeline() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {totalWeightedValue > 0
-                  ? ((totalWeightedValue / totalPipelineValue) * 100).toFixed(1)
-                  : 0}
-                %
+                {formatPercent(percentOf(totalWeightedValue, totalPipelineValue), {
+                  digits: 1,
+                })}
               </div>
               <p className="text-xs text-muted-foreground">Expected conversion</p>
             </CardContent>

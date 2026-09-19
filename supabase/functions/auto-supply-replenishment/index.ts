@@ -14,6 +14,84 @@ import {
   type SupplyUsageReading,
 } from '../_shared/supply-analysis.ts';
 import { toNumber } from '../_shared/quote-math.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+
+/**
+ * The columns supply_replenishment_rules actually has (AUDIT-037).
+ *
+ * It is a PER-TENANT SETTINGS row - thresholds, lead times, an ordering window,
+ * budgets and notification preferences - not a per-product reorder rule, which
+ * is what every write in this file was built against. Mapping explicitly rather
+ * than spreading the request body is the point: one unknown key 42703s the whole
+ * statement, so `{ ...body }` made the endpoint only as reliable as the caller.
+ */
+function settingsColumns(body: Record<string, unknown>): Record<string, unknown> {
+  const pick = (...names: string[]) => {
+    for (const name of names) if (body[name] !== undefined) return body[name];
+    return undefined;
+  };
+  const out: Record<string, unknown> = {
+    auto_order_enabled: pick('autoOrderEnabled', 'auto_order_enabled'),
+    require_approval: pick('requireApproval', 'require_approval'),
+    approval_threshold: pick('approvalThreshold', 'approval_threshold'),
+    default_reorder_threshold: pick('defaultReorderThreshold', 'default_reorder_threshold'),
+    urgent_threshold: pick('urgentThreshold', 'urgent_threshold'),
+    critical_threshold: pick('criticalThreshold', 'critical_threshold'),
+    default_lead_time: pick('defaultLeadTime', 'default_lead_time'),
+    buffer_days: pick('bufferDays', 'buffer_days'),
+    preferred_supplier_id: pick('preferredSupplierId', 'preferred_supplier_id'),
+    alternate_supplier_ids: pick('alternateSupplierIds', 'alternate_supplier_ids'),
+    notify_on_order_placed: pick('notifyOnOrderPlaced', 'notify_on_order_placed'),
+    notify_on_delivery: pick('notifyOnDelivery', 'notify_on_delivery'),
+    notify_customers: pick('notifyCustomers', 'notify_customers'),
+    notification_email: pick('notificationEmail', 'notification_email'),
+    notification_phone: pick('notificationPhone', 'notification_phone'),
+    order_days_of_week: pick('orderDaysOfWeek', 'order_days_of_week'),
+    no_order_holidays: pick('noOrderHolidays', 'no_order_holidays'),
+    consolidate_orders: pick('consolidateOrders', 'consolidate_orders'),
+    consolidation_window: pick('consolidationWindow', 'consolidation_window'),
+    ai_prediction_enabled: pick('aiPredictionEnabled', 'ai_prediction_enabled'),
+    minimum_confidence_score: pick('minimumConfidenceScore', 'minimum_confidence_score'),
+    usage_history_days: pick('usageHistoryDays', 'usage_history_days'),
+    max_order_value: pick('maxOrderValue', 'max_order_value'),
+    monthly_budget: pick('monthlyBudget', 'monthly_budget'),
+  };
+  for (const key of Object.keys(out)) if (out[key] === undefined) delete out[key];
+  return out;
+}
+
+/**
+ * Per-product fields a caller may still send, named back rather than dropped.
+ *
+ * These are the eleven this file used to write. There is no table behind them:
+ * building one is the feature the /trigger branch answers 501 for.
+ */
+const PER_PRODUCT_FIELDS = [
+  'productId',
+  'product_id',
+  'warehouseId',
+  'warehouse_id',
+  'minQuantity',
+  'min_quantity',
+  'maxQuantity',
+  'max_quantity',
+  'reorderPoint',
+  'reorder_point',
+  'reorderQuantity',
+  'reorder_quantity',
+  'supplierId',
+  'supplier_id',
+  'leadTimeDays',
+  'lead_time_days',
+  'autoOrder',
+  'auto_order',
+  'isActive',
+  'is_active',
+];
+
+function unpersistedRuleFields(body: Record<string, unknown>): string[] {
+  return PER_PRODUCT_FIELDS.filter((f) => body[f] !== undefined);
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -33,18 +111,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
     // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
@@ -363,18 +436,15 @@ export default async function handler(req: Request) {
 
     // GET /auto-supply-replenishment/rules - List replenishment rules
     if (req.method === 'GET' && endpoint === 'rules' && !ruleId) {
+      // AUDIT-037: the embed was `product:product_id (...)`, and product_id is
+      // not a column on this table - nor is there a foreign key for PostgREST
+      // to follow if it were. supply_replenishment_rules is PER-TENANT
+      // SETTINGS: thresholds, lead times, budgets, notification preferences and
+      // an ordering window, one row. There is no per-product rule model here,
+      // which is the same finding the /trigger branch below records.
       const { data: rules, error } = await admin
         .from('supply_replenishment_rules')
-        .select(
-          `
-          *,
-          product:product_id (
-            id,
-            name,
-            sku
-          )
-        `,
-        )
+        .select('*')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
@@ -383,7 +453,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch rules' }, 500, req);
       }
 
-      return createCorsResponse(rules || [], 200, req);
+      return createCorsResponse(toCamel(rules ?? []), 200, req);
     }
 
     // GET /auto-supply-replenishment/rules/:id - Get single rule
@@ -406,26 +476,20 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && endpoint === 'rules') {
       const body = await req.json();
 
-      const ruleData = {
-        tenant_id: tenantId,
-        product_id: body.productId || body.product_id,
-        warehouse_id: body.warehouseId || body.warehouse_id,
-        min_quantity: body.minQuantity || body.min_quantity || 0,
-        reorder_point: body.reorderPoint || body.reorder_point,
-        reorder_quantity: body.reorderQuantity || body.reorder_quantity,
-        max_quantity: body.maxQuantity || body.max_quantity,
-        supplier_id: body.supplierId || body.supplier_id,
-        lead_time_days: body.leadTimeDays || body.lead_time_days || 7,
-        auto_order: body.autoOrder !== false,
-        is_active: body.isActive !== false,
-        created_by: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      // Every field below is a column this table HAS. What was here named
+      // product_id, warehouse_id, min_quantity, reorder_point, reorder_quantity,
+      // max_quantity, supplier_id, lead_time_days, auto_order, is_active and
+      // created_by - eleven names, not one of them a column, so creating a rule
+      // was a 42703 in every environment (AUDIT-037).
+      const ruleData = { ...settingsColumns(body), tenant_id: tenantId };
 
       const { data: rule, error } = await admin
         .from('supply_replenishment_rules')
-        .insert(ruleData)
+        .insert({
+          ...ruleData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
         .select()
         .single();
 
@@ -434,16 +498,23 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create rule' }, 500, req);
       }
 
-      return createCorsResponse(rule, 201, req);
+      const skipped = unpersistedRuleFields(body);
+      return createCorsResponse(
+        skipped.length > 0 ? { ...toCamel(rule), unpersisted: skipped } : toCamel(rule),
+        201,
+        req,
+      );
     }
 
     // PUT /auto-supply-replenishment/rules/:id - Update rule
     if (req.method === 'PUT' && endpoint === 'rules' && ruleId) {
       const body = await req.json();
 
+      // `{ ...body }` sent whatever the caller typed straight at PostgREST, so
+      // one unknown key 42703'd the whole update. Mapped explicitly now.
       const { data: rule, error } = await admin
         .from('supply_replenishment_rules')
-        .update({ ...body, updated_at: new Date().toISOString() })
+        .update({ ...settingsColumns(body), updated_at: new Date().toISOString() })
         .eq('id', ruleId)
         .eq('tenant_id', tenantId)
         .select()
@@ -453,54 +524,94 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update rule' }, 500, req);
       }
 
-      return createCorsResponse(rule, 200, req);
+      const skipped = unpersistedRuleFields(body);
+      return createCorsResponse(
+        skipped.length > 0 ? { ...toCamel(rule), unpersisted: skipped } : toCamel(rule),
+        200,
+        req,
+      );
     }
 
-    // GET /auto-supply-replenishment/check - Check which items need replenishment
+    // GET /auto-supply-replenishment/check - which items are at or below their
+    // reorder point
+    //
+    // AUDIT-037: this used to iterate supply_replenishment_rules filtered on
+    // is_active, reading `rule.product_id`, `rule.warehouse_id`,
+    // `rule.reorder_point`, `rule.reorder_quantity` and `rule.min_quantity`, and
+    // then read a table called `inventory` - which does not exist either; the
+    // real one is inventory_items. Six phantom names, so the endpoint answered
+    // 500 wherever it was called.
+    //
+    // The question is answerable without any of it. inventory_items carries its
+    // OWN reorder_point and reorder_quantity per item, so the per-product rule
+    // model this was reaching for is already in the inventory table. The tenant
+    // settings row supplies the urgency bands.
     if (req.method === 'GET' && endpoint === 'check') {
-      // Get all active rules with current inventory levels
-      const { data: rules } = await admin
+      const { data: settings } = await admin
         .from('supply_replenishment_rules')
+        .select('urgent_threshold, critical_threshold')
+        .eq('tenant_id', tenantId)
+        .limit(1)
+        .maybeSingle();
+
+      // PostgREST cannot compare two columns, so quantity_on_hand <=
+      // reorder_point is evaluated here - hence the cap and the ordering.
+      const { data: items, error } = await admin
+        .from('inventory_items')
         .select(
-          `
-          *,
-          product:product_id (
-            id,
-            name,
-            sku
-          )
-        `,
+          'id, name, part_number, quantity_on_hand, reorder_point, reorder_quantity, primary_vendor',
         )
         .eq('tenant_id', tenantId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .not('reorder_point', 'is', null)
+        .order('quantity_on_hand', { ascending: true })
+        .limit(500);
+
+      if (error) {
+        console.error('Error checking replenishment:', error);
+        return createCorsResponse({ error: 'Failed to check replenishment' }, 500, req);
+      }
+
+      const urgentAt = toNumber(settings?.urgent_threshold);
+      const criticalAt = toNumber(settings?.critical_threshold);
 
       const needsReplenishment = [];
+      for (const item of items ?? []) {
+        if (item.reorder_point === null || item.reorder_point === undefined) continue;
+        const onHand = toNumber(item.quantity_on_hand) ?? 0;
+        const reorderAt = toNumber(item.reorder_point);
+        if (reorderAt === null || onHand > reorderAt) continue;
 
-      for (const rule of rules || []) {
-        // Get current inventory level
-        const { data: inventory } = await admin
-          .from('inventory')
-          .select('quantity')
-          .eq('product_id', rule.product_id)
-          .eq('warehouse_id', rule.warehouse_id)
-          .single();
+        // Bands come from the tenant's settings row. With no settings row there
+        // is no band to apply, so urgency is null rather than a guess.
+        let urgency: string | null = null;
+        if (criticalAt !== null && onHand <= criticalAt) urgency = 'critical';
+        else if (urgentAt !== null && onHand <= urgentAt) urgency = 'urgent';
+        else if (criticalAt !== null || urgentAt !== null) urgency = 'normal';
 
-        const currentQty = inventory?.quantity || 0;
-
-        if (currentQty <= rule.reorder_point) {
-          needsReplenishment.push({
-            rule,
-            currentQuantity: currentQty,
-            suggestedOrderQuantity: rule.reorder_quantity,
-            urgency: currentQty <= rule.min_quantity ? 'critical' : 'normal',
-          });
-        }
+        needsReplenishment.push({
+          inventoryItemId: item.id,
+          name: item.name,
+          partNumber: item.part_number,
+          currentQuantity: onHand,
+          reorderPoint: reorderAt,
+          suggestedOrderQuantity: toNumber(item.reorder_quantity),
+          preferredVendor: item.primary_vendor ?? null,
+          urgency,
+        });
       }
 
       return createCorsResponse(
         {
           itemsNeedingReplenishment: needsReplenishment.length,
-          items: needsReplenishment,
+          items: needsReplenishment.slice(0, 100),
+          ...(urgentAt === null && criticalAt === null
+            ? {
+                unbacked: ['urgency'],
+                reason:
+                  'This tenant has no supply_replenishment_rules row, so there are no urgency bands to apply.',
+              }
+            : {}),
         },
         200,
         req,

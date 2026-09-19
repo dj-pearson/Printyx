@@ -290,7 +290,6 @@ const formatDuration = (ms: number) => {
 
 export default function WorkflowAutomation() {
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
 
@@ -300,7 +299,13 @@ export default function WorkflowAutomation() {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['/api/workflow-automation/dashboard', selectedCategory, selectedStatus],
+    // selectedStatus had no Select bound to it and contributed a constant
+    // segment; deleted. selectedCategory has one, and the dashboard branch now
+    // filters workflows.category on it.
+    queryKey: [
+      '/api/workflow-automation/dashboard' +
+        (selectedCategory && selectedCategory !== 'all' ? `?category=${selectedCategory}` : ''),
+    ],
     select: (data: any) => ({
       ...data,
       automationOverview: {

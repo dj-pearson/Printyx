@@ -2554,6 +2554,19 @@ export const deals = pgTable(
     customerId: varchar('customer_id'), // references customers.id
     companyName: varchar('company_name'), // for quick reference if no customer record
 
+    // WF-S-03: the lead or account this deal came out of, so the Deals tab on a
+    // lead can show that lead's deals. LeadDeals.tsx posted `leadId` and
+    // `companyId` for as long as it has existed and `deals` had neither column,
+    // so both were dropped on insert - the link the whole tab depends on was
+    // never stored.
+    //
+    // Named for `business_records` rather than for leads because a lead and an
+    // account are the same row here: conversion is a status change, and a deal
+    // created against a lead must keep pointing at it after that status moves.
+    // Nullable, so every existing deal stays valid and a deal created from the
+    // board carries no false provenance.
+    sourceBusinessRecordId: varchar('source_business_record_id'),
+
     // Pipeline Information
     stageId: varchar('stage_id').notNull(), // references dealStages.id
     probability: integer('probability').default(0), // 0-100 percentage
@@ -2621,6 +2634,11 @@ export const deals = pgTable(
   (table) => ({
     // Performance indexes for frequently queried columns
     customerIdIdx: index('deals_customer_id_idx').on(table.customerId),
+    // WF-S-03: the Deals tab filters on exactly this pair.
+    tenantSourceRecordIdx: index('deals_tenant_source_record_idx').on(
+      table.tenantId,
+      table.sourceBusinessRecordId,
+    ),
     ownerIdIdx: index('deals_owner_id_idx').on(table.ownerId),
     tenantStatusIdx: index('deals_tenant_status_idx').on(table.tenantId, table.status),
     tenantStageIdx: index('deals_tenant_stage_idx').on(table.tenantId, table.stageId),
@@ -7502,7 +7520,12 @@ export const integrationCredentials = pgTable(
     integrationName: varchar('integration_name').notNull(), // Display name
     status: varchar('status').notNull().default('active'), // active, inactive, error
 
-    // Credentials (encrypted at application level)
+    // Credentials. Encrypted at rest through the one envelope both runtimes
+    // read - server/services/credential-envelope.ts and
+    // supabase/functions/_shared/credential-envelope.ts (SEC-CRED-VAULT-001).
+    // A value stored before that story has no `pvc1:` prefix and is plaintext;
+    // reads tolerate it and the next write replaces it. Never SELECT one of
+    // these columns straight into a response - _shared/credentials.ts redacts.
     apiKey: text('api_key'),
     apiSecret: text('api_secret'),
     accessToken: text('access_token'),
@@ -8901,8 +8924,18 @@ export type {
 } from './print-cost-calculator-schema';
 
 // Re-export Content Marketing schemas
+//
+// AUDIT-037: `blogPosts` used to be re-exported HERE, from
+// content-marketing-schema, and that is the whole defect. A named re-export
+// beats the later `export * from './blog-schema'` at the bottom of this file,
+// so drizzle-kit only ever saw the content-marketing shape and every migration
+// built it - while 22 blog-* edge functions queried the OTHER declaration's
+// columns against a table that has `content` NOT NULL. The content-marketing
+// table is `content_marketing_posts` now and `blogPosts` comes from
+// blog-schema through that `export *`, which is what the blog subsystem meant
+// all along.
 export {
-  blogPosts,
+  contentMarketingPosts,
   guides,
   caseStudies,
   landingPages,
@@ -8913,7 +8946,7 @@ export {
   contentStatusEnum,
   contentCategoryEnum,
   keywordTierEnum,
-  insertBlogPostSchema,
+  insertContentMarketingPostSchema,
   insertGuideSchema,
   insertCaseStudySchema,
   insertLandingPageSchema,
@@ -8922,8 +8955,8 @@ export {
 } from './content-marketing-schema';
 
 export type {
-  BlogPost,
-  InsertBlogPost,
+  ContentMarketingPost,
+  InsertContentMarketingPost,
   Guide,
   InsertGuide,
   CaseStudy,

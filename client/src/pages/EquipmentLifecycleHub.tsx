@@ -1961,8 +1961,9 @@ export default function EquipmentLifecycleHub() {
             equipmentId={selectedEquipment.id}
             currentStage={selectedEquipment.stage}
             onTransitionComplete={() => {
-              // Invalidate all relevant queries to refresh the UI
-              queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/stages'] });
+              // /stages was invalidated here and in EquipmentTransitionDialog
+              // and nothing in any client tree queries it, so it refreshed
+              // nothing; dropped rather than left as decoration.
               queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/metrics'] });
               queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/assets'] });
             }}

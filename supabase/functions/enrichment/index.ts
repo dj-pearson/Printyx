@@ -3,10 +3,12 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { WRITE_BATCH, writeInBatches } from '../_shared/batch-fetch.ts';
 import {
   toEnrichedContactRow,
   UNPERSISTED_ENRICHMENT_FIELDS,
 } from '../_shared/enriched-contact.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -26,18 +28,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
     // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
@@ -244,20 +241,26 @@ export default async function handler(req: Request) {
       const imported: any[] = [];
       const failures: string[] = [];
 
-      for (const contact of contacts) {
-        const { data, error: importError } = await admin
-          .from('enriched_contacts')
-          .insert(toEnrichedContactRow('zoominfo', contact, tenantId, new Date().toISOString()))
-          .select()
-          .single();
-
-        if (importError) {
-          console.error('Error importing enriched contact:', importError);
-          failures.push(importError.message);
-          continue;
-        }
-        if (data) imported.push(data);
-      }
+      // PERF-NPLUS1-002: one insert per 200 contacts, not one per contact. An
+      // enrichment import is a whole list at once - the round trips were the
+      // wall clock. The per-row fallback inside writeInBatches is what keeps
+      // the old fault isolation: PostgREST fails the WHOLE statement on one bad
+      // row, so batching without it would turn one malformed contact into a
+      // lost import, and `failures` still names each one.
+      const importedAt = new Date().toISOString();
+      imported.push(
+        ...(await writeInBatches<any>(
+          contacts.map((contact: unknown) =>
+            toEnrichedContactRow('zoominfo', contact, tenantId, importedAt),
+          ),
+          (batch) => admin.from('enriched_contacts').insert(batch).select(),
+          WRITE_BATCH,
+          (_row, error) => {
+            console.error('Error importing enriched contact:', error);
+            failures.push((error as { message?: string })?.message ?? String(error));
+          },
+        )),
+      );
 
       // COP-M01: these inserts named six columns the table does not have, so
       // every one failed — and nothing checked the error, so the endpoint
@@ -287,20 +290,26 @@ export default async function handler(req: Request) {
       const imported: any[] = [];
       const failures: string[] = [];
 
-      for (const contact of contacts) {
-        const { data, error: importError } = await admin
-          .from('enriched_contacts')
-          .insert(toEnrichedContactRow('apollo', contact, tenantId, new Date().toISOString()))
-          .select()
-          .single();
-
-        if (importError) {
-          console.error('Error importing enriched contact:', importError);
-          failures.push(importError.message);
-          continue;
-        }
-        if (data) imported.push(data);
-      }
+      // PERF-NPLUS1-002: one insert per 200 contacts, not one per contact. An
+      // enrichment import is a whole list at once - the round trips were the
+      // wall clock. The per-row fallback inside writeInBatches is what keeps
+      // the old fault isolation: PostgREST fails the WHOLE statement on one bad
+      // row, so batching without it would turn one malformed contact into a
+      // lost import, and `failures` still names each one.
+      const importedAt = new Date().toISOString();
+      imported.push(
+        ...(await writeInBatches<any>(
+          contacts.map((contact: unknown) =>
+            toEnrichedContactRow('apollo', contact, tenantId, importedAt),
+          ),
+          (batch) => admin.from('enriched_contacts').insert(batch).select(),
+          WRITE_BATCH,
+          (_row, error) => {
+            console.error('Error importing enriched contact:', error);
+            failures.push((error as { message?: string })?.message ?? String(error));
+          },
+        )),
+      );
 
       // COP-M01: these inserts named six columns the table does not have, so
       // every one failed — and nothing checked the error, so the endpoint

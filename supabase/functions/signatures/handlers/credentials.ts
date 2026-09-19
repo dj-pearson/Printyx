@@ -16,6 +16,10 @@
 
 import { errorResponse, jsonResponse } from '../../_shared/http.ts';
 import { redactCredentials } from '../../_shared/credentials.ts';
+import {
+  CredentialVaultError,
+  encryptCredentialColumns,
+} from '../../_shared/credential-envelope.ts';
 import type { HandlerCtx } from '../_context.ts';
 
 const SIGNATURE_PROVIDERS = ['docusign', 'adobe_sign', 'hellosign'];
@@ -69,7 +73,7 @@ export async function handleCredentials(req: Request, ctx: HandlerCtx): Promise<
   if (method === 'POST' && !id) {
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body) return errorResponse(400, 'Invalid JSON', req, { code: 'INVALID_JSON', requestId });
-    const row = mapCredential(body);
+    let row = mapCredential(body);
     row.tenant_id = auth.tenantId;
     row.created_by = auth.userId;
     if (!row.provider || !row.integration_name) {
@@ -84,6 +88,11 @@ export async function handleCredentials(req: Request, ctx: HandlerCtx): Promise<
         requestId,
       });
     }
+    try {
+      row = await encryptCredentialColumns(row);
+    } catch (err) {
+      return vaultErr(req, requestId, err);
+    }
     const { data, error } = await db
       .from('integration_credentials')
       .insert(row)
@@ -97,9 +106,14 @@ export async function handleCredentials(req: Request, ctx: HandlerCtx): Promise<
   if ((method === 'PATCH' || method === 'PUT') && id && !sub) {
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body) return errorResponse(400, 'Invalid JSON', req, { code: 'INVALID_JSON', requestId });
-    const row = mapCredential(body);
+    let row = mapCredential(body);
     row.updated_by = auth.userId;
     row.updated_at = new Date().toISOString();
+    try {
+      row = await encryptCredentialColumns(row);
+    } catch (err) {
+      return vaultErr(req, requestId, err);
+    }
     const { data, error } = await db
       .from('integration_credentials')
       .update(row)
@@ -131,6 +145,8 @@ export async function handleCredentials(req: Request, ctx: HandlerCtx): Promise<
 // replace with a /accounts or /ping probe against the provider's REST API.
 async function testCredential(req: Request, ctx: HandlerCtx, id: string): Promise<Response> {
   const { auth, db, requestId } = ctx;
+  // Deliberately narrow: this row is echoed back as `credential` below, and a
+  // `select('*')` here would hand the caller every credential column.
   const { data, error } = await db
     .from('integration_credentials')
     .select('id, provider, integration_name, status')
@@ -191,4 +207,25 @@ function mapCredential(body: Record<string, unknown>): Record<string, unknown> {
 
 function dbErr(req: Request, requestId: string, msg: string, err: unknown): Response {
   return errorResponse(500, msg, req, { code: 'DB_ERROR', details: err, requestId });
+}
+
+/**
+ * A save that cannot encrypt fails (SEC-CRED-VAULT-001 AC4). 503 rather than
+ * 500: the request is well formed and will work once the deployment has a
+ * master key.
+ */
+function vaultErr(req: Request, requestId: string, err: unknown): Response {
+  console.error('Credential encryption failed:', err);
+  if (err instanceof CredentialVaultError) {
+    return errorResponse(
+      503,
+      'Credential vault is not configured on this deployment (PRINTYX_CREDENTIAL_VAULT_KEY). Nothing was saved.',
+      req,
+      { code: 'VAULT_UNCONFIGURED', requestId },
+    );
+  }
+  return errorResponse(500, 'Failed to store credential', req, {
+    code: 'VAULT_ERROR',
+    requestId,
+  });
 }

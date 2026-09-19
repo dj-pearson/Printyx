@@ -32,6 +32,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { computeDashboard } from './dashboard.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -51,12 +52,8 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
@@ -70,7 +67,6 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Not found' }, 404, req);
     }
 
-    const admin = createSupabaseServiceClient();
     return createCorsResponse(await computeDashboard(admin, tenantId), 200, req);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

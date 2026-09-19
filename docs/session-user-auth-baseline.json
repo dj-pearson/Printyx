@@ -1,10 +1,9 @@
 {
   "note": "Server files whose only identity source is req.session.user, which nothing assigns. Every handler in them answers 401. See scripts/check-session-user-auth.mjs. This is a todo list, not settled debt - do not grow it.",
-  "generated": "2026-09-01",
-  "totalReads": 365,
+  "generated": "2026-09-18",
+  "totalReads": 322,
   "files": [
     "server/routes/email-marketing-routes.ts",
-    "server/routes/manufacturer-order-routes.ts",
     "server/routes/signature-routes.ts",
     "server/routes/advanced-billing-routes.ts",
     "server/routes/gps-tracking-routes.ts",

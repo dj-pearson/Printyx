@@ -41,12 +41,30 @@ interface UserStats {
 
 export default function UserManagement() {
   const [activeTab, setActiveTab] = useState('overview');
-  const [selectedTenant, setSelectedTenant] = useState('all');
+  /*
+   * QUERYKEY-002: `selectedTenant` was here, feeding a second element of the
+   * users query key and a Select whose options were three invented companies
+   * (Acme Corporation, TechStart Solutions, Global Industries). It could not
+   * have worked: supabase/functions/admin/'s users list is hard-scoped to the
+   * caller's own tenant, so there is no cross-tenant read to filter. Deleted
+   * with its Select, along with a Role Select whose options (admin / manager /
+   * user) are not role codes - the endpoint takes a roleId uuid and this page
+   * loads no roles to offer.
+   *
+   * What the endpoint DOES read is `search` and `isActive`, so those two
+   * controls are wired to it rather than removed.
+   */
+  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const userQueryString = new URLSearchParams();
+  if (search.trim()) userQueryString.set('search', search.trim());
+  if (activeFilter !== 'all') userQueryString.set('isActive', String(activeFilter === 'active'));
+
   const usersQuery = useQuery<any[]>({
-    queryKey: ['/api/admin/users', selectedTenant],
+    queryKey: ['/api/admin/users' + (userQueryString.size ? `?${userQueryString.toString()}` : '')],
   });
 
   const statsQuery = useQuery<UserStats>({
@@ -276,38 +294,20 @@ export default function UserManagement() {
                         aria-label="Search users"
                         placeholder="Search users..."
                         className="max-w-sm"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
                       />
-                      <Select value={selectedTenant} onValueChange={setSelectedTenant}>
-                        <SelectTrigger className="w-48">
-                          <SelectValue placeholder="Tenant" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Tenants</SelectItem>
-                          <SelectItem value="acme">Acme Corporation</SelectItem>
-                          <SelectItem value="techstart">TechStart Solutions</SelectItem>
-                          <SelectItem value="global">Global Industries</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select>
+                      {/* Active / inactive, because users.is_active is a
+                          boolean - there is no suspended or pending state to
+                          offer. */}
+                      <Select value={activeFilter} onValueChange={setActiveFilter}>
                         <SelectTrigger className="w-32">
                           <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All</SelectItem>
                           <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="suspended">Suspended</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select>
-                        <SelectTrigger className="w-32">
-                          <SelectValue placeholder="Role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Roles</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="manager">Manager</SelectItem>
-                          <SelectItem value="user">User</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

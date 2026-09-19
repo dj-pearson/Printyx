@@ -4,6 +4,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -27,12 +28,8 @@ export default async function handler(req: Request) {
     }
 
     // Extract tenant ID from JWT metadata or header
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
@@ -40,7 +37,6 @@ export default async function handler(req: Request) {
     }
 
     // Use service_role client for database operations (bypasses RLS)
-    const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,

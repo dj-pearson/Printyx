@@ -47,6 +47,7 @@ import {
   DEAL_FALLBACK_PROBABILITY as SHARED_FALLBACK_PROBABILITY,
   resolveDealProbability,
 } from '../_shared/deal-probability.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 const QUOTE_DEFAULT_PROBABILITY = 50;
 const PROPOSAL_DEFAULT_PROBABILITY = 70;
@@ -89,18 +90,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ message: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'pipeline-forecast');
     const forecastId = parts[0];
@@ -168,7 +164,11 @@ export default async function handler(req: Request) {
       // sales_goals table/rows must not fail the whole forecast.
       admin
         .from('sales_goals')
-        .select('id, goal_type, target_value, target_count, start_date, end_date')
+        // AUDIT-037: `target_value` is not a column - sales_goals carries a
+        // single `target_count` and a goal_type that says what it counts. Naming
+        // it 42703'd the whole select, and because the result feeds an inner
+        // try/catch the forecast simply showed no goals rather than an error.
+        .select('id, goal_type, target_count, start_date, end_date')
         .eq('tenant_id', tenantId)
         .eq('is_active', true),
     ]);
@@ -252,9 +252,11 @@ export default async function handler(req: Request) {
     const totalPipelineCount = pipelineItems.length;
 
     // deno-lint-ignore no-explicit-any
+    // A revenue goal's amount is in target_count, the one target column this
+    // table has.
     const totalGoalValue = (goalRows as any[])
       .filter((g) => g.goal_type === 'revenue')
-      .reduce((sum, g) => sum + num(g.target_value), 0);
+      .reduce((sum, g) => sum + num(g.target_count), 0);
     // deno-lint-ignore no-explicit-any
     const totalGoalCount = (goalRows as any[])
       .filter((g) => g.goal_type !== 'revenue')

@@ -3,6 +3,11 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'service.ticket.view_own';
+const WRITE_PERMISSION = 'service.ticket.create';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -26,20 +31,29 @@ export default async function handler(req: Request) {
     }
 
     // Extract tenant ID from JWT metadata or header
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
+    // SEC-EDGE-001: Creating a service ticket from a phone call. service.ticket.create is
+    // held by SERVICE_MANAGER, DISPATCH_COORDINATOR and CSR - the people who
+    // answer the phone - and deliberately not by a field technician, who does
+    // not take these calls. Checked against the seeded role templates rather
+    // than assumed: gating the service surface on a code its own technicians do
+    // not hold would break the daily job, which is a worse outcome than the
+    // hole it closes.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
+
     // Use service_role client for database operations (bypasses RLS)
-    const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
@@ -160,7 +174,9 @@ export default async function handler(req: Request) {
         issueCategory: t.issue_category,
         issueDescription: t.issue_description,
         urgencyLevel: t.urgency_level,
-        priority: t.priority || t.urgency_level || 'medium',
+        // The response keeps a `priority` key because callers read it, but it
+        // is urgency_level under another name rather than a second column.
+        priority: t.urgency_level || 'medium',
         contactMethod: t.contact_method,
         convertedToTicketId: t.converted_to_ticket_id,
         convertedAt: t.converted_at,
@@ -245,8 +261,10 @@ export default async function handler(req: Request) {
         equipment_serial: body.equipmentSerial || body.equipment_serial,
         issue_category: body.issueCategory || body.issue_category || 'general',
         issue_description: body.issueDescription || body.issue_description,
+        // AUDIT-037: `priority` is not a column - urgency_level is the one this
+        // table has, and the line above already accepts `priority` as an alias
+        // for it. Writing both meant every phone-in ticket 42703'd on create.
         urgency_level: body.urgencyLevel || body.urgency_level || body.priority || 'medium',
-        priority: body.priority || body.urgencyLevel || body.urgency_level || 'medium',
         contact_method: body.contactMethod || body.contact_method || 'phone',
         handled_by: user.id,
         created_at: new Date().toISOString(),
@@ -278,7 +296,7 @@ export default async function handler(req: Request) {
           ticket_number: ticketNumber,
           title: `${(ticket.issue_category || 'General').replace('_', ' ')} - ${ticket.customer_name || 'Unknown'}`,
           description: ticket.issue_description,
-          priority: ticket.priority || ticket.urgency_level || 'medium',
+          priority: ticket.urgency_level || 'medium',
           status: 'new',
           customer_address: ticket.location_address,
           customer_phone: ticket.caller_phone,
@@ -337,7 +355,7 @@ export default async function handler(req: Request) {
         ticket_number: ticketNumber,
         title: `${(phoneTicket.issue_category || 'General').replace('_', ' ')} - ${phoneTicket.customer_name || 'Unknown'}`,
         description: phoneTicket.issue_description,
-        priority: phoneTicket.priority || phoneTicket.urgency_level || 'medium',
+        priority: phoneTicket.urgency_level || 'medium',
         status: 'new',
         customer_address: phoneTicket.location_address,
         customer_phone: phoneTicket.caller_phone,

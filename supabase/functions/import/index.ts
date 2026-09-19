@@ -4,6 +4,11 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { parseCsv, overallConfidence } from './_csv.ts';
 import { DUPLICATE_RESOLUTIONS, findDuplicate } from '../_shared/import-duplicate-match.ts';
+import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+const READ_PERMISSION = 'sales.lead.view_own';
+const WRITE_PERMISSION = ['sales.lead.import', 'operations.inventory.manage'];
 
 // CRMX-011a: job state lives in csv_import_jobs, not in this process.
 //
@@ -110,17 +115,32 @@ export default async function handler(req: Request) {
     }
 
     // Extract tenant ID
-    const tenantId =
-      (user.app_metadata?.tenant_id as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string);
+    // SEC-TENANT-003: user_metadata is writable by the session holder through
+    // supabase.auth.updateUser, and this client uses the service role, which
+    // bypasses RLS - so a tenant read from that bag is a tenant of the
+    // caller's choosing. resolveTenantId takes app_metadata, then the
+    // caller's users row, which neither the user nor the browser can write.
+    const admin = createSupabaseServiceClient();
+    const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    const admin = createSupabaseServiceClient();
+    // SEC-EDGE-001: bulk import writes business records and products a file at a time, so
+    // one request creates what would otherwise be hundreds. sales.lead.import
+    // is the seeded code for exactly that and is held by SALES_MANAGER;
+    // operations.inventory.manage is named beside it because /import/products
+    // is the same wizard pointed at the catalogue, gated on that code at level
+    // 3. Reads stay on the lead view every rep holds - an import JOB's status
+    // is something the person who started it has to be able to poll.
+    const denied = await denyWithoutPermission(
+      admin,
+      user,
+      req.method === 'GET' || req.method === 'HEAD' ? READ_PERMISSION : WRITE_PERMISSION,
+    );
+    if (denied) return createCorsResponse(denied, 403, req);
+
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
 

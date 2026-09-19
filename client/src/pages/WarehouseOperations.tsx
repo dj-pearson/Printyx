@@ -111,44 +111,152 @@ const serialNumberSchema = z.object({
 });
 
 // Build process schema
+// WF-L-05: the kitting operation a technician opens for a build.
+//
+// This schema used to describe a shape warehouse_kitting_operations does not
+// have - modelId, scheduledDate, an accessories[] of ids and quantities, a
+// buildSteps[] with per-step estimates - behind a dialog that never opened,
+// above a tab that said "will be implemented here". Rebound to the real
+// columns: order_number, customer_id, kit_name and assigned_technician are all
+// NOT NULL, the checklist is a jsonb array of items, and the serials are the
+// units this build covers.
 const buildProcessSchema = z.object({
-  equipmentId: z.string().min(1, 'Equipment is required'),
-  modelId: z.string().min(1, 'Model is required'),
+  orderNumber: z.string().min(1, 'Order number is required'),
+  customerId: z.string().min(1, 'Customer is required'),
+  kitName: z.string().min(1, 'Kit name is required'),
   assignedTechnician: z.string().min(1, 'Technician is required'),
-  scheduledDate: z.date(),
-  accessories: z.array(
-    z.object({
-      accessoryId: z.string(),
-      quantity: z.number().min(1),
-      isRequired: z.boolean().default(false),
-    }),
-  ),
-  buildSteps: z.array(
-    z.object({
-      stepName: z.string(),
-      description: z.string(),
-      estimatedTime: z.number(), // minutes
-      isCompleted: z.boolean().default(false),
-      completedBy: z.string().optional(),
-      completedAt: z.date().optional(),
-      notes: z.string().optional(),
-    }),
-  ),
+  equipmentModel: z.string().optional(),
+  serialNumbers: z.string().optional(),
+  checklist: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 // Delivery schedule schema
+// WF-L-06: bound to delivery_schedules. The fields this used to carry -
+// requiredAccessories, deliveryTeam, installationRequired, installationDate -
+// have no column on that table; an install is its own row in
+// installation_schedules, which is why the Install action posts separately
+// rather than a boolean flag standing in for one.
 const deliveryScheduleSchema = z.object({
   customerId: z.string().min(1, 'Customer is required'),
   equipmentId: z.string().min(1, 'Equipment is required'),
-  deliveryDate: z.date(),
-  deliveryWindow: z.string(), // "morning", "afternoon", "all_day"
+  deliveryDate: z.string().min(1, 'Delivery date is required'),
+  deliveryWindow: z.string(),
   deliveryAddress: z.string().min(1, 'Delivery address is required'),
+  driverId: z.string().optional(),
+  vehicleId: z.string().optional(),
   specialInstructions: z.string().optional(),
-  requiredAccessories: z.array(z.string()).optional(),
-  deliveryTeam: z.array(z.string()).optional(),
-  installationRequired: z.boolean().default(false),
-  installationDate: z.date().optional(),
 });
+
+// WF-L-05 shapes, matching what supabase/functions/warehouse-operations returns.
+interface ChecklistItem {
+  item: string;
+  completed: boolean;
+  completedBy?: string | null;
+  completedAt?: string | null;
+  notes?: string | null;
+}
+
+interface KittingOperation {
+  id: string;
+  orderNumber: string;
+  kitName: string;
+  customerId: string;
+  equipmentModel?: string | null;
+  assignedTechnician: string;
+  checklistItems?: ChecklistItem[] | null;
+  serialNumbers?: string[] | null;
+  operationStatus?: string | null;
+  qualityStatus?: string | null;
+  firstPassYield?: boolean | null;
+  reworkCount?: number | null;
+  reworkNotes?: string | null;
+  completedAt?: string | null;
+  notes?: string | null;
+}
+
+interface SerialUnit {
+  id: string;
+  equipmentId?: string | null;
+  serialNumber?: string | null;
+  model?: string | null;
+  manufacturer?: string | null;
+  currentStage?: string | null;
+  currentLocation?: string | null;
+  kittingStatus: string;
+  kitting?: Pick<
+    KittingOperation,
+    'id' | 'orderNumber' | 'kitName' | 'operationStatus' | 'qualityStatus' | 'firstPassYield'
+  > | null;
+}
+
+interface DeliverySchedule {
+  id: string;
+  equipment_id: string;
+  customer_id: string;
+  scheduled_date: string;
+  time_window?: string | null;
+  delivery_type?: string | null;
+  status?: string | null;
+  driver_id?: string | null;
+  vehicle_id?: string | null;
+  special_instructions?: string | null;
+}
+
+interface InstallationSchedule {
+  id: string;
+  equipment_id: string;
+  customer_id: string;
+  technician_id: string;
+  scheduled_date: string;
+  estimated_duration?: number | null;
+  installation_type?: string | null;
+  status?: string | null;
+}
+
+interface CrewItem {
+  kind: 'delivery' | 'installation';
+  id: string;
+  equipmentId: string | null;
+  customerId: string | null;
+  window: string | null;
+  status: string | null;
+  assignedTo: string | null;
+  notes: string | null;
+}
+
+interface CrewDay {
+  date: string;
+  scope: string;
+  items: CrewItem[];
+  deliveryCount: number;
+  installationCount: number;
+}
+
+interface FpyMetrics {
+  totalOperations: number;
+  firstPassOperations: number;
+  /** null when nothing completed in the window - a yield over zero units is not 0%. */
+  fpyPercentage: number | null;
+  reworkRate: number | null;
+  topDefectTypes?: Array<{ defectType: string; count: number; percentage: number }>;
+  unbacked?: string[];
+  reason?: string;
+}
+
+/** Comma or newline separated free text to a trimmed list. */
+function splitList(value?: string): string[] {
+  if (!value) return [];
+  return value
+    .split(/[\n,]/)
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+/** A percentage the backend may legitimately not have. */
+function pct(value: number | null | undefined): string {
+  return value === null || value === undefined ? '—' : `${value}%`;
+}
 
 type WarehouseOperationFormData = z.infer<typeof warehouseOperationSchema>;
 type SerialNumberFormData = z.infer<typeof serialNumberSchema>;
@@ -220,6 +328,36 @@ export default function WarehouseOperations() {
     queryKey: ['/api/customers'],
   });
 
+  // WF-L-05: kitting operations, the serials still in the warehouse, and the
+  // first-pass yield over them. All three are served by the same edge function
+  // as the board above, so dev and production agree.
+  const { data: kittingOps = [], isLoading: kittingLoading } = useQuery<KittingOperation[]>({
+    queryKey: ['/api/warehouse-operations/kitting'],
+  });
+
+  const { data: serialUnits = [], isLoading: serialsLoading } = useQuery<SerialUnit[]>({
+    queryKey: ['/api/warehouse-operations/serials'],
+  });
+
+  const { data: fpy } = useQuery<FpyMetrics>({
+    queryKey: ['/api/warehouse-operations/fpy-metrics'],
+  });
+
+  // WF-L-06: the dispatcher's board and the crew's day.
+  const { data: deliveries = [], isLoading: deliveriesLoading } = useQuery<DeliverySchedule[]>({
+    queryKey: ['/api/equipment-lifecycle/deliveries'],
+  });
+
+  const { data: installations = [] } = useQuery<InstallationSchedule[]>({
+    queryKey: ['/api/equipment-lifecycle/installations'],
+  });
+
+  // Scoped to the caller by default - a driver's runs and a technician's
+  // installs, not the whole tenant's (WF-R-06).
+  const { data: crewDay } = useQuery<CrewDay>({
+    queryKey: ['/api/equipment-lifecycle/crew'],
+  });
+
   // Fetch statistics
   const { data: stats = {} } = useQuery<{
     totalOperations?: number;
@@ -286,6 +424,115 @@ export default function WarehouseOperations() {
     },
   });
 
+  const refreshSchedules = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/deliveries'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/installations'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/crew'] });
+  };
+
+  const createDeliveryMutation = useMutation({
+    mutationFn: async (data: DeliveryScheduleFormData) =>
+      apiRequest('/api/equipment-lifecycle/deliveries', 'POST', {
+        equipmentId: data.equipmentId,
+        customerId: data.customerId,
+        scheduledDate: data.deliveryDate,
+        timeWindow: data.deliveryWindow,
+        deliveryAddress: data.deliveryAddress,
+        driverId: data.driverId || null,
+        vehicleId: data.vehicleId || null,
+        specialInstructions: data.specialInstructions || null,
+      }),
+    onSuccess: () => {
+      refreshSchedules();
+      setShowDeliveryDialog(false);
+      deliveryForm.reset();
+      toast({ title: 'Delivery scheduled' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not schedule the delivery',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Assigning a driver is a SEPARATE staged -> in_transit requirement from
+  // scheduling the run, because a run is usually booked before the rota is set.
+  const assignDriverMutation = useMutation({
+    mutationFn: async ({ id, driverId }: { id: string; driverId: string }) =>
+      apiRequest(`/api/equipment-lifecycle/deliveries/${id}`, 'PATCH', { driverId }),
+    onSuccess: () => {
+      refreshSchedules();
+      toast({ title: 'Driver assigned' });
+    },
+  });
+
+  const deliveryStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) =>
+      apiRequest(`/api/equipment-lifecycle/deliveries/${id}`, 'PATCH', { status }),
+    onSuccess: () => {
+      refreshSchedules();
+      toast({ title: 'Delivery updated' });
+    },
+  });
+
+  const refreshKitting = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/warehouse-operations/kitting'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/warehouse-operations/serials'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/warehouse-operations/fpy-metrics'] });
+  };
+
+  const createKittingMutation = useMutation({
+    mutationFn: async (data: BuildProcessFormData) =>
+      apiRequest('/api/warehouse-operations/kitting', 'POST', {
+        orderNumber: data.orderNumber,
+        customerId: data.customerId,
+        kitName: data.kitName,
+        assignedTechnician: data.assignedTechnician,
+        equipmentModel: data.equipmentModel || null,
+        serialNumbers: splitList(data.serialNumbers),
+        checklistItems: splitList(data.checklist).map((item) => ({ item, completed: false })),
+        notes: data.notes || null,
+      }),
+    onSuccess: () => {
+      refreshKitting();
+      setShowBuildDialog(false);
+      buildForm.reset();
+      toast({ title: 'Build opened', description: 'The kitting operation is in progress.' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not open the build',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const toggleChecklistMutation = useMutation({
+    mutationFn: async ({ id, items }: { id: string; items: ChecklistItem[] }) =>
+      apiRequest(`/api/warehouse-operations/kitting/${id}`, 'PATCH', { checklistItems: items }),
+    onSuccess: refreshKitting,
+  });
+
+  const completeKittingMutation = useMutation({
+    mutationFn: async ({ id, passed, notes }: { id: string; passed: boolean; notes?: string }) =>
+      apiRequest(`/api/warehouse-operations/kitting/${id}/complete`, 'POST', { passed, notes }),
+    onSuccess: (_data, variables) => {
+      refreshKitting();
+      toast({
+        title: variables.passed ? 'QA passed' : 'QA failed',
+        description: variables.passed
+          ? 'The unit is cleared to stage.'
+          : 'Rework recorded. First pass is not restored by a later pass.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Could not record QA', description: error.message, variant: 'destructive' });
+    },
+  });
+
   // Form setup
   const form = useForm<WarehouseOperationFormData>({
     resolver: zodResolver(warehouseOperationSchema),
@@ -305,16 +552,28 @@ export default function WarehouseOperations() {
   const buildForm = useForm<BuildProcessFormData>({
     resolver: zodResolver(buildProcessSchema),
     defaultValues: {
-      accessories: [],
-      buildSteps: [],
+      orderNumber: '',
+      customerId: '',
+      kitName: '',
+      assignedTechnician: '',
+      equipmentModel: '',
+      serialNumbers: '',
+      checklist: '',
+      notes: '',
     },
   });
 
   const deliveryForm = useForm<DeliveryScheduleFormData>({
     resolver: zodResolver(deliveryScheduleSchema),
     defaultValues: {
+      customerId: '',
+      equipmentId: '',
+      deliveryDate: '',
       deliveryWindow: 'all_day',
-      installationRequired: false,
+      deliveryAddress: '',
+      driverId: '',
+      vehicleId: '',
+      specialInstructions: '',
     },
   });
 
@@ -448,6 +707,45 @@ export default function WarehouseOperations() {
                   </CardContent>
                 </Card>
               </div>
+            )}
+
+            {/* WF-L-05: first-pass yield, from the kitting operations that
+                actually completed. `—` rather than 0% when nothing did: a yield
+                over an empty window is not a collapse in build quality, and 0%
+                on a quality card reads as exactly that. */}
+            {fpy && (
+              <Card>
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="text-base md:text-lg">First-pass yield</CardTitle>
+                  <CardDescription>
+                    {fpy.totalOperations} build{fpy.totalOperations === 1 ? '' : 's'} completed in
+                    the last week
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <div>
+                      <p className="text-lg font-bold md:text-2xl">{pct(fpy.fpyPercentage)}</p>
+                      <p className="text-xs text-muted-foreground md:text-sm">FPY</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold md:text-2xl">{pct(fpy.reworkRate)}</p>
+                      <p className="text-xs text-muted-foreground md:text-sm">Rework rate</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold md:text-2xl">{fpy.firstPassOperations}</p>
+                      <p className="text-xs text-muted-foreground md:text-sm">First pass</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold md:text-2xl">
+                        {fpy.topDefectTypes?.[0]?.defectType ?? '—'}
+                      </p>
+                      <p className="text-xs text-muted-foreground md:text-sm">Top defect</p>
+                    </div>
+                  </div>
+                  {fpy.reason && <p className="mt-3 text-sm text-muted-foreground">{fpy.reason}</p>}
+                </CardContent>
+              </Card>
             )}
 
             {/* Recent Operations */}
@@ -780,9 +1078,44 @@ export default function WarehouseOperations() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
-                <div className="text-center py-8 text-muted-foreground">
-                  Serial number management interface will be implemented here
-                </div>
+                {serialsLoading ? (
+                  <div className="py-8 text-center text-muted-foreground">Loading serials…</div>
+                ) : serialUnits.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    No units are at received or staged right now.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {serialUnits.map((unit) => (
+                      <div
+                        key={unit.id}
+                        className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium">{unit.serialNumber || 'No serial recorded'}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {[unit.manufacturer, unit.model].filter(Boolean).join(' ') ||
+                              'Model not recorded'}
+                            {unit.currentLocation ? ` · ${unit.currentLocation}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline">{unit.currentStage}</Badge>
+                          <Badge
+                            variant={unit.kittingStatus === 'passed' ? 'default' : 'secondary'}
+                          >
+                            {unit.kittingStatus === 'not_started'
+                              ? 'no build'
+                              : `QA ${unit.kittingStatus}`}
+                          </Badge>
+                          {unit.kitting?.firstPassYield ? (
+                            <Badge variant="outline">first pass</Badge>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -813,9 +1146,129 @@ export default function WarehouseOperations() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
-                <div className="text-center py-8 text-muted-foreground">
-                  Build process management interface will be implemented here
-                </div>
+                {kittingLoading ? (
+                  <div className="py-8 text-center text-muted-foreground">Loading builds…</div>
+                ) : kittingOps.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    No builds yet. Open one with New Build Process.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {kittingOps.map((op) => {
+                      const items = op.checklistItems ?? [];
+                      const done = items.filter((i) => i.completed).length;
+                      const open = op.operationStatus !== 'completed';
+                      return (
+                        <div key={op.id} className="rounded-lg border p-4">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <p className="font-medium">{op.kitName}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Order {op.orderNumber}
+                                {op.equipmentModel ? ` · ${op.equipmentModel}` : ''} ·{' '}
+                                {(op.serialNumbers ?? []).length} serial
+                                {(op.serialNumbers ?? []).length === 1 ? '' : 's'}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline">{op.operationStatus}</Badge>
+                              {op.qualityStatus && op.qualityStatus !== 'pending' && (
+                                <Badge
+                                  variant={
+                                    op.qualityStatus === 'passed' ? 'default' : 'destructive'
+                                  }
+                                >
+                                  QA {op.qualityStatus}
+                                </Badge>
+                              )}
+                              {op.firstPassYield ? (
+                                <Badge variant="outline">first pass</Badge>
+                              ) : null}
+                              {(op.reworkCount ?? 0) > 0 ? (
+                                <Badge variant="secondary">rework ×{op.reworkCount}</Badge>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {items.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                Checklist {done}/{items.length}
+                              </p>
+                              {items.map((item, index) => (
+                                <label
+                                  key={`${op.id}-${index}`}
+                                  className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md px-2 hover:bg-muted/50"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4"
+                                    checked={item.completed}
+                                    disabled={!open || toggleChecklistMutation.isPending}
+                                    onChange={(event) =>
+                                      toggleChecklistMutation.mutate({
+                                        id: op.id,
+                                        items: items.map((existing, i) =>
+                                          i === index
+                                            ? {
+                                                ...existing,
+                                                completed: event.target.checked,
+                                                completedAt: event.target.checked
+                                                  ? new Date().toISOString()
+                                                  : null,
+                                              }
+                                            : existing,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                  <span className={item.completed ? 'text-muted-foreground' : ''}>
+                                    {item.item}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+
+                          {open && (
+                            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                              <Button
+                                size="sm"
+                                className="min-h-[44px] flex-1 touch-manipulation"
+                                disabled={completeKittingMutation.isPending}
+                                onClick={() =>
+                                  completeKittingMutation.mutate({ id: op.id, passed: true })
+                                }
+                              >
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                QA pass
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="min-h-[44px] flex-1 touch-manipulation"
+                                disabled={completeKittingMutation.isPending}
+                                onClick={() =>
+                                  completeKittingMutation.mutate({
+                                    id: op.id,
+                                    passed: false,
+                                    notes: 'Failed QA on the floor',
+                                  })
+                                }
+                              >
+                                QA fail
+                              </Button>
+                            </div>
+                          )}
+
+                          {op.reworkNotes && (
+                            <p className="mt-2 text-sm text-muted-foreground">{op.reworkNotes}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -878,18 +1331,125 @@ export default function WarehouseOperations() {
                 </div>
               )}
 
-            {/* Delivery scheduling would go here */}
+            {/* WF-L-06: the crew's day, scoped to the caller. A dispatcher
+                looking at everything asks the same endpoint with ?all=true. */}
+            {crewDay && crewDay.items.length > 0 && (
+              <Card>
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="text-base md:text-lg">Your day</CardTitle>
+                  <CardDescription>
+                    {crewDay.deliveryCount} deliver{crewDay.deliveryCount === 1 ? 'y' : 'ies'} and{' '}
+                    {crewDay.installationCount} install
+                    {crewDay.installationCount === 1 ? '' : 's'} on {crewDay.date}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 p-4 pt-0 sm:p-6 sm:pt-0">
+                  {crewDay.items.map((item) => (
+                    <div
+                      key={`${item.kind}-${item.id}`}
+                      className="flex flex-col gap-1 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium capitalize">{item.kind}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.window || 'No window set'}
+                          {item.notes ? ` · ${item.notes}` : ''}
+                        </p>
+                      </div>
+                      <Badge variant="outline">{item.status}</Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Scheduled Deliveries</CardTitle>
                 <CardDescription>
-                  Manage delivery schedules and installation appointments
+                  {installations.length} installation
+                  {installations.length === 1 ? '' : 's'} booked alongside these
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
-                <div className="text-center py-8 text-muted-foreground">
-                  Delivery scheduling interface will be implemented here
-                </div>
+                {deliveriesLoading ? (
+                  <div className="py-8 text-center text-muted-foreground">Loading deliveries…</div>
+                ) : deliveries.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    Nothing scheduled. Use Schedule Delivery to book a run.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {deliveries.map((delivery) => (
+                      <div key={delivery.id} className="rounded-lg border p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="font-medium">
+                              {new Date(delivery.scheduled_date).toLocaleDateString()}
+                              {delivery.time_window ? ` · ${delivery.time_window}` : ''}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {delivery.delivery_type || 'standard'}
+                              {delivery.special_instructions
+                                ? ` · ${delivery.special_instructions}`
+                                : ''}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline">{delivery.status}</Badge>
+                            {delivery.driver_id ? (
+                              <Badge variant="secondary">driver assigned</Badge>
+                            ) : (
+                              <Badge variant="destructive">no driver</Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                          <Select
+                            value={delivery.driver_id ?? ''}
+                            onValueChange={(driverId) =>
+                              assignDriverMutation.mutate({ id: delivery.id, driverId })
+                            }
+                          >
+                            <SelectTrigger className="min-h-[44px] sm:w-64">
+                              <SelectValue placeholder="Assign a driver" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {technicians.map((technician) => (
+                                <SelectItem key={technician.id} value={technician.id}>
+                                  {[technician.firstName, technician.lastName]
+                                    .filter(Boolean)
+                                    .join(' ') || technician.email}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {delivery.status !== 'completed' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="min-h-[44px] flex-1 touch-manipulation"
+                              disabled={deliveryStatusMutation.isPending}
+                              onClick={() =>
+                                deliveryStatusMutation.mutate({
+                                  id: delivery.id,
+                                  status:
+                                    delivery.status === 'in_transit' ? 'completed' : 'in_transit',
+                                })
+                              }
+                            >
+                              <Truck className="mr-2 h-4 w-4" />
+                              {delivery.status === 'in_transit'
+                                ? 'Mark delivered'
+                                : 'Mark in transit'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1045,6 +1605,392 @@ export default function WarehouseOperations() {
                     className="w-full md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                   >
                     {createOperationMutation.isPending ? 'Creating...' : 'Create Operation'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* WF-L-06: book a delivery. Every field maps to a column on
+            delivery_schedules; equipment_id, customer_id, scheduled_date and
+            delivery_address are NOT NULL there. */}
+        <Dialog open={showDeliveryDialog} onOpenChange={setShowDeliveryDialog}>
+          <DialogContent className="max-h-[90vh] max-w-[600px] overflow-y-auto p-4 sm:p-6">
+            <DialogHeader>
+              <DialogTitle>Schedule a delivery</DialogTitle>
+              <DialogDescription>
+                A driver can be assigned now or later — the two are separate staged-to-in-transit
+                requirements.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...deliveryForm}>
+              <form
+                onSubmit={deliveryForm.handleSubmit((data) => createDeliveryMutation.mutate(data))}
+                className="space-y-4"
+              >
+                <FormField
+                  control={deliveryForm.control}
+                  name="customerId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Select a customer" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {customers.map((customer) => (
+                            <SelectItem key={customer.id} value={customer.id}>
+                              {customer.companyName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={deliveryForm.control}
+                  name="equipmentId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Equipment</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Select a unit" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {equipment.map((unit) => (
+                            <SelectItem key={unit.id} value={unit.id}>
+                              {unit.serialNumber || unit.id}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={deliveryForm.control}
+                    name="deliveryDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                            value={field.value ?? ''}
+                            className="min-h-[44px]"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={deliveryForm.control}
+                    name="deliveryWindow"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Window</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value ?? 'all_day'}>
+                          <FormControl>
+                            <SelectTrigger className="min-h-[44px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="morning">Morning</SelectItem>
+                            <SelectItem value="afternoon">Afternoon</SelectItem>
+                            <SelectItem value="all_day">All day</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={deliveryForm.control}
+                  name="deliveryAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Delivery address</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value ?? ''} rows={2} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={deliveryForm.control}
+                    name="driverId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Driver</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                          <FormControl>
+                            <SelectTrigger className="min-h-[44px]">
+                              <SelectValue placeholder="Assign later" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {technicians.map((technician) => (
+                              <SelectItem key={technician.id} value={technician.id}>
+                                {[technician.firstName, technician.lastName]
+                                  .filter(Boolean)
+                                  .join(' ') || technician.email}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={deliveryForm.control}
+                    name="vehicleId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Vehicle</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value ?? ''} className="min-h-[44px]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={deliveryForm.control}
+                  name="specialInstructions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Instructions</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value ?? ''} rows={2} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-[44px]"
+                    onClick={() => setShowDeliveryDialog(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="min-h-[44px]"
+                    disabled={createDeliveryMutation.isPending}
+                  >
+                    Schedule
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* WF-L-05: open a kitting operation. Every field here is a column on
+            warehouse_kitting_operations; the four at the top are NOT NULL. */}
+        <Dialog open={showBuildDialog} onOpenChange={setShowBuildDialog}>
+          <DialogContent className="max-h-[90vh] max-w-[600px] overflow-y-auto p-4 sm:p-6">
+            <DialogHeader>
+              <DialogTitle>New build</DialogTitle>
+              <DialogDescription>
+                Open a kitting operation for the unit being built. QA is recorded on the build.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...buildForm}>
+              <form
+                onSubmit={buildForm.handleSubmit((data) => createKittingMutation.mutate(data))}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={buildForm.control}
+                    name="orderNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Order number</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value ?? ''} className="min-h-[44px]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={buildForm.control}
+                    name="kitName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Kit name</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value ?? ''} className="min-h-[44px]" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={buildForm.control}
+                  name="customerId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Select a customer" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {customers.map((customer) => (
+                            <SelectItem key={customer.id} value={customer.id}>
+                              {customer.companyName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={buildForm.control}
+                  name="assignedTechnician"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Technician</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <FormControl>
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue placeholder="Assign a technician" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {technicians.map((technician) => (
+                            <SelectItem key={technician.id} value={technician.id}>
+                              {[technician.firstName, technician.lastName]
+                                .filter(Boolean)
+                                .join(' ') || technician.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={buildForm.control}
+                  name="equipmentModel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Model</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value ?? ''} className="min-h-[44px]" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={buildForm.control}
+                  name="serialNumbers"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Serial numbers</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value ?? ''}
+                          rows={2}
+                          placeholder="One per line, or comma separated"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={buildForm.control}
+                  name="checklist"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Checklist</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value ?? ''}
+                          rows={4}
+                          placeholder="One item per line"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={buildForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} value={field.value ?? ''} rows={2} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-[44px]"
+                    onClick={() => setShowBuildDialog(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="min-h-[44px]"
+                    disabled={createKittingMutation.isPending}
+                  >
+                    Open build
                   </Button>
                 </div>
               </form>
