@@ -25,9 +25,10 @@ import {
   ArrowRight,
   MessageSquare,
   RefreshCw,
+  FileText,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrencyWhole } from '@/lib/utils';
 
 interface Activity {
   id: string;
@@ -66,6 +67,20 @@ interface Deal {
   staleReason?: string;
 }
 
+/** COP-B01: a quote sent and not answered. */
+interface AwaitingSignature {
+  id: string;
+  proposalNumber: string | null;
+  title: string | null;
+  totalAmount: string | null;
+  dealId: string | null;
+  companyName: string | null;
+  validUntil: string | null;
+  /** Null when the quote carries no expiry — not a guessed zero. */
+  daysUntilExpiry: number | null;
+  sentAt: string | null;
+}
+
 interface TodayViewData {
   overdue: Activity[];
   today: Activity[];
@@ -73,6 +88,7 @@ interface TodayViewData {
   hotLeads: Lead[];
   pipelineAlerts: Deal[];
   recentWins: Deal[];
+  awaitingSignature?: AwaitingSignature[];
   stats: {
     // Nullable on purpose. Both are a SUM over the tenant's whole deals table,
     // which the production backend cannot compute without either truncating
@@ -164,6 +180,7 @@ export default function TodayDashboard() {
     today = [],
     upcoming = [],
     hotLeads = [],
+    awaitingSignature = [],
     pipelineAlerts = [],
     recentWins = [],
     stats = {
@@ -293,6 +310,57 @@ export default function TodayDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            {/* COP-B01: quotes awaiting signature. A quote sent and not
+                answered is the card a rep acts on first, and it could not be
+                built until COP-B02 gave a quote a deal to belong to. */}
+            {awaitingSignature.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <CardTitle>Awaiting signature</CardTitle>
+                    <Badge variant="outline" className="font-normal">
+                      {awaitingSignature.length}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {awaitingSignature.map((quote) => (
+                    <button
+                      key={quote.id}
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          quote.dealId ? `/crm/deals/${quote.dealId}` : `/quotes/${quote.id}`,
+                        )
+                      }
+                      className="w-full text-left flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/50"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">
+                          {quote.companyName ?? quote.title ?? quote.proposalNumber ?? 'Quote'}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {quote.proposalNumber}
+                          {/* Silent when the quote states no validity: it has
+                              not "expired in 0 days". */}
+                          {quote.daysUntilExpiry != null &&
+                            (quote.daysUntilExpiry < 0
+                              ? ` · expired ${Math.abs(quote.daysUntilExpiry)} days ago`
+                              : ` · valid ${quote.daysUntilExpiry} more days`)}
+                        </div>
+                      </div>
+                      <span className="tabular-nums text-sm shrink-0">
+                        {quote.totalAmount == null
+                          ? '—'
+                          : formatCurrencyWhole(Number(quote.totalAmount))}
+                      </span>
+                    </button>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Pipeline Alerts */}
             {pipelineAlerts.length > 0 && (

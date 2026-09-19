@@ -383,6 +383,51 @@ export default async function handler(req: Request) {
         ]),
       );
 
+      // COP-B01: quotes awaiting signature. A quote sent and not answered is
+      // the card a rep acts on first, and it could not be built until COP-B02
+      // gave a quote a deal to belong to - before that an account's proposals
+      // could not be attributed to one of its deals.
+      //
+      // Best-effort and tolerant of the unapplied migration: 0088 adds
+      // proposals.deal_id and has not run everywhere, so a database without it
+      // shows an empty card rather than failing the whole dashboard.
+      let awaitingSignature: Array<Record<string, unknown>> = [];
+      try {
+        const { data: sentQuotes, error: quoteError } = await admin
+          .from('proposals')
+          .select(
+            'id, proposal_number, title, total_amount, valid_until, deal_id, business_record_id, updated_at',
+          )
+          .eq('tenant_id', tenantId)
+          .in('status', ['sent', 'pending', 'under_review'])
+          .order('updated_at', { ascending: true })
+          .limit(10);
+        if (quoteError) throw new Error(quoteError.message);
+        awaitingSignature = (sentQuotes ?? []).map((q: Record<string, any>) => {
+          const validUntil = q.valid_until ? new Date(q.valid_until) : null;
+          return {
+            id: q.id,
+            proposalNumber: q.proposal_number ?? null,
+            title: q.title ?? null,
+            totalAmount: q.total_amount ?? null,
+            dealId: q.deal_id ?? null,
+            companyName: q.business_record_id
+              ? (companyNames.get(String(q.business_record_id)) ?? null)
+              : null,
+            validUntil: q.valid_until ?? null,
+            // Null rather than a guess when the quote carries no expiry: a
+            // quote with no stated validity has not "expired in 0 days".
+            daysUntilExpiry:
+              validUntil && !Number.isNaN(validUntil.getTime())
+                ? Math.round((validUntil.getTime() - now.getTime()) / 86400000)
+                : null,
+            sentAt: q.updated_at ?? null,
+          };
+        });
+      } catch (err) {
+        console.error('Error loading quotes awaiting signature:', err);
+      }
+
       return createCorsResponse(
         {
           overdue: (overdueRows ?? []).map((a) => toActivityView(a, companyNames)),
@@ -391,6 +436,7 @@ export default async function handler(req: Request) {
           hotLeads: (leadRows ?? []).map((l) => toLeadView(l, recordsById)),
           pipelineAlerts: (staleRows ?? []).map((d) => toStaleDealView(d, stageNames, now)),
           recentWins: (wonRows ?? []).map(toWonDealView),
+          awaitingSignature,
           stats: {
             pipelineValue: null,
             quotaAttainment: null,
