@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -305,6 +306,8 @@ export default function DealDetail() {
   // it, a task carried an assignee and no subject, so this panel had nothing to
   // list and said so.
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  /** Local draft for the recurring value, so typing does not PATCH per keystroke. */
+  const [monthlyDraft, setMonthlyDraft] = useState<string | null>(null);
 
   const dealTasksQuery = useQuery<
     Array<{ id: string; title: string; status?: string; priority?: string; dueDate?: string }>
@@ -336,6 +339,21 @@ export default function DealDetail() {
         description: error.message,
         variant: 'destructive',
       }),
+  });
+
+  // COP-I06 AC1: the forecast category is what drives the forecast, so it has to
+  // be settable where the rep works. It was a read-only field on a card that only
+  // rendered when the deal already had copier facts - so a deal with no category
+  // showed nothing and offered no way to set one.
+  const setForecastField = useMutation({
+    mutationFn: (patch: Record<string, unknown>) =>
+      apiRequest(`/api/deals/${dealId}`, 'PATCH', patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/deals/${dealId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
+      toast({ title: 'Forecast updated' });
+    },
+    onError: () => toast({ title: 'Could not update the forecast', variant: 'destructive' }),
   });
 
   const moveStage = useMutation({
@@ -702,6 +720,69 @@ export default function DealDetail() {
                 {/* COP-B11: a real, inspectable score. Renders "not enough
                     signal" rather than a number when the deal is too sparse. */}
                 <DealInsightsPanel deal={deal} activityCount={entries.length} />
+              </CardContent>
+            </Card>
+
+            {/* COP-I06: the two fields that decide what this deal contributes to
+                the forecast. Always shown, including when both are empty - a
+                deal nobody has categorized is exactly the one a manager needs
+                to find, and hiding the control is what made the category
+                unsettable in the first place. */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Forecast</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="forecast-category" className="text-xs text-muted-foreground">
+                    Category
+                  </Label>
+                  <Select
+                    value={deal.forecastCategory ?? 'none'}
+                    onValueChange={(value) =>
+                      setForecastField.mutate({
+                        forecastCategory: value === 'none' ? null : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="forecast-category">
+                      <SelectValue placeholder="Not categorized" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not categorized</SelectItem>
+                      <SelectItem value="pipeline">Pipeline</SelectItem>
+                      <SelectItem value="best_case">Best case</SelectItem>
+                      <SelectItem value="commit">Commit</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="monthly-value" className="text-xs text-muted-foreground">
+                    Recurring monthly value
+                  </Label>
+                  <Input
+                    id="monthly-value"
+                    inputMode="decimal"
+                    placeholder="CPC and service, per month"
+                    value={monthlyDraft ?? deal.estimatedMonthlyValue ?? ''}
+                    onChange={(e) => setMonthlyDraft(e.target.value)}
+                    onBlur={() => {
+                      if (monthlyDraft === null) return;
+                      const trimmed = monthlyDraft.trim();
+                      const next = trimmed === '' ? null : trimmed;
+                      if (next !== (deal.estimatedMonthlyValue ?? null)) {
+                        setForecastField.mutate({ estimatedMonthlyValue: next });
+                      }
+                      setMonthlyDraft(null);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Kept apart from Amount on purpose: the box lands once, CPC and service land
+                    every month.
+                  </p>
+                </div>
               </CardContent>
             </Card>
 

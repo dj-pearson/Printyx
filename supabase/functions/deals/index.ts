@@ -905,6 +905,11 @@ export default async function handler(req: Request) {
       ownerId: 'owner_id',
       customerId: 'customer_id',
       companyName: 'company_name',
+      // COP-I06: the recurring half of a copier deal. The column has existed
+      // since 0000 and was READ in four places and written by NOTHING, so the
+      // recurring side of every forecast was structurally empty - it was not
+      // in this map, so no PATCH could set it.
+      estimatedMonthlyValue: 'estimated_monthly_value',
       source: 'source',
       dealType: 'deal_type',
       lostReason: 'lost_reason',

@@ -9460,6 +9460,8 @@ export * from './contract-pnl-schema';
 // Renewal auto-quote generator (US-SUPER-010)
 export * from './renewal-autoquote-schema';
 export * from './competitor-schema';
+// Forecast commit-vs-actual history (COP-I06)
+export * from './forecast-snapshot-schema';
 // Quarterly Business Review decks (US-SUPER-004)
 export * from './qbr-schema';
 // Predictive truck-stocking optimizer (US-SUPER-007)

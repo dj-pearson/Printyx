@@ -48,6 +48,15 @@ import {
   resolveDealProbability,
 } from '../_shared/deal-probability.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import { startOfUtcDay, startOfNextUtcDay } from '../_shared/date-months.ts';
+import {
+  FORECAST_CATEGORIES,
+  summarizeAccuracy,
+  summarizeForecast,
+  type ForecastDealRow,
+  type ForecastSnapshotRow,
+} from '../_shared/forecast-category.ts';
 
 const QUOTE_DEFAULT_PROBABILITY = 50;
 const PROPOSAL_DEFAULT_PROBABILITY = 70;
@@ -99,7 +108,26 @@ export default async function handler(req: Request) {
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'pipeline-forecast');
-    const forecastId = parts[0];
+    const resource = parts[0];
+
+    // ─── COP-I06 sub-resources ───────────────────────────────────────
+    //
+    // THESE BRANCH BEFORE `forecastId` IS READ, and that ordering is the whole
+    // point. parts[0] is a saved forecast's id on the original route, so
+    // /categories would otherwise be looked up as a forecast whose id is the
+    // string "categories" - the SUPA-024 shape, where a real endpoint 404s
+    // because a generic :id branch swallowed it first.
+    if (resource === 'categories' || resource === 'accuracy' || resource === 'snapshots') {
+      return await handleForecastCategories(req, {
+        admin,
+        tenantId,
+        userId: user.id,
+        url,
+        resource,
+      });
+    }
+
+    const forecastId = resource;
 
     if (req.method !== 'GET') {
       return createCorsResponse({ message: 'Not found' }, 404, req);
@@ -298,4 +326,274 @@ export default async function handler(req: Request) {
       req,
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// COP-I06: forecast categories, the copier revenue split, and accuracy.
+// ─────────────────────────────────────────────────────────────────────
+
+interface CategoryCtx {
+  // deno-lint-ignore no-explicit-any
+  admin: any;
+  tenantId: string;
+  userId: string;
+  url: URL;
+  resource: string;
+}
+
+/**
+ * The period being forecast. Defaults to the current calendar month.
+ *
+ * Snapped to DAY BOUNDARIES per DATE-LOCAL-002: `expected_close_date` is a
+ * timestamp holding a calendar date, so a bound built from `new Date()` carries
+ * a time of day and the window lands half a day off - silently, and in
+ * whichever direction the operator happens to point.
+ */
+function resolvePeriod(url: URL): { start: Date; endExclusive: Date } {
+  const startParam = url.searchParams.get('periodStart') ?? url.searchParams.get('startDate');
+  const endParam = url.searchParams.get('periodEnd') ?? url.searchParams.get('endDate');
+  if (startParam && endParam) {
+    return {
+      start: startOfUtcDay(new Date(startParam)),
+      // Exclusive next-day bound, not an inclusive 23:59:59.999 - that is a
+      // real timestamp a row can exceed.
+      endExclusive: startOfNextUtcDay(new Date(endParam)),
+    };
+  }
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const endExclusive = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  return { start, endExclusive };
+}
+
+/** The tenant's canonical stages, keyed by the legacy id deals.stage_id holds. */
+// deno-lint-ignore no-explicit-any
+async function loadStageWeighting(admin: any, tenantId: string) {
+  const { data } = await admin
+    .from('pipeline_stages')
+    .select(
+      'legacy_stage_id, default_probability, include_in_forecast, is_closed_won, is_closed_lost',
+    )
+    .eq('tenant_id', tenantId);
+  const map = new Map<
+    string,
+    {
+      prob: number | null;
+      include: boolean | null;
+      isClosedWon: boolean | null;
+      isClosedLost: boolean | null;
+    }
+  >();
+  // deno-lint-ignore no-explicit-any
+  for (const row of (data ?? []) as any[]) {
+    if (row.legacy_stage_id) {
+      map.set(row.legacy_stage_id, {
+        prob: row.default_probability,
+        include: row.include_in_forecast,
+        isClosedWon: row.is_closed_won,
+        isClosedLost: row.is_closed_lost,
+      });
+    }
+  }
+  return map;
+}
+
+async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise<Response> {
+  const { admin, tenantId, userId, url, resource } = ctx;
+  const { start, endExclusive } = resolvePeriod(url);
+
+  // ─── GET /accuracy ─────────────────────────────────────────────────
+  if (resource === 'accuracy') {
+    if (req.method !== 'GET') {
+      return createCorsResponse({ message: 'Method not allowed' }, 405, req);
+    }
+
+    const snapshots = await fetchAllRows<ForecastSnapshotRow>(() =>
+      admin
+        .from('forecast_snapshots')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('period_start', { ascending: false }),
+    );
+
+    if ((snapshots ?? []).length === 0) {
+      // AC6. No snapshot means no accuracy - not 100%, not zero. The only
+      // honest answer is that nothing has been captured yet.
+      return createCorsResponse(
+        {
+          periods: [],
+          unbacked: [
+            'No forecast has been captured yet, so there is no commit to compare actuals against. Accuracy starts being measurable from the first capture.',
+          ],
+        },
+        200,
+        req,
+      );
+    }
+
+    // Actual closed-won per period, keyed the way summarizeAccuracy expects.
+    // One read spanning every snapshot period rather than one per period.
+    const earliest = (snapshots ?? [])
+      .map((s) => s.period_start)
+      .filter(Boolean)
+      .sort()[0] as string | undefined;
+
+    const wonDeals = await fetchAllRows<Record<string, any>>(() =>
+      admin
+        .from('deals')
+        .select('owner_id, amount, actual_close_date')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'won')
+        .gte(
+          'actual_close_date',
+          earliest ? startOfUtcDay(new Date(earliest)).toISOString() : '1970-01-01',
+        ),
+    );
+
+    const actualByPeriod = new Map<string, number>();
+    for (const snapshot of snapshots ?? []) {
+      if (!snapshot.period_start || !snapshot.period_end) continue;
+      const from = startOfUtcDay(new Date(snapshot.period_start)).getTime();
+      const to = startOfNextUtcDay(new Date(snapshot.period_end)).getTime();
+      const ownerId = snapshot.owner_id ?? null;
+      const key = `${snapshot.period_start}|${ownerId ?? ''}`;
+      if (actualByPeriod.has(key)) continue;
+
+      let total = 0;
+      for (const deal of wonDeals ?? []) {
+        if (!deal.actual_close_date) continue;
+        const closed = new Date(deal.actual_close_date).getTime();
+        if (closed < from || closed >= to) continue;
+        // A tenant-wide snapshot counts every rep; a per-rep one counts theirs.
+        if (ownerId && deal.owner_id !== ownerId) continue;
+        const amount = Number(deal.amount);
+        if (Number.isFinite(amount)) total += amount;
+      }
+      actualByPeriod.set(key, total);
+    }
+
+    return createCorsResponse(
+      {
+        periods: summarizeAccuracy(snapshots ?? [], actualByPeriod),
+        unbacked: [
+          'Attainment is measured on one-time (equipment) revenue only. Recurring CPC and service revenue is captured on the snapshot but lands over the life of a contract, so a single period cannot settle it.',
+        ],
+      },
+      200,
+      req,
+    );
+  }
+
+  // ─── The open deals in the period, for both remaining branches ──────
+  const stageByLegacyId = await loadStageWeighting(admin, tenantId);
+  const dealRows = await fetchAllRows<ForecastDealRow>(() =>
+    admin
+      .from('deals')
+      .select(
+        'id, owner_id, status, amount, estimated_monthly_value, forecast_category, probability, stage_id, expected_close_date',
+      )
+      .eq('tenant_id', tenantId)
+      .not('status', 'in', '("won","lost")')
+      .gte('expected_close_date', start.toISOString())
+      .lt('expected_close_date', endExclusive.toISOString()),
+  );
+
+  // AC2: the stage decides whether a deal forecasts at all, and at what
+  // weight. Same rule the main handler uses, from the same shared helper.
+  const inForecast = (dealRows ?? []).filter(
+    (d) => stageByLegacyId.get(String(d.stage_id ?? ''))?.include !== false,
+  );
+  const summary = summarizeForecast(inForecast, (deal) =>
+    resolveDealProbability(
+      deal.probability,
+      stageByLegacyId.get(String(deal.stage_id ?? '')),
+      SHARED_FALLBACK_PROBABILITY,
+    ),
+  );
+
+  // ─── POST /snapshots (AC4) ─────────────────────────────────────────
+  if (resource === 'snapshots') {
+    if (req.method === 'POST') {
+      const commit = summary.buckets.find((b) => b.category === 'commit');
+      const bestCase = summary.buckets.find((b) => b.category === 'best_case');
+      const pipeline = summary.buckets.find((b) => b.category === 'pipeline');
+
+      const { data, error } = await admin
+        .from('forecast_snapshots')
+        .insert({
+          tenant_id: tenantId,
+          period_start: start.toISOString(),
+          // Stored INCLUSIVE, as the last day of the period: the exclusive
+          // bound is a query detail and a stored 1 November would read as a
+          // period that runs into the next month.
+          period_end: new Date(endExclusive.getTime() - 86_400_000).toISOString(),
+          owner_id: url.searchParams.get('ownerId') || null,
+          commit_one_time_value: (commit?.oneTimeValue ?? 0).toFixed(2),
+          best_case_one_time_value: (bestCase?.oneTimeValue ?? 0).toFixed(2),
+          pipeline_one_time_value: (pipeline?.oneTimeValue ?? 0).toFixed(2),
+          commit_recurring_monthly_value: (commit?.recurringMonthlyValue ?? 0).toFixed(2),
+          deal_count: summary.totals.count,
+          uncategorized_count: summary.totals.uncategorizedCount,
+          captured_by: userId,
+        })
+        .select()
+        .single();
+      if (error) return createCorsResponse({ message: error.message }, 500, req);
+      return createCorsResponse(toCamelShallow(data), 201, req);
+    }
+
+    if (req.method === 'GET') {
+      const rows = await fetchAllRows<Record<string, unknown>>(() =>
+        admin
+          .from('forecast_snapshots')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('captured_at', { ascending: false }),
+      );
+      return createCorsResponse({ data: (rows ?? []).map(toCamelShallow) }, 200, req);
+    }
+
+    return createCorsResponse({ message: 'Method not allowed' }, 405, req);
+  }
+
+  // ─── GET /categories ───────────────────────────────────────────────
+  if (req.method !== 'GET') {
+    return createCorsResponse({ message: 'Method not allowed' }, 405, req);
+  }
+
+  // Owner names, so a roll-up reads as people rather than as uuids.
+  const ownerIds = [...new Set(summary.byOwner.map((o) => o.ownerId).filter(Boolean))] as string[];
+  const ownerNames = new Map<string, string>();
+  if (ownerIds.length > 0) {
+    const { data } = await admin
+      .from('users')
+      .select('id, first_name, last_name')
+      .in('id', ownerIds);
+    // COP-M01's phantom-column note: `users` has first_name/last_name, NOT name.
+    // deno-lint-ignore no-explicit-any
+    for (const u of (data ?? []) as any[]) {
+      const full = [u.first_name, u.last_name].filter(Boolean).join(' ').trim();
+      if (full) ownerNames.set(u.id, full);
+    }
+  }
+
+  return createCorsResponse(
+    {
+      period: {
+        start: start.toISOString(),
+        // Echoed inclusive, matching what a snapshot stores.
+        end: new Date(endExclusive.getTime() - 86_400_000).toISOString(),
+      },
+      categories: FORECAST_CATEGORIES,
+      buckets: summary.buckets,
+      byOwner: summary.byOwner.map((o) => ({
+        ...o,
+        ownerName: o.ownerId ? (ownerNames.get(o.ownerId) ?? null) : null,
+      })),
+      totals: summary.totals,
+      unbacked: summary.unbacked,
+    },
+    200,
+    req,
+  );
 }
