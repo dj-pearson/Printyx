@@ -29,6 +29,17 @@
  * deciding which of the two models survives; retiring it means dropping four
  * tables. Either is a product call, which is why the file is annotated rather
  * than deleted.
+ *
+ * EVERY HANDLER HERE WAS UNAUTHENTICATED UNTIL WF-S-11, and that is separate
+ * from the product call above. All eighteen were registered with no middleware
+ * at all and took their tenant from `req.headers['x-tenant-id']` - a value the
+ * CALLER sets. Anyone who could reach the dev host could read or write any
+ * tenant's renewals, playbooks, activities and expansion opportunities by
+ * choosing a header. Nothing calls these, and production resolves all four
+ * prefixes to edge functions rather than here, so the exposure was the dev host
+ * only - but "nobody calls it" is not an access control, and the fix holds
+ * whichever way AUDIT-026 goes. They now carry requireAuth and read the tenant
+ * through getTenantId, like every other router in the tree.
  */
 import type { Express } from 'express';
 import { db } from './db';
@@ -46,14 +57,16 @@ import {
   type InsertExpansionOpportunity,
 } from '@shared/schema';
 import { eq, and, desc, asc, sql, lt, gte, lte, or } from 'drizzle-orm';
+import { requireAuth } from './replitAuth';
+import { getTenantId } from './utils/auth-helpers';
 
 export function registerRenewalManagementRoutes(app: Express) {
   // ==================== Contract Renewals ====================
 
   // Get all renewals
-  app.get('/api/contract-renewals', async (req, res) => {
+  app.get('/api/contract-renewals', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
@@ -92,10 +105,13 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Get single renewal
-  app.get('/api/contract-renewals/:id', async (req, res) => {
+  app.get('/api/contract-renewals/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID required' });
+      }
 
       const renewal = await db.query.contractRenewals.findFirst({
         where: and(eq(contractRenewals.id, id), eq(contractRenewals.tenantId, tenantId)),
@@ -119,9 +135,9 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Create renewal
-  app.post('/api/contract-renewals', async (req, res) => {
+  app.post('/api/contract-renewals', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
@@ -147,10 +163,13 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Update renewal
-  app.put('/api/contract-renewals/:id', async (req, res) => {
+  app.put('/api/contract-renewals/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID required' });
+      }
 
       const [updated] = await db
         .update(contractRenewals)
@@ -170,10 +189,13 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Mark renewal as won
-  app.post('/api/contract-renewals/:id/won', async (req, res) => {
+  app.post('/api/contract-renewals/:id/won', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID required' });
+      }
       const { renewalWonReason, proposedMrr, proposedArr, proposedContractValue } = req.body;
 
       const [updated] = await db
@@ -202,10 +224,13 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Mark renewal as lost
-  app.post('/api/contract-renewals/:id/lost', async (req, res) => {
+  app.post('/api/contract-renewals/:id/lost', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID required' });
+      }
       const { renewalLostReason, churnedToCompetitor } = req.body;
 
       const [updated] = await db
@@ -232,9 +257,9 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Get renewals needing attention (upcoming + at risk)
-  app.get('/api/contract-renewals/alerts/attention-needed', async (req, res) => {
+  app.get('/api/contract-renewals/alerts/attention-needed', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
@@ -264,10 +289,13 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Recalculate renewal risk
-  app.post('/api/contract-renewals/:id/recalculate-risk', async (req, res) => {
+  app.post('/api/contract-renewals/:id/recalculate-risk', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID required' });
+      }
 
       const renewal = await db.query.contractRenewals.findFirst({
         where: and(eq(contractRenewals.id, id), eq(contractRenewals.tenantId, tenantId)),
@@ -300,9 +328,12 @@ export function registerRenewalManagementRoutes(app: Express) {
   // ==================== Renewal Activities ====================
 
   // Get activities for renewal
-  app.get('/api/renewal-activities', async (req, res) => {
+  app.get('/api/renewal-activities', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID required' });
+      }
       const { renewalId } = req.query;
 
       if (!renewalId) {
@@ -325,9 +356,9 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Create renewal activity
-  app.post('/api/renewal-activities', async (req, res) => {
+  app.post('/api/renewal-activities', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
@@ -358,9 +389,9 @@ export function registerRenewalManagementRoutes(app: Express) {
   // ==================== Renewal Playbooks ====================
 
   // Get playbooks
-  app.get('/api/renewal-playbooks', async (req, res) => {
+  app.get('/api/renewal-playbooks', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
@@ -378,9 +409,9 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Create playbook
-  app.post('/api/renewal-playbooks', async (req, res) => {
+  app.post('/api/renewal-playbooks', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
@@ -400,10 +431,13 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Update playbook
-  app.put('/api/renewal-playbooks/:id', async (req, res) => {
+  app.put('/api/renewal-playbooks/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID required' });
+      }
 
       const [updated] = await db
         .update(renewalPlaybooks)
@@ -423,10 +457,13 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Get recommended playbook for renewal
-  app.get('/api/renewal-playbooks/recommend/:renewalId', async (req, res) => {
+  app.get('/api/renewal-playbooks/recommend/:renewalId', requireAuth, async (req, res) => {
     try {
       const { renewalId } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID required' });
+      }
 
       const renewal = await db.query.contractRenewals.findFirst({
         where: and(eq(contractRenewals.id, renewalId), eq(contractRenewals.tenantId, tenantId)),
@@ -484,9 +521,9 @@ export function registerRenewalManagementRoutes(app: Express) {
   // ==================== Expansion Opportunities ====================
 
   // Get expansion opportunities
-  app.get('/api/expansion-opportunities', async (req, res) => {
+  app.get('/api/expansion-opportunities', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
@@ -518,9 +555,9 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Create expansion opportunity
-  app.post('/api/expansion-opportunities', async (req, res) => {
+  app.post('/api/expansion-opportunities', requireAuth, async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
@@ -543,10 +580,13 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Update expansion opportunity
-  app.put('/api/expansion-opportunities/:id', async (req, res) => {
+  app.put('/api/expansion-opportunities/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID required' });
+      }
 
       const [updated] = await db
         .update(expansionOpportunities)
@@ -568,10 +608,13 @@ export function registerRenewalManagementRoutes(app: Express) {
   });
 
   // Mark expansion opportunity as won
-  app.post('/api/expansion-opportunities/:id/won', async (req, res) => {
+  app.post('/api/expansion-opportunities/:id/won', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID required' });
+      }
       const { actualRevenue, outcomeNotes } = req.body;
 
       const [updated] = await db
