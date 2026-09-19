@@ -9459,6 +9459,7 @@ export * from './churn-risk-schema';
 export * from './contract-pnl-schema';
 // Renewal auto-quote generator (US-SUPER-010)
 export * from './renewal-autoquote-schema';
+export * from './competitor-schema';
 // Quarterly Business Review decks (US-SUPER-004)
 export * from './qbr-schema';
 // Predictive truck-stocking optimizer (US-SUPER-007)

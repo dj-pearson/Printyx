@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/select';
 import { NotesPanel } from '@/components/crm/NotesPanel';
 import { DealInsightsPanel } from '@/components/crm/DealInsightsPanel';
+import { CompetitiveCard } from '@/components/crm/CompetitiveCard';
 import { DealEquipmentPanel } from '@/components/crm/DealEquipmentPanel';
 import {
   ArrowLeft,
@@ -701,6 +702,19 @@ export default function DealDetail() {
                 {/* COP-B11: a real, inspectable score. Renders "not enough
                     signal" rather than a number when the deal is too sparse. */}
                 <DealInsightsPanel deal={deal} activityCount={entries.length} />
+              </CardContent>
+            </Card>
+
+            {/* COP-B10: who this deal is against. Rendered unconditionally so
+                a deal with no incumbent says so - "no competitor recorded" and
+                "no competitor" are different facts, and hiding the card would
+                assert the second one. */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Competition</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CompetitiveCard dealId={dealId} />
               </CardContent>
             </Card>
 

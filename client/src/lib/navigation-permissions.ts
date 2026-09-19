@@ -581,6 +581,17 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/crm/leads': {
     requiredPermissions: ['sales.lead.view_own', 'sales.lead.view_team'],
   },
+  // COP-B10. Gated exactly like the deals board it is read alongside: anyone
+  // who can see an opportunity can see who they are up against. AUTHORING a
+  // battlecard is gated separately, by role level, in the edge function - a
+  // permission code here would not reach the write path.
+  '/competitors': {
+    requiredPermissions: [
+      'sales.opportunity.view_own',
+      'sales.opportunity.view_team',
+      'sales.opportunity.view_location',
+    ],
+  },
   '/crm/contacts': {
     requiredPermissions: ['sales.customer.view_own', 'sales.customer.view_location'],
   },
