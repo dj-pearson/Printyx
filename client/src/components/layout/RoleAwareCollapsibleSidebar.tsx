@@ -76,6 +76,7 @@ import {
   ClipboardList,
   Swords,
   Radar,
+  Map as MapIcon,
   FileSignature,
   Code,
   Menu,
@@ -244,6 +245,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/competitors*',
       '/playbooks*',
       '/opportunity-radar*',
+      '/territories*',
     ],
     // COP-M02: grouped Work / Sell / Manage instead of one flat 17-item list.
     // Every route is unchanged — this story moves and groups, it does not rewire.
@@ -279,6 +281,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       // Sell - this is where the day starts.
       { title: 'Opportunity Radar', path: '/opportunity-radar', icon: Radar, group: 'Work' },
       { title: 'Competitors', path: '/competitors', icon: Swords, group: 'Sell' },
+      { title: 'Territories', path: '/territories', icon: MapIcon, group: 'Manage' },
       { title: 'Playbooks', path: '/playbooks', icon: ClipboardList, group: 'Sell' },
       { title: 'Email Sequences', path: '/marketing/sequences', icon: Mail, group: 'Sell' },
       { title: 'Web Forms', path: '/marketing/forms', icon: FileText, group: 'Sell' },

@@ -4,6 +4,8 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import { buildTerritoryIndex, territoryCoverage } from '../_shared/territory.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -33,6 +35,46 @@ export default async function handler(req: Request) {
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'sales-territories');
     const territoryId = parts[0];
+
+    // ─── GET /coverage (COP-B09) ─────────────────────────────────────
+    //
+    // BRANCHES BEFORE territoryId IS USED, or /coverage is looked up as a
+    // territory whose id is the string "coverage" and 404s - the SUPA-024
+    // shape, where a real endpoint dies inside a generic :id branch.
+    //
+    // A territory model that silently drops the accounts it does not cover
+    // gives a manager a roll-up that looks complete and is not. This is the
+    // admin's worklist: what resolved, what names a territory nobody defined,
+    // and what names nothing at all - the last two being different problems
+    // with different fixes.
+    if (territoryId === 'coverage' && req.method === 'GET') {
+      const [territories, accounts] = await Promise.all([
+        fetchAllRows<Record<string, any>>(() =>
+          admin
+            .from('sales_territories')
+            .select('id, territory_name, territory_code, is_active')
+            .eq('tenant_id', tenantId),
+        ),
+        fetchAllRows<Record<string, any>>(() =>
+          admin.from('business_records').select('id, territory').eq('tenant_id', tenantId),
+        ),
+      ]);
+
+      const index = buildTerritoryIndex((territories ?? []).filter((t) => t.is_active !== false));
+      const coverage = territoryCoverage(accounts ?? [], index);
+
+      return createCorsResponse(
+        {
+          ...coverage,
+          territoriesDefined: (territories ?? []).length,
+          unbacked: [
+            'Territory is resolved from the free-text business_records.territory column by matching a territory name or code. Nothing rewrites that column, so an account naming an undefined territory shows above rather than being reassigned.',
+          ],
+        },
+        200,
+        req,
+      );
+    }
 
     // GET /sales-territories - List territories
     if (req.method === 'GET' && !territoryId) {

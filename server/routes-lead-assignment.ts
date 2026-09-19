@@ -19,114 +19,15 @@ import { eq, and, desc, asc, sql, inArray } from 'drizzle-orm';
 
 export function registerLeadAssignmentRoutes(app: Express) {
   // ==================== Sales Territories ====================
-
-  // Get all territories for tenant
-  app.get('/api/sales-territories', async (req, res) => {
-    try {
-      const tenantId = req.headers['x-tenant-id'] as string;
-      if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
-      }
-
-      const territories = await db.query.salesTerritories.findMany({
-        where: eq(salesTerritories.tenantId, tenantId),
-        orderBy: [desc(salesTerritories.isActive), asc(salesTerritories.territoryName)],
-      });
-
-      res.json(territories);
-    } catch (error) {
-      log.error('Error fetching sales territories:', error);
-      res.status(500).json({ error: 'Failed to fetch sales territories' });
-    }
-  });
-
-  // Get single territory
-  app.get('/api/sales-territories/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
-
-      const territory = await db.query.salesTerritories.findFirst({
-        where: and(eq(salesTerritories.id, id), eq(salesTerritories.tenantId, tenantId)),
-      });
-
-      if (!territory) {
-        return res.status(404).json({ error: 'Territory not found' });
-      }
-
-      res.json(territory);
-    } catch (error) {
-      log.error('Error fetching territory:', error);
-      res.status(500).json({ error: 'Failed to fetch territory' });
-    }
-  });
-
-  // Create territory
-  app.post('/api/sales-territories', async (req, res) => {
-    try {
-      const tenantId = req.headers['x-tenant-id'] as string;
-      if (!tenantId) {
-        return res.status(400).json({ error: 'Tenant ID required' });
-      }
-
-      const territoryData: InsertSalesTerritory = {
-        ...req.body,
-        tenantId,
-      };
-
-      const [newTerritory] = await db.insert(salesTerritories).values(territoryData).returning();
-
-      res.status(201).json(newTerritory);
-    } catch (error) {
-      log.error('Error creating territory:', error);
-      res.status(500).json({ error: 'Failed to create territory' });
-    }
-  });
-
-  // Update territory
-  app.put('/api/sales-territories/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
-
-      const [updated] = await db
-        .update(salesTerritories)
-        .set({ ...req.body, updatedAt: new Date() })
-        .where(and(eq(salesTerritories.id, id), eq(salesTerritories.tenantId, tenantId)))
-        .returning();
-
-      if (!updated) {
-        return res.status(404).json({ error: 'Territory not found' });
-      }
-
-      res.json(updated);
-    } catch (error) {
-      log.error('Error updating territory:', error);
-      res.status(500).json({ error: 'Failed to update territory' });
-    }
-  });
-
-  // Delete territory
-  app.delete('/api/sales-territories/:id', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
-
-      const [deleted] = await db
-        .delete(salesTerritories)
-        .where(and(eq(salesTerritories.id, id), eq(salesTerritories.tenantId, tenantId)))
-        .returning();
-
-      if (!deleted) {
-        return res.status(404).json({ error: 'Territory not found' });
-      }
-
-      res.json({ success: true, deleted });
-    } catch (error) {
-      log.error('Error deleting territory:', error);
-      res.status(500).json({ error: 'Failed to delete territory' });
-    }
-  });
+  //
+  // COP-B09: the five territory handlers that were here are DELETED, not
+  // moved. supabase/functions/sales-territories/ has served the same five
+  // endpoints - list, by id, create, update, delete - all along, and
+  // /api/sales-territories is in crmProxies now, so the proxy claims the
+  // prefix before any domain route registers and nothing here could ever
+  // have run in production. They were dead on arrival the moment the proxy
+  // entry landed; keeping them would be two implementations of one surface
+  // with only one reachable.
 
   // ==================== Lead Assignment Rules ====================
 

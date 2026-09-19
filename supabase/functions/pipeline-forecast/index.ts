@@ -50,6 +50,7 @@ import {
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { startOfUtcDay, startOfNextUtcDay } from '../_shared/date-months.ts';
+import { buildTerritoryIndex, rollupByTerritory } from '../_shared/territory.ts';
 import {
   FORECAST_CATEGORIES,
   summarizeAccuracy,
@@ -577,6 +578,67 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
     }
   }
 
+  // COP-B09 AC5 / COP-I06 AC3: the TERRITORY roll-up, which until COP-B09 did
+  // not exist and was named as absent rather than approximated. Resolved from
+  // the account's territory text through the shared resolver, and the
+  // UNASSIGNED bucket is kept explicitly - dropping it is how a territory
+  // roll-up stops adding up to the totals shown everywhere else.
+  let byTerritory: Array<Record<string, unknown>> = [];
+  try {
+    const dealAccountIds = [
+      ...new Set(inForecast.map((d) => (d as Record<string, any>).customer_id).filter(Boolean)),
+    ] as string[];
+    if (dealAccountIds.length > 0) {
+      const [territories, accounts] = await Promise.all([
+        fetchAllRows<Record<string, any>>(() =>
+          admin
+            .from('sales_territories')
+            .select('id, territory_name, territory_code, is_active')
+            .eq('tenant_id', tenantId),
+        ),
+        fetchAllRows<Record<string, any>>(() =>
+          admin
+            .from('business_records')
+            .select('id, territory')
+            .eq('tenant_id', tenantId)
+            .in('id', dealAccountIds),
+        ),
+      ]);
+      const index = buildTerritoryIndex((territories ?? []).filter((t) => t.is_active !== false));
+      const territoryByAccount = new Map(
+        (accounts ?? []).map((a) => [a.id, a.territory as string | null]),
+      );
+
+      byTerritory = rollupByTerritory(
+        inForecast,
+        (deal) =>
+          territoryByAccount.get(String((deal as Record<string, any>).customer_id ?? '')) ?? null,
+        index,
+      ).map((group) => {
+        const summary = summarizeForecast(group.items, (deal) =>
+          resolveDealProbability(
+            deal.probability,
+            stageByLegacyId.get(String(deal.stage_id ?? '')),
+            SHARED_FALLBACK_PROBABILITY,
+          ),
+        );
+        return {
+          territoryId: group.territoryId,
+          territoryName: group.territoryName,
+          count: summary.totals.count,
+          oneTimeValue: summary.totals.oneTimeValue,
+          recurringMonthlyValue: summary.totals.recurringMonthlyValue,
+          commitOneTimeValue:
+            summary.buckets.find((b) => b.category === 'commit')?.oneTimeValue ?? 0,
+          uncategorizedCount: summary.totals.uncategorizedCount,
+        };
+      });
+    }
+  } catch (err) {
+    // A territory roll-up failing must not take down the forecast.
+    console.error('Error building the territory roll-up:', err);
+  }
+
   return createCorsResponse(
     {
       period: {
@@ -584,6 +646,7 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
         // Echoed inclusive, matching what a snapshot stores.
         end: new Date(endExclusive.getTime() - 86_400_000).toISOString(),
       },
+      byTerritory,
       categories: FORECAST_CATEGORIES,
       buckets: summary.buckets,
       byOwner: summary.byOwner.map((o) => ({
@@ -592,6 +655,12 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
       })),
       totals: summary.totals,
       unbacked: summary.unbacked,
+      // COP-B09 landed the territory roll-up above; TEAM roll-up still needs a
+      // reporting hierarchy, which no story has built.
+      territoryNote:
+        byTerritory.length === 0
+          ? 'No deal in this period resolves to a defined territory. Define territories, or check that accounts carry a matching territory name or code.'
+          : null,
     },
     200,
     req,

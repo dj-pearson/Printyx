@@ -27,6 +27,7 @@ import { fetchAllRows } from '../_shared/paged-select.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 import type { AuthContext } from '../_shared/auth.ts';
 import { firstStageId, type DealStageRow } from '../_shared/deal-stage.ts';
+import { buildTerritoryIndex, resolveTerritory } from '../_shared/territory.ts';
 import {
   DEFAULT_THRESHOLDS,
   dealFromPlay,
@@ -498,13 +499,51 @@ export default async function handler(req: Request) {
       const { data, error } = await query;
       if (error) throw new Error(error.message);
 
+      let rows = (data ?? []).map(toPlayResponse);
+
+      // COP-B09 AC4: territory scoping. Resolved through the shared resolver
+      // over business_records.territory rather than a column on the play, so a
+      // territory renamed or defined after a scan takes effect immediately
+      // instead of needing a re-scan.
+      const territoryFilter = url.searchParams.get('territory');
+      if (territoryFilter) {
+        const accountIds = [...new Set(rows.map((p) => p.customerId).filter(Boolean))] as string[];
+        const [territories, accounts] = await Promise.all([
+          fetchAllRows<Row>(() =>
+            admin
+              .from('sales_territories')
+              .select('id, territory_name, territory_code, is_active')
+              .eq('tenant_id', tenantId),
+          ),
+          accountIds.length > 0
+            ? fetchAllRows<Row>(() =>
+                admin
+                  .from('business_records')
+                  .select('id, territory')
+                  .eq('tenant_id', tenantId)
+                  .in('id', accountIds),
+              )
+            : Promise.resolve([]),
+        ]);
+        const index = buildTerritoryIndex((territories ?? []).filter((t) => t.is_active !== false));
+        const territoryByAccount = new Map(
+          (accounts ?? []).map((a) => [a.id, resolveTerritory(a.territory, index)]),
+        );
+        rows = rows.filter((play) => {
+          const resolved = play.customerId ? territoryByAccount.get(play.customerId) : null;
+          return resolved?.territory ? String(resolved.territory.id) === territoryFilter : false;
+        });
+      }
+
       return createCorsResponse(
         {
-          data: (data ?? []).map(toPlayResponse),
-          total: (data ?? []).length,
-          unbacked: [
-            'Plays are scoped by account ownership only. Territory scoping needs the territory model from COP-B09, which is not built.',
-          ],
+          data: rows,
+          total: rows.length,
+          unbacked: territoryFilter
+            ? []
+            : [
+                'Plays are scoped by account ownership. Filter by territory to scope them that way instead - territory is resolved from the account, so an account with no territory recorded appears only in the unfiltered list.',
+              ],
         },
         200,
         req,

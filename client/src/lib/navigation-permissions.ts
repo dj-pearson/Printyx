@@ -581,6 +581,16 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   '/crm/leads': {
     requiredPermissions: ['sales.lead.view_own', 'sales.lead.view_team'],
   },
+  // COP-B09. Territories scope the pipeline, so anyone who can see an
+  // opportunity can see how it is carved up. Creating one is a management act
+  // and is gated in the edge function.
+  '/territories': {
+    requiredPermissions: [
+      'sales.opportunity.view_own',
+      'sales.opportunity.view_team',
+      'sales.opportunity.view_location',
+    ],
+  },
   // COP-B04. Same gate as the deals board: the radar produces a rep's own
   // pipeline. Running the SCAN and setting thresholds are manager-level checks
   // in the edge function, which a permission code here would not reach.

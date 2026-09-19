@@ -318,6 +318,10 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/competitors': 'competitors',
     // COP-B13: copier sales playbooks. Same - a new prefix, nothing to shadow.
     '/api/playbooks': 'playbooks',
+    // COP-B09: sales territories. The edge function has had full CRUD all
+    // along and nothing called it; Express served the same paths, so dev and
+    // prod ran different code for a surface with no users. One host now.
+    '/api/sales-territories': 'sales-territories',
     // COP-B04: the installed-base opportunity radar. New prefix, no Express handler.
     '/api/opportunity-radar': 'opportunity-radar',
     '/api/contacts': 'contacts',
