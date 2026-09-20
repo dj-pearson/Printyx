@@ -76,6 +76,7 @@
     "check:unreferenced-edge-fns": "node scripts/check-unreferenced-edge-fns.mjs",
     "check:a11y-names": "node scripts/check-accessible-names.mjs",
     "check:edge-rbac": "node scripts/check-edge-rbac.mjs",
+    "check:edge-predecessors": "node scripts/edge-rbac-predecessors.mjs --check",
     "check:db-query-registration": "node scripts/check-db-query-registration.mjs",
     "check:tenant-id-type": "node scripts/check-tenant-id-type.mjs",
     "check:drift": "tsx scripts/check-schema-drift.ts",

@@ -1,10 +1,32 @@
 // Technician Management Edge Function
 // Handles technician profiles, skills, and availability
+//
+// ROW-SCOPED IS NOT GATED (SEC-EDGE-001 AC4, round 92). The roster READ narrows
+// to the caller through technicians.user_id (WF-R-07), and check:edge-rbac
+// therefore files this function as row-scoped - which is a statement about
+// which rows you can see, and says nothing about whether you may write. All
+// five writes here - creating a technician, editing one, adding a skill,
+// setting availability, and DELETING a record - had no role check at all.
+//
+// The predecessor inventory this round built is what surfaced it:
+// server/routes-technician-management.ts gates exactly these on
+// PERMISSIONS.SERVICE.TECHNICIAN.MANAGE while its reads take .VIEW, and that
+// code IS seeded, so the split was deliberate and satisfiable rather than one
+// of SEC-EDGE-002's unsatisfiable gates. That router is still mounted and the
+// prefix is NOT proxied, so dev has been the safe host and production the open
+// one - the dev/prod split running in its worse direction.
+//
+// SUPERVISOR mirrors /technician-management in navigation-permissions.ts
+// (minLevel 3, service.schedule.manage) and matches the Express intent, so it
+// constrains nobody who can already open the page. Reads stay open: row
+// scoping is the right control for a roster and the gate belongs on the branch
+// that changes it.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel, type AuthContext } from '../_shared/rbac.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -30,6 +52,33 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    const requireSupervisor = () =>
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.SUPERVISOR,
+      );
+
+    // Only an RbacError is a role refusal; anything else is rethrown so a
+    // database outage does not read as "your role is too low".
+    const denySupervisor = (err: unknown) => {
+      if (!(err instanceof RbacError)) throw err;
+      return createCorsResponse(
+        {
+          error: 'Changing the technician roster requires a supervisor role',
+          code: 'INSUFFICIENT_ROLE',
+          details: err.details,
+        },
+        403,
+        req,
+      );
+    };
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'technician-management');
@@ -152,6 +201,12 @@ export default async function handler(req: Request) {
 
     // POST /technician-management - Create technician
     if (req.method === 'POST' && !techId) {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const body = await req.json();
 
       // Six of this payload's names were phantom: full_name, status,
@@ -216,6 +271,12 @@ export default async function handler(req: Request) {
 
     // PUT /technician-management/:id - Update technician
     if (req.method === 'PUT' && techId && !subResource) {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const body = await req.json();
 
       const { data: technician, error } = await admin
@@ -250,6 +311,12 @@ export default async function handler(req: Request) {
 
     // POST /technician-management/:id/skills - Add skill
     if (req.method === 'POST' && techId && subResource === 'skills') {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const body = await req.json();
 
       const { data: skill, error } = await admin
@@ -292,6 +359,12 @@ export default async function handler(req: Request) {
 
     // POST /technician-management/:id/availability - Update availability
     if (req.method === 'POST' && techId && subResource === 'availability') {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const body = await req.json();
 
       const { data: technician, error } = await admin
@@ -325,6 +398,12 @@ export default async function handler(req: Request) {
 
     // DELETE /technician-management/:id - Delete technician
     if (req.method === 'DELETE' && techId) {
+      try {
+        requireSupervisor();
+      } catch (err) {
+        return denySupervisor(err);
+      }
+
       const { error } = await admin
         .from('technicians')
         .delete()
