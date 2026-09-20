@@ -559,13 +559,18 @@ export default async function handler(req: Request) {
           .select('*')
           .in('apollo_id', cached.apollo_ids as string[]);
 
-        await admin
+        // Best effort: a cache counter that fails must not fail the search.
+        // Logged rather than discarded, because a counter silently stuck at 1
+        // makes the cache look useless and sends somebody hunting the wrong bug.
+        const { error: cacheError } = await admin
           .from('apollo_search_cache')
           .update({
             hit_count: (cached.hit_count ?? 1) + 1,
             last_accessed_at: new Date().toISOString(),
           })
           .eq('id', cached.id);
+        if (cacheError)
+          console.error('[APOLLO] cache hit counter update failed:', cacheError.message);
 
         const total = cached.total_available ?? 0;
         return createCorsResponse(

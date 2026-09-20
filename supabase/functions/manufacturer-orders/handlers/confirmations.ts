@@ -160,17 +160,34 @@ async function syncPurchaseOrderExpectedDate(
       .maybeSingle();
     if (!order?.purchase_order_id) return;
 
-    await db
+    // The try/catch around this cannot see a failed write: PostgREST returns
+    // { error } rather than throwing, so it only ever fires on a network
+    // fault. Both errors are read, and a failure to sync the delivery date is
+    // logged with the ids - a purchase order still showing last month's
+    // expected date is what a buyer chases the manufacturer about.
+    const { error: orderError } = await db
       .from('manufacturer_orders')
       .update({ estimated_delivery_date: date, updated_at: new Date().toISOString() })
       .eq('id', orderId)
       .eq('tenant_id', tenantId);
+    if (orderError) {
+      console.error(
+        `Failed to set the manufacturer order delivery date (order ${orderId}):`,
+        orderError.message,
+      );
+    }
 
-    await db
+    const { error: poError } = await db
       .from('purchase_orders')
       .update({ expected_date: date, updated_at: new Date().toISOString() })
       .eq('id', order.purchase_order_id)
       .eq('tenant_id', tenantId);
+    if (poError) {
+      console.error(
+        `Failed to sync the purchase order expected date (PO ${order.purchase_order_id}):`,
+        poError.message,
+      );
+    }
   } catch (err) {
     console.error('Failed to sync the purchase order delivery date:', String(err));
   }

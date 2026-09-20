@@ -640,7 +640,14 @@ export default async function handler(req: Request) {
           if (linkError) console.error('[RADAR] equipment link failed:', linkError.message);
         }
 
-        await admin
+        /**
+         * NOT best effort. This is AC6's outcome record, and the deal above
+         * has already been created - so a discarded error here leaves a play
+         * that still reads `open` pointing at nothing, and the next rep to
+         * look converts it again into a SECOND deal for the same trigger.
+         * The idempotency the story asks for lives in this row.
+         */
+        const { error: outcomeError } = await admin
           .from('radar_plays')
           .update({
             status: 'converted',
@@ -653,7 +660,19 @@ export default async function handler(req: Request) {
           .eq('tenant_id', tenantId);
 
         return createCorsResponse(
-          { dealId: (deal as Row).id, equipmentAttached: equipmentIds.length },
+          {
+            dealId: (deal as Row).id,
+            equipmentAttached: equipmentIds.length,
+            // The deal is real either way; the caller needs to know the play
+            // was not closed so it can be dismissed by hand rather than
+            // converted twice.
+            outcomeRecorded: !outcomeError,
+            ...(outcomeError
+              ? {
+                  warning: `The deal was created but this play could not be marked converted (${outcomeError.message}). Dismiss it manually so it is not converted again.`,
+                }
+              : {}),
+          },
           201,
           req,
         );

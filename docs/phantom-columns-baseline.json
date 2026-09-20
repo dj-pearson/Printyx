@@ -1,20 +1,4 @@
 {
   "note": "Column literals handed to PostgREST that are not columns on the table the call chain is on. Each entry is a runtime 42703 waiting for the code path to run. Fix them; do not grow this list. Regenerate with: npx tsx scripts/check-phantom-columns.ts --update-baseline  IT HAS GROWN TWICE BY SEEING MORE, NOT BY CODE GETTING WORSE. 152 -> 280 when it stopped skipping tables declared twice with different shapes (shared/drizzle-schema.ts resolves every collision, so whatever it exports is the shape the migrations built), and 262 -> 383 when it stopped reading only INLINE object literals. Most handlers build a payload as a named variable, so `const poData = { … }` followed by `.insert(poData)` was invisible - that hid the larger half of the purchase-order cluster and a user-creation insert writing phone, job_title and department, three columns CLAUDE.md already records as absent from `users`.  Named payloads resolve to the NEAREST PRECEDING BINDING, used only if that binding is an object literal. Two looser rules were tried and both invented findings: pooling declarations by name across a file attributed one table's payload to another table's insert (39 phantom columns on a ten-key row), and taking the nearest preceding LITERAL reached past `const x = someFn()` to an older literal of the same name (eighteen more).  AUDIT-037 carries the backlog. Shrink this list by fixing the code or settling a table collision - never by re-widening a skip, which would look like progress.  DO NOT WORK THIS LIST TOP-DOWN. Roughly half of it sits in edge functions that nothing calls (cross it against docs/unreferenced-edge-fns-baseline.json), where a phantom column cannot hurt anyone and fixing it is building for a caller that does not exist. The entries worth fixing are the ones in a REACHABLE function: those are live 42703s under a screen somebody opens.",
-  "allowed": [
-    "supabase/functions/auth-me/index.ts:tenants.settings",
-    "supabase/functions/blog-platform-api/index.ts:blog_assets.filename",
-    "supabase/functions/business-records-search/index.ts:business_records.email",
-    "supabase/functions/chrome-extension/index.ts:api_keys.service",
-    "supabase/functions/chrome-extension/index.ts:api_keys.user_id",
-    "supabase/functions/remote-monitoring/index.ts:monitored_devices.status",
-    "supabase/functions/sales-reports/index.ts:deals.deal_value",
-    "supabase/functions/settings/index.ts:tenants.settings",
-    "supabase/functions/sso/index.ts:sso_provider_configs.last_test_error",
-    "supabase/functions/sso/index.ts:sso_provider_configs.last_test_success",
-    "supabase/functions/sso/index.ts:sso_provider_configs.last_tested_at",
-    "supabase/functions/sso/index.ts:sso_sessions.access_token_hash",
-    "supabase/functions/sso/index.ts:sso_sessions.metadata",
-    "supabase/functions/sso/index.ts:sso_sessions.user_identifier",
-    "supabase/functions/teams/handlers/projects.ts:tasks.dependencies"
-  ]
+  "allowed": []
 }

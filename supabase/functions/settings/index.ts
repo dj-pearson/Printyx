@@ -87,11 +87,19 @@ export default async function handler(req: Request) {
       return createCorsResponse(settings, 200, req);
     }
 
-    // GET /settings/tenant - Get tenant settings
+    /**
+     * GET /settings/tenant - Get tenant settings.
+     *
+     * AUDIT-037: this read `tenants.settings`, which is not a column. The
+     * jsonb blob a tenant's settings live in is `metadata` - it is where
+     * auto-lead-routing already stores its configuration - so every read and
+     * write on this branch was a 42703 and tenant settings have never been
+     * readable or savable through it.
+     */
     if (req.method === 'GET' && settingType === 'tenant') {
       const { data: tenant, error } = await admin
         .from('tenants')
-        .select('settings')
+        .select('metadata')
         .eq('id', tenantId)
         .single();
 
@@ -100,7 +108,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch tenant settings' }, 500, req);
       }
 
-      return createCorsResponse(tenant?.settings || {}, 200, req);
+      return createCorsResponse(tenant?.metadata || {}, 200, req);
     }
 
     // PUT /settings/tenant - Update tenant settings (admin only)
@@ -119,14 +127,38 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Insufficient permissions' }, 403, req);
       }
 
+      /**
+       * MERGED, NOT REPLACED, and that is the half that matters.
+       *
+       * Rebinding `settings` to `metadata` alone would turn a guaranteed
+       * 42703 into silent data loss: `metadata` is a SHARED blob - auto-lead
+       * routing keeps its configuration there, and anything else that lands
+       * on a tenant row will too - so writing `body.settings` over the top
+       * would erase every key this caller did not happen to send. That is the
+       * WhiteLabelDashboard defect one table over, where a blind overwrite
+       * wiped a tenant's branding on the first save.
+       *
+       * Read-then-merge is not atomic. Two admins saving different settings in
+       * the same second would lose one of the two, which is worth knowing and
+       * is a far smaller failure than the blanket overwrite it replaces.
+       */
+      const { data: existing } = await admin
+        .from('tenants')
+        .select('metadata')
+        .eq('id', tenantId)
+        .single();
+
+      const incoming = (body.settings || body) as Record<string, unknown>;
+      const merged = { ...((existing?.metadata as Record<string, unknown>) ?? {}), ...incoming };
+
       const { data: tenant, error } = await admin
         .from('tenants')
         .update({
-          settings: body.settings || body,
+          metadata: merged,
           updated_at: new Date().toISOString(),
         })
         .eq('id', tenantId)
-        .select('settings')
+        .select('metadata')
         .single();
 
       if (error) {
@@ -134,7 +166,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update tenant settings' }, 500, req);
       }
 
-      return createCorsResponse(tenant?.settings || {}, 200, req);
+      return createCorsResponse(tenant?.metadata || {}, 200, req);
     }
 
     // GET /settings/dashboard - Get dashboard layout

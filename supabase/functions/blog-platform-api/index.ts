@@ -808,7 +808,10 @@ async function exportWorkspace(admin: Admin, tenantId: string, userId: string, r
       .limit(5000),
     admin
       .from('blog_assets')
-      .select('id,filename,storage_path,mime_type,alt_text')
+      // AUDIT-037: `blog_assets` has no `filename` column. The stored object
+      // is named by `storage_path`, and selecting a column that does not
+      // exist failed this whole export.
+      .select('id,storage_path,mime_type,alt_text,title')
       .eq('tenant_id', tenantId)
       .is('deleted_at', null)
       .limit(5000),
@@ -824,7 +827,15 @@ async function exportWorkspace(admin: Admin, tenantId: string, userId: string, r
     content: `# ${b.title ?? 'Brief'}\n\n${b.outline ?? b.summary ?? ''}`,
   }));
   const assetRefs = (assets.data ?? []).map((a) => ({
-    path: `assets/${a.filename ?? a.id}`,
+    // The manifest wants a file name; the basename of the stored path is the
+    // real one. Falling back to the id keeps every asset in the export rather
+    // than dropping the ones stored without a path.
+    path: `assets/${
+      String(a.storage_path ?? '')
+        .split('/')
+        .filter(Boolean)
+        .pop() || a.id
+    }`,
     ref: a.storage_path,
     mime: a.mime_type,
   }));

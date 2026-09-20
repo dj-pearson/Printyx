@@ -51,7 +51,10 @@ export default async function handler(req: Request) {
       if (tenantId) {
         const { data: tenantData } = await admin
           .from('tenants')
-          .select('id, name, slug, settings')
+          // AUDIT-037: `settings` is not a column on `tenants`; the jsonb
+          // blob is `metadata`, so this select was a 42703 and the whole
+          // tenant lookup failed rather than just omitting one field.
+          .select('id, name, slug, metadata')
           .eq('id', tenantId)
           .single();
         tenant = tenantData;

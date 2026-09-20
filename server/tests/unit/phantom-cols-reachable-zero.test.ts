@@ -65,10 +65,24 @@ describe('the baseline holds nothing a caller can reach', () => {
     expect(reachable).toEqual([]);
   });
 
-  it('and the baseline is not empty, so the assertion above is doing work', () => {
-    // If this ever reaches zero the test above passes vacuously and should be
-    // replaced by a hard gate at zero.
-    expect(phantom.length).toBeGreaterThan(0);
+  /**
+   * IT REACHED ZERO, so this is the hard gate the line above prescribed.
+   *
+   * The floor that used to stand here read `expect(phantom.length)
+   * .toBeGreaterThan(0)` with a comment saying that if the baseline ever
+   * emptied, the reachability assertion would pass vacuously and should be
+   * replaced by a gate at zero. AUDIT-037's last nine rebindings emptied it,
+   * so the floor started failing on the success state - which is the right
+   * moment to follow the instruction rather than relax it.
+   *
+   * `npm run check:phantom-cols` is now a hard gate: any new reference, in a
+   * reachable function or not, fails rather than being tolerated. The
+   * reachability split above is kept because it is what makes a future
+   * regression legible - if somebody baselines one again, it says whether
+   * anybody can reach it.
+   */
+  it('is empty, so check:phantom-cols is a hard gate rather than a ratchet', () => {
+    expect(phantom).toEqual([]);
   });
 });
 

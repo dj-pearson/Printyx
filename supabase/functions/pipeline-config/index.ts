@@ -910,10 +910,20 @@ export default async function handler(req: Request) {
           started_by: ctx.userId,
         }));
         if (rows.length > 0) {
-          await db.from('sales_playbook_runs').upsert(rows, {
+          // The surrounding try/catch cannot see this: PostgREST returns
+          // { error } rather than throwing, so a failed enrolment was logged
+          // as a success and the rep got no playbook on a stage change.
+          const { error: enrolError } = await db.from('sales_playbook_runs').upsert(rows, {
             onConflict: 'tenant_id,playbook_id,parent_type,parent_id',
             ignoreDuplicates: true,
           });
+          if (enrolError) {
+            log.error?.('playbook enrolment failed', {
+              err: enrolError.message,
+              dealId,
+              requestId,
+            });
+          }
         }
       } catch (err) {
         log.error?.('playbook stage trigger failed', { err: String(err), requestId });

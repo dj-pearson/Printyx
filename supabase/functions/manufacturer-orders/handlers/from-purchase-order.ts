@@ -163,7 +163,19 @@ export async function handleFromPurchaseOrder(
     // Every line was unfulfillable, so the order would be empty. Roll the
     // header back by hand - there is no transaction - rather than leave a
     // manufacturer order with nothing in it that blocks the retry above.
-    await db.from('manufacturer_orders').delete().eq('id', order.id).eq('tenant_id', auth.tenantId);
+    // A rollback whose own failure is discarded leaves exactly the empty
+    // header this branch exists to remove, and it blocks the retry above.
+    const { error: rollbackError } = await db
+      .from('manufacturer_orders')
+      .delete()
+      .eq('id', order.id)
+      .eq('tenant_id', auth.tenantId);
+    if (rollbackError) {
+      console.error(
+        `Failed to roll back empty manufacturer order ${order.id}:`,
+        rollbackError.message,
+      );
+    }
     return errorResponse(
       400,
       'No line has a part number and a description, so nothing can be ordered.',
@@ -178,7 +190,19 @@ export async function handleFromPurchaseOrder(
 
   const { error: lineError } = await db.from('manufacturer_order_line_items').insert(rows);
   if (lineError) {
-    await db.from('manufacturer_orders').delete().eq('id', order.id).eq('tenant_id', auth.tenantId);
+    // Same rollback, same rule: a delete whose failure is discarded leaves a
+    // headerless order behind and blocks the retry.
+    const { error: rollbackError } = await db
+      .from('manufacturer_orders')
+      .delete()
+      .eq('id', order.id)
+      .eq('tenant_id', auth.tenantId);
+    if (rollbackError) {
+      console.error(
+        `Failed to roll back manufacturer order ${order.id} after a line insert failure:`,
+        rollbackError.message,
+      );
+    }
     return errorResponse(500, 'Failed to create the order lines', req, {
       code: 'DB_ERROR',
       details: { message: lineError.message },
@@ -187,11 +211,21 @@ export async function handleFromPurchaseOrder(
   }
 
   const quantity = rows.reduce((sum, r) => sum + Number(r.quantity_ordered ?? 0), 0);
-  await db
+  // The lines are already written, so a failure here is not worth refusing the
+  // order over - but a header reading zero quantity over real lines is a
+  // discrepancy a buyer has to reconcile by hand, so it is reported rather
+  // than discarded.
+  const { error: quantityError } = await db
     .from('manufacturer_orders')
     .update({ total_quantity_ordered: quantity, updated_at: new Date().toISOString() })
     .eq('id', order.id)
     .eq('tenant_id', auth.tenantId);
+  if (quantityError) {
+    console.error(
+      `Manufacturer order ${order.id} lines saved but the header quantity did not:`,
+      quantityError.message,
+    );
+  }
 
   const { error: poUpdateError } = await db
     .from('purchase_orders')

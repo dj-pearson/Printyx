@@ -1,7 +1,7 @@
 {
   "note": "AUDIT-038. PostgREST returns { data, error } instead of throwing, so a write whose error is never read answers 200 while saving nothing. Shrink-only: keyed by file + table + write method, not line. This is a TODO list, not settled debt - work the entries in functions something actually calls first.",
   "generatedBy": "npm run check:swallowed-writes -- --update-baseline",
-  "count": 326,
+  "count": 322,
   "entries": [
     "supabase/functions/_shared/handoff-create.ts::sales_handoff_checklists::delete",
     "supabase/functions/_shared/stripe.ts::tenants::update",
@@ -18,8 +18,6 @@
     "supabase/functions/ai-search/handlers/search.ts::ai_search_queries::update",
     "supabase/functions/api-keys/index.ts::api_key_usage_logs::insert",
     "supabase/functions/api-keys/index.ts::api_keys::update",
-    "supabase/functions/apollo/index.ts::apollo_tenant_leads::upsert",
-    "supabase/functions/assign-lead/index.ts::lead_assignment_history::insert",
     "supabase/functions/auto-lead-routing/index.ts::?::update",
     "supabase/functions/auto-lead-routing/index.ts::business_records::update",
     "supabase/functions/auto-supply-replenishment/index.ts::supply_monitoring::update",
@@ -189,7 +187,6 @@
     "supabase/functions/knowledge-base/index.ts::knowledge_articles::update",
     "supabase/functions/knowledge-base/index.ts::knowledge_categories::update",
     "supabase/functions/knowledge-base/index.ts::knowledge_search_queries::insert",
-    "supabase/functions/lead-assignment-queue/index.ts::leads::update",
     "supabase/functions/lead-assignment/handlers/assign.ts::business_records::update",
     "supabase/functions/lead-assignment/handlers/assign.ts::lead_assignment_rules::update",
     "supabase/functions/lead-assignment/handlers/territories.ts::business_records::update",
@@ -306,7 +303,6 @@
     "supabase/functions/social-media/index.ts::social_media_posts::update",
     "supabase/functions/sso/index.ts::sso_provider_configs::update",
     "supabase/functions/sso/index.ts::sso_sessions::delete",
-    "supabase/functions/sso/index.ts::sso_sessions::insert",
     "supabase/functions/subscriptions/index.ts::subscription_events::insert",
     "supabase/functions/subscriptions/index.ts::subscription_notifications::insert",
     "supabase/functions/task-workflows/index.ts::task_workflow_events::insert",

@@ -34,22 +34,42 @@ export async function handleProjects(req: Request, ctx: HandlerCtx): Promise<Res
     );
   }
 
-  // GET /:id/dependencies (computed from tasks.dependencies jsonb)
+  /**
+   * GET /:id/dependencies - AUDIT-037: 501, because nothing stores them.
+   *
+   * This selected `tasks.dependencies`, which is not a column on `tasks` - a
+   * guaranteed 42703, so the graph has never been returned. The tempting fix
+   * is to drop the column and answer `edges: []`, and that is the WORSE
+   * outcome: an empty dependency graph is not "we do not know", it is the
+   * claim that every task in this project is independent and can start now.
+   * AUDIT-037 found the same fabrication being written from the other end,
+   * where `routes-templates.ts` wrote `dependencies: task.dependencies || []`
+   * and always took the empty branch, so every generated template asserted
+   * its tasks had no order.
+   *
+   * The tasks list is still returned, because that part is real. The edges
+   * are absent and the response says why.
+   */
   if (method === 'GET' && id && sub === 'dependencies') {
     const { data, error } = await db
       .from('tasks')
-      .select('id, title, dependencies')
+      .select('id, title')
       .eq('tenant_id', auth.tenantId)
       .eq('project_id', id);
-    if (error) return dbErr(req, requestId, 'Failed to fetch project dependencies', error);
+    if (error) return dbErr(req, requestId, 'Failed to fetch project tasks', error);
 
-    type TaskDep = { id: string; title: string; dependencies: string[] | null };
-    const rows = (data ?? []) as TaskDep[];
-    const edges = rows.flatMap((t) =>
-      (t.dependencies ?? []).map((dep) => ({ from: dep, to: t.id })),
-    );
+    const rows = (data ?? []) as Array<{ id: string; title: string }>;
     return jsonResponse(
-      { projectId: id, tasks: rows, edges, taskCount: rows.length, edgeCount: edges.length },
+      {
+        projectId: id,
+        tasks: rows,
+        taskCount: rows.length,
+        edges: null,
+        edgeCount: null,
+        unbacked: [
+          'Task dependencies are not stored: `tasks` has no dependencies column and nothing in the tree writes one. An empty graph would assert every task is independent, so none is returned.',
+        ],
+      },
       200,
       req,
       requestId,

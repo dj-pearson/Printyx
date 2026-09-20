@@ -46,7 +46,11 @@ export default async function handler(req: Request) {
         .limit(limit);
 
       if (search) {
-        query = query.or(`company_name.ilike.%${search}%,email.ilike.%${search}%`);
+        // AUDIT-037: `business_records` has no `email` column - the contact
+        // address is `primary_contact_email`. A PostgREST `.or()` naming an
+        // unknown column fails the WHOLE query, so searching by anything at
+        // all returned a 42703 rather than just missing the email match.
+        query = query.or(`company_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`);
       }
       if (type) query = query.eq('record_type', type);
       if (status) query = query.eq('status', status);
