@@ -1,5 +1,5 @@
 {
-  "note": "SEC-EDGE-001. Edge functions that enforce NO role restriction: any authenticated member of the tenant may call every endpoint they serve. Tenant isolation is separate and holds. This list only shrinks — gate one and tighten it. A NEW edge function may not be added here without saying why in its review; the point of the ratchet is that shipping one ungated is a decision, not an oversight. rowScoped is the third class WF-R-04 added: reachable by every role, but the ROWS are narrowed to the caller tier by _shared/scope.ts. Moving an entry from openToAllRoles to rowScoped is progress; moving one back is not.",
+  "note": "SEC-EDGE-001. Edge functions that enforce NO role restriction: any authenticated member of the tenant may call every endpoint they serve. Tenant isolation is separate and holds. This list only shrinks \u2014 gate one and tighten it. A NEW edge function may not be added here without saying why in its review; the point of the ratchet is that shipping one ungated is a decision, not an oversight. rowScoped is the third class WF-R-04 added: reachable by every role, but the ROWS are narrowed to the caller tier by _shared/scope.ts. Moving an entry from openToAllRoles to rowScoped is progress; moving one back is not. CORRECTED 2026-09-20 (SEC-EDGE-001): `dashboard-widgets` is ADDED here, which this list otherwise never allows. It is not a new function and nothing regressed - the check counted an IMPORT of _shared/rbac as a gate, and this function imports getRoleLevel to pass the caller's level INTO an RPC as a parameter, rejecting nobody. SEC-EDGE-001 AC1 counted the same way when it said \"exactly three edge functions import it\". The rule now requires an enforcing call or a level comparison that leads to a rejection.",
   "openToAllRoles": [
     "accessories",
     "activities",
@@ -38,6 +38,7 @@
     "daily-briefing",
     "dashboard",
     "dashboard-modules",
+    "dashboard-widgets",
     "dashboards",
     "data-enrichment",
     "db-probe",

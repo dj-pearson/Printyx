@@ -66,12 +66,27 @@ const SIGNALS = [
   // WF-P-05 added _shared/permission-claim.ts, which answers the claim-only
   // question rather than falling through to the DB lookup _shared/rbac.ts wants a
   // hook for. It is a gate; a function using it was being reported as ungated.
+  //
+  // THE IMPORT ALONE IS NOT A GATE, and this is the same lesson as the
+  // permission-string case below: reading a role is not enforcing one.
+  // `_shared/rbac.ts` also exports resolveRoleLevel and getRoleLevel, which
+  // ANSWER "what level is this caller" so a handler can shape a response -
+  // COP-B01's My Day layout uses exactly that to decide which cards a role may
+  // see, and importing it made the whole `dashboard` function read as
+  // restricted when nothing in it rejects anybody. An ENFORCING call has to
+  // appear.
   {
     kind: 'shared-rbac',
     test: (s) =>
-      /_shared\/(rbac|permission-claim)(\.ts)?['"]|requireRoleLevel|requirePermission|hasPermissionClaim/.test(
+      // Either a helper that throws or answers 403 itself...
+      /\b(requireRoleLevel|requirePermission|requirePlatformAdmin|denyBelowLevel|denyWithoutPermission|hasPermissionClaim)\s*\(/.test(
         s,
-      ),
+      ) ||
+      // ...or a hand-rolled level comparison that leads to a rejection, which
+      // device-monitoring and erp-integration both do: getRoleLevel(...) and
+      // then `if (roleLevel < 5) return 403`. That IS enforcement, and a rule
+      // that only knew the helper names would have called them ungated.
+      /\broleLevel\s*[<>]=?\s*\d|\bgetRoleLevel\([^)]*\)\s*[<>]=?\s*\d/.test(s),
   },
   // 2. Platform-admin only, excluding the cross-tenant override above.
   { kind: 'platform-admin', test: hasRoleOnlyPlatformAdminCheck },
@@ -234,6 +249,49 @@ if (added.length > 0) {
       '  copied gate denies everyone below platform admin.\n',
   );
   process.exit(1);
+}
+
+/**
+ * SEC-EDGE-001 AC6, the "recorded decision" half.
+ *
+ * A baselined function must carry a REASON in docs/edge-rbac-triage.json, or
+ * "open to all roles" reads the same whether an entry is deliberate or nobody
+ * has looked. `unexamined` IS a permitted verdict and is the point: it says so
+ * out loud instead of hiding inside an undifferentiated list.
+ */
+const TRIAGE = 'docs/edge-rbac-triage.json';
+if (fs.existsSync(TRIAGE)) {
+  const triage = JSON.parse(fs.readFileSync(TRIAGE, 'utf8'));
+  const reasoned = new Map((triage.triage || []).map((e) => [e.fn, e]));
+  const missing = ungated.filter((fn) => !reasoned.has(fn));
+  if (missing.length > 0) {
+    console.error(
+      `✗ ${missing.length} function(s) are open to every role with no recorded reason:\n`,
+    );
+    for (const fn of missing) console.error(`    ${fn}`);
+    console.error(
+      '\n  Add an entry to docs/edge-rbac-triage.json saying WHY. The verdicts are public,\n' +
+        '  internal, headless, open-by-design, needs-gate and unexamined - and "unexamined" is\n' +
+        '  allowed. What is not allowed is saying nothing, because then the list reads the same\n' +
+        '  whether the entry was decided or overlooked.',
+    );
+    process.exit(1);
+  }
+  const counts = {};
+  for (const fn of ungated) {
+    const v = reasoned.get(fn).verdict;
+    counts[v] = (counts[v] ?? 0) + 1;
+  }
+  const summary = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([v, n]) => `${n} ${v}`)
+    .join(', ');
+  console.log(`  Triage: ${summary}.`);
+  if (counts['needs-gate']) {
+    console.log(
+      `  ${counts['needs-gate']} function(s) are marked needs-gate - that is the worklist, not settled debt.`,
+    );
+  }
 }
 
 console.log(

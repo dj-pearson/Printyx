@@ -1,0 +1,748 @@
+{
+  "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing \u2014 AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing \u2014 this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
+  "counts": {
+    "unexamined": 69,
+    "open-by-design": 13,
+    "headless": 43,
+    "needs-gate": 11,
+    "internal": 3,
+    "public": 8
+  },
+  "triage": [
+    {
+      "fn": "accessories",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "activities",
+      "verdict": "open-by-design",
+      "reason": "A rep's own activity feed. Row scoping, not role scoping, is the control here."
+    },
+    {
+      "fn": "address-books",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "ai-analytics",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "ai-documentation",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "ai-employee",
+      "verdict": "needs-gate",
+      "reason": "Autonomous agent configuration."
+    },
+    {
+      "fn": "ai-employees",
+      "verdict": "needs-gate",
+      "reason": "Autonomous agent configuration."
+    },
+    {
+      "fn": "ai-gpt5",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "ai-search",
+      "verdict": "open-by-design",
+      "reason": "Search over data the caller can already see."
+    },
+    {
+      "fn": "analytics",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "apollo",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "appointments",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "assign-lead",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "auth-me",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "auto-supply-replenishment",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "automation",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "blog",
+      "verdict": "unexamined",
+      "reason": "No index.ts at this path \u2014 the directory needs a look before anything is decided about it."
+    },
+    {
+      "fn": "booking-pages",
+      "verdict": "internal",
+      "reason": "Invoked by pg_cron with the internal cron token, not by a user. A role check would reject the scheduler."
+    },
+    {
+      "fn": "business-records-search",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "calendar-oauth",
+      "verdict": "open-by-design",
+      "reason": "A user connecting THEIR OWN calendar. Nobody else can be affected by it."
+    },
+    {
+      "fn": "card-config",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "catalog",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "chatbot",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "chrome-extension",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "churn-risk",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "company-ids",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "contract-renewal",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "contract-renewals",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "contract-tiered-rates",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "crm",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "cross-module",
+      "verdict": "open-by-design",
+      "reason": "Read-only aggregation of surfaces the caller already has."
+    },
+    {
+      "fn": "csrf-token",
+      "verdict": "public",
+      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+    },
+    {
+      "fn": "customer-portal",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "customer-segments",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "daily-briefing",
+      "verdict": "open-by-design",
+      "reason": "The caller's own briefing."
+    },
+    {
+      "fn": "dashboard",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "dashboard-modules",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "dashboard-widgets",
+      "verdict": "open-by-design",
+      "reason": "Hands the caller's role code and level INTO the dashboard_widget_data RPC as parameters, so the scoping happens in SQL rather than here. It rejects nobody, which is why it belongs in this list - but the restriction is not absent, it is somewhere this check cannot see. Verifying what that RPC does with the level is its own task."
+    },
+    {
+      "fn": "dashboards",
+      "verdict": "open-by-design",
+      "reason": "Widget data for the caller's own dashboard."
+    },
+    {
+      "fn": "data-enrichment",
+      "verdict": "unexamined",
+      "reason": "No index.ts at this path \u2014 the directory needs a look before anything is decided about it."
+    },
+    {
+      "fn": "db-probe",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "deal-desk",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "deal-desk-copilot",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "deal-stages",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "demos",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "deployment-readiness",
+      "verdict": "needs-gate",
+      "reason": "Platform operations data, not tenant data."
+    },
+    {
+      "fn": "documents",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "email-autopilot",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "email-marketing",
+      "verdict": "internal",
+      "reason": "Reached by pg_cron (drizzle/cron/*.sql posts to it with the internal cron token) as well as by users. A blanket role check would reject the scheduler; the branch cron calls needs cron-auth, the user-facing branches need their own decision."
+    },
+    {
+      "fn": "email-sequences",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "enabled-products",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "enrichment",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "expansion-opportunities",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "exports",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "field-service",
+      "verdict": "internal",
+      "reason": "Reached by pg_cron (drizzle/cron/*.sql posts to it with the internal cron token) as well as by users. A blanket role check would reject the scheduler; the branch cron calls needs cron-auth, the user-facing branches need their own decision."
+    },
+    {
+      "fn": "file-storage",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "files",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "financial",
+      "verdict": "needs-gate",
+      "reason": "The finance surface; its page is minLevel 5 and the function is open to every member."
+    },
+    {
+      "fn": "fleet",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "geocode-leads",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "handoff-task-templates",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "handoff-tasks",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "hello",
+      "verdict": "public",
+      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+    },
+    {
+      "fn": "import-export",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "lead-assignment",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "lead-assignment-history",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "lead-assignment-queue",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "lead-assignment-rules",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "maintenance",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "managed-services",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "manufacturer-integrations",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "manufacturer-orders",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "me",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "meeting-transcription",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "meetings",
+      "verdict": "open-by-design",
+      "reason": "The caller's own calendar."
+    },
+    {
+      "fn": "mobile-auth",
+      "verdict": "public",
+      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+    },
+    {
+      "fn": "mobile-field",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "mobile-logs",
+      "verdict": "needs-gate",
+      "reason": "Device diagnostics across the tenant."
+    },
+    {
+      "fn": "notifications",
+      "verdict": "open-by-design",
+      "reason": "A user's own notifications."
+    },
+    {
+      "fn": "oauth-proxy",
+      "verdict": "public",
+      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+    },
+    {
+      "fn": "oid-mappings",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "onboarding",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "outreach",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "parts-inventory",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "parts-orders",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "payment-processing",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "performance",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "pipeline-config",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "pipeline-forecast",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "portal-service",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "predictive-dispatch",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "predictive-failure",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "predictive-maintenance",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "pricing-rules",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "printer-monitoring",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "professional-services",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "projects",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "projects-enhanced",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "public-booking",
+      "verdict": "public",
+      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+    },
+    {
+      "fn": "public-calculator",
+      "verdict": "public",
+      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+    },
+    {
+      "fn": "public-forms",
+      "verdict": "public",
+      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+    },
+    {
+      "fn": "qbr",
+      "verdict": "needs-gate",
+      "reason": "Quarterly business reviews are a management artefact."
+    },
+    {
+      "fn": "quote-line-items",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "remote-monitoring",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "renewal-activities",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "renewal-autoquote",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "renewal-playbooks",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "rep-capacity",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "role-management",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "sales-forecasts",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "sales-handoffs",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "sales-pipeline",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "sales-rep-assignments",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "sales-reports",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "sales-territories",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "search",
+      "verdict": "open-by-design",
+      "reason": "Cross-object search; results are already tenant- and row-scoped."
+    },
+    {
+      "fn": "seo",
+      "verdict": "needs-gate",
+      "reason": "Its pages are platform-admin only; the function is not."
+    },
+    {
+      "fn": "service",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "service-analysis",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "service-analytics",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "service-contracts",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "service-products",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "signatures",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "signup",
+      "verdict": "public",
+      "reason": "Deliberately unauthenticated \u2014 the handler never calls auth.getUser. \"Open to all roles\" is a category error for it; its controls are rate limiting and input validation."
+    },
+    {
+      "fn": "social-media",
+      "verdict": "needs-gate",
+      "reason": "Publishes on the tenant brand. Any member can post as the company today."
+    },
+    {
+      "fn": "software-products",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "sso",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "tax-rates",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "team-reports",
+      "verdict": "needs-gate",
+      "reason": "Reports about OTHER people's work. Row scoping cannot substitute for a role check here."
+    },
+    {
+      "fn": "teams",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "technician-sessions",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "templates",
+      "verdict": "open-by-design",
+      "reason": "Reads shared templates; writing one is the act worth gating and is a separate branch."
+    },
+    {
+      "fn": "tenant-settings",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "territories",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "today-dashboard",
+      "verdict": "open-by-design",
+      "reason": "The rep's own day (COP-B01). Restricting it would empty the screen it exists for."
+    },
+    {
+      "fn": "toner-replenish",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "universal-search",
+      "verdict": "open-by-design",
+      "reason": "Same as search \u2014 the scoping that matters is on the rows returned."
+    },
+    {
+      "fn": "user",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "user-assignments",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "users",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "validate",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "voice-agent",
+      "verdict": "needs-gate",
+      "reason": "Places outbound calls on the tenant account."
+    },
+    {
+      "fn": "web-forms",
+      "verdict": "needs-gate",
+      "reason": "Public form definitions; editing one changes what the outside world sees."
+    },
+    {
+      "fn": "webhooks",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "work-orders",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    },
+    {
+      "fn": "workflow-automation",
+      "verdict": "unexamined",
+      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+    },
+    {
+      "fn": "workflows",
+      "verdict": "headless",
+      "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
+    }
+  ]
+}
