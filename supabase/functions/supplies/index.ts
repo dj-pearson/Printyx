@@ -272,24 +272,83 @@ export default async function handler(req: Request) {
     }
 
     // PUT /supplies/:id - Update supply
-    if (req.method === 'PUT' && supplyId && !subResource) {
-      const body = await req.json();
+    /**
+     * PATCH AS WELL AS PUT. Express serves this as a PATCH
+     * (server/routes-products-crud.ts) and this function accepted only PUT, so
+     * whichever verb the page picked it worked on one host and 404'd on the
+     * other - the same dual-host split managed-services had, one verb narrower.
+     *
+     * And the body is MAPPED, not spread. `.update({ ...body })` lets the
+     * caller name every column including tenant_id and id, and the tenant
+     * filter decides which ROW is written, not what goes into it (COP-M01).
+     * This site was invisible to check:raw-body-writes until this round
+     * widened it: the guard matched line by line, and prettier breaks the
+     * spread onto its own line the moment the literal has a second key.
+     */
+    if ((req.method === 'PUT' || req.method === 'PATCH') && supplyId && !subResource) {
+      const body = await req.json().catch(() => ({}));
+
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      const set = (column: string, ...candidates: unknown[]) => {
+        const value = candidates.find((v) => v !== undefined);
+        if (value !== undefined) patch[column] = value;
+      };
+      // The same columns the create branch writes, minus tenant_id. Only what
+      // the caller sent: a partial form must not null what it omitted.
+      set('product_code', body.productCode, body.product_code);
+      set('product_name', body.productName, body.product_name);
+      set('product_type', body.productType, body.product_type);
+      set('dealer_comp', body.dealerComp, body.dealer_comp);
+      set('inventory', body.inventory);
+      set('in_stock', body.inStock, body.in_stock);
+      set('summary', body.summary);
+      set('note', body.note);
+      set('ea_notes', body.eaNotes, body.ea_notes);
+      set('related_products', body.relatedProducts, body.related_products);
+      set('is_active', body.isActive, body.is_active);
+      set('available_for_all', body.availableForAll, body.available_for_all);
+      set('repost_edit', body.repostEdit, body.repost_edit);
+      set('sales_rep_credit', body.salesRepCredit, body.sales_rep_credit);
+      set('funding', body.funding);
+      set('lease', body.lease);
+      set('payment_type', body.paymentType, body.payment_type);
+      set('new_active', body.newActive, body.new_active);
+      set('new_rep_price', body.newRepPrice, body.new_rep_price);
+      set('upgrade_active', body.upgradeActive, body.upgrade_active);
+      set('upgrade_rep_price', body.upgradeRepPrice, body.upgrade_rep_price);
+      set('lexmark_active', body.lexmarkActive, body.lexmark_active);
+      set('lexmark_rep_price', body.lexmarkRepPrice, body.lexmark_rep_price);
+      set('graphic_active', body.graphicActive, body.graphic_active);
+      set('graphic_rep_price', body.graphicRepPrice, body.graphic_rep_price);
+      set('price_book_id', body.priceBookId, body.price_book_id);
+
+      if (Object.keys(patch).length === 1) {
+        // Only updated_at. A 200 that bumped the timestamp and reported success
+        // would be COP-M01's silent no-op.
+        return createCorsResponse(
+          { error: 'No updatable fields in the request body', code: 'EMPTY_PATCH' },
+          400,
+          req,
+        );
+      }
 
       const { data: supply, error } = await admin
         .from('supplies')
-        .update({
-          ...body,
-          updated_at: new Date().toISOString(),
-        })
+        .update(patch)
         .eq('id', supplyId)
         .eq('tenant_id', tenantId)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error updating supply:', error);
-        return createCorsResponse({ error: 'Failed to update supply' }, 500, req);
+        return createCorsResponse(
+          { error: 'Failed to update supply', message: error.message },
+          500,
+          req,
+        );
       }
+      if (!supply) return createCorsResponse({ error: 'Supply not found' }, 404, req);
 
       return createCorsResponse(supply, 200, req);
     }

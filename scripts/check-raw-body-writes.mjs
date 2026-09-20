@@ -66,7 +66,25 @@ function walk(dir, out = []) {
   return out;
 }
 
-/** `.update({ ...body` / `.insert({ ...payload` — the spread must be FIRST in the literal. */
+/**
+ * `.update({ ...body` / `.insert({ ...payload` - the spread must be FIRST in
+ * the literal.
+ *
+ * MATCHED ACROSS NEWLINES, which the first version of this did not. It scanned
+ * line by line, so only the single-line form was ever reported - and prettier
+ * breaks exactly this shape onto two lines the moment the object has a second
+ * key, which it always does (`updated_at`). So the COMMON spelling
+ *
+ *     .update({
+ *       ...body,
+ *       updated_at: new Date().toISOString(),
+ *     })
+ *
+ * was invisible to a hard-working guard that reported its single-line
+ * siblings. `supplies:update:supplies` sat unreported that way. Same class as
+ * check:no-random-metrics' line-anchored rule, and the reason to state a
+ * guard's matching UNIT in its header, not just its pattern.
+ */
 const SPREAD =
   /\.(update|insert|upsert)\(\s*\{\s*\.\.\.\s*(body|payload|data|req\.body|updates|fields)\b/g;
 
@@ -74,10 +92,11 @@ const findings = [];
 for (const file of walk(root)) {
   const src = stripComments(readFileSync(file, 'utf8'));
   const lines = src.split('\n');
-  for (let i = 0; i < lines.length; i++) {
-    SPREAD.lastIndex = 0;
-    const match = SPREAD.exec(lines[i]);
-    if (!match) continue;
+  SPREAD.lastIndex = 0;
+  let match;
+  while ((match = SPREAD.exec(src)) !== null) {
+    // 1-indexed line of the match, for the same backward .from(...) walk.
+    const i = src.slice(0, match.index).split('\n').length - 1;
     // The table is on the nearest preceding .from('...') in the same chain.
     let table = 'unknown';
     for (let j = i; j >= Math.max(0, i - 6); j--) {
