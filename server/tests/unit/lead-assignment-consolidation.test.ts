@@ -133,3 +133,83 @@ describe('the canonical dispatcher covers what was deleted', () => {
     }
   });
 });
+
+/**
+ * Batch 15: the Express side of the same consolidation.
+ *
+ * `server/routes-lead-assignment.ts` was a THIRD implementation of the six
+ * prefixes batch 14 retired - 16 handlers, mounted via an exported
+ * `register*(app)` so a grep of the registry for its filename found nothing.
+ * No client tree calls any of its domains and the canonical edge function
+ * covers 15 of its 16 endpoints, so it is deleted rather than kept.
+ *
+ * `server/routes-auto-lead-routing.ts` is the live half and the more useful
+ * finding. `AutoLeadRoutingDashboard.tsx` is routed and calls /dashboard,
+ * /config and /rules; Express had NO /rules handler, so listing, creating and
+ * deleting a routing rule 404'd in dev while working in production, and its
+ * /config PUT logged the body and answered success without storing anything.
+ * The prefix is proxied now, so dev runs the same handler prod does.
+ */
+describe('lead-assignment Express routers retired', () => {
+  const SERVER = join(ROOT, 'server');
+
+  it('deleted both routers', () => {
+    expect(existsSync(join(SERVER, 'routes-lead-assignment.ts'))).toBe(false);
+    expect(existsSync(join(SERVER, 'routes-auto-lead-routing.ts'))).toBe(false);
+  });
+
+  it('unmounted them rather than leaving a dangling call', () => {
+    // An exported register*(app) mount is invisible to a grep for the module
+    // path, so this checks the identifier the registry actually calls.
+    const registry = stripComments(readFileSync(join(SERVER, 'routes-registry.ts'), 'utf8'));
+    expect(registry).not.toContain('registerLeadAssignmentRoutes');
+    expect(registry).not.toContain('registerAutoLeadRoutingRoutes');
+    const sales = stripComments(readFileSync(join(SERVER, 'domains/sales.ts'), 'utf8'));
+    expect(sales).not.toContain('routes-lead-assignment');
+    expect(sales).not.toContain('routes-auto-lead-routing');
+  });
+
+  it('proxies auto-lead-routing so the rules controls resolve in dev', () => {
+    // Without the proxy, deleting the Express router takes /dashboard and
+    // /config from working-in-dev to unserved, and /rules stays broken.
+    const proxy = stripComments(
+      readFileSync(join(SERVER, 'middleware/edge-function-proxy.ts'), 'utf8'),
+    );
+    expect(proxy).toContain("'/api/auto-lead-routing': 'auto-lead-routing'");
+  });
+
+  it('keeps the edge function the proxy points at, with its rules branches', () => {
+    const src = readFileSync(join(FUNCTIONS, 'auto-lead-routing/index.ts'), 'utf8');
+    for (const branch of [
+      "method === 'GET' && endpoint === 'rules'",
+      "method === 'POST' && endpoint === 'rules'",
+      "method === 'DELETE' && endpoint === 'rules'",
+      "endpoint === 'dashboard'",
+      "endpoint === 'config'",
+    ]) {
+      expect(src).toContain(branch);
+    }
+    // EDGE-002g: this function once answered with two invented routing rules
+    // for a table named by no schema. It reads the real one.
+    expect(src).toContain("RULES_TABLE = 'lead_assignment_rules'");
+  });
+
+  it('answers the four dashboard keys the page reads', () => {
+    // A proxy entry changes what dev answers, so the shapes are compared
+    // rather than assumed (PA-040).
+    const src = readFileSync(join(FUNCTIONS, 'auto-lead-routing/index.ts'), 'utf8');
+    const page = readFileSync(join(ROOT, 'client/src/pages/AutoLeadRoutingDashboard.tsx'), 'utf8');
+    for (const key of ['overview', 'scoreDistribution', 'repWorkload', 'recentLeads']) {
+      expect(src).toContain(`${key}:`);
+      expect(page).toContain(`dashboardData?.${key}`);
+    }
+  });
+
+  it('keeps the routing service, which a live workflow seam imports', () => {
+    // web-form-processor.ts dispatches form.submitted and uses it, so the
+    // service is not an orphan even though both routers are gone.
+    expect(existsSync(join(SERVER, 'services/auto-lead-routing-service.ts'))).toBe(true);
+    const seam = readFileSync(join(SERVER, 'services/web-form-processor.ts'), 'utf8');
+    expect(seam).toContain("from './auto-lead-routing-service'");
+  });
+});

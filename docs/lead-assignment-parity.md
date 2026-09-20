@@ -18,13 +18,14 @@
 > would break a working page. Converging them is a shape question, not a
 > deletion.
 >
-> Two Express files this table lists are already gone: QUALITY-002 deleted
-> `server/routes-territory-management.ts` and
-> `server/services/territory-management-service.ts` as duplicates of the
-> canonical function. `server/routes-lead-assignment.ts` and
-> `server/routes-auto-lead-routing.ts` remain and are still mounted, so dev
-> serves these prefixes from Express while prod serves them from the edge
-> function.
+> **All five Express files in the table below are now gone.** QUALITY-002
+> deleted `server/routes-territory-management.ts` and
+> `server/services/territory-management-service.ts`; SEC-EDGE-001 batch 15
+> deleted `server/routes-lead-assignment.ts` (16 handlers, six prefixes no
+> client tree calls) and `server/routes-auto-lead-routing.ts`, the latter
+> shadowed by a new `/api/auto-lead-routing` proxy entry so dev and prod run the
+> same handler. `server/services/auto-lead-routing-service.ts` is KEPT:
+> `web-form-processor.ts` imports it for the live `form.submitted` seam.
 >
 > Not carried over: `DELETE /lead-assignment-queue/:id` has no canonical
 > equivalent, and `GET /user-assignments/:userId` returned a combined

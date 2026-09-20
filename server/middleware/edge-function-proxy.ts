@@ -635,6 +635,25 @@ export function registerEdgeFunctionProxy(app: any) {
     // clean pattern as lease-payments, so resolved here rather than grandfathered.)
     '/api/ai-employees': { fn: 'ai-employee', pathPrefix: '/ai-employees' },
 
+    // SEC-EDGE-001 batch 15: auto-lead-routing. AutoLeadRoutingDashboard.tsx is
+    // routed and calls /dashboard, /config and /rules. Express served the first
+    // two and had NO /rules handler at all, so listing, creating and deleting a
+    // routing rule - three controls on a live page - 404'd in dev while working
+    // in production. Its /config PUT was worse than missing: it logged the body
+    // and answered success without storing anything, so a user toggling routing
+    // settings was told "saved successfully" and lost them on reload.
+    //
+    // The edge function covers /rules (GET/POST/PUT/DELETE), /dashboard,
+    // /config (GET/PUT, stored under tenants.metadata.autoLeadRouting) and
+    // POST /route[/:leadId]. Its /dashboard returns the same four keys the page
+    // reads - overview, scoreDistribution, repWorkload, recentLeads - checked
+    // against the page rather than assumed, because a proxy entry changes what
+    // dev answers.
+    //
+    // NOT carried over, and neither has a caller in any client tree:
+    // POST /route-batch and GET /preview/:leadId.
+    '/api/auto-lead-routing': 'auto-lead-routing',
+
     // EDGE-002a: billing — full frontend parity audited 2026-06-11
     // (analytics + 3 sub-routes, invoices list/:id/pay/email/pdf/
     // generate-from-contract, rules + activate/deactivate, configurations,

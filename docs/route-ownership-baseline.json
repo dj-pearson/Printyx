@@ -3,7 +3,6 @@
   "bothDivergent": [
     "analytics",
     "audit-logs",
-    "auto-lead-routing",
     "auto-supply-replenishment",
     "catalog",
     "chatbot",

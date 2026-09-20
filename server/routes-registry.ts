@@ -57,9 +57,7 @@ import {
   registerDealTagRoutes,
   // registerPipelineConfigurationRoutes — migrated to supabase/functions/pipeline-config/
   // setupSalesPipelineRoutes — migrated to supabase/functions/sales-pipeline/
-  registerLeadAssignmentRoutes,
   registerLeadMapRoutes,
-  registerAutoLeadRoutingRoutes,
   registerRenewalManagementRoutes,
   contractRenewalRoutes,
 } from './domains/sales';
@@ -843,9 +841,13 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerProductModelsRoutes(app);
   registerProductPricingRoutes(app);
   registerSoftwareProductsRoutes(app);
-  registerLeadAssignmentRoutes(app);
+  // registerLeadAssignmentRoutes(app) - DELETED (SEC-EDGE-001 batch 15):
+  // 16 handlers across six prefixes no client tree calls, every one covered by
+  // supabase/functions/lead-assignment/ and aliased there in server.ts.
   registerLeadMapRoutes(app);
-  registerAutoLeadRoutingRoutes(app);
+  // registerAutoLeadRoutingRoutes(app) - DELETED (SEC-EDGE-001 batch 15):
+  // shadowed by the '/api/auto-lead-routing' proxy entry, which is what makes
+  // the page's /rules controls work in dev at all.
   // registerPredictiveServiceDispatchRoutes was called here and is DELETED
   // (QUALITY-002). See the /api/predictive-dispatch entry in
   // middleware/edge-function-proxy.ts: the router's handlers referenced three

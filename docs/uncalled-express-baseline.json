@@ -1,6 +1,6 @@
 {
   "note": "Express /api domains no client tree calls. A WORKLIST, not settled debt: some are features nobody wired, some are deletable, and this guard cannot tell them apart. Shrink-only — see scripts/check-uncalled-express-routes.mjs for why five other guards miss these.",
-  "count": 85,
+  "count": 79,
   "domains": [
     {
       "domain": "accessibility",
@@ -13,10 +13,6 @@
     {
       "domain": "approvals",
       "class": "no-edge"
-    },
-    {
-      "domain": "assign-lead",
-      "class": "edge-too"
     },
     {
       "domain": "assignment-groups",
@@ -167,18 +163,6 @@
       "class": "no-edge"
     },
     {
-      "domain": "lead-assignment-history",
-      "class": "edge-too"
-    },
-    {
-      "domain": "lead-assignment-queue",
-      "class": "edge-too"
-    },
-    {
-      "domain": "lead-assignment-rules",
-      "class": "edge-too"
-    },
-    {
       "domain": "me",
       "class": "edge-too"
     },
@@ -212,10 +196,6 @@
     },
     {
       "domain": "renewal-playbooks",
-      "class": "edge-too"
-    },
-    {
-      "domain": "rep-capacity",
       "class": "edge-too"
     },
     {
@@ -309,10 +289,6 @@
     {
       "domain": "upload",
       "class": "no-edge"
-    },
-    {
-      "domain": "user-assignments",
-      "class": "edge-too"
     },
     {
       "domain": "v1",
