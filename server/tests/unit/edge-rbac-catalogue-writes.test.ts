@@ -673,13 +673,37 @@ describe('the branch-gated surfaces gate writes and only writes', () => {
     expect(nav.slice(at, at + 200)).toContain('minLevel: 1');
   });
 
-  it('ai-gpt5 is the only entry left on the worklist, and a role would not fix it', () => {
-    // Every call costs money at OpenAI. A manager can run up the same bill, so
-    // gating by level would look like a fix and change nothing. It wants a rate
-    // limit or a spend cap - named rather than quietly reclassified.
+  /**
+   * WIDENED 2026-09-20. This asserted the worklist was exactly `['ai-gpt5']`,
+   * and a round that EXAMINED a function and honestly filed it as needs-gate
+   * broke it - the test failed for the list growing correctly, which is the
+   * opposite of what it exists to catch. Pinning membership is the same shape
+   * as pinning a count: it measures the list's size rather than its quality.
+   *
+   * The property is that a needs-gate entry is NAMED rather than quietly
+   * reclassified, and says why a level check would not be the fix. Both
+   * current entries hold it for different reasons:
+   *   - ai-gpt5: every call costs money at OpenAI and a manager can run up the
+   *     same bill, so a level gate would look like a fix and change nothing.
+   *     It wants a rate limit or a spend cap.
+   *   - contract-tiered-rates: its page is minLevel 2, so mirroring navigation
+   *     would constrain nobody while gating higher would lock out the billing
+   *     staff the page exists for. It wants an approval on a rate change.
+   */
+  it('every worklist entry says why a role gate would not fix it', () => {
     const triage = JSON.parse(read('docs/edge-rbac-triage.json'));
     const open = triage.triage.filter((e: { verdict: string }) => e.verdict === 'needs-gate');
-    expect(open.map((e: { fn: string }) => e.fn)).toEqual(['ai-gpt5']);
-    expect(open[0].reason).toMatch(/spend cap|rate limit/);
+
+    // A worklist that emptied itself by reclassification rather than by work is
+    // the failure this test was written for, so it still has to hold something.
+    expect(open.length).toBeGreaterThan(0);
+    expect(open.map((e: { fn: string }) => e.fn)).toContain('ai-gpt5');
+
+    for (const entry of open) {
+      expect(
+        entry.reason,
+        `${entry.fn} is marked needs-gate without saying why a level check is not the answer`,
+      ).toMatch(/spend cap|rate limit|approval|NOT GATED/i);
+    }
   });
 });

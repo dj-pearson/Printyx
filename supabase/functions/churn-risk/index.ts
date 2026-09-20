@@ -42,6 +42,8 @@ import {
   type ScoredCustomer,
 } from './scoring.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 
 const num = (v: unknown): number => {
   const n = typeof v === 'number' ? v : parseFloat(String(v ?? 0));
@@ -236,6 +238,46 @@ export default async function handler(req: Request) {
 
     // --- PUT /settings -----------------------------------------------------
     if (method === 'PUT' && first === 'settings') {
+      /**
+       * SEC-EDGE-001: this is TENANT-WIDE configuration, not the caller's own
+       * preference. The weights and the watch/at-risk thresholds decide which
+       * customers the whole company sees as at risk, and the digest toggle
+       * decides whether anyone is told. Ungated, any authenticated member could
+       * raise the at-risk threshold until the board is empty - and the board
+       * looking clean is indistinguishable from the business being fine.
+       *
+       * Reads stay open. The console is a rep's view of their own accounts;
+       * what a rep should not have is the ability to redefine "at risk" for
+       * everybody. Gate the branch, not the function.
+       */
+      try {
+        requireRoleLevel(
+          {
+            userId: user.id,
+            tenantId,
+            email: user.email,
+            jwt: jwt ?? '',
+            supabaseUser: user,
+          } as AuthContext,
+          ROLE_LEVEL.MANAGER,
+        );
+      } catch (err) {
+        // Only an RbacError is a role refusal; anything else is rethrown so a
+        // database outage does not read as "your role is too low".
+        if (err instanceof RbacError) {
+          return createCorsResponse(
+            {
+              message: 'Changing churn-risk thresholds requires a manager role',
+              code: 'INSUFFICIENT_ROLE',
+              details: err.details,
+            },
+            403,
+            req,
+          );
+        }
+        throw err;
+      }
+
       const body = await safeJson(req);
 
       const invalid = validateSettings(body);

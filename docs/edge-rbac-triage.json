@@ -1,12 +1,14 @@
 {
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing — AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing — this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
-    "unexamined": 53,
+    "open-by-design": 23,
     "headless": 44,
-    "open-by-design": 20,
-    "public": 8,
+    "unexamined": 46,
+    "needs-gate": 2,
     "internal": 3,
-    "needs-gate": 1
+    "gated-branch": 2,
+    "public": 8,
+    "row-scoped": 1
   },
   "triage": [
     {
@@ -106,8 +108,8 @@
     },
     {
       "fn": "churn-risk",
-      "verdict": "unexamined",
-      "reason": "One write; the reads are management-shaped but that is a guess until it is read."
+      "verdict": "gated-branch",
+      "reason": "EXAMINED AND GATED 2026-09-20. Reads are a rep console over their own accounts and stay open. PUT /settings is TENANT-WIDE configuration - the signal weights, the watch and at-risk thresholds, the digest toggle - so any member could have raised the threshold until the board was empty, and an empty at-risk board is indistinguishable from a healthy book. That write now requires MANAGER."
     },
     {
       "fn": "contract-renewals",
@@ -116,8 +118,8 @@
     },
     {
       "fn": "contract-tiered-rates",
-      "verdict": "unexamined",
-      "reason": "One write over billing rates - likely needs a gate, but MeterBilling is the only caller and the branch needs reading first."
+      "verdict": "needs-gate",
+      "reason": "EXAMINED 2026-09-20, NOT GATED, and the reason is the point. POST creates billing rate tiers on a contract - what a customer is charged per page - with no role check. Its calling page /meter-billing is minLevel 2, so mirroring navigation would put the gate at 2 and constrain almost nobody, while gating higher would lock out the billing staff the page exists for. The real control is an approval on a rate change, not a level, and no story has built one. Recorded as needs-gate rather than gated at a level that would look like a fix and change nothing - the ai-gpt5 precedent."
     },
     {
       "fn": "crm",
@@ -147,7 +149,7 @@
     {
       "fn": "daily-briefing",
       "verdict": "open-by-design",
-      "reason": "The caller's own briefing."
+      "reason": "VERIFIED 2026-09-20: every read filters .eq(user_id, user.id). Row scoping, not role scoping, is the control - the same shape as activities."
     },
     {
       "fn": "dashboard",
@@ -192,7 +194,7 @@
     {
       "fn": "documents",
       "verdict": "unexamined",
-      "reason": "One write; not yet read."
+      "reason": "Still unexamined - one write, not yet read. Left honestly rather than given a verdict from the name; PROD-008d records the whole document-automation feature as unshipped, which is why nothing has pushed this up the list."
     },
     {
       "fn": "email-marketing",
@@ -322,7 +324,7 @@
     {
       "fn": "meetings",
       "verdict": "open-by-design",
-      "reason": "The caller's own calendar."
+      "reason": "VERIFIED 2026-09-20 - and the reason it needed verifying is worth keeping. index.ts delegates, so a grep for user.id on it finds nothing and the old one-line verdict (the callers own calendar) looked unbacked. handlers/connections.ts and handlers/events.ts do filter .eq(user_id, auth.userId) on every connection and event path, including the token rows. ONE PATH IS CROSS-USER BY DESIGN: GET /calendar/availability/:userId returns any colleague busy windows, which is what a meeting scheduler needs and is free/busy rather than content."
     },
     {
       "fn": "mobile-auth",
@@ -342,7 +344,7 @@
     {
       "fn": "notifications",
       "verdict": "open-by-design",
-      "reason": "A user's own notifications."
+      "reason": "VERIFIED 2026-09-20: three read paths and the mark-read write all filter .eq(user_id, user.id), so a caller reaches only their own. Row scoping is the control."
     },
     {
       "fn": "oauth-proxy",
@@ -391,8 +393,8 @@
     },
     {
       "fn": "pipeline-forecast",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "row-scoped",
+      "reason": "CORRECTED 2026-09-20 - this entry said unexamined while the function returned every owner commit to any authenticated member. It is row-scoped now via _shared/scope.ts (COP-I06 AC3): six reads narrowed to the caller tier, each table scoped on the column it actually has, and every branch reports the tier it applied. The page minLevel 3 was never a control - a nav gate hides a menu item."
     },
     {
       "fn": "portal-service",
@@ -456,8 +458,8 @@
     },
     {
       "fn": "quote-line-items",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "EXAMINED 2026-09-20. GET and POST both scoped to a quoteId. Adding lines to a quote is a rep own daily work and the quote guardrails (QUOTE-006/016) are what constrain the numbers, not a role."
     },
     {
       "fn": "remote-monitoring",
@@ -491,8 +493,8 @@
     },
     {
       "fn": "sales-forecasts",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "EXAMINED 2026-09-20. Two reads over sales_forecasts and forecast_pipeline_items. NOTHING WRITES sales_forecasts anywhere (PA-022, and it is in unwritten-tables-baseline.json), so the list is empty for every tenant and there is nothing to expose. Becomes needs-gate the day a create path ships, because a forecast is per-rep revenue the way pipeline-forecast categories are - see that entry."
     },
     {
       "fn": "sales-handoffs",
@@ -506,8 +508,8 @@
     },
     {
       "fn": "sales-rep-assignments",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "EXAMINED AND GATED 2026-09-20. Six reads are a territory map a rep needs. The three POSTs - assign, bulk-assign, assign-by-area - move an account, its pipeline and whatever commission follows it from one rep to another, and were open to any authenticated tenant member: one bulk-assign call could take a colleague whole book. Writes now require SUPERVISOR, mirroring the page minLevel 3, as a LEVEL check because the permission codes those Express gates name are not the codes any seeder creates (SEC-EDGE-002)."
     },
     {
       "fn": "sales-reports",
@@ -626,8 +628,8 @@
     },
     {
       "fn": "users",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "EXAMINED 2026-09-20. Reasoning from the name said user directory; reading the handler says assignee picker. One GET, no sub-paths (any sub-path 404s deliberately), returning id/email/name/roleId/teamId/avatar for ACTIVE users in the caller own tenant - the list every task-assignment and deal-owner control in the app needs, on pages that are minLevel 1. A colleague list inside one company is not the exposure a commission figure is, and gating it would break assignment for every rep. Off-pattern in one respect worth fixing separately: it hand-rolls tenant resolution on app_metadata.tenant_id only, so a caller whose claim uses the camelCase tenantId spelling falls through to a users-table lookup on every request. Correct, just an extra round trip."
     },
     {
       "fn": "validate",
