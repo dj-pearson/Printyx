@@ -17,7 +17,7 @@
  * that button answered "Failed to update lead" in production every single time.
  * Per-field saves go through the same endpoint, now mapped and whitelisted.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,11 @@ import { LeadProposals } from '@/components/leads/LeadProposals';
 import { EnrollInSequenceDialog } from '@/components/leads/EnrollInSequenceDialog';
 import { LeadQuotes } from '@/components/leads/LeadQuotes';
 import { LeadDeals } from '@/components/leads/LeadDeals';
-import { RecordPageLayout } from '@/components/crm/RecordPageLayout';
+import {
+  RecordPageLayout,
+  RecordStageBar,
+  type RecordStage,
+} from '@/components/crm/RecordPageLayout';
 import { format } from 'date-fns';
 import {
   ArrowLeft,
@@ -269,6 +273,57 @@ export default function LeadDetailHubspot() {
    * (COP-M01), so a field this page sends under a name the table does not carry
    * comes back in `ignoredFields` instead of vanishing.
    */
+  /**
+   * CRM-008 AC8 on the lead side. DealDetail has had the stage picker since the
+   * story shipped and this page rendered `status` as a read-only Badge, so a
+   * rep could not advance a lead from its own record - they had to find it on a
+   * board.
+   *
+   * The vocabulary comes from GET /api/sales-pipeline/stages, which COP-E02
+   * made the ONE source for it: these ids are `business_records.status` values,
+   * NOT `pipeline_stages` uuids, and comparing the two silently yields -1 (that
+   * story's original defect advanced every record to the first stage). Asking
+   * the server rather than hardcoding the list is what keeps this page and the
+   * board on the same nine words.
+   */
+  const { data: stageRows = [] } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['/api/sales-pipeline/stages'],
+    queryFn: async () => {
+      // The endpoint answers a bare array; tolerate the two envelope shapes the
+      // other CRM reads use rather than assuming one.
+      const raw = (await apiRequest('/api/sales-pipeline/stages')) as
+        | unknown[]
+        | { data?: unknown[]; stages?: unknown[] }
+        | null;
+      const list: unknown[] = Array.isArray(raw)
+        ? raw
+        : ((raw?.data ?? raw?.stages ?? []) as unknown[]);
+      return list.filter(
+        (row): row is { id: string; name: string } =>
+          typeof row === 'object' &&
+          row !== null &&
+          typeof (row as { id?: unknown }).id === 'string',
+      );
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  /**
+   * A status outside the vocabulary belongs to no stage, and leaving it out
+   * would render the bar with nothing highlighted - which reads as "not
+   * started" rather than "this word is not one of ours". It is appended instead
+   * so the rep can see where the record actually is, the same way the board
+   * lists those rows rather than dropping them.
+   */
+  const stages = useMemo<RecordStage[]>(() => {
+    const known = stageRows.map((s) => ({ id: s.id, name: s.name }));
+    const current = lead?.status;
+    if (current && !known.some((s) => s.id === current)) {
+      known.push({ id: current, name: current });
+    }
+    return known;
+  }, [stageRows, lead?.status]);
+
   const saveField = useMutation({
     mutationFn: async (patch: Record<string, unknown>) =>
       apiRequest(`/api/leads/${id}`, 'PUT', patch),
@@ -450,6 +505,14 @@ export default function LeadDetailHubspot() {
               </Badge>
               {lead.customerNumber && <Badge variant="outline">{lead.customerNumber}</Badge>}
             </>
+          }
+          headerContent={
+            <RecordStageBar
+              stages={stages}
+              currentStageId={lead.status}
+              onChange={(stageId) => saveField.mutate({ status: stageId })}
+              disabled={saveField.isPending}
+            />
           }
           quickActions={[
             {
