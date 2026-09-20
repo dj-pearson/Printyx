@@ -140,3 +140,33 @@ describe('the Leads table advertises only columns its endpoint returns', () => {
     expect(MAPPER).toContain('createdAt: company.created_at');
   });
 });
+
+describe('bulk operations survive the switch', () => {
+  const CONTACTS_PAGE = read('client/src/pages/CrmContactsPage.tsx');
+  const LEGACY_CONTACTS = read('client/src/pages/Contacts.tsx');
+
+  it('carries the legacy Delete action onto the canonical page', () => {
+    // The shell renders its toolbar only when bulkActions is non-empty, so a
+    // page that omits the prop offers selection and nothing to do with it.
+    expect(CONTACTS_PAGE).toContain('bulkActions={bulkActions}');
+    expect(CONTACTS_PAGE).toContain("id: 'delete'");
+    expect(CONTACTS_PAGE).toContain('requiresConfirmation: true');
+  });
+
+  it('does not carry the three placebo actions', () => {
+    // The legacy page's Send Email, Edit Properties and Assign Owner each
+    // raised a toast saying what they would do and did nothing. Porting them
+    // would move three controls that report success and change nothing.
+    for (const placebo of ["id: 'email'", "id: 'edit'", "id: 'assign'"]) {
+      expect(LEGACY_CONTACTS).toContain(placebo);
+      expect(CONTACTS_PAGE).not.toContain(placebo);
+    }
+  });
+
+  it('reports what actually deleted rather than what was selected', () => {
+    // Promise.allSettled, not Promise.all: one failure must not hide the rest,
+    // and the count in the toast has to be what went.
+    expect(CONTACTS_PAGE).toContain('Promise.allSettled');
+    expect(CONTACTS_PAGE).toMatch(/failed === 0/);
+  });
+});

@@ -3,13 +3,15 @@
  * Table-only view (no board) for contacts.
  * Part of CRM-010: Apply unified CRM pattern to all object types.
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { CrmIndexShell, type CrmViewRenderProps } from '@/components/crm/CrmIndexShell';
 import { CrmDataTable } from '@/components/crm/CrmDataTable';
+import type { BulkAction } from '@/components/ui/bulk-operations-toolbar';
+import { Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,6 +102,51 @@ export default function CrmContactsPage() {
     },
   });
 
+  /**
+   * COP-M01: the legacy Contacts page offered four bulk actions and THREE OF
+   * THEM WERE PLACEBOS - "Send Email", "Edit Properties" and "Assign Owner"
+   * each raised a toast saying what they would do and did nothing. Only Delete
+   * was real, so only Delete is carried over; porting the other three would
+   * move three controls that report success and change nothing onto the
+   * canonical page.
+   */
+  const deleteContactMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/company-contacts/${id}`, 'DELETE'),
+  });
+
+  const bulkActions = useMemo<BulkAction[]>(
+    () => [
+      {
+        id: 'delete',
+        label: 'Delete',
+        icon: Trash2,
+        variant: 'destructive',
+        requiresConfirmation: true,
+        confirmationTitle: 'Delete contacts',
+        confirmationDescription: 'This removes the selected contacts. It cannot be undone.',
+        onClick: async (ids: string[]) => {
+          // Settled, not raced: one failure must not hide the rest, and the
+          // count reported has to be what actually went.
+          const results = await Promise.allSettled(
+            ids.map((id) => deleteContactMutation.mutateAsync(id)),
+          );
+          const failed = results.filter((r) => r.status === 'rejected').length;
+          await queryClient.invalidateQueries({ queryKey: ['/api/company-contacts'] });
+          toast(
+            failed === 0
+              ? { title: `Deleted ${ids.length} contact${ids.length === 1 ? '' : 's'}` }
+              : {
+                  title: `Deleted ${ids.length - failed} of ${ids.length}`,
+                  description: `${failed} could not be deleted.`,
+                  variant: 'destructive',
+                },
+          );
+        },
+      },
+    ],
+    [deleteContactMutation, queryClient, toast],
+  );
+
   const renderTable = useCallback(
     (props: CrmViewRenderProps) => (
       <CrmDataTable
@@ -123,6 +170,7 @@ export default function CrmContactsPage() {
       <CrmIndexShell
         objectType="contacts"
         renderTable={renderTable}
+        bulkActions={bulkActions}
         onCreateNew={() => setShowCreateDialog(true)}
       />
 
