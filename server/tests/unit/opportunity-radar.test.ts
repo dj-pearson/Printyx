@@ -6,6 +6,8 @@
 // volume claim made from a fleet whose meters are silent, or a colour-share
 // verdict drawn from twelve pages.
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import {
   DEFAULT_THRESHOLDS,
@@ -444,5 +446,122 @@ describe('dealFromPlay — AC3, the rep never retypes what the system knows', ()
 
   it('carries no amount rather than a zero when the play has no value', () => {
     expect(dealFromPlay({ ...play, estimatedValue: null }, opts).amount).toBeNull();
+  });
+});
+
+/**
+ * The scan had no body (COP-B04, round 60).
+ *
+ * `runScan` resolved its settings, computed `thresholds` and `now`, and then
+ * returned an object referencing `drafts`, `inserted` and `equipment` - three
+ * identifiers never declared in the function. It fetched nothing and never
+ * called `detectPlays`, which was imported and unused.
+ *
+ * Nothing typechecks the edge tree, so that is not a compile error: it is a
+ * ReferenceError the first time the path runs. Both entry points hit it - the
+ * manual button and the nightly sweep - and the sweep's per-tenant catch
+ * records the failure and steps over it, so an all-failing sweep reads as a
+ * quiet night unless somebody opens the response. The radar detected nothing,
+ * ever, while looking finished: `thresholds` assigned and unused was the tell.
+ *
+ * These assertions are about the SHAPE of the scan, because a pure-module test
+ * cannot see whether anything calls it. `detectPlays` itself is covered above.
+ */
+describe('the scan actually scans', () => {
+  const SRC = readFileSync(
+    join(__dirname, '../../../supabase/functions/opportunity-radar/index.ts'),
+    'utf8',
+  );
+  const scanBody = (() => {
+    const at = SRC.indexOf('async function runScan');
+    expect(at).toBeGreaterThan(-1);
+    const end = SRC.indexOf('async function sweepAllTenants');
+    expect(end).toBeGreaterThan(at);
+    return SRC.slice(at, end);
+  })();
+  /**
+   * Comments stripped for the absence checks. The scan's own header explains
+   * WHY it does not use `black_copies`, and a check that cannot tell prose from
+   * a column literal reports that explanation as the defect - the fourth time
+   * this trap has fired in this repo.
+   */
+  const scanCode = scanBody.replace(/(?<!:)\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('calls the detector it imports', () => {
+    expect(SRC).toContain('detectPlays,');
+    expect(scanBody).toContain('detectPlays({');
+  });
+
+  it('reads the installed base AC1 names', () => {
+    for (const table of ['equipment', 'contracts', 'meter_readings', 'service_tickets']) {
+      expect(scanBody).toContain(`.from('${table}')`);
+    }
+  });
+
+  it('pages rather than capping, so a large fleet is scanned whole', () => {
+    // AC8. A flat .limit() re-finds the same first page every night and the
+    // tail is never looked at.
+    //
+    // Checked PER READ, not by presence: a bare `toContain('fetchAllRows')` is
+    // satisfied by any one of the five calls, so converting just the equipment
+    // read back to an unpaged query survived it. Third time this session that a
+    // presence check stood in for a per-site one.
+    for (const table of [
+      'equipment',
+      'contracts',
+      'meter_readings',
+      'service_tickets',
+      'business_records',
+    ]) {
+      const at = scanCode.indexOf(`.from('${table}')`);
+      expect({ table, read: at > -1 }).toEqual({ table, read: true });
+      const before = scanCode.slice(Math.max(0, at - 220), at);
+      expect({ table, paged: before.includes('fetchAllRows') }).toEqual({ table, paged: true });
+    }
+    expect(scanCode).not.toMatch(/\.limit\(\d+\)/);
+  });
+
+  it('scopes every read to the tenant', () => {
+    // SEC-TENANT-005: a READ is bound by a filter, a WRITE by the payload, so
+    // the radar_plays upsert is excluded here and checked below instead.
+    const reads = [...scanCode.matchAll(/\.from\('([a-z_]+)'\)/g)]
+      .map((m) => m[1])
+      .filter((t) => t !== 'radar_plays');
+    expect(reads.length).toBeGreaterThan(4);
+    const filters = [...scanCode.matchAll(/\.eq\('tenant_id', tenantId\)/g)].length;
+    expect(filters).toBeGreaterThanOrEqual(reads.length);
+  });
+
+  it('binds the write to the tenant in its payload', () => {
+    expect(scanCode).toMatch(/tenant_id: tenantId/);
+  });
+
+  it('derives volume from the lifetime counters, not the delta columns', () => {
+    // COP-B05: black_copies/color_copies DEFAULT TO 0, so an unfinished import
+    // is indistinguishable from a month of no printing, and a volume play built
+    // on that fires on a machine that is simply unmeasured.
+    expect(scanCode).toContain('bw_meter_reading');
+    expect(scanCode).toContain('color_meter_reading');
+    expect(scanCode).not.toContain('black_copies');
+  });
+
+  it('refuses a negative rate from a meter reset', () => {
+    // A counter reading LOWER than it did is a reset or a swapped machine.
+    expect(scanBody).toMatch(/deltaBlack >= 0/);
+    expect(scanBody).toMatch(/deltaColor >= 0/);
+  });
+
+  it('is idempotent through the unique index, not a scan-time lookup', () => {
+    // AC7. Two overlapping sweeps would both read "not present" and both write.
+    expect(scanBody).toContain("onConflict: 'tenant_id,dedupe_key'");
+    expect(scanBody).toContain('ignoreDuplicates: true');
+    // What is reported created has to be what was written, or `detected -
+    // created` stops meaning "already known".
+    expect(scanBody).toMatch(/inserted = \(written \?\? \[\]\)\.length/);
+  });
+
+  it('fails loudly when the write fails', () => {
+    // A scan that swallows its insert error reports plays it did not store.
+    expect(scanBody).toMatch(/throw new Error\(`radar_plays insert failed/);
   });
 });

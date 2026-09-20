@@ -107,6 +107,177 @@ async function runScan(
   const thresholds = toThresholds(settingsRow);
   const now = new Date();
 
+  // AC8: paged, not capped. A tenant with a large installed base must be
+  // scanned whole - a flat .limit() re-finds the same first page every night
+  // and the tail is never looked at (the shape COP-I01 found on the board and
+  // the deal-desk SLA sweep found on a schedule, where it is worse).
+  const equipment = await fetchAllRows<Row>(() =>
+    admin
+      .from('equipment')
+      .select(
+        'id, customer_id, serial_number, model_number, is_color_capable, equipment_status, lease_expires_date, purchase_price',
+      )
+      .eq('tenant_id', tenantId),
+  );
+
+  const contracts = await fetchAllRows<Row>(() =>
+    admin
+      .from('contracts')
+      .select('id, customer_id, end_date, status, monthly_base, black_rate, color_rate')
+      .eq('tenant_id', tenantId),
+  );
+
+  const equipmentIds = equipment.map((e) => String(e.id));
+
+  /**
+   * PostgREST has no GROUP BY, so the per-machine monthly volume is aggregated
+   * here from the raw readings - the same division of labour every aggregate in
+   * this tree uses.
+   *
+   * VOLUME COMES FROM THE LIFETIME COUNTERS, not the stored delta columns
+   * (COP-B05): `black_copies`/`color_copies` DEFAULT TO 0, so a row nobody
+   * finished importing is indistinguishable from a month in which the machine
+   * printed nothing, and a volume play built on that fires on a machine that is
+   * simply unmeasured.
+   */
+  const readings = equipmentIds.length
+    ? await fetchAllRows<Row>(() =>
+        admin
+          .from('meter_readings')
+          .select('equipment_id, reading_date, bw_meter_reading, color_meter_reading')
+          .eq('tenant_id', tenantId)
+          .order('reading_date', { ascending: true }),
+      )
+    : [];
+
+  const byMachine = new Map<string, Row[]>();
+  for (const row of readings) {
+    const id = row.equipment_id ? String(row.equipment_id) : null;
+    if (!id) continue;
+    const list = byMachine.get(id);
+    if (list) list.push(row);
+    else byMachine.set(id, [row]);
+  }
+
+  const meters: RadarMeterSummary[] = [];
+  for (const [equipmentId, rows] of byMachine) {
+    const last = rows[rows.length - 1];
+    const lastReadingDate = last?.reading_date ? String(last.reading_date) : null;
+    // Two readings are the minimum for a rate: one counter is a position, not a
+    // volume. Fewer, and the machine is reported with zero volume and a last
+    // reading date, which is what the meter-silence play is for.
+    if (rows.length < 2) {
+      meters.push({ equipmentId, monthlyBlack: 0, monthlyColor: 0, lastReadingDate });
+      continue;
+    }
+    const first = rows[0];
+    const spanMs = Date.parse(String(last.reading_date)) - Date.parse(String(first.reading_date));
+    const months = spanMs > 0 ? spanMs / (30.44 * 86400000) : 0;
+    const deltaBlack = Number(last.bw_meter_reading ?? 0) - Number(first.bw_meter_reading ?? 0);
+    const deltaColor =
+      Number(last.color_meter_reading ?? 0) - Number(first.color_meter_reading ?? 0);
+    // A counter that reads LOWER than it did is a meter reset or a swapped
+    // machine, not negative printing (COP-B05).
+    meters.push({
+      equipmentId,
+      monthlyBlack: months > 0 && deltaBlack >= 0 ? deltaBlack / months : 0,
+      monthlyColor: months > 0 && deltaColor >= 0 ? deltaColor / months : 0,
+      lastReadingDate,
+    });
+  }
+
+  /**
+   * Service CALLS inside the lookback, per machine. The unbacked note below
+   * says why it is calls: no service cost column exists anywhere in the schema,
+   * so a cost or margin threshold cannot be computed and is not pretended.
+   */
+  const lookbackFrom = new Date(
+    now.getTime() - thresholds.serviceLookbackDays * 86400000,
+  ).toISOString();
+  const tickets = await fetchAllRows<Row>(() =>
+    admin
+      .from('service_tickets')
+      .select('equipment_id, created_at')
+      .eq('tenant_id', tenantId)
+      .gte('created_at', lookbackFrom),
+  );
+  const serviceCalls = new Map<string, number>();
+  for (const t of tickets) {
+    const id = t.equipment_id ? String(t.equipment_id) : null;
+    if (!id) continue;
+    serviceCalls.set(id, (serviceCalls.get(id) ?? 0) + 1);
+  }
+
+  // Readable reasons need the account name; a play that says "lease expiring on
+  // 3f2a-..." is a play nobody acts on.
+  const customerIds = [
+    ...new Set(
+      [...equipment, ...contracts]
+        .map((r) => (r.customer_id ? String(r.customer_id) : null))
+        .filter((v): v is string => Boolean(v)),
+    ),
+  ];
+  const companyNames = new Map<string, string>();
+  if (customerIds.length > 0) {
+    const records = await fetchAllRows<Row>(() =>
+      admin
+        .from('business_records')
+        .select('id, company_name')
+        .eq('tenant_id', tenantId)
+        .in('id', customerIds),
+    );
+    for (const r of records) {
+      if (r.id) companyNames.set(String(r.id), String(r.company_name ?? ''));
+    }
+  }
+
+  const drafts = detectPlays({
+    equipment: equipment as never,
+    contracts: contracts as never,
+    meters,
+    serviceCalls,
+    companyNames,
+    thresholds,
+    now,
+  });
+
+  /**
+   * AC7's idempotency is the UNIQUE INDEX (tenant_id, dedupe_key), not a
+   * scan-time lookup: two sweeps overlapping would both read "not present" and
+   * both insert. `ignoreDuplicates` turns the re-run into a no-op, and the
+   * count of what was actually written is what the response reports - so
+   * `detected - created` reads as the dedupe working rather than as a failure.
+   */
+  let inserted = 0;
+  if (drafts.length > 0) {
+    const payload = drafts.map((d) => ({
+      tenant_id: tenantId,
+      play_type: d.playType,
+      dedupe_key: d.dedupeKey,
+      customer_id: d.customerId,
+      company_name: d.customerId ? (companyNames.get(d.customerId) ?? null) : null,
+      equipment_ids: d.equipmentIds,
+      contract_id: d.contractId,
+      reason: d.reason,
+      trigger_date: d.triggerDate,
+      estimated_value: d.estimatedValue,
+      score: d.score,
+      score_factors: d.scoreFactors,
+      status: 'open',
+      detected_at: now.toISOString(),
+      updated_at: now.toISOString(),
+    }));
+    const { data: written, error } = await admin
+      .from('radar_plays')
+      .upsert(payload, { onConflict: 'tenant_id,dedupe_key', ignoreDuplicates: true })
+      .select('id');
+    if (error) {
+      console.error('[RADAR] insert failed:', error.message);
+      throw new Error(`radar_plays insert failed: ${error.message}`);
+    }
+    inserted = (written ?? []).length;
+  }
+
   return {
     detected: drafts.length,
     created: inserted,
