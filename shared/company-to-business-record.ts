@@ -238,6 +238,39 @@ function normalizeStatus(
 }
 
 /**
+ * `companies.business_record_type` has FOUR live values, not two.
+ *
+ * The canonical list is in `supabase/functions/business-records/index.ts`'s own
+ * typeMap - Lead, Customer, Prospect, Former Customer - and the mapper tested
+ * only for 'lead', sending everything else to 'customer'. That is correct for
+ * Customer and Former Customer and WRONG FOR PROSPECT, which is the one a live
+ * surface produces: `LeadsPage.tsx`'s "Convert to Prospect" action writes
+ * exactly `{ business_record_type: 'Prospect', activity: 'qualified' }`, and
+ * `ProspectsPage` is a routed board over that value.
+ *
+ * A prospect has not bought anything. Migrated as a customer it arrives with
+ * `status: 'active'` - because 'qualified' is a LEAD status, so it fails the
+ * customer vocabulary and coerces to the customer fallback - and then appears
+ * in churn risk, QBR, contract renewal and every customer count in the
+ * product. The coercion counter DID fire, which is worse than silence in one
+ * respect: it reports "an activity outside the vocabulary", which reads as a
+ * data-quality note rather than as a lifecycle stage being destroyed.
+ *
+ * Mapped to 'lead', the same row keeps `status: 'qualified'` with no coercion
+ * at all, because the value was always a valid lead status on a row whose type
+ * was being read wrong.
+ */
+export function normalizeRecordType(value: string | null | undefined): 'lead' | 'customer' {
+  const v = (value || 'Customer').trim().toLowerCase();
+  // A prospect is a qualified lead, not a customer: the product converts
+  // Lead -> Prospect -> Customer, and only the last of those has bought.
+  if (v === 'lead' || v === 'prospect') return 'lead';
+  // 'Former Customer' stays a customer: it HAS bought, and 'churned' and
+  // 'inactive' are both real customer statuses.
+  return 'customer';
+}
+
+/**
  * Build the business_records insert payload for one companies row.
  *
  * Only columns with a real source are written. A column business_records has and
@@ -245,10 +278,7 @@ function normalizeStatus(
  * honestly sparse instead of confidently wrong.
  */
 export function mapCompanyRow(company: CompanyRow): MapResult {
-  const recordType =
-    (company.business_record_type || 'Customer').trim().toLowerCase() === 'lead'
-      ? 'lead'
-      : 'customer';
+  const recordType = normalizeRecordType(company.business_record_type);
   const { status, coerced } = normalizeStatus(company.activity, recordType);
 
   const row: MappedRecord = {

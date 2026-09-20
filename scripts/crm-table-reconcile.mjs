@@ -25,12 +25,20 @@
 // Everything left is unambiguous and is what --apply copies, keeping the id so
 // deals, proposals and quotes that already point at the account still resolve.
 //
-// Usage:
-//   DATABASE_URL=postgres://... node scripts/crm-table-reconcile.mjs
-//   ... --tenant <id>    restrict to one tenant
-//   ... --json           machine-readable report
-//   ... --apply          perform the unambiguous copies (prints first)
-//   ... --limit <n>      cap rows copied in one run
+// Usage - THROUGH tsx, NOT BARE node. This file imports
+// shared/company-to-business-record.ts, and node cannot load a .ts: the
+// documented `node scripts/...` invocation died with ERR_UNKNOWN_FILE_EXTENSION
+// before it read a single row. That matters more than a usual doc slip, because
+// this is a script somebody runs ONCE, against production, with credentials,
+// following this header.
+//
+//   DATABASE_URL=postgres://... npm run crm:reconcile
+//   ... -- --tenant <id>    restrict to one tenant
+//   ... -- --json           machine-readable report
+//   ... -- --apply          perform the unambiguous copies (prints first)
+//   ... -- --limit <n>      cap rows copied in one run
+//
+// (or `npx tsx scripts/crm-table-reconcile.mjs <flags>` directly.)
 //
 // Exit 0 when the report is clean or --apply succeeded, 1 when anything needs a
 // human, and 2 when it could not connect - so "did not run" is never read as
@@ -262,9 +270,25 @@ if (apply && buckets.migratable.length > 0) {
 await client.end();
 
 if (needsHuman > 0) {
+  /**
+   * SAY WHAT HAPPENED, NOT WHAT USUALLY HAPPENS.
+   *
+   * This printed "Nothing was merged" unconditionally - including directly
+   * under "✓ Copied 4 row(s) into business_records", which had just run. The
+   * refusal line is the LAST thing on screen after a long report, so on the
+   * one-shot production run this script exists for, an operator would read
+   * "nothing was merged" about a run that had merged rows, and re-run or
+   * escalate. The ambiguous rows are what was not merged; the unambiguous ones
+   * were, and the exit code stays 1 either way because a human is still owed a
+   * decision.
+   */
+  const merged =
+    copied > 0
+      ? `${copied} unambiguous row(s) were copied; these ${needsHuman} were not.`
+      : 'Nothing was merged.';
   console.error(
     `\n✗ ${needsHuman} row(s) need a decision no script should make. Resolve them, then ` +
-      're-run. Nothing was merged.',
+      `re-run. ${merged}`,
   );
   process.exit(1);
 }
