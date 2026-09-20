@@ -128,6 +128,43 @@ try {
     process.exit(1);
   }
 
+  /**
+   * A DATABASE WITH NO DEALS PASSES EVERY QUERY ABOVE.
+   *
+   * This file's header promises that "did not run" is never read as "passed",
+   * and it delivers that for the CONNECT case: an unreachable database exits 2.
+   * It did not deliver it for the EMPTY case. Pointed at a scratch Postgres
+   * with the whole migration chain replayed and no rows, it printed
+   *
+   *   Checked 0 deal(s) against 0 legacy stage(s) and 0 canonical stage(s)
+   *   ✓ Every deal resolves to exactly one canonical pipeline stage.
+   *
+   * - which is true of an empty set and tells you nothing. A wrong
+   * DATABASE_URL, a fresh replica, a staging environment somebody just reset,
+   * or a connection that lands on the wrong database all report green, and
+   * this is the guard CLAUDE.md says to run BEFORE AND AFTER touching any
+   * stage writer. Exit 2 alongside the connect failure, because both mean the
+   * same thing: the check did not measure anything.
+   *
+   * Deliberately keyed on DEALS rather than on stages. A tenant can legitimately
+   * have zero canonical stages before its template is bootstrapped, and a
+   * deployment can legitimately have no legacy stages left once COP-M07's
+   * migration finishes - but a Printyx database with no deals at all is not a
+   * deployment, it is the wrong database.
+   */
+  // node-postgres returns count(*) as a STRING, because a bigint does not fit
+  // a JS number safely - so `totals.deals === 0` is false against '0' and this
+  // floor silently never fired. Coerce before comparing.
+  if (Number(totals.deals) === 0) {
+    console.error(
+      '\n✗ Stage-resolution check could NOT RUN: no deals in ' +
+        (tenantId ? `tenant ${tenantId}` : 'this database') +
+        '.\n  Every query above is vacuously satisfied by an empty set, so this is\n' +
+        '  unknown, not a pass. Check DATABASE_URL points at the intended database.',
+    );
+    process.exit(2);
+  }
+
   console.log('✓ Every deal resolves to exactly one canonical pipeline stage.');
 } catch (error) {
   console.error(`✗ Stage-resolution check could NOT RUN: ${error.message}`);
