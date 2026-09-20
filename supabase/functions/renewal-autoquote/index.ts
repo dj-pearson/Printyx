@@ -30,6 +30,8 @@ import { normalizePath } from '../_shared/path.ts';
 import { pickTier, num, type CpcTier } from '../_shared/renewal-retier.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import {
   RENEWAL_DEAL_MOTION,
   buildRenewalDealInsert,
@@ -149,6 +151,48 @@ export default async function handler(req: Request) {
       return (created as Row) ?? null;
     }
 
+    /**
+     * SEC-EDGE-001: two of these branches decide something for the whole
+     * tenant, and the rest are a rep's own work on their own renewals.
+     *
+     * `PUT /settings` sets the discount ceiling, the lead-time window and the
+     * auto-send toggle for every renewal quote the system drafts. A
+     * SUPPRESSION is the other tenant-wide one and the less obvious: adding a
+     * customer means they never receive a renewal quote again, and nothing on
+     * the drafts board would show the absence - a renewal that silently stops
+     * being offered is indistinguishable from one nobody got round to.
+     *
+     * Reading, marking sent, dismissing a draft and recording an outcome stay
+     * open: that is what a rep does with their own book all day, and the
+     * generator itself is fired by the schedule.
+     */
+    const requireManager = () =>
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            message:
+              'Changing the auto-quote policy or suppressing a customer requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
     // ─── GET /settings, PUT /settings ────────────────────────────────
     if (first === 'settings' && !second) {
       if (req.method === 'GET') {
@@ -159,6 +203,11 @@ export default async function handler(req: Request) {
         return createCorsResponse(camelRow(settings), 200, req);
       }
       if (req.method === 'PUT') {
+        try {
+          requireManager();
+        } catch (err) {
+          return denyManager(err);
+        }
         const body = (await req.json().catch(() => ({}))) as Row;
         const parsed = validateSettings(body);
         if ('error' in parsed) {
@@ -203,6 +252,11 @@ export default async function handler(req: Request) {
       }
 
       if (!second && req.method === 'POST') {
+        try {
+          requireManager();
+        } catch (err) {
+          return denyManager(err);
+        }
         const body = (await req.json().catch(() => ({}))) as Row;
         const customerId = body.customerId ?? body.customer_id;
         if (!customerId || typeof customerId !== 'string') {
@@ -243,6 +297,12 @@ export default async function handler(req: Request) {
       }
 
       if (second && req.method === 'DELETE') {
+        // Lifting a suppression is the same decision in reverse.
+        try {
+          requireManager();
+        } catch (err) {
+          return denyManager(err);
+        }
         const { error } = await admin
           .from('renewal_suppressions')
           .delete()

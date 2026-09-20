@@ -49,6 +49,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { sendEmail } from '../email-marketing/_sendgrid.ts';
 import {
   DAY_MS,
@@ -108,6 +110,50 @@ export default async function handler(req: Request) {
       return createCorsResponse({ message: 'Tenant ID is required' }, 400, req);
     }
 
+    /**
+     * SEC-EDGE-001: the SPEND LIMIT is a manager decision; spending inside it
+     * is the coordinator's job.
+     *
+     * These settings carry the cost ceiling below which a replenishment order
+     * auto-ships, plus lead times and safety buffers - so raising the ceiling
+     * is authorising the system to spend more without asking anybody. That is
+     * gated. Shipping, cancelling and running the pipeline are NOT: a service
+     * coordinator watching toner levels is exactly who should do them, and the
+     * ceiling they operate under is set above.
+     *
+     * A branch gate rather than a file gate, because `/service/toner-replenish`
+     * has no `navigation-permissions.ts` entry and an unlisted path is visible
+     * by default - so gating the function would lock every one of its users
+     * out of a page they can see.
+     */
+    const requireManager = () =>
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    const denyManager = (err: unknown) => {
+      // Only an RbacError is a role refusal; anything else is rethrown, or a
+      // database outage reads as "your role is too low".
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            message: 'Changing the auto-replenish thresholds requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
     const url = new URL(req.url);
     // Idempotent — the dispatcher strips segment 0 before the handler runs.
     const { parts } = normalizePath(url.pathname, 'toner-replenish');
@@ -143,7 +189,14 @@ export default async function handler(req: Request) {
         const row = await loadTenantSettings(admin, tenantId);
         return createCorsResponse(toTenantSettings(tenantId, row), 200, req);
       }
-      if (method === 'PUT') return await putTenantSettings(req, admin, tenantId, user.id);
+      if (method === 'PUT') {
+        try {
+          requireManager();
+        } catch (err) {
+          return denyManager(err);
+        }
+        return await putTenantSettings(req, admin, tenantId, user.id);
+      }
     }
 
     if (resource === 'machines' && second) {
@@ -155,8 +208,15 @@ export default async function handler(req: Request) {
           return createCorsResponse({ message: 'Failed to load machine settings' }, 500, req);
         return createCorsResponse(toMachineSettings(row), 200, req);
       }
-      if (method === 'PUT' && third === 'settings')
+      if (method === 'PUT' && third === 'settings') {
+        // A per-machine override of the same ceiling, so the same gate.
+        try {
+          requireManager();
+        } catch (err) {
+          return denyManager(err);
+        }
         return await putMachineSettings(req, admin, tenantId, user.id, second);
+      }
     }
 
     return createCorsResponse({ message: 'Not found' }, 404, req);

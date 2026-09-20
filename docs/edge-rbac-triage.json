@@ -1,14 +1,14 @@
 {
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing — AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing — this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
-    "open-by-design": 25,
     "headless": 35,
-    "internal": 3,
-    "gated-branch": 6,
-    "needs-gate": 2,
-    "row-scoped": 4,
+    "unexamined": 34,
+    "open-by-design": 26,
     "public": 8,
-    "unexamined": 37
+    "gated-branch": 6,
+    "row-scoped": 4,
+    "internal": 3,
+    "needs-gate": 2
   },
   "triage": [
     {
@@ -447,11 +447,6 @@
       "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
     },
     {
-      "fn": "renewal-autoquote",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
-    },
-    {
       "fn": "renewal-playbooks",
       "verdict": "headless",
       "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it — that is AUDIT-024, not this story."
@@ -567,19 +562,15 @@
       "reason": "The rep's own day (COP-B01). Restricting it would empty the screen it exists for."
     },
     {
-      "fn": "toner-replenish",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
-    },
-    {
       "fn": "universal-search",
       "verdict": "open-by-design",
       "reason": "Same as search — the scoping that matters is on the rows returned."
     },
     {
       "fn": "user",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "Every one of its eight writes is the CALLER'S OWN row - the profile update and last-login stamp filter on users.id = user.id, and each user_settings write carries user_id: user.id or filters on it. Row scoping is the control here, and a role gate would stop a rep changing their own theme.",
+      "pathsRead": "index.ts - all eight write sites walked"
     },
     {
       "fn": "users",
