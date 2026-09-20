@@ -253,7 +253,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     // moved out to Settings; Meeting Transcription moved in from Productivity.
     children: [
       // COP-B01: TodayDashboard existed and was reachable from NO navigation.
-      { title: 'My Day', path: '/today', icon: Zap, group: 'Work' },
+      { title: 'My Day', path: '/crm/my-day', icon: Zap, group: 'Work' },
       { title: 'Leads', path: '/leads-management', icon: UserPlus, group: 'Work' },
       { title: 'Prospects', path: '/prospects', icon: Users, group: 'Work' },
       { title: 'Customers', path: '/customers', icon: UserCheck, group: 'Work' },

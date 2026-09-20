@@ -75,6 +75,26 @@ const routes = [
 ].filter((p) => p.startsWith('/') && p.length > 1 && !p.includes(':') && !p.includes('*'));
 
 /**
+ * Routes whose element is a LegacyRedirect. The header above has always said
+ * these are excluded - "a redirect exists to be typed, not linked" - and
+ * nothing implemented it, so retiring a path BY redirecting it reported the old
+ * path as an unlinked page. A guard whose comment promises more than its code
+ * does is worse than one that promises less.
+ *
+ * Matched on the route's ELEMENT rather than against a list of paths, so it
+ * keeps working for the next redirect without an edit.
+ */
+const redirectRoutes = new Set(
+  [
+    ...app.matchAll(
+      /<Route\s[^>]*path=(?:"([^"]+)"|'([^']+)')[^>]*>\s*\{?\s*\([^)]*\)\s*=>\s*<LegacyRedirect/g,
+    ),
+  ]
+    .map((m) => m[1] ?? m[2])
+    .filter(Boolean),
+);
+
+/**
  * Files that NAME a path without pointing anybody at it. Excluding them is the
  * difference between this guard working and passing vacuously: caught by
  * mutation, when removing both sidebar entries I had just added left the guard
@@ -86,6 +106,21 @@ const NOT_A_LINK = [
   join(clientSrc, 'lib/rbac-route-helper.ts'),
 ];
 
+const pages = routes.filter((p) => !redirectRoutes.has(p));
+
+/**
+ * A floor, because the worst outcome for this guard is a vacuous pass. If a
+ * future exclusion swallows the route table, "0 of 0" must be a failure and
+ * not a green tick - the same trap the NOT_A_LINK note below records.
+ */
+if (pages.length < 50) {
+  console.error(
+    `\u2717 Only ${pages.length} page route(s) found in App.tsx - the route scan or an ` +
+      'exclusion is broken. Refusing to report a pass over an empty set.',
+  );
+  process.exit(1);
+}
+
 const sources = walk(clientSrc).filter((f) => f !== appTsx && !NOT_A_LINK.includes(f));
 const blob = sources.map((f) => stripComments(readFileSync(f, 'utf8'))).join('\n');
 
@@ -95,7 +130,7 @@ function isPointedAt(path) {
   return new RegExp(`['"\`]${escaped}(?:['"\`?#/])`).test(blob);
 }
 
-const findings = routes.filter((p) => !isPointedAt(p)).sort();
+const findings = pages.filter((p) => !isPointedAt(p)).sort();
 
 if (update) {
   writeFileSync(
@@ -139,7 +174,9 @@ if (added.length > 0) {
   process.exit(1);
 }
 
-console.log(`✓ No newly unlinked routes (${findings.length} baselined of ${routes.length}).`);
+console.log(
+  `✓ No newly unlinked routes (${findings.length} baselined of ${pages.length} page routes, ${redirectRoutes.size} redirect(s) excluded).`,
+);
 
 if (gone.length > 0) {
   console.log(`\n  ${gone.length} baselined route(s) now linked or gone:`);

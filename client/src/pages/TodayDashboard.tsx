@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
@@ -29,6 +30,7 @@ import {
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SuggestedTasksCard } from '@/components/crm/SuggestedTasksCard';
+import { MyDayCardBoundary, MyDayCustomizer, useMyDayLayout } from '@/components/crm/MyDayLayout';
 import { cn, formatCurrencyWhole } from '@/lib/utils';
 
 interface Activity {
@@ -126,6 +128,12 @@ export default function TodayDashboard() {
     refetchInterval: 60000, // Refresh every minute
   });
 
+  // COP-B01 AC2/AC6. Order and visibility come from the rep's saved layout,
+  // resolved against their LIVE role level on every read - so a promotion adds
+  // the team cards immediately and a demotion withholds them immediately,
+  // whatever the saved layout says.
+  const { mainCards, sideCards, layout, save, isSaving } = useMyDayLayout();
+
   const handleCompleteActivity = async (activityId: string) => {
     try {
       await apiRequest(`/api/activities/${activityId}/complete`, 'PATCH', {
@@ -193,6 +201,208 @@ export default function TodayDashboard() {
       tasksCompleted: 0,
     },
   } = data || {};
+
+  /**
+   * COP-B01 AC2 and AC5: the workspace's cards, keyed by the id the saved
+   * layout orders them by. Each renders inside its own boundary, so a card
+   * whose query fails degrades ALONE rather than blanking the page.
+   *
+   * `overdue` is deliberately NOT one of these: it is the banner above the
+   * grid, and an overdue task a rep can hide is the one failure this screen
+   * exists to prevent.
+   */
+  const cardSlots: Record<string, ReactNode> = {
+    'due-today': (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              <CardTitle>Today's Schedule</CardTitle>
+              <Badge variant="secondary">{today.length} tasks</Badge>
+            </div>
+            <Button variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Task
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {today.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
+              <p className="text-lg font-medium">All caught up!</p>
+              <p className="text-sm">No tasks scheduled for today.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {today.map((activity) => (
+                <ActivityItem
+                  key={activity.id}
+                  activity={activity}
+                  onComplete={handleCompleteActivity}
+                  onNavigate={handleCallCustomer}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    ),
+    'suggested-tasks': <SuggestedTasksCard />,
+    'awaiting-signature':
+      awaitingSignature.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Awaiting signature</CardTitle>
+              <Badge variant="outline" className="font-normal">
+                {awaitingSignature.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {awaitingSignature.map((quote) => (
+              <button
+                key={quote.id}
+                type="button"
+                onClick={() =>
+                  navigate(quote.dealId ? `/crm/deals/${quote.dealId}` : `/quotes/${quote.id}`)
+                }
+                className="w-full text-left flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/50"
+              >
+                <div className="min-w-0">
+                  <div className="font-medium truncate">
+                    {quote.companyName ?? quote.title ?? quote.proposalNumber ?? 'Quote'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {quote.proposalNumber}
+                    {/* Silent when the quote states no validity: it has
+                        not "expired in 0 days". */}
+                    {quote.daysUntilExpiry != null &&
+                      (quote.daysUntilExpiry < 0
+                        ? ` · expired ${Math.abs(quote.daysUntilExpiry)} days ago`
+                        : ` · valid ${quote.daysUntilExpiry} more days`)}
+                  </div>
+                </div>
+                <span className="tabular-nums text-sm shrink-0">
+                  {quote.totalAmount == null ? '—' : formatCurrencyWhole(Number(quote.totalAmount))}
+                </span>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null,
+    'stalled-deals':
+      pipelineAlerts.length > 0 ? (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              <CardTitle className="text-orange-900">Pipeline Alerts</CardTitle>
+              <Badge variant="secondary" className="bg-orange-200">
+                {pipelineAlerts.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {pipelineAlerts.map((deal) => (
+                <DealAlertItem key={deal.id} deal={deal} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null,
+    'recent-wins':
+      recentWins.length > 0 ? (
+        <Card className="border-green-200 bg-green-50">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-green-600" />
+              <CardTitle className="text-green-900">Recent Wins 🎉</CardTitle>
+              <Badge variant="secondary" className="bg-green-200">
+                {recentWins.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentWins.map((deal) => (
+                <WinItem key={deal.id} deal={deal} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null,
+    'hot-leads': (
+      <Card className="border-purple-200 bg-purple-50">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-purple-600" />
+            <CardTitle className="text-purple-900">Hot Leads</CardTitle>
+          </div>
+          <p className="text-sm text-purple-700">AI-scored high-value opportunities</p>
+        </CardHeader>
+        <CardContent>
+          {hotLeads.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No hot leads right now</p>
+          ) : (
+            <div className="space-y-3">
+              {hotLeads.map((lead) => (
+                <HotLeadItem key={lead.id} lead={lead} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    ),
+    'meetings-followup':
+      upcoming.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-gray-600" />
+              <CardTitle>Coming Up</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">Next 3 days</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {upcoming.slice(0, 5).map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-start gap-2 text-sm p-2 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <div className="mt-0.5">
+                    {activityTypeIcons[activity.type] && (
+                      <span className="text-gray-500">
+                        {activityTypeIcons[activity.type]({ className: 'h-4 w-4' })}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{activity.title}</p>
+                    {activity.customerName && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {activity.customerName}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {activity.scheduledDate &&
+                        formatDistance(new Date(activity.scheduledDate), new Date(), {
+                          addSuffix: true,
+                        })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null,
+  };
 
   return (
     <MainLayout
@@ -271,218 +481,26 @@ export default function TodayDashboard() {
             subtitle="Today"
           />
         </div>
+        <div className="flex justify-end">
+          <MyDayCustomizer layout={layout} onSave={save} isSaving={isSaving} />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Today's Schedule - Main Column */}
+          {/* Main column: the cards the rep works, in their own order. */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Today's Schedule */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-blue-600" />
-                    <CardTitle>Today's Schedule</CardTitle>
-                    <Badge variant="secondary">{today.length} tasks</Badge>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Task
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {today.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                    <p className="text-lg font-medium">All caught up!</p>
-                    <p className="text-sm">No tasks scheduled for today.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {today.map((activity) => (
-                      <ActivityItem
-                        key={activity.id}
-                        activity={activity}
-                        onComplete={handleCompleteActivity}
-                        onNavigate={handleCallCustomer}
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* COP-B03: ranked next actions. Sits above the quote list
-                because it spans every source a rep has - deals, quotes and
-                installed-base plays - and expires itself when the rep acts. */}
-            <SuggestedTasksCard />
-
-            {/* COP-B01: quotes awaiting signature. A quote sent and not
-                answered is the card a rep acts on first, and it could not be
-                built until COP-B02 gave a quote a deal to belong to. */}
-            {awaitingSignature.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                    <CardTitle>Awaiting signature</CardTitle>
-                    <Badge variant="outline" className="font-normal">
-                      {awaitingSignature.length}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {awaitingSignature.map((quote) => (
-                    <button
-                      key={quote.id}
-                      type="button"
-                      onClick={() =>
-                        navigate(
-                          quote.dealId ? `/crm/deals/${quote.dealId}` : `/quotes/${quote.id}`,
-                        )
-                      }
-                      className="w-full text-left flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/50"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">
-                          {quote.companyName ?? quote.title ?? quote.proposalNumber ?? 'Quote'}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {quote.proposalNumber}
-                          {/* Silent when the quote states no validity: it has
-                              not "expired in 0 days". */}
-                          {quote.daysUntilExpiry != null &&
-                            (quote.daysUntilExpiry < 0
-                              ? ` · expired ${Math.abs(quote.daysUntilExpiry)} days ago`
-                              : ` · valid ${quote.daysUntilExpiry} more days`)}
-                        </div>
-                      </div>
-                      <span className="tabular-nums text-sm shrink-0">
-                        {quote.totalAmount == null
-                          ? '—'
-                          : formatCurrencyWhole(Number(quote.totalAmount))}
-                      </span>
-                    </button>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Pipeline Alerts */}
-            {pipelineAlerts.length > 0 && (
-              <Card className="border-orange-200 bg-orange-50">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-orange-600" />
-                    <CardTitle className="text-orange-900">Pipeline Alerts</CardTitle>
-                    <Badge variant="secondary" className="bg-orange-200">
-                      {pipelineAlerts.length}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {pipelineAlerts.map((deal) => (
-                      <DealAlertItem key={deal.id} deal={deal} />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Recent Wins */}
-            {recentWins.length > 0 && (
-              <Card className="border-green-200 bg-green-50">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-green-600" />
-                    <CardTitle className="text-green-900">Recent Wins 🎉</CardTitle>
-                    <Badge variant="secondary" className="bg-green-200">
-                      {recentWins.length}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {recentWins.map((deal) => (
-                      <WinItem key={deal.id} deal={deal} />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {mainCards.map((card) => (
+              <MyDayCardBoundary key={card.id} title={card.title}>
+                {cardSlots[card.id] ?? null}
+              </MyDayCardBoundary>
+            ))}
           </div>
 
-          {/* Sidebar - Hot Leads & Upcoming */}
           <div className="space-y-6">
-            {/* Hot Leads */}
-            <Card className="border-purple-200 bg-purple-50">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-purple-600" />
-                  <CardTitle className="text-purple-900">Hot Leads</CardTitle>
-                </div>
-                <p className="text-sm text-purple-700">AI-scored high-value opportunities</p>
-              </CardHeader>
-              <CardContent>
-                {hotLeads.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No hot leads right now
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {hotLeads.map((lead) => (
-                      <HotLeadItem key={lead.id} lead={lead} />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Upcoming (Next 3 Days) */}
-            {upcoming.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-gray-600" />
-                    <CardTitle>Coming Up</CardTitle>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Next 3 days</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {upcoming.slice(0, 5).map((activity) => (
-                      <div
-                        key={activity.id}
-                        className="flex items-start gap-2 text-sm p-2 rounded-md hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="mt-0.5">
-                          {activityTypeIcons[activity.type] && (
-                            <span className="text-gray-500">
-                              {activityTypeIcons[activity.type]({ className: 'h-4 w-4' })}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{activity.title}</p>
-                          {activity.customerName && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {activity.customerName}
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            {activity.scheduledDate &&
-                              formatDistance(new Date(activity.scheduledDate), new Date(), {
-                                addSuffix: true,
-                              })}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {sideCards.map((card) => (
+              <MyDayCardBoundary key={card.id} title={card.title}>
+                {cardSlots[card.id] ?? null}
+              </MyDayCardBoundary>
+            ))}
           </div>
         </div>
       </div>

@@ -9489,6 +9489,7 @@ export * from './opportunity-radar-schema';
 // Suggested Tasks (COP-B03)
 export * from './suggested-task-schema';
 export * from './fleet-assessment-schema';
+export * from './my-day-layout-schema';
 // Quarterly Business Review decks (US-SUPER-004)
 export * from './qbr-schema';
 // Predictive truck-stocking optimizer (US-SUPER-007)

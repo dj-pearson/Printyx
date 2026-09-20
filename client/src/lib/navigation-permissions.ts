@@ -564,6 +564,10 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   // =====================================================================
   // DASHBOARD ITEMS (always visible or role-gated)
   // =====================================================================
+  // COP-B01: the same workspace on its canonical path. Same gate as the paths
+  // it shipped under - a new URL must not be reachable on looser terms than
+  // the one it replaces (AUDIT-019's rule).
+  '/crm/my-day': { alwaysVisible: true },
   '/today': { alwaysVisible: true },
   '/dashboard/today': { alwaysVisible: true },
   '/custom-dashboard': { alwaysVisible: true },

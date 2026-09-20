@@ -1,6 +1,6 @@
 {
   "note": "Parameterless routes that nothing in client source links to, so the only way in is typing the URL. Shrink-only. Each is either a page that needs a nav entry or a link, or a page to retire — see scripts/check-unlinked-routes.mjs.",
-  "count": 70,
+  "count": 64,
   "routes": [
     "/access-control",
     "/admin/database-updater",
@@ -23,8 +23,6 @@
     "/custom-dashboard",
     "/customer-portal",
     "/customer-success",
-    "/dashboard/today",
-    "/deals-management",
     "/device-monitoring",
     "/gdpr",
     "/import/products",
@@ -37,7 +35,6 @@
     "/my-tasks",
     "/oid-management",
     "/onboarding/original",
-    "/opportunities",
     "/platform-crm/assignment-rules",
     "/platform-crm/cohort-analysis",
     "/platform-crm/dashboard",
@@ -46,12 +43,10 @@
     "/portal",
     "/predictive-maintenance-hub",
     "/predictive-service-dispatch",
-    "/pricing/approvals",
     "/pricing/margin-report",
     "/pricing/settings",
     "/product-management-hub",
     "/product-models-v2",
-    "/remote-monitoring",
     "/renewals",
     "/reports/custom/new",
     "/revenue-reports",
@@ -70,7 +65,6 @@
     "/system-monitoring",
     "/tasks",
     "/unauthorized",
-    "/vendor-management",
     "/white-label"
   ]
 }

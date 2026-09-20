@@ -726,8 +726,13 @@ function Router() {
                     />
                   )}
                 </Route>
-                <Route path="/today" component={TodayDashboard} />
-                <Route path="/dashboard/today" component={TodayDashboard} />
+                {/* COP-B01 AC1: one canonical path for the workspace. The two
+                    paths it shipped under REDIRECT rather than render - two URLs
+                    serving one page is the sprawl COP-E04 is about, and a
+                    bookmark should land somewhere that stays. */}
+                <Route path="/crm/my-day" component={TodayDashboard} />
+                <Route path="/today">{() => <LegacyRedirect to="/crm/my-day" />}</Route>
+                <Route path="/dashboard/today">{() => <LegacyRedirect to="/crm/my-day" />}</Route>
                 {/* CRM */}
                 {/* COP-E04: /crm/deals is the canonical deals path. The legacy
                     /deals, /deals-management and /opportunities paths redirect

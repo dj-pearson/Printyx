@@ -151,7 +151,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Contacts', path: '/contacts', icon: Users },
       // COP-E07: the object is a Deal. Route unchanged (COP-E04 collapses the URLs).
       // COP-B01: surface the existing My Day workspace on mobile too.
-      { title: 'My Day', path: '/today', icon: Zap },
+      { title: 'My Day', path: '/crm/my-day', icon: Zap },
       { title: 'Deals', path: '/crm/deals', icon: Target },
       { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
       { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: TrendingUp },

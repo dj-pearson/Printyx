@@ -432,6 +432,9 @@ export function registerEdgeFunctionProxy(app: any) {
     // dev and 404'd in prod.
     '/api/dashboard/widgets': { fn: 'dashboard-widgets', pathPrefix: '/widgets' },
     '/api/dashboard/user-layout': { fn: 'dashboard-widgets', pathPrefix: '/user-layout' },
+    // COP-B01: the My Day card layout. Its own table, so it does not join the
+    // two handlers already contesting dashboard_layouts.
+    '/api/dashboard/my-day-layout': { fn: 'dashboard', pathPrefix: '/my-day-layout' },
     '/api/dashboard/layouts': { fn: 'dashboard', pathPrefix: '/layouts' },
     '/api/dashboard/metrics': { fn: 'dashboard', pathPrefix: '/metrics' },
     '/api/dashboard/charts': { fn: 'dashboard', pathPrefix: '/charts' },
