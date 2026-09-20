@@ -26,6 +26,10 @@ import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
+import {
+  resolveTerritoryFilter,
+  territoryMembership,
+} from '../../../shared/territory-membership.ts';
 import { isCronRequest } from '../_shared/cron-auth.ts';
 import type { AuthContext } from '../_shared/auth.ts';
 import { firstStageId, type DealStageRow } from '../_shared/deal-stage.ts';
@@ -705,37 +709,73 @@ export default async function handler(req: Request) {
 
       let rows = (data ?? []).map(toPlayResponse);
 
-      // COP-B09 AC4: territory scoping. Resolved through the shared resolver
-      // over business_records.territory rather than a column on the play, so a
-      // territory renamed or defined after a scan takes effect immediately
-      // instead of needing a re-scan.
-      const territoryFilter = url.searchParams.get('territory');
-      if (territoryFilter) {
+      /**
+       * COP-B09 AC4 and AC3's second half.
+       *
+       * AC4's territory scoping was here; AC3's "reps see their territory by
+       * DEFAULT" was not, so a rep had to know the filter existed and pick
+       * their own territory out of a list to get their own plays. The default
+       * now comes from the caller's membership, and `?territory=all` is how a
+       * manager rolls up - an explicit request always wins, so nobody is
+       * trapped in a default.
+       *
+       * A person with no territory, or whose only relationship is managerial,
+       * gets NO narrowing: `resolveTerritoryFilter` returns null rather than
+       * an empty list, because filtering to nothing would show a rep an empty
+       * board and let them conclude they have no work.
+       *
+       * Resolved through the shared resolver over `business_records.territory`
+       * rather than a column on the play, so a territory renamed or defined
+       * after a scan takes effect immediately instead of needing a re-scan.
+       */
+      const requestedTerritory = url.searchParams.get('territory');
+      const territoryRows = await fetchAllRows<Row>(() =>
+        admin
+          .from('sales_territories')
+          .select(
+            'id, territory_name, territory_code, is_active, owner_id, manager_id, team_members',
+          )
+          .eq('tenant_id', tenantId),
+      );
+      const membership = territoryMembership(
+        (territoryRows ?? []).map((t) => ({
+          id: String(t.id),
+          ownerId: (t.owner_id as string) ?? null,
+          teamMembers: (t.team_members as string[]) ?? null,
+          managerId: (t.manager_id as string) ?? null,
+          isActive: t.is_active as boolean,
+        })),
+        user.id,
+      );
+      const { territoryIds, source: territorySource } = resolveTerritoryFilter(
+        requestedTerritory,
+        membership,
+      );
+
+      if (territoryIds) {
+        const wanted = new Set(territoryIds);
         const accountIds = [...new Set(rows.map((p) => p.customerId).filter(Boolean))] as string[];
-        const [territories, accounts] = await Promise.all([
-          fetchAllRows<Row>(() =>
-            admin
-              .from('sales_territories')
-              .select('id, territory_name, territory_code, is_active')
-              .eq('tenant_id', tenantId),
-          ),
+        // The territory rows were already read above for the membership, so
+        // this reuses them rather than asking twice for the same table.
+        const accounts =
           accountIds.length > 0
-            ? fetchAllRows<Row>(() =>
+            ? await fetchAllRows<Row>(() =>
                 admin
                   .from('business_records')
                   .select('id, territory')
                   .eq('tenant_id', tenantId)
                   .in('id', accountIds),
               )
-            : Promise.resolve([]),
-        ]);
-        const index = buildTerritoryIndex((territories ?? []).filter((t) => t.is_active !== false));
+            : [];
+        const index = buildTerritoryIndex(
+          (territoryRows ?? []).filter((t) => t.is_active !== false),
+        );
         const territoryByAccount = new Map(
           (accounts ?? []).map((a) => [a.id, resolveTerritory(a.territory, index)]),
         );
         rows = rows.filter((play) => {
           const resolved = play.customerId ? territoryByAccount.get(play.customerId) : null;
-          return resolved?.territory ? String(resolved.territory.id) === territoryFilter : false;
+          return resolved?.territory ? wanted.has(String(resolved.territory.id)) : false;
         });
       }
 
@@ -749,7 +789,12 @@ export default async function handler(req: Request) {
           scopeTier: scope.tier,
           coversWholeTenant: scope.userIds === null,
           degradedFrom: scope.degradedFrom,
-          unbacked: territoryFilter
+          // AC3: which territories these plays came from and WHY, so a rep can
+          // tell a default from a choice and a manager knows to ask for `all`.
+          territoryIds,
+          territorySource,
+          territoryRole: membership.role,
+          unbacked: territoryIds
             ? []
             : [
                 'Plays are scoped by account ownership. Filter by territory to scope them that way instead - territory is resolved from the account, so an account with no territory recorded appears only in the unfiltered list.',

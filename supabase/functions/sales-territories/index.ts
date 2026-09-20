@@ -6,6 +6,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { buildTerritoryIndex, territoryCoverage } from '../_shared/territory.ts';
+import { territoryMembership } from '../../../shared/territory-membership.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -99,7 +100,10 @@ export default async function handler(req: Request) {
       // nothing read - a number somebody can store and never see is AUDIT-028's
       // shape from the other end. The forecast's territory roll-up reports
       // attainment against it.
-      'id, tenant_id, territory_name, territory_code, territory_type, description, geographic_rules, account_rules, is_active, priority, owner_id, manager_id, monthly_quota, created_at, updated_at';
+      // COP-B09 AC3: `team_members` was absent from this list, so a
+      // territory's additional reps were invisible to every reader and
+      // "whose territory is this" could only ever answer the primary owner.
+      'id, tenant_id, territory_name, territory_code, territory_type, description, geographic_rules, account_rules, is_active, priority, owner_id, manager_id, team_members, monthly_quota, created_at, updated_at';
 
     // GET /sales-territories - List territories
     if (req.method === 'GET' && !territoryId) {
@@ -115,6 +119,57 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(territories || [], 200, req);
+    }
+
+    /**
+     * GET /sales-territories/mine - COP-B09 AC3.
+     *
+     * "Reps see their territory by default" needs an answer to which
+     * territory is theirs, and this table carries three relationships that
+     * look like one from a distance: `owner_id` is the primary rep,
+     * `team_members` the others working it, and `manager_id` the person it
+     * REPORTS TO. Only the first two are somebody's book -
+     * `shared/territory-membership.ts` has the reasoning and the tests.
+     *
+     * Matched before the `/:id` branch, or `territoryId` reads "mine" as a
+     * uuid and answers 404 (SUPA-024).
+     */
+    if (req.method === 'GET' && territoryId === 'mine') {
+      const { data: rows, error } = await admin
+        .from('sales_territories')
+        .select(TERRITORY_COLUMNS)
+        .eq('tenant_id', tenantId)
+        .order('territory_name', { ascending: true });
+
+      if (error) {
+        console.error('Error resolving territory membership:', error);
+        return createCorsResponse({ error: 'Failed to resolve territories' }, 500, req);
+      }
+
+      const all = (rows ?? []) as Array<Record<string, unknown>>;
+      const membership = territoryMembership(
+        all.map((t) => ({
+          id: String(t.id),
+          ownerId: (t.owner_id as string) ?? null,
+          teamMembers: (t.team_members as string[]) ?? null,
+          managerId: (t.manager_id as string) ?? null,
+          isActive: t.is_active as boolean,
+        })),
+        user.id,
+      );
+
+      const byId = new Map(all.map((t) => [String(t.id), t]));
+      return createCorsResponse(
+        {
+          ...membership,
+          // The switcher needs names, not ids. Only the territories this
+          // person has some relationship with - the full list is the other
+          // endpoint, and a manager rolling up uses ?territory=all.
+          territories: membership.allTerritoryIds.map((id) => byId.get(id)).filter(Boolean),
+        },
+        200,
+        req,
+      );
     }
 
     // GET /sales-territories/:id - Get single territory

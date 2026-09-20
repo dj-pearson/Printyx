@@ -43,9 +43,27 @@ const REAL_COLUMNS = new Set(Object.values(getTableColumns(salesTerritories)).ma
 
 describe('sales-territories edge function', () => {
   it('names only real columns in its insert and update payloads', () => {
-    const payloadKeys = [...CRUD.matchAll(/^\s{8,}([a-z][a-z0-9_]*):/gm)].map((m) => m[1]);
-    expect(payloadKeys.length).toBeGreaterThan(5);
-    expect(payloadKeys.filter((key) => !REAL_COLUMNS.has(key))).toEqual([]);
+    /**
+     * BOUND TO THE WRITE CHAINS, not to an indentation level.
+     *
+     * This used to scan every object-literal key indented eight spaces or
+     * more anywhere below TERRITORY_COLUMNS, which was accidentally correct
+     * only while the payloads were the sole literals down there. COP-B09 AC3
+     * added a `/mine` branch that builds a RESPONSE object, and its
+     * `territories:` key was immediately reported as a phantom column of a
+     * table it was never claimed to belong to - the same false positive the
+     * corpus note above already records about the coverage branch. A payload
+     * is what follows `.insert(` or `.upsert(`, so that is what is read.
+     */
+    const payloadKeys = [...CRUD.matchAll(/\.(?:insert|upsert)\(\s*\{([\s\S]*?)\}/g)]
+      .flatMap((m) => [...m[1].matchAll(/([a-z][a-z0-9_]*):/g)])
+      .map((m) => m[1]);
+    // Plus the `set('column', ...)` helper the PATCH branch writes through.
+    const setKeys = [...CRUD.matchAll(/set\('([a-z][a-z0-9_]*)'/g)].map((m) => m[1]);
+    const all = [...payloadKeys, ...setKeys];
+    // A floor, so a regex that stops matching cannot pass in silence.
+    expect(all.length).toBeGreaterThan(5);
+    expect(all.filter((key) => !REAL_COLUMNS.has(key))).toEqual([]);
   });
 
   it('selects and orders by real columns only', () => {

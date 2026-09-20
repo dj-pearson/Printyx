@@ -222,8 +222,16 @@ describe('COP-B09 AC5: territory quota and attainment', () => {
   it('is settable: create, partial update, and returned on reads', () => {
     expect(TERRITORIES_FN).toMatch(/monthly_quota: body\.monthlyQuota/);
     expect(TERRITORIES_FN).toMatch(/set\('monthly_quota', body\.monthlyQuota/);
-    // Returned, or the page cannot show what it just saved.
-    expect(TERRITORIES_FN).toMatch(/manager_id, monthly_quota,/);
+    // Returned, or the page cannot show what it just saved. Asserted against
+    // the SELECT list rather than against the column next to it: adjacency is
+    // not the property, and pinning it broke the moment COP-B09 AC3 added
+    // `team_members` between the two.
+    const start = TERRITORIES_FN.indexOf('const TERRITORY_COLUMNS');
+    const columnList = TERRITORIES_FN.slice(start, TERRITORIES_FN.indexOf(';', start)).replace(
+      /\/\/[^\n]*/g,
+      '',
+    );
+    expect(columnList).toContain('monthly_quota');
   });
 
   it('the page sends null for an empty field, never 0', () => {
