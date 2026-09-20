@@ -144,6 +144,10 @@ export const bookingPageBookings = pgTable(
     manageToken: varchar('manage_token').notNull(),
 
     confirmationEmailSent: boolean('confirmation_email_sent').notNull().default(false),
+    // COP-B14 AC6. A TIMESTAMP, not a boolean, because the reminder sweep needs
+    // to know WHEN as well as whether - and because a null is the only state a
+    // re-run can safely act on, which is what makes the sweep idempotent.
+    reminderEmailSentAt: timestamp('reminder_email_sent_at'),
     cancelledAt: timestamp('cancelled_at'),
     cancelReason: text('cancel_reason'),
     rescheduledFromId: varchar('rescheduled_from_id'),
@@ -200,3 +204,39 @@ export type BookingPage = typeof bookingPages.$inferSelect;
 export type InsertBookingPage = z.infer<typeof insertBookingPageSchema>;
 export type BookingPageBooking = typeof bookingPageBookings.$inferSelect;
 export type InsertBookingPageBooking = z.infer<typeof insertBookingPageBookingSchema>;
+
+/**
+ * Attempts against a public booking surface, for the rate limit (COP-B14 AC4).
+ *
+ * ONE ROW PER ATTEMPT, counted over a window, rather than a counter that is
+ * read-then-incremented. Two edge invocations racing on a counter lose an
+ * update and let a burst through; appends cannot lose one. Counting is an
+ * indexed range scan, which is cheap, and the cron sweep prunes the table.
+ *
+ * NO TENANT COLUMN, on purpose: the throttle has to decide before the slug is
+ * resolved to a page, and an attempt against a slug that does not exist has no
+ * tenant to attribute. `bucket` already carries a hash of the address and the
+ * slug, and the raw address is never stored - throttling needs "the same
+ * source again", not who.
+ */
+export const publicBookingAttempts = pgTable(
+  'public_booking_attempts',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    /** booking:<slug>:<digest> for a source, booking-page:<slug> for a page. */
+    bucket: varchar('bucket', { length: 200 }).notNull(),
+    /** honeypot | too_fast | rate_limited when the attempt was refused. */
+    rejectedReason: varchar('rejected_reason', { length: 40 }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    bucketWindowIdx: index('public_booking_attempts_bucket_window_idx').on(
+      table.bucket,
+      table.createdAt,
+    ),
+  }),
+);
+
+export type PublicBookingAttempt = typeof publicBookingAttempts.$inferSelect;

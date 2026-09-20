@@ -533,6 +533,13 @@
       "when": 1789862802997,
       "tag": "0092_purple_the_hand",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1789864032379,
+      "tag": "0093_yielding_mentallo",
+      "breakpoints": true
     }
   ]
 }
