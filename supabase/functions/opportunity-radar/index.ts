@@ -25,6 +25,7 @@ import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 import { isCronRequest } from '../_shared/cron-auth.ts';
 import type { AuthContext } from '../_shared/auth.ts';
 import { firstStageId, type DealStageRow } from '../_shared/deal-stage.ts';
@@ -508,6 +509,40 @@ export default async function handler(req: Request) {
         .maybeSingle();
       if (!play) return createCorsResponse({ error: 'Play not found' }, 404, req);
 
+      /**
+       * The same scope the list applies, applied to the row this acts ON.
+       *
+       * Filtering the list and leaving the item open is a half-measure: a play
+       * id is a uuid, but ids travel in URLs, exports and support tickets, and
+       * hard-to-guess is not an authorisation check (SEC-TENANT-005 makes
+       * exactly this point about update filters). Dismissing another rep's
+       * play removes it from their board, and converting one creates a deal
+       * in their name - both are writes on somebody else's book.
+       *
+       * An UNOWNED play stays actionable for anyone who can see it, which is
+       * what `applyUserScope`'s own default encodes: nobody is deprived of a
+       * play nobody has claimed.
+       */
+      const itemScope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+      });
+      const playOwner = (play as Row).owner_id ? String((play as Row).owner_id) : null;
+      const inScope =
+        itemScope.userIds === null || playOwner === null || itemScope.userIds.includes(playOwner);
+      if (!inScope) {
+        return createCorsResponse(
+          {
+            error: 'That play belongs to another rep',
+            code: 'OUT_OF_SCOPE',
+            scopeTier: itemScope.tier,
+          },
+          403,
+          req,
+        );
+      }
+
       if (action === 'dismiss' && req.method === 'POST') {
         const body = (await req.json().catch(() => ({}))) as Row;
         const { error } = await admin
@@ -625,6 +660,31 @@ export default async function handler(req: Request) {
 
     // ─── GET / (AC4's ranking and scoping) ───────────────────────────
     if (req.method === 'GET' && !resource) {
+      /**
+       * AC4's "and RBAC scope", which this branch did not have.
+       *
+       * `?mine=true` was the only ownership filter, and a filter the CALLER
+       * chooses is not an access check - omitting it returned up to 500 plays
+       * from across the whole tenant, each carrying an account name, the
+       * machines, the trigger and an estimated dollar value. Every rep could
+       * read every other rep's book of opportunities by dropping one query
+       * parameter. Same shape as COP-I06's forecast categories, and the fix is
+       * the same: THE SCOPE GOES ON FIRST and the query parameters filter
+       * inside it. Applied before `mine` and before `playType`, so a parameter
+       * can only ever narrow what the tier already allows.
+       *
+       * `radar_plays.owner_id` is inherited from the account, so it is null
+       * for an unowned account. `applyUserScope` includes unowned rows for any
+       * tier above 'own' by default, which is the behaviour wanted here: a rep
+       * sees their own book, a manager also sees what nobody has picked up.
+       */
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+
       let query = admin
         .from('radar_plays')
         .select('*')
@@ -633,9 +693,11 @@ export default async function handler(req: Request) {
         .order('score', { ascending: false })
         .limit(500);
 
+      query = applyUserScope(query, 'owner_id', scope);
+
       const playType = url.searchParams.get('playType');
       if (playType) query = query.eq('play_type', playType);
-      // Ownership scoping. Territory scoping is COP-B09 and does not exist.
+      // `mine` narrows within the scope above; it never widens it.
       if (url.searchParams.get('mine') === 'true') query = query.eq('owner_id', user.id);
 
       const { data, error } = await query;
@@ -681,6 +743,12 @@ export default async function handler(req: Request) {
         {
           data: rows,
           total: rows.length,
+          // COP-I06: a narrowed list that does not say it was narrowed is a
+          // wrong number rather than a safe one. A rep seeing fewer plays than
+          // their manager should be able to tell that is why.
+          scopeTier: scope.tier,
+          coversWholeTenant: scope.userIds === null,
+          degradedFrom: scope.degradedFrom,
           unbacked: territoryFilter
             ? []
             : [
