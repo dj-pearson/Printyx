@@ -123,10 +123,10 @@
       "why": "A delete per row only under ?overwrite, matched on (manufacturer, mapping_name) - a two-column match that .in() cannot express - and bounded by the preset file being imported."
     },
     {
-      "loop": "pipeline-config/index.ts:1165",
+      "loop": "pipeline-config/index.ts:1244",
       "table": "tasks",
       "verdict": "deliberate",
-      "why": "Capped at 50 by its own select, and each row is a different action with its own outcome written back. Annotated in place."
+      "why": "Capped at 50 by its own select, and each row is a different action with its own outcome written back. Annotated in place. (Key moved 1165 -> 1244 on 2026-09-20: SEC-EDGE-001 inserted the branch-gate helpers above it. The loop is unchanged - a line-keyed baseline drifts when code is added above, and the fix is to move the key, not to silence the guard.)"
     },
     {
       "loop": "predictive-failure/index.ts:431",

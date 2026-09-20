@@ -40,6 +40,7 @@ import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 import { flagsToStageType, stageTypeToFlags } from '../_shared/pipeline-stage-type.ts';
 import { dispatchWorkflowEventSafe } from '../_shared/workflow-dispatch.ts';
 import { createHandoff } from '../_shared/handoff-create.ts';
@@ -170,6 +171,44 @@ export default async function handler(req: Request) {
     const ctx = await requireAuth(req);
     const db = getDb();
 
+    /**
+     * SEC-EDGE-001: the stage vocabulary is the board every rep works on.
+     *
+     * A template or stage write changes what the deals board looks like for the
+     * whole tenant - renaming a stage, changing its default probability (which
+     * COP-M07 made the forecast weighting), flipping include_in_forecast, or
+     * deleting one - and none of it was gated, so any authenticated member
+     * could rebuild the pipeline for everybody. `/pipeline-config` is minLevel
+     * 4 in navigation-permissions, so MANAGER mirrors the page.
+     *
+     * THE DEAL BRANCHES ARE DELIBERATELY NOT GATED. `/deals/:id/move` and
+     * `/deals/:id/transition` are what a rep does all day on that board, and
+     * this function is where they land - gating the FILE would have taken drag
+     * and drop with it. That is the whole reason the gate goes on the branch
+     * (SEC-EDGE-001), and the reads stay open for the same reason: a rep has to
+     * fetch the stages to render the columns.
+     */
+    const requireBoardAdmin = () => {
+      requireRoleLevel(ctx, ROLE_LEVEL.MANAGER);
+    };
+    const denyBoardAdmin = (err: unknown) => {
+      // Only a role refusal answers 403; anything else is rethrown so a
+      // database outage is not reported as an insufficient role.
+      if (err instanceof RbacError) {
+        return jsonResponse(
+          {
+            message: 'Changing the pipeline configuration requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+          requestId,
+        );
+      }
+      throw err;
+    };
+
     // ─── GET /templates ─────────────────────────────────────────────────────
     if (path === '/templates' && method === 'GET') {
       const { data, error } = await db
@@ -191,6 +230,11 @@ export default async function handler(req: Request) {
 
     // ─── POST /templates ────────────────────────────────────────────────────
     if (path === '/templates' && method === 'POST') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const body = await req.json().catch(() => null);
       if (!body) {
         return errorResponse(400, 'Invalid JSON body', req, { code: 'INVALID_JSON', requestId });
@@ -321,6 +365,11 @@ export default async function handler(req: Request) {
 
     // ─── PUT /templates/:id ─────────────────────────────────────────────────
     if (tplGet && method === 'PUT') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const id = tplGet[1];
       const body = await req.json().catch(() => null);
       if (!body) {
@@ -385,6 +434,11 @@ export default async function handler(req: Request) {
 
     // ─── DELETE /templates/:id (soft delete) ────────────────────────────────
     if (tplGet && method === 'DELETE') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const id = tplGet[1];
 
       // Guard: refuse if any active deals use it.
@@ -460,6 +514,11 @@ export default async function handler(req: Request) {
     // ─── POST /templates/:id/clone ──────────────────────────────────────────
     const tplClone = path.match(/^\/templates\/([^/]+)\/clone$/);
     if (tplClone && method === 'POST') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const id = tplClone[1];
       const body = await req.json().catch(() => null);
       const newName = body?.name as string | undefined;
@@ -506,6 +565,11 @@ export default async function handler(req: Request) {
     // Reorder path must be checked BEFORE the :id pattern — /stages/reorder
     // would otherwise match the generic GET.
     if (path === '/stages/reorder' && method === 'PUT') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const body = await req.json().catch(() => null);
       if (!body || !Array.isArray(body.stages)) {
         return errorResponse(400, 'Stages array is required', req, {
@@ -555,6 +619,11 @@ export default async function handler(req: Request) {
 
     // ─── POST /stages ───────────────────────────────────────────────────────
     if (path === '/stages' && method === 'POST') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const body = await req.json().catch(() => null);
       if (!body) {
         return errorResponse(400, 'Invalid JSON body', req, {
@@ -586,6 +655,11 @@ export default async function handler(req: Request) {
 
     // ─── PUT /stages/:id ────────────────────────────────────────────────────
     if (stagesList && method === 'PUT') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const id = stagesList[1];
       const body = await req.json().catch(() => null);
       if (!body) {
@@ -621,6 +695,11 @@ export default async function handler(req: Request) {
 
     // ─── DELETE /stages/:id ─────────────────────────────────────────────────
     if (stagesList && method === 'DELETE') {
+      try {
+        requireBoardAdmin();
+      } catch (err) {
+        return denyBoardAdmin(err);
+      }
       const id = stagesList[1];
 
       const { count, error: countErr } = await db

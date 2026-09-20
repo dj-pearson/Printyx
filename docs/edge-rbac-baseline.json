@@ -75,7 +75,6 @@
     "parts-orders",
     "payment-processing",
     "performance",
-    "pipeline-config",
     "portal-service",
     "predictive-dispatch",
     "predictive-failure",
@@ -123,7 +122,6 @@
     "user-assignments",
     "users",
     "validate",
-    "webhooks",
     "work-orders",
     "workflow-automation",
     "workflows"

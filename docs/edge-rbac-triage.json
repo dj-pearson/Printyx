@@ -3,10 +3,10 @@
   "counts": {
     "open-by-design": 23,
     "headless": 44,
-    "unexamined": 46,
+    "unexamined": 44,
     "needs-gate": 2,
     "internal": 3,
-    "gated-branch": 2,
+    "gated-branch": 4,
     "public": 8,
     "row-scoped": 1
   },
@@ -388,8 +388,8 @@
     },
     {
       "fn": "pipeline-config",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "EXAMINED AND GATED 2026-09-20. The clearest branch-gate case in the tree. Eight template/stage writes change the deals board for the WHOLE TENANT - a stage rename, a default_probability change (which COP-M07 made the forecast weighting), an include_in_forecast flip, a delete - and were open to any authenticated member. Gated at MANAGER, mirroring /pipeline-config minLevel 4. The two DEAL branches (/deals/:id/move, /deals/:id/transition) are deliberately NOT gated: they are what a rep does all day on that board and this function is where drag-and-drop lands, so a file-level gate would have broken the feature. Reads stay open because a rep has to fetch the stages to render the columns."
     },
     {
       "fn": "pipeline-forecast",
@@ -638,8 +638,8 @@
     },
     {
       "fn": "webhooks",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "EXAMINED AND GATED 2026-09-20. An outbound webhook sends this tenant data to a URL the caller chooses, so CREATE is an exfiltration primitive - point it at your own server, subscribe every event - and regenerate-secret breaks whatever live integration verifies signatures with the old one, while test fires a real delivery. All five writes (POST, PUT, test, regenerate-secret, DELETE) now require SUPERVISOR, mirroring the LOWER of the two pages that reach it (/integration-hub 3, /system-integrations 4) so the page at 3 keeps working. Reads stay open and were already safe by construction: every read selects an explicit column list omitting secret, via _shared/webhook-view.ts. Note the inbound receiver POST /api/webhooks/:provider is Express-side and mounted BEFORE the proxy, so none of this touches provider deliveries."
     },
     {
       "fn": "work-orders",
