@@ -1,6 +1,7 @@
 import { storage } from '../storage';
 import { db } from '../db';
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
+import { summariseTrack, type TrackSummary } from '@shared/gps-track';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('mileage-service');
 
@@ -102,7 +103,7 @@ export class MileageService {
     tenantId: string,
     technicianId: string,
     date: Date,
-  ): Promise<{ totalMiles: number; trips: number; stops: number }> {
+  ): Promise<TrackSummary> {
     try {
       // Get location history for the day
       const startOfDay = new Date(date);
@@ -115,38 +116,33 @@ export class MileageService {
         endDate: endOfDay,
       });
 
-      let totalDistanceMeters = 0;
-      let trips = 0;
-      let stops = new Set<string>();
-
-      for (const record of history) {
-        // Sum up distances
-        if (record.distanceFromPrevious) {
-          totalDistanceMeters += parseFloat(record.distanceFromPrevious);
-        }
-
-        // Count unique ticket visits as stops
-        if (record.ticketId) {
-          stops.add(record.ticketId);
-        }
-
-        // Count trips (when activity changes from traveling)
-        if (record.activityType === 'on_site') {
-          trips++;
-        }
-      }
-
-      // Convert meters to miles
-      const totalMiles = totalDistanceMeters / 1609.34;
-
-      return {
-        totalMiles: Math.round(totalMiles * 100) / 100,
-        trips: trips > 0 ? trips : 1,
-        stops: stops.size,
-      };
+      /**
+       * This used to sum `record.distanceFromPrevious` and count distinct
+       * `record.ticketId` values. `location_history` has neither column and
+       * never has - they came from a second, wrong declaration in
+       * gps-tracking-schema.ts - so `db.select()` over it named eight columns
+       * that do not exist and threw 42703 on EVERY call. The catch below
+       * answered zero miles, so the nightly job recorded that every technician
+       * drove nowhere.
+       *
+       * Distance is derivable from what the table DOES have: consecutive fixes
+       * and the great-circle distance between them. What is not derivable is
+       * returned null and named, rather than defaulted to a number.
+       */
+      return summariseTrack(history);
     } catch (error) {
       log.error('Error calculating mileage from GPS:', error);
-      return { totalMiles: 0, trips: 0, stops: 0 };
+      // Null, not zero: a failed read is not a day spent stationary, and the
+      // caller skips a null rather than writing a mileage record of 0.
+      return {
+        totalMeters: null,
+        totalMiles: null,
+        trips: null,
+        stops: null,
+        pointsUsed: 0,
+        segmentsDiscarded: 0,
+        unbacked: ['The location history could not be read, so nothing is known about this day.'],
+      };
     }
   }
 
@@ -587,7 +583,9 @@ export class MileageService {
       for (const technicianId of uniqueTechnicians) {
         const gpsData = await this.calculateMileageFromGPS(tenantId, technicianId, date);
 
-        if (gpsData.totalMiles > 0) {
+        // `> 0` on a null is false, which is the behaviour wanted: a day with
+        // no usable fix produces no record rather than a record of zero miles.
+        if ((gpsData.totalMiles ?? 0) > 0) {
           await this.recordDailyMileage(tenantId, technicianId, {
             date,
             totalMiles: String(gpsData.totalMiles),

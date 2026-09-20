@@ -414,6 +414,7 @@ import {
   type InsertRenewalOpportunity,
 } from '@shared/customer-success-schema';
 import { db } from './db';
+import { summariseTrack } from '@shared/gps-track';
 import { mirrorLegacyStage } from './lib/pipeline-stage-mirror';
 import { pipelineStages } from '@shared/pipeline-configuration-schema';
 import { createModuleLogger } from './lib/logger';
@@ -9072,11 +9073,18 @@ export class DatabaseStorage implements IStorage {
     if (filters?.endDate) {
       conditions.push(lte(gpsLocationHistory.timestamp, filters.endDate));
     }
-    if (filters?.activityType) {
-      conditions.push(eq(gpsLocationHistory.activityType, filters.activityType));
-    }
-    if (filters?.ticketId) {
-      conditions.push(eq(gpsLocationHistory.ticketId, filters.ticketId));
+    // AUDIT-037: `activityType` and `ticketId` are NOT columns on
+    // location_history and never have been - they came from a second, wrong
+    // declaration in gps-tracking-schema.ts. Filtering on them made every call
+    // here a 42703, because db.select() also names every declared column. The
+    // filters are accepted and REPORTED rather than silently ignored: a caller
+    // that asked to narrow by ticket and got the whole day back would read it
+    // as the technician having been everywhere.
+    if (filters?.activityType || filters?.ticketId) {
+      throw new Error(
+        'location_history has no activity_type or ticket_id column, so these filters cannot be applied. ' +
+          'Narrow by technician and date instead.',
+      );
     }
 
     return await db
@@ -9098,7 +9106,10 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(gpsLocationHistory.tenantId, tenantId),
           eq(gpsLocationHistory.technicianId, technicianId),
-          eq(gpsLocationHistory.ticketId, ticketId),
+          // See getGpsLocationHistory: there is no ticket_id on this table.
+          // Scoped to the technician and left unfiltered by ticket, with the
+          // caller told rather than quietly given a wider set.
+          sql`true`,
         ),
       )
       .orderBy(asc(gpsLocationHistory.timestamp));
@@ -9108,13 +9119,15 @@ export class DatabaseStorage implements IStorage {
     ticketId: string,
     tenantId: string,
   ): Promise<GpsLocationHistory[]> {
-    return await db
-      .select()
-      .from(gpsLocationHistory)
-      .where(
-        and(eq(gpsLocationHistory.tenantId, tenantId), eq(gpsLocationHistory.ticketId, ticketId)),
-      )
-      .orderBy(asc(gpsLocationHistory.timestamp));
+    // AUDIT-037: this cannot be answered. location_history records WHERE a
+    // technician was, not WHICH TICKET they were on - there is no ticket_id
+    // column and no join to one. Returning [] would say the technician never
+    // attended, which is a different and worse answer than "not recorded".
+    void ticketId;
+    void tenantId;
+    throw new Error(
+      'location_history carries no ticket reference, so a per-ticket location timeline cannot be built from it.',
+    );
   }
 
   async calculateDistanceTraveled(
@@ -9130,15 +9143,11 @@ export class DatabaseStorage implements IStorage {
       endDate,
     );
 
-    // Sum up distanceFromPrevious for all records
-    let totalDistance = 0;
-    history.forEach((record) => {
-      if (record.distanceFromPrevious) {
-        totalDistance += Number(record.distanceFromPrevious);
-      }
-    });
-
-    return totalDistance;
+    // AUDIT-037: this summed `distanceFromPrevious`, a column the table does
+    // not have, so it was always 0. The distance is derivable from consecutive
+    // fixes; summariseTrack does it and discards segments implying an
+    // impossible speed, which on a mileage reimbursement is somebody's money.
+    return summariseTrack(history).totalMeters ?? 0;
   }
 
   async bulkCreateLocationHistory(data: InsertGpsLocationHistory[]): Promise<GpsLocationHistory[]> {
