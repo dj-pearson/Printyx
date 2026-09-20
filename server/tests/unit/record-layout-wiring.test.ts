@@ -90,3 +90,125 @@ describe('the Express router this replaced is gone', () => {
     );
   });
 });
+
+/**
+ * The lead half of AC10 (added with the LeadDetail rewrite).
+ *
+ * A third joint, and it had failed the same silent way as the other two: the
+ * leads layout named `estimatedAmount` and `leadSource`, which are the DRIZZLE
+ * field names, while GET /leads/:id returns the raw row - it is the one read
+ * path in that function with no toCamel - and the page normalises it to
+ * `estimatedDealValue` and `source`. Both fields resolved to nothing.
+ *
+ * So the contract is between the layout and the PAGE'S NORMALIZER, not between
+ * the layout and the schema. Nothing typechecks it: one side is a string
+ * literal in shared/, the other an object literal in a .tsx.
+ */
+const LEAD_PAGE = read('client/src/pages/LeadDetail.tsx');
+/**
+ * Comments blanked, for the absence assertions only. The page header explains
+ * that the `editForm` bulk save was removed, and the first version of the test
+ * below matched that explanation and reported it as the defect - the trap
+ * CLAUDE.md records for check:edge-coverage, which has now fired here too.
+ */
+const LEAD_CODE = LEAD_PAGE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+/** The keys the page's normalizer puts on the record it hands the engine. */
+const leadRecordKeys = (() => {
+  const start = LEAD_PAGE.indexOf('const lead = rawData');
+  const block = LEAD_PAGE.slice(start, LEAD_PAGE.indexOf(': null;', start));
+  return new Set([...block.matchAll(/^\s+([A-Za-z][A-Za-z0-9]*):\s*rawData\./gm)].map((m) => m[1]));
+})();
+
+describe('the lead layout names fields the lead page actually produces', () => {
+  it('has a non-trivial normalizer to check against', () => {
+    // The extraction guard the deals block above already carries: a regex that
+    // matched nothing would make the next assertion pass while proving nothing.
+    expect(leadRecordKeys.size).toBeGreaterThan(15);
+    expect(leadRecordKeys.has('companyName')).toBe(true);
+  });
+
+  it('every field resolves to a normalised key or a pass-through column', () => {
+    // `...rawData` carries every column through, so a single-word snake-free
+    // column (status, industry, city) is present without being normalised.
+    const passThrough = new Set([
+      'status',
+      'industry',
+      'website',
+      'source',
+      'priority',
+      'city',
+      'state',
+      'territory',
+      'probability',
+    ]);
+    const missing = DEFAULT_LAYOUTS.leads.flatMap((s) =>
+      s.propertyFields
+        .map((f) => f.field)
+        .filter((f) => !leadRecordKeys.has(f) && !passThrough.has(f)),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it('does not name the two that were broken', () => {
+    const fields = DEFAULT_LAYOUTS.leads.flatMap((s) => s.propertyFields.map((f) => f.field));
+    expect(fields).not.toContain('estimatedAmount');
+    expect(fields).not.toContain('leadSource');
+    expect(fields).toContain('estimatedDealValue');
+    expect(fields).toContain('source');
+  });
+
+  it('every editable lead field is one the write path can store', () => {
+    // COP-M01: PUT /leads/:id maps camelCase through
+    // _shared/business-record-write.ts. A field it cannot resolve comes back in
+    // ignoredFields, which the page now surfaces - but a SHIPPED layout should
+    // never put a rep in that position.
+    const writer = read('supabase/functions/_shared/business-record-write.ts');
+    const columns = new Set([...writer.matchAll(/^\s+'([a-z_0-9]+)',$/gm)].map((m) => m[1]));
+    const aliases = new Set(
+      [...writer.matchAll(/^\s+([a-z0-9]+):\s*'[a-z_]+',$/gm)].map((m) => m[1]),
+    );
+    expect(columns.size).toBeGreaterThan(80);
+
+    const snake = (f: string) => f.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+    const unstorable = DEFAULT_LAYOUTS.leads.flatMap((s) =>
+      s.propertyFields
+        .filter((f) => f.editable)
+        .map((f) => f.field)
+        .filter((f) => !columns.has(snake(f)) && !aliases.has(f.toLowerCase())),
+    );
+    expect(unstorable).toEqual([]);
+  });
+});
+
+describe('the lead page renders through the engine', () => {
+  it('uses RecordPageLayout rather than its own grid', () => {
+    expect(LEAD_PAGE).toContain('<RecordPageLayout');
+    expect(LEAD_PAGE).toContain('objectType="leads"');
+  });
+
+  it('supplies a slot for every default section that has no fields', () => {
+    const slotBlock = LEAD_PAGE.slice(LEAD_PAGE.indexOf('slots={{'));
+    for (const section of DEFAULT_LAYOUTS.leads) {
+      if (section.propertyFields.length > 0) continue;
+      expect(slotBlock.slice(0, 400), section.sectionId).toContain(`'${section.sectionId}'`);
+    }
+  });
+
+  it('saves one field at a time instead of a bulk editForm', () => {
+    // The 30-key editForm posted every field in one body and, because
+    // PUT /leads/:id spread that body into PostgREST, answered "Failed to
+    // update lead" in production every time (COP-M01).
+    expect(LEAD_CODE).toContain('onFieldSave');
+    expect(LEAD_CODE).not.toContain('editForm');
+    expect(LEAD_CODE).not.toContain('setIsEditing');
+  });
+
+  it('tells the rep when the server did not store what they typed', () => {
+    // The endpoint reports ignoredFields/refusedFields. Dropping that on the
+    // floor would put the page back where COP-B06 started: a narrowing nobody
+    // can see.
+    expect(LEAD_PAGE).toContain('ignoredFields');
+    expect(LEAD_PAGE).toContain('refusedFields');
+  });
+});

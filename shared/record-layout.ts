@@ -131,6 +131,15 @@ export const DEFAULT_LAYOUTS: Record<RecordObjectType, LayoutSection[]> = {
     { sectionId: 'deal-forecast', title: 'Forecast', ...side(1) },
     { sectionId: 'deal-competitive', title: 'Competition', ...side(2) },
   ],
+  /**
+   * COP-M01 corrected two field names here. `estimatedAmount` and `leadSource`
+   * are the DRIZZLE field names; the lead endpoint returns raw snake_case rows
+   * and LeadDetail normalises them to `estimatedDealValue` and `source`, so
+   * both resolved to nothing and the engine reported them as fields the record
+   * does not carry. The layout has to name what the PAGE hands it, not what the
+   * schema calls the column - the write path maps either spelling
+   * (_shared/business-record-write.ts), the read path does not.
+   */
   leads: [
     {
       sectionId: 'lead-header',
@@ -139,7 +148,7 @@ export const DEFAULT_LAYOUTS: Record<RecordObjectType, LayoutSection[]> = {
       order: 0,
       collapsed: false,
       propertyFields: [
-        { field: 'estimatedAmount', label: 'Estimated value', editable: true, type: 'currency' },
+        { field: 'estimatedDealValue', label: 'Estimated value', editable: true, type: 'currency' },
         { field: 'leadScore', label: 'Score', editable: false, type: 'number' },
         { field: 'status', label: 'Status', editable: true },
       ],
@@ -152,14 +161,68 @@ export const DEFAULT_LAYOUTS: Record<RecordObjectType, LayoutSection[]> = {
       collapsed: false,
       propertyFields: [
         { field: 'companyName', label: 'Company', editable: true },
-        { field: 'primaryContactName', label: 'Contact', editable: true },
+        { field: 'industry', label: 'Industry', editable: true },
+        { field: 'website', label: 'Website', editable: true },
+        { field: 'source', label: 'Source', editable: true },
+        { field: 'priority', label: 'Priority', editable: true },
+      ],
+    },
+    {
+      sectionId: 'lead-contact',
+      title: 'Primary contact',
+      position: 'left',
+      order: 1,
+      collapsed: false,
+      propertyFields: [
+        { field: 'primaryContactName', label: 'Name', editable: true },
+        { field: 'primaryContactTitle', label: 'Title', editable: true },
         { field: 'primaryContactEmail', label: 'Email', editable: true },
         { field: 'primaryContactPhone', label: 'Phone', editable: true },
-        { field: 'leadSource', label: 'Source', editable: true },
+      ],
+    },
+    {
+      sectionId: 'lead-address',
+      title: 'Address',
+      position: 'left',
+      order: 2,
+      collapsed: false,
+      propertyFields: [
+        { field: 'addressLine1', label: 'Street', editable: true },
+        { field: 'addressLine2', label: 'Street 2', editable: true },
+        { field: 'city', label: 'City', editable: true },
+        { field: 'state', label: 'State', editable: true },
+        { field: 'postalCode', label: 'Postal code', editable: true },
+      ],
+    },
+    {
+      sectionId: 'lead-pipeline',
+      title: 'Pipeline',
+      position: 'left',
+      order: 3,
+      collapsed: false,
+      propertyFields: [
+        { field: 'interestLevel', label: 'Interest', editable: true },
+        { field: 'probability', label: 'Probability', editable: true, type: 'percent' },
+        { field: 'closeDate', label: 'Expected close', editable: true, type: 'date' },
+        { field: 'nextFollowUpDate', label: 'Next follow-up', editable: true, type: 'date' },
+        { field: 'lastContactDate', label: 'Last contact', editable: false, type: 'date' },
+        { field: 'assignedSalesRep', label: 'Sales rep', editable: true },
+        { field: 'territory', label: 'Territory', editable: true },
       ],
     },
     { ...timeline('lead-timeline') },
-    { sectionId: 'lead-associations', title: 'Associated records', ...side(0) },
+    // The relational panels - contacts, deals, proposals, quotes - need the
+    // WIDE column, not the sidebar, so they sit under the timeline rather than
+    // beside it.
+    {
+      sectionId: 'lead-related',
+      title: 'Related records',
+      position: 'center',
+      order: 1,
+      collapsed: false,
+      propertyFields: [],
+    },
+    { sectionId: 'lead-associations', title: 'At a glance', ...side(0) },
   ],
   contacts: [],
   companies: [],
