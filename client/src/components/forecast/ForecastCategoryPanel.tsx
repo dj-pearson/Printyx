@@ -55,6 +55,9 @@ interface OwnerRow {
 interface TerritoryRow {
   territoryId: string | null;
   territoryName: string;
+  /** COP-B09 AC5. Null when no target is set - never 0. */
+  monthlyQuota: number | null;
+  attainmentPercent: number | null;
   count: number;
   oneTimeValue: number;
   recurringMonthlyValue: number;
@@ -300,6 +303,8 @@ export function ForecastCategoryPanel() {
                       <TableHead>Territory</TableHead>
                       <TableHead className="text-right">Deals</TableHead>
                       <TableHead className="text-right">Commit</TableHead>
+                      <TableHead className="text-right">Quota</TableHead>
+                      <TableHead className="text-right">Attainment</TableHead>
                       <TableHead className="text-right">One-time</TableHead>
                       <TableHead className="text-right">Recurring / mo</TableHead>
                       <TableHead className="text-right">Uncategorized</TableHead>
@@ -312,6 +317,12 @@ export function ForecastCategoryPanel() {
                         <TableCell className="text-right tabular-nums">{row.count}</TableCell>
                         <TableCell className="text-right tabular-nums">
                           {formatCurrencyWhole(row.commitOneTimeValue)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {row.monthlyQuota == null ? '—' : formatCurrencyWhole(row.monthlyQuota)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {row.attainmentPercent == null ? '—' : `${row.attainmentPercent}%`}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {formatCurrencyWhole(row.oneTimeValue)}

@@ -95,7 +95,11 @@ export default async function handler(req: Request) {
      * can reach it, so wiring a caller is what makes it a defect.
      */
     const TERRITORY_COLUMNS =
-      'id, tenant_id, territory_name, territory_code, territory_type, description, geographic_rules, account_rules, is_active, priority, owner_id, manager_id, created_at, updated_at';
+      // COP-B09 AC5: monthly_quota is a real column that nothing could set and
+      // nothing read - a number somebody can store and never see is AUDIT-028's
+      // shape from the other end. The forecast's territory roll-up reports
+      // attainment against it.
+      'id, tenant_id, territory_name, territory_code, territory_type, description, geographic_rules, account_rules, is_active, priority, owner_id, manager_id, monthly_quota, created_at, updated_at';
 
     // GET /sales-territories - List territories
     if (req.method === 'GET' && !territoryId) {
@@ -152,6 +156,9 @@ export default async function handler(req: Request) {
           is_active: body.isActive ?? body.is_active ?? true,
           owner_id: body.ownerId ?? body.owner_id ?? null,
           manager_id: body.managerId ?? body.manager_id ?? null,
+          // Null, not zero: a territory with no quota set has not been given a
+          // target of nothing, and attainment against zero is undefined.
+          monthly_quota: body.monthlyQuota ?? body.monthly_quota ?? null,
         })
         .select(TERRITORY_COLUMNS)
         .single();
@@ -183,6 +190,7 @@ export default async function handler(req: Request) {
       set('is_active', body.isActive, body.is_active);
       set('owner_id', body.ownerId, body.owner_id);
       set('manager_id', body.managerId, body.manager_id);
+      set('monthly_quota', body.monthlyQuota, body.monthly_quota);
 
       const { data: territory, error } = await admin
         .from('sales_territories')

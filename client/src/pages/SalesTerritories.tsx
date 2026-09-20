@@ -62,6 +62,8 @@ interface Territory {
   territoryType?: string | null;
   territory_type?: string | null;
   description?: string | null;
+  monthlyQuota?: string | number | null;
+  monthly_quota?: string | number | null;
   isActive?: boolean | null;
   is_active?: boolean | null;
 }
@@ -80,6 +82,13 @@ const name = (t: Territory) => t.territoryName ?? t.territory_name ?? 'Unnamed t
 const code = (t: Territory) => t.territoryCode ?? t.territory_code ?? null;
 const type = (t: Territory) => t.territoryType ?? t.territory_type ?? null;
 const active = (t: Territory) => (t.isActive ?? t.is_active) !== false;
+/** COP-B09 AC5. Null stays null: no quota is not a quota of nothing. */
+const quota = (t: Territory) => {
+  const raw = t.monthlyQuota ?? t.monthly_quota;
+  if (raw == null || raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+};
 
 const EMPTY = {
   id: '',
@@ -87,6 +96,7 @@ const EMPTY = {
   territoryCode: '',
   territoryType: 'geographic',
   description: '',
+  monthlyQuota: '',
 };
 
 export default function SalesTerritories() {
@@ -120,6 +130,9 @@ export default function SalesTerritories() {
         territoryCode: form.territoryCode || null,
         territoryType: form.territoryType,
         description: form.description || null,
+        // Empty field means "no target", which is null - not 0, which would
+        // read as a target of nothing and make every territory 100% attained.
+        monthlyQuota: form.monthlyQuota.trim() === '' ? null : Number(form.monthlyQuota),
       };
       return form.id
         ? apiRequest(`/api/sales-territories/${form.id}`, 'PUT', body)
@@ -149,6 +162,7 @@ export default function SalesTerritories() {
       id: t.id,
       territoryName: name(t),
       territoryCode: code(t) ?? '',
+      monthlyQuota: quota(t) == null ? '' : String(quota(t)),
       territoryType: type(t) ?? 'geographic',
       description: t.description ?? '',
     });
@@ -311,6 +325,22 @@ export default function SalesTerritories() {
                 onChange={(e) => setForm({ ...form, territoryCode: e.target.value })}
                 placeholder="NR"
               />
+            </div>
+            <div>
+              <Label htmlFor="t-quota">Monthly quota</Label>
+              <Input
+                id="t-quota"
+                type="number"
+                min="0"
+                step="100"
+                value={form.monthlyQuota}
+                onChange={(e) => setForm({ ...form, monthlyQuota: e.target.value })}
+                placeholder="Leave empty for no target"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                The forecast reports each territory&rsquo;s commit against this. Leave it empty
+                rather than entering 0, which would read as a target of nothing.
+              </p>
             </div>
             <div>
               <Label htmlFor="t-type">Type</Label>

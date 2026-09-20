@@ -188,3 +188,66 @@ describe('COP-I06 AC3: the territory roll-up reaches the screen', () => {
     expect(FN).toContain('rollupByTerritory');
   });
 });
+
+/**
+ * COP-B09 AC5: a territory quota nobody could set and nothing read.
+ *
+ * `sales_territories.monthly_quota` has existed all along. The only writer was
+ * `lead-assignment/handlers/territories.ts`, which no reachable surface calls,
+ * and no reader existed anywhere - so the column was AUDIT-028's shape from the
+ * other end: a number a user can store and never see.
+ *
+ * It is settable on the territory page now and the forecast's territory roll-up
+ * reports commit against it. The assertions that matter are about NULL: a
+ * territory with no target has not missed one.
+ */
+describe('COP-B09 AC5: territory quota and attainment', () => {
+  const TERRITORIES_FN = readFileSync(
+    join(__dirname, '../../../supabase/functions/sales-territories/index.ts'),
+    'utf8',
+  );
+  const FORECAST_FN = readFileSync(
+    join(__dirname, '../../../supabase/functions/pipeline-forecast/index.ts'),
+    'utf8',
+  );
+  const PAGE = readFileSync(
+    join(__dirname, '../../../client/src/pages/SalesTerritories.tsx'),
+    'utf8',
+  );
+  const PANEL = readFileSync(
+    join(__dirname, '../../../client/src/components/forecast/ForecastCategoryPanel.tsx'),
+    'utf8',
+  );
+
+  it('is settable: create, partial update, and returned on reads', () => {
+    expect(TERRITORIES_FN).toMatch(/monthly_quota: body\.monthlyQuota/);
+    expect(TERRITORIES_FN).toMatch(/set\('monthly_quota', body\.monthlyQuota/);
+    // Returned, or the page cannot show what it just saved.
+    expect(TERRITORIES_FN).toMatch(/manager_id, monthly_quota,/);
+  });
+
+  it('the page sends null for an empty field, never 0', () => {
+    // 0 is a target of nothing, which makes every territory 100% attained.
+    expect(PAGE).toMatch(
+      /form\.monthlyQuota\.trim\(\) === '' \? null : Number\(form\.monthlyQuota\)/,
+    );
+  });
+
+  it('the forecast fetches the quota and reports attainment against it', () => {
+    expect(FORECAST_FN).toMatch(/is_active, monthly_quota'/);
+    expect(FORECAST_FN).toContain('attainmentPercent');
+  });
+
+  it('attainment is null without a quota, not zero and not a division by zero', () => {
+    const at = FORECAST_FN.indexOf('attainmentPercent:');
+    expect(at).toBeGreaterThan(-1);
+    const expr = FORECAST_FN.slice(at, at + 260);
+    expect(expr).toMatch(/> 0/);
+    expect(expr).toMatch(/: null/);
+  });
+
+  it('the panel renders an em dash rather than a number it does not have', () => {
+    expect(PANEL).toMatch(/row\.monthlyQuota == null \?/);
+    expect(PANEL).toMatch(/row\.attainmentPercent == null \?/);
+  });
+});

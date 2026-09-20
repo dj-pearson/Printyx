@@ -690,7 +690,8 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
         fetchAllRows<Record<string, any>>(() =>
           admin
             .from('sales_territories')
-            .select('id, territory_name, territory_code, is_active')
+            // monthly_quota drives COP-B09 AC5's attainment; null stays null.
+            .select('id, territory_name, territory_code, is_active, monthly_quota')
             .eq('tenant_id', tenantId),
         ),
         fetchAllRows<Record<string, any>>(() =>
@@ -702,6 +703,9 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
         ),
       ]);
       const index = buildTerritoryIndex((territories ?? []).filter((t) => t.is_active !== false));
+      const quotaByTerritory = new Map(
+        (territories ?? []).map((t) => [String(t.id), t.monthly_quota as string | number | null]),
+      );
       const territoryByAccount = new Map(
         (accounts ?? []).map((a) => [a.id, a.territory as string | null]),
       );
@@ -719,9 +723,21 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
             SHARED_FALLBACK_PROBABILITY,
           ),
         );
+        // AC5: attainment against the territory's own quota. NULL when no quota
+        // is set - a territory without a target has not missed one, and
+        // dividing by zero or defaulting to 100% would both assert something
+        // nobody recorded.
+        const quotaRow = group.territoryId ? quotaByTerritory.get(group.territoryId) : null;
+        const monthlyQuota = quotaRow == null || quotaRow === '' ? null : Number(quotaRow);
+        const commitValue = summary.buckets.find((b) => b.category === 'commit')?.oneTimeValue ?? 0;
         return {
           territoryId: group.territoryId,
           territoryName: group.territoryName,
+          monthlyQuota: Number.isFinite(monthlyQuota as number) ? monthlyQuota : null,
+          attainmentPercent:
+            Number.isFinite(monthlyQuota as number) && (monthlyQuota as number) > 0
+              ? Math.round((commitValue / (monthlyQuota as number)) * 1000) / 10
+              : null,
           count: summary.totals.count,
           oneTimeValue: summary.totals.oneTimeValue,
           recurringMonthlyValue: summary.totals.recurringMonthlyValue,
