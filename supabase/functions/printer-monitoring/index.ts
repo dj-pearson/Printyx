@@ -221,12 +221,18 @@ export default async function handler(req: Request) {
           admin.from('printer_metrics').insert(rows).select(),
         );
 
-        // Update client last seen
+        // Update client last seen.
+        //
+        // This said `tenantId`, which is declared 26 lines BELOW in a different
+        // branch - a const in its temporal dead zone, so every metrics
+        // submission threw "Cannot access 'tenantId' before initialization"
+        // before it could answer. The agent is authenticated by its API key, so
+        // the tenant is the client's, exactly as the rows above write it.
         await admin
           .from('monitoring_clients')
           .update({ last_seen_at: new Date().toISOString() })
           .eq('id', client.id)
-          .eq('tenant_id', tenantId);
+          .eq('tenant_id', client.tenant_id);
 
         return createCorsResponse(
           {

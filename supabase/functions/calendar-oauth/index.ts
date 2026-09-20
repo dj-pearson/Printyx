@@ -231,6 +231,10 @@ export default async function handler(req: Request) {
     // bypasses RLS - so a tenant read from that bag is a tenant of the
     // caller's choosing. resolveTenantId takes app_metadata, then the
     // caller's users row, which neither the user nor the browser can write.
+    // Declared here, not borrowed: the only other `admin` in this file is
+    // inside the OAuth-callback branch above, which returns before reaching
+    // this one - so this read was a ReferenceError on every authenticated call.
+    const admin = createSupabaseServiceClient();
     const tenantId = await resolveTenantId(req, user, admin);
 
     if (!tenantId) {

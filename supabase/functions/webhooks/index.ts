@@ -31,57 +31,57 @@ export default async function handler(req: Request) {
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
-
-      /**
-       * SEC-EDGE-001: an outbound webhook sends this tenant's data to a URL the
-       * caller chooses.
-       *
-       * Creating one is therefore an exfiltration primitive - point it at your
-       * own server, subscribe it to every event, and the tenant streams records
-       * to you - and `regenerate-secret` is the other half: it breaks whatever
-       * live integration is verifying signatures with the old one. `test` fires a
-       * real delivery. All five writes were open to any authenticated member.
-       *
-       * The reads stay open and are already safe by construction: every read path
-       * selects an explicit column list that omits `secret`, routed through
-       * `_shared/webhook-view.ts`, so a caller sees which hooks exist and where
-       * they point without the material to forge a delivery.
-       *
-       * SUPERVISOR mirrors the LOWER of the two pages that reach this
-       * (/integration-hub is minLevel 3, /system-integrations is 4), because
-       * gating at 4 would break the page at 3. A LEVEL check, not the
-       * `admin.settings.integrations` permission those pages name, per
-       * SEC-EDGE-002 - no seeder creates that code.
-       */
-      const requireIntegrationAdmin = () => {
-        requireRoleLevel(
-          {
-            userId: user.id,
-            tenantId,
-            email: user.email,
-            jwt: jwt ?? '',
-            supabaseUser: user,
-          } as AuthContext,
-          ROLE_LEVEL.SUPERVISOR,
-        );
-      };
-      const denyIntegrationAdmin = (err: unknown) => {
-        // Only an RbacError is a role refusal; anything else is rethrown, or a
-        // database outage would read as "your role is too low".
-        if (err instanceof RbacError) {
-          return createCorsResponse(
-            {
-              error: 'Managing webhooks requires a supervisor role or above',
-              code: 'INSUFFICIENT_ROLE',
-              details: err.details,
-            },
-            403,
-            req,
-          );
-        }
-        throw err;
-      };
     }
+
+    /**
+     * SEC-EDGE-001: an outbound webhook sends this tenant's data to a URL the
+     * caller chooses.
+     *
+     * Creating one is therefore an exfiltration primitive - point it at your
+     * own server, subscribe it to every event, and the tenant streams records
+     * to you - and `regenerate-secret` is the other half: it breaks whatever
+     * live integration is verifying signatures with the old one. `test` fires a
+     * real delivery. All five writes were open to any authenticated member.
+     *
+     * The reads stay open and are already safe by construction: every read path
+     * selects an explicit column list that omits `secret`, routed through
+     * `_shared/webhook-view.ts`, so a caller sees which hooks exist and where
+     * they point without the material to forge a delivery.
+     *
+     * SUPERVISOR mirrors the LOWER of the two pages that reach this
+     * (/integration-hub is minLevel 3, /system-integrations is 4), because
+     * gating at 4 would break the page at 3. A LEVEL check, not the
+     * `admin.settings.integrations` permission those pages name, per
+     * SEC-EDGE-002 - no seeder creates that code.
+     */
+    const requireIntegrationAdmin = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.SUPERVISOR,
+      );
+    };
+    const denyIntegrationAdmin = (err: unknown) => {
+      // Only an RbacError is a role refusal; anything else is rethrown, or a
+      // database outage would read as "your role is too low".
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Managing webhooks requires a supervisor role or above',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'webhooks');
@@ -310,7 +310,10 @@ export default async function handler(req: Request) {
       }
       const newSecret = crypto.randomUUID().replace(/-/g, '');
 
-      const { data: webhook, error } = await admin
+      // The row is not read: the new secret is returned from `newSecret`, and
+      // re-reading it back off the row would put the stored value on a second
+      // code path for no gain.
+      const { error } = await admin
         .from('webhooks')
         .update({
           secret: newSecret,

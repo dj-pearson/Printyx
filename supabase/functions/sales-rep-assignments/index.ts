@@ -50,54 +50,54 @@ export default async function handler(req: Request) {
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
-
-      /**
-       * SEC-EDGE-001: the WRITE branches decide whose book an account sits in.
-       *
-       * The reads below are a territory map - who owns what, how many, which
-       * accounts are unassigned - and a rep needs them. The three POSTs are a
-       * different act: they move an account, and therefore its pipeline and
-       * whatever commission follows it, from one rep to another. Ungated, any
-       * authenticated member of the tenant could reassign a colleague's whole
-       * book to themselves in one bulk-assign call.
-       *
-       * `/sales-rep-assignments` is minLevel 3 in navigation-permissions, so the
-       * gate MIRRORS THE PAGE rather than picking a level: anything lower would
-       * not be a control, and anything higher would lock out the users the page
-       * exists for. A LEVEL check and not a permission code, per SEC-EDGE-002 -
-       * the codes the Express gates name (`sales.territory.manage_assignments`)
-       * are not the codes any seeder creates, so a copied permission gate denies
-       * everyone below platform admin.
-       */
-      const requireAssigner = () => {
-        requireRoleLevel(
-          {
-            userId: user.id,
-            tenantId,
-            email: user.email,
-            jwt: jwt ?? '',
-            supabaseUser: user,
-          } as AuthContext,
-          ROLE_LEVEL.SUPERVISOR,
-        );
-      };
-      const denyAssigner = (err: unknown) => {
-        // Only an RbacError is a role refusal. Answering 403 on ANY failure would
-        // turn a database outage into "your role is too low".
-        if (err instanceof RbacError) {
-          return createCorsResponse(
-            {
-              error: 'Reassigning accounts requires a supervisor role or above',
-              code: 'INSUFFICIENT_ROLE',
-              details: err.details,
-            },
-            403,
-            req,
-          );
-        }
-        throw err;
-      };
     }
+
+    /**
+     * SEC-EDGE-001: the WRITE branches decide whose book an account sits in.
+     *
+     * The reads below are a territory map - who owns what, how many, which
+     * accounts are unassigned - and a rep needs them. The three POSTs are a
+     * different act: they move an account, and therefore its pipeline and
+     * whatever commission follows it, from one rep to another. Ungated, any
+     * authenticated member of the tenant could reassign a colleague's whole
+     * book to themselves in one bulk-assign call.
+     *
+     * `/sales-rep-assignments` is minLevel 3 in navigation-permissions, so the
+     * gate MIRRORS THE PAGE rather than picking a level: anything lower would
+     * not be a control, and anything higher would lock out the users the page
+     * exists for. A LEVEL check and not a permission code, per SEC-EDGE-002 -
+     * the codes the Express gates name (`sales.territory.manage_assignments`)
+     * are not the codes any seeder creates, so a copied permission gate denies
+     * everyone below platform admin.
+     */
+    const requireAssigner = () => {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.SUPERVISOR,
+      );
+    };
+    const denyAssigner = (err: unknown) => {
+      // Only an RbacError is a role refusal. Answering 403 on ANY failure would
+      // turn a database outage into "your role is too low".
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Reassigning accounts requires a supervisor role or above',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'sales-rep-assignments');

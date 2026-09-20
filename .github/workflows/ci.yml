@@ -113,6 +113,8 @@ jobs:
         run: npm run check:prd-refs
       - name: Stale story gates (blocker already landed)
         run: npm run check:stale-gates
+      - name: Undefined identifiers in the edge tree (COP-B04)
+        run: npm run check:edge-undef
       - name: Raw-fetch ratchet (PROD-013)
         run: npm run check:raw-fetch
       - name: Raw request-body write ratchet (COP-M01)
