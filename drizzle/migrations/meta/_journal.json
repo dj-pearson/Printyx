@@ -526,6 +526,13 @@
       "when": 1789861786818,
       "tag": "0091_panoramic_gunslinger",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1789862802997,
+      "tag": "0092_purple_the_hand",
+      "breakpoints": true
     }
   ]
 }

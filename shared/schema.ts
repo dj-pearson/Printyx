@@ -6308,6 +6308,10 @@ export const proposalLineItems = pgTable(
 
     // Equipment-specific fields
     equipmentCondition: varchar('equipment_condition'), // new, refurbished, demo
+    // COP-B06: the installed machine this line displaces. `equipment.id`, not a
+    // product - the whole point is that Quote Builder's "equipment" has always
+    // meant product_models (what we sell) and never `equipment` (what they run).
+    replacesEquipmentId: varchar('replaces_equipment_id'),
     warrantyInfo: text('warranty_info'),
 
     // Configuration and Options

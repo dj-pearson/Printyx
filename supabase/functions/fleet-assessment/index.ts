@@ -95,7 +95,7 @@ export default async function handler(req: Request) {
         admin
           .from('equipment')
           .select(
-            'id, customer_id, serial_number, model_number, is_color_capable, equipment_status',
+            'id, customer_id, serial_number, model_number, is_color_capable, equipment_status, monthly_payment, lease_expires_date',
           )
           .eq('tenant_id', tenantId)
           .eq('customer_id', customerId),
@@ -171,7 +171,24 @@ export default async function handler(req: Request) {
         colorCopies: r.color_copies,
       }));
 
+      // COP-B06: the lease facts a quote's replacement line needs. Kept apart
+      // from the assessment because they say nothing about spend - the
+      // assessment is what the fleet costs to RUN, this is what it costs to
+      // LEAVE, and conflating the two is how a payment stream gets called a
+      // buyout.
+      const leaseByEquipment: Record<
+        string,
+        { monthlyPayment: string | null; leaseExpiresDate: string | null }
+      > = {};
+      for (const e of equipment ?? []) {
+        leaseByEquipment[String(e.id)] = {
+          monthlyPayment: e.monthly_payment ?? null,
+          leaseExpiresDate: e.lease_expires_date ?? null,
+        };
+      }
+
       return {
+        leaseByEquipment,
         current: assessCurrentFleet({
           equipment: (equipment ?? []).map((e) => ({
             id: String(e.id),
@@ -204,8 +221,8 @@ export default async function handler(req: Request) {
           req,
         );
       }
-      const { current, contractId } = await gather(customerId);
-      return createCorsResponse({ customerId, contractId, current }, 200, req);
+      const { current, contractId, leaseByEquipment } = await gather(customerId);
+      return createCorsResponse({ customerId, contractId, current, leaseByEquipment }, 200, req);
     }
 
     // ─── POST / ──────────────────────────────────────────────────────

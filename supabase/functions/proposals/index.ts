@@ -291,6 +291,8 @@ const LINE_ITEM_COLUMNS = [
   'is_customizable',
   'configuration_options',
   'alternative_options',
+  // COP-B06: the installed machine this line displaces (equipment.id).
+  'replaces_equipment_id',
 ];
 
 // camelCase (what the UI sends) → snake_case column. `productType` is the UI's
@@ -315,6 +317,7 @@ const LINE_ITEM_FIELD_MAP: Record<string, string> = {
   isCustomizable: 'is_customizable',
   configurationOptions: 'configuration_options',
   alternativeOptions: 'alternative_options',
+  replacesEquipmentId: 'replaces_equipment_id',
 };
 
 // Normalize an inbound line item (camelCase OR snake_case) into a clean insert row.
@@ -1866,6 +1869,7 @@ export default async function handler(req: Request) {
       }
 
       // Optional inline line items
+      let droppedLineItemColumns = false;
       const lineItems = Array.isArray(body.lineItems) ? body.lineItems : [];
       if (lineItems.length > 0) {
         const rows = lineItems.map((item: Record<string, unknown>, index: number) =>
@@ -1880,9 +1884,26 @@ export default async function handler(req: Request) {
         } else {
           await recalculateProposalTotals(db, (proposal as { id: string }).id, ctx.tenantId);
         }
+        droppedLineItemColumns = insertItems.droppedColumns === true;
       }
 
-      return jsonResponse(proposal, 201, req, requestId);
+      // COP-B06: the self-healing retry drops every non-core column, which
+      // includes `replaces_equipment_id`. A rep who attached serials and got a
+      // 201 would otherwise never learn the links were discarded, so the
+      // response says it rather than only the log.
+      return jsonResponse(
+        droppedLineItemColumns
+          ? {
+              ...(proposal as Record<string, unknown>),
+              lineItemColumnsDropped: true,
+              warning:
+                'Line items saved with optional columns dropped - the database is behind the schema. Fleet replacement links were not stored.',
+            }
+          : proposal,
+        201,
+        req,
+        requestId,
+      );
     }
 
     // Match /:id for GET/PUT/PATCH/DELETE — and /:id/sub for sub-resources below
@@ -1982,6 +2003,7 @@ export default async function handler(req: Request) {
       }
 
       // Replace line items if provided — matches Express PUT/PATCH semantics
+      let droppedLineItemColumns = false;
       if (Array.isArray(lineItemsToUpdate) && lineItemsToUpdate.length > 0) {
         await db
           .from('proposal_line_items')
@@ -2001,9 +2023,22 @@ export default async function handler(req: Request) {
         } else {
           await recalculateProposalTotals(db, id, ctx.tenantId);
         }
+        droppedLineItemColumns = insertItems.droppedColumns === true;
       }
 
-      return jsonResponse(proposal, 200, req, requestId);
+      return jsonResponse(
+        droppedLineItemColumns
+          ? {
+              ...(proposal as Record<string, unknown>),
+              lineItemColumnsDropped: true,
+              warning:
+                'Line items saved with optional columns dropped - the database is behind the schema. Fleet replacement links were not stored.',
+            }
+          : proposal,
+        200,
+        req,
+        requestId,
+      );
     }
 
     // DELETE /proposals/:id

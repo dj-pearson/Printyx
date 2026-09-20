@@ -50,6 +50,7 @@ import {
 import { downloadQuotePdf, emailQuote } from '@/lib/quote-pdf';
 import CompanyContactSelector from './CompanyContactSelector';
 import LineItemManager from './LineItemManager';
+import { FleetContextPanel } from './FleetContextPanel';
 import PricingCalculator from './PricingCalculator';
 import { QuoteWizardProgress, DEFAULT_QUOTE_STEPS } from '@/components/quotes/QuoteWizardProgress';
 import GenerateProposalDialog from '@/components/proposal-builder/GenerateProposalDialog';
@@ -129,6 +130,10 @@ interface LineItem {
   recurringFrequency?: string;
   recurringDuration?: number;
   notes?: string;
+  // COP-B06: the installed machine this line displaces (equipment.id). Quote
+  // Builder's "equipment" has always meant product_models, what we sell; this
+  // is the first field on a line that points at what the customer runs.
+  replacesEquipmentId?: string;
 }
 
 interface QuoteBuilderProps {
@@ -193,6 +198,9 @@ function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[], dealId?: st
       isRecurring: item.isRecurring === true,
       recurringFrequency: item.isRecurring ? item.recurringFrequency || 'monthly' : null,
       recurringDuration: item.isRecurring ? (item.recurringDuration ?? null) : null,
+      // COP-B06. Null rather than omitted, so clearing a replacement on an
+      // existing quote actually clears it.
+      replacesEquipmentId: item.replacesEquipmentId ?? null,
     })),
     subtotal: subtotalAmount.toString(),
     discountAmount: discountAmt.toString(),
@@ -225,6 +233,16 @@ export default function QuoteBuilder({
   onCreateProposal,
 }: QuoteBuilderProps) {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
+
+  // COP-B06: only for the recorded lease buyout, which the fleet panel prefers
+  // over anything it can derive. Enabled only when the builder was opened from
+  // a deal, so a standalone quote makes no extra request.
+  const dealForBuyout = useQuery<{ leaseBuyoutExposure?: string | null }>({
+    queryKey: [`/api/deals/${dealId}`],
+    queryFn: () => apiRequest(`/api/deals/${dealId}`),
+    enabled: Boolean(dealId),
+    staleTime: 5 * 60_000,
+  });
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
@@ -708,6 +726,38 @@ export default function QuoteBuilder({
   const handleReorderLineItems = (items: LineItem[]) => {
     setLineItems(items);
   };
+
+  /**
+   * COP-B06. Which lines a fleet machine can be attached to, and the handler
+   * that attaches it.
+   *
+   * Only PARENT equipment lines: an accessory subline does not displace a
+   * machine, and offering it as a target invites a serial being recorded
+   * against a staple finisher.
+   */
+  const fleetLineOptions = lineItems
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => !item.isSubline && item.productType === 'product_models')
+    .map(({ item, index }) => ({
+      index,
+      label: `${index + 1}. ${item.productName}`,
+      replacesEquipmentId: item.replacesEquipmentId,
+    }));
+
+  const handleAssignReplacement = (lineIndex: number, equipmentId: string | undefined) => {
+    setLineItems((items) =>
+      items.map((item, i) =>
+        i === lineIndex ? { ...item, replacesEquipmentId: equipmentId } : item,
+      ),
+    );
+  };
+
+  /**
+   * The buyout the rep recorded from the lessor, when this quote came from a
+   * deal. It is the quotable figure; anything derived from a payment stream is
+   * a floor (see shared/fleet-quote.ts).
+   */
+  const dealBuyoutExposure = dealForBuyout.data?.leaseBuyoutExposure ?? null;
 
   const handleDiscountChange = (discountAmt: number, discountPct: number) => {
     setDiscountAmount(discountAmt);
@@ -1304,14 +1354,26 @@ export default function QuoteBuilder({
 
       {/* ── Step 1: Products ───────────────────────────────────────────────── */}
       {currentStep === 1 && (
-        <LineItemManager
-          lineItems={lineItems}
-          pricingType={form.watch('pricingType')}
-          onAddItem={handleAddLineItem}
-          onUpdateItem={handleUpdateLineItem}
-          onDeleteItem={handleDeleteLineItem}
-          onReorderItems={handleReorderLineItems}
-        />
+        <div className="space-y-4">
+          {/* COP-B06: start from what the customer already runs. Rendered only
+              once a company is chosen, because there is no fleet without one. */}
+          {form.watch('businessRecordId') && (
+            <FleetContextPanel
+              businessRecordId={form.watch('businessRecordId')}
+              recordedBuyout={dealBuyoutExposure}
+              lineOptions={fleetLineOptions}
+              onAssign={handleAssignReplacement}
+            />
+          )}
+          <LineItemManager
+            lineItems={lineItems}
+            pricingType={form.watch('pricingType')}
+            onAddItem={handleAddLineItem}
+            onUpdateItem={handleUpdateLineItem}
+            onDeleteItem={handleDeleteLineItem}
+            onReorderItems={handleReorderLineItems}
+          />
+        </div>
       )}
 
       {/* ── Step 2: Pricing & notes ────────────────────────────────────────── */}

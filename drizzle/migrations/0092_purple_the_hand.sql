@@ -1,0 +1,1 @@
+ALTER TABLE "proposal_line_items" ADD COLUMN "replaces_equipment_id" varchar;

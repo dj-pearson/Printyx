@@ -132,6 +132,10 @@ interface LineItem {
   recurringFrequency?: string;
   recurringDuration?: number;
   notes?: string;
+  // COP-B06: the installed machine this line displaces (equipment.id). Set
+  // from the fleet panel, not here; declared so every `{...item}` edit in this
+  // file carries it through instead of quietly dropping it.
+  replacesEquipmentId?: string;
 }
 
 interface LineItemManagerProps {

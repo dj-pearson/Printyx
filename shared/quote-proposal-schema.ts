@@ -308,6 +308,10 @@ export const proposalLineItems = pgTable('proposal_line_items', {
   leadTime: integer('lead_time'), // Days to delivery/implementation
   warrantyPeriod: integer('warranty_period'), // Months
   serviceLevel: varchar('service_level'), // standard, premium, basic
+  // COP-B06. Mirrored from shared/schema.ts's declaration of this same table:
+  // one table in the database, two declarations, and a column added to only one
+  // of them reads as phantom (WF-C-04).
+  replacesEquipmentId: varchar('replaces_equipment_id'),
 
   // Customization Options
   isOptional: boolean('is_optional').default(false),
