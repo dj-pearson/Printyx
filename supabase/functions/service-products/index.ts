@@ -31,8 +31,31 @@ import { normalizePath } from '../_shared/path.ts';
 import { toCamelShallow } from '../_shared/case.ts';
 import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
+
+/**
+ * SEC-EDGE-001: THE SEVENTH MEMBER OF A FAMILY THAT WAS SWEPT TWICE.
+ *
+ * Seven edge functions import `_shared/catalog-import-runner.ts` and serve the
+ * same catalogue shape - product-models, managed-services, product-accessories,
+ * professional-services, supplies, software-products and this one. Six gate
+ * their writes with `operations.inventory.manage`; this one gated nothing, so
+ * every POST, PUT, DELETE and the bulk CSV import were open to any
+ * authenticated member of the tenant.
+ *
+ * `software-products` carries a header calling itself "the sibling nobody did"
+ * and describing exactly this. The sweep that found it stopped at its twin
+ * rather than at the family, which is how a seventh survived two passes -
+ * derive the family from what a function IMPORTS, not from which name it
+ * resembles.
+ *
+ * A permission and not a level, matching all six siblings: the seeder has a
+ * code that means exactly this and `/service-products` already names its read
+ * half (`service.equipment.view`, `operations.inventory.view`).
+ */
+const WRITE_PERMISSION = 'operations.inventory.manage';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -57,6 +80,15 @@ export default async function handler(req: Request) {
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+    }
+
+    // Every non-GET branch here writes: create, update, delete and the bulk
+    // CSV import, which is why a blanket method check is right in this file
+    // and would be wrong in one whose POSTs include a read (oid-mappings'
+    // /export is a read the page sends as a POST).
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
     }
 
     const url = new URL(req.url);

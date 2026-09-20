@@ -587,7 +587,10 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   },
   // COP-B09. Territories scope the pipeline, so anyone who can see an
   // opportunity can see how it is carved up. Creating one is a management act
-  // and is gated in the edge function.
+  // and is gated in the edge function (SEC-EDGE-001 round 85 actually BUILT
+  // that gate - this comment asserted it for weeks while the handler had no
+  // role check at all, which is why the rule below reads as deliberate and
+  // was not).
   '/territories': {
     requiredPermissions: [
       'sales.opportunity.view_own',

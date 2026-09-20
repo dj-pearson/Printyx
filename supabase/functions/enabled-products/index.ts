@@ -4,6 +4,25 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+
+/**
+ * SEC-EDGE-001: the tenant's own enabled-product catalogue, same permission as
+ * the seven catalogue functions next door.
+ *
+ * `enabled_products` is what a rep's quote builder picks from, so the READ is
+ * every rep's and stays open - `/product-hub`, its only caller, is gated on
+ * `operations.inventory.view` plus `sales.customer.view_own`.
+ *
+ * The writes are a different act and had no gate at all. Worth recording what
+ * checking the callers changed: ProductHubUnified only GETs this prefix and
+ * invalidates it - every enable, bulk-enable, CSV import and pricing edit goes
+ * through `/api/catalog`, which has required a role level since SEC-EDGE-001's
+ * earlier batches. So these three branches are live HTTP endpoints that no
+ * client tree exercises, which makes gating them free rather than risky, and
+ * makes leaving them open the sort of gap nobody would ever notice.
+ */
+const WRITE_PERMISSION = 'operations.inventory.manage';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -40,7 +59,11 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
-    // Use service_role client for database operations
+    // All three non-GET branches write the catalogue.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
+    }
 
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,

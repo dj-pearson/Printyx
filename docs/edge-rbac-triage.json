@@ -1,14 +1,14 @@
 {
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing \u2014 AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing \u2014 this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
+    "open-by-design": 43,
     "headless": 35,
-    "open-by-design": 32,
-    "unexamined": 17,
-    "gated-branch": 10,
+    "gated-branch": 15,
     "row-scoped": 8,
     "public": 8,
     "internal": 3,
-    "needs-gate": 2
+    "needs-gate": 2,
+    "unexamined": 1
   },
   "triage": [
     {
@@ -173,8 +173,8 @@
     },
     {
       "fn": "deal-desk-copilot",
-      "verdict": "unexamined",
-      "reason": "Two writes; needs reading to tell advice from action."
+      "verdict": "gated-branch",
+      "reason": "SEC-EDGE-001 round 85. PUT /settings gated at MANAGER; everything else open. gp_floor_pct is the gross-profit floor the copilot uses to decide which quotes need the deal desk, so the party it constrains could move it - QUOTE-006's guardrail edited by the rep it checks. The component renders inside QuoteBuilderPage, which every rep uses, so a file-level gate would break the feature; the per-quote reads are a rep's own analysis of their own quote. No client calls the settings branch. Paths read: the settings branch and all four per-quote actions."
     },
     {
       "fn": "deal-stages",
@@ -183,13 +183,13 @@
     },
     {
       "fn": "demos",
-      "verdict": "unexamined",
-      "reason": "Two writes over demo scheduling; not yet read."
+      "verdict": "open-by-design",
+      "reason": "SEC-EDGE-001 round 85. Scheduling a demo is what a rep does; demo_schedules rows are per-prospect and the business_records read is the account. /demo-scheduling is gated on sales.opportunity.create. Paths read: the insert and update branches."
     },
     {
       "fn": "documents",
-      "verdict": "unexamined",
-      "reason": "Still unexamined - one write, not yet read. Left honestly rather than given a verdict from the name; PROD-008d records the whole document-automation feature as unshipped, which is why nothing has pushed this up the list."
+      "verdict": "open-by-design",
+      "reason": "SEC-EDGE-001 round 85. One insert, into documents, scoped to the uploading tenant. A rep attaching a file is not a privileged act; what would be privileged here is a retention or sharing setting and there is none. Paths read: the single write branch."
     },
     {
       "fn": "email-marketing",
@@ -198,13 +198,13 @@
     },
     {
       "fn": "email-sequences",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "SEC-EDGE-001 round 85, and the unsubscribe table is why it is worth stating. Writes are enrollments, a logged activity and an email_unsubscribes row - the last of which is a SUPPRESSION, but one that only ever stops mail rather than starting it, so the failure direction is safe and gating it would let a rep keep emailing someone who asked them to stop. Enrolling a prospect in a sequence is a rep's own outreach. Paths read: the enrollment, activity and unsubscribe writes."
     },
     {
       "fn": "enabled-products",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "SEC-EDGE-001 round 85. Non-GET gated on operations.inventory.manage. The READ feeds the quote builder's picker off /product-hub and stays open. Checking the callers changed the write-up: ProductHubUnified only GETs and invalidates this prefix - every enable, bulk-enable, import and pricing edit goes through /api/catalog, which has required a role level since an earlier batch - so these three write branches are live endpoints no client exercises. Gating them is free, and leaving them open was the kind of gap nobody would notice. Paths read: all five branches."
     },
     {
       "fn": "enrichment",
@@ -250,12 +250,12 @@
     {
       "fn": "handoff-task-templates",
       "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "reason": "SEC-EDGE-001 round 85: NARROWED, NOT SETTLED. Read far enough to establish the shape and not far enough to file it. These templates are TENANT-WIDE - every future handoff inherits them - which is the churn-risk/toner-replenish shape where a change nobody sees alters what everyone gets, so this is a needs-gate candidate rather than open-by-design. What is missing is whether SalesHandoffs.tsx lets a rep edit them inline (in which case gating breaks the page) or whether they are an admin surface. Recorded honestly rather than guessed: a verdict reasoned from the write's blast radius alone is the same mistake as one reasoned from the name."
     },
     {
       "fn": "handoff-tasks",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "SEC-EDGE-001 round 85. Tasks on a specific handoff - create, update, reassign, delete - which is the work the handoff page exists to do. The users read is an assignee picker. Paths read: all four write branches."
     },
     {
       "fn": "hello",
@@ -348,8 +348,8 @@
     },
     {
       "fn": "parts-orders",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "SEC-EDGE-001 round 85. Ordering parts for a service call is the technician's job, which is the whole point of the surface (ServiceTicketAnalysis). Writes are parts_orders + parts_order_items against a ticket the caller is working. Note the phantom-column defects already recorded against this file were fixed under AUDIT-037; nothing here is a tenant-wide decision. Paths read: all five write sites and the list/detail branches."
     },
     {
       "fn": "payment-processing",
@@ -380,8 +380,8 @@
     },
     {
       "fn": "predictive-dispatch",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "SEC-EDGE-001 round 85. One update, on service_tickets, dispatching a call the engine has already predicted. Note the sibling: predictive-failure's writes WERE gated at SUPERVISOR this story, because those branches create draft tickets and carry the agent kill switch plus the confidence threshold. This function has neither - no settings row, no threshold, no kill switch - so the same reasoning lands differently. Paths read: the single write and the five reads."
     },
     {
       "fn": "predictive-failure",
@@ -391,8 +391,8 @@
     },
     {
       "fn": "predictive-maintenance",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "SEC-EDGE-001 round 85. One insert, a service_tickets row for a machine the model flagged. Same reasoning as predictive-dispatch: no settings, no threshold, nothing tenant-wide. Worth knowing separately that client_collected_metrics is one of AUDIT-032's six tables nothing can write to, so part of this function's input is structurally empty. Paths read: the single write and the reads feeding it."
     },
     {
       "fn": "pricing-rules",
@@ -413,8 +413,8 @@
     },
     {
       "fn": "projects",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "SEC-EDGE-001 round 85. Implementation projects and their tasks, created from a handoff. Writes are projects/tasks rows tied to one engagement; the equipment, purchase_orders and users reads are context for it. HandoffProject and TemplatesView are the callers. Paths read: the three write branches."
     },
     {
       "fn": "public-booking",
@@ -458,13 +458,13 @@
     },
     {
       "fn": "sales-handoffs",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "SEC-EDGE-001 round 85. A rep handing a won deal to service, and the checklist that goes with it. Writes are sales_handoff_checklists and handoff_tasks scoped to one handoff; SalesHandoffs.tsx is the only caller. Paths read: the patch, complete and two delete branches."
     },
     {
       "fn": "sales-pipeline",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "SEC-EDGE-001 round 85, read in full. Five writes and every one is a rep's own work: creating a lead (business_records insert), moving a record's stage, and logging an activity with a last_contact_date bump. The page is gated on sales.opportunity.view_own and up. The control here is ROW scoping, not role - COP-E02 locked the stage vocabulary and the write validates against it with z.enum. Paths read: all branches of index.ts."
     },
     {
       "fn": "sales-rep-assignments",
@@ -478,8 +478,8 @@
     },
     {
       "fn": "sales-territories",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "SEC-EDGE-001 round 85. POST/PUT/DELETE gated at MANAGER; reads open. The nav rule for /territories already SAID 'Creating one is a management act and is gated in the edge function' and there was no role check of any kind - the false claim and the missing gate were in different files, so neither read as wrong alone. A territory is not a lookup row: _shared/territory.ts resolves business_records.territory against its name/code at READ time (COP-B10), shared/territory-membership.ts makes owner_id/team_members the radar's default filter (COP-B09), and the forecast reports commit against monthly_quota. DELETE hides best - the accounts naming it fall into the coverage report's UNASSIGNED bucket, which reads as 'nobody has assigned these' rather than 'somebody deleted the territory'. Paths read: all six branches of index.ts."
     },
     {
       "fn": "search",
@@ -488,13 +488,13 @@
     },
     {
       "fn": "service",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "SEC-EDGE-001 round 85. PUT /knowledge-search/settings gated at MANAGER; everything else open. That branch writes federated_opt_in, which sends this dealer's service knowledge into a pool shared with OTHER TENANTS, and the row stores consentedAt/consentedByUserId - built to record who agreed, while letting anyone be that person. The rest of the function is a technician's daily work: RAG search over historical fixes, embedding a ticket, ticket CRUD, proactive maintenance. No client calls the settings endpoint today. Paths read: the dispatcher at index.ts:105-130 and every handler it routes to."
     },
     {
       "fn": "service-analysis",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "SEC-EDGE-001 round 85. A technician's diagnosis of a ticket they are on - service_analyses, service_analysis_parts, service_call_analysis, plus the parts order it produces. Per-ticket rows, no tenant-wide setting, no threshold. Paths read: all four insert/update sites."
     },
     {
       "fn": "service-analytics",
@@ -509,8 +509,8 @@
     },
     {
       "fn": "service-products",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "SEC-EDGE-001 round 85. All non-GET gated on operations.inventory.manage, matching the six siblings. Seven edge fns import _shared/catalog-import-runner.ts and serve one catalogue shape; this was the only one with no gate, including its bulk CSV import. software-products' own header calls itself 'the sibling nobody did' - that sweep stopped at its twin rather than at the family. Every non-GET here writes, so a blanket method check is right in this file. Paths read: all branches of index.ts plus the family comparison."
     },
     {
       "fn": "signatures",

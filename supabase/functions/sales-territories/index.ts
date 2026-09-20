@@ -7,6 +7,7 @@ import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { buildTerritoryIndex, territoryCoverage } from '../_shared/territory.ts';
 import { territoryMembership } from '../../../shared/territory-membership.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -32,6 +33,57 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
+
+    /**
+     * SEC-EDGE-001: THE NAV TABLE ALREADY CLAIMED THIS GATE EXISTED.
+     *
+     * `navigation-permissions.ts` opens `/territories` to anyone who can see
+     * an opportunity, and its comment says why that is safe: "Creating one is
+     * a management act and is gated in the edge function." It was not. This
+     * function had no role check of any kind, so any authenticated member of
+     * the tenant could create a territory, rename one, hand its `owner_id` to
+     * themselves, change its `monthly_quota`, or DELETE it.
+     *
+     * The false claim and the missing check were in DIFFERENT FILES, so
+     * neither one read as wrong on its own - the nav rule looks deliberate
+     * because it is, and the handler looks like every other ungated CRUD
+     * function. `printer-monitoring`'s "requires auth" comment sat directly
+     * above the branch it lied about; this is the version that survives
+     * reading either file.
+     *
+     * WHY IT MATTERS MORE THAN A CRUD TABLE USUALLY WOULD. A territory is not
+     * a lookup row - three readers resolve a rep's book through it:
+     *   - `_shared/territory.ts` matches the free-text
+     *     `business_records.territory` against a territory's name or code AT
+     *     READ TIME (COP-B10), so defining or renaming one immediately claims
+     *     or releases every account naming it, with nothing rewritten and
+     *     nothing to review.
+     *   - `shared/territory-membership.ts` turns `owner_id`/`team_members`
+     *     into the opportunity radar's DEFAULT filter (COP-B09), so an
+     *     owner change silently moves whose plays a rep opens on.
+     *   - the forecast reports commit against `monthly_quota`.
+     * DELETE is the one that hides best: the row goes, `buildTerritoryIndex`
+     * stops resolving the accounts naming it, and every one of them lands in
+     * the coverage report's UNASSIGNED bucket - which reads as "nobody has
+     * assigned these yet" rather than "somebody removed the territory".
+     *
+     * A LEVEL rather than a permission, unlike the catalogue functions: no
+     * seeded permission code means "carve up the sales organisation", and
+     * MANAGER is what the act is. Reads stay open on purpose - the nav rule
+     * above is deliberate, the list feeds a switcher, `/mine` answers a rep's
+     * own membership, and `/coverage` is the map a rep works from.
+     */
+    const requireManager = () => requireRoleLevel(user, ROLE_LEVEL.MANAGER);
+    const denyManager = (err: unknown) => {
+      // Rethrow anything that is not an RBAC refusal: a catch that answers 403
+      // on any failure turns a database outage into "your role is too low".
+      if (!(err instanceof RbacError)) throw err;
+      return createCorsResponse(
+        { error: 'Manager role required to change territories', code: 'INSUFFICIENT_ROLE' },
+        403,
+        req,
+      );
+    };
 
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'sales-territories');
@@ -190,6 +242,11 @@ export default async function handler(req: Request) {
 
     // POST /sales-territories - Create territory
     if (req.method === 'POST' && !territoryId) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
       const territoryName = body.territoryName ?? body.territory_name ?? body.name;
       if (!territoryName) {
@@ -228,6 +285,11 @@ export default async function handler(req: Request) {
 
     // PUT /sales-territories/:id - Update territory
     if (req.method === 'PUT' && territoryId) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const body = await req.json().catch(() => ({}));
       // Only the fields the caller actually sent. A blanket object would write
       // null over every column a partial form left out.
@@ -265,6 +327,11 @@ export default async function handler(req: Request) {
 
     // DELETE /sales-territories/:id - Delete territory
     if (req.method === 'DELETE' && territoryId) {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
       const { error } = await admin
         .from('sales_territories')
         .delete()
