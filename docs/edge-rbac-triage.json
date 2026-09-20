@@ -3,8 +3,8 @@
   "counts": {
     "headless": 35,
     "open-by-design": 31,
-    "unexamined": 21,
-    "gated-branch": 8,
+    "unexamined": 20,
+    "gated-branch": 9,
     "public": 8,
     "row-scoped": 7,
     "internal": 3,
@@ -273,8 +273,9 @@
     },
     {
       "fn": "managed-services",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "EXAMINED AND GATED 2026-09-20. The third of the catalogue family after product-models and software-products, and gated the same way: every non-GET needs operations.inventory.manage, the permission /import/products already names. Reads stay open because the quote builder's ProductTypeSelector calls GET / to fill its product picker, and that surface is sales.quote.create with no minLevel - gating the read would break quoting for every rep. TWO LIVE DEFECTS CAME OUT WITH IT, both prod-only because /api/managed-services is not proxied: the function had NO /:id branch, so the routed page's PATCH and DELETE 404'd in production while Express served them in dev, and the page's bulk delete swallowed every failure with catch {} and then reported 'Deleted N managed services' regardless. Both fixed. Four of this function's five tables (managed_services_contracts, mps_covered_devices, mps_meter_readings, mps_billing_records) exist in no schema or migration and no client calls them; those branches answer 503 RELATION_MISSING now rather than a 500 that reads as an outage or, for /usage and /dashboard, a discarded error behind a 200 of zeroes.",
+      "pathsRead": "index.ts - all fifteen branches (import, list, create, the new patch/put/delete by id, contracts x4, usage, meter-reading, dashboard, billing/generate), plus client/src/pages/ManagedServices.tsx, client/src/components/quote-builder/ProductTypeSelector.tsx, client/src/components/product-import/ProductImport.tsx and the Express handlers in server/routes-products-crud.ts."
     },
     {
       "fn": "manufacturer-orders",

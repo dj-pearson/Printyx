@@ -4,6 +4,63 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { normalizePath } from '../_shared/path.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { isMissingTableError } from '../_shared/postgrest-errors.ts';
+import { addMonths, startOfUtcDay } from '../_shared/date-months.ts';
+
+/**
+ * The third of the catalogue family, after product-models and
+ * software-products (SEC-EDGE-001). Adding, editing, importing or deleting a
+ * managed-service product changes what every rep can put on a quote and at what
+ * price, and /managed-services is minLevel 3 while /import/products names this
+ * exact permission. A permission rather than a level, matching the two
+ * siblings: the seeder has a code that means precisely this.
+ *
+ * READS STAY OPEN ON PURPOSE. The quote builder's ProductTypeSelector calls
+ * GET / to populate its picker, and that surface is sales.quote.create with no
+ * minLevel - gating the read would break quoting for every rep.
+ */
+const WRITE_PERMISSION = 'operations.inventory.manage';
+
+/**
+ * Segments that name a sub-resource rather than a product id, so `/:id` does
+ * not swallow them.
+ */
+const RESERVED_SEGMENTS = new Set([
+  'import',
+  'contracts',
+  'usage',
+  'meter-reading',
+  'dashboard',
+  'billing',
+]);
+
+/**
+ * FOUR OF THIS FUNCTION'S FIVE TABLES DO NOT EXIST.
+ *
+ * `managed_services_contracts`, `mps_covered_devices`, `mps_meter_readings` and
+ * `mps_billing_records` are in no Drizzle schema and no migration - all four
+ * sit in docs/phantom-tables-baseline.json against this file - so every
+ * contract, usage, meter-reading, billing and dashboard branch is a 42P01. No
+ * client tree calls any of them either, so nothing is broken today; what was
+ * wrong is that a missing relation surfaced as a 500 ("Failed to fetch
+ * contracts"), which reads as an outage rather than as a feature that was never
+ * built. 503 says the request is well formed and will work once the tables
+ * exist.
+ */
+function relationMissing(req: Request, feature: string) {
+  return createCorsResponse(
+    {
+      error: `${feature} is not available`,
+      code: 'RELATION_MISSING',
+      message:
+        'The managed-services contract tables (managed_services_contracts, mps_covered_devices, mps_meter_readings, mps_billing_records) exist in no schema or migration. The product catalogue on this prefix works; the contract lifecycle was never built.',
+    },
+    503,
+    req,
+  );
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -31,9 +88,18 @@ export default async function handler(req: Request) {
     }
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // Server strips function name, so /managed-services/contracts becomes /contracts
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /managed-services, making this correct whether or not the prefix survived.
+    const { parts: pathParts } = normalizePath(url.pathname, 'managed-services');
     const endpoint = pathParts[0];
+
+    // Gate placed AFTER the path parse so the write branches below cannot be
+    // reached before it, and before any branch reads a body.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
+    }
 
     // ====================================================================
     // POST /managed-services/import - bulk CSV import
@@ -141,6 +207,119 @@ export default async function handler(req: Request) {
       return createCorsResponse(data, 201, req);
     }
 
+    // ====================================================================
+    // PATCH / PUT / DELETE /managed-services/:id
+    //
+    // NEITHER EXISTED, AND THE PAGE CALLS BOTH. ManagedServices.tsx is routed,
+    // deletes a service with `DELETE /api/managed-services/:id`, and bulk
+    // deletes by looping that call - while this function had no `/:id` branch
+    // at all, so both fell through to the 404 at the bottom. `/api/managed-
+    // services` is not in crmProxies, so Express served the working PATCH and
+    // DELETE on every developer machine and production had neither: the usual
+    // dual-host split running the usual way round.
+    //
+    // The bulk path was the worse half. It wrapped each call in `catch {}` and
+    // then toasted "Deleted N managed services" regardless, so a rep selecting
+    // twenty products in production was told all twenty were gone and none
+    // were. That toast is fixed on the page in the same change.
+    //
+    // Fields are mapped EXPLICITLY, never `{ ...body }` (COP-M01): a spread
+    // lets the caller name every column, including tenant_id, id and the
+    // timestamps, and `.eq('tenant_id', ...)` decides which ROW is written,
+    // not what is written into it.
+    // ====================================================================
+    const serviceId = endpoint && !RESERVED_SEGMENTS.has(endpoint) ? endpoint : null;
+
+    if ((req.method === 'PATCH' || req.method === 'PUT') && serviceId) {
+      const body = await req.json().catch(() => ({}));
+
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      const set = (column: string, ...candidates: unknown[]) => {
+        const value = candidates.find((v) => v !== undefined);
+        if (value !== undefined) patch[column] = value;
+      };
+      // Same column set the create branch writes, minus tenant_id - a partial
+      // form must not null the columns it left out, so only what the caller
+      // sent is written.
+      set('product_code', body.productCode, body.product_code);
+      set('product_name', body.productName, body.product_name);
+      set('category', body.category);
+      set('service_type', body.serviceType, body.service_type);
+      set('service_level', body.serviceLevel, body.service_level);
+      set('description', body.description);
+      set('summary', body.summary);
+      set('support_hours', body.supportHours, body.support_hours);
+      set('response_time', body.responseTime, body.response_time);
+      set('includes_hardware', body.includesHardware, body.includes_hardware);
+      set('remote_mgmt', body.remoteMgmt, body.remote_mgmt);
+      set('onsite_support', body.onsiteSupport, body.onsite_support);
+      set('is_active', body.isActive, body.is_active);
+      set('available_for_all', body.availableForAll, body.available_for_all);
+      set('repost_edit', body.repostEdit, body.repost_edit);
+      set('sales_rep_credit', body.salesRepCredit, body.sales_rep_credit);
+      set('funding', body.funding);
+      set('lease', body.lease);
+      set('payment_type', body.paymentType, body.payment_type);
+
+      if (Object.keys(patch).length === 1) {
+        // Only updated_at: nothing the caller sent is writable here. A 200 that
+        // bumped the timestamp and reported success would be COP-M01's silent
+        // no-op (200 having changed nothing).
+        return createCorsResponse(
+          { error: 'No updatable fields in the request body', code: 'EMPTY_PATCH' },
+          400,
+          req,
+        );
+      }
+
+      const { data: updated, error } = await admin
+        .from('managed_services')
+        .update(patch)
+        .eq('id', serviceId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error updating managed service:', error);
+        return createCorsResponse(
+          { error: 'Failed to update managed service', message: error.message },
+          500,
+          req,
+        );
+      }
+      if (!updated) {
+        return createCorsResponse({ error: 'Managed service not found' }, 404, req);
+      }
+      return createCorsResponse(updated, 200, req);
+    }
+
+    if (req.method === 'DELETE' && serviceId) {
+      // The tenant filter is the authorization, not the id: uuids travel in
+      // URLs, exports and support tickets, and hard-to-guess is not a check
+      // (SEC-TENANT-005). `select` so a miss is a 404 rather than a silent
+      // success, which is exactly what the bulk loop used to report.
+      const { data: removed, error } = await admin
+        .from('managed_services')
+        .delete()
+        .eq('id', serviceId)
+        .eq('tenant_id', tenantId)
+        .select('id');
+
+      if (error) {
+        console.error('Error deleting managed service:', error);
+        return createCorsResponse(
+          { error: 'Failed to delete managed service', message: error.message },
+          500,
+          req,
+        );
+      }
+      if (!removed || removed.length === 0) {
+        return createCorsResponse({ error: 'Managed service not found' }, 404, req);
+      }
+      return createCorsResponse({ success: true, id: serviceId }, 200, req);
+    }
+
     // GET /managed-services/contracts - List MPS contracts
     if (req.method === 'GET' && endpoint === 'contracts' && !contractId) {
       const status = url.searchParams.get('status');
@@ -167,6 +346,7 @@ export default async function handler(req: Request) {
 
       if (error) {
         console.error('Error fetching managed services contracts:', error);
+        if (isMissingTableError(error)) return relationMissing(req, 'MPS contracts');
         return createCorsResponse({ error: 'Failed to fetch contracts' }, 500, req);
       }
 
@@ -183,6 +363,7 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
+        if (isMissingTableError(error)) return relationMissing(req, 'MPS contracts');
         return createCorsResponse({ error: 'Contract not found' }, 404, req);
       }
 
@@ -251,6 +432,7 @@ export default async function handler(req: Request) {
 
       if (error) {
         console.error('Error creating MPS contract:', error);
+        if (isMissingTableError(error)) return relationMissing(req, 'MPS contracts');
         return createCorsResponse({ error: 'Failed to create contract' }, 500, req);
       }
 
@@ -270,6 +452,7 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
+        if (isMissingTableError(error)) return relationMissing(req, 'MPS contracts');
         return createCorsResponse({ error: 'Failed to update contract' }, 500, req);
       }
 
@@ -297,7 +480,48 @@ export default async function handler(req: Request) {
 
       if (contractIdParam) query = query.eq('contract_id', contractIdParam);
 
-      const { data: readings } = await query.order('reading_date', { ascending: false }).limit(100);
+      /**
+       * `?month=` WAS READ AND THEN IGNORED - the value was pulled off the
+       * query string and never used, so asking for one month returned the most
+       * recent hundred readings from any month and looked like an answer. A
+       * filter that appears to work beats a missing one for damage (COP-M01).
+       *
+       * `reading_date` holds a CALENDAR DATE in a timestamp column, so the
+       * bounds are snapped to a UTC day and the upper one is exclusive
+       * (DATE-LOCAL-002); an inclusive 23:59:59.999 is a real instant a row can
+       * exceed.
+       */
+      if (month) {
+        const start = new Date(`${month}-01T00:00:00.000Z`);
+        if (Number.isNaN(start.getTime())) {
+          return createCorsResponse(
+            { error: 'month must be formatted YYYY-MM', code: 'VALIDATION' },
+            400,
+            req,
+          );
+        }
+        const from = startOfUtcDay(start);
+        query = query.gte('reading_date', from.toISOString());
+        // Snapped explicitly. addMonths preserves the time of day, so on a
+        // value that is already UTC midnight this is a no-op - but
+        // check:calendar-date-bounds cannot see through the helper, and a
+        // bound whose snapping a reader has to derive is one edit away from
+        // being wrong.
+        query = query.lt('reading_date', startOfUtcDay(addMonths(from, 1)).toISOString());
+      }
+
+      const { data: readings, error: readingsError } = await query
+        .order('reading_date', { ascending: false })
+        .limit(100);
+
+      if (readingsError) {
+        // The error was discarded here, so a table that does not exist answered
+        // 200 with an empty array - indistinguishable from a contract nobody
+        // has submitted a reading against (AUDIT-028).
+        if (isMissingTableError(readingsError)) return relationMissing(req, 'MPS usage');
+        console.error('Error fetching MPS usage:', readingsError);
+        return createCorsResponse({ error: 'Failed to fetch usage' }, 500, req);
+      }
 
       return createCorsResponse(readings || [], 200, req);
     }
@@ -322,6 +546,7 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
+        if (isMissingTableError(error)) return relationMissing(req, 'MPS meter readings');
         return createCorsResponse({ error: 'Failed to record meter reading' }, 500, req);
       }
 
@@ -330,34 +555,55 @@ export default async function handler(req: Request) {
 
     // GET /managed-services/dashboard - Get MPS dashboard data
     if (req.method === 'GET' && endpoint === 'dashboard') {
-      const { count: totalContracts } = await admin
-        .from('managed_services_contracts')
-        .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId)
-        .eq('status', 'active');
+      /**
+       * ALL THREE READS DISCARDED THEIR ERRORS, over three tables that do not
+       * exist, and the response coalesced every count with `|| 0` - so this
+       * answered 200 with a dashboard of zeroes on every call. That is the
+       * exact failure mode CLAUDE.md names: the symptom is not an error, it is
+       * a screen saying the business has no contracts, no devices and no
+       * revenue.
+       */
+      const [contracts, devices, billing] = await Promise.all([
+        admin
+          .from('managed_services_contracts')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('status', 'active'),
+        admin
+          .from('mps_covered_devices')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId),
+        admin
+          .from('mps_billing_records')
+          .select('total_amount')
+          .eq('tenant_id', tenantId)
+          .gte('billing_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+      ]);
 
-      const { count: totalDevices } = await admin
-        .from('mps_covered_devices')
-        .select('*', { count: 'exact', head: true })
-        .eq('tenant_id', tenantId);
+      const failure = [contracts.error, devices.error, billing.error].find(Boolean);
+      if (failure) {
+        if (isMissingTableError(failure)) return relationMissing(req, 'The MPS dashboard');
+        console.error('Error building MPS dashboard:', failure);
+        return createCorsResponse({ error: 'Failed to build dashboard' }, 500, req);
+      }
 
-      const { data: recentBilling } = await admin
-        .from('mps_billing_records')
-        .select('total_amount')
-        .eq('tenant_id', tenantId)
-        .gte('billing_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
-
-      const monthlyRevenue = (recentBilling || []).reduce(
+      const monthlyRevenue = (billing.data || []).reduce(
         (sum: number, r: any) => sum + (r.total_amount || 0),
         0,
       );
 
       return createCorsResponse(
         {
-          totalContracts: totalContracts || 0,
-          totalDevices: totalDevices || 0,
+          totalContracts: contracts.count ?? 0,
+          totalDevices: devices.count ?? 0,
           monthlyRevenue,
-          alertCount: 0,
+          // Nothing measures an MPS alert - there is no table, no derivation
+          // and no writer - so this is null rather than a 0 that reads as "no
+          // problems" (AUDIT-028).
+          alertCount: null,
+          unbacked: [
+            'alertCount is not measured: no managed-services alert table, derivation or writer exists.',
+          ],
         },
         200,
         req,
@@ -390,6 +636,7 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
+        if (isMissingTableError(error)) return relationMissing(req, 'MPS billing');
         return createCorsResponse({ error: 'Failed to generate billing' }, 500, req);
       }
 
@@ -405,6 +652,7 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId);
 
       if (error) {
+        if (isMissingTableError(error)) return relationMissing(req, 'MPS contracts');
         return createCorsResponse({ error: 'Failed to delete contract' }, 500, req);
       }
 

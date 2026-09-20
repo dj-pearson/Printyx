@@ -72,10 +72,12 @@ export default function ManagedServices() {
         description: 'Managed service created successfully',
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
-        description: 'Failed to create managed service',
+        // apiRequest throws a plain Error carrying the server's reason, and
+        // discarding it left every failure looking identical (CRM-008).
+        description: error.message || 'Failed to create managed service',
         variant: 'destructive',
       });
     },
@@ -121,7 +123,64 @@ export default function ManagedServices() {
     },
   });
 
+  /**
+   * THE EDIT BUTTON SET STATE NOTHING READ. Every row has an Edit control that
+   * called `setSelectedService(service)` and stopped there - eslint reported it
+   * only as "assigned a value but never used", which reads like dead state
+   * rather than a dead button. It opens the form loaded with the service now,
+   * and submitting PATCHes instead of creating a duplicate.
+   */
+  const updateServiceMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: InsertManagedService }) => {
+      return await apiRequest(`/api/managed-services/${id}`, 'PATCH', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/managed-services'] });
+      setDialogOpen(false);
+      setSelectedService(null);
+      form.reset();
+      toast({ title: 'Saved', description: 'Managed service updated' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update managed service',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const startEdit = (service: ManagedService) => {
+    setSelectedService(service);
+    // The form is typed to the insert shape; a stored row carries the same
+    // fields plus the server-injected ones, which reset() ignores.
+    form.reset(service as unknown as InsertManagedService);
+    setDialogOpen(true);
+  };
+
+  /**
+   * Add must CLEAR the edit target. Without this, opening the dialog after an
+   * edit keeps `selectedService` set and onSubmit PATCHes the previous row
+   * instead of creating - the form even looks right, because reset() is what
+   * empties it.
+   */
+  const startCreate = () => {
+    setSelectedService(null);
+    form.reset();
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setSelectedService(null);
+    form.reset();
+  };
+
   const onSubmit = (data: InsertManagedService) => {
+    if (selectedService) {
+      updateServiceMutation.mutate({ id: selectedService.id, data });
+      return;
+    }
     createServiceMutation.mutate(data);
   };
 
@@ -152,15 +211,38 @@ export default function ManagedServices() {
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
+    /**
+     * COUNT WHAT ACTUALLY HAPPENED. This swallowed every failure with
+     * `catch {}` and then reported `Deleted ${ids.length}` regardless - and
+     * production had no DELETE /:id handler at all, so a rep could select
+     * twenty products, be told all twenty were gone, and have none of them
+     * deleted. A destructive action that reports a success it did not have is
+     * worse than one that fails loudly.
+     */
+    let deleted = 0;
+    const failed: string[] = [];
     for (const id of ids) {
       try {
         await apiRequest(`/api/managed-services/${id}`, 'DELETE');
-      } catch {}
+        deleted += 1;
+      } catch {
+        failed.push(id);
+      }
     }
     queryClient.invalidateQueries({ queryKey: ['/api/managed-services'] });
-    setSelectedIds(new Set());
-    setBulkMode(false);
-    toast({ title: 'Deleted', description: `Deleted ${ids.length} managed services` });
+    // Only the ones that really went. Keeping the failures selected lets the
+    // user retry without finding them again.
+    setSelectedIds(new Set(failed));
+    if (failed.length === 0) {
+      setBulkMode(false);
+      toast({ title: 'Deleted', description: `Deleted ${deleted} managed services` });
+    } else {
+      toast({
+        title: deleted > 0 ? 'Partly deleted' : 'Nothing deleted',
+        description: `${deleted} of ${ids.length} deleted. ${failed.length} still selected.`,
+        variant: 'destructive',
+      });
+    }
   };
 
   // Get unique service types from services
@@ -298,7 +380,7 @@ export default function ManagedServices() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setSelectedService(service)}>
+              <Button variant="outline" size="sm" onClick={() => startEdit(service)}>
                 <Edit3 className="h-4 w-4 mr-1" />
                 View
               </Button>
@@ -326,7 +408,7 @@ export default function ManagedServices() {
             searchPlaceholder="Search managed services..."
             searchTerm={searchTerm}
             onSearchTermChange={setSearchTerm}
-            onAddClick={() => setDialogOpen(true)}
+            onAddClick={startCreate}
             productTypeForImport="managed-services"
             bulkMode={bulkMode}
             onToggleBulkMode={() => setBulkMode(!bulkMode)}
@@ -334,13 +416,24 @@ export default function ManagedServices() {
             totalCount={services.length}
             onBulkDelete={handleBulkDelete}
           />
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog
+            open={dialogOpen}
+            onOpenChange={(open) => {
+              // Only the close half: every opening path goes through
+              // startCreate or startEdit, which set the mode this reads.
+              if (!open) closeDialog();
+            }}
+          >
             <DialogTrigger asChild>
               <span />
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>New Price Book List: IT/Managed Service</DialogTitle>
+                <DialogTitle>
+                  {selectedService
+                    ? 'Edit Price Book List: IT/Managed Service'
+                    : 'New Price Book List: IT/Managed Service'}
+                </DialogTitle>
                 <DialogDescription>
                   Create a new IT or managed service for your catalog
                 </DialogDescription>
@@ -933,7 +1026,7 @@ export default function ManagedServices() {
                   </div>
 
                   <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    <Button type="button" variant="outline" onClick={closeDialog}>
                       Cancel
                     </Button>
                     <Button type="button" variant="outline">
@@ -1005,7 +1098,7 @@ export default function ManagedServices() {
                 : 'Get started by adding your first IT service to the catalog.'}
             </p>
             {!searchTerm && selectedServiceType === 'all' && (
-              <Button onClick={() => setDialogOpen(true)}>
+              <Button onClick={startCreate}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add First IT Service
               </Button>

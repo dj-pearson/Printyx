@@ -49,7 +49,6 @@
     "supabase/functions/lead-scoring/index.ts 'jsonResponse' is defined but never used",
     "supabase/functions/leads/index.ts 'count' is assigned a value but never used",
     "supabase/functions/leads/index.ts 'status' is assigned a value but never used",
-    "supabase/functions/managed-services/index.ts 'month' is assigned a value but never used",
     "supabase/functions/manufacturer-orders/index.ts 'third' is assigned a value but never used",
     "supabase/functions/mobile-field/index.ts 'resourceId' is assigned a value but never used",
     "supabase/functions/opportunities/index.ts 'count' is assigned a value but never used",
