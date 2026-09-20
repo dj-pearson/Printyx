@@ -36,6 +36,7 @@ import { NotesPanel } from '@/components/crm/NotesPanel';
 import { ContactManager } from '@/components/ContactManager';
 import { LeadProposals } from '@/components/leads/LeadProposals';
 import { EnrollInSequenceDialog } from '@/components/leads/EnrollInSequenceDialog';
+import { BookingLinkPicker } from '@/components/booking/BookingLinkPicker';
 import { LeadQuotes } from '@/components/leads/LeadQuotes';
 import { LeadDeals } from '@/components/leads/LeadDeals';
 import {
@@ -48,6 +49,7 @@ import {
   ArrowLeft,
   Briefcase,
   Calendar,
+  CalendarClock,
   CheckSquare,
   FileText,
   Mail,
@@ -203,6 +205,7 @@ export default function LeadDetailHubspot() {
   // The slug IS the uuid on this route.
   const id = slug ?? '';
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
+  const [showBookingLink, setShowBookingLink] = useState(false);
   const [dialogs, setDialogs] = useState({
     note: false,
     email: false,
@@ -547,6 +550,14 @@ export default function LeadDetailHubspot() {
               icon: <Send className="h-4 w-4" />,
               onClick: () => setShowEnrollDialog(true),
             },
+            {
+              // COP-B14 AC5: the booking link was copyable only from the
+              // booking-pages admin, two navigations away from the prospect
+              // it is meant to be sent to.
+              label: 'Booking link',
+              icon: <CalendarClock className="h-4 w-4" />,
+              onClick: () => setShowBookingLink(true),
+            },
           ]}
           onFieldSave={async (field, value) => {
             await saveField.mutateAsync({ [field]: value === '' ? null : value });
@@ -636,6 +647,9 @@ export default function LeadDetailHubspot() {
             : []
         }
       />
+
+      {/* COP-B14 AC5 */}
+      <BookingLinkPicker open={showBookingLink} onOpenChange={setShowBookingLink} />
     </MainLayout>
   );
 }
