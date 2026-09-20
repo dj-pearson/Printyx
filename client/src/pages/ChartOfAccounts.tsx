@@ -47,6 +47,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import type { ChartOfAccount } from '@shared/schema';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // Form schema for chart of accounts creation/editing
 const chartOfAccountSchema = z.object({
@@ -69,6 +70,7 @@ export default function ChartOfAccounts() {
   const [viewingAccount, setViewingAccount] = useState<ChartOfAccount | null>(null);
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
 
   const { data: accounts = [], isLoading } = useQuery({
@@ -197,10 +199,9 @@ export default function ChartOfAccounts() {
     }
   };
 
-  const handleDelete = (account: ChartOfAccount) => {
-    if (confirm(`Are you sure you want to delete ${account.accountName}?`)) {
-      deleteAccountMutation.mutate(account.id);
-    }
+  const handleDelete = async (account: ChartOfAccount) => {
+    if (!(await confirm({ title: `Delete ${account.accountName}?` }))) return;
+    deleteAccountMutation.mutate(account.id);
   };
 
   const toggleExpanded = (accountId: string) => {

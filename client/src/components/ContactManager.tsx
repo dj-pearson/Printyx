@@ -66,6 +66,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface Contact {
   id: string;
@@ -116,6 +117,7 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
 
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
 
   // Fetch contacts for this company - using standardized endpoint
@@ -535,14 +537,13 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-red-600"
-                              onClick={() => {
-                                if (
-                                  confirm(
-                                    `Delete ${contact.firstName} ${contact.lastName}? This cannot be undone.`,
-                                  )
-                                ) {
-                                  deleteContactMutation.mutate(contact.id);
-                                }
+                              onClick={async () => {
+                                const ok = await confirm({
+                                  title: `Delete ${contact.firstName} ${contact.lastName}?`,
+                                  description: 'This cannot be undone.',
+                                });
+                                if (!ok) return;
+                                deleteContactMutation.mutate(contact.id);
                               }}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />

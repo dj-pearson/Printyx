@@ -32,6 +32,7 @@ import {
   CalendarClock,
 } from 'lucide-react';
 import { BookingLinkPicker } from '@/components/booking/BookingLinkPicker';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface Sequence {
   id: string;
@@ -79,6 +80,7 @@ function channelLabel(channel: string) {
 
 export default function SequenceStudio() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -318,10 +320,13 @@ export default function SequenceStudio() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          if (confirm('Delete this sequence and all its steps?')) {
-                            deleteSequenceMutation.mutate(detailData.sequence.id);
-                          }
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: 'Delete this sequence?',
+                            description: 'Every step in it is deleted too.',
+                          });
+                          if (!ok) return;
+                          deleteSequenceMutation.mutate(detailData.sequence.id);
                         }}
                       >
                         <Trash2 className="h-4 w-4" />

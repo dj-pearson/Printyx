@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, Plus, Star, Trash2, AlertCircle } from 'lucide-react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const QUERY_KEY = '/api/branding-profiles';
 const NEW_ID = 'new';
@@ -31,6 +32,7 @@ function emptyProfile(): BrandProfile {
 
 export default function BrandingSettings() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -211,10 +213,9 @@ export default function BrandingSettings() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                if (confirm('Delete this branding profile?')) {
-                  deleteMutation.mutate(activeProfile.id);
-                }
+              onClick={async () => {
+                if (!(await confirm({ title: 'Delete this branding profile?' }))) return;
+                deleteMutation.mutate(activeProfile.id);
               }}
               disabled={deleteMutation.isPending}
               className="min-h-[40px] text-destructive"

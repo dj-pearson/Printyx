@@ -45,6 +45,7 @@ import {
   type CustomFieldType,
   type CustomFieldOption,
 } from '@/hooks/useCustomFields';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const OBJECT_TYPES: { value: CustomFieldObjectType; label: string }[] = [
   { value: 'deals', label: 'Deals' },
@@ -107,6 +108,8 @@ export default function CustomFieldsSettings() {
 
   const isEditing = Boolean(form.id);
   const needsOptions = form.fieldType === 'select' || form.fieldType === 'multiselect';
+
+  const confirm = useConfirm();
 
   const sortedFields = useMemo(
     () => [...fields].sort((a, b) => a.sortOrder - b.sortOrder),
@@ -220,8 +223,11 @@ export default function CustomFieldsSettings() {
   };
 
   const remove = async (f: CustomFieldDefinition) => {
-    if (!window.confirm(`Permanently delete "${f.label}"? Existing values are not removed.`))
-      return;
+    const ok = await confirm({
+      title: `Permanently delete "${f.label}"?`,
+      description: 'Existing values are not removed.',
+    });
+    if (!ok) return;
     try {
       await deleteField.mutateAsync({ id: f.id, hard: true });
       toast({ title: 'Field deleted' });

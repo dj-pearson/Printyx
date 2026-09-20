@@ -54,6 +54,7 @@ import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import ManagementToolbar from '@/components/product-management/ManagementToolbar';
 import { formatCurrency } from '@/lib/utils';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 export default function ProductModels() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -64,6 +65,7 @@ export default function ProductModels() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
 
   const { data: models = [], isLoading } = useQuery<ProductModel[]>({
@@ -1260,18 +1262,14 @@ export default function ProductModels() {
                     <Button
                       type="button"
                       variant="destructive"
-                      onClick={() => {
-                        if (
-                          selectedModel &&
-                          confirm(
-                            'Are you sure you want to delete this product model? This action cannot be undone.',
-                          )
-                        ) {
-                          console.log('Deleting model with ID:', selectedModel.id);
-                          deleteModelMutation.mutate(selectedModel.id);
-                        } else {
-                          console.log('Delete cancelled or selectedModel is null:', selectedModel);
-                        }
+                      onClick={async () => {
+                        if (!selectedModel) return;
+                        const ok = await confirm({
+                          title: 'Delete this product model?',
+                          description: 'This action cannot be undone.',
+                        });
+                        if (!ok) return;
+                        deleteModelMutation.mutate(selectedModel.id);
                       }}
                       disabled={deleteModelMutation.isPending}
                       data-testid="button-delete-model"

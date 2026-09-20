@@ -35,6 +35,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface Article {
   id: string;
@@ -84,6 +85,7 @@ export default function KnowledgeBaseAdmin() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
 
   // Fetch articles
@@ -415,10 +417,10 @@ export default function KnowledgeBaseAdmin() {
                                 )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  onClick={() => {
-                                    if (confirm('Are you sure you want to delete this article?')) {
-                                      deleteMutation.mutate(article.id);
-                                    }
+                                  onClick={async () => {
+                                    const ok = await confirm({ title: 'Delete this article?' });
+                                    if (!ok) return;
+                                    deleteMutation.mutate(article.id);
                                   }}
                                   className="text-red-600"
                                 >

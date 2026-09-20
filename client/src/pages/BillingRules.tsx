@@ -33,9 +33,11 @@ import {
 import { BillingRuleDialog } from '@/components/billing/billing-rule-dialog';
 import { BillingRulePreview } from '@/components/billing/billing-rule-preview';
 import { format } from 'date-fns';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 export default function BillingRules() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -174,10 +176,13 @@ export default function BillingRules() {
     });
   };
 
-  const handleDeleteRule = (rule: any) => {
-    if (confirm(`Are you sure you want to deactivate "${rule.ruleName}"?`)) {
-      deleteRuleMutation.mutate(rule.id);
-    }
+  const handleDeleteRule = async (rule: any) => {
+    const ok = await confirm({
+      title: `Deactivate "${rule.ruleName}"?`,
+      confirmLabel: 'Deactivate',
+    });
+    if (!ok) return;
+    deleteRuleMutation.mutate(rule.id);
   };
 
   return (

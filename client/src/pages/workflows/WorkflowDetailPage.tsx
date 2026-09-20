@@ -34,6 +34,7 @@ import {
   userInitials,
   userLabel,
 } from '@/lib/workflows/types';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 function fmt(ts: string | null): string {
   if (!ts) return '';
@@ -49,6 +50,7 @@ export default function WorkflowDetailPage() {
   const id = params?.id;
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const queryKey = ['/api/task-workflows', id];
 
@@ -183,8 +185,12 @@ export default function WorkflowDetailPage() {
               variant="ghost"
               size="sm"
               disabled={del.isPending}
-              onClick={() => {
-                if (confirm('Delete this workflow? This cannot be undone.')) del.mutate();
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Delete this workflow?',
+                  description: 'This cannot be undone.',
+                });
+                if (ok) del.mutate();
               }}
               data-testid="button-delete"
             >

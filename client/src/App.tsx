@@ -1,6 +1,7 @@
 import { Switch, Route } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { ConfirmDialogProvider } from '@/components/ui/confirm-dialog';
 import React from 'react';
 import { useLocation } from 'wouter';
 import { SEOProvider } from '@/lib/seo/SEOProvider';
@@ -1414,41 +1415,47 @@ function App() {
           <AccessibilityProvider>
             <LiveRegionProvider>
               <TooltipProvider>
-                <PWAProvider>
-                  <SEOProvider>
-                    <SkipNavigation />
-                    <Toaster />
-                    <CookieConsent />
-                    <ErrorBoundary
-                      level="critical"
-                      onError={(error, errorInfo) => {
-                        // Log to console in development, send to monitoring in production
-                        console.error('[App Error Boundary]', error, errorInfo);
-                      }}
-                    >
-                      <React.Suspense
-                        fallback={
-                          <div
-                            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
-                            role="status"
-                            aria-busy="true"
-                            aria-label="Loading application"
-                          >
-                            <div className="text-center">
-                              <div
-                                className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
-                                aria-hidden="true"
-                              />
-                              <p className="mt-4 text-gray-600">Loading...</p>
-                            </div>
-                          </div>
-                        }
+                {/* UI-BROWSER-DIALOGS-001: inside TooltipProvider so the dialog
+                    inherits the app's theme and portal container, and ABOVE the
+                    router so a confirm survives the navigation a destructive
+                    action often triggers. */}
+                <ConfirmDialogProvider>
+                  <PWAProvider>
+                    <SEOProvider>
+                      <SkipNavigation />
+                      <Toaster />
+                      <CookieConsent />
+                      <ErrorBoundary
+                        level="critical"
+                        onError={(error, errorInfo) => {
+                          // Log to console in development, send to monitoring in production
+                          console.error('[App Error Boundary]', error, errorInfo);
+                        }}
                       >
-                        <Router />
-                      </React.Suspense>
-                    </ErrorBoundary>
-                  </SEOProvider>
-                </PWAProvider>
+                        <React.Suspense
+                          fallback={
+                            <div
+                              className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+                              role="status"
+                              aria-busy="true"
+                              aria-label="Loading application"
+                            >
+                              <div className="text-center">
+                                <div
+                                  className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
+                                  aria-hidden="true"
+                                />
+                                <p className="mt-4 text-gray-600">Loading...</p>
+                              </div>
+                            </div>
+                          }
+                        >
+                          <Router />
+                        </React.Suspense>
+                      </ErrorBoundary>
+                    </SEOProvider>
+                  </PWAProvider>
+                </ConfirmDialogProvider>
               </TooltipProvider>
             </LiveRegionProvider>
           </AccessibilityProvider>

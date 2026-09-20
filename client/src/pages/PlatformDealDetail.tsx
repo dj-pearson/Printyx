@@ -45,6 +45,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import MainLayout from '@/components/layout/main-layout';
 import { clickableProps } from '@/lib/accessibility';
 import { formatCurrency } from '@/lib/utils';
+import { useTextPrompt } from '@/components/ui/confirm-dialog';
 
 interface Deal {
   id: string;
@@ -108,6 +109,7 @@ export default function PlatformDealDetail() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const textPrompt = useTextPrompt();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<Deal>>({});
@@ -241,15 +243,23 @@ export default function PlatformDealDetail() {
     setFormData({});
   };
 
-  const handleCloseWon = () => {
-    const reason = prompt('Why was this deal won?');
+  const handleCloseWon = async () => {
+    const reason = await textPrompt({
+      title: 'Mark this deal won',
+      label: 'Why was it won?',
+      confirmLabel: 'Mark won',
+    });
     if (reason) {
       closeWonMutation.mutate(reason);
     }
   };
 
-  const handleCloseLost = () => {
-    const reason = prompt('Why was this deal lost?');
+  const handleCloseLost = async () => {
+    const reason = await textPrompt({
+      title: 'Mark this deal lost',
+      label: 'Why was it lost?',
+      confirmLabel: 'Mark lost',
+    });
     if (reason) {
       closeLostMutation.mutate(reason);
     }

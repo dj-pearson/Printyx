@@ -29,6 +29,7 @@ import {
   Loader2,
   ExternalLink,
 } from 'lucide-react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // Schema for Apollo API key form
 const apolloKeySchema = z.object({
@@ -55,6 +56,7 @@ interface VerifyResponse {
 }
 
 export function ApolloCredentialManager() {
+  const confirm = useConfirm();
   const { toast } = useToast();
   const [showApiKey, setShowApiKey] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -268,14 +270,14 @@ export function ApolloCredentialManager() {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        'Are you sure you want to remove your Apollo.io API key? This will disable lead enrichment features.',
-                      )
-                    ) {
-                      deleteMutation.mutate();
-                    }
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: 'Remove your Apollo.io API key?',
+                      description: 'This disables lead enrichment features.',
+                      confirmLabel: 'Remove',
+                    });
+                    if (!ok) return;
+                    deleteMutation.mutate();
                   }}
                   disabled={deleteMutation.isPending}
                   data-testid="button-delete"

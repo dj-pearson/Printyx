@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * No raw `alert()` in the app (WF-S-08). Hard gate at zero.
+ * No raw `alert()`, `confirm()` or `prompt()` in the app (WF-S-08,
+ * UI-BROWSER-DIALOGS-001). Hard gate at zero.
  *
  * A browser alert blocks the main thread, cannot be styled, is unreadable on a
  * phone, and on this codebase it was where debug copy escaped to users.
@@ -19,12 +20,21 @@
  *
  * Use `toast` from @/hooks/use-toast instead.
  *
- * SCOPED TO alert() ON PURPOSE. There are 22 `confirm()` calls and 4
- * `prompt()` calls in this tree, nearly all of them a delete confirmation, and
- * replacing those means an AlertDialog and a state machine per call site - a
- * UI story, not a find-and-replace. Filed as UI-BROWSER-DIALOGS-001 rather than
- * swept into a baseline here, because a baseline of 26 known-bad entries is
- * where the 27th hides.
+ * WIDENED TO confirm() AND prompt() (UI-BROWSER-DIALOGS-001). This guard was
+ * scoped to alert() on purpose and said so: twenty `confirm()` calls guarded
+ * deletes and deactivations and five `prompt()` calls collected a URL or a
+ * reason, and replacing those looked like an AlertDialog plus a state machine
+ * per call site. It was not, in the end - `ConfirmDialogProvider` in
+ * client/src/components/ui/confirm-dialog.tsx answers with a PROMISE, so
+ * `if (!(await confirm({...}))) return;` keeps the shape the browser call had
+ * and the twenty-five conversions stayed mechanical.
+ *
+ * Use `useConfirm()` for a yes/no and `useTextPrompt()` for a value. Both
+ * resolve to the SAFE answer (false / null) when dismissed, when a second
+ * question arrives, and outside a provider.
+ *
+ * The count is a hard zero rather than a baseline for the reason the original
+ * gave: a list of 25 known-bad entries is where the 26th hides.
  *
  * EXCLUDED BY RULE, not baselined: client/src/components/ui (vendored shadcn
  * primitives, out of scope the same way they are for check:orphan-files); a
@@ -61,32 +71,50 @@ const stripComments = (s) =>
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, (m) => m.replace(/[^\n]/g, ' '));
 
 /**
- * `alert(` in an EXPRESSION position: at the start of a line, or after one of
- * the characters a call can follow. A space is not enough - that is what let
- * `critical alert(s) need review` through - so a preceding word character or a
- * word-then-space both disqualify it. A leading `.` means somebody's method;
+ * A dialog global in an EXPRESSION position: at the start of a line, or after
+ * one of the characters a call can follow. A space is not enough - that is what
+ * let `critical alert(s) need review` through - so a preceding word character or
+ * a word-then-space both disqualify it. A leading `.` means somebody's method;
  * `window.` still counts.
+ *
+ * `await ` is in the prefix set for confirm/prompt and NOT for alert: the
+ * replacements are awaited (`await confirm({...})`), so without it every
+ * converted call site would report itself. That is narrow on purpose - it
+ * admits exactly the shape the fix produces, not any preceding keyword.
  */
-const DIALOG = /(?:^|[=;{}()[\],&|?:!+]|=>)\s*(?:window\.)?(alert)\s*\(/;
+const DIALOG = /(?:^|[=;{}()[\],&|?:!+]|=>|\bawait)\s*(?:window\.)?(alert|confirm|prompt)\s*\(/;
+
+/**
+ * The app's own replacements, which ARE awaited calls named confirm/prompt.
+ * Matched on the call's ARGUMENT SHAPE - the hook takes an options OBJECT where
+ * the browser takes a string - because matching on the identifier alone would
+ * excuse a bare `await confirm('really?')`, which is still the browser dialog.
+ */
+const OWN_DIALOG = /(?:await\s+)?(?:confirm|textPrompt)\s*\(\s*\{/;
 
 const findings = [];
 for (const file of files) {
   const src = stripComments(fs.readFileSync(file, 'utf8'));
   src.split('\n').forEach((line, i) => {
     const m = line.match(DIALOG);
-    if (m) findings.push({ file, line: i + 1, fn: m[1], text: line.trim().slice(0, 100) });
+    if (m && !OWN_DIALOG.test(line)) {
+      findings.push({ file, line: i + 1, fn: m[1], text: line.trim().slice(0, 100) });
+    }
   });
 }
 
 if (findings.length) {
-  console.error(`\n${findings.length} raw browser alert(s):\n`);
+  console.error(`\n${findings.length} raw browser dialog(s):\n`);
   for (const f of findings) console.error(`  ${f.file}:${f.line}  ${f.fn}()\n      ${f.text}`);
   console.error(`
-  Use toast from @/hooks/use-toast for a message the user should read. A browser
-  alert blocks the thread, cannot carry a variant, and is where debug copy
-  escapes to production.
+  alert()   -> toast from @/hooks/use-toast. It blocks the thread, cannot carry a
+               variant, and is where debug copy escapes to production.
+  confirm() -> useConfirm() from @/components/ui/confirm-dialog, awaited.
+  prompt()  -> useTextPrompt() from the same module, awaited.
 `);
   process.exit(1);
 }
 
-console.log(`check:browser-dialogs - ${files.length} files, no raw alert().`);
+console.log(
+  `check:browser-dialogs - ${files.length} files, no raw alert(), confirm() or prompt().`,
+);

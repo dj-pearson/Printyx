@@ -71,6 +71,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { downloadAuthedFile } from '@/lib/authed-download';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface BusinessRecord {
   id: string;
@@ -94,6 +95,7 @@ interface BusinessRecord {
 
 export default function PlatformBusinessRecords() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
@@ -629,10 +631,12 @@ export default function PlatformBusinessRecords() {
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   className="text-destructive"
-                                  onClick={() => {
-                                    if (confirm(`Delete ${record.companyName}?`)) {
-                                      deleteMutation.mutate(record.id);
-                                    }
+                                  onClick={async () => {
+                                    const ok = await confirm({
+                                      title: `Delete ${record.companyName}?`,
+                                    });
+                                    if (!ok) return;
+                                    deleteMutation.mutate(record.id);
                                   }}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />

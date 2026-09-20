@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, Plus, Copy, Trash2, Star, Pencil, FileText, AlertCircle } from 'lucide-react';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 const QUERY_KEY = '/api/proposals/proposal-templates';
 
@@ -49,6 +50,7 @@ interface TemplateRow {
 
 export default function ProposalTemplates() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
@@ -218,10 +220,9 @@ export default function ProposalTemplates() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => {
-                    if (confirm(`Delete template "${t.name}"?`)) {
-                      deleteMutation.mutate(t.id);
-                    }
+                  onClick={async () => {
+                    if (!(await confirm({ title: `Delete template "${t.name}"?` }))) return;
+                    deleteMutation.mutate(t.id);
                   }}
                   disabled={deleteMutation.isPending}
                   className="min-h-[40px] text-destructive"

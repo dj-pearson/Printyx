@@ -87,6 +87,7 @@ import MainLayout from '@/components/layout/main-layout';
 import { useAuthContext } from '@/providers/AuthProvider';
 import MobileFAB from '@/components/layout/MobileFAB';
 import { relativeDate, todayLocalDate } from '@/lib/date-utils';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 // Contact form schema
 const contactFormSchema = z.object({
@@ -146,6 +147,7 @@ interface Contact {
 
 export default function Contacts() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const { user, getAccessToken } = useAuthContext();
   const [searchQuery, setSearchQuery] = useState('');
@@ -1591,16 +1593,13 @@ export default function Contacts() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   className="text-red-600"
-                                  onClick={() => {
-                                    if (
-                                      confirm(
-                                        `Delete ${contact.firstName || ''} ${
-                                          contact.lastName
-                                        }? This cannot be undone.`,
-                                      )
-                                    ) {
-                                      deleteContactMutation.mutate(contact.id);
-                                    }
+                                  onClick={async () => {
+                                    const ok = await confirm({
+                                      title: `Delete ${contact.firstName || ''} ${contact.lastName}?`,
+                                      description: 'This cannot be undone.',
+                                    });
+                                    if (!ok) return;
+                                    deleteContactMutation.mutate(contact.id);
                                   }}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />

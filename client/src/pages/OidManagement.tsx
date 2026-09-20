@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface OidMapping {
   id: number;
@@ -69,6 +70,7 @@ interface TestResult {
 
 export default function OidManagement() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [selectedManufacturer, setSelectedManufacturer] = useState<string>('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -555,10 +557,9 @@ export default function OidManagement() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              if (confirm('Are you sure you want to delete this mapping?')) {
-                                deleteMutation.mutate(mapping.id);
-                              }
+                            onClick={async () => {
+                              if (!(await confirm({ title: 'Delete this OID mapping?' }))) return;
+                              deleteMutation.mutate(mapping.id);
                             }}
                           >
                             <Trash2 className="w-4 h-4 text-destructive" />
