@@ -5,6 +5,53 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { createAdapter } from '../_shared/manufacturer-adapters.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
+
+/**
+ * SEC-EDGE-001: `manufacturer_integrations` stores the dealer's API
+ * credentials for HP, Canon, Xerox and the rest - `api_key`, `api_secret`,
+ * `client_secret`, `access_token`, `refresh_token` - and every read here was a
+ * bare `select('*')` returned straight to the caller. Any authenticated member
+ * of the tenant could list them.
+ *
+ * REDACTION IS THE STRUCTURAL FIX AND THE ROLE GATE IS NOT A SUBSTITUTE: a
+ * response should not carry a secret whoever asked for it, which is the rule
+ * `_shared/webhook-view.ts` already encodes one table over. The internal
+ * `resolveIntegration` keeps the full row, because the adapter needs the
+ * credentials to call the manufacturer - what changes is what leaves the
+ * function.
+ */
+const SECRET_COLUMNS = [
+  'api_key',
+  'api_secret',
+  'client_id',
+  'client_secret',
+  'access_token',
+  'refresh_token',
+  'webhook_secret',
+] as const;
+
+/** The row minus its secrets, plus a marker per secret saying whether it is set. */
+// deno-lint-ignore no-explicit-any
+function toIntegrationView(row: any): any {
+  if (!row || typeof row !== 'object') return row;
+  const view: Record<string, unknown> = { ...row };
+  for (const column of SECRET_COLUMNS) {
+    if (column in view) {
+      // A boolean marker rather than deletion: the settings page has to show
+      // whether a credential is configured without ever receiving it.
+      view[`${column}_set`] = Boolean(view[column]);
+      delete view[column];
+    }
+  }
+  return view;
+}
+
+// deno-lint-ignore no-explicit-any
+function toIntegrationViews(rows: any[] | null): any[] {
+  return (rows ?? []).map(toIntegrationView);
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -57,6 +104,49 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
+    /**
+     * Connecting an integration STORES a credential and disconnect, sync,
+     * test and discover all act on one. `/manufacturer-integration` is
+     * `minLevel: 4` with `admin.settings.integrations`, so the nav already
+     * says manager - and a nav rule hides a menu item and protects nothing,
+     * which is this story's own headline finding. Reads stay open because the
+     * redacted view carries no secret and a technician needs to see whether a
+     * manufacturer is connected.
+     */
+    const requireManager = () =>
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    const denyManager = (err: unknown) => {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Managing manufacturer integrations requires a manager role',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
+    };
+
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      try {
+        requireManager();
+      } catch (err) {
+        return denyManager(err);
+      }
+    }
+
     const url = new URL(req.url);
     // server.ts strips the function-name segment before invoking this handler,
     // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
@@ -73,7 +163,7 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('manufacturer', { ascending: true });
 
-      return createCorsResponse(integrations || [], 200, req);
+      return createCorsResponse(toIntegrationViews(integrations), 200, req);
     }
 
     // GET /manufacturer-integrations/status - Get all integration statuses
@@ -175,7 +265,11 @@ export default async function handler(req: Request) {
       return createCorsResponse(
         (logs ?? []).map((row: any) => {
           const { integration, device, ...log } = row;
-          return { log, integration, device };
+          // The embed is `integration:manufacturer_integrations(*)`, so each
+          // audit row carried the full credential set - a second exposure of
+          // the same table through a different path, which is exactly what a
+          // redactor applied only at the obvious read would have missed.
+          return { log, integration: toIntegrationView(integration), device };
         }),
         200,
         req,
@@ -200,7 +294,7 @@ export default async function handler(req: Request) {
 
       return createCorsResponse(
         {
-          ...integration,
+          ...toIntegrationView(integration),
           connected: integration.is_active,
           configured: true,
         },
@@ -242,7 +336,7 @@ export default async function handler(req: Request) {
         {
           success: true,
           message: `Connected to ${manufacturer}`,
-          integration,
+          integration: toIntegrationView(integration),
         },
         200,
         req,
