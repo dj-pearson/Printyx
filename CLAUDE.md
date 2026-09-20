@@ -563,6 +563,14 @@ THE CREATE-OR-EDIT DIALOG WAS WRONG ON FOUR PAGES IN THREE WAYS, ALL FROM COPYIN
 
 STATE THE PROPERTY OVER EVERY ACTION RATHER THAN CHECKING THREE CASES: "editing is non-null exactly when the form was reset with a row" is one assertion that covers create, edit and close, and it keeps covering a fourth action nobody has written yet.
 
+A GENERATED FILE THAT THROWS AWAY THE PROSE IN IT IS A FILE NOBODY CAN ANNOTATE (SEC-EDGE-001, round 82). `check:raw-body-writes --update-baseline` regenerated its default `note` on every run, so the paragraph explaining why the count had jumped 12 -> 23 - the one thing stopping a reader taking it for a regression - was silently discarded by the next tighten. I rewrote it, tightened, and lost it again inside the same round, and only the test asserting the note caught it. The writer preserves an existing note now. **Every ratchet in this repo is annotated** (`docs/nplus1-triage.json`, `docs/edge-rbac-triage.json`, the phantom-tables baseline) and that annotation is the difference between a worklist and an undifferentiated list - so any baseline WRITER that regenerates a header is worth checking for the same behaviour.
+
+CHECK WHETHER A PAGE IS ASKING FOR SOMETHING IMPOSSIBLE BEFORE DELETING WHAT IT ASKS FOR. `DataEnrichment.tsx` reads `contacts.bySource`, `contacts.byStatus`, `contacts.byLevel` and `companies.byIndustry` as ARRAYS of `{key, count}`; `GET /enrichment/analytics` sent a flat object with two of the four, as maps - so the whole tab rendered "No data available" and three headline cards showed 0, on a 200, with nothing logged. The tempting fix is to delete the two "extra" sections; both turned out to be REAL columns (`enriched_contacts.management_level`, `enriched_companies.primary_industry`), so all four are derived. `management_level` is one no importer fills, which is named in `unbacked` rather than charted as though it meant something - and the test verifies that claim against the mapper instead of taking the comment's word for it.
+
+AN UNPAGED `.select()` BEHIND AN AGGREGATE IS WORSE THAN BEHIND A LIST. The same endpoint tallied every enriched contact with a bare select, which stops at PostgREST's default page size - so a tenant past it got a tally of the first page presented as a total. A truncated LIST at least looks short; a truncated COUNT looks like a fact. Use `fetchAllRows` wherever a handler counts rows in memory.
+
+`toContain('<key>')` IS A SUBSTRING MATCH, SO RENAMING THE KEY PASSES. A mutant that renamed the response key `unbacked` to `unbackedX` survived an assertion that the branch `toContain('unbacked')`. Anchor on the key as emitted (`/\bunbacked: \[/`) - the same overlap trap as `subject:` inside `activity_subject:` and `products:` inside `proposed_products:`.
+
 ## SEO surface (SEO-001..016)
 
 THE PUBLIC SITE IS CLOSED AND THAT CHANGES WHAT IS TRUE. `App.tsx`'s `COMING_SOON`

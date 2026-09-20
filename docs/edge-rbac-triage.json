@@ -2,8 +2,8 @@
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing \u2014 AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing \u2014 this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
     "headless": 35,
-    "open-by-design": 31,
-    "unexamined": 18,
+    "open-by-design": 32,
+    "unexamined": 17,
     "gated-branch": 10,
     "row-scoped": 8,
     "public": 8,
@@ -208,8 +208,9 @@
     },
     {
       "fn": "enrichment",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "EXAMINED 2026-09-20. A prospecting pool: enriched_contacts and enriched_companies have NO owner column, so the data is tenant-wide by design and every rep legitimately sees all of it. /data-enrichment is minLevel 2 with sales.lead.view_own + sales.lead.create, and POST /campaigns has a live caller on that page, so a gate above 2 breaks the feature while a gate AT 2 constrains nobody - the contract-tiered-rates precedent. The control the two bulk import endpoints actually want is a record-count or spend limit, not a role; they have no caller today. WHAT THIS ROUND FIXED instead: GET /analytics and the page had never agreed (the page reads contacts.bySource/byStatus/byLevel and companies.byIndustry as ARRAYS and got a flat object with two of the four), so the whole Analytics tab rendered 'No data available' and three headline cards showed 0 on a 200; the tallies were also unpaged, so a tenant past PostgREST's default page size got a count of the first page presented as a total; and PUT /contacts/:id spread the request body straight into PostgREST.",
+      "pathsRead": "index.ts - all eleven branches (contacts list + update, companies list/get/create, intent, campaigns list + create, analytics, both bulk imports), _shared/enriched-contact.ts, shared/schema.ts for both tables, and client/src/pages/DataEnrichment.tsx including its analytics tab and campaign create."
     },
     {
       "fn": "expansion-opportunities",

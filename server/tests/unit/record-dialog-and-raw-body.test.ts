@@ -183,6 +183,18 @@ describe('the raw-body guard reads the whole class now', () => {
     expect(BASELINE.note).toMatch(/BECAUSE THE GUARD GOT BETTER/);
   });
 
+  it('an --update-baseline keeps a note somebody wrote', () => {
+    /**
+     * The writer regenerated the default note every time, so the explanation
+     * above - the one thing stopping a reader taking the jump for a regression
+     * - was discarded by the next tighten. It cost two rounds before this test
+     * caught it. A generated file that throws away the prose in it is a
+     * generated file nobody can annotate.
+     */
+    expect(GUARD).toMatch(/note: existingNote \?\? DEFAULT_NOTE/);
+    expect(GUARD).toMatch(/const existingNote = \(\) =>|const existingNote = \(\(\) => \{/);
+  });
+
   it('supplies is fixed rather than baselined', () => {
     expect(BASELINE.writes).not.toContain('supabase/functions/supplies/index.ts:update:supplies');
   });

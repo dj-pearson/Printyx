@@ -118,17 +118,39 @@ for (const file of walk(root)) {
 const key = (f) => `${f.file}:${f.verb}:${f.table}`;
 findings.sort((a, b) => key(a).localeCompare(key(b)));
 
+const DEFAULT_NOTE =
+  'Edge handlers that spread a request body straight into PostgREST. Shrink-only. Each ' +
+  'entry is the same question: can this body name a column it should not (tenant_id, id, ' +
+  'created_by), and does its caller spell fields the way the table does? See ' +
+  'scripts/check-raw-body-writes.mjs and the fix shape in ' +
+  '_shared/business-record-write.ts.';
+
+/** Whatever the current baseline says, so an --update-baseline keeps it. */
+const existingNote = (() => {
+  try {
+    const note = JSON.parse(readFileSync(baselinePath, 'utf8')).note;
+    return typeof note === 'string' && note.length > 0 ? note : null;
+  } catch {
+    return null;
+  }
+})();
+
 if (update) {
   writeFileSync(
     baselinePath,
     `${JSON.stringify(
       {
-        note:
-          'Edge handlers that spread a request body straight into PostgREST. Shrink-only. Each ' +
-          'entry is the same question: can this body name a column it should not (tenant_id, id, ' +
-          'created_by), and does its caller spell fields the way the table does? See ' +
-          'scripts/check-raw-body-writes.mjs and the fix shape in ' +
-          '_shared/business-record-write.ts.',
+        /**
+         * A note somebody WROTE survives an update.
+         *
+         * This used to regenerate the default every time, so the explanation of
+         * why the count jumped from 12 to 23 - which is the one thing stopping
+         * a reader taking it for a regression - was silently discarded by the
+         * next `--update-baseline`. It cost two rounds before the test that
+         * asserts the note caught it. A generated file that throws away the
+         * prose in it is a generated file nobody can annotate.
+         */
+        note: existingNote ?? DEFAULT_NOTE,
         count: findings.length,
         writes: findings.map(key),
       },
