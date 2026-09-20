@@ -1202,58 +1202,79 @@ export const userCustomerAssignments = pgTable('user_customer_assignments', {
  * Migration to fold this table's extra columns onto business_records is CRMX-007. Do not bind new
  * CRM screens here.
  */
-export const companies = pgTable('companies', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const companies = pgTable(
+  'companies',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // Business Record Information (based on your CRM screenshots)
-  businessRecordType: varchar('business_record_type').notNull().default('Customer'),
-  customerNumber: varchar('customer_number').unique(), // e.g., "10243"
-  businessName: varchar('business_name').notNull(), // e.g., "DES MOINES PUBLIC SCHOOLS"
-  businessSite: varchar('business_site'), // e.g., "MAURY BLDG 1"
-  parentBusiness: varchar('parent_business'),
-  industry: varchar('industry'),
-  activity: varchar('activity'),
-  description: text('description'),
+    // Business Record Information (based on your CRM screenshots)
+    businessRecordType: varchar('business_record_type').notNull().default('Customer'),
+    customerNumber: varchar('customer_number').unique(), // e.g., "10243"
+    businessName: varchar('business_name').notNull(), // e.g., "DES MOINES PUBLIC SCHOOLS"
+    businessSite: varchar('business_site'), // e.g., "MAURY BLDG 1"
+    parentBusiness: varchar('parent_business'),
+    industry: varchar('industry'),
+    activity: varchar('activity'),
+    description: text('description'),
 
-  // Contact Information
-  phone: varchar('phone'), // e.g., "515-242-7911"
-  fax: varchar('fax'), // e.g., "515-242-8295"
-  website: varchar('website'),
-  nextCallBack: timestamp('next_call_back'),
+    // Contact Information
+    phone: varchar('phone'), // e.g., "515-242-7911"
+    fax: varchar('fax'), // e.g., "515-242-8295"
+    website: varchar('website'),
+    nextCallBack: timestamp('next_call_back'),
 
-  // Address Information (matching your screenshots)
-  billingAddress: text('billing_address'), // "2100 FLEUR DR"
-  billingCity: varchar('billing_city'), // "DES MOINES"
-  billingState: varchar('billing_state'), // "IA"
-  billingZip: varchar('billing_zip'), // "50321"
-  shippingAddress: text('shipping_address'),
-  shippingCity: varchar('shipping_city'),
-  shippingState: varchar('shipping_state'),
-  shippingZip: varchar('shipping_zip'),
+    // Address Information (matching your screenshots)
+    billingAddress: text('billing_address'), // "2100 FLEUR DR"
+    billingCity: varchar('billing_city'), // "DES MOINES"
+    billingState: varchar('billing_state'), // "IA"
+    billingZip: varchar('billing_zip'), // "50321"
+    shippingAddress: text('shipping_address'),
+    shippingCity: varchar('shipping_city'),
+    shippingState: varchar('shipping_state'),
+    shippingZip: varchar('shipping_zip'),
 
-  // Business Details
-  customerSince: timestamp('customer_since'), // "11/15/2002"
-  employees: integer('employees'),
-  annualRevenue: decimal('annual_revenue', { precision: 12, scale: 2 }),
-  numberOfLocations: integer('number_of_locations'),
-  sicCode: varchar('sic_code'),
-  productServicesInterest: text('product_services_interest'),
-  numberOfStepsRights: integer('number_of_steps_rights'),
-  specialDeliveryInstructions: text('special_delivery_instructions'),
-  taxState: varchar('tax_state'),
-  elevator: varchar('elevator'),
+    // Business Details
+    customerSince: timestamp('customer_since'), // "11/15/2002"
+    employees: integer('employees'),
+    annualRevenue: decimal('annual_revenue', { precision: 12, scale: 2 }),
+    numberOfLocations: integer('number_of_locations'),
+    sicCode: varchar('sic_code'),
+    productServicesInterest: text('product_services_interest'),
+    numberOfStepsRights: integer('number_of_steps_rights'),
+    specialDeliveryInstructions: text('special_delivery_instructions'),
+    taxState: varchar('tax_state'),
+    elevator: varchar('elevator'),
 
-  // System Information
-  createdBy: varchar('created_by'), // "Informix Office Systems Administrator"
-  businessOwner: varchar('business_owner'), // "Nate Olivennus"
-  lastModifiedBy: varchar('last_modified_by'),
+    // System Information
+    createdBy: varchar('created_by'), // "Informix Office Systems Administrator"
+    businessOwner: varchar('business_owner'), // "Nate Olivennus"
+    lastModifiedBy: varchar('last_modified_by'),
 
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    /**
+     * COP-I01 AC5. `companies` had NO index at all, not even on tenant_id, and
+     * it is the table the primary CRM account list reads in production.
+     *
+     * The sort is the one the endpoint issues: tenant first, created_at DESC
+     * second. A bare created_at index cannot serve that - it orders the whole
+     * table, so Postgres still has to visit every tenant's rows to find one
+     * tenant's newest hundred. Measured with scripts/bench-crm-lists.mjs.
+     */
+    tenantCreatedIdx: index('companies_tenant_created_idx').on(table.tenantId, table.createdAt),
+    tenantTypeIdx: index('companies_tenant_type_idx').on(table.tenantId, table.businessRecordType),
+    // The rep-scoping filter (WF-R-05 resolves ownership to created_by here).
+    tenantCreatedByIdx: index('companies_tenant_created_by_idx').on(
+      table.tenantId,
+      table.createdBy,
+    ),
+  }),
+);
 
 // Company Contacts - All contacts at a company (replaces separate contact/lead concept)
 export const companyContacts = pgTable('company_contacts', {
@@ -1466,6 +1487,12 @@ export const businessRecords = pgTable(
     displayIdIdx: index('business_records_display_id_idx').on(table.companyDisplayId),
     customerNumberIdx: index('business_records_customer_number_idx').on(table.customerNumber),
     createdAtIdx: index('business_records_created_at_idx').on(table.createdAt),
+    // COP-I01 AC5: the list sorts created_at DESC WITHIN a tenant, and the bare
+    // index above orders the whole table, so it cannot serve that.
+    tenantCreatedIdx: index('business_records_tenant_created_idx').on(
+      table.tenantId,
+      table.createdAt,
+    ),
   }),
 );
 
@@ -2643,6 +2670,18 @@ export const deals = pgTable(
     tenantStatusIdx: index('deals_tenant_status_idx').on(table.tenantId, table.status),
     tenantStageIdx: index('deals_tenant_stage_idx').on(table.tenantId, table.stageId),
     expectedCloseDateIdx: index('deals_expected_close_date_idx').on(table.expectedCloseDate),
+    /**
+     * COP-I01 AC5. Both of these are the tenant-scoped forms of a bare index
+     * above them, and the bare ones cannot serve the queries the app issues: a
+     * rep's board filters by tenant AND owner, and the forecast orders by close
+     * date WITHIN a tenant. An index on the column alone orders or groups the
+     * whole table, so one tenant's slice still costs every tenant's rows.
+     */
+    tenantOwnerIdx: index('deals_tenant_owner_idx').on(table.tenantId, table.ownerId),
+    tenantCloseDateIdx: index('deals_tenant_close_date_idx').on(
+      table.tenantId,
+      table.expectedCloseDate,
+    ),
   }),
 );
 

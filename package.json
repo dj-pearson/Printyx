@@ -62,6 +62,7 @@
     "check:tenant-id-types": "node scripts/check-tenant-id-types.mjs",
     "check:fk-id-types": "node scripts/check-fk-id-types.mjs",
     "check:declared-cols": "tsx scripts/check-declared-columns.mts",
+    "bench:crm": "node scripts/bench-crm-lists.mjs",
     "check:migrations": "node scripts/check-migration-journal.mjs",
     "check:no-mocks": "node scripts/check-no-mock-fallbacks.mjs",
     "check:no-static-posture": "node scripts/check-no-static-posture.mjs",
