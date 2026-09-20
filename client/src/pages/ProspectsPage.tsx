@@ -1,6 +1,13 @@
 /**
  * Prospects Page - Visual pipeline management.
  *
+ * COP-E02 wants this page retired into the canonical board, and there is
+ * nowhere to send it yet. It boards `companies` filtered to
+ * business_record_type='Prospect'; the canonical Leads config is pinned to
+ * record_type 'lead' and the companies config has no board view at all, so
+ * AC4's "redirect with a preset saved view" has no target. A canonical
+ * prospects view is the prerequisite, not a redirect.
+ *
  * Sales reps drag prospects through stages. Managers see total pipeline value,
  * stage distribution, and forecast. Dual view: Pipeline Board (Kanban) + List View.
  */
