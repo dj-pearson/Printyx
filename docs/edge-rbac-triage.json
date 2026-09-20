@@ -1,17 +1,18 @@
 {
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing \u2014 AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing \u2014 this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
-    "unexamined": 69,
-    "open-by-design": 15,
-    "headless": 43,
+    "needs-gate": 10,
+    "open-by-design": 19,
+    "headless": 44,
+    "unexamined": 53,
     "internal": 3,
     "public": 8
   },
   "triage": [
     {
       "fn": "accessories",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "needs-gate",
+      "reason": "Two writes over catalogue pricing, same reasoning as catalog."
     },
     {
       "fn": "activities",
@@ -20,13 +21,13 @@
     },
     {
       "fn": "address-books",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "needs-gate",
+      "reason": "Six writes over MFP address books, which are pushed to customer devices. A bad write reaches hardware on a customer site."
     },
     {
       "fn": "ai-analytics",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "Read-only: zero writes. Analytics over data the caller can already see."
     },
     {
       "fn": "ai-documentation",
@@ -36,7 +37,7 @@
     {
       "fn": "ai-employee",
       "verdict": "unexamined",
-      "reason": "NOT READ in this pass - 149 lines and no header comment. The earlier verdict was assigned from its name alongside ai-employees, and reading ai-employees overturned that one, so this one is recorded as unexamined rather than inheriting a guess."
+      "reason": "Zero writes but not read; kept unexamined rather than inheriting ai-employees verdict."
     },
     {
       "fn": "ai-employees",
@@ -45,8 +46,8 @@
     },
     {
       "fn": "ai-gpt5",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "needs-gate",
+      "reason": "Zero writes, but EVERY call costs money at OpenAI and any tenant member can make one. The control wanted here is rate limiting or a spend cap rather than a role, which is why it is not simply gated - but it is not \"open by design\" either."
     },
     {
       "fn": "ai-search",
@@ -55,13 +56,13 @@
     },
     {
       "fn": "analytics",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "Read-only: zero writes. PA-040 already gated its fabricated components behind NotConnectedState; what remains is reads."
     },
     {
       "fn": "apollo",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "needs-gate",
+      "reason": "Eleven writes including third-party API CREDENTIALS (ApolloCredentialManager). Storing and rotating an integration credential is a management act."
     },
     {
       "fn": "appointments",
@@ -80,8 +81,8 @@
     },
     {
       "fn": "auto-supply-replenishment",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "needs-gate",
+      "reason": "Seven writes and it places supply ORDERS. Spending the dealer money is not a read."
     },
     {
       "fn": "automation",
@@ -90,8 +91,8 @@
     },
     {
       "fn": "blog",
-      "verdict": "unexamined",
-      "reason": "No index.ts at this path \u2014 the directory needs a look before anything is decided about it."
+      "verdict": "headless",
+      "reason": "A one-line stub. Nothing to gate and nothing calling it."
     },
     {
       "fn": "booking-pages",
@@ -115,13 +116,13 @@
     },
     {
       "fn": "catalog",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "needs-gate",
+      "reason": "Six writes over the product catalogue, which is where prices live."
     },
     {
       "fn": "chatbot",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "needs-gate",
+      "reason": "Six writes plus an external model call; it configures what the bot says to customers."
     },
     {
       "fn": "chrome-extension",
@@ -131,17 +132,17 @@
     {
       "fn": "churn-risk",
       "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "reason": "One write; the reads are management-shaped but that is a guess until it is read."
     },
     {
       "fn": "company-ids",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "needs-gate",
+      "reason": "Three writes over the tenant numbering scheme; its page is minLevel 4."
     },
     {
       "fn": "contract-renewal",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "needs-gate",
+      "reason": "Six writes against contracts - the commercial terms a customer is on."
     },
     {
       "fn": "contract-renewals",
@@ -151,12 +152,12 @@
     {
       "fn": "contract-tiered-rates",
       "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "reason": "One write over billing rates - likely needs a gate, but MeterBilling is the only caller and the branch needs reading first."
     },
     {
       "fn": "crm",
       "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "reason": "Eight writes across several CRM surfaces - too broad to judge from a count, and the write set needs reading branch by branch before a verdict."
     },
     {
       "fn": "cross-module",
@@ -171,7 +172,7 @@
     {
       "fn": "customer-portal",
       "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "reason": "Five writes and it serves an EXTERNAL portal audience as well as staff; the two need separating before a role verdict means anything."
     },
     {
       "fn": "customer-segments",
@@ -185,8 +186,8 @@
     },
     {
       "fn": "dashboard",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "Its one write is the caller's own My Day card layout (COP-B01), keyed to their own user id."
     },
     {
       "fn": "dashboard-modules",
@@ -209,34 +210,29 @@
       "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
     },
     {
-      "fn": "deal-desk",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
-    },
-    {
       "fn": "deal-desk-copilot",
       "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "reason": "Two writes; needs reading to tell advice from action."
     },
     {
       "fn": "deal-stages",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "Read-only: zero writes. The stage vocabulary the board renders."
     },
     {
       "fn": "demos",
       "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "reason": "Two writes over demo scheduling; not yet read."
     },
     {
       "fn": "documents",
       "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "reason": "One write; not yet read."
     },
     {
       "fn": "email-autopilot",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "needs-gate",
+      "reason": "Nine writes and it sends email on the tenant's behalf. Any member can currently send as the company."
     },
     {
       "fn": "email-marketing",

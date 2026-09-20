@@ -3,6 +3,8 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
@@ -529,6 +531,46 @@ export default async function handler(req: Request) {
 
     // POST /deal-desk/requests/:id/decision - Make approval decision
     if (req.method === 'POST' && resource === 'requests' && resourceId && action === 'decision') {
+      /**
+       * SEC-EDGE-001. TWO controls, and the second is the one that matters.
+       *
+       * Deciding an approval needs MANAGER - a LEVEL check, not a permission
+       * code (SEC-EDGE-002). But a role gate alone does not close this: a
+       * manager approving their OWN discount request is still self-approval,
+       * and the quote guardrails (QUOTE-006/016) route exactly the discounts
+       * that are over policy into this queue. So the requester is refused
+       * regardless of rank.
+       *
+       * Before this, any authenticated member of the tenant could POST a
+       * decision on any request - including their own - and the handler wrote
+       * `final_decision_by: user.id` and moved it to `approved`. Nothing
+       * checked that the caller was an approver at all.
+       */
+      try {
+        requireRoleLevel(
+          {
+            userId: user.id,
+            tenantId,
+            email: user.email,
+            jwt: jwt ?? '',
+            supabaseUser: user,
+          } as AuthContext,
+          ROLE_LEVEL.MANAGER,
+        );
+      } catch (err) {
+        if (err instanceof RbacError) {
+          return createCorsResponse(
+            {
+              error: 'Deciding an approval request requires a manager role',
+              code: 'INSUFFICIENT_ROLE',
+              details: err.details,
+            },
+            403,
+            req,
+          );
+        }
+        throw err;
+      }
       const body = await req.json();
       const { decision, comments } = body;
 
@@ -550,6 +592,20 @@ export default async function handler(req: Request) {
 
       if (fetchError || !request) {
         return createCorsResponse({ error: 'Approval request not found' }, 404, req);
+      }
+
+      // The requester cannot decide their own request, whatever their rank.
+      // This is the segregation of duties the approval queue exists to create;
+      // without it the queue is a formality a rep completes alone.
+      if (request.requested_by && request.requested_by === user.id) {
+        return createCorsResponse(
+          {
+            error: 'You cannot decide your own approval request.',
+            code: 'SELF_APPROVAL_REFUSED',
+          },
+          403,
+          req,
+        );
       }
 
       // Determine new status based on decision
