@@ -6,9 +6,9 @@
     "internal": 3,
     "gated-branch": 6,
     "needs-gate": 2,
-    "unexamined": 39,
+    "unexamined": 38,
     "public": 8,
-    "row-scoped": 1
+    "row-scoped": 2
   },
   "triage": [
     {
@@ -138,8 +138,8 @@
     },
     {
       "fn": "customer-portal",
-      "verdict": "unexamined",
-      "reason": "Still unexamined. Note for whoever takes it: it calls auth.getUser like every other function, so the portal customer is a Supabase user rather than a token bearer - which means the question here is ROW scope (can one customer read another customer rows) rather than role scope, and that is a different investigation from the rest of this list."
+      "verdict": "row-scoped",
+      "reason": "EXAMINED AND FIXED 2026-09-20, and the question here was ROW scope rather than role scope. Every branch resolved its customer as ?customerId= || ?customer_id= || the JWT claim, then checked only that the customer belonged to the caller tenant - on the service-role client, which bypasses RLS. The override is a real feature (_context.ts called it the dealer-staff view) but NOTHING VERIFIED THE CALLER WAS STAFF, and a portal customer is in the tenant too, so that check passed for them and ?customerId=<sibling> returned the sibling dashboard, invoices, equipment and usage. The claim was also read from user_metadata as a fallback, which the session holder writes - the same SEC-TENANT-003 reasoning this file already applied to tenant, one field over. Now: app_metadata only, resolved ONCE after the tenant resolve, a claim-holder asking for a different id gets 403 CUSTOMER_SCOPE_VIOLATION rather than a silent fallback, and a caller with no claim (staff) keeps the override. IMPACT STATED HONESTLY: nothing in this repo sets customer_id on any user, so no portal customers exist yet and the staff branch is what runs today - a door closed before the feature that opens it ships."
     },
     {
       "fn": "customer-segments",
