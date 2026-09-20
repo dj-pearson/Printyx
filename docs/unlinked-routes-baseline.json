@@ -1,6 +1,6 @@
 {
   "note": "Parameterless routes that nothing in client source links to, so the only way in is typing the URL. Shrink-only. Each is either a page that needs a nav entry or a link, or a page to retire — see scripts/check-unlinked-routes.mjs.",
-  "count": 64,
+  "count": 63,
   "routes": [
     "/access-control",
     "/admin/database-updater",
@@ -19,7 +19,6 @@
     "/contract-renewal-autopilot",
     "/contract-renewals",
     "/crm-goals",
-    "/crm/leads",
     "/custom-dashboard",
     "/customer-portal",
     "/customer-success",

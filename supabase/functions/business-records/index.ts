@@ -56,6 +56,12 @@ function mapCompanyToBusinessRecord(company: any): any {
     customer_number: company.customer_number,
     industry: company.industry,
     website: company.website,
+    // COP-M01: the spread above carries created_at/updated_at in snake_case
+    // only, and the CRM table reads camelCase field names off the registry, so
+    // the Created column on the canonical Leads list rendered blank for every
+    // row. Both spellings, like every other field in this mapper.
+    createdAt: company.created_at,
+    updatedAt: company.updated_at,
   };
 }
 

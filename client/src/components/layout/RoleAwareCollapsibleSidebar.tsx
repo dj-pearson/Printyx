@@ -254,10 +254,20 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     children: [
       // COP-B01: TodayDashboard existed and was reachable from NO navigation.
       { title: 'My Day', path: '/crm/my-day', icon: Zap, group: 'Work' },
-      { title: 'Leads', path: '/leads-management', icon: UserPlus, group: 'Work' },
+      // COP-M01: these three now point at the CrmIndexShell pages. CRM-001..010
+      // built saved-view tabs, a table/board toggle, advanced filters, a column
+      // picker, bulk selection, inline cell editing and a capped CSV export,
+      // and the sidebar kept pointing at the older hand-rolled lists, so the
+      // whole feature set was reachable only by typing the URL.
+      //
+      // The legacy routes stay registered - COP-E03 retires them once parity is
+      // confirmed in a running environment - and the hub's matchPatterns still
+      // list /leads*, /contacts*, /customers* so a deep link into an old path
+      // keeps this section expanded.
+      { title: 'Leads', path: '/crm/leads', icon: UserPlus, group: 'Work' },
       { title: 'Prospects', path: '/prospects', icon: Users, group: 'Work' },
-      { title: 'Customers', path: '/customers', icon: UserCheck, group: 'Work' },
-      { title: 'Contacts', path: '/contacts', icon: Users, group: 'Work' },
+      { title: 'Customers', path: '/crm/companies', icon: UserCheck, group: 'Work' },
+      { title: 'Contacts', path: '/crm/contacts', icon: Users, group: 'Work' },
       // COP-E07: the object is a Deal. Route unchanged (COP-E04 collapses the URLs).
       { title: 'Deals', path: '/crm/deals', icon: Target, group: 'Work' },
       { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp, group: 'Work' },
