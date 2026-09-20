@@ -18,13 +18,14 @@
  * usually exceeds. The deal's recorded `leaseBuyoutExposure` is the quotable
  * figure when a rep has one, and the roll-up says which it is using.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import {
   exposureForMachine,
   fleetContextFromAssessment,
   rollupExposure,
+  type ExposureRollup,
   type FleetMachine,
 } from '@shared/fleet-quote';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -79,6 +80,7 @@ export function FleetContextPanel({
   recordedBuyout,
   lineOptions,
   onAssign,
+  onExposureChange,
 }: {
   businessRecordId: string;
   /** deals.lease_buyout_exposure, when the quote was opened from a deal. */
@@ -86,6 +88,14 @@ export function FleetContextPanel({
   /** The quote's equipment lines, so a machine can be attached to one. */
   lineOptions: FleetLineOption[];
   onAssign: (lineIndex: number, equipmentId: string | undefined) => void;
+  /**
+   * AC3 says the exposure must be visible BEFORE SEND, and this panel renders
+   * on the Products step only. The rollup is reported upward so the Review step
+   * can show the same figure rather than computing a second one - the rule
+   * QUOTE-019 set for the guardrail math, for the same reason: two places
+   * deriving one number is two numbers waiting to disagree.
+   */
+  onExposureChange?: (rollup: ExposureRollup | null) => void;
 }) {
   const key = `/api/fleet-assessment/preview?customerId=${businessRecordId}`;
   const preview = useQuery<PreviewResponse>({
@@ -125,6 +135,12 @@ export function FleetContextPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [machines, [...displacedIds].sort().join(','), recordedBuyout],
   );
+
+  // Reported after render, not during: a parent setState inside a render body
+  // is a React warning and, here, a loop.
+  useEffect(() => {
+    onExposureChange?.(preview.data ? rollup : null);
+  }, [rollup, preview.data, onExposureChange]);
 
   if (!businessRecordId) return null;
   if (preview.isLoading) return <Skeleton className="h-48 w-full" />;

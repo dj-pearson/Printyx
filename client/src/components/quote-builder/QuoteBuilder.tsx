@@ -55,6 +55,7 @@ import PricingCalculator from './PricingCalculator';
 import { QuoteWizardProgress, DEFAULT_QUOTE_STEPS } from '@/components/quotes/QuoteWizardProgress';
 import GenerateProposalDialog from '@/components/proposal-builder/GenerateProposalDialog';
 import { formatCurrency, percentOfOr } from '@/lib/utils';
+import type { ExposureRollup } from '@shared/fleet-quote';
 
 // Quote form schema
 const quoteSchema = z.object({
@@ -759,6 +760,15 @@ export default function QuoteBuilder({
    */
   const dealBuyoutExposure = dealForBuyout.data?.leaseBuyoutExposure ?? null;
 
+  /**
+   * COP-B06 AC3: the buyout exposure has to be visible BEFORE SEND, and the
+   * fleet panel that derives it renders on the Products step. It reports the
+   * rollup up here so Review shows the SAME figure - a second derivation is a
+   * second number waiting to disagree with the first (QUOTE-019's rule for the
+   * guardrail math).
+   */
+  const [fleetExposure, setFleetExposure] = useState<ExposureRollup | null>(null);
+
   const handleDiscountChange = (discountAmt: number, discountPct: number) => {
     setDiscountAmount(discountAmt);
     setDiscountPercentage(discountPct);
@@ -1363,6 +1373,7 @@ export default function QuoteBuilder({
               recordedBuyout={dealBuyoutExposure}
               lineOptions={fleetLineOptions}
               onAssign={handleAssignReplacement}
+              onExposureChange={setFleetExposure}
             />
           )}
           <LineItemManager
@@ -1633,6 +1644,40 @@ export default function QuoteBuilder({
                 {lineItems.length > 0 && (
                   <div className="mt-1 font-medium line-clamp-2">
                     {lineItems.map((i) => i.productName).join(' · ')}
+                  </div>
+                )}
+                {/* AC3. Only when machines are actually displaced: a quote with
+                    no fleet context reads exactly as it did (AC6). */}
+                {fleetExposure && fleetExposure.machinesDisplaced > 0 && (
+                  <div className="mt-3 rounded-md border bg-muted/30 p-3">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="text-muted-foreground">
+                        Buyout exposure on {fleetExposure.machinesDisplaced} machine
+                        {fleetExposure.machinesDisplaced === 1 ? '' : 's'} replaced
+                      </span>
+                      <span className="font-semibold">
+                        {fleetExposure.authoritative === 'recorded'
+                          ? formatCurrency(fleetExposure.recordedBuyout)
+                          : fleetExposure.authoritative === 'derived'
+                            ? formatCurrency(fleetExposure.derivedRemainingPayments)
+                            : '—'}
+                      </span>
+                    </div>
+                    {/* The derived figure is the remaining PAYMENT STREAM, not a
+                        lessor's buyout, and it is a FLOOR when any machine could
+                        not be accounted for. Saying so is the difference between
+                        a number a rep can defend and one they cannot. */}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {fleetExposure.authoritative === 'recorded'
+                        ? 'The buyout quoted by the lessor, as recorded on the deal.'
+                        : fleetExposure.authoritative === 'derived'
+                          ? 'Derived from remaining payments, not a lessor quote.'
+                          : 'Not derivable from what is recorded for these machines.'}
+                      {fleetExposure.unknown.length > 0 &&
+                        ` At least this much: ${fleetExposure.unknown.length} machine${
+                          fleetExposure.unknown.length === 1 ? '' : 's'
+                        } could not be accounted for.`}
+                    </p>
                   </div>
                 )}
               </div>

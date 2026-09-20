@@ -6,6 +6,8 @@
 // lessor quotes and which usually includes a residual. These tests exist to
 // keep those two apart.
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import {
   exposureForMachine,
@@ -173,5 +175,57 @@ describe('fleetContextFromAssessment — AC1 and AC4', () => {
     const [m] = fleetContextFromAssessment([{ equipmentId: 'gone' }], equipmentById);
     expect(m.monthlyPayment).toBeNull();
     expect(m.leaseExpiresDate).toBeNull();
+  });
+});
+
+/**
+ * COP-B06 AC3 says the buyout exposure must be visible to the rep BEFORE SEND,
+ * "because a copier deal is routinely won or lost on this number".
+ *
+ * The rollup was derived inside FleetContextPanel, which renders on the
+ * Products step only, so a rep who set up the fleet and then moved through
+ * Pricing to Review did not see it at the moment of sending. Same shape as
+ * COP-M01's bulk actions: the capability existed on one surface and was absent
+ * where the AC points.
+ *
+ * The panel now reports its rollup upward and Review renders THAT figure rather
+ * than computing a second one - QUOTE-019's rule for the guardrail math, for
+ * the same reason: two derivations of one number are two numbers waiting to
+ * disagree.
+ */
+describe('COP-B06 AC3: exposure is visible at Review, not only on Products', () => {
+  const read = (p: string) => readFileSync(join(__dirname, '../../..', p), 'utf8');
+  const PANEL = read('client/src/components/quote-builder/FleetContextPanel.tsx');
+  const BUILDER = read('client/src/components/quote-builder/QuoteBuilder.tsx');
+
+  it('has a corpus to check', () => {
+    expect(PANEL).toContain('rollupExposure');
+    expect(BUILDER).toContain('FleetContextPanel');
+  });
+
+  it('the panel reports its rollup instead of keeping it', () => {
+    expect(PANEL).toContain('onExposureChange');
+    // After render, not during: a parent setState in a render body is a loop.
+    expect(PANEL).toMatch(/useEffect\(\(\) => \{\s*onExposureChange\?\.\(/);
+  });
+
+  it('Review renders the reported figure and derives nothing itself', () => {
+    expect(BUILDER).toContain('onExposureChange={setFleetExposure}');
+    expect(BUILDER).toContain('fleetExposure.machinesDisplaced');
+    // A second rollupExposure call in the builder is the drift this avoids.
+    expect(BUILDER).not.toContain('rollupExposure(');
+  });
+
+  it('says which figure it is showing rather than presenting one number', () => {
+    // The derived figure is the remaining PAYMENT STREAM, not a lessor's
+    // buyout, and it is a floor when a machine could not be accounted for.
+    expect(BUILDER).toContain("fleetExposure.authoritative === 'recorded'");
+    expect(BUILDER).toContain('Derived from remaining payments, not a lessor quote.');
+    expect(BUILDER).toContain('could not be accounted for');
+  });
+
+  it('shows nothing when no machine is displaced, so AC6 holds', () => {
+    // A quote with no fleet context has to read exactly as it did.
+    expect(BUILDER).toMatch(/fleetExposure && fleetExposure\.machinesDisplaced > 0/);
   });
 });
