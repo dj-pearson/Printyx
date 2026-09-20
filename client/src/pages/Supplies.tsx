@@ -35,6 +35,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertSupplySchema, type Supply, type InsertSupply } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
+import { bulkDelete, bulkDeleteToast } from '@/lib/bulk-delete';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import ManagementToolbar from '@/components/product-management/ManagementToolbar';
@@ -138,15 +139,15 @@ export default function Supplies() {
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
-    for (const id of ids) {
-      try {
-        await apiRequest(`/api/supplies/${id}`, 'DELETE');
-      } catch {}
-    }
+    // Was a loop of `catch {}` followed by `Deleted ${ids.length}` regardless,
+    // so every failure reported as a success - and in production this endpoint
+    // was missing entirely. See client/src/lib/bulk-delete.ts.
+    const outcome = await bulkDelete(ids, (id) => apiRequest(`/api/supplies/${id}`, 'DELETE'));
     queryClient.invalidateQueries({ queryKey: ['/api/supplies'] });
-    setSelectedIds(new Set());
-    setBulkMode(false);
-    toast({ title: 'Deleted', description: `Deleted ${ids.length} supplies` });
+    // Failures stay selected so a retry does not mean finding them again.
+    setSelectedIds(new Set(outcome.failed));
+    if (outcome.failed.length === 0) setBulkMode(false);
+    toast(bulkDeleteToast(outcome, 'supplies'));
   };
 
   // Get unique categories from supplies for filtering

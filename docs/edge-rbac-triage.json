@@ -3,8 +3,8 @@
   "counts": {
     "headless": 35,
     "open-by-design": 31,
-    "unexamined": 19,
-    "gated-branch": 9,
+    "unexamined": 18,
+    "gated-branch": 10,
     "row-scoped": 8,
     "public": 8,
     "internal": 3,
@@ -406,8 +406,9 @@
     },
     {
       "fn": "professional-services",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "gated-branch",
+      "reason": "EXAMINED AND GATED 2026-09-20. The fourth of the catalogue family - every non-GET needs operations.inventory.manage, matching product-models, software-products and managed-services; reads stay open because the quote builder's ProductTypeSelector fills its Professional Services picker from GET / on a surface with no minLevel. THE GATE WAS THE SMALL HALF. Two domains shared this prefix and the wrong one answered: every caller wants the product CATALOGUE (the page lists and creates catalogue rows; Express serves professional_services), and this function served PROJECTS off professional_services_projects and project_tasks, neither of which exists in any schema or migration. The prefix is not proxied, so dev worked off Express and production did not - and the list branch SWALLOWED the missing-table error and answered [] at 200, so a dealer's professional services simply appeared unconfigured and a rep could not add installation or training to a quote. Sharpest statement: POST /import already wrote the real catalogue table through the shared spec, so one function imported a CSV successfully and then listed nothing. The catalogue now owns /, /:id and /import with explicit column maps and tenant-filtered writes; the project half is kept under /projects and answers 503 RELATION_MISSING rather than swallowing. Its PUT also carried COP-M01's raw-body spread, now an explicit map.",
+      "pathsRead": "index.ts - all eleven branches, shared/schema.ts professionalServices, shared/catalog-import.ts, the Express handlers in server/routes-products-crud.ts, client/src/pages/ProfessionalServices.tsx and client/src/components/quote-builder/ProductTypeSelector.tsx."
     },
     {
       "fn": "projects",

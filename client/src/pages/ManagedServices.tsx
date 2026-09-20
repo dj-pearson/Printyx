@@ -39,6 +39,7 @@ import {
   type InsertManagedService,
 } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
+import { bulkDelete, bulkDeleteToast } from '@/lib/bulk-delete';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import ManagementToolbar from '@/components/product-management/ManagementToolbar';
@@ -211,38 +212,18 @@ export default function ManagedServices() {
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
-    /**
-     * COUNT WHAT ACTUALLY HAPPENED. This swallowed every failure with
-     * `catch {}` and then reported `Deleted ${ids.length}` regardless - and
-     * production had no DELETE /:id handler at all, so a rep could select
-     * twenty products, be told all twenty were gone, and have none of them
-     * deleted. A destructive action that reports a success it did not have is
-     * worse than one that fails loudly.
-     */
-    let deleted = 0;
-    const failed: string[] = [];
-    for (const id of ids) {
-      try {
-        await apiRequest(`/api/managed-services/${id}`, 'DELETE');
-        deleted += 1;
-      } catch {
-        failed.push(id);
-      }
-    }
+    // Was a loop of `catch {}` followed by `Deleted ${ids.length}` regardless,
+    // so a rep in production - where this endpoint had no handler at all - was
+    // told twenty products were deleted and lost none. Three sibling catalogue
+    // pages carried the identical copy; the rules now live in one place.
+    const outcome = await bulkDelete(ids, (id) =>
+      apiRequest(`/api/managed-services/${id}`, 'DELETE'),
+    );
     queryClient.invalidateQueries({ queryKey: ['/api/managed-services'] });
-    // Only the ones that really went. Keeping the failures selected lets the
-    // user retry without finding them again.
-    setSelectedIds(new Set(failed));
-    if (failed.length === 0) {
-      setBulkMode(false);
-      toast({ title: 'Deleted', description: `Deleted ${deleted} managed services` });
-    } else {
-      toast({
-        title: deleted > 0 ? 'Partly deleted' : 'Nothing deleted',
-        description: `${deleted} of ${ids.length} deleted. ${failed.length} still selected.`,
-        variant: 'destructive',
-      });
-    }
+    // Failures stay selected so a retry does not mean finding them again.
+    setSelectedIds(new Set(outcome.failed));
+    if (outcome.failed.length === 0) setBulkMode(false);
+    toast(bulkDeleteToast(outcome, 'managed services'));
   };
 
   // Get unique service types from services

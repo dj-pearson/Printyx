@@ -141,19 +141,30 @@ describe('the handlers the page was already calling now exist', () => {
 
 describe('the page reports what actually happened', () => {
   it('bulk delete counts successes and failures instead of assuming', () => {
+    /**
+     * ASSERTED AS A PROPERTY, NOT A SHAPE. The first version of this pinned the
+     * inline implementation (`let deleted = 0`), and three sibling pages turned
+     * out to carry the identical swallowed loop - so the fix became one shared
+     * helper and this test failed on a change that was strictly better. What
+     * matters is that the page counts what happened and keeps the failures
+     * selected, wherever the counting lives; client/src/lib/bulk-delete.ts owns
+     * the rules and server/tests/unit/professional-services-catalogue.test.ts
+     * exercises them with real inputs.
+     */
     expect(PAGE).not.toMatch(/catch \{\}/);
-    expect(PAGE).toMatch(/let deleted = 0;/);
-    expect(PAGE).toMatch(/failed\.push\(id\)/);
+    expect(PAGE).toMatch(/await bulkDelete\(ids,/);
+    expect(PAGE).toMatch(/bulkDeleteToast\(outcome, 'managed services'\)/);
     // The failures stay selected so a retry does not mean finding them again.
-    expect(PAGE).toMatch(/setSelectedIds\(new Set\(failed\)\)/);
+    expect(PAGE).toMatch(/setSelectedIds\(new Set\(outcome\.failed\)\)/);
   });
 
   it('a partial or total failure does not render as success', () => {
     const at = PAGE.indexOf('const handleBulkDelete');
-    const body = PAGE.slice(at, at + 1800);
-    expect(body).toMatch(/failed\.length === 0/);
-    expect(body).toMatch(/Nothing deleted/);
-    expect(body).toMatch(/variant: 'destructive'/);
+    const body = PAGE.slice(at, PAGE.indexOf('\n  };', at));
+    // Bulk mode only closes on a clean run; a partial failure leaves the user
+    // in the selection they still have to deal with.
+    expect(body).toMatch(/outcome\.failed\.length === 0/);
+    expect(body).toMatch(/setBulkMode\(false\)/);
   });
 
   it('the Edit button opens the form instead of setting state nothing reads', () => {

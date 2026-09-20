@@ -1,9 +1,129 @@
-// Professional Services Edge Function
-// Handles professional services project management
+/**
+ * Professional Services Edge Function.
+ *
+ * TWO DOMAINS SHARED THIS PREFIX AND THE WRONG ONE ANSWERED (AUDIT-031's
+ * shape). Every caller of /api/professional-services wants the PRODUCT
+ * CATALOGUE - ProfessionalServices.tsx lists and creates catalogue rows, and
+ * the quote builder's ProductTypeSelector fills its "Installation, training,
+ * consulting" picker from it - and Express serves exactly that, off the real
+ * `professional_services` table. This function served PROJECTS instead, off
+ * `professional_services_projects` and `project_tasks`, neither of which exists
+ * in any Drizzle schema or migration.
+ *
+ * `/api/professional-services` is not proxied, so dev ran Express and worked
+ * while production ran this and did not - and the list branch SWALLOWED the
+ * missing-table error and answered `[]` at 200, so the failure looked like a
+ * dealer who had not configured any professional services. A rep could not add
+ * installation or training to a quote and nothing said why.
+ *
+ * The sharpest statement of it: POST /import already wrote the REAL catalogue
+ * table (the shared spec in shared/catalog-import.ts names
+ * `professional_services`), so one function imported a CSV successfully and
+ * then listed nothing.
+ *
+ * The catalogue now owns `/`, `/:id` and `/import`. The project half is kept
+ * under `/projects` - it is real code over tables somebody may yet create - and
+ * answers 503 rather than swallowing, because a request that will work once the
+ * relation exists is not an outage and is certainly not an empty list.
+ */
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { importCatalogCsv, readUploadedCsv } from '../_shared/catalog-import-runner.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { normalizePath } from '../_shared/path.ts';
+import { denyWithoutPermission } from '../_shared/rbac.ts';
+import { isMissingTableError } from '../_shared/postgrest-errors.ts';
+
+/**
+ * The fourth of the catalogue family, gated like product-models,
+ * software-products and managed-services (SEC-EDGE-001). Reads stay open
+ * because the quote builder needs the picker on a surface with no minLevel.
+ */
+const WRITE_PERMISSION = 'operations.inventory.manage';
+
+/** Segments that name something other than a catalogue product id. */
+const RESERVED_SEGMENTS = new Set(['import', 'projects']);
+
+/**
+ * Only the catalogue columns a caller may set. Mirrors `professional_services`
+ * in shared/schema.ts; `tenant_id`, `id` and the timestamps are the server's.
+ */
+function cataloguePatch(body: Record<string, any>): Record<string, unknown> {
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const set = (column: string, ...candidates: unknown[]) => {
+    const value = candidates.find((v) => v !== undefined);
+    if (value !== undefined) patch[column] = value;
+  };
+  set('product_code', body.productCode, body.product_code);
+  set('product_name', body.productName, body.product_name);
+  set('category', body.category);
+  set('accessory_type', body.accessoryType, body.accessory_type);
+  set('description', body.description);
+  set('summary', body.summary);
+  set('note', body.note);
+  set('ea_notes', body.eaNotes, body.ea_notes);
+  set('related_products', body.relatedProducts, body.related_products);
+  set('is_active', body.isActive, body.is_active);
+  set('available_for_all', body.availableForAll, body.available_for_all);
+  set('repost_edit', body.repostEdit, body.repost_edit);
+  set('sales_rep_credit', body.salesRepCredit, body.sales_rep_credit);
+  set('funding', body.funding);
+  set('lease', body.lease);
+  set('payment_type', body.paymentType, body.payment_type);
+  set('msrp', body.msrp);
+  set('new_active', body.newActive, body.new_active);
+  set('new_rep_price', body.newRepPrice, body.new_rep_price);
+  set('upgrade_active', body.upgradeActive, body.upgrade_active);
+  set('upgrade_rep_price', body.upgradeRepPrice, body.upgrade_rep_price);
+  set('lexmark_active', body.lexmarkActive, body.lexmark_active);
+  set('lexmark_rep_price', body.lexmarkRepPrice, body.lexmark_rep_price);
+  set('graphic_active', body.graphicActive, body.graphic_active);
+  set('graphic_rep_price', body.graphicRepPrice, body.graphic_rep_price);
+  set('manufacturer', body.manufacturer);
+  set('manufacturer_product_code', body.manufacturerProductCode, body.manufacturer_product_code);
+  set('model', body.model);
+  set('units', body.units);
+  set('environment', body.environment);
+  set('color_mode', body.colorMode, body.color_mode);
+  set('ea_item_number', body.eaItemNumber, body.ea_item_number);
+  set('price_book_id', body.priceBookId, body.price_book_id);
+  set('temp_key', body.tempKey, body.temp_key);
+  return patch;
+}
+
+/** Only the project columns a caller may set, never a spread of the body. */
+function projectPatch(body: Record<string, any>): Record<string, unknown> {
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const set = (column: string, ...candidates: unknown[]) => {
+    const value = candidates.find((v) => v !== undefined);
+    if (value !== undefined) patch[column] = value;
+  };
+  set('customer_id', body.customerId, body.customer_id);
+  set('project_name', body.projectName, body.project_name);
+  set('project_type', body.projectType, body.project_type);
+  set('description', body.description);
+  set('status', body.status);
+  set('start_date', body.startDate, body.start_date);
+  set('target_end_date', body.targetEndDate, body.target_end_date);
+  set('budget_hours', body.budgetHours, body.budget_hours);
+  set('budget_amount', body.budgetAmount, body.budget_amount);
+  set('hourly_rate', body.hourlyRate, body.hourly_rate);
+  set('project_manager_id', body.projectManagerId, body.project_manager_id);
+  return patch;
+}
+
+function projectsUnavailable(req: Request, feature: string) {
+  return createCorsResponse(
+    {
+      error: `${feature} is not available`,
+      code: 'RELATION_MISSING',
+      message:
+        'professional_services_projects and project_tasks exist in no schema or migration. The professional-services CATALOGUE on this prefix works; the project tracker was never built.',
+    },
+    503,
+    req,
+  );
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -31,9 +151,18 @@ export default async function handler(req: Request) {
     }
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // Server strips function name, so /professional-services/:id becomes /:id
-    const projectId = pathParts[0];
+    // server.ts strips the function-name segment before invoking this handler,
+    // so the resource is at parts[0]. normalizePath strips an OPTIONAL leading
+    // /professional-services, making this correct either way.
+    const { parts: pathParts } = normalizePath(url.pathname, 'professional-services');
+    const segment = pathParts[0];
+
+    // After the path parse so no write branch precedes it, before any branch
+    // reads a body.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const denied = await denyWithoutPermission(admin, user, WRITE_PERMISSION);
+      if (denied) return createCorsResponse(denied, 403, req);
+    }
 
     // ====================================================================
     // POST /professional-services/import - bulk CSV import
@@ -55,10 +184,146 @@ export default async function handler(req: Request) {
       const outcome = await importCatalogCsv(admin, 'professional-services', tenantId, csvText);
       return createCorsResponse(outcome, 200, req);
     }
-    const subResource = pathParts[1];
+    /**
+     * The PROJECT half, moved under /projects. It had no caller on either host
+     * under any path - the page and the quote builder only ever wanted the
+     * catalogue - so nothing loses a route, and the catalogue gets the bare
+     * prefix its callers have been asking for all along.
+     */
+    const isProjects = segment === 'projects';
+    const projectId = isProjects ? pathParts[1] : undefined;
+    const subResource = isProjects ? pathParts[2] : undefined;
 
     // GET /professional-services - List projects
-    if (req.method === 'GET' && !projectId) {
+    const serviceId = segment && !RESERVED_SEGMENTS.has(segment) ? segment : null;
+
+    // ====================================================================
+    // THE CATALOGUE. Everything that calls this prefix wants these four
+    // branches, and until now production answered them from a table that does
+    // not exist. Columns come from `professional_services` (shared/schema.ts),
+    // which is what Express, the CSV import spec and the page all use.
+    // ====================================================================
+    if (req.method === 'GET' && !segment) {
+      const { data, error } = await admin
+        .from('professional_services')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('product_name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching professional services:', error);
+        return createCorsResponse({ error: 'Failed to fetch professional services' }, 500, req);
+      }
+      return createCorsResponse(data ?? [], 200, req);
+    }
+
+    if (req.method === 'GET' && serviceId) {
+      const { data, error } = await admin
+        .from('professional_services')
+        .select('*')
+        .eq('id', serviceId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching professional service:', error);
+        return createCorsResponse({ error: 'Failed to fetch professional service' }, 500, req);
+      }
+      if (!data) return createCorsResponse({ error: 'Professional service not found' }, 404, req);
+      return createCorsResponse(data, 200, req);
+    }
+
+    if (req.method === 'POST' && !segment) {
+      const body = await req.json().catch(() => ({}));
+
+      // product_code and product_name are NOT NULL. The form collects both, so
+      // a missing one is a 400 rather than a 23502 the page cannot read.
+      const productCode = body.productCode ?? body.product_code;
+      const productName = body.productName ?? body.product_name;
+      if (!productCode || !productName) {
+        return createCorsResponse({ error: 'productCode and productName are required' }, 400, req);
+      }
+
+      const { data, error } = await admin
+        .from('professional_services')
+        .insert({
+          tenant_id: tenantId,
+          ...cataloguePatch(body),
+          product_code: productCode,
+          product_name: productName,
+        })
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error creating professional service:', error);
+        return createCorsResponse(
+          { error: 'Failed to create professional service', message: error.message },
+          500,
+          req,
+        );
+      }
+      return createCorsResponse(data, 201, req);
+    }
+
+    if ((req.method === 'PATCH' || req.method === 'PUT') && serviceId) {
+      const body = await req.json().catch(() => ({}));
+      const patch = cataloguePatch(body);
+      if (Object.keys(patch).length === 1) {
+        // Only updated_at. A 200 that bumped the timestamp and reported success
+        // would be COP-M01's silent no-op.
+        return createCorsResponse(
+          { error: 'No updatable fields in the request body', code: 'EMPTY_PATCH' },
+          400,
+          req,
+        );
+      }
+
+      const { data, error } = await admin
+        .from('professional_services')
+        .update(patch)
+        .eq('id', serviceId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error updating professional service:', error);
+        return createCorsResponse(
+          { error: 'Failed to update professional service', message: error.message },
+          500,
+          req,
+        );
+      }
+      if (!data) return createCorsResponse({ error: 'Professional service not found' }, 404, req);
+      return createCorsResponse(data, 200, req);
+    }
+
+    if (req.method === 'DELETE' && serviceId) {
+      // The tenant filter is the authorization, not the id (SEC-TENANT-005),
+      // and `select` so a miss is a 404 rather than a silent success.
+      const { data: removed, error } = await admin
+        .from('professional_services')
+        .delete()
+        .eq('id', serviceId)
+        .eq('tenant_id', tenantId)
+        .select('id');
+
+      if (error) {
+        console.error('Error deleting professional service:', error);
+        return createCorsResponse(
+          { error: 'Failed to delete professional service', message: error.message },
+          500,
+          req,
+        );
+      }
+      if (!removed || removed.length === 0) {
+        return createCorsResponse({ error: 'Professional service not found' }, 404, req);
+      }
+      return createCorsResponse({ success: true, id: serviceId }, 200, req);
+    }
+
+    if (req.method === 'GET' && isProjects && !projectId) {
       const status = url.searchParams.get('status');
       const customerId = url.searchParams.get('customerId');
       const search = (url.searchParams.get('search') || '').trim().toLowerCase();
@@ -76,11 +341,12 @@ export default async function handler(req: Request) {
         .order('created_at', { ascending: false });
 
       if (error) {
-        // Table may not exist yet - return empty array gracefully
-        console.error('Error fetching professional services:', error);
-        return paginate
-          ? createCorsResponse({ data: [], pagination: { page: 1, limit: 50, total: 0 } }, 200, req)
-          : createCorsResponse([], 200, req);
+        // An empty array is a measurement - "this dealer runs no projects" -
+        // and the table does not exist, so it was never true. 503 says the
+        // request is well formed and will work once the relation is created.
+        if (isMissingTableError(error)) return projectsUnavailable(req, 'The project tracker');
+        console.error('Error fetching professional services projects:', error);
+        return createCorsResponse({ error: 'Failed to fetch projects' }, 500, req);
       }
 
       let result = projects || [];
@@ -111,19 +377,28 @@ export default async function handler(req: Request) {
     }
 
     // GET /professional-services/active - Get active projects
-    if (req.method === 'GET' && projectId === 'active') {
-      const { data: projects } = await admin
+    if (req.method === 'GET' && isProjects && projectId === 'active') {
+      // The error was discarded here too, so a table that does not exist
+      // answered 200 with an empty list - "no active projects" as a
+      // measurement of a tracker that was never built.
+      const { data: projects, error } = await admin
         .from('professional_services_projects')
         .select('*')
         .eq('tenant_id', tenantId)
         .in('status', ['planning', 'in_progress', 'on_hold'])
         .order('start_date', { ascending: true });
 
+      if (error) {
+        if (isMissingTableError(error)) return projectsUnavailable(req, 'The project tracker');
+        console.error('Error fetching active projects:', error);
+        return createCorsResponse({ error: 'Failed to fetch active projects' }, 500, req);
+      }
+
       return createCorsResponse(projects || [], 200, req);
     }
 
     // GET /professional-services/:id - Get single project
-    if (req.method === 'GET' && projectId && !subResource) {
+    if (req.method === 'GET' && isProjects && projectId && !subResource) {
       const { data: project, error } = await admin
         .from('professional_services_projects')
         .select('*')
@@ -132,6 +407,7 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
+        if (isMissingTableError(error)) return projectsUnavailable(req, 'The project tracker');
         return createCorsResponse({ error: 'Project not found' }, 404, req);
       }
 
@@ -165,7 +441,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /professional-services - Create project
-    if (req.method === 'POST' && !projectId) {
+    if (req.method === 'POST' && isProjects && !projectId) {
       const body = await req.json();
 
       const projectData = {
@@ -194,6 +470,7 @@ export default async function handler(req: Request) {
 
       if (error) {
         console.error('Error creating project:', error);
+        if (isMissingTableError(error)) return projectsUnavailable(req, 'The project tracker');
         return createCorsResponse({ error: 'Failed to create project' }, 500, req);
       }
 
@@ -201,18 +478,22 @@ export default async function handler(req: Request) {
     }
 
     // PUT /professional-services/:id - Update project
-    if (req.method === 'PUT' && projectId && !subResource) {
+    if (req.method === 'PUT' && isProjects && projectId && !subResource) {
       const body = await req.json();
 
       const { data: project, error } = await admin
         .from('professional_services_projects')
-        .update({ ...body, updated_at: new Date().toISOString() })
+        // An explicit map, not `{ ...body }`: a spread lets the caller name
+        // every column, tenant_id and id included, and the tenant filter
+        // decides WHICH row is written, not what goes into it (COP-M01).
+        .update(projectPatch(body))
         .eq('id', projectId)
         .eq('tenant_id', tenantId)
         .select()
         .single();
 
       if (error) {
+        if (isMissingTableError(error)) return projectsUnavailable(req, 'The project tracker');
         return createCorsResponse({ error: 'Failed to update project' }, 500, req);
       }
 
@@ -220,7 +501,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /professional-services/:id/tasks - Add task
-    if (req.method === 'POST' && projectId && subResource === 'tasks') {
+    if (req.method === 'POST' && isProjects && projectId && subResource === 'tasks') {
       const body = await req.json();
 
       const { data: task, error } = await admin
@@ -240,6 +521,7 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
+        if (isMissingTableError(error)) return projectsUnavailable(req, 'Project tasks');
         return createCorsResponse({ error: 'Failed to create task' }, 500, req);
       }
 
@@ -247,7 +529,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /professional-services/:id/time - Log time
-    if (req.method === 'POST' && projectId && subResource === 'time') {
+    if (req.method === 'POST' && isProjects && projectId && subResource === 'time') {
       const body = await req.json();
 
       // project_id and billable are not columns on time_entries, so every log
@@ -284,6 +566,7 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
+        if (isMissingTableError(error)) return projectsUnavailable(req, 'Project time tracking');
         return createCorsResponse({ error: 'Failed to log time' }, 500, req);
       }
 
@@ -300,7 +583,7 @@ export default async function handler(req: Request) {
     }
 
     // DELETE /professional-services/:id - Delete project
-    if (req.method === 'DELETE' && projectId) {
+    if (req.method === 'DELETE' && isProjects && projectId) {
       const { error } = await admin
         .from('professional_services_projects')
         .delete()
@@ -308,6 +591,7 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId);
 
       if (error) {
+        if (isMissingTableError(error)) return projectsUnavailable(req, 'The project tracker');
         return createCorsResponse({ error: 'Failed to delete project' }, 500, req);
       }
 

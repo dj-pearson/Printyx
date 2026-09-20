@@ -29,7 +29,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useForm } from 'react-hook-form';
@@ -40,6 +39,7 @@ import {
   type InsertProfessionalService,
 } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
+import { bulkDelete, bulkDeleteToast } from '@/lib/bulk-delete';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import ManagementToolbar from '@/components/product-management/ManagementToolbar';
@@ -73,10 +73,11 @@ export default function ProfessionalServices() {
         description: 'Professional service created successfully',
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
-        description: 'Failed to create professional service',
+        // apiRequest throws a plain Error carrying the server's reason.
+        description: error.message || 'Failed to create professional service',
         variant: 'destructive',
       });
     },
@@ -123,7 +124,60 @@ export default function ProfessionalServices() {
     },
   });
 
+  /**
+   * The Edit button set state nothing read, so it did nothing - the same dead
+   * control ManagedServices carried, and eslint reported it only as an unused
+   * variable. It opens the loaded form now and submits through the PATCH
+   * branch this change added to the edge function.
+   */
+  const updateServiceMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: InsertProfessionalService }) => {
+      return await apiRequest(`/api/professional-services/${id}`, 'PATCH', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/professional-services'] });
+      setDialogOpen(false);
+      setSelectedService(null);
+      form.reset();
+      toast({ title: 'Saved', description: 'Professional service updated' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update professional service',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const startEdit = (service: ProfessionalService) => {
+    setSelectedService(service);
+    form.reset(service as unknown as InsertProfessionalService);
+    setDialogOpen(true);
+  };
+
+  /**
+   * Add must CLEAR the edit target, or opening the dialog after an edit keeps
+   * selectedService set and onSubmit patches the previous row while the form
+   * looks right, because reset() is what empties it.
+   */
+  const startCreate = () => {
+    setSelectedService(null);
+    form.reset();
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setSelectedService(null);
+    form.reset();
+  };
+
   const onSubmit = (data: InsertProfessionalService) => {
+    if (selectedService) {
+      updateServiceMutation.mutate({ id: selectedService.id, data });
+      return;
+    }
     createServiceMutation.mutate(data);
   };
 
@@ -150,15 +204,17 @@ export default function ProfessionalServices() {
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
-    for (const id of ids) {
-      try {
-        await apiRequest(`/api/professional-services/${id}`, 'DELETE');
-      } catch {}
-    }
+    // Was a loop of `catch {}` followed by `Deleted ${ids.length}` regardless,
+    // so every failure reported as a success - and in production this endpoint
+    // was missing entirely. See client/src/lib/bulk-delete.ts.
+    const outcome = await bulkDelete(ids, (id) =>
+      apiRequest(`/api/professional-services/${id}`, 'DELETE'),
+    );
     queryClient.invalidateQueries({ queryKey: ['/api/professional-services'] });
-    setSelectedIds(new Set());
-    setBulkMode(false);
-    toast({ title: 'Deleted', description: `Deleted ${ids.length} services` });
+    // Failures stay selected so a retry does not mean finding them again.
+    setSelectedIds(new Set(outcome.failed));
+    if (outcome.failed.length === 0) setBulkMode(false);
+    toast(bulkDeleteToast(outcome, 'services'));
   };
 
   // Get unique categories from services
@@ -247,7 +303,7 @@ export default function ProfessionalServices() {
               {service.units && <div>Units: {service.units}</div>}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setSelectedService(service)}>
+              <Button variant="outline" size="sm" onClick={() => startEdit(service)}>
                 <Edit3 className="h-4 w-4 mr-1" />
                 View
               </Button>
@@ -277,7 +333,7 @@ export default function ProfessionalServices() {
           searchPlaceholder="Search services..."
           searchTerm={searchTerm}
           onSearchTermChange={setSearchTerm}
-          onAddClick={() => setDialogOpen(true)}
+          onAddClick={startCreate}
           productTypeForImport="professional-services"
           bulkMode={bulkMode}
           onToggleBulkMode={() => setBulkMode(!bulkMode)}
@@ -285,13 +341,24 @@ export default function ProfessionalServices() {
           totalCount={services.length}
           onBulkDelete={handleBulkDelete}
         />
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            // Only the close half: every opening path goes through startCreate
+            // or startEdit, which set the mode onSubmit reads.
+            if (!open) closeDialog();
+          }}
+        >
           <DialogTrigger asChild>
             <span />
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>New Price Book List: Professional Service</DialogTitle>
+              <DialogTitle>
+                {selectedService
+                  ? 'Edit Price Book List: Professional Service'
+                  : 'New Price Book List: Professional Service'}
+              </DialogTitle>
               <DialogDescription>
                 Create a new professional service offering for your catalog
               </DialogDescription>
@@ -935,14 +1002,19 @@ export default function ProfessionalServices() {
                 </div>
 
                 <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                  <Button type="button" variant="outline" onClick={closeDialog}>
                     Cancel
                   </Button>
                   <Button type="button" variant="outline">
                     Save & New
                   </Button>
-                  <Button type="submit" disabled={createServiceMutation.isPending}>
-                    {createServiceMutation.isPending ? 'Saving...' : 'Save'}
+                  <Button
+                    type="submit"
+                    disabled={createServiceMutation.isPending || updateServiceMutation.isPending}
+                  >
+                    {createServiceMutation.isPending || updateServiceMutation.isPending
+                      ? 'Saving...'
+                      : 'Save'}
                   </Button>
                 </div>
               </form>
@@ -1006,7 +1078,7 @@ export default function ProfessionalServices() {
                 : 'Get started by adding your first professional service to the catalog.'}
             </p>
             {!searchTerm && selectedCategory === 'all' && (
-              <Button onClick={() => setDialogOpen(true)}>
+              <Button onClick={startCreate}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Service
               </Button>

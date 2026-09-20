@@ -41,6 +41,7 @@ import {
   type InsertAccessoryModelCompatibility,
 } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
+import { bulkDelete, bulkDeleteToast } from '@/lib/bulk-delete';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import ManagementToolbar from '@/components/product-management/ManagementToolbar';
@@ -245,15 +246,17 @@ export default function EnhancedProductAccessories() {
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
-    for (const id of ids) {
-      try {
-        await apiRequest(`/api/product-accessories/${id}`, 'DELETE');
-      } catch {}
-    }
+    // Was a loop of `catch {}` followed by `Deleted ${ids.length}` regardless,
+    // so every failure reported as a success - and in production this endpoint
+    // was missing entirely. See client/src/lib/bulk-delete.ts.
+    const outcome = await bulkDelete(ids, (id) =>
+      apiRequest(`/api/product-accessories/${id}`, 'DELETE'),
+    );
     queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
-    setSelectedIds(new Set());
-    setBulkMode(false);
-    toast({ title: 'Deleted', description: `Deleted ${ids.length} accessories` });
+    // Failures stay selected so a retry does not mean finding them again.
+    setSelectedIds(new Set(outcome.failed));
+    if (outcome.failed.length === 0) setBulkMode(false);
+    toast(bulkDeleteToast(outcome, 'accessories'));
   };
 
   if (isLoading) {

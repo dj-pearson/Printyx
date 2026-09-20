@@ -1,6 +1,6 @@
 {
   "note": "Edge handlers that spread a request body straight into PostgREST. Shrink-only. Each entry is the same question: can this body name a column it should not (tenant_id, id, created_by), and does its caller spell fields the way the table does? See scripts/check-raw-body-writes.mjs and the fix shape in _shared/business-record-write.ts.",
-  "count": 13,
+  "count": 12,
   "writes": [
     "supabase/functions/blog-content-platform/index.ts:insert:blog_post_translations",
     "supabase/functions/branding-profiles/index.ts:update:company_branding_profiles",
@@ -9,7 +9,6 @@
     "supabase/functions/managed-services/index.ts:update:managed_services_contracts",
     "supabase/functions/parts-inventory/index.ts:update:parts",
     "supabase/functions/pricing-rules/index.ts:update:pricing_rules",
-    "supabase/functions/professional-services/index.ts:update:professional_services_projects",
     "supabase/functions/proposals/index.ts:update:proposal_line_items",
     "supabase/functions/proposals/index.ts:update:proposal_templates",
     "supabase/functions/service-contracts/index.ts:update:service_contracts",
