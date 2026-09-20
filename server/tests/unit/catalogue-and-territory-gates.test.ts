@@ -207,19 +207,28 @@ describe('the triage file says what was read, not what the name suggested', () =
     // A verdict from reading SOME paths is indistinguishable in the file from
     // one that read all of them, unless it says.
     const round85 = triage.triage.filter((e: any) => e.reason?.includes('round 85'));
-    expect(round85.length).toBeGreaterThanOrEqual(17);
+    // 17 when round 85 closed. handoff-task-templates left the set in round 91,
+    // which re-filed it with its own reason - so the corpus floor is 16, not a
+    // relaxation. The floor exists at all because a filter that stops matching
+    // would otherwise pass over an empty list.
+    expect(round85.length).toBeGreaterThanOrEqual(16);
     const silent = round85
       .filter((e: any) => !/Paths read:|NARROWED, NOT SETTLED/.test(e.reason))
       .map((e: any) => e.fn);
     expect(silent).toEqual([]);
   });
 
-  it('keeps an honest unexamined entry rather than a guessed verdict', () => {
-    // handoff-task-templates is tenant-wide and was not read far enough to
-    // settle. Saying so beats filing it open-by-design from its shape.
+  it('settled the honest unexamined entry by reading it, not by guessing', () => {
+    // Round 85 filed handoff-task-templates as unexamined rather than guessing
+    // open-by-design from its shape, and left the open question in the reason:
+    // does SalesHandoffs.tsx let a rep edit templates inline? Round 91 answered
+    // it (one GET, no write caller anywhere) and gated the writes. The property
+    // that matters is not that some entry stays unexamined - it is that an
+    // entry leaves that state by being READ, so the reason must say what was.
     const e = byFn.get('handoff-task-templates');
-    expect(e.verdict).toBe('unexamined');
-    expect(e.reason).toMatch(/NARROWED, NOT SETTLED/);
+    expect(e.verdict).toBe('gated-branch');
+    expect(e.reason).toMatch(/Paths read:/);
+    expect(e.pathsRead).toMatch(/SalesHandoffs\.tsx/);
   });
 
   it('the counts block matches the entries it summarises', () => {

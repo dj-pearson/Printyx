@@ -3,12 +3,11 @@
   "counts": {
     "open-by-design": 43,
     "headless": 35,
-    "gated-branch": 15,
+    "gated-branch": 16,
     "row-scoped": 8,
     "public": 8,
     "internal": 3,
-    "needs-gate": 2,
-    "unexamined": 1
+    "needs-gate": 2
   },
   "triage": [
     {
@@ -249,8 +248,9 @@
     },
     {
       "fn": "handoff-task-templates",
-      "verdict": "unexamined",
-      "reason": "SEC-EDGE-001 round 85: NARROWED, NOT SETTLED. Read far enough to establish the shape and not far enough to file it. These templates are TENANT-WIDE - every future handoff inherits them - which is the churn-risk/toner-replenish shape where a change nobody sees alters what everyone gets, so this is a needs-gate candidate rather than open-by-design. What is missing is whether SalesHandoffs.tsx lets a rep edit them inline (in which case gating breaks the page) or whether they are an admin surface. Recorded honestly rather than guessed: a verdict reasoned from the write's blast radius alone is the same mistake as one reasoned from the name."
+      "verdict": "gated-branch",
+      "reason": "EXAMINED 2026-09-20 (round 91), NOW GATED at SUPERVISOR on POST/PUT/DELETE, mirroring /handoffs (minLevel 3, operations.po.view). The round-85 question - does SalesHandoffs.tsx let a rep edit templates inline - is answered: it does not. The page's only reference to this prefix is one GET, and no client tree anywhere POSTs, PUTs or DELETEs a template, so the gate constrains nobody who can already open the page. Reads stay open at the function level; the nav rule already fronts them and a checklist of internal steps is not what a role gate is for. Answering the question also found three defects in those uncalled branches. (1) EVERY PARTIAL PUT WAS A GUARANTEED 23502: the update built one blanket object, and normalizeHandoffType(undefined) is null rather than undefined - JSON.stringify drops an undefined key and keeps a null one - so a rename-only PUT sent exactly handoff_type = NULL into a NOT NULL column. Proven on Postgres 16, surfaced as a generic 500. It writes only the fields the caller sent now. (2) is_default was absent from the PUT map entirely, so the template a tenant bootstraps on its first handoff could never be replaced, while POST accepted isDefault: true without clearing the others - and ensureHandoffTemplate orders by is_default with limit(1), so two defaults made the choice arbitrary. Cleared per (tenant, handoff_type) on both paths, with the reader given updated_at and id tiebreaks so it no longer depends on every writer having behaved. (3) an empty tasks array is truthy, so an active empty template handed operations a checklist with nothing on it; it falls back to the type's default tasks WITHOUT bootstrapping, since a row already exists and inserting one per handoff would pile up duplicates. Paths read: all five branches (list, single, create, update, delete), _shared/handoff-create.ts ensureHandoffTemplate, and every reference to /api/handoff-task-templates across the seven client trees.",
+      "pathsRead": "All five branches of index.ts, the ensureHandoffTemplate reader in _shared/handoff-create.ts that consumes these rows, the handoff_task_templates DDL in migration 0000, and a caller sweep across all seven client trees (one GET in SalesHandoffs.tsx, nothing else)."
     },
     {
       "fn": "handoff-tasks",

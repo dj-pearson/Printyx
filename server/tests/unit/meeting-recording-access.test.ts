@@ -209,7 +209,12 @@ describe('the verdict is recorded with the paths behind it', () => {
     const actual: Record<string, number> = {};
     for (const e of triage.triage) actual[e.verdict] = (actual[e.verdict] ?? 0) + 1;
     expect(triage.counts).toEqual(actual);
-    expect(triage.counts.unexamined).toBeGreaterThan(0);
-    expect(triage.counts.unexamined).toBeLessThan(23);
+    // Round 91 emptied the unexamined worklist by settling the last entry
+    // (handoff-task-templates). The floor here used to be `> 0`, guarding
+    // against clearing the list by GUESSING verdicts rather than reading the
+    // handlers. That property does not depend on the list being non-empty, so
+    // it is asserted once over every entry in
+    // server/tests/unit/edge-rbac-triage-integrity.test.ts.
+    expect(triage.counts.unexamined ?? 0).toBe(0);
   });
 });
