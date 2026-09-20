@@ -6,6 +6,8 @@
 // meters is a GAP, a machine with no rate is a GAP, and a total built over
 // either is a FLOOR that says so.
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import {
   assessCurrentFleet,
@@ -369,5 +371,62 @@ describe('compareFleets', () => {
       0,
     );
     expect(compareFleets(current, proposed, 0).termMonths).toBe(36);
+  });
+});
+
+/**
+ * COP-B05 AC4 says the engine should reuse `print-cost-calculator-service.ts`
+ * "rather than introducing a third cost model". It deliberately does not, and
+ * this locks that decision so nobody reads the AC and wires it in.
+ *
+ * The AC's premise does not hold. That service is a BENCHMARK ESTIMATOR: every
+ * input is an assumption - INDUSTRY_BENCHMARKS, FLEET_AGE_MULTIPLIERS,
+ * DEVICE_TYPE_FACTORS, a $42/hour loaded employee cost, $0.14/kWh, a 15% toner
+ * waste factor and a flat "25% average savings with MPS". It answers "what does
+ * a typical fleet like this cost". A fleet assessment answers "what is this
+ * customer paying", from their meters and their contracted rates, and it is put
+ * in front of that customer.
+ *
+ * So these are two calculations of different things, not two models of one, and
+ * folding the estimator in would put guessed industry averages inside a figure
+ * a rep presents as actual spend - which is the rule AUDIT-019 and LEGAL-010
+ * already set. The estimator stays available for benchmarking, labelled.
+ */
+describe('the assessment costs contracted rates, not industry averages', () => {
+  const ENGINE = readFileSync(join(__dirname, '../../../shared/fleet-assessment.ts'), 'utf8');
+  const EDGE = readFileSync(
+    join(__dirname, '../../../supabase/functions/fleet-assessment/index.ts'),
+    'utf8',
+  );
+  const ESTIMATOR = readFileSync(
+    join(__dirname, '../../../server/services/print-cost-calculator-service.ts'),
+    'utf8',
+  );
+
+  it('the estimator really is built on assumptions', () => {
+    // Checked here rather than taken from a note: the deviation is only
+    // defensible if this is true, so it is asserted where the deviation lives.
+    for (const assumption of [
+      'INDUSTRY_BENCHMARKS',
+      'FLEET_AGE_MULTIPLIERS',
+      'AVERAGE_HOURLY_EMPLOYEE_COST',
+      'TONER_WASTE_FACTOR',
+      'MANAGED_PRINT_SERVICES_SAVINGS_PERCENT',
+    ]) {
+      expect(ESTIMATOR).toContain(assumption);
+    }
+  });
+
+  it('neither the engine nor its edge function imports it', () => {
+    for (const src of [ENGINE, EDGE]) {
+      expect(src).not.toContain('print-cost-calculator');
+      expect(src).not.toContain('INDUSTRY_BENCHMARKS');
+    }
+  });
+
+  it('reads the rates the customer is actually on', () => {
+    expect(EDGE).toContain("from('contracts')");
+    expect(EDGE).toContain("from('contract_tiered_rates')");
+    expect(EDGE).toContain("from('meter_readings')");
   });
 });
