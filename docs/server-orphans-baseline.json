@@ -1,6 +1,6 @@
 {
   "note": "server/*.ts files not reachable from server/index.ts by any static or dynamic import. Dead product code: it cannot run. \"(test-only)\" marks a file reached only from server/tests, which is dead product code a test still pins. A TODO list, not settled debt - each entry is wire it, delete it, or record why it is loaded some other way. See scripts/check-server-orphans.mjs.",
-  "total": 137,
+  "total": 135,
   "orphans": [
     "server/auth-setup.ts",
     "server/cli/company-dedup-cli.ts",
@@ -75,7 +75,6 @@
     "server/seed-mfa-data.ts",
     "server/seed-oid-mappings.ts",
     "server/seed-pricing-data.ts",
-    "server/seed-sales-metrics.ts",
     "server/seed-sales-workflow-automation.ts",
     "server/seed-signature-data.ts",
     "server/seed-subscription-addons.ts",
@@ -95,7 +94,6 @@
     "server/seeds/seed-knowledge-base.ts",
     "server/services/ai-employee-service.ts",
     "server/services/api-key-service.ts",
-    "server/services/approval-workflow-service.ts",
     "server/services/audit-archival-service.ts",
     "server/services/billing-analytics-service.ts",
     "server/services/calculator-email-service.ts",
@@ -113,7 +111,7 @@
     "server/services/manufacturer-adapters/xerox-adapter.ts",
     "server/services/mfa-otp-service.ts",
     "server/services/oauth-token-refresh.ts",
-    "server/services/payment-audit-service.ts",
+    "server/services/payment-audit-service.ts (test-only)",
     "server/services/pdf-generation-service.ts",
     "server/services/predictive-service-dispatch-service.ts",
     "server/services/print-cost-calculator-service.ts (test-only)",

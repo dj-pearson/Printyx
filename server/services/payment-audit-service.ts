@@ -1,12 +1,61 @@
 /**
- * Payment Audit Trail Service
- * Implements PCI DSS compliance requirements for payment action tracking
- * All payment-related actions are logged for audit and compliance purposes
+ * Payment Audit Trail Service - WRITTEN, AND CALLED BY NOTHING (QUALITY-002).
+ *
+ * Read this before believing the paragraph that follows it. This module is the
+ * only writer of `payment_audit_trail` and `payment_method_changes` in the
+ * tree, and NOTHING IMPORTS IT - not a route, not the Stripe webhook receiver,
+ * not a script. `check:server-orphans` lists it. So every payment this system
+ * has ever processed went unlogged by it, and the two tables have never held a
+ * row. The gap is easy to miss from the outside because a RETENTION POLICY for
+ * one of them does exist: `data-retention-service.ts` declares
+ * `payment_audit_trail: 2555` days, "7 years (PCI requirement)". A retention
+ * rule on a table nothing fills reads, to anyone auditing the code, exactly
+ * like a control that is running.
+ *
+ * It is kept rather than deleted because the requirement is real and this is
+ * its only implementation; deleting a broken attempt silently retires the idea
+ * with it (the contract-alerts lesson). What it needs is a caller:
+ * `StripeService.handleWebhookEventEnhanced` is where `logStripeWebhookEvent`
+ * below belongs, and the payment-method mutation paths are where
+ * `logPaymentMethodChange` belongs. That is a behaviour change - it starts
+ * writing rows to two empty tables - so it is a story, not a drive-by.
+ * `server/tests/unit/payment-audit-not-wired.test.ts` locks the current state
+ * and is designed to FAIL the day someone wires it, so this header cannot
+ * quietly go stale.
+ *
+ * Implements PCI DSS payment action tracking: every payment-related action is
+ * recorded for audit and compliance purposes.
  */
 
 import { db } from '../db';
 import { eq, and, desc, gte, lte, inArray, sql, or } from 'drizzle-orm';
 import Stripe from 'stripe';
+
+/**
+ * The subscription an invoice came from, across two Stripe API versions.
+ *
+ * `invoice.subscription` was removed in API version 2025-03-31.basil, which
+ * moved it to `invoice.parent.subscription_details.subscription`. This codebase
+ * pins `2024-11-20.acacia` (stripe-service.ts), where the flat field is still
+ * what arrives - but the stripe@18 TYPES describe the newer version, so reading
+ * it is a type error while being runtime-correct.
+ *
+ * Both shapes are read rather than casting the old one, because the failure
+ * mode of guessing is silent: on the day the pinned version moves, a cast keeps
+ * compiling and starts writing NULL into the subscription column of a
+ * compliance record, which is indistinguishable from a one-off payment.
+ */
+export function invoiceSubscriptionId(invoice: Stripe.Invoice): string | undefined {
+  const legacy = (invoice as unknown as { subscription?: string | { id: string } }).subscription;
+  if (legacy) return typeof legacy === 'string' ? legacy : legacy.id;
+
+  const parent = invoice.parent;
+  if (parent?.type === 'subscription_details') {
+    const sub = parent.subscription_details?.subscription;
+    if (sub) return typeof sub === 'string' ? sub : sub.id;
+  }
+  return undefined;
+}
 import {
   paymentAuditTrail,
   paymentMethodChanges,
@@ -159,7 +208,7 @@ export async function logPaymentSucceeded(
 export async function logPaymentFailed(
   context: PaymentContext,
   paymentIntent: Stripe.PaymentIntent,
-  error?: Stripe.StripeError,
+  error?: Stripe.errors.StripeError,
 ): Promise<PaymentAuditTrail> {
   return logPaymentAction(context, {
     action: 'payment_intent_failed',
@@ -249,10 +298,10 @@ export async function logInvoiceEvent(
     status: action === 'invoice_failed' ? 'failure' : 'success',
     stripeInvoiceId: invoice.id,
     stripeCustomerId: invoice.customer as string,
-    stripeSubscriptionId: invoice.subscription as string,
+    stripeSubscriptionId: invoiceSubscriptionId(invoice),
     amount: invoice.amount_due,
     currency: invoice.currency,
-    metadata: invoice.metadata,
+    metadata: invoice.metadata ?? undefined,
   });
 }
 
@@ -493,7 +542,7 @@ export async function logWebhookEvent(
       const invPaid = event.data.object as Stripe.Invoice;
       stripeInvoiceId = invPaid.id;
       stripeCustomerId = invPaid.customer as string;
-      stripeSubscriptionId = invPaid.subscription as string;
+      stripeSubscriptionId = invoiceSubscriptionId(invPaid);
       amount = invPaid.amount_paid;
       currency = invPaid.currency;
       break;
@@ -504,7 +553,7 @@ export async function logWebhookEvent(
       const invFailed = event.data.object as Stripe.Invoice;
       stripeInvoiceId = invFailed.id;
       stripeCustomerId = invFailed.customer as string;
-      stripeSubscriptionId = invFailed.subscription as string;
+      stripeSubscriptionId = invoiceSubscriptionId(invFailed);
       amount = invFailed.amount_due;
       currency = invFailed.currency;
       break;
