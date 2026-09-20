@@ -13,6 +13,7 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import { requireRateLimit, RateLimitError, PRESETS } from '../_shared/rate-limit.ts';
 import {
   GPT5_CONFIGS,
   GPT5_CONFIG_DESCRIPTIONS,
@@ -191,6 +192,42 @@ export default async function handler(req: Request) {
 
     if (req.method !== 'POST') {
       return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    }
+
+    /**
+     * SEC-EDGE-001: the control this endpoint wanted was never a role.
+     *
+     * `ai-gpt5` has sat on the needs-gate worklist since that story opened,
+     * with the reason recorded honestly: it has zero writes, but EVERY call
+     * costs money at OpenAI and any tenant member can make one - so a level
+     * check would look like a fix and change nothing, because a manager can run
+     * up the same bill. What it wanted was a spend cap or a rate limit.
+     *
+     * `ai-employee` already had exactly that and nobody had connected the two:
+     * it rate-limits its Claude-hitting POSTs per TENANT with
+     * `PRESETS.aiGenerationPerTenant`. Same preset here, and the seam is
+     * cleaner - every paid call is a POST past the check above, while
+     * `GET /configs` returns a static list and costs nothing, so it is already
+     * on the other side of it.
+     *
+     * Per TENANT rather than per user, deliberately: the bill is the tenant's,
+     * and a per-user bucket is defeated by any tenant with several accounts.
+     */
+    try {
+      requireRateLimit(`gpt5:${tenantId}`, PRESETS.aiGenerationPerTenant);
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        return createCorsResponse(
+          {
+            error: 'AI rate limit exceeded',
+            code: 'RATE_LIMIT',
+            details: { retryAfterSeconds: err.retryAfterSeconds },
+          },
+          429,
+          req,
+        );
+      }
+      throw err;
     }
 
     let body: any;

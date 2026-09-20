@@ -1,12 +1,12 @@
 {
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing — AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing — this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
-    "open-by-design": 23,
+    "open-by-design": 26,
     "headless": 44,
-    "unexamined": 41,
-    "needs-gate": 3,
     "internal": 3,
     "gated-branch": 6,
+    "needs-gate": 2,
+    "unexamined": 39,
     "public": 8,
     "row-scoped": 1
   },
@@ -33,8 +33,8 @@
     },
     {
       "fn": "ai-employee",
-      "verdict": "unexamined",
-      "reason": "Zero writes but not read; kept unexamined rather than inheriting ai-employees verdict."
+      "verdict": "open-by-design",
+      "reason": "EXAMINED 2026-09-20. Read-only from a role point of view and already carrying the right control: it rate-limits exactly its Claude-hitting POSTs (ai/*, ai-employees/tasks, ai-employees/workflows/execute) per TENANT with PRESETS.aiGenerationPerTenant, while cheap list and detail calls pay nothing. This is the function that supplied the pattern ai-gpt5 was missing - worth knowing as the worked example when another endpoint spends money per call."
     },
     {
       "fn": "ai-employees",
@@ -43,8 +43,8 @@
     },
     {
       "fn": "ai-gpt5",
-      "verdict": "needs-gate",
-      "reason": "Zero writes, but EVERY call costs money at OpenAI and any tenant member can make one. The control wanted here is a rate limit or a spend cap, not a role - a manager can run up the same bill. Left as the single open needs-gate entry deliberately, because gating it by level would look like a fix and change nothing about the exposure."
+      "verdict": "open-by-design",
+      "reason": "RESOLVED 2026-09-20 - the control it wanted is now in place, so it leaves the worklist. It sat on needs-gate from the day SEC-EDGE-001 opened with the reason stated honestly: zero writes, but every call costs money at OpenAI and any tenant member can make one, so a level check would look like a fix and change nothing since a manager runs up the same bill. What it wanted was a rate limit or a spend cap. ai-employee ALREADY HAD EXACTLY THAT and nobody had connected the two - it limits its Claude-hitting POSTs per tenant with PRESETS.aiGenerationPerTenant. Same preset applied here, and the seam is cleaner: every paid call is a POST past the method check, while GET /configs returns a static list and costs nothing. Per TENANT rather than per user, because the bill is the tenant and a per-user bucket is defeated by any tenant with several accounts."
     },
     {
       "fn": "ai-search",
@@ -139,7 +139,7 @@
     {
       "fn": "customer-portal",
       "verdict": "unexamined",
-      "reason": "Five writes and it serves an EXTERNAL portal audience as well as staff; the two need separating before a role verdict means anything."
+      "reason": "Still unexamined. Note for whoever takes it: it calls auth.getUser like every other function, so the portal customer is a Supabase user rather than a token bearer - which means the question here is ROW scope (can one customer read another customer rows) rather than role scope, and that is a different investigation from the rest of this list."
     },
     {
       "fn": "customer-segments",
@@ -358,8 +358,8 @@
     },
     {
       "fn": "onboarding",
-      "verdict": "unexamined",
-      "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
+      "verdict": "open-by-design",
+      "reason": "EXAMINED 2026-09-20. Equipment installation checklists - create a checklist, add equipment, sections and tasks, update, delete - across seven calling surfaces (OnboardingDashboard, SetupWizard, two onboarding forms, OnboardingDetails, CustomerEquipment, useOnboarding). This is install and field work, and /onboarding is minLevel 2, so a mirrored gate would constrain almost nobody while anything higher would lock out the coordinators and technicians the feature exists for. Row scoping rather than role scoping is the question worth asking here later, not a level."
     },
     {
       "fn": "outreach",

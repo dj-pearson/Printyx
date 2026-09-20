@@ -694,10 +694,15 @@ describe('the branch-gated surfaces gate writes and only writes', () => {
     const triage = JSON.parse(read('docs/edge-rbac-triage.json'));
     const open = triage.triage.filter((e: { verdict: string }) => e.verdict === 'needs-gate');
 
-    // A worklist that emptied itself by reclassification rather than by work is
-    // the failure this test was written for, so it still has to hold something.
+    /**
+     * The floor stays; the MEMBERSHIP pin is gone. Last round widened this away
+     * from `toEqual(['ai-gpt5'])` and left `toContain('ai-gpt5')` behind, which
+     * broke the moment that entry was RESOLVED - ai-gpt5 got the per-tenant
+     * rate limit it had always been filed as wanting, so it left the worklist
+     * correctly and the test failed for it. Naming a member is naming a count
+     * with extra steps, whichever direction the list moves.
+     */
     expect(open.length).toBeGreaterThan(0);
-    expect(open.map((e: { fn: string }) => e.fn)).toContain('ai-gpt5');
 
     for (const entry of open) {
       expect(
