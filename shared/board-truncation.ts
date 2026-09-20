@@ -15,7 +15,7 @@
  *
  * TWO RULES, and the first is the one that was broken:
  *
- *  1. THE CLIENT ASKS FOR WHAT THE SERVER WILL GIVE. `BOARD_PAGE_SIZE` is the
+ *  1. THE CLIENT ASKS FOR WHAT THE SERVER WILL GIVE. `CRM_PAGE_SIZE` is the
  *     server's own cap, and a parity test asserts it, so the request and the
  *     response agree rather than the client hoping.
  *
@@ -25,12 +25,15 @@
  */
 
 /**
- * The server's cap, mirrored. Locked to `MAX_CRM_PAGE_SIZE` in
+ * The server's cap, mirrored. Named for the CRM rather than the board because
+ * the board is not the only caller: every list that asks for more than this
+ * silently receives this and believes it asked for what it got. Locked to
+ * `MAX_CRM_PAGE_SIZE` in
  * `supabase/functions/_shared/crm-list-query.ts` by
  * `server/tests/unit/board-truncation.test.ts`, the same way quote-math is
  * locked to its Deno copy: the edge tree cannot import from `shared/`.
  */
-export const BOARD_PAGE_SIZE = 200;
+export const CRM_PAGE_SIZE = 200;
 
 export interface BoardTruncation {
   /** Rows the board is rendering. */

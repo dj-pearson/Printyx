@@ -115,6 +115,8 @@ jobs:
         run: npm run check:raw-fetch
       - name: Raw request-body write ratchet (COP-M01)
         run: npm run check:raw-body-writes
+      - name: Over-cap list request guard (COP-I01)
+        run: npm run check:over-cap-limits
       - name: Session-only auth ratchet (handlers gated on a field nothing sets)
         run: npm run check:session-auth
       - name: Unwritten-table ratchet (features reading a table nothing fills)

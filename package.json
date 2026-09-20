@@ -35,6 +35,7 @@
     "check:prd-refs": "node scripts/check-prd-references.mjs",
     "check:raw-fetch": "node scripts/check-raw-api-fetch.mjs",
     "check:raw-body-writes": "node scripts/check-raw-body-writes.mjs",
+    "check:over-cap-limits": "node scripts/check-over-cap-limits.mjs",
     "check:session-auth": "node scripts/check-session-user-auth.mjs",
     "check:unwritten-tables": "node scripts/check-unwritten-tables.mjs",
     "check:dup-routes": "node scripts/check-duplicate-routes.mjs",

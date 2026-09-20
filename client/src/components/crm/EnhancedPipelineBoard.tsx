@@ -25,7 +25,7 @@ import {
   type CrmFieldDef,
   type CrmObjectType,
 } from '@/lib/crm-object-registry';
-import { BOARD_PAGE_SIZE, boardTruncation } from '@shared/board-truncation';
+import { CRM_PAGE_SIZE, boardTruncation } from '@shared/board-truncation';
 // COP-M04: what a card shows, and what a column totals, both persisted into
 // saved_views.board_config. The helpers are pure so the rules are testable.
 import {
@@ -383,7 +383,7 @@ export function EnhancedPipelineBoard({
       // MAX_CRM_PAGE_SIZE (200), so the board got 200 rows and believed it had
       // everything - a tenant with 250 deals was missing 50 from the board with
       // nothing on screen saying so. Ask for what the server will give.
-      const params = new URLSearchParams({ limit: String(BOARD_PAGE_SIZE) });
+      const params = new URLSearchParams({ limit: String(CRM_PAGE_SIZE) });
       if (search) params.set('search', search);
       if (config.recordType) params.set('recordType', config.recordType);
       for (const [key, value] of Object.entries(activeFilters)) {

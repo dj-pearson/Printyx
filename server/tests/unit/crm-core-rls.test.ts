@@ -86,7 +86,11 @@ describe('WF-S-07: no page reaches a table directly any more', () => {
   it('Contacts.tsx goes through the API for all four of its old direct calls', () => {
     const page = readFileSync('client/src/pages/Contacts.tsx', 'utf8');
     expect(page).not.toMatch(/from '@\/lib\/supabase'/);
-    expect(page).toMatch(/apiRequest\('\/api\/companies\?limit=500', 'GET'\)/);
+    // The point is that it goes through the API, not what its page size is.
+    // COP-I01 changed that 500 to CRM_PAGE_SIZE (the server's own cap, which
+    // silently clamped the 500 anyway), and pinning the literal here made a
+    // correctness fix look like a regression.
+    expect(page).toMatch(/apiRequest\(`\/api\/companies\?limit=\$\{CRM_PAGE_SIZE\}`, 'GET'\)/);
     expect(page).toMatch(/apiRequest\('\/api\/users', 'GET'\)/);
     expect(page).toMatch(/apiRequest\('\/api\/companies', 'POST'/);
     expect(page).toMatch(/apiRequest\('\/api\/contacts', 'POST'/);

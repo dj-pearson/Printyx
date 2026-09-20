@@ -130,6 +130,77 @@ export default async function handler(req: Request) {
     if (pathParts.length <= 1) {
       const flatId = pathParts.length === 1 ? pathParts[0] : null;
 
+      /**
+       * GET /contacts/stats - the four KPI cards, counted over the whole book.
+       *
+       * Contacts.tsx computed three of its four cards in the BROWSER, over
+       * `contacts`, which is ONE PAGE - pageSize defaults to 25. So a tenant
+       * with 1,000 contacts saw "Total 1,000" beside "Active 18", "New this
+       * month 3" and "Unassigned 7", three counts of twenty-five rows sitting
+       * next to one real total under labels that claim the same scope. Nothing
+       * on the card said which was which.
+       *
+       * Every number here is an exact PostgREST count under the same ownership
+       * scope the list uses, so the cards and the rows below them agree about
+       * whose contacts they are. They are deliberately NOT filtered by the
+       * page's search and status: "Total Contacts" means the book, and the
+       * filtered count is already shown above the table.
+       *
+       * MUST be matched before the /:id branch, or `flatId` reads 'stats' as a
+       * contact id and answers 404 (SUPA-024).
+       */
+      if (req.method === 'GET' && flatId === 'stats') {
+        const scoped = () => {
+          const q = admin
+            .from('company_contacts')
+            .select('id', { count: 'exact', head: true })
+            .eq('tenant_id', tenantId);
+          return ownOnly ? q.eq('owner_id', user.id) : q;
+        };
+
+        // UTC, because `tenants` has no timezone column (DATE-LOCAL-002 checked
+        // this, it is not an assumption) and created_at is an instant, so it is
+        // compared to an instant rather than snapped to a day.
+        const now = new Date();
+        const monthStart = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+        ).toISOString();
+
+        const [total, noStatus, inactive, newThisMonth, unassigned] = await Promise.all([
+          scoped(),
+          scoped().is('lead_status', null),
+          // ilike, not in(): lead_status is free text and 'Unqualified' and
+          // 'unqualified' are the same status. An `in` list would count one and
+          // miss the other, which is how a card drifts by a few percent and
+          // nobody notices.
+          scoped().or('lead_status.ilike.unqualified,lead_status.ilike.inactive'),
+          scoped().gte('created_at', monthStart),
+          scoped().is('owner_id', null),
+        ]);
+
+        const failed = [total, noStatus, inactive, newThisMonth, unassigned].find((r) => r.error);
+        if (failed?.error) {
+          console.error('Error computing contact stats:', failed.error);
+          return createCorsResponse({ error: 'Failed to compute contact stats' }, 500, req);
+        }
+
+        const totalCount = total.count ?? 0;
+        return createCorsResponse(
+          {
+            total: totalCount,
+            // Derived rather than counted directly: "active" is everything that
+            // is neither unqualified/inactive nor missing a status, and the
+            // client's own rule already treated a null status as not active.
+            active: Math.max(0, totalCount - (noStatus.count ?? 0) - (inactive.count ?? 0)),
+            newThisMonth: newThisMonth.count ?? 0,
+            unassigned: unassigned.count ?? 0,
+            scope: ownOnly ? 'own' : 'team',
+          },
+          200,
+          req,
+        );
+      }
+
       // GET /contacts — list
       if (req.method === 'GET' && !flatId) {
         const sp = url.searchParams;
