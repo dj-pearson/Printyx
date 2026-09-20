@@ -8,6 +8,13 @@ import { resolveTenantId } from '../_shared/resolve-tenant.ts';
 import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 import { toCamel } from '../_shared/case.ts';
 import { calculateActivityFunnel } from '../_shared/activity-funnel.ts';
+import { fetchAllRows } from '../_shared/paged-select.ts';
+import {
+  memberName,
+  rollUpActivity,
+  rollUpPipeline,
+  type TeamMember,
+} from '../../../shared/team-rollup.ts';
 
 /** Rows out of PostgREST are snake_case; every page here reads camelCase. */
 // deno-lint-ignore no-explicit-any
@@ -311,6 +318,136 @@ export default async function handler(req: Request) {
           // was narrowed is a wrong number, not a safe one).
           scopeTier: scope.tier,
           coversWholeTenant: scope.userIds === null,
+        },
+        200,
+        req,
+      );
+    }
+
+    /**
+     * GET /crm/team-rollup?days=7
+     *
+     * COP-B01 AC6: the two manager cards on My Day. `team-pipeline` and
+     * `team-activity` were declared in the card catalogue, role-gated at
+     * MANAGER and orderable - and RENDERED NOTHING, because no endpoint
+     * answered them. The boundary showed an empty card rather than an error,
+     * which is the politest possible way for a feature to not exist.
+     *
+     * THE TEAM IS `resolveScope`'s ANSWER, NOT A QUERY PARAMETER. Whose rows a
+     * manager may see is the same question the CRM lists already ask, and its
+     * degradation rule is load-bearing: a tier the org structure cannot answer
+     * falls back to the NARROWER one, because guessing wide is a leak while
+     * guessing narrow is a manager seeing less than they should.
+     *
+     * A caller whose scope is 'own' gets 403 rather than a roll-up of
+     * themselves: a one-row team card is not a smaller version of the feature,
+     * it is a rep reading a manager surface.
+     */
+    if (req.method === 'GET' && subRoute === 'team-rollup') {
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+
+      if (scope.tier === 'own') {
+        return createCorsResponse(
+          {
+            message: 'Team roll-ups are available to managers and above',
+            code: 'INSUFFICIENT_SCOPE',
+            scopeTier: scope.tier,
+            degradedFrom: scope.degradedFrom,
+          },
+          403,
+          req,
+        );
+      }
+
+      const days = Math.min(Math.max(Number(url.searchParams.get('days')) || 7, 1), 90);
+      // `created_at` is an INSTANT, not a calendar date, so it is compared to an
+      // instant - no day snapping (DATE-LOCAL-002 draws exactly this line).
+      const since = new Date(Date.now() - days * 86_400_000).toISOString();
+
+      // The member list is the scope, plus the caller: a manager is part of
+      // their own team's numbers.
+      const memberIds =
+        scope.userIds === null ? null : Array.from(new Set([...scope.userIds, user.id]));
+
+      let userQuery = admin
+        .from('users')
+        .select('id, first_name, last_name, email')
+        .eq('tenant_id', tenantId);
+      if (memberIds) userQuery = userQuery.in('id', memberIds);
+      const { data: userRows, error: userErr } = await userQuery;
+
+      if (userErr) {
+        return createCorsResponse(
+          { message: 'Could not load the team', code: 'DB_ERROR', details: userErr.message },
+          500,
+          req,
+        );
+      }
+
+      const members: TeamMember[] = (userRows ?? []).map((u: any) => ({
+        userId: String(u.id),
+        name: memberName(u),
+      }));
+
+      /**
+       * Each half is fetched and rolled up independently, and a failure in one
+       * leaves the other intact - AC5's card-by-card degradation, applied
+       * inside the response rather than left to the boundary. A card that
+       * cannot be computed answers null; the caller renders nothing, never a
+       * zeroed roll-up that reads as a quiet week.
+       */
+      let pipeline: ReturnType<typeof rollUpPipeline> | null = null;
+      try {
+        const deals = await fetchAllRows<any>(() => {
+          let q = admin
+            .from('deals')
+            .select('owner_id, amount, status')
+            .eq('tenant_id', tenantId)
+            .eq('status', 'open');
+          if (memberIds) q = q.in('owner_id', memberIds);
+          return q;
+        });
+        pipeline = rollUpPipeline(
+          deals.map((d: any) => ({ ownerId: d.owner_id, amount: d.amount, status: d.status })),
+          members,
+        );
+      } catch (err) {
+        console.error('[crm] team pipeline roll-up failed', err);
+      }
+
+      let activity: ReturnType<typeof rollUpActivity> | null = null;
+      try {
+        const rows = await fetchAllRows<any>(() => {
+          let q = admin
+            .from('business_record_activities')
+            .select('created_by, activity_type')
+            .eq('tenant_id', tenantId)
+            .gte('created_at', since);
+          if (memberIds) q = q.in('created_by', memberIds);
+          return q;
+        });
+        activity = rollUpActivity(
+          rows.map((r: any) => ({ createdBy: r.created_by, activityType: r.activity_type })),
+          members,
+        );
+      } catch (err) {
+        console.error('[crm] team activity roll-up failed', err);
+      }
+
+      return createCorsResponse(
+        {
+          windowDays: days,
+          memberCount: members.length,
+          pipeline,
+          activity,
+          scopeTier: scope.tier,
+          coversWholeTenant: scope.userIds === null,
+          degradedFrom: scope.degradedFrom,
         },
         200,
         req,

@@ -32,6 +32,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { SuggestedTasksCard } from '@/components/crm/SuggestedTasksCard';
 import { MyDayCardBoundary, MyDayCustomizer, useMyDayLayout } from '@/components/crm/MyDayLayout';
 import { RadarPlaysCard } from '@/components/crm/RadarPlaysCard';
+import { TeamActivityCard, TeamPipelineCard } from '@/components/crm/TeamRollupCards';
 import { cn, formatCurrencyWhole } from '@/lib/utils';
 
 interface Activity {
@@ -251,6 +252,10 @@ export default function TodayDashboard() {
       </Card>
     ),
     'installed-base-radar': <RadarPlaysCard />,
+    // AC6: both were declared, role-gated and rendering nothing until COP-B01
+    // round 67 gave them an endpoint.
+    'team-pipeline': <TeamPipelineCard />,
+    'team-activity': <TeamActivityCard />,
     'suggested-tasks': <SuggestedTasksCard />,
     'awaiting-signature':
       awaitingSignature.length > 0 ? (
