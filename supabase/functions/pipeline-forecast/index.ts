@@ -48,6 +48,8 @@ import {
   resolveDealProbability,
 } from '../_shared/deal-probability.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { applyUserScope, isUnscoped, resolveScope } from '../_shared/scope.ts';
+import type { ResolvedScope } from '../_shared/scope.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { startOfUtcDay, startOfNextUtcDay } from '../_shared/date-months.ts';
 import { buildTerritoryIndex, rollupByTerritory } from '../_shared/territory.ts';
@@ -108,6 +110,28 @@ export default async function handler(req: Request) {
     }
 
     const url = new URL(req.url);
+
+    /**
+     * WF-R-04 row scope, resolved once and applied to every owned query below.
+     *
+     * This function filtered on `tenant_id` and nothing else, so every caller
+     * saw every deal in the tenant - and on the Categories tab that means a
+     * per-owner commit list, which is each rep's forecast number beside their
+     * name. The page is `minLevel: 3` in navigation-permissions, but A NAV GATE
+     * HIDES A MENU ITEM AND PROTECTS NOTHING: the endpoint had no role check at
+     * all, so any authenticated member of the tenant could ask for it directly.
+     *
+     * Narrowing rows rather than refusing the request is the right shape here.
+     * A rep has a forecast and should see it; what they should not see is
+     * everyone else's. `resolveScope` degrades to the NARROWER tier when the org
+     * structure cannot answer a wider one, which is the safe direction.
+     */
+    const scope = await resolveScope(admin, {
+      userId: user.id,
+      tenantId,
+      appMetadata: user.app_metadata,
+      requestedScope: url.searchParams.get('scope'),
+    });
     const { parts } = normalizePath(url.pathname, 'pipeline-forecast');
     const resource = parts[0];
 
@@ -125,6 +149,7 @@ export default async function handler(req: Request) {
         userId: user.id,
         url,
         resource,
+        scope,
       });
     }
 
@@ -168,27 +193,43 @@ export default async function handler(req: Request) {
 
     // ─── Source rows ─────────────────────────────────────────────────
     const [dealsRes, stagesRes, quotesRes, proposalsRes, goalsRes] = await Promise.all([
-      admin
-        .from('deals')
-        .select('id, title, amount, probability, status, expected_close_date, stage_id')
-        .eq('tenant_id', tenantId)
-        .not('status', 'in', '("won","lost")'),
+      applyUserScope(
+        admin
+          .from('deals')
+          .select('id, title, amount, probability, status, expected_close_date, stage_id')
+          .eq('tenant_id', tenantId)
+          .not('status', 'in', '("won","lost")'),
+        ['owner_id', 'created_by_id'],
+        scope,
+      ),
       admin
         .from('pipeline_stages')
         .select(
           'legacy_stage_id, default_probability, include_in_forecast, is_closed_won, is_closed_lost',
         )
         .eq('tenant_id', tenantId),
-      admin
-        .from('quotes')
-        .select('id, title, total_amount, status, valid_until, quote_number')
-        .eq('tenant_id', tenantId)
-        .in('status', ['Sent', 'Draft', 'Pending']),
-      admin
-        .from('proposals')
-        .select('id, title, total_amount, status, valid_until')
-        .eq('tenant_id', tenantId)
-        .in('status', ['sent', 'draft', 'pending', 'under_review']),
+      // `quotes` has no owner column - only `created_by` - and `proposals`
+      // carries `created_by` plus `assigned_to`. Scoped on what each table can
+      // actually express rather than left tenant-wide, because these feed the
+      // same weighted pipeline total as the deals above.
+      applyUserScope(
+        admin
+          .from('quotes')
+          .select('id, title, total_amount, status, valid_until, quote_number')
+          .eq('tenant_id', tenantId)
+          .in('status', ['Sent', 'Draft', 'Pending']),
+        'created_by',
+        scope,
+      ),
+      applyUserScope(
+        admin
+          .from('proposals')
+          .select('id, title, total_amount, status, valid_until')
+          .eq('tenant_id', tenantId)
+          .in('status', ['sent', 'draft', 'pending', 'under_review']),
+        ['assigned_to', 'created_by'],
+        scope,
+      ),
       // Mirrors the Express handler's inner try/catch: a tenant with no
       // sales_goals table/rows must not fail the whole forecast.
       admin
@@ -310,6 +351,14 @@ export default async function handler(req: Request) {
           },
         },
         goals: { items: goalRows, totalValue: totalGoalValue, totalCount: totalGoalCount },
+        // The pipeline above is scoped; the GOALS beside it are not, because
+        // sales_goals carries no owner column. A rep therefore sees their own
+        // pipeline against a company target, which `remaining` would otherwise
+        // present as a personal shortfall. Named rather than hidden.
+        scope: describeScope(scope),
+        scopeCaveat: isUnscoped(scope)
+          ? null
+          : 'Pipeline is narrowed to your scope; sales goals are not owner-specific, so progress against goal compares your pipeline to a company target.',
         remaining: {
           toGoalValue: Math.max(0, totalGoalValue - totalPipelineValue),
           toGoalCount: Math.max(0, totalGoalCount - totalPipelineCount),
@@ -333,6 +382,32 @@ export default async function handler(req: Request) {
 // COP-I06: forecast categories, the copier revenue split, and accuracy.
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * What the caller was allowed to see, said out loud.
+ *
+ * A roll-up that has been narrowed and does not SAY it was narrowed is a wrong
+ * number, not a safe one: a supervisor reading "commit $240,000" has no way to
+ * tell it covers their own deals rather than the team's, and it sits beside a
+ * territory breakdown that would then not add up to it. The same reasoning as
+ * COP-B10's explicit UNASSIGNED bucket.
+ *
+ * `degradedFrom` is reported because it is the honest part of resolveScope's
+ * design: no story has filled in the org structure yet, so a tier that cannot
+ * be answered falls back to a narrower one, and the caller is told which.
+ */
+function describeScope(scope: ResolvedScope): Record<string, unknown> {
+  return {
+    tier: scope.tier,
+    coversWholeTenant: isUnscoped(scope),
+    degradedFrom: scope.degradedFrom,
+    note: isUnscoped(scope)
+      ? null
+      : scope.degradedFrom
+        ? `These figures cover ${scope.tier === 'own' ? 'your own deals' : `your ${scope.tier}`} only. ${scope.degradedFrom} scope was requested but the organisation structure does not record it yet, so it narrowed rather than guessing wide.`
+        : `These figures cover ${scope.tier === 'own' ? 'your own deals' : `your ${scope.tier}`} only, not the whole company.`,
+  };
+}
+
 interface CategoryCtx {
   // deno-lint-ignore no-explicit-any
   admin: any;
@@ -340,6 +415,7 @@ interface CategoryCtx {
   userId: string;
   url: URL;
   resource: string;
+  scope: ResolvedScope;
 }
 
 /**
@@ -400,7 +476,7 @@ async function loadStageWeighting(admin: any, tenantId: string) {
 }
 
 async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise<Response> {
-  const { admin, tenantId, userId, url, resource } = ctx;
+  const { admin, tenantId, userId, url, resource, scope } = ctx;
   const { start, endExclusive } = resolvePeriod(url);
 
   // ─── GET /accuracy ─────────────────────────────────────────────────
@@ -410,11 +486,19 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
     }
 
     const snapshots = await fetchAllRows<ForecastSnapshotRow>(() =>
-      admin
-        .from('forecast_snapshots')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('period_start', { ascending: false }),
+      // A snapshot's `owner_id` is the rep it was captured FOR (null = the
+      // whole book), and `captured_by` is who pressed the button. Scoped on
+      // both: a rep may see the snapshots taken of their own number and the
+      // ones they took, not their colleagues'.
+      applyUserScope(
+        admin
+          .from('forecast_snapshots')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .order('period_start', { ascending: false }),
+        ['owner_id', 'captured_by'],
+        scope,
+      ),
     );
 
     if ((snapshots ?? []).length === 0) {
@@ -423,6 +507,7 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
       return createCorsResponse(
         {
           periods: [],
+          scope: describeScope(scope),
           unbacked: [
             'No forecast has been captured yet, so there is no commit to compare actuals against. Accuracy starts being measurable from the first capture.',
           ],
@@ -440,15 +525,18 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
       .sort()[0] as string | undefined;
 
     const wonDeals = await fetchAllRows<Record<string, any>>(() =>
-      admin
-        .from('deals')
-        .select('owner_id, amount, actual_close_date')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'won')
-        .gte(
-          'actual_close_date',
-          earliest ? startOfUtcDay(new Date(earliest)).toISOString() : '1970-01-01',
-        ),
+      applyUserScope(
+        admin
+          .from('deals')
+          .select('owner_id, amount, actual_close_date')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'won'),
+        ['owner_id', 'created_by_id'],
+        scope,
+      ).gte(
+        'actual_close_date',
+        earliest ? startOfUtcDay(new Date(earliest)).toISOString() : '1970-01-01',
+      ),
     );
 
     const actualByPeriod = new Map<string, number>();
@@ -476,6 +564,7 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
     return createCorsResponse(
       {
         periods: summarizeAccuracy(snapshots ?? [], actualByPeriod),
+        scope: describeScope(scope),
         unbacked: [
           'Attainment is measured on one-time (equipment) revenue only. Recurring CPC and service revenue is captured on the snapshot but lands over the life of a contract, so a single period cannot settle it.',
         ],
@@ -488,15 +577,19 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
   // ─── The open deals in the period, for both remaining branches ──────
   const stageByLegacyId = await loadStageWeighting(admin, tenantId);
   const dealRows = await fetchAllRows<ForecastDealRow>(() =>
-    admin
-      .from('deals')
-      .select(
-        'id, owner_id, status, amount, estimated_monthly_value, forecast_category, probability, stage_id, expected_close_date',
-      )
-      .eq('tenant_id', tenantId)
-      .not('status', 'in', '("won","lost")')
-      .gte('expected_close_date', start.toISOString())
-      .lt('expected_close_date', endExclusive.toISOString()),
+    applyUserScope(
+      admin
+        .from('deals')
+        .select(
+          'id, owner_id, status, amount, estimated_monthly_value, forecast_category, probability, stage_id, expected_close_date',
+        )
+        .eq('tenant_id', tenantId)
+        .not('status', 'in', '("won","lost")')
+        .gte('expected_close_date', start.toISOString())
+        .lt('expected_close_date', endExclusive.toISOString()),
+      ['owner_id', 'created_by_id'],
+      scope,
+    ),
   );
 
   // AC2: the stage decides whether a deal forecasts at all, and at what
@@ -545,11 +638,15 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
 
     if (req.method === 'GET') {
       const rows = await fetchAllRows<Record<string, unknown>>(() =>
-        admin
-          .from('forecast_snapshots')
-          .select('*')
-          .eq('tenant_id', tenantId)
-          .order('captured_at', { ascending: false }),
+        applyUserScope(
+          admin
+            .from('forecast_snapshots')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .order('captured_at', { ascending: false }),
+          ['owner_id', 'captured_by'],
+          scope,
+        ),
       );
       return createCorsResponse({ data: (rows ?? []).map(toCamelShallow) }, 200, req);
     }
@@ -654,6 +751,7 @@ async function handleForecastCategories(req: Request, ctx: CategoryCtx): Promise
         ownerName: o.ownerId ? (ownerNames.get(o.ownerId) ?? null) : null,
       })),
       totals: summary.totals,
+      scope: describeScope(scope),
       unbacked: summary.unbacked,
       // COP-B09 landed the territory roll-up above; TEAM roll-up still needs a
       // reporting hierarchy, which no story has built.
