@@ -45,6 +45,7 @@ import { CompetitiveCard } from '@/components/crm/CompetitiveCard';
 import { PlaybookPanel } from '@/components/crm/PlaybookPanel';
 import { DealEquipmentPanel } from '@/components/crm/DealEquipmentPanel';
 import { RecordPageLayout, RecordStageBar } from '@/components/crm/RecordPageLayout';
+import { FleetAssessmentPanel } from '@/components/crm/FleetAssessmentPanel';
 import {
   ArrowLeft,
   Building2,
@@ -59,6 +60,7 @@ import {
   RefreshCw,
   CheckCircle2,
   Printer,
+  Calculator,
   ListChecks,
   ClipboardList,
   Plus,
@@ -595,6 +597,11 @@ export default function DealDetail() {
         <TabsTrigger value="equipment">
           <Printer className="h-4 w-4 mr-1.5" /> Equipment
         </TabsTrigger>
+        {/* COP-B05: the fleet assessment, where the copier sale is actually
+            made. Sits beside Equipment because it reads the same machines. */}
+        <TabsTrigger value="fleet">
+          <Calculator className="h-4 w-4 mr-1.5" /> Fleet TCO
+        </TabsTrigger>
         {/* COP-B13: the discovery questions, in front of the rep while
             they are on the call. */}
         <TabsTrigger value="quotes">
@@ -842,6 +849,10 @@ export default function DealDetail() {
             </form>
           </CardContent>
         </Card>
+      </TabsContent>
+
+      <TabsContent value="fleet" className="mt-4">
+        {dealId && <FleetAssessmentPanel dealId={dealId} companyName={deal.companyName} />}
       </TabsContent>
 
       <TabsContent value="equipment" className="mt-4">
