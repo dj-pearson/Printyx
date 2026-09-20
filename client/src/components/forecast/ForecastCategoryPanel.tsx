@@ -52,10 +52,23 @@ interface OwnerRow {
   uncategorizedCount: number;
 }
 
+interface TerritoryRow {
+  territoryId: string | null;
+  territoryName: string;
+  count: number;
+  oneTimeValue: number;
+  recurringMonthlyValue: number;
+  commitOneTimeValue: number;
+  uncategorizedCount: number;
+}
+
 interface CategoriesResponse {
   period: { start: string; end: string };
   buckets: Bucket[];
   byOwner: OwnerRow[];
+  byTerritory: TerritoryRow[];
+  /** Why the territory roll-up is empty, when it is. Null when it has rows. */
+  territoryNote: string | null;
   totals: {
     count: number;
     oneTimeValue: number;
@@ -258,9 +271,77 @@ export function ForecastCategoryPanel() {
               </TableBody>
             </Table>
             <p className="text-xs text-muted-foreground mt-3">
-              Rep-level roll-up. Team and territory roll-up needs the territory model from COP-B09,
-              which is not built yet — it is absent here rather than approximated.
+              Rep-level roll-up. Team roll-up needs a reporting hierarchy, which no story has built
+              yet, so it is absent here rather than approximated.
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/*
+        COP-I06 AC3's territory half. The endpoint has sent `byTerritory` since
+        COP-B09 landed the territory model, and nothing rendered it - while the
+        note above this card still told the reader that roll-up "is not built
+        yet". A stale disclaimer is worse than none: it stops anyone looking.
+      */}
+      {data && (data.byTerritory.length > 0 || data.territoryNote) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">By territory</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {data.byTerritory.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{data.territoryNote}</p>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Territory</TableHead>
+                      <TableHead className="text-right">Deals</TableHead>
+                      <TableHead className="text-right">Commit</TableHead>
+                      <TableHead className="text-right">One-time</TableHead>
+                      <TableHead className="text-right">Recurring / mo</TableHead>
+                      <TableHead className="text-right">Uncategorized</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.byTerritory.map((row) => (
+                      <TableRow key={row.territoryId ?? 'unassigned'}>
+                        <TableCell className="font-medium">{row.territoryName}</TableCell>
+                        <TableCell className="text-right tabular-nums">{row.count}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatCurrencyWhole(row.commitOneTimeValue)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatCurrencyWhole(row.oneTimeValue)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatCurrencyWhole(row.recurringMonthlyValue)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {row.uncategorizedCount > 0 ? (
+                            <span className="text-amber-700">{row.uncategorizedCount}</span>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {/*
+                  An account whose territory text matches no defined territory
+                  lands in Unassigned rather than being dropped, so these rows
+                  still add up to the totals above them (COP-B10's rule).
+                */}
+                <p className="text-xs text-muted-foreground mt-3">
+                  A deal counts towards a territory when its account&rsquo;s territory matches a
+                  defined one by name or code. Unmatched accounts are shown as Unassigned rather
+                  than omitted.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       )}

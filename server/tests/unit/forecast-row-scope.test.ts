@@ -115,3 +115,76 @@ describe('a narrowed total says it was narrowed', () => {
     expect(fn.slice(0, 1200)).toMatch(/isUnscoped\(scope\)\s*\n?\s*\?\s*null/);
   });
 });
+
+/**
+ * COP-I06 AC3's territory half was computed and never displayed.
+ *
+ * `/pipeline-forecast/categories` has sent `byTerritory` since COP-B09 landed
+ * the territory model - a roll-up with an explicit Unassigned bucket and a
+ * `territoryNote` explaining an empty one. Nothing in any client tree read
+ * either key, and the panel's own footnote still told the reader that territory
+ * roll-up "is not built yet". A stale disclaimer is worse than a missing
+ * feature: it stops anyone looking for the thing that is already there.
+ */
+describe('COP-I06 AC3: the territory roll-up reaches the screen', () => {
+  const PANEL = readFileSync(
+    join(__dirname, '../../../client/src/components/forecast/ForecastCategoryPanel.tsx'),
+    'utf8',
+  );
+  const FN = readFileSync(
+    join(__dirname, '../../../supabase/functions/pipeline-forecast/index.ts'),
+    'utf8',
+  );
+
+  it('has a corpus to check', () => {
+    expect(PANEL).toContain('CategoriesResponse');
+    expect(FN).toContain('byTerritory');
+  });
+
+  it('the panel reads both keys the endpoint sends', () => {
+    // PA-040: a page and its endpoint agreeing on key names is the thing
+    // nothing else here checks.
+    // Bound to the RESPONSE PAYLOAD, not the file: `byTerritory` is also a
+    // local in that function, so a file-wide check stays green when the key is
+    // dropped from what is actually sent. Third time this session that a
+    // presence check needed narrowing to its site.
+    const payloadAt = FN.lastIndexOf('return createCorsResponse(');
+    expect(payloadAt).toBeGreaterThan(-1);
+    const payload = FN.slice(payloadAt);
+    for (const key of ['byTerritory', 'territoryNote']) {
+      expect({ key, sent: new RegExp(`^\\s*${key}[,:]`, 'm').test(payload) }).toEqual({
+        key,
+        sent: true,
+      });
+      expect({ key, read: PANEL.includes(`data.${key}`) }).toEqual({ key, read: true });
+    }
+  });
+
+  it('renders the note rather than an empty table when there are no rows', () => {
+    expect(PANEL).toMatch(/data\.byTerritory\.length === 0 \?/);
+    expect(PANEL).toContain('{data.territoryNote}');
+  });
+
+  it('no longer claims the roll-up is unbuilt', () => {
+    expect(PANEL).not.toContain('not built yet — it is absent here');
+    expect(PANEL).not.toMatch(/territory roll-up needs the territory model/);
+  });
+
+  it('keeps the team gap stated, because that one is real', () => {
+    // The edge function's own comment says the team roll-up still needs a
+    // reporting hierarchy no story has built.
+    expect(PANEL).toMatch(/Team roll-up needs a reporting hierarchy/);
+    // Newline-tolerant: the comment wraps, and an assertion that assumes one
+    // line reports a correct file as wrong.
+    expect(FN.replace(/\s*\n\s*\/\/\s*/g, ' ')).toMatch(
+      /TEAM roll-up still needs a reporting hierarchy/,
+    );
+  });
+
+  it('keeps the Unassigned bucket visible', () => {
+    // Omitting unmatched accounts is how a grouped view stops adding up to the
+    // totals beside it (COP-B10).
+    expect(PANEL).toMatch(/Unassigned/);
+    expect(FN).toContain('rollupByTerritory');
+  });
+});
