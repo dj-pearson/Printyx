@@ -7,6 +7,8 @@ import { toNumber } from '../_shared/quote-math.ts';
 import { displayName, USER_NAME_COLUMNS, type UserRow } from '../_shared/user-profile.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 
 // COP-M01: this file addressed business_records as deal_value / assigned_to /
 // pipeline_stage. The columns are estimated_deal_value, assigned_sales_rep and
@@ -38,6 +40,33 @@ export default async function handler(req: Request) {
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+    }
+
+    // SEC-EDGE-001. Reports about OTHER people's work - team performance and per-rep analytics. Row scoping cannot substitute for a role check when the whole point of the endpoint is to see across a team. MANAGER is the level the team surfaces use elsewhere.
+    try {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        ROLE_LEVEL.MANAGER,
+      );
+    } catch (err) {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Requires role level 4 or higher',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
     }
 
     const url = new URL(req.url);

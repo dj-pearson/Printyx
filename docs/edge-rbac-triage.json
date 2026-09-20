@@ -1,12 +1,12 @@
 {
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing \u2014 AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing \u2014 this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
-    "unexamined": 69,
-    "open-by-design": 13,
+    "unexamined": 70,
+    "open-by-design": 15,
     "headless": 43,
-    "needs-gate": 11,
     "internal": 3,
-    "public": 8
+    "public": 8,
+    "needs-gate": 4
   },
   "triage": [
     {
@@ -36,13 +36,13 @@
     },
     {
       "fn": "ai-employee",
-      "verdict": "needs-gate",
-      "reason": "Autonomous agent configuration."
+      "verdict": "unexamined",
+      "reason": "NOT READ in this pass - 149 lines and no header comment. The earlier verdict was assigned from its name alongside ai-employees, and reading ai-employees overturned that one, so this one is recorded as unexamined rather than inheriting a guess."
     },
     {
       "fn": "ai-employees",
-      "verdict": "needs-gate",
-      "reason": "Autonomous agent configuration."
+      "verdict": "open-by-design",
+      "reason": "CORRECTED after reading it: the function has NO writes at all - it is read-only over the AI employee dashboard's data. The earlier verdict said 'autonomous agent configuration', which was reasoned from the NAME rather than the code, and its page /ai-employees is alwaysVisible."
     },
     {
       "fn": "ai-gpt5",
@@ -235,11 +235,6 @@
       "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
     },
     {
-      "fn": "deployment-readiness",
-      "verdict": "needs-gate",
-      "reason": "Platform operations data, not tenant data."
-    },
-    {
       "fn": "documents",
       "verdict": "unexamined",
       "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
@@ -293,11 +288,6 @@
       "fn": "files",
       "verdict": "headless",
       "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
-    },
-    {
-      "fn": "financial",
-      "verdict": "needs-gate",
-      "reason": "The finance surface; its page is minLevel 5 and the function is open to every member."
     },
     {
       "fn": "fleet",
@@ -396,8 +386,8 @@
     },
     {
       "fn": "mobile-logs",
-      "verdict": "needs-gate",
-      "reason": "Device diagnostics across the tenant."
+      "verdict": "open-by-design",
+      "reason": "CORRECTED after reading it: a log INGEST endpoint from the mobile app that explicitly anticipates an anonymous caller and carries its own per-device rate limiting and batch bounds (CR-004). A role gate would break logging from the app, and rate limiting is the control that fits."
     },
     {
       "fn": "notifications",
@@ -517,7 +507,7 @@
     {
       "fn": "qbr",
       "verdict": "needs-gate",
-      "reason": "Quarterly business reviews are a management artefact."
+      "reason": "Creates, updates and deletes QBR records against a customer. Reads are arguably a rep's own work; the writes are the act worth gating, and nothing distinguishes them today."
     },
     {
       "fn": "quote-line-items",
@@ -590,11 +580,6 @@
       "reason": "Cross-object search; results are already tenant- and row-scoped."
     },
     {
-      "fn": "seo",
-      "verdict": "needs-gate",
-      "reason": "Its pages are platform-admin only; the function is not."
-    },
-    {
       "fn": "service",
       "verdict": "unexamined",
       "reason": "Authenticated, reachable, and nobody has decided whether every tenant member should have it."
@@ -632,7 +617,7 @@
     {
       "fn": "social-media",
       "verdict": "needs-gate",
-      "reason": "Publishes on the tenant brand. Any member can post as the company today."
+      "reason": "NARROWED after reading it: generating copy is fine for any rep and the page /social-media-generator is alwaysVisible, so gating the FUNCTION would break it. POST /posts/:id/publish is the privileged act - it posts on the tenant brand - and that branch is what wants the gate."
     },
     {
       "fn": "software-products",
@@ -648,11 +633,6 @@
       "fn": "tax-rates",
       "verdict": "headless",
       "reason": "No caller in any client tree (docs/unreferenced-edge-fns-baseline.json). Gating it decides nothing until something invokes it \u2014 that is AUDIT-024, not this story."
-    },
-    {
-      "fn": "team-reports",
-      "verdict": "needs-gate",
-      "reason": "Reports about OTHER people's work. Row scoping cannot substitute for a role check here."
     },
     {
       "fn": "teams",
@@ -717,12 +697,12 @@
     {
       "fn": "voice-agent",
       "verdict": "needs-gate",
-      "reason": "Places outbound calls on the tenant account."
+      "reason": "CORRECTED: it does NOT place outbound calls - the real-time stack is unbuilt on both sides. It ingests call-end summaries and serves a CALL LOG of customer conversations, plus a destructive POST /purge-recordings. The log and the purge are what want a gate; the intake is a cron-shaped ingest and needs cron-auth rather than a role."
     },
     {
       "fn": "web-forms",
       "verdict": "needs-gate",
-      "reason": "Public form definitions; editing one changes what the outside world sees."
+      "reason": "Editing a form definition changes what the outside world sees and what lands in the CRM. The READS can stay open; the writes want a gate."
     },
     {
       "fn": "webhooks",

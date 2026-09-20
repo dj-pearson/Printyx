@@ -20,6 +20,8 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 
 type CheckStatus = 'complete' | 'incomplete' | 'warning' | 'in-progress';
 type Priority = 'high' | 'medium' | 'low';
@@ -66,6 +68,33 @@ export default async function handler(req: Request) {
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+    }
+
+    // SEC-EDGE-001. Platform launch status, not tenant data. It has no nav entry to mirror, so the level matches the other root-admin surfaces.
+    try {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        7,
+      );
+    } catch (err) {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Requires role level 7 or higher',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
     }
 
     const { parts } = normalizePath(new URL(req.url).pathname, 'deployment-readiness');

@@ -6,6 +6,8 @@ import { normalizePath } from '../_shared/path.ts';
 import { fetchAllRows } from '../_shared/paged-select.ts';
 import { subtractMonths, monthsBetween } from '../_shared/date-months.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -40,6 +42,33 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+    }
+
+    // SEC-EDGE-001. The finance surface. Its page `/financial-forecasting` is minLevel 5 with finance.reports.view permissions, and this function served the same data to every member of the tenant - cash flow, revenue, expenses, forecasts. Mirrors the page (CLAUDE.md: gate with a LEVEL check mirroring navigation-permissions, not a permission code - SEC-EDGE-002).
+    try {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        5,
+      );
+    } catch (err) {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Requires role level 5 or higher',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
     }
 
     // Use service_role client for database operations (bypasses RLS)

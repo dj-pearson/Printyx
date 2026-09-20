@@ -12,6 +12,8 @@ import {
   projectPageScore,
 } from '../_shared/seo-projection.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { ROLE_LEVEL, RbacError, requireRoleLevel } from '../_shared/rbac.ts';
+import type { AuthContext } from '../_shared/auth.ts';
 import { subtractMonths } from '../_shared/date-months.ts';
 
 export default async function handler(req: Request) {
@@ -45,6 +47,33 @@ export default async function handler(req: Request) {
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+    }
+
+    // SEC-EDGE-001. Its page is `/root-admin/seo`, minLevel 7. The function served settings, pages, sitemaps and redirects to any tenant member.
+    try {
+      requireRoleLevel(
+        {
+          userId: user.id,
+          tenantId,
+          email: user.email,
+          jwt: jwt ?? '',
+          supabaseUser: user,
+        } as AuthContext,
+        7,
+      );
+    } catch (err) {
+      if (err instanceof RbacError) {
+        return createCorsResponse(
+          {
+            error: 'Requires role level 7 or higher',
+            code: 'INSUFFICIENT_ROLE',
+            details: err.details,
+          },
+          403,
+          req,
+        );
+      }
+      throw err;
     }
 
     const url = new URL(req.url);
