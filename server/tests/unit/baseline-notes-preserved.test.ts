@@ -59,7 +59,6 @@ describe('every baseline writer keeps a note it did not write', () => {
     'check-edge-path-coverage.mjs',
     'check-edge-path-normalization.mjs',
     'check-edge-rbac.mjs',
-    'check-error-shape.mjs',
     'check-fabricated-fallbacks.mjs',
     'check-identical-fallback.mjs',
     'check-lint.mjs',

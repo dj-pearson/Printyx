@@ -89,6 +89,8 @@ jobs:
         run: npm run check:tenant-resolution
       - name: Swallowed PostgREST write errors (AUDIT-038)
         run: npm run check:swallowed-writes
+      - name: API error-shape ratchet (CR-023)
+        run: npm run check:error-shape
       - name: Passing stories naming an unreachable deliverable (WF-G-03)
         run: npm run check:story-orphans
       - name: Fabricated-fallback ratchet (AUDIT-019)
