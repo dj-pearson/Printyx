@@ -42,6 +42,25 @@ export const dashboardLayouts = pgTable(
     isDefault: boolean('is_default').default(false), // Is this the default layout for this role?
     isUserCustom: boolean('is_user_custom').default(false), // Is this a user override?
 
+    /**
+     * Which screen saved this (CRM-LAYOUT-001).
+     *
+     * TWO LIVE SURFACES both stored "the one custom layout per user" and both
+     * filtered on `(tenant_id, user_id, is_user_custom)` alone, so a layout
+     * saved on one could be returned to the other - and `getDefaultLayout` did
+     * it with no ORDER BY, which made the winner arbitrary rather than merely
+     * wrong. `/dashboard` (role dashboard, via dashboard-widgets) and
+     * `/custom-dashboard` (via the dashboard function's layouts handler) are
+     * different things and now say so.
+     *
+     * NOT `name`, which the story's own AC suggested: CustomDashboard lets the
+     * USER name their dashboard, so a user typing "Custom Dashboard" - the name
+     * dashboard-widgets writes - would collide with the very row the
+     * discriminator is meant to separate. A discriminator a user can type is
+     * not a discriminator.
+     */
+    surface: varchar('surface', { length: 40 }).default('custom'),
+
     // Widget grid layout (stored as JSON)
     // Format: Array of { id, type, position, size, config, visible }
     widgets: jsonb('widgets').default(sql`'[]'::jsonb`),
@@ -58,6 +77,12 @@ export const dashboardLayouts = pgTable(
     tenantIdIdx: index('dashboard_layouts_tenant_id_idx').on(table.tenantId),
     userIdIdx: index('dashboard_layouts_user_id_idx').on(table.userId),
     roleIdIdx: index('dashboard_layouts_role_id_idx').on(table.roleId),
+    // Both live reads are (tenant, user, is_user_custom, surface).
+    surfaceIdx: index('dashboard_layouts_surface_idx').on(
+      table.tenantId,
+      table.userId,
+      table.surface,
+    ),
   }),
 );
 

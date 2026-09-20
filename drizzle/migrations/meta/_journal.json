@@ -554,6 +554,13 @@
       "when": 1789867169001,
       "tag": "0095_grey_hammerhead",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1789876930543,
+      "tag": "0096_cold_ted_forrester",
+      "breakpoints": true
     }
   ]
 }
