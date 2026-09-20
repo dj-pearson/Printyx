@@ -212,7 +212,8 @@
     "check:credential-vault": "node scripts/check-credential-vault.mjs",
     "check:invalidation-keys": "node scripts/check-invalidation-keys.mjs",
     "check:percent-math": "node scripts/check-percent-math.mjs",
-    "check:browser-dialogs": "node scripts/check-browser-dialogs.mjs"
+    "check:browser-dialogs": "node scripts/check-browser-dialogs.mjs",
+    "check:migration-enums": "node scripts/check-migration-enum-values.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

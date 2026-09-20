@@ -1,5 +1,37 @@
 -- The canonical role catalogue (WF-R-02).
 --
+-- CORRECTED 2026-09-20 (round 89): THIS MIGRATION HAD NEVER APPLIED ANYWHERE.
+--
+-- 21 of the 45 rows named a `role_type` the enum has never had. `0000` creates
+-- it as ENUM('platform_admin', 'company_admin', 'regional_manager',
+-- 'location_manager', 'department_role') and shared/schema.ts declares exactly
+-- those five; this file wrote 'platform_role' (4), 'company_role' (10),
+-- 'regional_role' (5) and 'location_role' (2) - the SCOPE said in different
+-- words. Each row's own `department` column corroborates the mapping: every
+-- platform_role row is department='platform', and the rest are org-chart
+-- departments.
+--
+-- The INSERT below is ONE statement with no statement-breakpoint, so all 45
+-- rows failed together on 22P02 and not one row has ever been inserted on any
+-- database. Editing a committed migration is normally wrong; it is right here
+-- for that reason, and the blast radius is provably nil.
+--
+-- WHAT IT COST. drizzle's migrator runs the whole chain in ONE transaction, so
+-- this did not fail one migration - it made `npm run db:migrate` unable to
+-- create a database AT ALL, leaving zero tables behind. PA-032 ("make a fresh
+-- database provisionable from versioned migrations alone") verified db:migrate
+-- green at 43 migrations and 668 tables; this file is number 72 of 80, so the
+-- guarantee has been gone for 29 migrations with nothing checking. And the
+-- feature this migration exists to enable was the casualty: `signup` answers
+-- MISSING_ADMIN_ROLE when roles.code='COMPANY_ADMIN' is absent, and its error
+-- text tells the operator to "apply the migration chain and retry" - the one
+-- thing that could not work.
+--
+-- A statement-tolerant replay (psql -v ON_ERROR_STOP=0) HIDES this: the DDL all
+-- lands and the schema looks complete, which is how three earlier rounds built
+-- a 682-table scratch database and never noticed. Tolerant replay proves the
+-- DDL is sound, not that the chain is applicable.
+--
 -- WHY A MIGRATION. supabase/functions/signup/ looks up roles.code='COMPANY_ADMIN'
 -- and deletes the tenant it just created, answering MISSING_ADMIN_ROLE, when the
 -- row is absent. The only files that wrote System A roles -
@@ -44,14 +76,14 @@
 -- fresh deploy is consistent.
 INSERT INTO roles (name, code, role_type, department, level, description, permissions, can_access_all_tenants, can_view_system_metrics, can_access_all_locations, can_manage_company_users, can_create_locations, can_view_company_financials, can_manage_regional_users, can_view_regional_reports, can_approve_regional_deals, can_manage_location_users, can_view_location_reports, can_approve_location_deals)
 VALUES
-  ('Platform Administrator', 'PLATFORM_ADMIN', 'platform_role', 'platform', 8, 'Platform Administrator (platform, level 8)', '{}'::jsonb, true, true, true, true, true, true, false, false, false, false, false, false),
-  ('Root Administrator', 'ROOT_ADMIN', 'platform_role', 'platform', 8, 'Root Administrator (platform, level 8)', '{}'::jsonb, true, true, true, true, true, true, false, false, false, false, false, false),
-  ('Printyx Support Specialist', 'PRINTYX_SUPPORT', 'platform_role', 'platform', 6, 'Printyx Support Specialist (platform, level 6)', '{}'::jsonb, true, true, false, false, false, false, false, false, false, false, false, false),
-  ('Printyx Technical Specialist', 'PRINTYX_TECHNICAL', 'platform_role', 'platform', 6, 'Printyx Technical Specialist (platform, level 6)', '{}'::jsonb, true, true, false, false, false, false, false, false, false, false, false, false),
-  ('Company Administrator', 'COMPANY_ADMIN', 'company_role', 'admin', 7, 'Company Administrator (admin, level 7)', '{}'::jsonb, false, false, true, true, true, true, false, false, false, false, false, false),
-  ('Executive', 'EXECUTIVE', 'company_role', 'admin', 7, 'Executive (admin, level 7)', '{}'::jsonb, false, false, true, false, false, true, false, false, false, false, false, false),
-  ('Regional Manager', 'REGIONAL_MANAGER', 'regional_role', 'admin', 6, 'Regional Manager (admin, level 6)', '{}'::jsonb, false, false, false, false, false, false, true, true, true, false, false, false),
-  ('Location Manager', 'LOCATION_MANAGER', 'location_role', 'admin', 4, 'Location Manager (admin, level 4)', '{}'::jsonb, false, false, false, false, false, false, false, false, false, true, true, true),
+  ('Platform Administrator', 'PLATFORM_ADMIN', 'platform_admin', 'platform', 8, 'Platform Administrator (platform, level 8)', '{}'::jsonb, true, true, true, true, true, true, false, false, false, false, false, false),
+  ('Root Administrator', 'ROOT_ADMIN', 'platform_admin', 'platform', 8, 'Root Administrator (platform, level 8)', '{}'::jsonb, true, true, true, true, true, true, false, false, false, false, false, false),
+  ('Printyx Support Specialist', 'PRINTYX_SUPPORT', 'platform_admin', 'platform', 6, 'Printyx Support Specialist (platform, level 6)', '{}'::jsonb, true, true, false, false, false, false, false, false, false, false, false, false),
+  ('Printyx Technical Specialist', 'PRINTYX_TECHNICAL', 'platform_admin', 'platform', 6, 'Printyx Technical Specialist (platform, level 6)', '{}'::jsonb, true, true, false, false, false, false, false, false, false, false, false, false),
+  ('Company Administrator', 'COMPANY_ADMIN', 'company_admin', 'admin', 7, 'Company Administrator (admin, level 7)', '{}'::jsonb, false, false, true, true, true, true, false, false, false, false, false, false),
+  ('Executive', 'EXECUTIVE', 'company_admin', 'admin', 7, 'Executive (admin, level 7)', '{}'::jsonb, false, false, true, false, false, true, false, false, false, false, false, false),
+  ('Regional Manager', 'REGIONAL_MANAGER', 'regional_manager', 'admin', 6, 'Regional Manager (admin, level 6)', '{}'::jsonb, false, false, false, false, false, false, true, true, true, false, false, false),
+  ('Location Manager', 'LOCATION_MANAGER', 'location_manager', 'admin', 4, 'Location Manager (admin, level 4)', '{}'::jsonb, false, false, false, false, false, false, false, false, false, true, true, true),
   ('Sales Director', 'SALES_DIRECTOR', 'department_role', 'sales', 5, 'Sales Director (sales, level 5)', '{}'::jsonb, false, false, false, false, false, true, false, false, false, false, false, false),
   ('Sales Manager', 'SALES_MANAGER', 'department_role', 'sales', 4, 'Sales Manager (sales, level 4)', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, true, true),
   ('Sales Supervisor', 'SALES_SUPERVISOR', 'department_role', 'sales', 3, 'Sales Supervisor (sales, level 3)', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, true, false),
@@ -63,27 +95,27 @@ VALUES
   ('Technician', 'TECHNICIAN', 'department_role', 'service', 1, 'Technician (service, level 1)', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, false, false),
   ('Finance Director', 'FINANCE_DIRECTOR', 'department_role', 'finance', 5, 'Finance Director (finance, level 5)', '{}'::jsonb, false, false, false, false, false, true, false, false, false, false, false, false),
   ('Finance Manager', 'FINANCE_MANAGER', 'department_role', 'finance', 4, 'Finance Manager (finance, level 4)', '{}'::jsonb, false, false, false, false, false, true, false, false, false, false, false, false),
-  ('CEO / President', 'CEO', 'company_role', 'executive', 7, 'Chief Executive Officer - highest company authority', '{}'::jsonb, false, false, true, true, true, true, false, false, false, false, false, false),
-  ('CFO', 'CFO', 'company_role', 'finance', 7, 'Chief Financial Officer - financial oversight', '{}'::jsonb, false, false, true, false, false, true, false, false, false, false, false, false),
-  ('COO', 'COO', 'company_role', 'operations', 7, 'Chief Operating Officer - operations oversight', '{}'::jsonb, false, false, true, true, true, true, false, false, false, false, false, false),
-  ('VP Sales / Sales Director', 'VP_SALES', 'company_role', 'sales', 6, 'Vice President of Sales - company-wide sales leadership', '{}'::jsonb, false, false, true, false, false, true, false, true, true, false, false, false),
-  ('VP Service / Service Director', 'VP_SERVICE', 'company_role', 'service', 6, 'Vice President of Service - company-wide service leadership', '{}'::jsonb, false, false, true, false, false, false, false, true, false, false, false, false),
-  ('Director of Operations', 'DIRECTOR_OPERATIONS', 'company_role', 'operations', 6, 'Director of Operations - company-wide operations', '{}'::jsonb, false, false, true, false, false, false, false, true, false, false, false, false),
-  ('Controller / Finance Director', 'CONTROLLER', 'company_role', 'finance', 6, 'Controller - company-wide financial management', '{}'::jsonb, false, false, true, false, false, true, false, true, false, false, false, false),
-  ('Regional Sales Director', 'REGIONAL_SALES_DIRECTOR', 'regional_role', 'sales', 5, 'Regional Sales Director - multi-location sales management', '{}'::jsonb, false, false, false, false, false, false, true, true, true, false, false, false),
-  ('Regional Service Manager', 'REGIONAL_SERVICE_MANAGER', 'regional_role', 'service', 5, 'Regional Service Manager - multi-location service management', '{}'::jsonb, false, false, false, false, false, false, true, true, false, false, false, false),
+  ('CEO / President', 'CEO', 'company_admin', 'executive', 7, 'Chief Executive Officer - highest company authority', '{}'::jsonb, false, false, true, true, true, true, false, false, false, false, false, false),
+  ('CFO', 'CFO', 'company_admin', 'finance', 7, 'Chief Financial Officer - financial oversight', '{}'::jsonb, false, false, true, false, false, true, false, false, false, false, false, false),
+  ('COO', 'COO', 'company_admin', 'operations', 7, 'Chief Operating Officer - operations oversight', '{}'::jsonb, false, false, true, true, true, true, false, false, false, false, false, false),
+  ('VP Sales / Sales Director', 'VP_SALES', 'company_admin', 'sales', 6, 'Vice President of Sales - company-wide sales leadership', '{}'::jsonb, false, false, true, false, false, true, false, true, true, false, false, false),
+  ('VP Service / Service Director', 'VP_SERVICE', 'company_admin', 'service', 6, 'Vice President of Service - company-wide service leadership', '{}'::jsonb, false, false, true, false, false, false, false, true, false, false, false, false),
+  ('Director of Operations', 'DIRECTOR_OPERATIONS', 'company_admin', 'operations', 6, 'Director of Operations - company-wide operations', '{}'::jsonb, false, false, true, false, false, false, false, true, false, false, false, false),
+  ('Controller / Finance Director', 'CONTROLLER', 'company_admin', 'finance', 6, 'Controller - company-wide financial management', '{}'::jsonb, false, false, true, false, false, true, false, true, false, false, false, false),
+  ('Regional Sales Director', 'REGIONAL_SALES_DIRECTOR', 'regional_manager', 'sales', 5, 'Regional Sales Director - multi-location sales management', '{}'::jsonb, false, false, false, false, false, false, true, true, true, false, false, false),
+  ('Regional Service Manager', 'REGIONAL_SERVICE_MANAGER', 'regional_manager', 'service', 5, 'Regional Service Manager - multi-location service management', '{}'::jsonb, false, false, false, false, false, false, true, true, false, false, false, false),
   ('Operations Manager', 'OPERATIONS_MANAGER', 'department_role', 'operations', 4, 'Operations Manager - location-level operations', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, true, false),
-  ('Branch Manager', 'BRANCH_MANAGER', 'location_role', 'admin', 4, 'Branch Manager - all departments at location', '{}'::jsonb, false, false, false, false, false, false, false, false, false, true, true, true),
+  ('Branch Manager', 'BRANCH_MANAGER', 'location_manager', 'admin', 4, 'Branch Manager - all departments at location', '{}'::jsonb, false, false, false, false, false, false, false, false, false, true, true, true),
   ('Warehouse Supervisor', 'WAREHOUSE_SUPERVISOR', 'department_role', 'operations', 3, 'Warehouse Supervisor - warehouse team supervision', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, true, false),
   ('Senior Field Technician', 'SENIOR_TECHNICIAN', 'department_role', 'service', 2, 'Senior Field Technician - individual + mentoring', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, false, false),
   ('Field Service Technician', 'FIELD_TECHNICIAN', 'department_role', 'service', 1, 'Field Service Technician - individual contributor', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, false, false),
   ('Warehouse Associate', 'WAREHOUSE_ASSOCIATE', 'department_role', 'operations', 1, 'Warehouse Associate - individual contributor', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, false, false),
   ('Accounting Clerk', 'ACCOUNTING_CLERK', 'department_role', 'finance', 1, 'Accounting Clerk - individual contributor', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, false, false),
-  ('Area Manager', 'AREA_MANAGER', 'regional_role', 'sales', 6, 'Area Manager - oversees multiple regions in a geographic area', '{}'::jsonb, false, false, true, false, false, false, true, true, true, false, false, false),
-  ('District Manager', 'DISTRICT_MANAGER', 'regional_role', 'sales', 5, 'District Manager - manages sales/service across a district of locations', '{}'::jsonb, false, false, false, false, false, false, true, true, true, false, false, false),
+  ('Area Manager', 'AREA_MANAGER', 'regional_manager', 'sales', 6, 'Area Manager - oversees multiple regions in a geographic area', '{}'::jsonb, false, false, true, false, false, false, true, true, true, false, false, false),
+  ('District Manager', 'DISTRICT_MANAGER', 'regional_manager', 'sales', 5, 'District Manager - manages sales/service across a district of locations', '{}'::jsonb, false, false, false, false, false, false, true, true, true, false, false, false),
   ('IT Administrator', 'IT_ADMIN', 'department_role', 'it', 4, 'IT Administrator - manages system configuration and user access', '{}'::jsonb, false, false, true, true, false, false, false, false, false, false, false, false),
   ('HR Manager', 'HR_MANAGER', 'department_role', 'hr', 4, 'HR Manager - manages employee records and onboarding', '{}'::jsonb, false, false, false, true, false, false, false, false, false, false, false, false),
-  ('VP Administration', 'VP_ADMIN', 'company_role', 'admin', 6, 'VP of Administration - company-wide admin, IT, and HR oversight', '{}'::jsonb, false, false, true, true, false, true, false, true, false, false, false, false),
+  ('VP Administration', 'VP_ADMIN', 'company_admin', 'admin', 6, 'VP of Administration - company-wide admin, IT, and HR oversight', '{}'::jsonb, false, false, true, true, false, true, false, true, false, false, false, false),
   ('Account Executive', 'ACCOUNT_EXECUTIVE', 'department_role', 'sales', 3, 'Account Executive - manages major/enterprise accounts', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, false, false),
   ('Inside Sales Representative', 'INSIDE_SALES_REP', 'department_role', 'sales', 2, 'Inside Sales Representative - phone/online sales with team visibility', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, false, false),
   ('Dispatch Coordinator', 'DISPATCH_COORDINATOR', 'department_role', 'service', 1, 'Dispatch Coordinator - schedules service calls and manages dispatch board', '{}'::jsonb, false, false, false, false, false, false, false, false, false, false, false, false),

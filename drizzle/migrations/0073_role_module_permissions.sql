@@ -33,9 +33,22 @@
 -- An operator who has customised a role's permissions keeps them, and re-running
 -- the chain changes nothing. That is also why it is an UPDATE rather than part of
 -- 0072 - 0072 has shipped, and rewriting an applied migration would not re-run.
+-- CORRECTED 2026-09-20 (round 89): `roles` HAS NO updated_at.
+--
+-- 0000 creates it with `created_at timestamp DEFAULT now()` and NO updated_at,
+-- which is the precise fact - so this UPDATE was a guaranteed 42703 on that one
+-- column and, since drizzle runs the whole chain in one
+-- transaction, it took `db:migrate` down with it. The `permissions` fill is the
+-- substance and is unchanged.
+--
+-- The header below says this is an UPDATE rather than part of 0072 because
+-- "0072 has shipped". It had not, anywhere: 0072's single INSERT named four
+-- role_type values the enum has never had, so it aborted every time it ran and
+-- inserted nothing. Both are corrected in the same commit, which is what makes
+-- this file's narrow-by-design UPDATE meaningful for the first time - it now
+-- has rows to update.
 UPDATE roles AS r
-SET permissions = v.permissions,
-    updated_at = NOW()
+SET permissions = v.permissions
 FROM (VALUES
   ('PLATFORM_ADMIN', '{"sales":true,"service":true,"products":true,"inventory":true,"purchasing":true,"billing":true,"finance":true,"reports":true,"system":true}'::jsonb),
   ('ROOT_ADMIN', '{"sales":true,"service":true,"products":true,"inventory":true,"purchasing":true,"billing":true,"finance":true,"reports":true,"system":true}'::jsonb),
