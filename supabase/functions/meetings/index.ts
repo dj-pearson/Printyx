@@ -42,6 +42,7 @@ import { errorResponse, generateRequestId } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { requireRateLimit, RateLimitError, PRESETS } from '../_shared/rate-limit.ts';
 
+import { handleBriefing } from './handlers/briefing.ts';
 import { handleConnections } from './handlers/connections.ts';
 import { handleEvents, handleAvailability, handleFindMeetingTime } from './handlers/events.ts';
 import {
@@ -122,6 +123,11 @@ export default async function handler(req: Request) {
         }
         break;
       }
+      // COP-B12 AC4: the pre-meeting briefing. Needs no transcript, so it
+      // is the one criterion on that story that is not blocked.
+      case 'briefing':
+        result = await handleBriefing(req, ctx);
+        break;
       case 'schedule-request':
       case 'schedule':
         result = await handleSchedulingRequest(req, ctx);
