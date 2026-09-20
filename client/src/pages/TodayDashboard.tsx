@@ -31,6 +31,7 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { SuggestedTasksCard } from '@/components/crm/SuggestedTasksCard';
 import { MyDayCardBoundary, MyDayCustomizer, useMyDayLayout } from '@/components/crm/MyDayLayout';
+import { RadarPlaysCard } from '@/components/crm/RadarPlaysCard';
 import { cn, formatCurrencyWhole } from '@/lib/utils';
 
 interface Activity {
@@ -249,6 +250,7 @@ export default function TodayDashboard() {
         </CardContent>
       </Card>
     ),
+    'installed-base-radar': <RadarPlaysCard />,
     'suggested-tasks': <SuggestedTasksCard />,
     'awaiting-signature':
       awaitingSignature.length > 0 ? (

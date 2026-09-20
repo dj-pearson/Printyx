@@ -59,6 +59,7 @@ const MAIN_COLUMN = new Set([
   'suggested-tasks',
   'awaiting-signature',
   'stalled-deals',
+  'installed-base-radar',
   'recent-wins',
   'team-pipeline',
 ]);

@@ -29,6 +29,7 @@ export type MyDayCardId =
   | 'suggested-tasks'
   | 'hot-leads'
   | 'recent-wins'
+  | 'installed-base-radar'
   | 'team-pipeline'
   | 'team-activity';
 
@@ -51,6 +52,9 @@ export const MY_DAY_CARDS: readonly MyDayCard[] = [
   { id: 'suggested-tasks', title: 'Suggested next actions' },
   { id: 'awaiting-signature', title: 'Awaiting signature' },
   { id: 'stalled-deals', title: 'Stalled deals' },
+  // COP-B04 AC4's workspace half: the radar's plays where the rep already is,
+  // rather than only on a page they have to remember to open.
+  { id: 'installed-base-radar', title: 'Installed-base plays' },
   { id: 'meetings-followup', title: 'Meetings needing follow-up' },
   { id: 'hot-leads', title: 'Hot leads' },
   { id: 'recent-wins', title: 'Recent wins' },
