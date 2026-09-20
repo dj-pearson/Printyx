@@ -28,6 +28,13 @@ import {
   seoCompetitorAnalysis,
 } from '@shared/schema';
 import * as cheerio from 'cheerio';
+import {
+  evaluateSecurityHeaders,
+  MAX_REDIRECTS,
+  readPageSpeedVitals,
+  type RedirectStep,
+  summariseRedirectChain,
+} from '@shared/seo-checks';
 import fetch from 'node-fetch';
 
 // ============= TYPES =============
@@ -530,6 +537,21 @@ export async function crawlWebsite(
 
 // ============= PAGESPEED INSIGHTS (Core Web Vitals) =============
 
+/**
+ * SEO-TRANSPORT-001. Two things left with the rewrite, both fabrications.
+ *
+ * `estimateCoreWebVitals()` returned LCP 2500ms, CLS 0.1 and a performance score
+ * of 75 whenever the PageSpeed request failed, and the route STORED that in
+ * seo_core_web_vitals - so a page nobody measured reported respectable vitals,
+ * indistinguishable from a real reading. CLAUDE.md's SEO note says this function
+ * "throws without a PageSpeed key rather than guessing", which was true of the
+ * missing-key path and not of this one. The failure propagates now.
+ *
+ * And `|| 0` on every metric turned an audit Lighthouse did not return into 0ms
+ * LCP and 0 CLS - not "we did not measure" but a perfect score, on the two
+ * numbers this panel exists to show. shared/seo-checks.ts answers null and names
+ * what was missing.
+ */
 export async function checkCoreWebVitalsWithAPI(
   url: string,
   device: 'mobile' | 'desktop' = 'mobile',
@@ -540,68 +562,32 @@ export async function checkCoreWebVitalsWithAPI(
     throw new Error('PageSpeed Insights API key not configured');
   }
 
-  try {
-    const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(
-      url,
-    )}&strategy=${device}&key=${apiKey}`;
+  const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(
+    url,
+  )}&strategy=${device}&key=${apiKey}`;
 
-    const response = await fetch(apiUrl);
-    const data = await response.json();
+  const response = await fetch(apiUrl);
+  const data: any = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.error?.message || 'PageSpeed API request failed');
-    }
-
-    const lighthouseResult = data.lighthouseResult;
-    const audits = lighthouseResult.audits;
-
-    return {
-      lcp: audits['largest-contentful-paint']?.numericValue || 0,
-      fid: audits['max-potential-fid']?.numericValue || 0,
-      cls: audits['cumulative-layout-shift']?.numericValue || 0,
-      fcp: audits['first-contentful-paint']?.numericValue || 0,
-      ttfb: audits['server-response-time']?.numericValue || 0,
-      tti: audits['interactive']?.numericValue || 0,
-      tbt: audits['total-blocking-time']?.numericValue || 0,
-      si: audits['speed-index']?.numericValue || 0,
-      performanceScore: Math.round(lighthouseResult.categories.performance.score * 100),
-      accessibilityScore: Math.round(lighthouseResult.categories.accessibility.score * 100),
-      bestPracticesScore: Math.round(lighthouseResult.categories['best-practices'].score * 100),
-      seoScore: Math.round(lighthouseResult.categories.seo.score * 100),
-      diagnostics: {
-        opportunities: Object.keys(audits)
-          .filter((key) => audits[key].details?.type === 'opportunity')
-          .map((key) => ({
-            audit: key,
-            title: audits[key].title,
-            savings: audits[key].details?.overallSavingsMs,
-          })),
-      },
-      opportunities: [],
-    };
-  } catch (error: any) {
-    // Fallback to basic estimation if API fails
-    log.error('PageSpeed API error:', error.message);
-    return estimateCoreWebVitals();
+  if (!response.ok) {
+    throw new Error(data?.error?.message || 'PageSpeed API request failed');
   }
-}
 
-function estimateCoreWebVitals() {
-  // Basic fallback when API is not available
+  const audits = (data?.lighthouseResult?.audits ?? {}) as Record<string, any>;
   return {
-    lcp: 2500,
-    fid: 100,
-    cls: 0.1,
-    fcp: 1800,
-    ttfb: 600,
-    performanceScore: 75,
-    accessibilityScore: 85,
-    bestPracticesScore: 80,
-    seoScore: 90,
+    ...readPageSpeedVitals(data),
+    diagnostics: {
+      opportunities: Object.keys(audits)
+        .filter((key) => audits[key].details?.type === 'opportunity')
+        .map((key) => ({
+          audit: key,
+          title: audits[key].title,
+          savings: audits[key].details?.overallSavingsMs,
+        })),
+    },
+    opportunities: [],
   };
 }
-
-// ============= IMAGE ANALYSIS =============
 
 export async function analyzePageImages(pageUrl: string) {
   try {
@@ -746,57 +732,38 @@ export async function checkBrokenLinks(sourceUrl: string) {
 
 // ============= SECURITY HEADERS CHECK =============
 
+/**
+ * SEO-TRANSPORT-001: the evaluation lives in shared/seo-checks.ts and is the
+ * SAME module supabase/functions/seo imports, so the two hosts cannot drift.
+ *
+ * Two fields left with it. `certificateValid: hasHttps` claimed a certificate
+ * check from a URL scheme, and `httpsRedirect: hasHttps` claimed a redirect
+ * nothing had followed - both on a panel a marketer reads as a security
+ * posture. The certificate claim is gone and named in `unbacked`; the redirect
+ * is measured by probing the http:// form, and stays null when that probe fails.
+ */
 export async function checkSecurityHeaders(url: string) {
   try {
     const response = await fetch(url);
-    const headers = response.headers;
 
-    const hasHttps = url.startsWith('https://');
-    const hasHsts = headers.has('strict-transport-security');
-    const hasXFrameOptions = headers.has('x-frame-options');
-    const hasXContentTypeOptions = headers.has('x-content-type-options');
-    const hasCsp = headers.has('content-security-policy');
-
-    const issues: Array<any> = [];
-
-    if (!hasHttps) {
-      issues.push({ type: 'https', severity: 'critical', message: 'Site not using HTTPS' });
-    }
-    if (!hasHsts) {
-      issues.push({ type: 'hsts', severity: 'high', message: 'Missing HSTS header' });
-    }
-    if (!hasXFrameOptions) {
-      issues.push({
-        type: 'clickjacking',
-        severity: 'medium',
-        message: 'Missing X-Frame-Options header',
-      });
-    }
-    if (!hasXContentTypeOptions) {
-      issues.push({
-        type: 'mime',
-        severity: 'low',
-        message: 'Missing X-Content-Type-Options header',
-      });
-    }
-    if (!hasCsp) {
-      issues.push({ type: 'csp', severity: 'medium', message: 'Missing Content-Security-Policy' });
+    let httpsRedirect: boolean | null = null;
+    try {
+      const insecure = new URL(url);
+      insecure.protocol = 'http:';
+      const probe = await fetch(insecure.href, { redirect: 'manual' });
+      const location = probe.headers.get('location');
+      httpsRedirect =
+        probe.status >= 300 && probe.status < 400 && !!location
+          ? new URL(location, insecure.href).protocol === 'https:'
+          : false;
+    } catch {
+      httpsRedirect = null;
     }
 
-    const securityScore = Math.max(0, 100 - issues.length * 15);
+    const entries: Array<[string, string]> = [];
+    response.headers.forEach((value: string, key: string) => entries.push([key, value]));
 
-    return {
-      hasHttps,
-      httpsRedirect: hasHttps,
-      certificateValid: hasHttps,
-      hasHsts,
-      hasXFrameOptions,
-      hasXContentTypeOptions,
-      hasCsp,
-      securityScore,
-      headers: Object.fromEntries(headers.entries()),
-      issues,
-    };
+    return evaluateSecurityHeaders(url, entries, httpsRedirect);
   } catch (error: any) {
     throw new Error(`Security header check failed: ${error.message}`);
   }
@@ -913,56 +880,37 @@ export async function validateStructuredData(url: string) {
 
 // ============= REDIRECT CHAIN DETECTION =============
 
+/** SEO-TRANSPORT-001: walks the chain here, summarises it in shared/seo-checks.ts. */
 export async function detectRedirectChains(sourceUrl: string) {
   try {
-    const chain: Array<{ url: string; statusCode: number }> = [];
+    const steps: RedirectStep[] = [];
     let currentUrl = sourceUrl;
-    let redirectCount = 0;
-    const maxRedirects = 10;
+    let loop = false;
+    let truncated = false;
 
-    while (redirectCount < maxRedirects) {
+    for (let hop = 0; ; hop += 1) {
       const response = await fetch(currentUrl, { redirect: 'manual' });
-      const statusCode = response.status;
+      const location = response.headers.get('location');
+      steps.push({ url: currentUrl, statusCode: response.status, location });
 
-      chain.push({ url: currentUrl, statusCode });
+      const redirecting = response.status >= 300 && response.status < 400 && !!location;
+      if (!redirecting) break;
 
-      if (statusCode >= 300 && statusCode < 400) {
-        const location = response.headers.get('location');
-        if (!location) break;
-
-        currentUrl = new URL(location, currentUrl).href;
-        redirectCount++;
-
-        // Check for redirect loop
-        if (chain.some((item) => item.url === currentUrl)) {
-          return {
-            destinationUrl: currentUrl,
-            redirectChain: chain,
-            chainLength: chain.length,
-            statusCode,
-            redirectType: statusCode.toString(),
-            hasRedirectLoop: true,
-            hasMultipleRedirects: chain.length > 2,
-            issues: ['Redirect loop detected'],
-            totalTime: 0,
-          };
-        }
-      } else {
+      const next = new URL(location as string, currentUrl).href;
+      if (steps.some((step) => step.url === next)) {
+        loop = true;
         break;
       }
+      // Reported rather than treated as the destination: stopping at the limit
+      // and returning that URL is a claim the redirect ended there.
+      if (hop + 1 >= MAX_REDIRECTS) {
+        truncated = true;
+        break;
+      }
+      currentUrl = next;
     }
 
-    return {
-      destinationUrl: currentUrl,
-      redirectChain: chain,
-      chainLength: chain.length,
-      statusCode: chain[chain.length - 1].statusCode,
-      redirectType: chain.length > 1 ? chain[0].statusCode.toString() : 'none',
-      hasRedirectLoop: false,
-      hasMultipleRedirects: chain.length > 2,
-      issues: chain.length > 2 ? ['Multiple redirects in chain'] : [],
-      totalTime: 0,
-    };
+    return summariseRedirectChain(steps, { loop, truncated });
   } catch (error: any) {
     throw new Error(`Redirect detection failed: ${error.message}`);
   }

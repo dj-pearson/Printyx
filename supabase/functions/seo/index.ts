@@ -4,6 +4,13 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import {
+  evaluateSecurityHeaders,
+  MAX_REDIRECTS,
+  readPageSpeedVitals,
+  type RedirectStep,
+  summariseRedirectChain,
+} from '../../../shared/seo-checks.ts';
+import {
   projectAlert,
   projectAudit,
   projectCompetitor,
@@ -603,6 +610,234 @@ export default async function handler(req: Request) {
         200,
         req,
       );
+    }
+
+    // ============= HEADER- AND JSON-ONLY CHECKS (SEO-TRANSPORT-001 AC3) =============
+    //
+    // Three of the seven endpoints SEODashboard calls that this function did not
+    // serve. They read response headers and a JSON API, so they port with no HTML
+    // parser; the other four (analyze/images, check/broken-links, check/mobile,
+    // validate/structured-data) parse markup and are recorded against the story
+    // rather than half-built here.
+
+    // POST /seo/check/security - Response-header security posture
+    if (req.method === 'POST' && resource === 'check' && resourceId === 'security') {
+      const body = await req.json();
+      const targetUrl = body.url || body.pageUrl;
+      if (!targetUrl) {
+        return createCorsResponse({ error: 'URL is required' }, 400, req);
+      }
+
+      let response: Response;
+      try {
+        response = await fetch(targetUrl);
+      } catch (err) {
+        return createCorsResponse(
+          { error: `Could not reach ${targetUrl}: ${err instanceof Error ? err.message : err}` },
+          502,
+          req,
+        );
+      }
+
+      // httpsRedirect is MEASURED rather than inferred from the scheme: probe the
+      // http:// form and see where it lands. null when that probe itself failed,
+      // because "we could not look" is not "it does not redirect".
+      let httpsRedirect: boolean | null = null;
+      try {
+        const insecure = new URL(targetUrl);
+        insecure.protocol = 'http:';
+        const probe = await fetch(insecure.href, { redirect: 'manual' });
+        const location = probe.headers.get('location');
+        httpsRedirect =
+          probe.status >= 300 && probe.status < 400 && !!location
+            ? new URL(location, insecure.href).protocol === 'https:'
+            : false;
+      } catch {
+        httpsRedirect = null;
+      }
+
+      const result = evaluateSecurityHeaders(
+        targetUrl,
+        [...response.headers.entries()],
+        httpsRedirect,
+      );
+
+      // certificate_valid is deliberately NOT written: nothing here measures it,
+      // and a column left null says that where a false would claim a finding.
+      const { error: insertError } = await admin.from('seo_security_analysis').insert({
+        tenant_id: tenantId,
+        url: targetUrl,
+        has_https: result.hasHttps,
+        https_redirect: result.httpsRedirect,
+        has_hsts: result.hasHsts,
+        has_x_frame_options: result.hasXFrameOptions,
+        has_x_content_type_options: result.hasXContentTypeOptions,
+        has_csp: result.hasCsp,
+        headers: result.headers,
+        security_score: result.securityScore,
+        issues: result.issues,
+        checked_at: new Date().toISOString(),
+      });
+      if (insertError) {
+        return createCorsResponse(
+          { error: 'Security check ran but could not be stored', details: insertError.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse(result, 200, req);
+    }
+
+    // POST /seo/detect/redirect-chains - Follow and summarise a redirect chain
+    if (req.method === 'POST' && resource === 'detect' && resourceId === 'redirect-chains') {
+      const body = await req.json();
+      const sourceUrl = body.sourceUrl || body.url;
+      if (!sourceUrl) {
+        return createCorsResponse({ error: 'Source URL is required' }, 400, req);
+      }
+
+      const steps: RedirectStep[] = [];
+      let currentUrl = sourceUrl;
+      let loop = false;
+      let truncated = false;
+
+      try {
+        for (let hop = 0; ; hop += 1) {
+          const hopResponse = await fetch(currentUrl, { redirect: 'manual' });
+          const location = hopResponse.headers.get('location');
+          steps.push({ url: currentUrl, statusCode: hopResponse.status, location });
+
+          const redirecting = hopResponse.status >= 300 && hopResponse.status < 400 && !!location;
+          if (!redirecting) break;
+
+          const next = new URL(location as string, currentUrl).href;
+          if (steps.some((step) => step.url === next)) {
+            loop = true;
+            break;
+          }
+          // The hop limit is REPORTED rather than silently treated as the
+          // destination: stopping at ten and returning the tenth URL is a claim
+          // that the redirect ended there.
+          if (hop + 1 >= MAX_REDIRECTS) {
+            truncated = true;
+            break;
+          }
+          currentUrl = next;
+        }
+      } catch (err) {
+        if (steps.length === 0) {
+          return createCorsResponse(
+            { error: `Could not reach ${sourceUrl}: ${err instanceof Error ? err.message : err}` },
+            502,
+            req,
+          );
+        }
+      }
+
+      const result = summariseRedirectChain(steps, { loop, truncated });
+
+      const { error: insertError } = await admin.from('seo_redirect_analysis').insert({
+        tenant_id: tenantId,
+        source_url: sourceUrl,
+        destination_url: result.destinationUrl,
+        redirect_chain: result.redirectChain,
+        chain_length: result.chainLength,
+        status_code: result.statusCode,
+        redirect_type: result.redirectType,
+        has_redirect_loop: result.hasRedirectLoop,
+        has_multiple_redirects: result.hasMultipleRedirects,
+        issues: result.issues,
+        checked_at: new Date().toISOString(),
+      });
+      if (insertError) {
+        return createCorsResponse(
+          { error: 'Redirect check ran but could not be stored', details: insertError.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse(result, 200, req);
+    }
+
+    // POST /seo/core-web-vitals - PageSpeed Insights
+    if (req.method === 'POST' && resource === 'core-web-vitals' && !resourceId) {
+      const body = await req.json();
+      const targetUrl = body.url || body.pageUrl;
+      const device = body.device === 'desktop' ? 'desktop' : 'mobile';
+      if (!targetUrl) {
+        return createCorsResponse({ error: 'URL is required' }, 400, req);
+      }
+
+      // No key means no measurement. Answering 501 beats inventing timings, which
+      // is what the five SEO-008 stubs were doing when they stored a readability
+      // score nobody computed.
+      const apiKey = Deno.env.get('PAGESPEED_INSIGHTS_API_KEY');
+      if (!apiKey) {
+        return createCorsResponse(
+          {
+            error: 'PageSpeed Insights API key not configured',
+            code: 'NOT_CONFIGURED',
+            unbacked: ['Core Web Vitals need PAGESPEED_INSIGHTS_API_KEY in the edge environment.'],
+          },
+          501,
+          req,
+        );
+      }
+
+      const apiUrl =
+        'https://www.googleapis.com/pagespeedonline/v5/runPagespeed' +
+        `?url=${encodeURIComponent(targetUrl)}&strategy=${device}&key=${apiKey}`;
+
+      let payload: any;
+      try {
+        const psi = await fetch(apiUrl);
+        payload = await psi.json();
+        if (!psi.ok) {
+          return createCorsResponse(
+            { error: payload?.error?.message || 'PageSpeed API request failed' },
+            502,
+            req,
+          );
+        }
+      } catch (err) {
+        return createCorsResponse(
+          { error: `PageSpeed request failed: ${err instanceof Error ? err.message : err}` },
+          502,
+          req,
+        );
+      }
+
+      const vitals = readPageSpeedVitals(payload);
+
+      const { error: insertError } = await admin.from('seo_core_web_vitals').insert({
+        tenant_id: tenantId,
+        url: targetUrl,
+        lcp: vitals.lcp === null ? null : Math.round(vitals.lcp),
+        fid: vitals.fid === null ? null : Math.round(vitals.fid),
+        cls: vitals.cls,
+        fcp: vitals.fcp === null ? null : Math.round(vitals.fcp),
+        ttfb: vitals.ttfb === null ? null : Math.round(vitals.ttfb),
+        tti: vitals.tti === null ? null : Math.round(vitals.tti),
+        tbt: vitals.tbt === null ? null : Math.round(vitals.tbt),
+        si: vitals.si,
+        performance_score: vitals.performanceScore,
+        accessibility_score: vitals.accessibilityScore,
+        best_practices_score: vitals.bestPracticesScore,
+        seo_score: vitals.seoScore,
+        device,
+        measured_at: new Date().toISOString(),
+      });
+      if (insertError) {
+        return createCorsResponse(
+          { error: 'Vitals measured but could not be stored', details: insertError.message },
+          500,
+          req,
+        );
+      }
+
+      return createCorsResponse(vitals, 200, req);
     }
 
     // ============= SITEMAP =============

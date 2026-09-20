@@ -681,6 +681,18 @@ DELETING A PHANTOM-TABLE FUNCTION MEANS FINDING ITS OTHER READERS FIRST. `work-o
 
 WHAT A DELETION LOSES GETS WRITTEN DOWN, AND WHERE THE CAPABILITY SURVIVES. `work-orders` had dedicated `/assign`, `/start`, `/complete`, `/parts` and `/labor` endpoints. Those actions all survive on `service_tickets`, which carries `assigned_technician_id`, `status`, `parts_used`, `labor_hours`, `resolution_notes` and `customer_signature`; what does NOT survive is per-entry labour and note logging, because `work_order_labor` and `work_order_notes` were phantom too. Saying which half is covered is what separates a deletion from silently retiring an idea.
 
+A TRANSPORT FIX SENDS THE BILL TO THE OTHER HOST (SEO-TRANSPORT-001, round 94). Moving `SEODashboard`'s mutations off raw `fetch` onto `apiRequest` is what makes them carry a Bearer token and reach the functions host - and that is precisely what exposed the second half: **seven of the eleven endpoints the page calls had no branch in `supabase/functions/seo/index.ts`**, so the fix turned a request that silently went nowhere into one that 404s. The 404 is the better failure and it is not the feature. Whenever you convert a page's transport, enumerate the endpoints it calls against the function that will now receive them, in the same pass; PROD-013's own rule ("check the prod-side branch and the response shape before converting") is about shapes, and this is the coarser version - does the branch exist at all.
+
+THREE FABRICATIONS IN ONE SECURITY PANEL, AND THE FIX FOR EACH IS DIFFERENT (round 94). `checkSecurityHeaders` returned `certificateValid: hasHttps` and `httpsRedirect: hasHttps` - two fields asserting checks nothing performed, derived from whether the URL string starts with `https://`. **A URL SCHEME IS NOT A CERTIFICATE CHECK**: what a successful request proves is that a handshake succeeded, not that a chain is valid, in date and issued for this host, so `certificateValid` is DELETED and named in `unbacked`, and the `certificate_valid` column is left NULL rather than filled with a boolean nothing measured. `httpsRedirect` was MEASURABLE and is measured - probe the `http://` form with `redirect: 'manual'` and see where it lands - staying **null** when the probe itself fails, because false says "it does not redirect" and null says nothing was observed. The third was `estimateCoreWebVitals()`, returning LCP 2500ms, CLS 0.1 and a performance score of 75 on any PageSpeed failure, which the route STORED: deleted, because a fabricated measurement that is persisted is indistinguishable from a real one forever after. The rule these resolve to is AUDIT-019's: delete a claim with no backing data, measure the one that can be measured, and say plainly what is not measured.
+
+`|| 0` ON A METRIC IS A PERFECT SCORE (round 94). `checkCoreWebVitalsWithAPI` wrote `audits['largest-contentful-paint']?.numericValue || 0` on all eight vitals, so an audit Lighthouse did not return became 0ms LCP and 0 CLS - not "we did not measure" but instant rendering with no layout shift, on the two numbers the panel exists to show. NULL-IS-NOT-ZERO pointed at a performance metric, where the zero is not merely wrong but flattering. Keep a real zero (0 CLS is a measurement) and name what was absent.
+
+`cheerio.css()` DOES NOT COMPUTE STYLES (round 94). `analyzeMobileFriendliness` counts "small text" with `$('*').filter(el => parseInt($(el).css('font-size')) < 12)`. `.css()` reads an inline `style` attribute and nothing else - there is no cascade and no stylesheet - so that figure only ever counts elements carrying an inline font-size, which is close to none on a modern page, while reading as a measurement of the page's typography. Worth knowing before porting any cheerio analyser: it is a parser, not a browser, and anything it reports about layout, computed style or visibility is about the markup alone.
+
+A GUARD'S GRANULARITY CAN BE COARSER THAN THE GAP (round 94). `check:edge-path-coverage` keys on the first sub-segment, so serving `/seo/check/security` cleared `check` from its baseline while `/seo/check/broken-links` and `/seo/check/mobile` stayed unserved. Tightening was still right - the ratchet should stay honest about what it measures - but it means the guard can no longer see those two, so they are asserted BY NAME in the story's test, in an assertion that FAILS when one is served. **When tightening a baseline would make a guard vouch for coverage it does not have, put the remainder somewhere that breaks on success**, not in a comment.
+
+ONE MODULE BEATS A PARITY TEST WHEN BOTH HOSTS CAN IMPORT IT. `shared/seo-checks.ts` is imported by the Deno edge function (`../../../shared/seo-checks.ts` - several already do this) and by the Node service (`@shared/seo-checks`), so there is nothing to keep in sync. The print-cost calculator and the GPT-5 prompts each ship as two near-verbatim copies held together by a parity test, which works and costs a test plus a standing instruction; check whether `shared/` can just hold the logic before reaching for the copy.
+
 ## SEO surface (SEO-001..016)
 
 THE PUBLIC SITE IS CLOSED AND THAT CHANGES WHAT IS TRUE. `App.tsx`'s `COMING_SOON`
@@ -745,8 +757,12 @@ to `analyzeSemanticKeywords`, a TODO stub returning `intentConfidence: 80` for e
 keyword - one of five stubs whose handlers STORED invented scores (`readabilityScore: 75`,
 `seoScore: 80`, `readingLevel: 8.5`, `similarityScore: 0`) into the `seo_*` tables. All
 five answer 501 now. Check what is behind a URL before wiring it. The real analysers in
-`server/services/seo-service.ts` fetch the page and measure it, and `checkCoreWebVitals`
-throws without a PageSpeed key rather than guessing. `checkBrokenLinks` fetches only the
+`server/services/seo-service.ts` fetch the page and measure it. **CORRECTED 2026-09-20
+(SEO-TRANSPORT-001 round 94): `checkCoreWebVitals` threw without a PageSpeed KEY and
+fell back to `estimateCoreWebVitals()` on any API FAILURE - LCP 2500ms, CLS 0.1, a
+performance score of 75 - which the route then stored in `seo_core_web_vitals`, so a
+page nobody measured reported respectable vitals. That fallback is deleted and the
+failure propagates.** `checkBrokenLinks` fetches only the
 first `CHECKED_LINK_LIMIT` links and records the rest as UNCHECKED (null), not as 200.
 
 **Guards.** `check:sitemap`, `check:seo-assets` (asset URLs across all of `client/src`,
