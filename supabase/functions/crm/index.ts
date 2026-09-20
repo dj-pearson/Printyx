@@ -240,6 +240,83 @@ export default async function handler(req: Request) {
       return createCorsResponse({ created: data?.length ?? 0, goals: toCamelRows(data) }, 201, req);
     }
 
+    /**
+     * GET /crm/record-counts?recordId=<business record id>
+     *
+     * CRM-008 AC6: the counts on a record page's associated-record tabs.
+     *
+     * THE COUNT HAS TO DESCRIBE THE SAME SET THE TAB LISTS, which is why this
+     * is not four `count: exact` calls over `tenant_id` and the association
+     * column. Three of the four lists apply `applyUserScope`, each on its OWN
+     * columns - deals on owner_id/created_by_id, proposals on
+     * assigned_to/created_by, quotes on created_by (WF-R-05, because a quote
+     * carries margin) - so a naive count tells a rep "Deals 7" above a list of
+     * three. Contacts are deliberately unscoped: `/companies/:id/contacts`
+     * filters on tenant and company only, and a contact of this account is a
+     * contact of this account whoever entered it.
+     *
+     * NULL IS NOT ZERO, the rule the dashboard-stats branch below already
+     * encodes: a count that failed renders as nothing, never as "none". A tab
+     * reading "Quotes 0" when the query errored is a claim about the record.
+     */
+    if (req.method === 'GET' && subRoute === 'record-counts') {
+      const recordId = url.searchParams.get('recordId') || url.searchParams.get('record_id');
+      if (!recordId) {
+        return createCorsResponse(
+          { message: 'recordId is required', code: 'MISSING_RECORD_ID' },
+          400,
+          req,
+        );
+      }
+
+      const scope = await resolveScope(admin, {
+        userId: user.id,
+        tenantId,
+        appMetadata: user.app_metadata,
+        requestedScope: url.searchParams.get('scope'),
+      });
+
+      const countOfScoped = async (
+        table: string,
+        column: string,
+        scopeColumns: string | string[] | null,
+      ): Promise<number | null> => {
+        try {
+          let query = admin
+            .from(table)
+            .select('id', { count: 'exact', head: true })
+            .eq('tenant_id', tenantId)
+            .eq(column, recordId);
+          if (scopeColumns) query = applyUserScope(query, scopeColumns, scope);
+          const { count, error } = await query;
+          return error ? null : (count ?? null);
+        } catch {
+          return null;
+        }
+      };
+
+      const [contacts, deals, proposals, quotes] = await Promise.all([
+        countOfScoped('company_contacts', 'company_id', null),
+        countOfScoped('deals', 'source_business_record_id', ['owner_id', 'created_by_id']),
+        countOfScoped('proposals', 'business_record_id', ['assigned_to', 'created_by']),
+        countOfScoped('quotes', 'lead_id', 'created_by'),
+      ]);
+
+      return createCorsResponse(
+        {
+          recordId,
+          counts: { contacts, deals, proposals, quotes },
+          // What the caller can see, so a rep reading a smaller number than a
+          // manager knows why (COP-I06: a narrowed total that does not say it
+          // was narrowed is a wrong number, not a safe one).
+          scopeTier: scope.tier,
+          coversWholeTenant: scope.userIds === null,
+        },
+        200,
+        req,
+      );
+    }
+
     // GET /crm/dashboard-stats - counted, not typed in
     if (req.method === 'GET' && subRoute === 'dashboard-stats') {
       const monthStart = new Date();

@@ -196,6 +196,19 @@ function LeadContactForm({
   );
 }
 
+/** Shape of GET /api/crm/record-counts (CRM-008 AC6). A null count is unknown, not zero. */
+interface RecordCounts {
+  recordId: string;
+  counts: {
+    contacts: number | null;
+    deals: number | null;
+    proposals: number | null;
+    quotes: number | null;
+  };
+  scopeTier: string;
+  coversWholeTenant: boolean;
+}
+
 export default function LeadDetailHubspot() {
   const { slug } = useParams();
   const [, setLocation] = useLocation();
@@ -353,6 +366,28 @@ export default function LeadDetailHubspot() {
     },
   });
 
+  /**
+   * AC6's counts.
+   *
+   * One request rather than four list fetches: Radix unmounts an inactive tab,
+   * so a count lifted out of each child would only appear once a rep had
+   * clicked through all four - a number that shows up after you look is worth
+   * less than none. `GET /crm/record-counts` answers all four as exact
+   * PostgREST head counts under the SAME ownership scope each list applies, so
+   * the badge and the rows below it describe one set.
+   */
+  const { data: counts } = useQuery<RecordCounts>({
+    queryKey: ['/api/crm/record-counts', id],
+    queryFn: () => apiRequest(`/api/crm/record-counts?recordId=${encodeURIComponent(id!)}`),
+    enabled: Boolean(id),
+  });
+
+  /** Renders nothing while loading or when the count failed - never a 0. */
+  const countBadge = (value: number | null | undefined) =>
+    typeof value === 'number' ? (
+      <span className="ml-1.5 text-xs text-muted-foreground">{value}</span>
+    ) : null;
+
   if (isLoading) {
     // Skeletons in the shape of the page, matching DealDetail. A spinner tells
     // the rep nothing about what is coming.
@@ -419,10 +454,10 @@ export default function LeadDetailHubspot() {
   const relatedSlot = (
     <Tabs defaultValue="contacts" className="w-full">
       <TabsList>
-        <TabsTrigger value="contacts">Contacts</TabsTrigger>
-        <TabsTrigger value="deals">Deals</TabsTrigger>
-        <TabsTrigger value="proposals">Proposals</TabsTrigger>
-        <TabsTrigger value="quotes">Quotes</TabsTrigger>
+        <TabsTrigger value="contacts">Contacts{countBadge(counts?.counts.contacts)}</TabsTrigger>
+        <TabsTrigger value="deals">Deals{countBadge(counts?.counts.deals)}</TabsTrigger>
+        <TabsTrigger value="proposals">Proposals{countBadge(counts?.counts.proposals)}</TabsTrigger>
+        <TabsTrigger value="quotes">Quotes{countBadge(counts?.counts.quotes)}</TabsTrigger>
       </TabsList>
       <TabsContent value="contacts" className="mt-4">
         {/* WF-S-03: business_records has no company_id column, so a contact's

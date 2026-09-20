@@ -388,6 +388,16 @@ export default function DealDetail() {
     enabled: Boolean(dealId),
   });
   const dealQuotes = dealQuotesQuery.data?.data ?? [];
+  /**
+   * AC6's count for this tab, and the one case where a 0 would lie: when
+   * migration 0088 is missing the endpoint answers `data: []` at 200 with an
+   * `unbacked` line saying quotes cannot be linked to a deal on this database
+   * at all. "Quotes 0" there is a claim about the deal; no badge is the truth.
+   */
+  const dealQuoteCount =
+    dealQuotesQuery.isSuccess && (dealQuotesQuery.data?.unbacked?.length ?? 0) === 0
+      ? dealQuotes.length
+      : null;
 
   const dealTasksQuery = useQuery<
     Array<{ id: string; title: string; status?: string; priority?: string; dueDate?: string }>
@@ -609,6 +619,9 @@ export default function DealDetail() {
             they are on the call. */}
         <TabsTrigger value="quotes">
           <FileText className="h-4 w-4 mr-1.5" /> Quotes
+          {dealQuoteCount !== null && (
+            <span className="ml-1.5 text-xs text-muted-foreground">{dealQuoteCount}</span>
+          )}
         </TabsTrigger>
         <TabsTrigger value="discovery">
           <ClipboardList className="h-4 w-4 mr-1.5" /> Discovery
