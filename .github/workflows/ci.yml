@@ -111,6 +111,8 @@ jobs:
         run: npm run check:tenant-id-type
       - name: PRD file-reference ratchet
         run: npm run check:prd-refs
+      - name: Stale story gates (blocker already landed)
+        run: npm run check:stale-gates
       - name: Raw-fetch ratchet (PROD-013)
         run: npm run check:raw-fetch
       - name: Raw request-body write ratchet (COP-M01)
