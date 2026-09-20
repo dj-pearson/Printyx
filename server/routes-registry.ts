@@ -700,8 +700,20 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // selected r.manufacturer, a column device_registrations does not have, so
   // they answered 500 in dev on top of 404 in production.
 
-  const contractAlertsRoutes = (await import('./routes-contract-alerts')).default;
-  app.use(contractAlertsRoutes);
+  // routes-contract-alerts.ts retired (QUALITY-002). 442 lines over four
+  // /api/alerts/* handlers, registered here and called by NOTHING in any client
+  // tree, with no edge function behind the prefix - so 404 in production - and
+  // seven phantom columns (contracts.contractType, service_contracts.includedPages
+  // /overageRate/billingCycle), so it would have 500'd in dev too. It went with
+  // services/contract-renewal-workflow.ts, its only consumer, which named two
+  // more (service_contracts.assignedSalesRepId, tasks.relatedRecordId).
+  //
+  // What users actually see is served elsewhere and works: the alert bell's
+  // contract-expiration entries come from _shared/operational-alerts.ts via the
+  // performance function, off the REAL columns, and the renewal book is the
+  // contract-renewal function. What is genuinely gone is milestone automation
+  // at 180/90/60/30 days - filed on QUALITY-002 rather than left in code that
+  // could not run.
   app.use(serviceDispatchRouter);
   // routes-proactive-maintenance.ts retired (PROD-008b). Both handlers were
   // shadowed by the /api/service proxy; supabase/functions/service/maintenance.ts

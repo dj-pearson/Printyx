@@ -20,6 +20,20 @@ function countMatches(content: string, pattern: RegExp): number {
   return matches ? matches.length : 0;
 }
 
+/** Every .ts under server/, so a property is checked on the tree rather than on one named file. */
+function walkServer(dir: string = SERVER_DIR, out: string[] = []): string[] {
+  for (const entry of fs.readdirSync(dir)) {
+    const full = path.join(dir, entry);
+    if (fs.statSync(full).isDirectory()) {
+      if (entry === 'node_modules' || entry === 'tests') continue;
+      walkServer(full, out);
+    } else if (entry.endsWith('.ts')) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
 describe('SEC-001: SQL Injection Prevention', () => {
   // NOTE: The former `routes-sales-pipeline.ts` describe block was removed when
   // the file was migrated to supabase/functions/sales-pipeline/ and the complex
@@ -68,20 +82,30 @@ describe('SEC-001: SQL Injection Prevention', () => {
   });
 
   describe('MEDIUM: INTERVAL interpolation - No sql.raw() in INTERVAL expressions', () => {
-    it('routes-contract-alerts.ts should not interpolate raw values into INTERVAL', () => {
-      const content = readFile('routes-contract-alerts.ts');
-      // Pattern: INTERVAL '${sql.raw(String(...))} days'
-      const intervalRawPattern = /INTERVAL\s+'\$\{sql\.raw/g;
-      const matches = countMatches(content, intervalRawPattern);
-      expect(matches).toBe(0);
+    // These two used to name routes-contract-alerts.ts, the only file the
+    // property had ever been checked on. QUALITY-002 deleted that file - four
+    // uncalled handlers with seven phantom columns, 404 in production - and
+    // rather than delete its coverage with it, the check is now a SCAN. A
+    // security property asserted about one file by name stops being enforced
+    // the day that file is renamed, let alone removed.
+    it('no server file interpolates a raw value into an INTERVAL', () => {
+      const files = walkServer();
+      expect(files.length).toBeGreaterThan(100);
+      const offenders = files.filter((f) =>
+        /INTERVAL\s+'\$\{sql\.raw/.test(fs.readFileSync(f, 'utf-8')),
+      );
+      expect(offenders.map((f) => path.relative(SERVER_DIR, f))).toEqual([]);
     });
 
-    it('routes-contract-alerts.ts should use parameterized INTERVAL multiplication', () => {
-      const content = readFile('routes-contract-alerts.ts');
-      // Should now use: INTERVAL '1 day' * ${Number(daysAhead)}
-      const safeIntervalPattern = /INTERVAL\s+'1 day'\s*\*\s*\$\{/g;
-      const matches = countMatches(content, safeIntervalPattern);
-      expect(matches).toBeGreaterThan(0);
+    it('nor builds an INTERVAL by concatenating a value into the unit', () => {
+      // `INTERVAL '${n} days'` is the same hole wearing template syntax: the
+      // safe form multiplies a fixed unit, `INTERVAL '1 day' * ${Number(n)}`.
+      const offenders = walkServer().filter((f) =>
+        /INTERVAL\s+'\$\{(?!sql\.raw)[^}]*\}\s*(day|hour|month|year)/.test(
+          fs.readFileSync(f, 'utf-8'),
+        ),
+      );
+      expect(offenders.map((f) => path.relative(SERVER_DIR, f))).toEqual([]);
     });
 
     // NOTE: The routes-proposals.ts INTERVAL tests were removed when the file
