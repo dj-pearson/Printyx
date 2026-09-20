@@ -5,6 +5,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { associationCreateError } from '../_shared/crm-associations.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { applyUserScope, resolveScope } from '../_shared/scope.ts';
 import { toCamel } from '../_shared/case.ts';
 import { calculateActivityFunnel } from '../_shared/activity-funnel.ts';
 
@@ -507,6 +508,25 @@ export default async function handler(req: Request) {
           .select('*')
           .eq('tenant_id', tenantId)
           .eq('metric_period', period);
+
+        /**
+         * SEC-EDGE-001: `sales_metrics` is per-rep performance - conversion
+         * rates, activity counts, quota movement - and the only thing deciding
+         * whose rows came back was a `?userId=` the caller supplies, on a
+         * tenant filter. Any member could read any colleague's numbers.
+         *
+         * The WF-R-04 scope now narrows the rows first; the parameters are
+         * what they always read as, a caller-supplied preference applied ON
+         * TOP, so they can filter within the tier and never widen past it.
+         * Same shape as the deals board and the commission calculations.
+         */
+        const scope = await resolveScope(admin, {
+          userId: user.id,
+          tenantId,
+          appMetadata: user.app_metadata,
+          requestedScope: url.searchParams.get('scope'),
+        });
+        query = applyUserScope(query, 'user_id', scope);
 
         const userId = url.searchParams.get('userId');
         const teamId = url.searchParams.get('teamId');

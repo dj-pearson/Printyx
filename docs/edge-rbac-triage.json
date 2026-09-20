@@ -1,14 +1,14 @@
 {
   "note": "SEC-EDGE-001. A REASON for every entry in docs/edge-rbac-baseline.json, so \"open to all roles\" stops reading the same whether an entry is deliberate or unexamined. Verdicts: public (the handler never authenticates, so role is a category error), internal (pg_cron, not a user), headless (nothing calls it, so gating decides nothing — AUDIT-024), open-by-design (every tenant member legitimately uses it; row scoping is the real control), needs-gate (a restriction is wanted and is missing — this is the worklist), unexamined (nobody has looked yet, stated rather than implied). check:edge-rbac requires an entry here for every baselined function.",
   "counts": {
-    "open-by-design": 26,
+    "open-by-design": 25,
     "headless": 44,
     "internal": 3,
     "gated-branch": 6,
     "needs-gate": 2,
-    "unexamined": 38,
+    "row-scoped": 4,
     "public": 8,
-    "row-scoped": 2
+    "unexamined": 37
   },
   "triage": [
     {
@@ -123,8 +123,8 @@
     },
     {
       "fn": "crm",
-      "verdict": "unexamined",
-      "reason": "Eight writes across several CRM surfaces - too broad to judge from a count, and the write set needs reading branch by branch before a verdict."
+      "verdict": "row-scoped",
+      "reason": "EXAMINED AND FIXED 2026-09-20. GET /analytics/conversion reads sales_metrics - per-rep conversion rates, activity counts, quota movement - and the only thing deciding whose rows came back was a ?userId= the caller supplies, on a tenant filter. Any member could read any colleague numbers. The WF-R-04 scope narrows the rows first and the userId/teamId parameters are applied ON TOP, so they filter within the tier and cannot widen past it - the same shape the deals board and commission calculations already use."
     },
     {
       "fn": "cross-module",
@@ -148,8 +148,8 @@
     },
     {
       "fn": "daily-briefing",
-      "verdict": "open-by-design",
-      "reason": "VERIFIED 2026-09-20: every read filters .eq(user_id, user.id). Row scoping, not role scoping, is the control - the same shape as activities."
+      "verdict": "row-scoped",
+      "reason": "CORRECTED 2026-09-20, and the correction is the point. I verified this entry days earlier as open-by-design on the evidence that every read filters .eq(user_id, user.id) - TRUE of the paths I read, and NOT of the two that mattered. GET / took ?userId= as an override and POST /generate took body.userId, both honoured on a tenant filter alone, so any member could read any colleague briefing (their pipeline, tasks and priorities) and GENERATE one for them - a write that inserts a daily_briefing_log row against their id and emails them when their preferences say so. Both overrides are narrowed rather than removed, because a manager viewing or regenerating a report briefing is the legitimate use: the requested user must sit inside the tier _shared/scope.ts resolves for the caller, else 403 OUT_OF_SCOPE. A spot-check that reads SOME paths is not a verdict about a function."
     },
     {
       "fn": "dashboard",

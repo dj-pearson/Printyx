@@ -58,6 +58,7 @@ import {
   type GeneratedBriefing,
 } from './briefing.ts';
 import { resolveTenantId } from '../_shared/resolve-tenant.ts';
+import { resolveScope, type ResolvedScope } from '../_shared/scope.ts';
 
 /** _sendgrid requires an explicit `from`; same env-with-default idiom as public-booking. */
 const BRIEFING_FROM_EMAIL = Deno.env.get('BRIEFING_FROM_EMAIL') || 'noreply@printyx.net';
@@ -94,6 +95,25 @@ const toPrefs = (r: Record<string, unknown> | null) =>
       }
     : null;
 
+/**
+ * May this caller read or generate a briefing for `targetUserId`?
+ *
+ * A briefing is a rep's own pipeline, tasks and priorities for the day, and
+ * both entry points let the CALLER name whose it is - `?userId=` on the list
+ * and `body.userId` on generate - with only a tenant filter behind it. The
+ * override is legitimate for a manager looking at a report, which is why it is
+ * narrowed rather than deleted: the requested user has to be inside the tier
+ * `_shared/scope.ts` already resolves for this caller.
+ *
+ * `scope.userIds === null` means the tier imposes no user filter (company or
+ * platform), so the override is theirs to use.
+ */
+function scopeAllows(scope: ResolvedScope, targetUserId: string, callerId: string): boolean {
+  if (targetUserId === callerId) return true;
+  if (scope.userIds === null) return true;
+  return scope.userIds.includes(targetUserId);
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -128,7 +148,7 @@ export default async function handler(req: Request) {
     // --- POST /generate ----------------------------------------------------
     // Literal segments matched before /:id so 'generate' is never read as an id.
     if (method === 'POST' && first === 'generate') {
-      return await handleGenerate(req, admin, tenantId, user.id);
+      return await handleGenerate(req, admin, tenantId, user.id, user.app_metadata);
     }
 
     // --- GET|PUT /preferences ----------------------------------------------
@@ -241,6 +261,26 @@ export default async function handler(req: Request) {
       const override = url.searchParams.get('userId') ?? undefined;
       const userId = override ?? user.id;
 
+      // SEC-EDGE-001: the override used to be honoured on nothing but a tenant
+      // filter, so any member could read any colleague's briefing.
+      if (override && override !== user.id) {
+        const scope = await resolveScope(admin, {
+          userId: user.id,
+          tenantId,
+          appMetadata: user.app_metadata,
+        });
+        if (!scopeAllows(scope, override, user.id)) {
+          return createCorsResponse(
+            {
+              message: 'That briefing belongs to someone outside your scope',
+              code: 'OUT_OF_SCOPE',
+            },
+            403,
+            req,
+          );
+        }
+      }
+
       const { data, error } = await admin
         .from('daily_briefing_log')
         .select('*')
@@ -275,6 +315,7 @@ async function handleGenerate(
   admin: ReturnType<typeof createSupabaseServiceClient>,
   tenantId: string,
   callerId: string,
+  callerMetadata: Record<string, unknown> | null | undefined,
 ): Promise<Response> {
   const body = await safeJson(req);
 
@@ -302,6 +343,32 @@ async function handleGenerate(
     }));
   } else {
     const targetUserId = typeof body.userId === 'string' ? body.userId : callerId;
+
+    /**
+     * SEC-EDGE-001: generating for someone else is a WRITE, so this override
+     * mattered more than the read one. It inserts a `daily_briefing_log` row
+     * against their user id and, when their preferences say so, EMAILS them -
+     * with content assembled from whatever the generator reads. It was
+     * honoured on a tenant filter alone.
+     *
+     * Narrowed rather than removed, for the same reason as the list: a manager
+     * regenerating a report's briefing is the legitimate use.
+     */
+    if (targetUserId !== callerId) {
+      const scope = await resolveScope(admin, {
+        userId: callerId,
+        tenantId,
+        appMetadata: callerMetadata as Record<string, unknown> | null | undefined,
+      });
+      if (!scopeAllows(scope, targetUserId, callerId)) {
+        return createCorsResponse(
+          { message: 'That user is outside your scope', code: 'OUT_OF_SCOPE' },
+          403,
+          req,
+        );
+      }
+    }
+
     const { data: u } = await admin
       .from('users')
       .select('id, email, role')
